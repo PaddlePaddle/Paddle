@@ -1922,7 +1922,8 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         label(Tensor): The input variable containing the label data. The
                         label data should use one-hot representation. It's
                         a multidimensional tensor with a shape of
-                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
+                        :math:`[N_1, ..., Depth]`, where Depth is class number.
+                        The dtype can be "float16", "float32" and "float64".
         prior_dist(Tensor, optional): The prior distribution to be used to smooth
                         labels. If not provided, an uniform distribution
                         is used. It's a multidimensional tensor with a shape of
@@ -1964,7 +1965,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         )
 
     check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'label_smooth'
+        label, 'label', ['float16', 'float32', 'float64'], 'label_smooth'
     )
 
     helper = LayerHelper("label_smooth", **locals())

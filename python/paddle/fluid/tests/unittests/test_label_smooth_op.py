@@ -78,6 +78,31 @@ class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
         )
 
 
+class TestLabelSmoothFP16(unittest.TestCase):
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np.astype(dtype))
+        x.stop_gradient = False
+        y = paddle.nn.functional.label_smooth(x, epsilon=0.1)
+        x_g = paddle.grad(y, [x])
+        y_np = y.numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        np.random.seed(20)
+        x_np = np.random.random([10, 12])
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=1e-03)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

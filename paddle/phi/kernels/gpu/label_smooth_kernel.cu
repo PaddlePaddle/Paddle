@@ -17,6 +17,8 @@
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
@@ -33,8 +35,10 @@ struct LabelSmoothFunctor {
   }
 
   __device__ __forceinline__ T operator()(const T x) const {
-    return (static_cast<T>(1 - epsilon) * x +
-            static_cast<T>(epsilon / label_dim));
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    return static_cast<T>((1 - static_cast<MT>(epsilon)) * static_cast<MT>(x) +
+                          static_cast<MT>(epsilon) /
+                              static_cast<MT>(label_dim));
   }
 };
 
@@ -46,9 +50,11 @@ __global__ void LabelSmoothRunDistKernel(const int N,
                                          const T* dist_data,
                                          T* dst) {
   CUDA_KERNEL_LOOP(idx, N) {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     int dist_idx = idx % dist_numel;
-    dst[idx] = static_cast<T>(1 - epsilon) * src[idx] +
-               static_cast<T>(epsilon) * dist_data[dist_idx];
+    dst[idx] = static_cast<T>(
+        static_cast<MT>((1 - epsilon) * static_cast<MT>(src[idx])) +
+        static_cast<MT>(epsilon) * static_cast<MT>(dist_data[dist_idx]));
   }
 }
 
@@ -83,5 +89,10 @@ void LabelSmoothKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    label_smooth, GPU, ALL_LAYOUT, phi::LabelSmoothKernel, float, double) {}
+PD_REGISTER_KERNEL(label_smooth,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LabelSmoothKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

@@ -137,6 +137,9 @@ void PreluChannelWiseDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                  stream>>>(
         input, alpha, output, channel, numel);
   } else {
+    printf("debug: spatial: %d, ch_num: %d\n",
+           static_cast<int>(numel / batch_size / channel),
+           static_cast<int>(channel));
     PReluChannelFirstWiseKernel<<<PADDLE_GET_BLOCKS(numel),
                                   CUDA_NUM_THREADS,
                                   0,
