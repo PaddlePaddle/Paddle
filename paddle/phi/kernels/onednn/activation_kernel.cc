@@ -49,8 +49,8 @@ void EltwiseForward(const OneDNNContext& dev_ctx,
                     float beta,
                     DenseTensor* out,
                     dnnl::algorithm algorithm) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
-                    true,
+  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
+                    phi::AllocationType::CPU,
                     phi::errors::PreconditionNotMet(
                         "Operator DNNL eletwise_forward must use ONEDNNPlace"));
 

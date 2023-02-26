@@ -73,18 +73,18 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
             out_value->numel() / out_rows.size()));
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
-                      true,
+    PADDLE_ENFORCE_EQ(in1_place.GetType(),
+                      phi::AllocationType::CPU,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
-                      true,
+    PADDLE_ENFORCE_EQ(in2_place.GetType(),
+                      phi::AllocationType::CPU,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto out_place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::CPU,
-                      true,
+    PADDLE_ENFORCE_EQ(out_place.GetType(),
+                      phi::AllocationType::CPU,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
@@ -204,13 +204,13 @@ struct SelectedRowsAddTo<phi::CPUContext, T> {
     mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
-                      true,
+    PADDLE_ENFORCE_EQ(in1_place.GetType(),
+                      phi::AllocationType::CPU,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
-                      true,
+    PADDLE_ENFORCE_EQ(in2_place.GetType(),
+                      phi::AllocationType::CPU,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
