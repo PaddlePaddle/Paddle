@@ -118,6 +118,30 @@ class TestStdError(unittest.TestCase):
             x = paddle.fluid.data('X', [2, 3, 4], 'int32')
             self.assertRaises(TypeError, paddle.std, x)
 
+    def test_fp16_with_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([12, 14]).astype("float16")
+                x = paddle.static.data(
+                    name="x", shape=[12, 14], dtype="float16"
+                )
+
+                y = paddle.std(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
+                assert np.array_equal(res[0].shape, [12 * 14])
+
 
 if __name__ == '__main__':
     unittest.main()

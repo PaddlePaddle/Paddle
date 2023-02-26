@@ -168,7 +168,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
     Computes the standard-deviation of ``x`` along ``axis`` .
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float16, float32, float64.
         axis (int|list|tuple, optional): The axis along which to perform
             standard-deviation calculations. ``axis`` should be int, list(int)
             or tuple(int). If ``axis`` is a list/tuple of dimension(s),
@@ -211,7 +211,9 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
 
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'std'
+        )
     out = var(**locals())
     return paddle.sqrt(out)
 
