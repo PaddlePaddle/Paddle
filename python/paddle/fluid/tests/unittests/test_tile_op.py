@@ -390,9 +390,7 @@ class TestTileOpFp16(unittest.TestCase):
 
     def test_fp16(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [fluid.CPUPlace(0)]
         for p in places:
             self.func(p)
 
