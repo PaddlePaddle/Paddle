@@ -103,6 +103,14 @@ class TestGumbelSoftmaxOp5(TestGumbelSoftmaxOp):
         self.dtype = "float64"
 
 
+class TestGumbelSoftmaxOp6(TestGumbelSoftmaxOp):
+    def init_attrs(self):
+        self.shape = [20, 10, 5]
+        self.attrs = {"hard": True, "axis": 1}
+        self.count_expected = 100
+        self.dtype = np.float16
+
+
 class TestGumbelSoftmaxOpSampleDistribution(OpTest):
     def softmax(self, x):
         x_row_max = x.max(axis=-1)

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gumbel_softmax_kernel.h"
-
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
@@ -124,9 +124,11 @@ __global__ void AddGumbelNoiseCUDAKernel(const T* input_data,
                                          int64_t n) {
   int index = threadIdx.x + blockIdx.x * blockDim.x;
   int step = blockDim.x * gridDim.x;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int64_t i = index; i < n; i += step) {
-    T gumbel_noise = -log(-log(noise[i]));
-    output_data[i] = (gumbel_noise + input_data[i]) / temperature;
+    MPType gumbel_noise = -log(-log(static_cast<MPType>(noise[i])));
+    output_data[i] = static_cast<T>(
+        (gumbel_noise + static_cast<MPType>(input_data[i])) / temperature);
   }
 }
 
@@ -152,10 +154,15 @@ struct GumbleNoiseGenerator<GPUContext, T> {
     uint64_t offset = seed_offset.second;
 
     thrust::counting_iterator<int64_t> index_sequence_begin(0);
-    thrust::transform(index_sequence_begin,
-                      index_sequence_begin + size,
-                      thrust::device_ptr<T>(random_data),
-                      UniformCUDAGenerator<T>(0.00001, 1, seed, size * offset));
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    thrust::transform(
+        index_sequence_begin,
+        index_sequence_begin + size,
+        thrust::device_ptr<T>(random_data),
+        UniformCUDAGenerator<T>(static_cast<phi::dtype::float16>(0.00001),
+                                static_cast<phi::dtype::float16>(1),
+                                seed,
+                                size * offset));
 
     // add gumbel noise to X
     const int thread_size = 512;
@@ -168,5 +175,10 @@ struct GumbleNoiseGenerator<GPUContext, T> {
 }  // namespace phi
 #endif
 
-PD_REGISTER_KERNEL(
-    gumbel_softmax, GPU, ALL_LAYOUT, phi::GumbelSoftmaxKernel, float, double) {}
+PD_REGISTER_KERNEL(gumbel_softmax,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::GumbelSoftmaxKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}
