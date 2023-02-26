@@ -15,7 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
 
 
 class TestPad2dOp(OpTest):
@@ -24,6 +26,7 @@ class TestPad2dOp(OpTest):
         self.variable_paddings = False
         self.initTestCase()
         self.op_type = "pad2d"
+        self.python_api = paddle.nn.functional.pad
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {}
         if self.variable_paddings:
