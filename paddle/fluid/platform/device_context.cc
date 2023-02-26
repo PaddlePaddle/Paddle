@@ -211,14 +211,5 @@ Eigen::DefaultDevice* CUDAPinnedDeviceContext::eigen_device() const {
 const Place& CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-CustomDeviceContext::CustomDeviceContext(CustomPlace place)
-    : phi::CustomContext(place) {
-  Init();
-  stream_.reset(new phi::stream::Stream(place, stream()));
-}
-
-CustomDeviceContext::~CustomDeviceContext() {}
-#endif
 }  // namespace platform
 }  // namespace paddle
