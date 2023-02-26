@@ -79,7 +79,7 @@ class TestTensordotAPI(unittest.TestCase):
             self.places.append(core.CUDAPlace(0))
 
     def set_dtype(self):
-        self.dtype = np.float32
+        self.dtype = [np.float16, np.float32]
 
     def set_input_shape(self):
         self.x_shape = [5, 5, 5, 5]
@@ -205,24 +205,27 @@ class TestTensordotAPI(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        for axes in self.all_axes:
-            for place in self.places:
-                with paddle.static.program_guard(
-                    paddle.static.Program(), paddle.static.Program()
-                ):
-                    x = paddle.static.data(
-                        name='x', shape=self.x_shape, dtype=self.dtype
-                    )
-                    y = paddle.static.data(
-                        name='y', shape=self.y_shape, dtype=self.dtype
-                    )
-                    z = paddle.tensordot(x, y, axes)
-                    exe = paddle.static.Executor(place)
-                    paddle_res = exe.run(
-                        feed={'x': self.x, 'y': self.y}, fetch_list=[z]
-                    )
-                    np_res = tensordot_np(self.x, self.y, axes)
-                    np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
+        for dtype in self.dtype:
+            for axes in self.all_axes:
+                for place in self.places:
+                    with paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
+                    ):
+                        x = paddle.static.data(
+                            name='x', shape=self.x_shape, dtype=dtype
+                        )
+                        y = paddle.static.data(
+                            name='y', shape=self.y_shape, dtype=dtype
+                        )
+                        z = paddle.tensordot(x, y, axes)
+                        exe = paddle.static.Executor(place)
+                        paddle_res = exe.run(
+                            feed={'x': self.x, 'y': self.y}, fetch_list=[z]
+                        )
+                        np_res = tensordot_np(self.x, self.y, axes)
+                        np.testing.assert_allclose(
+                            paddle_res[0], np_res, rtol=1e-6
+                        )
 
 
 class TestTensordotAPIFloat64(TestTensordotAPI):
