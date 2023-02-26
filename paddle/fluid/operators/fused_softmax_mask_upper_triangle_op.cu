@@ -610,5 +610,6 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_CUDA_KERNEL(
     fused_softmax_mask_upper_triangle_grad,
     ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext, plat::float16>,
-    ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext, plat::bfloat16>,
+    ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext,
+                                                plat::bfloat16>,
     ops::SoftmaxMaskFuseUpperTriangleGradKernel<phi::GPUContext, float>);
