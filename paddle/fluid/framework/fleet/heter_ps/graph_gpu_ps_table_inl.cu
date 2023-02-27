@@ -23,6 +23,9 @@
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 #define ALIGN_INT64(LEN) (uint64_t((LEN) + 7) & uint64_t(~7))
 #define HBMPS_MAX_BUFF 1024 * 1024
+
+DECLARE_bool(enable_neighbor_list_use_uva);
+
 namespace paddle {
 namespace framework {
 /*
@@ -895,8 +898,14 @@ void GpuPsGraphTable::build_graph_on_single_gpu(const GpuPsCommGraph& g,
     gpu_graph_list_[offset].node_size = 0;
   }
   if (g.neighbor_size) {
-    cudaError_t cudaStatus = cudaMalloc(&gpu_graph_list_[offset].neighbor_list,
+    cudaError_t cudaStatus;
+    if (!FLAGS_enable_neighbor_list_use_uva) {
+      cudaStatus = cudaMalloc(&gpu_graph_list_[offset].neighbor_list,
                                         g.neighbor_size * sizeof(uint64_t));
+    } else {
+      cudaStatus = cudaMallocManaged(&gpu_graph_list_[offset].neighbor_list,
+                                        g.neighbor_size * sizeof(uint64_t));
+    }
     PADDLE_ENFORCE_EQ(cudaStatus,
                       cudaSuccess,
                       platform::errors::InvalidArgument(
@@ -964,9 +973,13 @@ void GpuPsGraphTable::build_graph_from_cpu(
       gpu_graph_list_[offset].node_size = 0;
     }
     if (cpu_graph_list[i].neighbor_size) {
-      CUDA_CHECK(
-          cudaMalloc(&gpu_graph_list_[offset].neighbor_list,
-                     cpu_graph_list[i].neighbor_size * sizeof(uint64_t)));
+      if (!FLAGS_enable_neighbor_list_use_uva) {
+        CUDA_CHECK(cudaMalloc(&gpu_graph_list_[offset].neighbor_list,
+                    cpu_graph_list[i].neighbor_size * sizeof(uint64_t)));
+      } else {
+        CUDA_CHECK(cudaMallocManaged(&gpu_graph_list_[offset].neighbor_list,
+                    cpu_graph_list[i].neighbor_size * sizeof(uint64_t)));
+      }
 
       CUDA_CHECK(
           cudaMemcpyAsync(gpu_graph_list_[offset].neighbor_list,

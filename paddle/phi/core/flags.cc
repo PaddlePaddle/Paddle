@@ -845,6 +845,18 @@ PADDLE_DEFINE_EXPORTED_bool(graph_load_in_parallel,
                             false,
                             "It controls whether load graph node and edge with "
                             "mutli threads parallely.");
+ 
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_enable_neighbor_list_use_uva
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Control whether store neighbor_list with UVA
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_neighbor_list_use_uva,
+                            false,
+                            "It controls whether store neighbor_list with UVA");
 
 /**
  * Distributed related FLAG
