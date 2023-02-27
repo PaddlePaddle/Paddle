@@ -102,7 +102,6 @@ class RMSProp(Optimizer):
           some derived class of ``GradientClipBase`` . There are three cliping strategies
           ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
           :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
-        multi_precision (bool, optional): Whether to use multi-precision during weight updating.
         name (str, optional): This parameter is used by developers to print debugging information.
           For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -159,7 +158,6 @@ class RMSProp(Optimizer):
         parameters=None,
         weight_decay=None,
         grad_clip=None,
-        multi_precision=False,
         name=None,
     ):
         if learning_rate is None:
@@ -190,7 +188,7 @@ class RMSProp(Optimizer):
         self._epsilon = epsilon
         self._momentum = momentum
         self._centered = centered
-        self._multi_precision = multi_precision
+        self._multi_precision = False
         self._master_weights = {}
         self._default_dict = {
             'rho': rho,

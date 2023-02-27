@@ -372,9 +372,8 @@ class TestRMSOpMultiPrecison(unittest.TestCase):
             learning_rate=0.01,
             parameters=model.parameters(),
             weight_decay=0.01,
-            multi_precision=use_amp,
         )
-
+        optimizer.multi_precision_ = use_amp
         for idx in range(2):
             if place == 'gpu' and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
@@ -418,9 +417,8 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
         paddle.set_device('gpu')
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
-        optimizer = paddle.optimizer.RMSProp(
-            0.5, parameters=model.parameters(), multi_precision=mp
-        )
+        optimizer = paddle.optimizer.RMSProp(0.5, parameters=model.parameters())
+        optimizer.multi_precision_ = mp
         if use_amp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -450,7 +448,8 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.optimizer.RMSProp(0.1, multi_precision=mp)
+        optimizer = paddle.optimizer.RMSProp(0.1)
+        optimizer.multi_precision_ = mp
 
         if use_amp:
             optimizer = paddle.static.amp.decorate(
@@ -530,8 +529,8 @@ class TestRMSPropMultiPrecision1_0(unittest.TestCase):
         optimizer = paddle.fluid.optimizer.RMSProp(
             learning_rate=0.001,
             parameter_list=model.parameters(),
-            multi_precision=mp,
         )
+        optimizer.multi_precision_ = mp
         if use_amp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -560,9 +559,8 @@ class TestRMSPropMultiPrecision1_0(unittest.TestCase):
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.fluid.optimizer.RMSProp(
-            learning_rate=0.001, multi_precision=mp
-        )
+        optimizer = paddle.fluid.optimizer.RMSProp(learning_rate=0.001)
+        optimizer.multi_precision_ = mp
 
         if use_amp:
             optimizer = paddle.static.amp.decorate(

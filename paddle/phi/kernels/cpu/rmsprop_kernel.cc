@@ -77,7 +77,6 @@ struct RmsFunctor<T, phi::CPUContext> {
     ms_out.device(place) = rho * ms + (1 - rho) * g * g;
     if (centered) {
       auto mg_tensor = mean_grad_opt.get_ptr();
-      auto mg = EigenVector<T>::Flatten(*mg_tensor);
       if (mg_tensor) {
         PADDLE_ENFORCE_EQ(
             mg_tensor->Holder(),
@@ -91,6 +90,7 @@ struct RmsFunctor<T, phi::CPUContext> {
             phi::errors::InvalidArgument(
                 "MeanGrad and MeanGradOut must be the same Tensor"));
       }
+      auto mg = EigenVector<T>::Flatten(*mg_tensor);
       auto mg_out = EigenVector<T>::Flatten(*mean_grad_out);
 
       mg_out.device(place) = rho * mg + (1 - rho) * g;
