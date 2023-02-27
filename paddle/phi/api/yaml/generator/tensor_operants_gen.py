@@ -29,6 +29,7 @@ inplace_optional_out_type_map = {
 
 indent = "  "
 
+# E.g.: Prim uses `elementwise_pow + fill_constant` to replace `pow`, so that we use this map to generate the `pow` signature when iterating over `elementwise_pow` API.
 specific_ops_map = {"elementwise_pow": "pow"}
 
 
