@@ -43,12 +43,6 @@ def ref_softmax(x, axis=None, dtype=None):
     return np.apply_along_axis(stable_softmax, axis, x_t)
 
 
-def softmax_wrapper(
-    x, axis=-1, dtype=None, name=None, use_cudnn=False, use_mkldnn=False
-):
-    return paddle.nn.functional.softmax(x, axis=axis, dtype=dtype)
-
-
 class TestSoftmaxOp(OpTest):
     def get_shape(self):
         return [10, 10]
@@ -68,7 +62,8 @@ class TestSoftmaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "softmax"
-        self.python_api = softmax_wrapper
+        self.prim_op_type = "comp"
+        self.python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
         self.init_data_type()
@@ -86,6 +81,7 @@ class TestSoftmaxOp(OpTest):
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
         }
+        self.enable_cinn = False
 
     def init_kernel_type(self):
         pass
@@ -93,11 +89,9 @@ class TestSoftmaxOp(OpTest):
     def test_check_output(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=(not self.use_mkldnn)
-            )
+            self.check_output_with_place(place, atol=1e-5)
         else:
-            self.check_output(check_dygraph=(not self.use_mkldnn))
+            self.check_output(check_prim=True)
 
     def test_check_grad(self):
         if self.use_cudnn or self.dtype == np.float16:
@@ -116,7 +110,13 @@ class TestSoftmaxOp(OpTest):
                 "Out",
                 max_relative_error=0.01,
                 check_dygraph=(not self.use_mkldnn),
+                check_prim=True,
             )
+
+
+class TestSoftmaxOpfp32(TestSoftmaxOp):
+    def init_kernel_type(self):
+        self.dtype = np.float32
 
 
 class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
@@ -125,6 +125,15 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
 
     def get_output(self):
         return np.array(1.0).astype(self.dtype)
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output(check_prim=True)
 
 
 @unittest.skipIf(
@@ -358,7 +367,7 @@ class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
 class TestSoftmaxBF16Op(OpTest):
     def setUp(self):
         self.op_type = "softmax"
-        self.python_api = softmax_wrapper
+        self.python_api = F.softmax
         self.use_cudnn = self.init_cudnn()
         self.use_mkldnn = False
         self.dtype = np.uint16

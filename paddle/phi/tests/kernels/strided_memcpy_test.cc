@@ -15,10 +15,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/all_context.h"
-
+#include "paddle/phi/common/memory_utils.h"
 namespace phi {
 namespace tests {
 
@@ -94,7 +93,7 @@ TEST(StridedMemcpy, GPUCrop) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
-  auto src_allocation = paddle::memory::Alloc(gpu0, sizeof(src));
+  auto src_allocation = phi::memory_utils::Alloc(gpu0, sizeof(src));
 
   int* gpu_src = reinterpret_cast<int*>(src_allocation->ptr());
   paddle::memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx->stream());
@@ -102,7 +101,7 @@ TEST(StridedMemcpy, GPUCrop) {
   phi::DDim src_stride({5, 1});
 
   int dst[4];
-  auto dst_allocation = paddle::memory::Alloc(gpu0, sizeof(dst));
+  auto dst_allocation = phi::memory_utils::Alloc(gpu0, sizeof(dst));
   int* gpu_dst = reinterpret_cast<int*>(dst_allocation->ptr());
 
   phi::DDim dst_dim({2, 2});
@@ -134,12 +133,12 @@ TEST(StridedMemcpy, GPUConcat) {
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
-  auto gpu_src_allocation = paddle::memory::Alloc(gpu0, sizeof(src));
+  auto gpu_src_allocation = phi::memory_utils::Alloc(gpu0, sizeof(src));
   int* gpu_src = reinterpret_cast<int*>(gpu_src_allocation->ptr());
   paddle::memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx->stream());
 
   int dst[8];
-  auto gpu_dst_allocation = paddle::memory::Alloc(gpu0, sizeof(dst));
+  auto gpu_dst_allocation = phi::memory_utils::Alloc(gpu0, sizeof(dst));
   int* gpu_dst = reinterpret_cast<int*>(gpu_dst_allocation->ptr());
 
   phi::DDim src_stride({2, 1});

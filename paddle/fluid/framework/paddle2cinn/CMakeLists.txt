@@ -9,14 +9,6 @@ pass_library(
   enforce)
 
 cc_library(
-  cinn_cache_key
-  SRCS cinn_cache_key.cc
-  DEPS graph graph_helper lod_tensor proto_desc)
-cc_library(
-  cinn_subgraph_detector
-  SRCS cinn_subgraph_detector.cc
-  DEPS graph graph_helper subgraph_detector lod_tensor proto_desc)
-cc_library(
   transform_desc
   SRCS transform_desc.cc
   DEPS proto_desc cinn)
@@ -24,6 +16,14 @@ cc_library(
   transform_type
   SRCS transform_type.cc
   DEPS errors enforce cinn)
+cc_library(
+  cinn_cache_key
+  SRCS cinn_cache_key.cc
+  DEPS graph graph_helper lod_tensor proto_desc transform_type)
+cc_library(
+  cinn_subgraph_detector
+  SRCS cinn_subgraph_detector.cc
+  DEPS graph graph_helper subgraph_detector lod_tensor proto_desc)
 cc_library(
   cinn_graph_symbolization
   SRCS cinn_graph_symbolization.cc

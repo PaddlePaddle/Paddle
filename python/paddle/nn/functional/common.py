@@ -1384,7 +1384,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     Alpha Dropout fits well to SELU activate function by randomly setting activations to the negative saturation value.
 
     Args:
-        x (Tensor): The input tensor. The data type is float32 or float64.
+        x (Tensor): The input tensor. The data type is float16, float32 or float64.
         p (float | int): Probability of setting units to zero. Default 0.5.
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1416,7 +1416,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
     if not in_dynamic_mode():
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'alpha_dropout'
+            x, 'x', ['float16', 'float32', 'float64'], 'alpha_dropout'
         )
 
     if training:
@@ -1889,7 +1889,7 @@ def linear(x, weight, bias=None, name=None):
                 type='elementwise_add',
                 inputs={'X': [tmp], 'Y': [bias]},
                 outputs={'Out': [res]},
-                attrs={'axis': len(x.shape) - 1},
+                attrs={'axis': -1},
             )
         else:
             res = tmp
