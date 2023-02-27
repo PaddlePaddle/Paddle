@@ -231,7 +231,7 @@ def __bootstrap__():
         core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices()
-    core.eager._init_tensor_operants()
+    core.init_tensor_operants()
     core.init_default_kernel_signatures()
     core.init_memory_method()
 

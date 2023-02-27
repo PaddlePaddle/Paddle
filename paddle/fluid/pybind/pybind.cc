@@ -196,8 +196,12 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
+#include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/include/operants_manager.h"
+#include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
@@ -1859,6 +1863,15 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
+  m.def("init_tensor_operants", []() {
+    paddle::OperantsManager::Instance().eager_operants.reset(
+        new paddle::prim::EagerTensorOperants());
+    paddle::OperantsManager::Instance().static_operants.reset(
+        new paddle::prim::StaticTensorOperants());
+    paddle::OperantsManager::Instance().phi_operants.reset(
+        new paddle::operants::PhiTensorOperants());
+    VLOG(4) << "Initialize tensor operants successfully";
+  });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);

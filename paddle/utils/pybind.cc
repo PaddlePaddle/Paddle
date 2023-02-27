@@ -69,7 +69,7 @@ PyObject* ToPyObject(const paddle::experimental::Tensor& value,
   return obj;
 }
 
-void SwitchTensorOperantsMode() { FLAGS_tensor_operants_mode = "phi"; }
+void EnableTensorOperantsToPhiMode() { FLAGS_tensor_operants_mode = "phi"; }
 
 }  // namespace pybind
 }  // namespace paddle
