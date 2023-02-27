@@ -24,6 +24,8 @@
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
 
+DECLARE_bool(use_stride_kernel);
+
 namespace phi {
 template <typename T, typename Context>
 void TransposeKernel(const Context& ctx,
@@ -33,6 +35,9 @@ void TransposeKernel(const Context& ctx,
   if (true) {
     LOG(WARNING) << "use transpose stride kernel";
     MetaTensor meta_out(out);
+    if (FLAGS_use_stride_kernel) {
+      LOG(WARNING) << "FLAGS_use_stride_kernel works!";
+    }
     TransposeInferMetaWithStride(x, axis, &meta_out);
     out->ResetHolder(x.Holder());
   } else {

@@ -40,11 +40,13 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -1957,6 +1959,9 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
   if (self->tensor.is_dense_tensor()) {
     // PyObject* layout_obj = PyTuple_GET_ITEM(args, 0);
     // std::string layout = CastPyArg2AttrString(layout_obj, "NCHW");
+    PyObject* data_format_obj = PyTuple_GET_ITEM(args, 1);
+    std::string data_format =
+        CastPyArg2String(data_format_obj, "contiguous", 1);
     auto is_ctig =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
             ->is_contiguous();
