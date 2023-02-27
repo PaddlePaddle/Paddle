@@ -28,7 +28,7 @@ from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 def flatten(nest_list):
     out = []
     for i in nest_list:
-        if isinstance(i, list or tuple):
+        if isinstance(i, (list, tuple)):
             tmp_list = flatten(i)
             for j in tmp_list:
                 out.append(j)
@@ -40,7 +40,7 @@ def flatten(nest_list):
 def _as_list(x):
     if x is None:
         return []
-    return list(x) if isinstance(x, list or tuple) else [x]
+    return list(x) if isinstance(x, (list, tuple)) else [x]
 
 
 def convert_uint16_to_float(in_list):
