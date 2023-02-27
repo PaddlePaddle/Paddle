@@ -175,9 +175,11 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
 }
 
 template class MaxOutGradFunctor<phi::GPUContext, float>;
+template class MaxOutGradFunctor<phi::GPUContext, phi::dtype::float16>;
 template class MaxOutGradFunctor<phi::GPUContext, double>;
 
 template class MaxOutFunctor<phi::GPUContext, float>;
+template class MaxOutFunctor<phi::GPUContext, phi::dtype::float16>;
 template class MaxOutFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs

@@ -784,7 +784,7 @@ def maxout(x, groups, axis=1, name=None):
 
     Parameters:
         x (Tensor): The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C], the data type
-            of input is float32 or float64.
+            of input is float16, float32 or float64.
         groups (int): The groups number of maxout. `groups` specifies the
             index of channel dimension where maxout will be performed. This must be
             a factor of number of features.
