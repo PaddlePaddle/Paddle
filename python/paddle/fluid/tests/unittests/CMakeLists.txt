@@ -1203,7 +1203,7 @@ if($ENV{USE_STANDALONE_EXECUTOR})
 endif()
 
 set(TEST_CINN_OPS test_softmax_op test_expand_v2_op test_reduce_op
-                  test_slice_op test_stack_op)
+                  test_slice_op test_stack_op test_activation_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)

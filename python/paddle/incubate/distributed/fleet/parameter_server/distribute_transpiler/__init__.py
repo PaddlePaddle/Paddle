@@ -39,15 +39,17 @@ from paddle.incubate.distributed.fleet.base import Fleet
 from paddle.incubate.distributed.fleet.base import Mode
 from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
 
-from paddle.incubate.fleet.parameter_server import version
-from paddle.incubate.fleet.parameter_server.ir.public import (
+from paddle.incubate.distributed.fleet.parameter_server import version
+from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     get_sparse_tablenames,
 )
-from paddle.incubate.fleet.parameter_server.ir.public import _get_lr_ops
-from paddle.incubate.fleet.parameter_server.ir.public import (
+from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
+    _get_lr_ops,
+)
+from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     _has_global_step,
 )
-from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
     TrainerRuntimeConfig,
     DistributedStrategy,
     SyncStrategy,
@@ -61,15 +63,17 @@ from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
 from paddle.incubate.distributed.fleet.base import DistributedOptimizer
-from paddle.incubate.fleet.parameter_server.mode import PSMode
+from paddle.incubate.distributed.fleet.parameter_server.mode import PSMode
 
-from paddle.incubate.fleet.parameter_server.ir import (
+from paddle.incubate.distributed.fleet.parameter_server.ir import (
     trainer_pass as worker,
 )
-from paddle.incubate.fleet.parameter_server.ir import (
+from paddle.incubate.distributed.fleet.parameter_server.ir import (
     pserver_pass as server,
 )
-from paddle.incubate.fleet.parameter_server.ir import public as public
+from paddle.incubate.distributed.fleet.parameter_server.ir import (
+    public as public,
+)
 
 
 class FleetTranspiler(Fleet):
