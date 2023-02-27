@@ -345,8 +345,6 @@
   backward: cumsum_grad
   inputs :
     x : X
-  attrs :
-    axis : axis
   outputs :
     out : Out
   scalar:
