@@ -213,6 +213,14 @@
     func : conj
   backward : conj_grad
 
+- op : contiguous
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : contiguous
+
 - op : cos
   args : (Tensor x)
   output : Tensor

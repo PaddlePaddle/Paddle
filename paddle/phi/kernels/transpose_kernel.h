@@ -34,8 +34,15 @@ DenseTensor Transpose(const Context& dev_ctx,
                       const std::vector<int>& axis) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  TransposeInferMeta(x, axis, &meta_out);
-  TransposeKernel<T, Context>(dev_ctx, x, axis, &dense_out);
+  if (true) {
+    LOG(WARNING) << "use transpose stride kernel";
+    TransposeInferMetaWithStride(x, axis, &meta_out);
+    dense_out.ResetHolder(x.Holder());
+  } else {
+    LOG(WARNING) << "not use transpose stride kernel";
+    TransposeInferMeta(x, axis, &meta_out);
+    TransposeKernel<T, Context>(dev_ctx, x, axis, &dense_out);
+  }
   return dense_out;
 }
 
@@ -50,4 +57,9 @@ DenseTensor TransposeLast2Dim(const Context& dev_ctx, const DenseTensor& x) {
   return Transpose<T, Context>(dev_ctx, x, axis);
 }
 
+template <typename Context>
+void TransposeStrideKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const std::vector<int>& axis,
+                           DenseTensor* out);
 }  // namespace phi

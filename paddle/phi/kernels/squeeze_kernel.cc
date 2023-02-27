@@ -19,6 +19,8 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 
+DECLARE_bool(use_stride_kernel);
+
 namespace phi {
 template <typename T, typename Context>
 void SqueezeInferKernel(const Context& dev_ctx,
@@ -26,8 +28,13 @@ void SqueezeInferKernel(const Context& dev_ctx,
                         const IntArray& axes,
                         DenseTensor* out) {
   auto out_dims = out->dims();
-  dev_ctx.template Alloc<T>(out);
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  if (false) {
+    LOG(WARNING) << "Use stride with squeeze";
+    out->ResetHolder(x.Holder());
+  } else {
+    dev_ctx.template Alloc<T>(out);
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  }
   out->Resize(out_dims);  // copy will reset the dims.
 }
 

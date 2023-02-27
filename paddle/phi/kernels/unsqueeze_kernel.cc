@@ -19,12 +19,17 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 
+DECLARE_bool(use_stride_kernel);
+
 namespace phi {
 template <typename T, typename Context>
 void UnsqueezeInferKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const IntArray& axes,
                           DenseTensor* out) {
+  if (FLAGS_use_stride_kernel) {
+    LOG(WARNING) << "use stride kernel";
+  }
   auto x_dims = x.dims();
   auto out_dims = out->dims();
   if (axes.FromTensor()) {

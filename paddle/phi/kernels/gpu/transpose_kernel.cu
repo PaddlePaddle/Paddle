@@ -30,15 +30,23 @@ void TransposeKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
-  ctx.template Alloc<T>(out);
-  if (out->numel() == 0) {
-    return;
+  if (true) {
+    LOG(WARNING) << "use transpose stride kernel";
+    MetaTensor meta_out(out);
+    TransposeInferMetaWithStride(x, axis, &meta_out);
+    out->ResetHolder(x.Holder());
+  } else {
+    LOG(WARNING) << "not use transpose stride kernel";
+    ctx.template Alloc<T>(out);
+    if (out->numel() == 0) {
+      return;
+    }
+    if (axis.size() == 0) {
+      phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
+      return;
+    }
+    phi::funcs::TransposeGPUKernelDriver<T>(ctx, x, axis, out);
   }
-  if (axis.size() == 0) {
-    phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
-    return;
-  }
-  phi::funcs::TransposeGPUKernelDriver<T>(ctx, x, axis, out);
 }
 
 }  // namespace phi

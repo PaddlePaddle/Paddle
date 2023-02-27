@@ -597,6 +597,10 @@ void TransposeInferMeta(const MetaTensor& x,
                         const std::vector<int>& axis,
                         MetaTensor* out);
 
+void TransposeInferMetaWithStride(const MetaTensor& x,
+                                  const std::vector<int>& axis,
+                                  MetaTensor* out);
+
 void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out);

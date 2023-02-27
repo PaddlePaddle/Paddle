@@ -26,10 +26,10 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
+/*PADDLE_DEFINE_EXPORTED_bool(
     use_stride_kernel,
     false,
-    "Whether to use strdie kernel if op support stride.");
+    "Whether to use strdie kernel if op support stride.");*/
 
 namespace phi {
 

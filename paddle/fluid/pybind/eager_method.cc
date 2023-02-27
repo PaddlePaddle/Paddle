@@ -1966,6 +1966,24 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+static PyObject* tensor_contiguous(TensorObject* self,
+                                   PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor out;
+  eager_gil_scoped_release guard;
+  PADDLE_ENFORCE_EQ(self->tensor.initialized(),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "We can only support initialized tensor in contiguous, "
+                        "however we got "
+                        "uninitialized tensor %s, please check your code.",
+                        self->tensor.name()));
+  LOG(WARNING) << " use contiguous here in eager method";
+  out = contiguous_ad_func(self->tensor);
+  return ToPyObject(out);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 
 PyMethodDef variable_methods[] = {
     {"numpy",
@@ -2031,6 +2049,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"detach",
      (PyCFunction)(void (*)(void))tensor_method_detach,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"contiguous",
+     (PyCFunction)(void (*)(void))tensor_contiguous,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"get_tensor",
