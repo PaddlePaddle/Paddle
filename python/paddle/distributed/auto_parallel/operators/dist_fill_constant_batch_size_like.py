@@ -114,7 +114,7 @@ class DistributedFillConstantBatchSizeLikeImpl0(DistributedOperatorImpl):
         x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
 
-        # only the batch size dimemsion of input and output are relative.
+        # only the batch size dimension of input and output are relative.
         dim_changed = compute_compatible_and_update_dim_mapping(
             [x_dims_mapping, out_dims_mapping], [0, 0]
         )
