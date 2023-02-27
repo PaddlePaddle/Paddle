@@ -18,6 +18,10 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+#include <malloc.h>  // for _aligned_malloc
+#endif
+
 #include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/jit/kernel_base.h"
 

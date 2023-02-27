@@ -46,11 +46,15 @@ void GenBase::dumpCode(const unsigned char* code) const {
 void* GenBase::operator new(size_t size) {
   void* ptr;
   constexpr size_t alignment = 32ul;
+#ifdef _WIN32
+  ptr = _aligned_malloc(size, alignment);
+#else
   PADDLE_ENFORCE_EQ(
       posix_memalign(&ptr, alignment, size),
       0,
       phi::errors::InvalidArgument(
           "Jitcode generator (GenBase) allocate %ld memory error!", size));
+#endif
   PADDLE_ENFORCE_NOT_NULL(
       ptr,
       phi::errors::InvalidArgument("Fail to allocate jitcode generator "
