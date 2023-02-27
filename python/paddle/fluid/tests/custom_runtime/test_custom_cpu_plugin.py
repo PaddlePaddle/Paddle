@@ -57,6 +57,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
         self._test_fallback_kernel()
         self._test_scalar()
         self._test_custom_device_py_api()
+        self._test_custom_device_mix_precision()
 
     def _test_custom_device_dataloader(self):
         import paddle

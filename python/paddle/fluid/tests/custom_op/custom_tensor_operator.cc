@@ -49,6 +49,36 @@ PD_BUILD_GRAD_OP(custom_add)
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(AddBackward));
 
+// y = x + 1
+std::vector<paddle::Tensor> ScalarAddForward(const paddle::Tensor& x) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x + 1};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+// dy / dx = 1 * grad_out
+std::vector<paddle::Tensor> ScalarAddBackward(const paddle::Tensor& x,
+                                              const paddle::Tensor& out,
+                                              const paddle::Tensor& grad_out) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {grad_out * 1};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_scalar_add)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(ScalarAddForward));
+
+PD_BUILD_GRAD_OP(custom_scalar_add)
+    .Inputs({"X", "Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(ScalarAddBackward));
+
 // y = x - 1
 std::vector<paddle::Tensor> SubtractForward(const paddle::Tensor& x) {
   if (x.is_cpu() || x.is_gpu()) {
@@ -79,6 +109,37 @@ PD_BUILD_GRAD_OP(custom_subtract)
     .Inputs({"X", "Out", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(SubtractBackward));
+
+// y = x - 1
+std::vector<paddle::Tensor> ScalarSubtractForward(const paddle::Tensor& x) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x - 1};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+// dy / dx = 1 * grad_out
+std::vector<paddle::Tensor> ScalarSubtractBackward(
+    const paddle::Tensor& x,
+    const paddle::Tensor& out,
+    const paddle::Tensor& grad_out) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {grad_out * 1};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_scalar_subtract)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(ScalarSubtractForward));
+
+PD_BUILD_GRAD_OP(custom_scalar_subtract)
+    .Inputs({"X", "Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(ScalarSubtractBackward));
 
 // y = x * 5
 std::vector<paddle::Tensor> MultiplyForward(const paddle::Tensor& x) {
@@ -114,6 +175,37 @@ PD_BUILD_GRAD_OP(custom_multiply)
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(MultiplyBackward));
 
+// y = x * 5
+std::vector<paddle::Tensor> ScalarMultiplyForward(const paddle::Tensor& x) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x * 5};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+// dy / dx = grad_out * 5
+std::vector<paddle::Tensor> ScalarMultiplyBackward(
+    const paddle::Tensor& x,
+    const paddle::Tensor& out,
+    const paddle::Tensor& grad_out) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {grad_out * 5};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_scalar_multiply)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(ScalarMultiplyForward));
+
+PD_BUILD_GRAD_OP(custom_scalar_multiply)
+    .Inputs({"X", "Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(ScalarMultiplyBackward));
+
 // y = 1 / x
 std::vector<paddle::Tensor> DivideForward(const paddle::Tensor& x) {
   if (x.is_cpu() || x.is_gpu()) {
@@ -145,3 +237,36 @@ PD_BUILD_GRAD_OP(custom_divide)
     .Inputs({"X", "Out", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(DivideBackward));
+
+// y = 1 / x / 1
+std::vector<paddle::Tensor> ScalarDivideForward(const paddle::Tensor& x) {
+  if (x.is_cpu() || x.is_gpu()) {
+    paddle::Tensor ones = paddle::full(x.shape(), 1.0, x.dtype(), x.place());
+    return {ones / x / 1};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+// dy / dx = - (1 / x / x) * grad_out
+std::vector<paddle::Tensor> ScalarDivideBackward(
+    const paddle::Tensor& x,
+    const paddle::Tensor& out,
+    const paddle::Tensor& grad_out) {
+  if (x.is_cpu() || x.is_gpu()) {
+    paddle::Tensor zeros = paddle::full(x.shape(), 0.0, x.dtype(), x.place());
+    return {zeros - grad_out / (x * x)};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_scalar_divide)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(ScalarDivideForward));
+
+PD_BUILD_GRAD_OP(custom_scalar_divide)
+    .Inputs({"X", "Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(ScalarDivideBackward));
