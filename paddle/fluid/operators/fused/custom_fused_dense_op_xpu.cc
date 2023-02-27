@@ -27,7 +27,7 @@ using Tensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class CustomFusedDenseXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using biasType= typename XPUTypeTrait<float>::Type;
+  // using biasType= typename XPUTypeTrait<float>::Type;
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -77,7 +77,7 @@ class CustomFusedDenseXPUKernel : public framework::OpKernel<T> {
     const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y->data<T>());
     XPUType* out_ptr =
         reinterpret_cast<XPUType*>(out->mutable_data<T>(ctx.GetPlace()));
-    // xpu::ctx_guard RAII_GUARD(xpu_ctx);
+    xpu::ctx_guard RAII_GUARD(xpu_ctx);
     // XPUType* fc_out_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
     // phi::MatMulXPUFunction<XPUType>(
         // xpu_ctx, x_ptr, y_ptr, fc_out_ptr, fc_info, 1.0f);
@@ -86,9 +86,6 @@ class CustomFusedDenseXPUKernel : public framework::OpKernel<T> {
       bias_out_ptr = reinterpret_cast<XPUType*>(
           reserve_space->mutable_data<T>(ctx.GetPlace()));
     }
-    // 2 bias
-    const biasType* bias_ptr = reinterpret_cast<const biasType*>(bias->data<float>());
-
     int m = fc_info.m;
     int n = fc_info.n;
     int k = fc_info.k;
@@ -101,9 +98,24 @@ class CustomFusedDenseXPUKernel : public framework::OpKernel<T> {
     float* max_y = fc_info.max_y;
     float* max_out = fc_info.max_out;
 
-    r = xpu::fc_fusion<XPUType, XPUType, XPUType, int16_t>(xpu_ctx, x_ptr, y_ptr, bias_out_ptr, m, n, k, trans_x,
+    const XPUType* bias_ptr = reinterpret_cast<const XPUType*>(bias->data<T>());
+    if ((bias_ptr == nullptr) || std::is_same<T, float>::value) {
+      r = xpu::fc_fusion<XPUType, XPUType, XPUType, int16_t>(xpu_ctx, x_ptr, y_ptr, bias_out_ptr, m, n, k, trans_x,
         trans_y, max_x, max_y, max_out, ldx, ldy, ldout, 1.0f, 0.0f,
-        bias_ptr, xpu::Activation_t::LINEAR);
+        reinterpret_cast<const float*>(bias_ptr), xpu::Activation_t::LINEAR);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_fusion");
+    } else {
+      float* bias_tmp_ptr = RAII_GUARD.alloc_l3_or_gm<float>(bias->numel());
+      r = xpu::cast<XPUType, float>(dev_ctx.x_context(),
+                                    bias_ptr,
+                                    bias_tmp_ptr,
+                                    bias->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xpu::fc_fusion<XPUType, XPUType, XPUType, int16_t>(xpu_ctx, x_ptr, y_ptr, bias_out_ptr, m, n, k, trans_x,
+        trans_y, max_x, max_y, max_out, ldx, ldy, ldout, 1.0f, 0.0f,
+        bias_tmp_ptr, xpu::Activation_t::LINEAR);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_fusion");
+    }
 
     // r = xpu::broadcast_add(xpu_ctx,
     //                        fc_out_ptr,
@@ -126,9 +138,10 @@ class CustomFusedDenseXPUKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class CustomFusedDenseXPUGradKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using dbiasType= typename XPUTypeTrait<float>::Type;
+  // using dbiasType= typename XPUTypeTrait<float>::Type;
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    int r = -1;
     bool transx = ctx.Attr<bool>("transx");
     bool transy = ctx.Attr<bool>("transy");
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
@@ -172,7 +185,7 @@ class CustomFusedDenseXPUGradKernel : public framework::OpKernel<T> {
     }
 
     // 1. act_grad  2. fc_grad 3. dbias
-    int r = 0;
+    r = 0;
     if (activation == "relu") {
       r = xpu::relu_grad(xpu_ctx,
                          reserve_space_ptr,
@@ -244,11 +257,24 @@ class CustomFusedDenseXPUGradKernel : public framework::OpKernel<T> {
     	float* max_y = info_dy.max_y;
     	float* max_out = info_dy.max_out;
 
-	dbiasType* dbias_ptr = reinterpret_cast<dbiasType*>(dbias->mutable_data<float>(ctx.GetPlace()));
-    	r = xpu::fc_dbias_fusion<XPUType, XPUType, XPUType, float, int16_t>(xpu_ctx, reinterpret_cast<const XPUType*>(a_2), reinterpret_cast<const XPUType*>(b_2), reinterpret_cast<XPUType*>(c_2), m, n, k, trans_x,
-        	trans_y, max_x, max_y, max_out, ldx, ldy, ldout, 1.0f, 0.0f,
-        	nullptr, dbias_ptr);
-
+      XPUType* dbias_ptr = reinterpret_cast<XPUType*>(dbias->mutable_data<T>(ctx.GetPlace()));
+      if ((dbias_ptr == nullptr) || std::is_same<T, float>::value) {
+        r = xpu::fc_dbias_fusion<XPUType, XPUType, XPUType, float, int16_t>(xpu_ctx, reinterpret_cast<const XPUType*>(a_2), reinterpret_cast<const XPUType*>(b_2), reinterpret_cast<XPUType*>(c_2), m, n, k, trans_x,
+            trans_y, max_x, max_y, max_out, ldx, ldy, ldout, 1.0f, 0.0f,
+            nullptr, reinterpret_cast<float*>(dbias_ptr));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_dbias_fusion");
+      } else {
+        float* dbias_tmp_ptr = RAII_GUARD.alloc_l3_or_gm<float>(dbias->numel());
+        r = xpu::fc_dbias_fusion<XPUType, XPUType, XPUType, float, int16_t>(xpu_ctx, reinterpret_cast<const XPUType*>(a_2), reinterpret_cast<const XPUType*>(b_2), reinterpret_cast<XPUType*>(c_2), m, n, k, trans_x,
+            trans_y, max_x, max_y, max_out, ldx, ldy, ldout, 1.0f, 0.0f,
+            nullptr, dbias_tmp_ptr);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_dbias_fusion");
+        r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
+                                dbias_tmp_ptr,
+                                dbias_ptr,
+                                dbias->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      }
     }
     // 3. dbias
     /*if (dbias) {
