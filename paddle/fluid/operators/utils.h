@@ -70,7 +70,7 @@ inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
   // 1. shape is a Tensor
   if (ctx.HasInput("ShapeTensor")) {
     auto* shape_tensor = ctx.Input<phi::DenseTensor>("ShapeTensor");
-    auto vec_shape = phi::GetDataFromTensor<int>(shape_tensor);
+    auto vec_shape = phi::GetVectorFromTensor<int>(shape_tensor);
     return phi::make_ddim(vec_shape);
   }
 
