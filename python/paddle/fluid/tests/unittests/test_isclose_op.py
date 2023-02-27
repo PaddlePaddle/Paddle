@@ -158,6 +158,23 @@ class TestIscloseDygraph(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestIscloseDygraphFp16(unittest.TestCase):
+    def test_api_case(self):
+        places = []
+        if paddle.fluid.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            paddle.disable_static()
+            x_data = np.random.rand(10, 10).astype(np.float16)
+            y_data = np.random.rand(10, 10).astype(np.float16)
+            x = paddle.to_tensor(x_data, place=place)
+            y = paddle.to_tensor(y_data, place=place)
+            out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
+            expected_out = np.isclose(x_data, y_data, rtol=1e-05, atol=1e-08)
+            self.assertTrue((out.numpy() == expected_out).all(), True)
+        paddle.enable_static()
+
+
 class TestIscloseError(unittest.TestCase):
     def test_input_dtype(self):
         paddle.enable_static()
@@ -166,7 +183,7 @@ class TestIscloseError(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float16')
+                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='int32')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
                 result = paddle.isclose(x, y)
 

@@ -128,13 +128,26 @@ class TestAllcloseDygraph(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestAllcloseDygraphFp16(unittest.TestCase):
+    def test_api_case(self):
+        paddle.disable_static()
+        x_data = np.random.rand(10, 10).astype("float16")
+        y_data = np.random.rand(10, 10).astype("float16")
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        out = paddle.allclose(x, y, rtol=1e-05, atol=1e-08)
+        expected_out = np.allclose(x_data, y_data, rtol=1e-05, atol=1e-08)
+        self.assertTrue((out.numpy() == expected_out).all(), True)
+        paddle.enable_static()
+
+
 class TestAllcloseError(unittest.TestCase):
     def test_input_dtype(self):
         def test_x_dtype():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float16')
+                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='int32')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
                 result = paddle.allclose(x, y)
 
