@@ -339,8 +339,8 @@ class TestSimpleNetWithErrorNoGradSet(TestBackward):
 
 class TestAppendBackwardWithError(unittest.TestCase):
     def build_net(self):
-        x = fluid.data(name='x', shape=[None, 13], dtype='int64')
-        y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+        x = paddle.static.data(name='x', shape=[None, 13], dtype='int64')
+        y = paddle.static.data(name='y', shape=[None, 1], dtype='float32')
         x_emb = paddle.static.nn.embedding(x, size=[100, 256])
         y_predict = paddle.static.nn.fc(x=x_emb, size=1, name='my_fc')
         loss = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
