@@ -779,7 +779,7 @@ class TestDropout2DCAPI(unittest.TestCase):
                     name="input", shape=[2, 3, 4, 5], dtype="float16"
                 )
 
-                m = paddle.nn.Dropout2D(p=0.0)
+                m = paddle.nn.Dropout2D(p=0.5)
                 res1 = m(input)
 
                 in_np = np.random.random([2, 3, 4, 5]).astype("float16")
