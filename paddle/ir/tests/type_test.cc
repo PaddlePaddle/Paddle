@@ -19,6 +19,7 @@
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/dialect.h"
 #include "paddle/ir/ir_context.h"
+#include "paddle/ir/type.h"
 #include "paddle/ir/type_base.h"
 
 TEST(type_test, type_id) {
@@ -145,6 +146,10 @@ TEST(type_test, custom_type_dialect) {
   EXPECT_EQ(int8 == int1_2, 0);
 
   // Test Dialect interface
+  EXPECT_EQ(ctx == int8.ir_context(), 1);
+
+  EXPECT_EQ(int8.dialect().id() == ir::TypeId::get<IntegerDialect>(), 1);
+
   std::vector<ir::Dialect *> dialect_list = ctx->GetRegisteredDialects();
   EXPECT_EQ(dialect_list.size() == 3, 1);  // integer, builtin, fake
 
