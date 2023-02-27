@@ -65,7 +65,6 @@ void SoftmaxKernel(const Context& dev_ctx,
                    phi::errors::Unimplemented(
                        "Inplace not implemeneted for int8 onednn softmax."));
 
-    out->set_mem_desc(x.mem_desc());
     funcs::SoftmaxV2OneDNNHandler<T> handler(
         dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out);
     SoftmaxExecute(is_inplace, &handler, x, out, dev_ctx);

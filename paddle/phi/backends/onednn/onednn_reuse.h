@@ -795,6 +795,7 @@ class SoftmaxV2OneDNNHandler
         errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
+    out->set_mem_desc(x->mem_desc());
     const float output_scale =
         x->dtype() == DataType::INT8 ? 126.9999f : 255.0f;
 
