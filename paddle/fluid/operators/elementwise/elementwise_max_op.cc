@@ -68,6 +68,29 @@ class ElementwiseFMaxOpMaker : public ElementwiseOpMaker {
   }
 };
 
+class ElementwiseMaxCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
+    paddle::experimental::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::experimental::Tensor dx = this->GetSingleInputGrad("X");
+    auto dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    paddle::experimental::Tensor dy = this->GetSingleInputGrad("Y");
+    auto dy_ptr = this->GetOutputPtr(&dy);
+    std::string dy_name = this->GetOutputName(dy);
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    VLOG(6) << "Runing maximum_grad composite func";
+    prim::maximum_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
+    this->RecoverOutputName(dx, dx_name);
+    this->RecoverOutputName(dy, dy_name);
+  }
+};
+
 template <typename T>
 class ElementwiseMaxGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -112,7 +135,8 @@ REGISTER_OPERATOR(elementwise_max,
                   ops::ElementwiseMaxOpMaker,
                   ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMaxGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ElementwiseMaxGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ElementwiseMaxGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ElementwiseMaxCompositeGradOpMaker);
 
 REGISTER_OPERATOR(elementwise_max_grad, ops::ElementwiseOpGrad);
 
