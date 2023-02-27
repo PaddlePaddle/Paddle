@@ -266,7 +266,7 @@ void LerpGradKernel(const Context& ctx,
             ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
                 ctx,
                 b_ygrad,
-                y_gra d,
+                y_grad,
                 kps::IdentityFunctor<T>(),
                 reduce_axis_y);
       } else {
