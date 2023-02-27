@@ -56,7 +56,7 @@ cba_kernel_no_alpha = (
   typename ImplicitGemm::Arguments arguments{
       problem_size,
       {(cutlass::half_t *)(input), {ic, ic * iw, ic * iw * ih}},
-      {(cutlass::half_t *)(weight), {ic, ic * kw, ic * kw * kh}},
+      {(cutlass::half_t *)(weight), {kc, kc * kw, kc * kw * kh}},
       {(cutlass::half_t *)(bias), {0, 0, 0}},
       {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
       {1.f, 1.f}};
@@ -73,7 +73,7 @@ cba_kernel_alpha = (
   typename ImplicitGemm::Arguments arguments{
       problem_size,
       {(cutlass::half_t *)(input), {ic, ic * iw, ic * iw * ih}},
-      {(cutlass::half_t *)(weight), {ic, ic * kw, ic * kw * kh}},
+      {(cutlass::half_t *)(weight), {kc, kc * kw, kc * kw * kh}},
       {(cutlass::half_t *)(bias), {0, 0, 0}},
       {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
       {1.f, 1.f, alpha}};

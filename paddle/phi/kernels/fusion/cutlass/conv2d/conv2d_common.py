@@ -60,6 +60,8 @@ cutlass::Status ${kernel_func_name}(ConvAllParams params) {
   int pad_w0 = params.pad_w0;
   int stride_h = params.stride_h;
   int stride_w = params.stride_w;
+  int groups = params.groups;
+  int kc = ic / groups;
 
   int oh = params.oh;
   int ow = params.ow;
@@ -67,13 +69,14 @@ cutlass::Status ${kernel_func_name}(ConvAllParams params) {
   int dilation_w = params.dilation_w;
 
   cutlass::conv::Conv2dProblemSize problem_size({batch, ih, iw, ic},
-                                                {oc, kh, kw, ic},
+                                                {oc, kh, kw, ic / groups},
                                                 {pad_h0, 0, pad_w0, 0},
                                                 {stride_h, stride_w},
                                                 {dilation_h, dilation_w},
                                                 {batch, oh, ow, oc},
                                                 cutlass::conv::Mode::kCrossCorrelation,
-                                                1);
+                                                1,
+                                                groups);
 """
 
 
@@ -121,13 +124,14 @@ void ${func_name}(ConvAllParams params) {
   int kh = params.kh;
   int kw = params.kw;
   int oc = params.oc;
-  int pad_h0 = params.pad_h0;
-  int pad_w0 = params.pad_w0;
+  //int pad_h0 = params.pad_h0;
+  //int pad_w0 = params.pad_w0;
+  int groups = params.groups;
   int stride_h = params.stride_h;
   int stride_w = params.stride_w;
 
   std::vector<int> problem_size = {
-      batch, ic, ih, iw, kh, kw, oc, pad_h0, pad_w0, stride_h, stride_w};
+      batch, ic, ih, iw, kh, kw, oc, groups, stride_h, stride_w};
 
   if (map_problem_${func_name}.count(problem_size)) {
     ${func_name}_all_func[map_problem_${func_name}.at(problem_size)](

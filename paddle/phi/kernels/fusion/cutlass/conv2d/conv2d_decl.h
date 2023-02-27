@@ -46,6 +46,7 @@ typedef struct {
   int dilation_w;
   int oh;
   int ow;
+  int groups;
   const phi::GPUContext *ctx;
   float alpha;  // for leaky_relu use
   int sm_version = 75;

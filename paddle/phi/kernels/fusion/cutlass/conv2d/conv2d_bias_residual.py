@@ -55,15 +55,13 @@ cbr_kernel = (
   typename ImplicitGemm::Arguments arguments{
       problem_size,
       {(cutlass::half_t *)input, {ic, ic * iw, ic * iw * ih}},
-      {(cutlass::half_t *)weight, {ic, ic * kw, ic * kw * kh}},
+      {(cutlass::half_t *)(weight), {kc, kc * kw, kc * kw * kh}},
       {(cutlass::half_t *)residual, {oc, oc * ow, oc * ow * oh}},
       {(cutlass::half_t *)output, {oc, oc * ow, oc * ow * oh}},
       {1.f, 1.f},
       cutlass::conv::SplitKMode::kSerial,
-      (cutlass::half_t *)(bias),
-      nullptr,
-      0,
-      oc};
+      (cutlass::half_t *)(bias), nullptr,
+      0, oc};
 '''
     + CommonCutlassConvKernelPart2
 )
