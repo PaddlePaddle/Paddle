@@ -74,6 +74,10 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             if self.batch != 3:
                 return False
 
+        if len(attrs[0]['sections']) != 0 and attrs[0]['axis'] == 0:
+            if self.dims != 2 or self.batch != 3:
+                return False
+
         return True
 
     def sample_program_configs(self):
@@ -100,7 +104,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             for dims in [1, 2, 3, 4]:
                 for batch in [3, 6, 9]:
                     for Out in [
-                        # ["output_var0", "output_var1"],
+                        ["output_var0", "output_var1"],
                         ["output_var0", "output_var1", "output_var2"],
                     ]:
                         for sections in [
