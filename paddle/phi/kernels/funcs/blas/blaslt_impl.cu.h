@@ -155,20 +155,20 @@ struct MatmulDescriptor {
   }
 };
 
-class MatmulDescriptorCache {
+class MatmulDescCache {
  public:
-  static MatmulDescriptorCache& Instance() {
-    static MatmulDescriptorCache matmul_desc_cache;
+  static MatmulDescCache& Instance() {
+    static MatmulDescCache matmul_desc_cache;
     return matmul_desc_cache;
   }
 
-  bool FindDescriptor(const size_t key) {
+  bool FindDesc(const size_t key) {
     std::lock_guard<std::mutex> lock(cache_mutex_);
     bool ret = (hash_.find(key) != hash_.end()) ? true : false;
     return ret;
   }
 
-  void SetDescriptor(const size_t key, const MatmulDescriptor& desc_ptr) {
+  void SetDesc(const size_t key, const MatmulDescriptor& desc_ptr) {
     std::lock_guard<std::mutex> lock(cache_mutex_);
     // Avoid too much occupation of static memory.
     constexpr int desc_num_limit = 50;
@@ -178,7 +178,7 @@ class MatmulDescriptorCache {
     }
   }
 
-  MatmulDescriptor* GetDescriptor(const size_t key) {
+  MatmulDescriptor* GetDesc(const size_t key) {
     std::lock_guard<std::mutex> lock(cache_mutex_);
     PADDLE_ENFORCE_NE(
         hash_.find(key),
@@ -213,9 +213,9 @@ inline size_t GetDescriptorAndKey(phi::autotune::MatmulCacheKey* matmul_key,
         static_cast<size_t>(MatmulImplType::kImplWithCublasLt));
   }
 
-  auto& desc_cache = MatmulDescriptorCache::Instance();
-  if (desc_cache.FindDescriptor(sub_key)) {
-    *desc = *(desc_cache.GetDescriptor(sub_key));
+  auto& desc_cache = MatmulDescCache::Instance();
+  if (desc_cache.FindDesc(sub_key)) {
+    *desc = *(desc_cache.GetDesc(sub_key));
   } else {
     desc->Create<T>(
         M, N, K, trans_x, trans_y, batch_size, stride_x, stride_y, stride_out);
@@ -242,8 +242,7 @@ struct MatmulWithCublasLt {
     size_t key =
         GetDescriptorAndKey<T>(matmul_key, &desc, M, N, K, trans_x, trans_y);
     RunImpl(ctx, desc, x_data, y_data, out_data, key, matmul_key);
-    bool is_cached = MatmulDescriptorCache::Instance().FindDescriptor(key);
-    desc.Release(is_cached);
+    desc.Release(MatmulDescCache::Instance().FindDesc(key));
   }
 
   static void RunWithBatch(
@@ -274,8 +273,7 @@ struct MatmulWithCublasLt {
                                         stride_y,
                                         stride_out);
     RunImpl(ctx, desc, x_data, y_data, out_data, key, matmul_key);
-    bool is_release = MatmulDescriptorCache::Instance().FindDescriptor(key);
-    desc.Release(is_release);
+    desc.Release(MatmulDescCache::Instance().FindDesc(key));
   }
 
   static void RunWithBatch(
@@ -352,7 +350,7 @@ struct MatmulWithCublasLt {
         cache.SetSubKey(
             sub_key,
             reinterpret_cast<phi::autotune::MatmulHashValueType*>(&test_algo));
-        MatmulDescriptorCache::Instance().SetDescriptor(sub_key, desc);
+        MatmulDescCache::Instance().SetDesc(sub_key, desc);
         best_algo = &test_algo;
       }
     }
