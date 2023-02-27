@@ -333,7 +333,7 @@ class OpTest(unittest.TestCase):
         cls.dtype = None
         cls.outputs = {}
         cls.input_shape_is_large = True
-        cls.is_calc_ref = False
+        cls.is_calc_fp32_ref = False
         cls.check_prim = False
 
         np.random.seed(123)
@@ -498,10 +498,10 @@ class OpTest(unittest.TestCase):
         )
 
     def enable_cal_ref_output(self):
-        self.is_calc_ref = self.is_fp16_compared_with_fp32()
+        self.is_calc_fp32_ref = self.is_fp16_compared_with_fp32()
 
     def disable_cal_ref_output(self):
-        self.is_calc_ref = False
+        self.is_calc_fp32_ref = False
 
     # set the self.output_dtype .
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
@@ -577,7 +577,7 @@ class OpTest(unittest.TestCase):
                     if isinstance(np_value, tuple):
                         tensor.set(np_value[0], place)
                         dtype = np.array(np_value[1]).dtype
-                        if self.is_calc_ref and dtype == np.float16:
+                        if self.is_calc_fp32_ref and dtype == np.float16:
                             if isinstance(np_value[1], list):
                                 tensor.set_recursive_sequence_lengths(
                                     np.array(np_value[1]).astype(np.float32)
@@ -589,7 +589,10 @@ class OpTest(unittest.TestCase):
                         else:
                             tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
-                        if self.is_calc_ref and np_value.dtype == np.float16:
+                        if (
+                            self.is_calc_fp32_ref
+                            and np_value.dtype == np.float16
+                        ):
                             tensor.set(np_value.astype(np.float32), place)
                         else:
                             tensor.set(np_value, place)
@@ -599,7 +602,7 @@ class OpTest(unittest.TestCase):
                 if isinstance(self.inputs[var_name], tuple):
                     tensor.set(self.inputs[var_name][0], place)
                     if (
-                        self.is_calc_ref
+                        self.is_calc_fp32_ref
                         and self.inputs[var_name][1].dtype == np.float16
                     ):
                         tensor.set_recursive_sequence_lengths(
@@ -611,7 +614,7 @@ class OpTest(unittest.TestCase):
                         )
                 else:
                     if (
-                        self.is_calc_ref
+                        self.is_calc_fp32_ref
                         and self.inputs[var_name].dtype == np.float16
                     ):
                         tensor.set(
@@ -642,10 +645,20 @@ class OpTest(unittest.TestCase):
         else:
             self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         inputs = append_input_output(
-            block, op_proto, self.inputs, True, self.dtype, self.is_calc_ref
+            block,
+            op_proto,
+            self.inputs,
+            True,
+            self.dtype,
+            self.is_calc_fp32_ref,
         )
         outputs = append_input_output(
-            block, op_proto, self.outputs, False, self.dtype, self.is_calc_ref
+            block,
+            op_proto,
+            self.outputs,
+            False,
+            self.dtype,
+            self.is_calc_fp32_ref,
         )
 
         if hasattr(self, "cache_name_list"):
@@ -771,7 +784,7 @@ class OpTest(unittest.TestCase):
             name,
             is_input,
             if_return_inputs_grad_dict,
-            is_calc_ref=False,
+            is_calc_fp32_ref=False,
         ):
             np_value_temp = np_value
             has_lod = False
@@ -782,7 +795,11 @@ class OpTest(unittest.TestCase):
                 lod_temp = np_value[1]
 
             if is_input:
-                if is_calc_ref and np_value_temp.dtype == np.float16:
+                # 'is_calc_fp32_ref' is used to indicate the this process belong to the branch of computing fp32 reference,
+                # during this process, all of the data with fp16 type should be cast to fp32 type
+                # so if the boolean expression 'is_calc_fp32_ref and np_value_temp.dtype == np.float16' is true,
+                # we should generate data with fp32 type
+                if is_calc_fp32_ref and np_value_temp.dtype == np.float16:
                     v = self._create_var_from_numpy(
                         np_value_temp.astype(np.float32)
                     )
@@ -799,7 +816,7 @@ class OpTest(unittest.TestCase):
                         lod_temp
                     )
             else:
-                if is_calc_ref and np_value_temp.dtype == np.float16:
+                if is_calc_fp32_ref and np_value_temp.dtype == np.float16:
                     v = block.create_var(
                         name=name,
                         dtype=np.float32,
@@ -847,7 +864,7 @@ class OpTest(unittest.TestCase):
                         name,
                         is_input,
                         if_return_inputs_grad_dict,
-                        self.is_calc_ref,
+                        self.is_calc_fp32_ref,
                     )
                     var_list.append(v)
                     if if_return_inputs_grad_dict:
@@ -867,7 +884,7 @@ class OpTest(unittest.TestCase):
                     name_temp,
                     is_input,
                     if_return_inputs_grad_dict,
-                    self.is_calc_ref,
+                    self.is_calc_fp32_ref,
                 )
                 var_dict[name].append(v)
                 if if_return_inputs_grad_dict:
