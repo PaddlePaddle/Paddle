@@ -1349,7 +1349,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is float16, float32, float64, int32 or int64.
         axis (int|list|tuple, optional): The dimensions along which the nansum is performed. If
             :attr:`None`, nansum all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
@@ -1392,7 +1392,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             out6 = paddle.nansum(y, axis=[0, 1]) # [9, 18]
     """
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'nansum'
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'nansum'
     )
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
 
