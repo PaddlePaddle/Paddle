@@ -260,7 +260,7 @@ class TestMLPReshard(unittest.TestCase):
 
         # clear _g_process_group_map
         _g_process_group_map.clear()
-        _g_process_group_map[0] = ProcessGroup(0, [])
+        _g_process_group_map[0] = ProcessGroup(1000, [])
 
     def test_mlp_pp(self):
         global _global_parallel_strategy
@@ -289,7 +289,7 @@ class TestMLPReshard(unittest.TestCase):
 
         # clear _g_process_group_map
         _g_process_group_map.clear()
-        _g_process_group_map[0] = ProcessGroup(0, [])
+        _g_process_group_map[0] = ProcessGroup(1000, [])
 
     def test_mlp_pp_diff_process_mesh(self):
         global _global_parallel_strategy
@@ -316,7 +316,7 @@ class TestMLPReshard(unittest.TestCase):
 
         # clear _g_process_group_map
         _g_process_group_map.clear()
-        _g_process_group_map[0] = ProcessGroup(0, [])
+        _g_process_group_map[0] = ProcessGroup(1000, [])
 
     def test_mlp_dp(self):
         global _global_parallel_strategy
@@ -341,7 +341,7 @@ class TestMLPReshard(unittest.TestCase):
 
         # clear _g_process_group_map
         _g_process_group_map.clear()
-        _g_process_group_map[0] = ProcessGroup(0, [])
+        _g_process_group_map[0] = ProcessGroup(1000, [])
 
 
 if __name__ == "__main__":
