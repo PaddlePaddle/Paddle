@@ -18,6 +18,7 @@ import gradient_checker
 import numpy as np
 import op_test
 from decorator_helper import prog_scope
+from eager_op_test import convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -61,6 +62,25 @@ class TestAssignFP16Op(op_test.OpTest):
     def test_backward(self):
         paddle.enable_static()
         self.check_grad(['X'], 'Out', check_eager=True, max_relative_error=1e-3)
+        paddle.disable_static()
+
+
+class TestAssignBF16Op(op_test.OpTest):
+    def setUp(self):
+        self.python_api = paddle.assign
+        self.op_type = "assign"
+        x = np.random.random(size=(100, 10)).astype(np.float32)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(x)}
+
+    def test_forward(self):
+        paddle.enable_static()
+        self.check_output(check_eager=True, atol=1e-2)
+        paddle.disable_static()
+
+    def test_backward(self):
+        paddle.enable_static()
+        self.check_grad(['X'], 'Out', check_eager=True, max_relative_error=1e-2)
         paddle.disable_static()
 
 
