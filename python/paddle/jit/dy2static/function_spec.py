@@ -360,7 +360,7 @@ def convert_to_input_spec(inputs, input_spec):
         return input_with_spec
     elif isinstance(input_spec, paddle.static.InputSpec):
         """we compare input_spec with real_input_spec constructed from arguments."""
-        real_spec = _replace_value_with_input_spec([input])[0]
+        real_spec = _replace_value_with_input_spec([inputs])[0]
         if input_spec.greater(real_spec):
             return input_spec
         return real_spec
