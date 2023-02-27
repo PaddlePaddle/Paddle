@@ -3,7 +3,6 @@
 - multiply
 - divide
 - unsqueeze
-- pow
 - exp
 - scale
 - matmul
@@ -25,6 +24,5 @@
 - scatter_nd_add
 - tile
 - transpose
-- subtract
 - pad
 - put_along_axis
