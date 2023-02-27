@@ -17,9 +17,6 @@ import logging
 import numpy as np
 
 import paddle
-import paddle.distributed as dist
-import paddle.nn as nn
-import paddle.optimizer as opt
 
 __all__ = []
 
@@ -40,23 +37,6 @@ def _simple_network():
     linear_out = paddle.nn.functional.linear(x=input, weight=weight, bias=bias)
     out = paddle.tensor.sum(linear_out)
     return input, out, weight
-
-
-class LinearNet(nn.Layer):
-    """
-    simple fc network for parallel training check
-    """
-
-    def __init__(self):
-        super(LinearNet, self).__init__()
-        self._linear1 = nn.Linear(10, 10)
-        self._linear2 = nn.Linear(10, 1)
-
-    def forward(self, x):
-        """
-        forward
-        """
-        return self._linear2(self._linear1(x))
 
 
 def _prepare_data():
@@ -198,13 +178,33 @@ def train_for_run_parallel():
     """
     train script for parallel traning check
     """
-    dist.init_parallel_env()
+
+    # to avoid cyclic import
+    class LinearNet(paddle.nn.Layer):
+        """
+        simple fc network for parallel training check
+        """
+
+        def __init__(self):
+            super(LinearNet, self).__init__()
+            self._linear1 = paddle.nn.Linear(10, 10)
+            self._linear2 = paddle.nn.Linear(10, 1)
+
+        def forward(self, x):
+            """
+            forward
+            """
+            return self._linear2(self._linear1(x))
+
+    paddle.distributed.dist.init_parallel_env()
 
     layer = LinearNet()
     dp_layer = paddle.DataParallel(layer)
 
-    loss_fn = nn.MSELoss()
-    adam = opt.Adam(learning_rate=0.001, parameters=dp_layer.parameters())
+    loss_fn = paddle.nn.MSELoss()
+    adam = paddle.optimizer.Adam(
+        learning_rate=0.001, parameters=dp_layer.parameters()
+    )
 
     inputs = paddle.randn([10, 10], 'float32')
     outputs = dp_layer(inputs)
@@ -226,7 +226,9 @@ def _run_parallel(device_list):
         use_npu (bool): Whether running with NPU.
         device_list (int): The specified devices.
     """
-    dist.spawn(train_for_run_parallel, nprocs=len(device_list))
+    paddle.distributed.dist.spawn(
+        train_for_run_parallel, nprocs=len(device_list)
+    )
 
 
 def run_check():
