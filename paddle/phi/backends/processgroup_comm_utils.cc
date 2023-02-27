@@ -51,7 +51,7 @@ ccl::CCLComm GetCCLComm(const Place& place, int global_gid) {
 #else
     return nullptr;
 #endif
-  } else if (paddle::platform::is_custom_place(place)) {
+  } else if (place.GetType() == phi::AllocationType::CUSTOM) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     return static_cast<paddle::distributed::ProcessGroupCustom*>(pg)
         ->CustomCCLComm(place);

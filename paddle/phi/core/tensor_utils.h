@@ -154,7 +154,7 @@ inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
   if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT32) {
     auto* data = x->data<int>();
     phi::DenseTensor cpu_attr_tensor;
-    if (!paddle::platform::is_cpu_place(x->place())) {
+    if (x->place().GetType() != phi::AllocationType::CPU) {
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       auto dev_ctx = pool.Get(x->place());
       phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
@@ -164,7 +164,7 @@ inline std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
   } else if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT64) {
     auto* data = x->data<int64_t>();
     phi::DenseTensor cpu_attr_tensor;
-    if (!paddle::platform::is_cpu_place(x->place())) {
+    if (x->place().GetType() != phi::AllocationType::CPU) {
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       auto dev_ctx = pool.Get(x->place());
       phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
