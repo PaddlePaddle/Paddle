@@ -101,6 +101,33 @@ class IrContext {
   Dialect *GetOrRegisterDialect(std::string dialect_name,
                                 std::function<Dialect *()> constructor);
 
+  ///
+  /// \brief Get the dialect list registered to the context.
+  ///
+  /// \return The dialect list registered to the context.
+  ///
+  std::vector<Dialect *> GetRegisteredDialects();
+
+  ///
+  /// \brief Get the dialect named "name" from the context.
+  ///
+  /// \param name The name of the dialect to be obtained.
+  ///
+  /// \return The dialect named "name" from the context.
+  ///
+  Dialect *GetRegisteredDialect(std::string dialect_name);
+
+  ///
+  /// \brief Get a registered dialect for the given dialect type T. The
+  /// Dialect must provide a static 'name' method.
+  ///
+  /// \return The registered dialect for the given dialect type T.
+  ///
+  template <typename T>
+  T *GetRegisteredDialect() {
+    return static_cast<T *>(GetRegisteredDialect(T::name()));
+  }
+
   IrContext(const IrContext &) = delete;
 
   void operator=(const IrContext &) = delete;

@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 #include <unordered_map>
 
+#include "paddle/ir/builtin_dialect.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/dialect.h"
 #include "paddle/ir/ir_context.h"
@@ -130,9 +131,10 @@ struct IntegerDialect : ir::Dialect {
   static const std::string name() { return "integer"; }
 };
 
-TEST(type_test, parameteric_type) {
+TEST(type_test, custom_type_dialect) {
   ir::IrContext *ctx = ir::IrContext::Instance();
 
+  // Test Custom Type and Dialect
   ctx->GetOrRegisterDialect<IntegerDialect>();
 
   ir::Type int1_1 = IntegerType::get(ctx, 1, 0);
@@ -141,4 +143,17 @@ TEST(type_test, parameteric_type) {
 
   ir::Type int8 = IntegerType::get(ctx, 8, 0);
   EXPECT_EQ(int8 == int1_2, 0);
+
+  // Test Dialect interface
+  std::vector<ir::Dialect *> dialect_list = ctx->GetRegisteredDialects();
+  EXPECT_EQ(dialect_list.size() == 3, 1);  // integer, builtin, fake
+
+  ir::Dialect *dialect_builtin1 = ctx->GetRegisteredDialect("builtin");
+  ir::Dialect *dialect_builtin2 =
+      ctx->GetRegisteredDialect<ir::BuiltinDialect>();
+  EXPECT_EQ(dialect_builtin1 == dialect_builtin2, 1);
+
+  ir::Dialect *dialect_integer1 = ctx->GetRegisteredDialect("integer");
+  ir::Dialect *dialect_integer2 = ctx->GetRegisteredDialect<IntegerDialect>();
+  EXPECT_EQ(dialect_integer1 == dialect_integer2, 1);
 }

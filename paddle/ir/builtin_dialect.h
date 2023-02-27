@@ -25,7 +25,10 @@ namespace ir {
 class BuiltinDialect : public ir::Dialect {
  public:
   explicit BuiltinDialect(ir::IrContext *context);
-
+  ///
+  /// \brief Each Dialect needs to provide a name function to return the name of
+  /// the Dialect.
+  ///
   static const std::string name() { return "builtin"; }
 
  private:

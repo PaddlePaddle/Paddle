@@ -60,6 +60,8 @@ class AbstractType {
   ///
   /// \brief Get the dialect this type was registered to.
   ///
+  /// \return The dialect this type was registered to.
+  ///
   Dialect &dialect() const { return const_cast<Dialect &>(dialect_); }
 
   ///

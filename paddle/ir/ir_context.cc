@@ -52,8 +52,9 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
     auto iter = registed_abstract_types_.find(type_id);
     if (iter == registed_abstract_types_.end()) {
-      VLOG(4) << "IrContext not fonund cached abstract_type of: [TypeId_hash="
-              << std::hash<ir::TypeId>()(type_id) << "].";
+      LOG(WARNING)
+          << "IrContext not fonund cached abstract_type of: [TypeId_hash="
+          << std::hash<ir::TypeId>()(type_id) << "].";
       return nullptr;
     } else {
       VLOG(4) << "IrContext fonund a cached abstract_type of: [TypeId_hash="
@@ -74,8 +75,8 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
     auto iter = registed_dialect_.find(name);
     if (iter == registed_dialect_.end()) {
-      VLOG(4) << "IrContext not fonund cached dialect of: [name=" << name
-              << "].";
+      LOG(WARNING) << "IrContext not fonund cached dialect of: [name=" << name
+                   << "].";
       return nullptr;
     } else {
       VLOG(4) << "IrContext fonund a cached dialect of: [name=" << name
@@ -112,6 +113,7 @@ IrContext *IrContext::Instance() {
 IrContext::IrContext() : impl_(new IrContextImpl()) {
   VLOG(4) << "BuiltinDialect registered into IrContext.";
   GetOrRegisterDialect<BuiltinDialect>();
+
   impl_->fp32_type = TypeManager::get<Float32Type>(this);
   impl_->int32_type = TypeManager::get<Int32Type>(this);
 }
@@ -141,6 +143,24 @@ Dialect *IrContext::GetOrRegisterDialect(
     impl().RegisterDialect(dialect_name, dialect);
   }
   return dialect;
+}
+
+std::vector<Dialect *> IrContext::GetRegisteredDialects() {
+  std::vector<Dialect *> result;
+  for (auto dialect_map : impl().registed_dialect_) {
+    result.push_back(dialect_map.second);
+  }
+  return result;
+}
+
+Dialect *IrContext::GetRegisteredDialect(std::string dialect_name) {
+  for (auto dialect_map : impl().registed_dialect_) {
+    if (dialect_map.first == dialect_name) {
+      return dialect_map.second;
+    }
+  }
+  LOG(WARNING) << "No dialect registered for " << dialect_name;
+  return nullptr;
 }
 
 const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {

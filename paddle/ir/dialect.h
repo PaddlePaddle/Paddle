@@ -19,8 +19,11 @@
 
 namespace ir {
 ///
-/// \brief Dialect is a group of types, an instance of the dialect object will
-/// be loaded into the global IrContext.
+/// \brief Dialect can basically be understood as a namespace. In Dialect, we
+/// can define a series of types, operations, etc. An instance of the dialect
+/// object will be loaded into the global IrContext. Specific compilers only
+/// need to combine existing dialects and add their own extensions or
+/// customizations.
 ///
 class Dialect {
  public:
@@ -34,6 +37,7 @@ class Dialect {
 
   ///
   /// \brief Register all types contained in the template parameter Args.
+  /// To register only one Type, you can use the RegisterType template function.
   ///
   template <typename... Args>
   void RegisterTypes() {
