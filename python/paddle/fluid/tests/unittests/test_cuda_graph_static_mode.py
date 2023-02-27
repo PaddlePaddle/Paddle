@@ -26,8 +26,31 @@ def can_use_cuda_graph():
     return paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm()
 
 
+def build_program(main, startup, batch_size, class_num):
+    image_shape = [batch_size, 784]
+    label_shape = [batch_size, 1]
+    with paddle.static.program_guard(main, startup):
+        image = paddle.static.data(
+            name="image", shape=image_shape, dtype='float32'
+        )
+        label = paddle.static.data(
+            name="label", shape=label_shape, dtype='int64'
+        )
+        image.persistable = True
+        label.persistable = True
+        loss = simple_fc_net_with_inputs(image, label, class_num)
+        loss.persistable = True
+        lr = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04]
+        )
+        optimizer = paddle.optimizer.SGD(learning_rate=lr)
+        optimizer.minimize(loss)
+    return image, label, loss, lr
+
+
 class TestCUDAGraphInStaticMode(unittest.TestCase):
     def setUp(self):
+        self.init_data()
         if can_use_cuda_graph():
             # The behavior of `FLAGS_use_stream_safe_cuda_allocator` in static
             # mode is inconsistent with that in dygraph mode.
@@ -45,6 +68,9 @@ class TestCUDAGraphInStaticMode(unittest.TestCase):
                     'FLAGS_use_stream_safe_cuda_allocator': True,
                 }
             )
+
+    def init_data(self):
+        self.use_feed_data = False
 
     @switch_to_static_graph
     def test_cuda_graph_static_graph(self):
@@ -70,22 +96,11 @@ class TestCUDAGraphInStaticMode(unittest.TestCase):
         np.random.seed(seed)
         startup = paddle.static.Program()
         main = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            image = paddle.static.data(
-                name="image", shape=image_shape, dtype='float32'
-            )
-            label = paddle.static.data(
-                name="label", shape=label_shape, dtype='int64'
-            )
-            image.persistable = True
-            label.persistable = True
-            loss = simple_fc_net_with_inputs(image, label, class_num)
-            loss.persistable = True
-            lr = paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04]
-            )
-            optimizer = paddle.optimizer.SGD(learning_rate=lr)
-            optimizer.minimize(loss)
+
+        image, label, loss, lr = build_program(
+            main, startup, batch_size, class_num
+        )
+
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
         scope = paddle.static.Scope()
@@ -96,9 +111,7 @@ class TestCUDAGraphInStaticMode(unittest.TestCase):
             build_strategy.fix_op_run_order = True
             build_strategy.fuse_all_optimizer_ops = True
             compiled_program = paddle.static.CompiledProgram(
-                main
-            ).with_data_parallel(
-                loss_name=loss.name, build_strategy=build_strategy, places=place
+                main, build_strategy=build_strategy
             )
             image_t = scope.var(image.name).get_tensor()
             label_t = scope.var(label.name).get_tensor()
@@ -108,15 +121,16 @@ class TestCUDAGraphInStaticMode(unittest.TestCase):
             lr_t = scope.var(lr_var.name).get_tensor()
             cuda_graph = None
             for batch_id in range(20):
-                image_t.set(
-                    np.random.rand(*image_shape).astype('float32'), place
+                use_feed_data = (
+                    True if batch_id == 0 and self.use_feed_data else False
                 )
-                label_t.set(
-                    np.random.randint(
-                        low=0, high=class_num, size=label_shape, dtype='int64'
-                    ),
-                    place,
+                image_np = np.random.rand(*image_shape).astype('float32')
+                label_np = np.random.randint(
+                    low=0, high=class_num, size=label_shape, dtype='int64'
                 )
+                if not use_feed_data:
+                    image_t.set(image_np, place)
+                    label_t.set(label_np, place)
 
                 if batch_id == 1 and use_cuda_graph:
                     cuda_graph = CUDAGraph(place, mode="global")
@@ -128,11 +142,26 @@ class TestCUDAGraphInStaticMode(unittest.TestCase):
                     lr_t.set(np.array([lr()], dtype='float32'), place)
                     cuda_graph.replay()
                 else:
-                    exe.run(compiled_program)
+                    if use_feed_data:
+                        exe.run(
+                            compiled_program,
+                            feed={'image': image_np, 'label': label_np},
+                        )
+                    else:
+                        exe.run(compiled_program)
                 lr.step()
             if cuda_graph:
                 cuda_graph.reset()
         return np.array(loss_t)
+
+
+class TestCUDAGraphWhenFeedDataChanges(TestCUDAGraphInStaticMode):
+    def init_data(self):
+        # When feed fetch var of new executor changes, a new
+        # StandaloneExecutor will be newly created. And the
+        # behavior of capturing cuda graph will change.
+        # Add test for this case.
+        self.use_feed_data = True
 
 
 if __name__ == "__main__":

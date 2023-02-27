@@ -1265,6 +1265,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             'x',
             [
                 'bool',
+                'uint16',
                 'float16',
                 'float32',
                 'float64',
@@ -3089,11 +3090,26 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         return out
 
 
-@templatedoc(op_type="kron")
 def kron(x, y, name=None):
-    """
-
-    ${comment}
+    r"""
+    Compute the Kronecker product of two tensors, a
+    composite tensor made of blocks of the second tensor scaled by the
+    first.
+    Assume that the rank of the two tensors, $X$ and $Y$
+    are the same, if necessary prepending the smallest with ones. If the
+    shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is
+    [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is
+    [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are
+    products of elements from $X$ and $Y$.
+    The equation is:
+    $$
+    output[k_{0}, k_{1}, ..., k_{N}] = X[i_{0}, i_{1}, ..., i_{N}] *
+    Y[j_{0}, j_{1}, ..., j_{N}]
+    $$
+    where
+    $$
+    k_{t} = i_{t} * s_{t} + j_{t}, t = 0, 1, ..., N
+    $$
 
     Args:
         x (Tensor): the fist operand of kron op, data type: float16, float32, float64, int32 or int64.
@@ -4677,10 +4693,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
                 outputs={"Out": out},
             )
         else:
-            out = paddle.tensor.math._subtract_with_axis(
-                input_back, input_front, axis=axis
-            )
-
+            out = paddle.tensor.math.subtract(input_back, input_front)
         return out
 
 
@@ -4784,7 +4797,7 @@ def heaviside(x, y, name=None):
             #     [0.        , 1.        , 0.30000001]]
     """
     if in_dygraph_mode():
-        return _C_ops.elementwise_heaviside(x, y)
+        return _C_ops.heaviside(x, y)
     else:
         op_type = 'elementwise_heaviside'
         return _elementwise_op(LayerHelper(op_type, **locals()))

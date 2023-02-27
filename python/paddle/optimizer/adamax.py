@@ -227,8 +227,6 @@ class Adamax(Optimizer):
 
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
-            if p.name in self._already_create_accumulater:
-                continue
             if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)

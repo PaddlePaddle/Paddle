@@ -6,7 +6,7 @@ proto_library(interceptor_message_proto SRCS interceptor_message.proto)
 
 if(WITH_ARM_BRPC)
   set(BRPC_DEPS arm_brpc snappy gflags glog)
-elseif(WITH_DISTRIBUTE)
+elseif(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
   set(BRPC_DEPS
       brpc
       ssl
@@ -44,6 +44,7 @@ cc_library(
        message_bus.cc
        dist_model_tensor_wrapper.cc
   DEPS proto_desc
+       standalone_executor
        fleet_executor_desc_proto
        interceptor_message_proto
        task_loop_thread_pool
