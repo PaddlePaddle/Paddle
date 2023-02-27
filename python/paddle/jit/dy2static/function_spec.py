@@ -366,7 +366,7 @@ def convert_to_input_spec(inputs, input_spec):
     elif isinstance(input_spec, paddle.static.InputSpec):
         """we compare input_spec with real_input_spec constructed from arguments."""
         real_spec = _replace_value_with_input_spec([inputs])[0]
-        if isinstance(real_spec, paddle.static.InputSpec):
+        if not isinstance(real_spec, paddle.static.InputSpec):
             raise RuntimeError(
                 "Give input spec into a non-tensorable arguments `{}`.".format(
                     inputs
