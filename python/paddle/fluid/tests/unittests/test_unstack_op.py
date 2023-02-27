@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 
@@ -82,6 +82,53 @@ class TestStackOp5(TestUnStackOpBase):
 class TestStackOp6(TestUnStackOpBase):
     def initParameters(self):
         self.axis = 2
+
+
+class TestUnStackBF16OP(OpTest):
+    def initDefaultParameters(self):
+        self.input_dim = (5, 6, 7)
+        self.axis = 0
+        self.dtype = np.uint16
+
+    def initParameters(self):
+        pass
+
+    def get_y_names(self):
+        y_names = []
+        for i in range(self.input_dim[self.axis]):
+            y_names.append('y{}'.format(i))
+        return y_names
+
+    def setUp(self):
+        self.initDefaultParameters()
+        self.initParameters()
+        self.op_type = 'unstack'
+        self.python_api = paddle.unstack
+        self.x = np.random.random(size=self.input_dim).astype(float)
+        self.x = convert_float_to_uint16(self.x)
+
+        outs = np.split(self.x, self.input_dim[self.axis], self.axis)
+        new_shape = list(self.input_dim)
+        del new_shape[self.axis]
+        y_names = self.get_y_names()
+        tmp = []
+        tmp_names = []
+        for i in range(self.input_dim[self.axis]):
+            tmp.append((y_names[i], np.reshape(outs[i], new_shape)))
+            tmp_names.append(y_names[i])
+
+        self.python_out_sig = tmp_names
+        self.inputs = {'X': self.x}
+        self.outputs = {'Y': tmp}
+        self.attrs = {'axis': self.axis, 'num': self.input_dim[self.axis]}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+
+class TestUnStackFP16OP(TestUnStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
 
 
 class TestUnstackZeroInputOp(unittest.TestCase):

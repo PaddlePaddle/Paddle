@@ -102,6 +102,11 @@ class TestStackOp_ZeroDim(TestStackOpBase):
         self.input_dim = ()
 
 
+class TestStackFP16OP(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+
+
 class TestStackBF16Op(OpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
