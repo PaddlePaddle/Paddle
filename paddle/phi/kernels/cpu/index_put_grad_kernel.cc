@@ -23,6 +23,30 @@
 
 namespace phi {
 
+template <typename T, size_t Rank>
+void set_zero_kernel(const int64_t N,
+                     const int64_t** indices,
+                     phi::Array<int64_t, Rank> stride,
+                     phi::Array<int64_t, Rank> shape,
+                     T* out) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int64_t idx = 0; idx < N; ++idx) {
+    int64_t cur_ix = 0;
+    int64_t offset = 0;
+    // here why can't use unroll
+    for (size_t i = 0; i < Rank; ++i) {
+      cur_ix = (int64_t(*(indices[i] + idx)));
+      if (cur_ix < 0) {
+        cur_ix += shape[i];
+      }
+      offset += stride[i] * cur_ix;
+    }
+    *(out + idx) = 0;
+  }
+}
+
 // TODO(LiuYang): Here when ix is negative, we need extra error handling code
 template <typename T, size_t Rank>
 void index_put_grad_kernel(const int64_t N,
@@ -57,6 +81,25 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
                               DenseTensor* x_grad) {
   if (x_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    T* x_grad_data = x_grad->data<T>();
+
+    auto x_grad_dims = x_grad->dims();
+    const int64_t numel = indices_v[0]->numel();
+    auto x_grad_stride = phi::stride(x_grad_dims);
+
+    phi::Array<int64_t, Rank> stride_a;
+    phi::Array<int64_t, Rank> shape_a;
+
+    for (size_t idx = 0; idx < Rank; ++idx) {
+      stride_a[idx] = x_grad_stride[idx];
+      shape_a[idx] = x_grad_dims[idx];
+    }
+
+    const int64_t* pd_indices[Rank];
+    for (size_t i = 0; i < Rank; ++i) {
+      pd_indices[i] = indices_v[i]->data<int64_t>();
+    }
+    set_zero_kernel<T, Rank>(numel, pd_indices, stride_a, shape_a, x_grad_data);
   }
   if (value_grad) {
     if (value_grad->numel() == 1) {
@@ -65,6 +108,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
       IntArray v_axis(v_dims);
       SumKernel<T>(
           dev_ctx, out_grad, v_axis, value_grad->dtype(), false, value_grad);
+
     } else if (value_grad->numel() == indices_v[0]->numel()) {
       T* value_grad_data = dev_ctx.template Alloc<T>(value_grad);
       auto out_grad_data = out_grad.data<T>();

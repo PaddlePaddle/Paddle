@@ -97,7 +97,7 @@ static py::array_t<T> CastNumpyArray(const py::object &array) {
     return CastNumpyType<T>(array.cast<py::array_t<bool>>());
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Value type error. The assign numpy value allows integer, float, "
+        "Value type error. The assign numpy value allows integer, float"
         "double and bool, "
         "but received %s.",
         Py_TYPE(array.ptr())->tp_name));
@@ -559,7 +559,7 @@ void SetTensorFromPyArray(phi::DenseTensor *self,
   }
 }
 
-// NOTE(LiuYang): Here I need add other dtype support such as fp16...
+// NOTE(LiuYang): pybind11 doesn't support fp16
 static paddle::experimental::Tensor PyArrayToTensor(
     const paddle::experimental::DataType &dtype,
     const phi::Place &place,
@@ -589,17 +589,27 @@ static paddle::experimental::Tensor PyArrayToTensor(
     if (!py::isinstance<py::array_t<bool>>(value_obj_tmp)) {
       value = pybind11::detail::CastNumpyArray<bool>(value_obj_tmp);
     }
+  } else if (dtype == paddle::experimental::DataType::FLOAT16) {
+    if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
+      value = pybind11::detail::CastNumpyArray<float>(value_obj_tmp);
+    }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "When assign a numpy.np value to a paddle.Tensor, "
         "the data type of the paddle.Tensor must be bool, "
-        "float32, int32 or int64, "
+        "float32, float16, int32, int64"
         "please check the type of tensor."));
   }
   SetTensorFromPyArray(static_cast<phi::DenseTensor *>(rt_tensor.impl().get()),
                        value,
                        place,
                        false);
+
+  // NOTE(LiuYang): I don't think this usage is a good idea, may later we should
+  // add fp16 type support in CastNumpyArray
+  if (dtype == paddle::experimental::DataType::FLOAT16) {
+    return rt_tensor.cast(paddle::experimental::DataType::FLOAT16);
+  }
   return rt_tensor;
 }
 
