@@ -195,19 +195,16 @@ def mean_composite(x, axis, keepdim):
 def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     """
     define composite rule of op flatten, flatten_contiguous_range -> flatten.
-    xshape is the dim with 0 added to the front of x, keep the shape information of x to calculate the grad.
+    CINN doesn't need xshape for backward pass, return none instead of xshape.
     shape_out is the parameter of reshape, get from start_axis and stop_axis.
     out = reshape(x, shape=shape_out), xshape
     """
     shape_in = x.shape
-    shape_x_out = [0]
-    shape_x_out.extend(shape_in)
-    xshape = full(shape=shape_x_out, fill_value=0, dtype=x.dtype)
     start_dim = start_axis if len(shape_in) != 0 else 0
     end_dim = stop_axis if len(shape_in) != 0 else 0
     assert start_dim <= end_dim
     if len(shape_in) == 0 or start_dim == end_dim:
-        return reshape(x, shape=shape_in), xshape
+        return reshape(x, shape=shape_in), None
     slice_numel = 1
     for i in range(start_dim, end_dim + 1):
         slice_numel *= shape_in[i]
@@ -217,7 +214,7 @@ def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     shape_out.append(slice_numel)
     for i in range(end_dim + 1, len(shape_in)):
         shape_out.append(shape_in[i])
-    return reshape(x, shape=shape_out), xshape
+    return reshape(x, shape=shape_out), None
 
 
 @REGISTER_COMPOSITE('dropout')
