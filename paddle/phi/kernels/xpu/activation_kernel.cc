@@ -457,6 +457,32 @@ struct XPUFloorFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPUSinFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    int r = xpu_activation_func<Context, T, XPUType>(
+        dev_ctx, x, out, xpu::sin<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sin");
+  }
+};
+
+template <typename T>
+struct XPUCosFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    int r = xpu_activation_func<Context, T, XPUType>(
+        dev_ctx, x, out, xpu::cos<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cos");
+  }
+};
+
 DEFINE_XPU_ACTIVATION_KERNEL(Exp, XPUExpFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Floor, XPUFloorFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Log, XPULogFunctor)
@@ -467,6 +493,8 @@ DEFINE_XPU_ACTIVATION_KERNEL(Square, XPUSquareFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Sqrt, XPUSqrtFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Tanh, XPUTanhFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Silu, XPUSiluFunctor)
+DEFINE_XPU_ACTIVATION_KERNEL(Sin, XPUSinFunctor)
+DEFINE_XPU_ACTIVATION_KERNEL(Cos, XPUCosFunctor)
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu,
@@ -517,9 +545,11 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     square, XPU, ALL_LAYOUT, phi::SquareKernel, float, phi::dtype::float16) {}
 
+PD_REGISTER_KERNEL(
+    log, XPU, ALL_LAYOUT, phi::LogKernel, float, phi::dtype::float16) {}
+
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
-PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardswish_raw, HardSwishRawKernel)
@@ -531,3 +561,5 @@ PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
+PD_REGISTER_ACTIVATION_KERNEL(sin, SinKernel)
+PD_REGISTER_ACTIVATION_KERNEL(cos, CosKernel)

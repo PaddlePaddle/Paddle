@@ -1263,6 +1263,7 @@ def set_grad_var_shape(program, dist_context):
                 "relu_grad",
                 "exp_grad",
                 "sigmoid_grad",
+                "unsqueeze2_grad",
             ]
             forward_list = [
                 "reshape2",
@@ -1283,6 +1284,7 @@ def set_grad_var_shape(program, dist_context):
                 "relu",
                 "exp",
                 "sigmoid",
+                "unsqueeze2",
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:

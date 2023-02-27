@@ -126,11 +126,7 @@ class TestWeightDecay(unittest.TestCase):
         build_strategy.memory_optimize = use_ir_memory_optimize
 
         train_cp = compiler.CompiledProgram(
-            fluid.default_main_program()
-        ).with_data_parallel(
-            loss_name=loss.name,
-            exec_strategy=exec_strategy,
-            build_strategy=build_strategy,
+            fluid.default_main_program(), build_strategy=build_strategy
         )
 
         loss_set = []
@@ -169,7 +165,7 @@ class TestWeightDecay(unittest.TestCase):
 
             for params in param_list:
                 updated_p = paddle.subtract(x=params[0], y=params[1])
-                fluid.layers.assign(input=updated_p, output=params[0])
+                paddle.assign(updated_p, output=params[0])
 
             if use_parallel_exe:
                 loss = self.run_parallel_exe(
