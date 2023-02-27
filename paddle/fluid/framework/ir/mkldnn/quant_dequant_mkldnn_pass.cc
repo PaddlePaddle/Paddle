@@ -754,9 +754,9 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   UpdateActivations(graph);
   RemoveCtrlVars(graph);
 
-  // save var_quant_scales in the first op's attr
+  // save var_quant_scales in the temporary save op's attr
   // for compute_propagate_scales_mkldnn_pass
-  SaveInfoInTheFirstOp(
+  SaveInfoInTheTmpOp(
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 
