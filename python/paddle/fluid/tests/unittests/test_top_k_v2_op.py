@@ -46,9 +46,8 @@ class TestTopkOp(OpTest):
     def setUp(self):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.python_api = paddle.topk
-        self.dtype = np.float64
+        self.dtype = np.float16
         self.input_data = np.random.rand(10, 20)
         self.init_args()
         self.inputs = {'X': self.input_data}
@@ -79,7 +78,7 @@ class TestTopkOp2(TestTopkOp):
         self.largest = False
 
 
-class TestTopkOp3(OpTest):
+class TestTopkOp3(TestTopkOp):
     def init_args(self):
         self.k = 6
         self.axis = 1
@@ -88,9 +87,8 @@ class TestTopkOp3(OpTest):
     def setUp(self):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.python_api = paddle.topk
-        self.dtype = np.float64
+        self.dtype = np.float32
         self.input_data = np.random.rand(16, 100)
         self.init_args()
         self.inputs = {'X': self.input_data}
@@ -110,7 +108,6 @@ class TestTopkOp4(TestTopkOp):
     def setUp(self):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 10, 5)
@@ -132,7 +129,6 @@ class TestTopkOp5(TestTopkOp):
     def setUp(self):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 10, 5)
@@ -145,7 +141,7 @@ class TestTopkOp5(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-class TestTopkOp6(OpTest):
+class TestTopkOp6(TestTopkOp):
     def init_args(self):
         self.k = 100
         self.axis = 1
@@ -154,10 +150,9 @@ class TestTopkOp6(OpTest):
     def setUp(self):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.python_api = paddle.topk
         self.dtype = np.float64
-        self.input_data = np.random.rand(80, 16384)
+        self.input_data = np.random.rand(50, 650)
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
