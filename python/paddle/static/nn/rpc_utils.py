@@ -33,7 +33,9 @@ class IDGen:
 id_gen = IDGen()
 
 
-def rpc_call(src_ids=None, url="", voc_path="", cvt2str=True):
+def rpc_call(
+    src_ids=None, url="", voc_path="", cvt2str=True, timeout=3000, retry=100
+):
     request_id = (
         fluid.default_main_program()
         .block(0)
@@ -57,8 +59,8 @@ def rpc_call(src_ids=None, url="", voc_path="", cvt2str=True):
             "url": url,
             "vocab_path": voc_path,
             "use_ids": not cvt2str,
-            "timeout": 3000,
-            "retry": 100,
+            "timeout": timeout,
+            "retry": retry,
         },
     )
     return request_id
