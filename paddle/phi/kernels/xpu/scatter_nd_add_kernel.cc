@@ -12,52 +12,57 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gather_nd_grad_kernel.h"
+#include "paddle/phi/kernels/scatter_nd_add_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
-
 template <typename T, typename Context>
-void GatherNdGradKernel(const Context &ctx,
+void ScatterNdAddKernel(const Context &ctx,
                         const DenseTensor &x,
                         const DenseTensor &index,
-                        const DenseTensor &out_grad,
-                        DenseTensor *x_grad) {
-  ctx.template Alloc<T>(x_grad);
+                        const DenseTensor &updates,
+                        DenseTensor *out) {
+  const T *x_ptr = x.data<T>();
+  const T *updates_ptr = updates.data<T>();
 
-  int r = XPU_SUCCESS;
-  T *dx_data = x_grad->data<T>();
-  r = xpu::constant<T>(
-      ctx.x_context(), dx_data, x_grad->numel(), static_cast<T>(0));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+  T *out_ptr = ctx.template Alloc<T>(out);
+  int r = xpu::copy(ctx.x_context(), x_ptr, out_ptr, x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
-  if (out_grad.numel() == 0) return;
+  if (updates.numel() == 0) return;
 
   if (index.numel() == 0) {
-    r = xpu::copy(ctx.x_context(),
-                  out_grad.data<T>(),
-                  x_grad->data<T>(),
-                  x_grad->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    int loop_time =
+        static_cast<int>(index.dims().size() == 0 ? 1 : index.dims()[0]);
+
+    for (int i = 0; i < loop_time; i++) {
+      // xpu::add only support float or float16 template typename
+      // now, register this op only with float type
+      r = xpu::add<T>(ctx.x_context(),
+                      updates_ptr + out->numel() * i,
+                      out_ptr,
+                      out_ptr,
+                      out->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    }
     return;
   }
 
-  auto index_type = index.dtype();
+  const phi::DataType index_type = index.dtype();
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
-  PADDLE_ENFORCE_EQ(
-      index_type_match,
-      true,
-      phi::errors::InvalidArgument("Index holds the wrong type, it holds [%s],"
-                                   "but desires to be [%s] or [%s]",
-                                   index_type,
-                                   phi::DataType::INT32,
-                                   phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s], but "
+                        "desires to be [%s] or [%s].",
+                        index_type,
+                        phi::DataType::INT32,
+                        phi::DataType::INT64));
 
-  auto x_shape = phi::vectorize<int64_t>(x_grad->dims());
+  auto x_shape = phi::vectorize<int64_t>(x.dims());
   auto index_shape = phi::vectorize<int64_t>(index.dims());
   if (index_shape.size() == 1) {
     index_shape.insert(index_shape.begin(), 1);
@@ -69,40 +74,35 @@ void GatherNdGradKernel(const Context &ctx,
   phi::Copy(ctx, index, phi::CPUPlace(), false, &index_cpu);
 
   int index_size = static_cast<int>(index.numel());
+
   if (index_type == phi::DataType::INT32) {
-    auto index_data = const_cast<int *>(index.data<int>());
-    xpu::VectorParam<int> index_vec{
-        index_cpu.data<int>(), index_size, index_data};
+    xpu::VectorParam<int> index_vec{index_cpu.data<int>(), index_size, nullptr};
+
     r = xpu::scatter_nd<T, int>(ctx.x_context(),
                                 nullptr,
-                                out_grad.data<T>(),
-                                dx_data,
+                                updates_ptr,
+                                out_ptr,
                                 index_vec,
                                 x_vec,
                                 index_shape,
                                 false);
   } else {
-    auto index_data = const_cast<int64_t *>(index.data<int64_t>());
     xpu::VectorParam<int64_t> index_vec{
-        index_cpu.data<int64_t>(), index_size, index_data};
+        index_cpu.data<int64_t>(), index_size, nullptr};
+
     r = xpu::scatter_nd<T, int64_t>(ctx.x_context(),
                                     nullptr,
-                                    out_grad.data<T>(),
-                                    dx_data,
+                                    updates_ptr,
+                                    out_ptr,
                                     index_vec,
                                     x_vec,
                                     index_shape,
                                     false);
   }
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "scatter_nd");
-}
 
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "scatter_nd_add");
+}
 }  // namespace phi
 
-PD_REGISTER_KERNEL(gather_nd_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::GatherNdGradKernel,
-                   float,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    scatter_nd_add, XPU, ALL_LAYOUT, phi::ScatterNdAddKernel, float) {}
