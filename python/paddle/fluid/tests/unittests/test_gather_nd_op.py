@@ -254,6 +254,39 @@ class TestGatherNdAPI2(unittest.TestCase):
             expected_output = np.array([[3, 4]])
         np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
+    def test_static_fp16_with_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.array(
+                    [[[1, 2], [3, 4], [5, 6]], [[7, 8], [9, 10], [11, 12]]],
+                    dtype='float16',
+                )
+                index = np.array([[0, 1]], dtype='int32')
+                res_np = np.array([[3, 4]], dtype='float16')
+
+                x = paddle.static.data(
+                    name="x", shape=[2, 3, 2], dtype="float16"
+                )
+                x.desc.set_need_check_feed(False)
+                idx = paddle.static.data(
+                    name="index", shape=[1, 2], dtype="int32"
+                )
+                idx.desc.set_need_check_feed(False)
+
+                y = paddle.gather_nd(x, idx)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x": input, "index": index},
+                    fetch_list=[y],
+                )
+
+                np.testing.assert_allclose(res[0], res_np, rtol=1e-05)
+
     def test_imperative(self):
         paddle.disable_static()
         input_1 = np.array([[1, 2], [3, 4], [5, 6]])

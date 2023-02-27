@@ -247,6 +247,18 @@ class TestMaxOp(OpTest):
     def test_check_output(self):
         self.check_output(check_eager=True)
 
+    def test_raise_error(self):
+        if core.is_compiled_with_cuda():
+            self.inputs = {'X': np.random.random((5, 6, 10)).astype("float16")}
+            place = core.CUDAPlace(0)
+            with self.assertRaises(RuntimeError) as cm:
+                self.check_output_with_place(place, check_eager=True)
+            error_msg = str(cm.exception).split("\n")[-2].strip().split(".")[0]
+            self.assertEqual(
+                error_msg,
+                "NotFoundError: The kernel (reduce_max) with key (GPU, Undefined(AnyLayout), float16) is not found and GPU kernel cannot fallback to CPU one",
+            )
+
 
 class TestMaxOp_ZeroDim(OpTest):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""

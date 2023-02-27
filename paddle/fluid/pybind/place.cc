@@ -460,7 +460,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 #ifdef PADDLE_WITH_XPU_KP
   m.def("get_xpu_device_op_support_types",
         [](const std::string &op_name, phi::backends::xpu::XPUVersion version) {
-          return platform::get_xpu_op_support_type(op_name, version);
+          return platform::get_xpu_kp_op_support_type(op_name, version);
         });
 #else
   m.def("get_xpu_device_op_support_types",

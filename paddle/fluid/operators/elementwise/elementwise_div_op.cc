@@ -84,6 +84,11 @@ class ElementwiseDivCompositeGradOpMaker
     auto dy_ptr = this->GetOutputPtr(&dy);
     std::string dy_name = this->GetOutputName(dy);
     int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite div but we got: ", axis));
     VLOG(6) << "Runing div_grad composite func";
     prim::divide_grad<prim::DescTensor>(
         x, y, out, out_grad, axis, dx_ptr, dy_ptr);

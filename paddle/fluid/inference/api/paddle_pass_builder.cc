@@ -521,7 +521,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "generate_sequence_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
-      // "embedding_with_eltwise_add_xpu_fuse_pass",
+      "embedding_with_eltwise_add_xpu_fuse_pass",
       "fc_xpu_fuse_pass",
       "link_xpu_op_max_pass",
   });

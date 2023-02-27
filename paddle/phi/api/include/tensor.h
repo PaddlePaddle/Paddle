@@ -556,6 +556,8 @@ class PADDLE_API Tensor final {
 
   Tensor operator/(const Scalar& other) const;
 
+  Tensor operator-() const;
+
   /* Part 8: Autograd methods */
 
   /**
@@ -675,12 +677,13 @@ class PADDLE_API Tensor final {
   Tensor divide(const Scalar& y) const;
   Tensor multiply(const Scalar& y) const;
   Tensor subtract(const Scalar& y) const;
+  Tensor pow(const Tensor& y) const;
+  Tensor pow(const Scalar& y) const;
 
   Tensor exp() const;
   Tensor floor() const;
   Tensor gather_nd(const Tensor& index) const;
   Tensor log() const;
-  Tensor pow(const Scalar& y) const;
   Tensor roll(const IntArray& shifts, const std::vector<int64_t>& axis) const;
   Tensor scatter(const Tensor& index,
                  const Tensor& updates,
@@ -694,11 +697,18 @@ class PADDLE_API Tensor final {
   Tensor max(const IntArray& axis, bool keepdim) const;
   Tensor maximum(const Tensor& y) const;
   Tensor minimum(const Tensor& y) const;
-  Tensor prod(const IntArray& dims, bool keep_dim, bool reduce_all) const;
   Tensor scale(const Scalar& scale, float bias, bool bias_after_scale) const;
   Tensor sum(const IntArray& axis, DataType dtype, bool keepdim) const;
   Tensor tile(const IntArray& repeat_times) const;
 };
+
+PADDLE_API Tensor operator+(const Scalar& x, const Tensor& y);
+
+PADDLE_API Tensor operator-(const Scalar& x, const Tensor& y);
+
+PADDLE_API Tensor operator*(const Scalar& x, const Tensor& y);
+
+PADDLE_API Tensor operator/(const Scalar& x, const Tensor& y);
 
 }  // namespace experimental
 }  // namespace paddle
