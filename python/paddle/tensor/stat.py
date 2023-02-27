@@ -145,7 +145,9 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             # [1.         4.33333333]
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'var'
+        )
 
     u = mean(x, axis, True, name)
     out = paddle.sum(paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name)
