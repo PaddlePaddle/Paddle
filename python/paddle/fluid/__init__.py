@@ -66,7 +66,6 @@ from . import average
 from . import metrics
 from . import transpiler
 from . import incubate
-from .input import embedding, one_hot
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 
@@ -96,7 +95,6 @@ from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
-from . import install_check
 from .dygraph.layers import *
 from .dygraph.base import enable_dygraph, disable_dygraph
 from .io import save, load, load_program_state, set_program_state
@@ -130,8 +128,6 @@ __all__ = (
     + [
         'io',
         'initializer',
-        'embedding',
-        'one_hot',
         'layers',
         'contrib',
         'data',
@@ -161,7 +157,6 @@ __all__ = (
         'profiler',
         'unique_name',
         'Scope',
-        'install_check',
         'save',
         'load',
         '_cuda_synchronize',
@@ -238,6 +233,7 @@ def __bootstrap__():
     core.init_devices()
     core.eager._init_eager_and_static_tensor_operants()
     core.init_default_kernel_signatures()
+    core.init_memory_method()
 
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.

@@ -78,30 +78,22 @@ execute_process(
           ${static_prim_api_cc_path})
 message("copy tmp_xxx_prim_api to xxx_prim_api")
 
-set(tmp_eager_tensor_operants_cc_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.cc.tmp"
-)
-set(tmp_eager_tensor_operants_h_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.h.tmp"
-)
-set(tmp_static_tensor_operants_cc_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.cc.tmp"
-)
-set(tmp_static_tensor_operants_h_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.h.tmp"
-)
 set(eager_tensor_operants_cc_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.cc"
-)
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.cc)
 set(eager_tensor_operants_h_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
-)
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/eager/eager_tensor_operants.h)
 set(static_tensor_operants_cc_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.cc"
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.cc
 )
 set(static_tensor_operants_h_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.h"
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.h
 )
+set(tmp_eager_tensor_operants_cc_path ${eager_tensor_operants_cc_path}.tmp)
+set(tmp_eager_tensor_operants_h_path ${eager_tensor_operants_h_path}.tmp)
+set(tmp_static_tensor_operants_cc_path ${static_tensor_operants_cc_path}.tmp)
+set(tmp_static_tensor_operants_h_path ${static_tensor_operants_h_path}.tmp)
+set(tensor_api_yaml_path
+    ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/tensor_operants.yaml)
 
 message("Prim tensor operants code generator")
 execute_process(
@@ -114,7 +106,7 @@ execute_process(
     ${tmp_eager_tensor_operants_cc_path} --static_tensor_operants_header_path
     ${tmp_static_tensor_operants_h_path} --static_tensor_operants_source_path
     ${tmp_static_tensor_operants_cc_path} --api_prim_yaml_path
-    ${api_prim_yaml_path}
+    ${tensor_api_yaml_path}
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "Prim tensor operants generate failed, exiting.")

@@ -111,9 +111,7 @@ class TestCUDAGraphInStaticMode(unittest.TestCase):
             build_strategy.fix_op_run_order = True
             build_strategy.fuse_all_optimizer_ops = True
             compiled_program = paddle.static.CompiledProgram(
-                main
-            ).with_data_parallel(
-                loss_name=loss.name, build_strategy=build_strategy, places=place
+                main, build_strategy=build_strategy
             )
             image_t = scope.var(image.name).get_tensor()
             label_t = scope.var(label.name).get_tensor()
