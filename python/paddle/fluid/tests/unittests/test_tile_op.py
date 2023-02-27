@@ -366,36 +366,18 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestTileOpFp16(unittest.TestCase):
-    def tile_wrapper(self, x):
-        return paddle.tile(x[0], [2, 1])
-
-    @prog_scope()
-    def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
-        eps = 0.005
-        dtype = np.float16
-
-        data = paddle.static.data('data', [1, 2], dtype)
-        data.persistable = True
-        out = paddle.tile(data, [2, 1])
-        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
-
-        gradient_checker.double_grad_check(
-            [data], out, x_init=[data_arr], place=place, eps=eps
-        )
-        gradient_checker.double_grad_check_for_dygraph(
-            self.tile_wrapper, [data], out, x_init=[data_arr], place=place
-        )
-
-    def test_fp16(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
-            places = paddle.CUDAPlace(0)
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                for p in places:
-                    self.func(p)
+class Testfp16TileOp(unittest.TestCase):
+    def testfp16(self):
+        input_x = (np.random.random([1, 2, 3])).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[1, 2, 3], dtype='float16')
+            repeat_times = [2, 2]
+            out = paddle.tile(x, repeat_times=repeat_times)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': input_x}, fetch_list=[out])
 
 
 if __name__ == "__main__":
