@@ -163,12 +163,18 @@ class TestReshapeGradComp(unittest.TestCase):
                 fetch_list=[x_cotangent[0].name],
             )[0]
 
-        np.testing.assert_allclose(
-            actual=actual(self.primal, self.shape, self.cotangent),
-            desired=desired(self.primal, self.shape, self.cotangent),
-            rtol=self.rtol,
-            atol=self.rtol,
-        )
+        if (self.dtype == np.float16) and isinstance(
+            framework._current_expected_place(), framework.core.CPUPlace
+        ):
+            # reshape doesn't support fp16 kernel in cpu
+            pass
+        else:
+            np.testing.assert_allclose(
+                actual=actual(self.primal, self.shape, self.cotangent),
+                desired=desired(self.primal, self.shape, self.cotangent),
+                rtol=self.rtol,
+                atol=self.rtol,
+            )
         core._set_prim_backward_enabled(False)
 
 
