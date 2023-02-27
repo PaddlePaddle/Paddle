@@ -211,7 +211,7 @@ class TestTransposeGradComp(unittest.TestCase):
         if (self.dtype == np.float16) and isinstance(
             framework._current_expected_place(), framework.core.CPUPlace
         ):
-            # reshape doesn't support fp16 kernel in cpu
+            # reshape doesn't support fp16 kernel in cpu.
             pass
         else:
             np.testing.assert_allclose(
