@@ -196,7 +196,7 @@ def train_for_run_parallel():
             """
             return self._linear2(self._linear1(x))
 
-    paddle.distributed.dist.init_parallel_env()
+    paddle.distributed.init_parallel_env()
 
     layer = LinearNet()
     dp_layer = paddle.DataParallel(layer)
@@ -226,9 +226,7 @@ def _run_parallel(device_list):
         use_npu (bool): Whether running with NPU.
         device_list (int): The specified devices.
     """
-    paddle.distributed.dist.spawn(
-        train_for_run_parallel, nprocs=len(device_list)
-    )
+    paddle.distributed.spawn(train_for_run_parallel, nprocs=len(device_list))
 
 
 def run_check():
