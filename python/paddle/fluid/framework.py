@@ -127,6 +127,22 @@ _cuda_graph_enable_standalone_executor_ = os.environ.get(
     'FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR', 0
 )
 
+
+_enable_printing_extra_attrs_ = os.environ.get('FLAGS_print_extra_attrs', 0)
+
+if _enable_printing_extra_attrs_:
+    special_ap_attrs = {
+        "elementwise_add": [{"axis": -1}],
+        "elementwise_sub": [{"axis": -1}],
+        "elementwise_mul": [{"axis": -1}],
+        "elementwise_div": [{"axis": -1}],
+        "elementwise_min": [{"axis": -1}],
+        "elementwise_pow": [{"axis": -1}],
+        "elementwise_div": [{"axis": -1}],
+        "elementwise_mod": [{"axis": -1}],
+        "elementwise_floordiv": [{"axis": -1}],
+    }
+
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
 # build a fast execution system for dynamic mode. But we can't just remove all legacy
@@ -3064,6 +3080,11 @@ class Operator:
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
                 for attr_name in extra_attrs_map.keys():
+                    if _enable_printing_extra_attrs_:
+                        warnings.warn(
+                            "op %s has extra_attr: %s" % (type, attr_name)
+                        )
+
                     if (attr_name not in op_attrs) or (
                         op_attrs[attr_name] is None
                     ):
@@ -3072,6 +3093,26 @@ class Operator:
                         )
                     else:
                         self._update_desc_attr(attr_name, op_attrs[attr_name])
+
+                if _enable_printing_extra_attrs_:
+                    if type in special_ap_attrs:
+                        attrs = special_ap_attrs.get(type, [])
+                        for attr in attrs:
+                            a_name = list(attr.keys())[0]
+                            default_value = list(attr.values())[0]
+                            if (
+                                a_name in op_attrs.keys()
+                                and default_value != op_attrs[a_name]
+                            ):
+                                warnings.warn(
+                                    "op %s's attr %s = %d is not the default value: %s"
+                                    % (
+                                        type,
+                                        a_name,
+                                        op_attrs[a_name],
+                                        default_value,
+                                    )
+                                )
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():
