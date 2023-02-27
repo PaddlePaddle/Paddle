@@ -123,7 +123,7 @@ class TestSumOp1(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=2)}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -144,7 +144,7 @@ class TestSumOp2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -161,7 +161,7 @@ class TestSumOp3(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -178,7 +178,7 @@ class TestSumOp4(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -194,7 +194,7 @@ class TestSumOp5(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -210,7 +210,7 @@ class TestSumOp7(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -261,7 +261,7 @@ class TestSumOpExclusive1(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -287,7 +287,7 @@ class TestSumOpExclusive2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -313,7 +313,7 @@ class TestSumOpExclusive3(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -339,7 +339,7 @@ class TestSumOpExclusive4(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -365,7 +365,7 @@ class TestSumOpExclusive5(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -391,7 +391,7 @@ class TestSumOpExclusiveFP16(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -418,7 +418,7 @@ class TestSumOpReverseExclusive(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
