@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -26,6 +26,7 @@ paddle.enable_static()
 class TestBitwiseAnd(OpTest):
     def setUp(self):
         self.op_type = "bitwise_and"
+        self.python_api = paddle.tensor.logic.bitwise_and
         self.init_dtype()
         self.init_shape()
         self.init_bound()
@@ -116,6 +117,8 @@ class TestBitwiseAndInt64(TestBitwiseAnd):
 class TestBitwiseAndBool(TestBitwiseAnd):
     def setUp(self):
         self.op_type = "bitwise_and"
+        self.python_api = paddle.tensor.logic.bitwise_and
+
         self.init_shape()
 
         x = np.random.choice([True, False], self.x_shape)
@@ -130,6 +133,7 @@ class TestBitwiseAndBool(TestBitwiseAnd):
 class TestBitwiseOr(OpTest):
     def setUp(self):
         self.op_type = "bitwise_or"
+        self.python_api = paddle.tensor.logic.bitwise_or
         self.init_dtype()
         self.init_shape()
         self.init_bound()
@@ -220,6 +224,8 @@ class TestBitwiseOrInt64(TestBitwiseOr):
 class TestBitwiseOrBool(TestBitwiseOr):
     def setUp(self):
         self.op_type = "bitwise_or"
+        self.python_api = paddle.tensor.logic.bitwise_or
+
         self.init_shape()
 
         x = np.random.choice([True, False], self.x_shape)
@@ -234,6 +240,8 @@ class TestBitwiseOrBool(TestBitwiseOr):
 class TestBitwiseXor(OpTest):
     def setUp(self):
         self.op_type = "bitwise_xor"
+        self.python_api = paddle.tensor.logic.bitwise_xor
+
         self.init_dtype()
         self.init_shape()
         self.init_bound()
@@ -324,6 +332,8 @@ class TestBitwiseXorInt64(TestBitwiseXor):
 class TestBitwiseXorBool(TestBitwiseXor):
     def setUp(self):
         self.op_type = "bitwise_xor"
+        self.python_api = paddle.tensor.logic.bitwise_xor
+
         self.init_shape()
 
         x = np.random.choice([True, False], self.x_shape)
@@ -338,6 +348,8 @@ class TestBitwiseXorBool(TestBitwiseXor):
 class TestBitwiseNot(OpTest):
     def setUp(self):
         self.op_type = "bitwise_not"
+        self.python_api = paddle.tensor.logic.bitwise_not
+
         self.init_dtype()
         self.init_shape()
         self.init_bound()
@@ -408,6 +420,7 @@ class TestBitwiseNotInt64(TestBitwiseNot):
 class TestBitwiseNotBool(TestBitwiseNot):
     def setUp(self):
         self.op_type = "bitwise_not"
+        self.python_api = paddle.tensor.logic.bitwise_not
         self.init_shape()
 
         x = np.random.choice([True, False], self.x_shape)
