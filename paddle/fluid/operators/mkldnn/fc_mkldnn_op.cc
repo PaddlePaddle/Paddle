@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fc_op.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
@@ -155,42 +156,18 @@ class FCOneDNNHandler
     const auto fuse_alpha = ctx.Attr<float>("fuse_alpha");
     const auto fuse_beta = ctx.Attr<float>("fuse_beta");
 
-    if (fuse_activation == "hard_sigmoid") {
-      post_ops.append_eltwise(activation_scale,
-                              dnnl::algorithm::eltwise_linear,
-                              fuse_alpha,
-                              fuse_beta);
-      post_ops.append_eltwise(
-          activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
-    } else {
-      const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
-          {"abs", dnnl::algorithm::eltwise_abs},
-          {"clip", dnnl::algorithm::eltwise_clip},
-          {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-          {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
-          {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-          {"hard_swish", dnnl::algorithm::eltwise_hardswish},
-          {"leaky_relu", dnnl::algorithm::eltwise_relu},
-          {"mish", dnnl::algorithm::eltwise_mish},
-          {"relu", dnnl::algorithm::eltwise_relu},
-          {"relu6", dnnl::algorithm::eltwise_bounded_relu},
-          {"sigmoid", dnnl::algorithm::eltwise_logistic},
-          {"sqrt", dnnl::algorithm::eltwise_sqrt},
-          {"swish", dnnl::algorithm::eltwise_swish},
-          {"tanh", dnnl::algorithm::eltwise_tanh}};
+    const auto activation_map = phi::funcs::OneDNNActivationMap();
+    const auto& activation_type = activation_map.find(fuse_activation);
 
-      const auto& activation_type = activation_map.find(fuse_activation);
+    PADDLE_ENFORCE_NE(
+        activation_type,
+        activation_map.end(),
+        phi::errors::InvalidArgument(
+            "Activation '%s' not found in oneDNN algorithms mapper",
+            fuse_activation));
 
-      PADDLE_ENFORCE_NE(
-          activation_type,
-          activation_map.end(),
-          phi::errors::InvalidArgument(
-              "Activation '%s' not found in oneDNN algorithms mapper",
-              fuse_activation));
-
-      post_ops.append_eltwise(
-          activation_scale, activation_type->second, fuse_alpha, fuse_beta);
-    }
+    post_ops.append_eltwise(
+        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
   }
 
   // Correct output scale, to take into account scaling of input and weights

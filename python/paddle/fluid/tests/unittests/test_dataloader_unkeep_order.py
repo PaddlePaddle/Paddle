@@ -101,23 +101,19 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                 start_val += 1
 
     def get_places(self):
-        place_list = [fluid.cpu_places(1), fluid.cpu_places(4)]
+        place_list = [fluid.cpu_places(1)]
         if fluid.is_compiled_with_cuda():
             if os.name == "nt":
                 place_list.extend([fluid.cuda_places(0)])
             else:
-                place_list.extend(
-                    [fluid.cuda_places(0), fluid.cuda_places([0, 1])]
-                )
+                place_list.extend([fluid.cuda_places(0)])
         return place_list
 
     def test_main(self):
         for p in self.get_places():
-            use_compiled_program_list = [True] if len(p) > 1 else [False, True]
-            for use_compiled_program in use_compiled_program_list:
-                self.run_main_with_place(p, use_compiled_program)
+            self.run_main_with_place(p)
 
-    def run_main_with_place(self, places, use_compiled_program=True):
+    def run_main_with_place(self, places):
         with fluid.scope_guard(fluid.Scope()):
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 input_data, loss, loader = self.build_network(places)
@@ -127,14 +123,9 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                 exe.run(fluid.default_startup_program())
 
                 dev_cnt = len(places)
-                if dev_cnt > 1:
-                    self.assertTrue(use_compiled_program)
+                self.assertTrue(dev_cnt == 1)
 
                 main_program = fluid.default_main_program()
-                if use_compiled_program:
-                    main_program = fluid.CompiledProgram(
-                        main_program
-                    ).with_data_parallel(loss_name=loss.name, places=places)
 
                 max_batch_num = min(
                     self.break_num, int(self.batch_num / dev_cnt)

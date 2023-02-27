@@ -880,7 +880,7 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
 void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::MatmulWithInputOps matmul_pattern{pattern, name_scope_};
+  patterns::FusedMatmul matmul_pattern{pattern, name_scope_};
   matmul_pattern(with_residual);
 
   int quantize_matmul_count = 0;
@@ -894,15 +894,7 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph, bool with_residual) const {
       LogQuantizationDisabled(matmul_op);
       return;
     }
-    GET_IR_NODE_FROM_SUBGRAPH(prev_op_x, prev_op_x, matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(prev_op_y, prev_op_y, matmul_pattern);
 
-    // skip if prev ops are not quantized
-    if (!IsOpDequantized(prev_op_x) && !IsOpDequantized(prev_op_y)) {
-      MarkAndLogCannotQuantizeOp(matmul_op,
-                                 "No other quantizable operators nearby");
-      return;
-    }
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_x, matmul_in_x, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_pattern);
