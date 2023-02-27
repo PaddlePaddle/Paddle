@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -41,6 +41,29 @@ class TestUnbind(unittest.TestCase):
 
         assert np.array_equal(res_1, input_1[0, 0:100])
         assert np.array_equal(res_2, input_1[1, 0:100])
+
+    def test_unbind_static_fp16_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([2, 3]).astype("float16")
+
+                x = paddle.static.data(name="x", shape=[2, 3], dtype="float16")
+                y = paddle.unbind(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
+                assert np.array_equal(res[0], input[0, :])
+                assert np.array_equal(res[1], input[1, :])
 
     def test_unbind_dygraph(self):
         with fluid.dygraph.guard():
@@ -103,6 +126,8 @@ class TestUnbindOp(OpTest):
         self.outputs = {
             'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
         }
+        self.python_api = paddle.unbind
+        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
 
     def get_dtype(self):
         return "float64"
@@ -192,6 +217,7 @@ class TestUnbindBF16Op(OpTest):
                 for i in range(len(self.out))
             ]
         }
+        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
 
     def get_dtype(self):
         return np.uint16

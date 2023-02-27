@@ -27,7 +27,13 @@ class TestGetGradOpDescPrimEnabled(unittest.TestCase):
         self.no_grad_var = set()
         self.grad_sub_block = tuple()
         self.desired_ops = 'tanh_grad'
-        self.desired_ops_no_skip = ('pow', 'scale', 'elementwise_mul')
+        self.desired_ops_no_skip = (
+            'fill_constant',
+            'elementwise_pow',
+            'fill_constant',
+            'elementwise_sub',
+            'elementwise_mul',
+        )
         paddle.enable_static()
         block = framework.Block(framework.Program(), 0)
         block.append_op(

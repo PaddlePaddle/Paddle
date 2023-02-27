@@ -20,9 +20,13 @@ from functools import reduce
 
 import paddle
 from paddle.framework import core
-from paddle.incubate.fleet.parameter_server.ir import vars_metatools
-from paddle.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin
-from paddle.incubate.fleet.parameter_server.mode import DistributedMode
+from paddle.incubate.distributed.fleet.parameter_server.ir import vars_metatools
+from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
+    RoundRobin,
+)
+from paddle.incubate.distributed.fleet.parameter_server.mode import (
+    DistributedMode,
+)
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "gradient_clip"
