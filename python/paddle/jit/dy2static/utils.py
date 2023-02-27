@@ -1493,7 +1493,7 @@ def _param_grad_names(program_desc, params):
     Parse PARAM@GARD name from original train and infer program.
     """
     names = []
-    # NOTE: `names` and `self._params` must be in the same order so that
+    # NOTE: `names` and `params` must be in the same order so that
     # the param grad name can be set correctly in the run_program.
     for param in params:
         candidate = [
@@ -1523,3 +1523,25 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
             var_name = op.output('Out')[0]
             names.append(var_name)
     return names
+
+
+def prim_or_cinn_is_enabled(build_strategy):
+    if build_strategy is not None and build_strategy.build_cinn_pass:
+        return True
+
+    if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
+        return True
+
+    env_flags = [
+        'FLAGS_prim_forward',
+        'FLAGS_prim_backward',
+        'FLAGS_prim_all',
+        'FLAGS_use_cinn',
+    ]
+    for flag in env_flags:
+        value = os.getenv(flag)
+        if value is None:
+            continue
+        elif value.lower() in ['true', '1']:
+            return True
+    return False

@@ -1263,6 +1263,7 @@ def set_grad_var_shape(program, dist_context):
                 "relu_grad",
                 "exp_grad",
                 "sigmoid_grad",
+                "unsqueeze2_grad",
             ]
             forward_list = [
                 "reshape2",
@@ -1283,6 +1284,7 @@ def set_grad_var_shape(program, dist_context):
                 "relu",
                 "exp",
                 "sigmoid",
+                "unsqueeze2",
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1424,9 +1426,6 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
 def naive_set_dist_op_attr_for_program_by_mesh(
     new_op, process_mesh, ctx, is_recompute=False
 ):
-    # hack to skip coalesce var for dist attr
-    if not is_recompute:
-        return
     assert process_mesh is not None
 
     new_op_dist_attr = OperatorDistAttr()
@@ -2312,15 +2311,31 @@ def insert_dependencies_for_vars(
             },
             outputs={"Out": post_vars},
         )
-
-    # depend_op.desc.set_type("depend")
     depend_op._set_attr(OP_ROLE_KEY, oprole)
-    # depend_op.desc.set_input("Dep", [first_var.name])
-    # self.desc.set_output(out_proto.name, out_arg_names)
 
-    naive_set_dist_op_attr_for_program_by_mesh(
-        depend_op, process_mesh, dist_context, is_recompute
-    )
+    # TODO: condition can be removed when add correct dist_attr for coalesce vars and ops in sharding_pass
+    if is_recompute or process_mesh != [-1]:
+        depend_op_dist_attr = OperatorDistAttr()
+        depend_op_dist_attr.impl_idx = 0
+        depend_op_dist_attr.impl_type = "default"
+        depend_op_dist_attr.process_mesh = process_mesh
+        depend_op_dist_attr.is_recompute = is_recompute
+        for input_varname in depend_op.desc.input_arg_names():
+            var = block.var(input_varname)
+            mapping = dist_context.get_tensor_dist_attr_for_program(
+                var
+            ).dims_mapping
+            depend_op_dist_attr.set_input_dims_mapping(input_varname, mapping)
+        for output_varname in depend_op.desc.output_arg_names():
+            var = block.var(output_varname)
+            mapping = dist_context.get_tensor_dist_attr_for_program(
+                var
+            ).dims_mapping
+            depend_op_dist_attr.set_output_dims_mapping(output_varname, mapping)
+        dist_context.set_op_dist_attr_for_program(
+            depend_op, depend_op_dist_attr
+        )
+
     if op_namescope is not None:
         depend_op._set_attr('op_namescope', "/{}".format(op_namescope))
 

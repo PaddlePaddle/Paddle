@@ -20,11 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/type_defs.h"
 
 namespace paddle {
@@ -278,6 +278,101 @@ static void SetAllocationForUninitializedDenseTensor(
       std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
 
   dense_tensor->ResetHolder(shared_allocation);
+}
+
+phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
+  auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
+  if (variable.IsType<phi::DenseTensor>()) {
+    const auto& tensor = variable.Get<phi::DenseTensor>();
+    PADDLE_ENFORCE_EQ(
+        tensor.numel(),
+        1UL,
+        platform::errors::InvalidArgument("The DenseTensor used to construct "
+                                          "the Scalar contains more than 1 "
+                                          "value, it contains `%d` values.",
+                                          tensor.numel()));
+    if (!platform::is_same_place(tensor.place(), expected_place)) {
+      phi::DenseTensor tmp_tensor;
+      framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+      return {tmp_tensor};
+    } else {
+      return {tensor};
+    }
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupport casting input `%s` type to Scalar when call pt "
+        "kernel.",
+        framework::ToTypeName(variable.Type())));
+  }
+}
+
+phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
+  if (variable.IsType<phi::DenseTensor>()) {
+    const auto& tensor = variable.Get<phi::DenseTensor>();
+    return paddle::experimental::MakePhiIntArray(tensor);
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupport casting input `%s` type to IntArray when call pt "
+        "kernel.",
+        framework::ToTypeName(variable.Type())));
+  }
+}
+
+// TODO(chentianyu03): Inplace with IntArray constructor
+phi::IntArray MakePhiIntArrayFromVarList(
+    const std::vector<framework::Variable*>& variable_list) {
+  if (variable_list.size() == 0) {
+    return phi::IntArray();
+  }
+  auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
+
+  std::vector<int64_t> vector_data;
+  vector_data.reserve(variable_list.size());
+
+  for (auto* var : variable_list) {
+    paddle::experimental::DataType data_type;
+    if (var->IsType<phi::DenseTensor>()) {
+      const auto& tensor = var->Get<phi::DenseTensor>();
+      data_type = tensor.dtype();
+      if (data_type == paddle::experimental::DataType::INT64) {
+        const auto& tensor = var->Get<phi::DenseTensor>();
+        if (tensor.IsInitialized() &&
+            !platform::is_same_place(tensor.place(), expected_place)) {
+          phi::DenseTensor tmp_tensor;
+          framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+          vector_data.push_back(*tmp_tensor.data<int64_t>());
+        } else {
+          vector_data.push_back(*tensor.data<int64_t>());
+        }
+      } else if (data_type == paddle::experimental::DataType::INT32) {
+        const auto& tensor = var->Get<phi::DenseTensor>();
+        if (tensor.IsInitialized() &&
+            !platform::is_same_place(tensor.place(), expected_place)) {
+          phi::DenseTensor tmp_tensor;
+          framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+          vector_data.push_back(*tmp_tensor.data<int32_t>());
+        } else {
+          vector_data.push_back(*tensor.data<int32_t>());
+        }
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Data type error. When cast a LoDTensor to VectorTensor, "
+            "the data type of LoDTensor must be int32 or int64, "
+            "but now data type is %s.",
+            data_type));
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupport casting input `%s` type to VectorTensor when call pt "
+          "kernel.",
+          framework::ToTypeName(var->Type())));
+    }
+  }
+
+  phi::IntArray result{vector_data};
+  result.SetFromTensor(true);
+
+  return result;
 }
 
 }  // namespace framework
