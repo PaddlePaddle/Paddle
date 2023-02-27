@@ -62,10 +62,10 @@ class TestSoftmaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "softmax"
-        self.prim_op_type = "comp"
         self.python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
+        self.init_prim_op()
         self.init_data_type()
         self.init_kernel_type()
         self.shape = self.get_shape()
@@ -85,6 +85,9 @@ class TestSoftmaxOp(OpTest):
 
     def init_kernel_type(self):
         pass
+
+    def init_prim_op(self):
+        self.prim_op_type = "comp"
 
     def test_check_output(self):
         if self.use_cudnn:
@@ -115,7 +118,7 @@ class TestSoftmaxOp(OpTest):
 
 
 class TestSoftmaxOpfp32(TestSoftmaxOp):
-    def init_kernel_type(self):
+    def init_data_type(self):
         self.dtype = np.float32
 
 
@@ -125,15 +128,6 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
 
     def get_output(self):
         return np.array(1.0).astype(self.dtype)
-        self.enable_cinn = False
-
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        if self.use_cudnn:
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
-        else:
-            self.check_output(check_prim=True)
 
 
 @unittest.skipIf(
@@ -148,6 +142,9 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
 
     def init_kernel_type(self):
         self.use_cudnn = True
+
+    def init_prim_op(self):
+        pass
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):

@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle import enable_static
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 
@@ -55,6 +56,7 @@ class TestSoftmaxMKLDNNOpInt8(OpTest):
         self.init_data_type()
         self.shape = self.get_shape()
         self.axis = self.get_axis()
+        self.python_api = F.softmax
         np.random.seed(0)
 
         self.x = self.get_input()
