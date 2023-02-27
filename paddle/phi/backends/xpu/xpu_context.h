@@ -24,6 +24,10 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
+namespace Eigen {
+struct DefaultDevice;
+}  // namespace Eigen
+
 namespace xpu = baidu::xpu::api;
 
 namespace phi {
