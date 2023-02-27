@@ -112,7 +112,7 @@ void CPUQuantizePass::QuantizeInput(Graph* g,
   q_desc.SetAttr("is_negative_input", !is_input_unsigned);
 
   // fix to fc format error
-  if (op->Op()->Type() == "fc" &&
+  if (op->Op()->Type() == "fused_fc" &&
       op->Op()->GetAttrIfExists<int>("in_num_col_dims") == 2) {
     q_desc.SetAttr(
         "output_format",

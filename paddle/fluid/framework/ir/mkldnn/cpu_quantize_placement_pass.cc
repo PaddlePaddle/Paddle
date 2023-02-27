@@ -28,7 +28,7 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       std::unordered_set<std::string>(
           {"concat",          "conv2d",          "depthwise_conv2d",
            "fused_conv2d",    "fused_conv3d",    "elementwise_add",
-           "elementwise_mul", "elementwise_sub", "fc",
+           "elementwise_mul", "elementwise_sub", "fused_fc",
            "matmul",          "nearest_interp",  "nearest_interp_v2",
            "pool2d",          "prior_box",       "reshape2",
            "transpose2",      "fusion_gru",      "fusion_lstm",
