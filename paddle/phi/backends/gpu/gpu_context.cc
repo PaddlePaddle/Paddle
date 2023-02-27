@@ -502,7 +502,6 @@ struct GPUContext::Impl {
     std::call_once(flag_sparse_, [&]() {
       if (!sparse_handle_) {
         if (!sparse_handle_creator_) {
-          std::cout << "GetSparseHandle\n";
           phi::InitSparseHandle(&sparse_handle_, stream());
         } else {
           sparse_handle_ = sparse_handle_creator_();
@@ -661,7 +660,6 @@ struct GPUContext::Impl {
     std::call_once(flag_sparse_, [&]() {
       if (!sparse_handle_) {
         if (!sparse_handle_creator_) {
-          std::cout << "CusparseCall\n";
           phi::InitSparseHandle(&sparse_handle_, stream());
         } else {
           sparse_handle_ = sparse_handle_creator_();
