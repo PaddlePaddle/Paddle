@@ -1685,7 +1685,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "pad") {
+    if (op_type == "pad" || op_type == "pad3d") {
       if (!desc.HasAttr("pad_value") || !desc.HasAttr("paddings")) return false;
       const float pad_value =
           PADDLE_GET_CONST(float, desc.GetAttr("pad_value"));
@@ -2597,6 +2597,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "batch_norm",
       "concat",
       "tanh",
+      "pad3d",
       "pad",
       "elementwise_add",
       "elementwise_sub",
@@ -2749,6 +2750,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "batch_norm",
       "concat",
       "tanh",
+      "pad3d",
       "pad",
       "elementwise_add",
       "elementwise_sub",
