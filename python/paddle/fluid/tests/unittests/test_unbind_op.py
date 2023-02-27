@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -103,6 +103,8 @@ class TestUnbindOp(OpTest):
         self.outputs = {
             'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
         }
+        self.python_api = paddle.unbind
+        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
 
     def get_dtype(self):
         return "float64"
@@ -192,6 +194,7 @@ class TestUnbindBF16Op(OpTest):
                 for i in range(len(self.out))
             ]
         }
+        self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
 
     def get_dtype(self):
         return np.uint16
