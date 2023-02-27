@@ -107,6 +107,4 @@ class Allocator {
   virtual bool IsAllocThreadSafe() const { return false; }
 };
 
-PADDLE_API Allocator* GetAllocator(const Place& place);
-
 }  // namespace phi

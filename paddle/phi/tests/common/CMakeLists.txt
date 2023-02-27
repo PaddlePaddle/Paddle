@@ -24,10 +24,6 @@ if(WITH_GPU)
     SRCS test_scalar.cu
     DEPS scalar api_scalar)
   nv_test(
-    test_allocator
-    SRCS test_allocator.cu
-    DEPS memory place device_context)
-  nv_test(
     transform_test
     SRCS transform_test.cu
     DEPS memory place device_context)
@@ -40,9 +36,5 @@ if(WITH_ROCM)
   hip_test(
     transform_test
     SRCS transform_test.cu
-    DEPS memory place device_context)
-  nv_test(
-    test_allocator
-    SRCS test_allocator.cu
     DEPS memory place device_context)
 endif()

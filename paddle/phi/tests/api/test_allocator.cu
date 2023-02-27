@@ -14,24 +14,13 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include "paddle/phi/core/allocator.h"
+#include "paddle/phi/api/include/context_pool.h"
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/device_context.h"
-
-using paddle::memory::Copy;
-
-template <typename T>
-class Scale {
- public:
-  explicit Scale(const T& scale) : scale_(scale) {}
-  HOSTDEVICE T operator()(const T& a) const { return a * scale_; }
-
- private:
-  T scale_;
-};
 
 TEST(Allocator, CPU) {
   phi::Allocator* allocator = phi::GetAllocator(phi::CPUPlace());
@@ -49,6 +38,19 @@ TEST(Allocator, CPU) {
     ASSERT_NEAR(cpu_buf[i], static_cast<float>(2.0 + i), 1e-5);
   }
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+using paddle::memory::Copy;
+
+template <typename T>
+class Scale {
+ public:
+  explicit Scale(const T& scale) : scale_(scale) {}
+  HOSTDEVICE T operator()(const T& a) const { return a * scale_; }
+
+ private:
+  T scale_;
+};
 
 TEST(Allocator, GPU) {
   phi::GPUPlace gpu0(0);
@@ -68,3 +70,4 @@ TEST(Allocator, GPU) {
     ASSERT_NEAR(cpu_buf[i], static_cast<float>(i + 1), 1e-5);
   }
 }
+#endif

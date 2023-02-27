@@ -17,12 +17,4 @@ limitations under the License. */
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/core/device_context.h"
 
-namespace phi {
-
-PADDLE_API Allocator* GetAllocator(const Place& place) {
-  const phi::DeviceContext* dev_ctx =
-      paddle::experimental::DeviceContextPool::Instance().Get(place);
-  return const_cast<::phi::Allocator*>(&dev_ctx->GetAllocator());
-}
-
-}  // namespace phi
+namespace phi {}  // namespace phi
