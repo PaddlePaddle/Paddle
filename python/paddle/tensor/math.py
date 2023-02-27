@@ -4797,7 +4797,7 @@ def heaviside(x, y, name=None):
             #     [0.        , 1.        , 0.30000001]]
     """
     if in_dygraph_mode():
-        return _C_ops.elementwise_heaviside(x, y)
+        return _C_ops.heaviside(x, y)
     else:
         op_type = 'elementwise_heaviside'
         return _elementwise_op(LayerHelper(op_type, **locals()))
