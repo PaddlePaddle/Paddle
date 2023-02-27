@@ -150,6 +150,22 @@ Tensor Tensor::operator-() const {
   return scale(-1.0, 0.0, true);
 }
 
+Tensor Tensor::operator~() const {
+  return bitwise_not();
+}
+
+Tensor Tensor::operator&(const Tensor &other) const {
+  return bitwise_and(other);
+}
+
+Tensor Tensor::operator|(const Tensor &other) const {
+  return bitwise_or(other);
+}
+
+Tensor Tensor::operator^(const Tensor &other) const {
+  return bitwise_xor(other);
+}
+
 Tensor Tensor::pow(const Tensor& y) const {
   return paddle::OperantsManager::Instance().pow(static_cast<const Tensor &>(*this), y);
 }
