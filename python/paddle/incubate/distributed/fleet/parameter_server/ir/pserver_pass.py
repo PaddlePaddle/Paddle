@@ -15,7 +15,7 @@
 import collections
 
 from paddle.framework import core
-from paddle.incubate.fleet.parameter_server.ir.public import (
+from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     _get_lr_ops,
     _get_optimize_ops,
     _get_varname_parts,
