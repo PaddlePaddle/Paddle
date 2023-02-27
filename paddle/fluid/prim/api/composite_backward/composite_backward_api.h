@@ -254,6 +254,25 @@ void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void concat_grad(const std::vector<const Tensor*>& x,
+        const Tensor& out_grad,
+        const Scalar& axis,
+        std::vector<Tensor>* x_grad) {
+  int axis_value = axis.to<int>();
+  int rank = x[0]->dims();
+  if (axis_value < 0){
+      axis_value = axis_value + rank;
+  }
+  axis_value = axis_value > 0 ? axis_value : 0;
+  //std::vector<int>sections;
+  int x_num = x.size();
+  std::vector<Tensor>*x_grad_tmp = split<T>(out_grad, phi::IntArray(x_num), axis);
+  for (int i = 0; i < x_num; ++i){
+      set_output<T>(x_grad_tmp->at(i), x_grad->at(i));
+  }
+}
+
+template <typename T>
 void multiply_grad(const Tensor& x,
                    const Tensor& y,
                    const Tensor& out_grad,

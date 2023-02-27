@@ -11,6 +11,7 @@
 - abs
 - assign
 - concat
+- split
 - elementwise_pow
 - floor
 - gather_nd

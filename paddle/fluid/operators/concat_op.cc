@@ -153,6 +153,28 @@ class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class ConcatCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    std::vector<paddle::experimental::Tensor> input = this->GetSingleForwardInput("X");
+    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    std::vector<paddle::experimental::Tensor> input_grad = this->GetSingleInputGrad("X");
+
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    auto dx_ptr = this->GetOutputPtr(&input_grad);
+    std::string dx_name = this->GetOutputName(input_grad);
+
+    VLOG(6) << "Runing concat_grad composite func";
+    prim::concat_grad<prim::DescTensor>(input,
+                                       out_grad,
+                                       axis,
+                                       dx_ptr);
+    this->RecoverOutputName(input_grad, dx_name);
+  }
+};
+
 template <typename T>
 class ConcatDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
