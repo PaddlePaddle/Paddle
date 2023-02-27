@@ -21,11 +21,40 @@ import paddle
 import paddle.fluid.core as core
 
 
+def convert_to_dtype_(dtype):
+    if dtype == 5:
+        return core.VarDesc.VarType.FP32
+    elif dtype == 6:
+        return core.VarDesc.VarType.FP64
+    elif dtype == 4:
+        return core.VarDesc.VarType.FP16
+    elif dtype == 2:
+        return core.VarDesc.VarType.INT32
+    elif dtype == 1:
+        return core.VarDesc.VarType.INT16
+    elif dtype == 3:
+        return core.VarDesc.VarType.INT64
+    elif dtype == 0:
+        return core.VarDesc.VarType.BOOL
+    elif dtype == 22:
+        return core.VarDesc.VarType.BF16
+    elif dtype == 20:
+        return core.VarDesc.VarType.UINT8
+    elif dtype == 21:
+        return core.VarDesc.VarType.INT8
+    elif dtype == np.complex64:
+        raise ValueError("Not supported dtype %s" % dtype)
+
+
+def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
+    return paddle.full_like(x, value, convert_to_dtype_(out_dtype), name)
+
+
 class TestFillAnyLikeOp(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
         self.prim_op_type = "comp"
-        self.python_api = paddle.full_like
+        self.python_api = fill_any_like_wrapper
         self.dtype = np.int32
         self.value = 0.0
         self.init()
@@ -60,7 +89,7 @@ class TestFillAnyLikeOpBfloat16(OpTest):
     def setUp(self):
         self.op_type = "fill_any_like"
         self.prim_op_type = "comp"
-        self.python_api = paddle.full_like
+        self.python_api = fill_any_like_wrapper
         self.dtype = np.uint16
         self.value = 0.0
         self.inputs = {'X': np.random.random((219, 232)).astype(np.float32)}
@@ -77,7 +106,7 @@ class TestFillAnyLikeOpBfloat16(OpTest):
         self.check_output_with_place(place, check_prim=True)
 
     def skip_cinn(self):
-        pass
+        self.enable_cinn = False
 
 
 class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
@@ -108,7 +137,7 @@ class TestFillAnyLikeOpType(TestFillAnyLikeOp):
     def setUp(self):
         self.op_type = "fill_any_like"
         self.prim_op_type = "comp"
-        self.python_api = paddle.full_like
+        self.python_api = fill_any_like_wrapper
         self.dtype = np.int32
         self.value = 0.0
         self.init()

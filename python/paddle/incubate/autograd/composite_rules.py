@@ -280,5 +280,5 @@ def fill_any_like(x, fill_value, dtype, place=None):
     """op name: full_like  op type name: fill_any_like."""
     """arg place is not used, add it here to keep same as python api."""
     dtype = dtypes.dtype(dtype)
-    val = full(x.shape, fill_value, dtype, place)
+    val = full(x.shape, fill_value, dtype)
     return val
