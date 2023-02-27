@@ -16,6 +16,7 @@
 #include <unordered_map>
 
 #include "paddle/ir/builtin_type.h"
+#include "paddle/ir/dialect.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/type_base.h"
 
@@ -39,20 +40,22 @@ TEST(type_test, type_id) {
   }
 }
 
-TEST(type_test, abstract_type) {
+TEST(type_test, type_base) {
   class TypeA {};
 
+  struct FakeDialect : ir::Dialect {
+    explicit FakeDialect(ir::IrContext *context)
+        : ir::Dialect(name(), context, ir::TypeId::get<FakeDialect>()) {}
+    static const std::string name() { return "fake"; }
+  };
+
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::Dialect *fake_dialect = ctx->GetOrRegisterDialect<FakeDialect>();
+
   ir::TypeId a_id = ir::TypeId::get<TypeA>();
-  ir::AbstractType abstract_type_a = ir::AbstractType::get(a_id);
+  ir::AbstractType abstract_type_a = ir::AbstractType::get(a_id, *fake_dialect);
 
   EXPECT_EQ(abstract_type_a.type_id(), a_id);
-}
-
-TEST(type_test, type_storage) {
-  class TypeA {};
-
-  ir::TypeId a_id = ir::TypeId::get<TypeA>();
-  ir::AbstractType abstract_type_a = ir::AbstractType::get(a_id);
 
   ir::TypeStorage storage_a(&abstract_type_a);
 
@@ -119,9 +122,19 @@ class IntegerType : public ir::Type {
   DECLARE_TYPE_UTILITY_FUNCTOR(IntegerType, IntegerTypeStorage);
 };
 
+struct IntegerDialect : ir::Dialect {
+  explicit IntegerDialect(ir::IrContext *context)
+      : ir::Dialect(name(), context, ir::TypeId::get<IntegerDialect>()) {
+    RegisterType<IntegerType>();
+  }
+  static const std::string name() { return "integer"; }
+};
+
 TEST(type_test, parameteric_type) {
   ir::IrContext *ctx = ir::IrContext::Instance();
-  REGISTER_TYPE_2_IRCONTEXT(IntegerType, ctx);
+
+  ctx->GetOrRegisterDialect<IntegerDialect>();
+
   ir::Type int1_1 = IntegerType::get(ctx, 1, 0);
   ir::Type int1_2 = IntegerType::get(ctx, 1, 0);
   EXPECT_EQ(int1_1 == int1_2, 1);

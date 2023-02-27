@@ -14,34 +14,22 @@
 
 #pragma once
 
-#include "paddle/ir/type.h"
+#include "paddle/ir/dialect.h"
 
 namespace ir {
 ///
-/// \brief This macro is used to get a list of all built-in types in this file.
+/// \brief Built-in Dialect: automatically registered into global IrContext,
+/// all built-in types defined in builtin_type.h will be registered in this
+/// Dialect.
 ///
-#define GET_BUILT_IN_TYPE_LIST ir::Float32Type, ir::Int32Type
-
-///
-/// \brief Definitions of built-in type classes. The built-in type object get
-/// method is as follows: Type fp32 = Float32Type::get(ctx);
-///
-class Float32Type : public ir::Type {
+class BuiltinDialect : public ir::Dialect {
  public:
-  using Type::Type;
+  explicit BuiltinDialect(ir::IrContext *context);
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(Float32Type, ir::TypeStorage);
+  static const std::string name() { return "builtin"; }
 
-  static Float32Type get(ir::IrContext *context);
-};
-
-class Int32Type : public ir::Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(Int32Type, ir::TypeStorage);
-
-  static Int32Type get(ir::IrContext *context);
+ private:
+  void initialize();
 };
 
 }  // namespace ir

@@ -83,12 +83,12 @@ StorageManager::StorageBase *StorageManager::GetParametricStorageTypeImpl(
 
 StorageManager::StorageBase *StorageManager::GetParameterlessStorageTypeImpl(
     TypeId type_id) {
-  std::lock_guard<ir::SpinLock> guard(parameterless_instances_lock_);
+  std::lock_guard<ir::SpinLock> guard(parameterless_instance_lock_);
   VLOG(4) << "StorageManager get parameterless storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
-  if (parameterless_instances_.find(type_id) == parameterless_instances_.end())
+  if (parameterless_instance_.find(type_id) == parameterless_instance_.end())
     throw("TypeId not found in IrContext.");
-  StorageBase *parameterless_instance = parameterless_instances_[type_id];
+  StorageBase *parameterless_instance = parameterless_instance_[type_id];
   return parameterless_instance;
 }
 
@@ -102,12 +102,12 @@ void StorageManager::RegisterParametricStorageTypeImpl(TypeId type_id) {
 
 void StorageManager::RegisterParameterlessStorageTypeImpl(
     TypeId type_id, std::function<StorageBase *()> constructor) {
-  std::lock_guard<ir::SpinLock> guard(parameterless_instances_lock_);
+  std::lock_guard<ir::SpinLock> guard(parameterless_instance_lock_);
   VLOG(4) << "StorageManager register parameterless storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
-  if (parameterless_instances_.find(type_id) != parameterless_instances_.end())
+  if (parameterless_instance_.find(type_id) != parameterless_instance_.end())
     throw("storage class already registered");
-  parameterless_instances_.emplace(type_id, constructor());
+  parameterless_instance_.emplace(type_id, constructor());
 }
 
 }  // namespace ir
