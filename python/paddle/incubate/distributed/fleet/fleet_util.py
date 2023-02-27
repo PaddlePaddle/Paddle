@@ -54,13 +54,13 @@ class FleetUtil:
     def __init__(self, mode="pslib"):
         global fleet
         if mode == "pslib":
-            from paddle.incubate.fleet.parameter_server.pslib import (
+            from paddle.incubate.distributed.fleet.parameter_server.pslib import (
                 fleet as fleet_pslib,
             )
 
             fleet = fleet_pslib
         elif mode == "transpiler":
-            from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
+            from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
                 fleet as fleet_transpiler,
             )
 

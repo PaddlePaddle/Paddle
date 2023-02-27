@@ -511,7 +511,9 @@ def avg_pool3d(
     else:
         op_type = "pool3d"
         helper = LayerHelper(op_type, **locals())
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'avg_pool3d'
+        )
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Out": pool_out}
