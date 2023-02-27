@@ -139,25 +139,64 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     int nums_any_ops = dequantize_linear_op_out->outputs.size();
     for (int i = 0; i < nums_any_ops; ++i) {
       auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
-      any_op_desc->SetAttr("Input_scale_" + quantize_linear_op_x->Var()->Name(),
-                           input_scale);
+      // if (any_op_desc->Type() == "batch_norm" || any_op_desc->Type() ==
+      // "relu"  || any_op_desc->Type() == "hard_swish" || any_op_desc->Type()
+      // == "elementwise_add"    || any_op_desc->Type() == "elementwise_mul" ||
+      // any_op_desc->Type() == "pool2d")
+      if (quantize_linear_op_x->Var()->Name() != "batch_norm_0.tmp_2" &&
+          quantize_linear_op_x->Var()->Name() != "conv2d_73.tmp_1" &&
+          quantize_linear_op_x->Var()->Name() != "relu_7.tmp_0" &&
+          quantize_linear_op_x->Var()->Name() != "hard_sigmoid_0.tmp_0" &&
+          quantize_linear_op_x->Var()->Name() != "batch_norm_6.tmp_2" &&
+          quantize_linear_op_x->Var()->Name() != "hard_swish_0.tmp_0" &&
+          any_op_desc->Type() != "conv2d" &&
+          any_op_desc->Type() != "depthwise_conv2d" &&
+          any_op_desc->Type() != "conv2d_transpose" &&
+          any_op_desc->Type() != "conv2d_fusion" &&
+          any_op_desc->Type() != "depthwise_conv2d_transpose") {
+        std::cout << "remove q dq with  :" << any_op_desc->Type() << std::endl;
+        std::cout << "var name   :" << quantize_linear_op_x->Var()->Name()
+                  << std::endl;
 
-      // link x to any_op2
-      any_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
-                               quantize_linear_op_x->Var()->Name());
-      any_op_desc->Flush();
-      IR_NODE_LINK_TO(quantize_linear_op_x,
-                      dequantize_linear_op_out->outputs[i]);
+        any_op_desc->SetAttr(
+            "Input_scale_" + quantize_linear_op_x->Var()->Name(), input_scale);
+
+        // link x to any_op2
+        any_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
+                                 quantize_linear_op_x->Var()->Name());
+        any_op_desc->Flush();
+        IR_NODE_LINK_TO(quantize_linear_op_x,
+                        dequantize_linear_op_out->outputs[i]);
+      }
     }
+
     // Forbid removing weight tensor when weight is shared between ops
-    if (quantize_linear_op_scale->outputs.size() <= 1UL)
-      nodes2rm.insert(quantize_linear_op_scale);
-    nodes2rm.insert(quantize_linear_op);
-    nodes2rm.insert(quantize_linear_op_out);
-    nodes2rm.insert(dequantize_linear_op);
-    nodes2rm.insert(dequantize_linear_op_out);
-    GraphSafeRemoveNodes(graph, nodes2rm);
-    found_count++;
+    // if (dequantize_linear_op_out->outputs[0]->Op()->Type() == "batch_norm" ||
+    // dequantize_linear_op_out->outputs[0]->Op()->Type() == "relu" ||
+    // dequantize_linear_op_out->outputs[0]->Op()->Type() == "hard_swish"  ||
+    // dequantize_linear_op_out->outputs[0]->Op()->Type() ==  "elementwise_add"
+    // || dequantize_linear_op_out->outputs[0]->Op()->Type() ==
+    // "elementwise_mul" || dequantize_linear_op_out->outputs[0]->Op()->Type()
+    // =="pool2d")
+    auto type_test = dequantize_linear_op_out->outputs[0]->Op()->Type();
+    if (quantize_linear_op_x->Var()->Name() != "batch_norm_0.tmp_2" &&
+        quantize_linear_op_x->Var()->Name() != "conv2d_73.tmp_1" &&
+        quantize_linear_op_x->Var()->Name() != "relu_7.tmp_0" &&
+        quantize_linear_op_x->Var()->Name() != "hard_sigmoid_0.tmp_0" &&
+        quantize_linear_op_x->Var()->Name() != "batch_norm_6.tmp_2" &&
+        quantize_linear_op_x->Var()->Name() != "hard_swish_0.tmp_0" &&
+        type_test != "conv2d" && type_test != "depthwise_conv2d" &&
+        type_test != "conv2d_transpose" && type_test != "conv2d_fusion" &&
+        type_test != "depthwise_conv2d_transpose") {
+      if (quantize_linear_op_scale->outputs.size() <= 1UL)
+        nodes2rm.insert(quantize_linear_op_scale);
+      nodes2rm.insert(quantize_linear_op);
+      nodes2rm.insert(quantize_linear_op_out);
+      nodes2rm.insert(dequantize_linear_op);
+      nodes2rm.insert(dequantize_linear_op_out);
+      GraphSafeRemoveNodes(graph, nodes2rm);
+      found_count++;
+    }
   };
   gpd(graph, handler);
   AddStatis(found_count);
