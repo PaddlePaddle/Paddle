@@ -139,8 +139,8 @@ import paddle
 import paddle.fluid as fluid
 
 from paddle.distributed.communicator import Communicator
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.incubate.fleet.parameter_server.mode import DistributedMode
+import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle.incubate.distributed.fleet.parameter_server.mode import DistributedMode
 import paddle.distributed.fleet as fleet
 
 from test_communicator_geo import TestCommunicatorGeoEnd2End
