@@ -215,6 +215,36 @@ class TestSigmoid_ZeroDim(TestSigmoid):
         self.shape = []
 
 
+class TestSigmoidFP16(TestActivation):
+    def setUp(self):
+        self.op_type = "sigmoid"
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
+        self.only_prim = True
+        self.python_api = paddle.nn.functional.sigmoid
+        self.init_dtype()
+        self.init_shape()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out = 1 / (1 + np.exp(-x))
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
+
+    def test_check_output(self):
+        check_eager = False
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_output(check_eager=check_eager, check_prim=True)
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
@@ -3535,6 +3565,7 @@ def create_test_act_fp16_class(
 create_test_act_fp16_class(TestActivation)
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid)
+create_test_act_fp16_class(TestSigmoidFP16)
 create_test_act_fp16_class(TestSilu)
 create_test_act_fp16_class(TestLogSigmoid)
 create_test_act_fp16_class(TestTanh)
