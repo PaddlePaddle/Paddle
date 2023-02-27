@@ -569,8 +569,8 @@ def partial_concat(input, start_index=0, length=-1):
         .. code-block:: python
             import paddle.fluid as fluid
             import paddle
-            x = paddle.static.data(name="x", shape=[None,3], dtype="float32")
-            y = paddle.static.data(name="y", shape=[None,3], dtype="float32")
+            x = paddle.randn(name="x", shape=[1,3], dtype="float32")
+            y = paddle.randn(name="y", shape=[1,3], dtype="float32")
             concat = fluid.contrib.layers.partial_concat(
                 [x, y], start_index=0, length=2)
     """
@@ -632,8 +632,8 @@ def partial_sum(input, start_index=0, length=-1):
         import paddle.fluid as fluid
         import numpy as np
         import paddle
-        x = paddle.static.data(name="x", shape=[None, 3], dtype="float32")
-        y = paddle.static.data(name="y", shape=[None, 3], dtype="float32")
+        x = paddle.randn(name="x", shape=[2, 3], dtype="float32")
+        y = paddle.randn(name="y", shape=[2, 3], dtype="float32")
         sum = layers.partial_sum([x,y], start_index=0, length=2)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -1203,8 +1203,8 @@ def rank_attention(
            import numpy as np
            import paddle
 
-           input = paddle.static.data(name="input", shape=[None, 2], dtype="float32")
-           rank_offset = paddle.static.data(name="rank_offset", shape=[None, 7], dtype="int32")
+           input = paddle.randn(name="input", shape=[4, 2], dtype="float32")
+           rank_offset = paddle.randn(name="rank_offset", shape=[4, 7], dtype="int32")
            out = fluid.contrib.layers.rank_attention(input=input,
                                                      rank_offset=rank_offset,
                                                      rank_param_shape=[18,3],
@@ -1265,7 +1265,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
            import paddle.fluid as fluid
            import paddle
 
-           input = paddle.static.data(name="input", shape=[16, 2, 3], dtype="float32")
+           input = paddle.randn(name="input", shape=[16, 2, 3], dtype="float32")
            out = fluid.contrib.layers.batch_fc(input=input,
                                                param_size=[16, 3, 10],
                                                param_attr=
@@ -1387,9 +1387,9 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
             import paddle.fluid as fluid
             import paddle
 
-            x = paddle.static.data(name='x', shape=[None, 3, 101, 60], dtype='float32')
-            guide = paddle.static.data(name='guide', shape=[None, 101, 60], dtype='float32')
-            grid = paddle.static.data(name='grid', shape=[None, 12, 8, 10, 6], dtype='float32')
+            x = paddle.randn(name='x', shape=[1, 3, 101, 60], dtype='float32')
+            guide = paddle.randn(name='guide', shape=[1, 101, 60], dtype='float32')
+            grid = paddle.randn(name='grid', shape=[1, 12, 8, 10, 6], dtype='float32')
 
             # without offset
             output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=False)

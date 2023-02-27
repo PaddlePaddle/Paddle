@@ -2272,8 +2272,8 @@ class AdamOptimizer(Optimizer):
                     div_res = global_step / decay_steps
                     decayed_beta1 = beta1_init * (decay_rate**div_res)
                     decayed_beta2 = beta2_init * (decay_rate**div_res)
-                    fluid.layers.assign(decayed_beta1, beta1)
-                    fluid.layers.assign(decayed_beta2, beta2)
+                    paddle.assign(decayed_beta1, beta1)
+                    paddle.assign(decayed_beta2, beta2)
 
                     return beta1, beta2, epsilon
 

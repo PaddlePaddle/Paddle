@@ -184,7 +184,7 @@ def monkey_patch_variable():
             In Static Graph Mode:
 
             .. code-block:: python
-
+                import paddle
                 import paddle.fluid as fluid
 
                 startup_prog = fluid.Program()
