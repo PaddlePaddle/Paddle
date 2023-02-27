@@ -115,7 +115,7 @@ class TestDiagFlatAPI(unittest.TestCase):
                     name="x", shape=[10, 10], dtype="float16"
                 )
 
-                y = paddle.diagfloat(x)
+                y = paddle.diagflat(x)
                 expected = np.diagflat(input)
 
                 exe = paddle.static.Executor(place)
