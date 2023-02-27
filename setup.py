@@ -579,7 +579,7 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 
 
 def write_parameter_server_version_py(
-    filename='paddle/incubate/fleet/parameter_server/version.py',
+    filename='paddle/incubate/distributed/fleet/parameter_server/version.py',
 ):
     cnt = '''
 
@@ -973,7 +973,7 @@ def get_package_data_and_package_dir():
             shutil.copy(
                 env_dict.get("PSLIB_VERSION_PY"),
                 paddle_binary_dir
-                + '/python/paddle/incubate/fleet/parameter_server/pslib/',
+                + '/python/paddle/incubate/distributed/fleet/parameter_server/pslib/',
             )
         package_data['paddle.libs'] += ['libps' + ext_suffix]
     if env_dict.get("WITH_MKLDNN") == 'ON':
@@ -1332,10 +1332,10 @@ def get_setup_parameters():
         'paddle.incubate.distributed.models',
         'paddle.incubate.distributed.models.moe',
         'paddle.incubate.distributed.models.moe.gate',
-        'paddle.incubate.fleet.parameter_server',
-        'paddle.incubate.fleet.parameter_server.distribute_transpiler',
-        'paddle.incubate.fleet.parameter_server.ir',
-        'paddle.incubate.fleet.parameter_server.pslib',
+        'paddle.incubate.distributed.fleet.parameter_server',
+        'paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler',
+        'paddle.incubate.distributed.fleet.parameter_server.ir',
+        'paddle.incubate.distributed.fleet.parameter_server.pslib',
         'paddle.quantization',
         'paddle.quantization.quanters',
         'paddle.quantization.observers',
@@ -1461,7 +1461,7 @@ def main():
         filename='{}/python/paddle/cuda_env.py'.format(paddle_binary_dir)
     )
     write_parameter_server_version_py(
-        filename='{}/python/paddle/incubate/fleet/parameter_server/version.py'.format(
+        filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
             paddle_binary_dir
         )
     )

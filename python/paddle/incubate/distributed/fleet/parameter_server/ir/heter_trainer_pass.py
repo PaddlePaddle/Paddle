@@ -15,7 +15,7 @@
 import warnings
 
 import paddle
-from paddle.incubate.fleet.parameter_server.ir.trainer_pass import (
+from paddle.incubate.distributed.fleet.parameter_server.ir.trainer_pass import (
     create_heter_program,
     create_trainer_program,
     find_block_joints,
