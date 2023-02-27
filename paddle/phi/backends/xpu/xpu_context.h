@@ -65,6 +65,8 @@ class XPUContext : public DeviceContext,
 
   void SetL3Cache(int l3_size = 14155776);
 
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+
   XPUStream stream() const;
 
   static const char* name() { return "XPUContext"; }

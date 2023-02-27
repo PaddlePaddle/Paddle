@@ -42,6 +42,15 @@ class CustomContext : public DeviceContext,
   // Wait for all operations completion in the stream.
   void Wait() const override;
 
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    return GetStream()->AddCallback(callback);
+  }
+
+  void WaitStreamCallback() const { return GetStream()->WaitCallback(); }
+
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+
   static const char* name() { return "CustomContext"; }
 
  public:
