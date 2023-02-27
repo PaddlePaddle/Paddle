@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import convert_float_to_uint16
 from op_test import OpTest
 
 import paddle
@@ -277,6 +278,292 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
         self.align_corners = True
         self.align_mode = 1
         self.data_layout = "NHWC"
+
+
+class TestBilinearInterpOpFP16(OpTest):
+    def setUp(self):
+        self.out_size = None
+        self.actual_shape = None
+        self.data_layout = 'NCHW'
+        self.init_test_case()
+        self.op_type = "bilinear_interp"
+        # NOTE(dev): some AsDispensible input is not used under imperative mode.
+        # Skip check_eager while found them in Inputs.
+        self.check_eager = True
+        input_np = np.random.random(self.input_shape).astype("float16")
+
+        if self.data_layout == "NCHW":
+            in_h = self.input_shape[2]
+            in_w = self.input_shape[3]
+        else:
+            in_h = self.input_shape[1]
+            in_w = self.input_shape[2]
+
+        if self.scale > 0:
+            out_h = int(in_h * self.scale)
+            out_w = int(in_w * self.scale)
+        else:
+            out_h = self.out_h
+            out_w = self.out_w
+
+        output_np = bilinear_interp_np(
+            input_np,
+            out_h,
+            out_w,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+            self.align_mode,
+            self.data_layout,
+        )
+        self.inputs = {'X': input_np}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
+            self.check_eager = False
+        if self.actual_shape is not None:
+            self.inputs['OutSize'] = self.actual_shape
+            self.check_eager = False
+
+        self.attrs = {
+            'out_h': self.out_h,
+            'out_w': self.out_w,
+            'scale': self.scale,
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners,
+            'align_mode': self.align_mode,
+            'data_layout': self.data_layout,
+        }
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        self.check_output(check_eager=self.check_eager, atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', in_place=True, check_eager=self.check_eager, atol=1e-2
+        )
+
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 3, 5, 5]
+        self.out_h = 2
+        self.out_w = 2
+        self.scale = 0.0
+        self.out_size = np.array([3, 3]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase1FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 1
+        self.out_w = 1
+        self.scale = 0.0
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase2FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = 0.0
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase3FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 0.0
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase4FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 1
+        self.out_w = 1
+        self.scale = 0.0
+        self.out_size = np.array([2, 2]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase5FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = 0.0
+        self.out_size = np.array([11, 11]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase6FP16(TestBilinearInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 0.0
+        self.out_size = np.array([65, 33]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpOpBF16(OpTest):
+    def setUp(self):
+        self.out_size = None
+        self.actual_shape = None
+        self.data_layout = 'NCHW'
+        self.init_test_case()
+        self.op_type = "bilinear_interp"
+        # NOTE(dev): some AsDispensible input is not used under imperative mode.
+        # Skip check_eager while found them in Inputs.
+        self.check_eager = True
+        input_np = np.random.random(self.input_shape).astype("float32")
+
+        if self.data_layout == "NCHW":
+            in_h = self.input_shape[2]
+            in_w = self.input_shape[3]
+        else:
+            in_h = self.input_shape[1]
+            in_w = self.input_shape[2]
+
+        if self.scale > 0:
+            out_h = int(in_h * self.scale)
+            out_w = int(in_w * self.scale)
+        else:
+            out_h = self.out_h
+            out_w = self.out_w
+
+        output_np = bilinear_interp_np(
+            input_np,
+            out_h,
+            out_w,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+            self.align_mode,
+            self.data_layout,
+        )
+        self.inputs = {'X': convert_float_to_uint16(input_np)}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
+            self.check_eager = False
+        if self.actual_shape is not None:
+            self.inputs['OutSize'] = self.actual_shape
+            self.check_eager = False
+
+        self.attrs = {
+            'out_h': self.out_h,
+            'out_w': self.out_w,
+            'scale': self.scale,
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners,
+            'align_mode': self.align_mode,
+            'data_layout': self.data_layout,
+        }
+        self.outputs = {'Out': convert_float_to_uint16(output_np)}
+
+    def test_check_output(self):
+        self.check_output(check_eager=self.check_eager, atol=1e-2)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], 'Out', in_place=True, check_eager=self.check_eager, atol=1e-2
+        )
+
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [2, 3, 5, 5]
+        self.out_h = 2
+        self.out_w = 2
+        self.scale = 0.0
+        self.out_size = np.array([3, 3]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase1BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 1
+        self.out_w = 1
+        self.scale = 0.0
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase2BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = 0.0
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase3BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 0.0
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase4BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 1
+        self.out_w = 1
+        self.scale = 0.0
+        self.out_size = np.array([2, 2]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase5BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = 0.0
+        self.out_size = np.array([11, 11]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
+
+
+class TestBilinearInterpCase6BF16(TestBilinearInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = 0.0
+        self.out_size = np.array([65, 33]).astype("int32")
+        self.align_corners = True
+        self.align_mode = 1
 
 
 class TestBilinearInterpOpUint8(OpTest):

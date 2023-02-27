@@ -232,7 +232,8 @@ PD_REGISTER_KERNEL(bilinear_interp,
                    ONEDNN,
                    phi::BilinearInterpKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(nearest_interp,
                    OneDNN,
