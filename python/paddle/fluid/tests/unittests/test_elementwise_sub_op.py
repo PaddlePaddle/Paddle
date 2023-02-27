@@ -58,6 +58,31 @@ class TestElementwiseOp(OpTest):
         )
 
 
+class TestElementwiseOpFp16(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.python_api = sub_wrapper()
+        self.dtype = np.float16
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+    def test_check_grad_norm(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.001, no_grad_set=set("X")
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.001, no_grad_set=set("Y")
+        )
+
+
 class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
