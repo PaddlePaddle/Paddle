@@ -64,6 +64,76 @@ class TestUnStackOpBase(OpTest):
         self.check_grad(['X'], self.get_y_names(), check_eager=True)
 
 
+def unstack_grad_fp16(dout):
+    out_grad = np.ones(dout.shape, dout.dtype)
+    out_grad = out_grad / np.sum(out_grad)
+    return [out_grad]
+
+
+class TestUnStackFP16Op(TestUnStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            self.get_y_names(),
+            user_defined_grads=unstack_grad_fp16(self.x),
+        )
+
+
+class TestStackFP16Op3(TestUnStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = -1
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            self.get_y_names(),
+            user_defined_grads=unstack_grad_fp16(self.x),
+        )
+
+
+class TestStackFP16Op4(TestUnStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = -3
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            self.get_y_names(),
+            user_defined_grads=unstack_grad_fp16(self.x),
+        )
+
+
+class TestStackFP16Op5(TestUnStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = 1
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            self.get_y_names(),
+            user_defined_grads=unstack_grad_fp16(self.x),
+        )
+
+
+class TestStackFP16Op6(TestUnStackOpBase):
+    def initParameters(self):
+        self.dtype = np.float16
+        self.axis = 2
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            self.get_y_names(),
+            user_defined_grads=unstack_grad_fp16(self.x),
+        )
+
+
 class TestStackOp3(TestUnStackOpBase):
     def initParameters(self):
         self.axis = -1
@@ -125,10 +195,8 @@ class TestUnStackBF16OP(OpTest):
     def test_check_output(self):
         self.check_output(check_eager=True)
 
-
-class TestUnStackFP16OP(TestUnStackOpBase):
-    def initParameters(self):
-        self.dtype = np.float16
+    def test_check_grad(self):
+        self.check_grad(['X'], self.get_y_names(), check_eager=True)
 
 
 class TestUnstackZeroInputOp(unittest.TestCase):
