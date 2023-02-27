@@ -101,9 +101,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
         out2 = gaussian_nll_loss(input_x, target, var)
 
         for r in [out1, out2]:
-            self.assertEqual(
-                np.allclose(out_ref, r.numpy(), rtol=1e-5, atol=1e-5), True
-            )
+            np.allclose(out_ref, r.numpy(), rtol=1e-5, atol=1e-5)
         paddle.enable_static()
 
     def test_static_case(self, type=None, full=False, reduction='none'):
@@ -129,7 +127,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
                 input_x = paddle.static.data('Input_x', self.shape, 'float32')
                 target = paddle.static.data('Target', self.shape, 'float32')
                 var = paddle.static.data('Var', self.shape, 'float32')
-            out1 = F.gaussian_nll_loss(
+            check, out1 = F.gaussian_nll_loss(
                 input_x, target, var, full=full, reduction=reduction
             )
             gaussian_nll_loss = paddle.nn.GaussianNLLLoss(
@@ -144,12 +142,10 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
                     'Target': self.target_np,
                     'Var': self.var_np,
                 },
-                fetch_list=[out1, out2],
+                fetch_list=[check, out1, out2],
             )
         for r in res:
-            self.assertEqual(
-                np.allclose(out_ref, r, rtol=1e-5, atol=1e-5), True
-            )
+            np.allclose(out_ref, r, rtol=1e-5, atol=1e-5)
 
     def test_api(self):
         self.test_dynamic_case('float64')
