@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/cast_op.h"
-
 #include <memory>
 
 #include "paddle/fluid/framework/convert_utils.h"
@@ -145,19 +143,5 @@ REGISTER_OPERATOR(transfer_dtype,
                   ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CastOpProtoMaker);
-REGISTER_OP_CPU_KERNEL(
-    transfer_dtype,
-    ops::CastOpKernel<CPU, float>,
-    ops::CastOpKernel<CPU, double>,
-    ops::CastOpKernel<CPU, int>,
-    ops::CastOpKernel<CPU, int64_t>,
-    ops::CastOpKernel<CPU, int>,
-    ops::CastOpKernel<CPU, int16_t>,
-    ops::CastOpKernel<CPU, bool>,
-    ops::CastOpKernel<CPU, uint8_t>,
-    ops::CastOpKernel<CPU, int8_t>,
-    ops::CastOpKernel<CPU, paddle::platform::float16>,
-    ops::CastOpKernel<CPU, paddle::platform::bfloat16>,
-    ops::CastOpKernel<CPU, paddle::platform::complex<float>>,
-    ops::CastOpKernel<CPU, paddle::platform::complex<double>>);
+                  ops::CastOpProtoMaker,
+                  CastInferShapeFunctor);
