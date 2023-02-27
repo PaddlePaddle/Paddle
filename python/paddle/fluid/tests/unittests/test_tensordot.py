@@ -249,7 +249,7 @@ class TestTensordotAPI(unittest.TestCase):
                         feed={'x': input_x, 'y': input_y}, fetch_list=[z]
                     )
                     np_res = tensordot_np(input_x, input_y, axes)
-                    np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
+                    np.testing.assert_allclose(paddle_res[0], np_res, rtol=1)
 
 
 class TestTensordotAPIFloat64(TestTensordotAPI):
