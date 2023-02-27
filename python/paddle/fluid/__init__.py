@@ -80,7 +80,6 @@ from .core import (
     MLUPlace,
     CustomPlace,
 )
-from .incubate import fleet
 from .transpiler import (
     DistributeTranspiler,
     memory_optimize,
