@@ -1860,11 +1860,11 @@ class TestLeakyReluAPI(unittest.TestCase):
 def gelu(x, approximate):
     if approximate:
         y_ref = (
-            0.5
-            * x
-            * (
-                1.0
-                + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))
+            0.5 *
+            x *
+            (
+                1.0 +
+                np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))
             )
         )
     else:
@@ -2674,13 +2674,13 @@ class TestLog1p_ZeroDim(TestLog1p):
 
 
 class TestLog1pAPI(unittest.TestCase):
-    def test_api(self):
+    def _test_api(self, dtype='float64'):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            input_x = np.random.uniform(0.1, 1, [11, 17]).astype(dtype)
             data_x = paddle.static.data(
                 name="data_x",
                 shape=[11, 17],
-                dtype="float64",
+                dtype=dtype,
             )
 
             out1 = paddle.log1p(data_x)
@@ -2696,12 +2696,21 @@ class TestLog1pAPI(unittest.TestCase):
 
         # dygraph
         with fluid.dygraph.guard():
-            np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            np_x = np.random.uniform(0.1, 1, [11, 17]).astype(dtype)
             data_x = fluid.dygraph.to_variable(np_x)
             z = paddle.log1p(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log1p(np_x))
         np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
+
+    def test_double(self):
+        self._test_api(dtype="float64")
+
+    def test_single(self):
+        self._test_api(dtype="float32")
+
+    def test_half(self):
+        self._test_api(dtype="float16")
 
 
 class TestSquare(TestActivation):
