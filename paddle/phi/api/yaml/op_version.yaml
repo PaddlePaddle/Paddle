@@ -36,6 +36,14 @@
         - add_input : Max
           comment : Pass the mix, min value as input, not attribute. Max is dispensable.
 
+- op : equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
 - op : flip
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
@@ -46,6 +54,22 @@
         - delete_attr : dims
           comment : The attr 'dims' is deleted.
 
+- op : greater_equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : greater_than
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
 - op : grid_sample
   version :
     - checkpoint : Upgrade grid_sampler add a new attribute [mode]
@@ -53,6 +77,30 @@
         - add_attr : mode
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
+
+- op : less_equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : less_than
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
+
+- op : not_equal
+  version :
+    - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
+      action :
+        - modify_attr : force_cpu
+          comment : In order to force fill output variable to gpu memory.
+          default : "false"
 
 - op : pixel_shuffle
   version :

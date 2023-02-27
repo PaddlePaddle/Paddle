@@ -1,0 +1,24 @@
+# Attach operants to Tensor, this file should be consistent with the declaration in `tensor.h`
+- add
+- subtract
+- multiply
+- divide
+- unsqueeze
+- exp
+- scale
+- matmul
+- expand
+- sum
+- abs
+- assign
+- elementwise_pow
+- floor
+- gather_nd
+- log
+- max
+- maximum
+- minimum
+- roll
+- scatter
+- scatter_nd_add
+- tile
