@@ -915,7 +915,7 @@ class TestVariableInit(unittest.TestCase):
         place = self.set_place()
         exe = fluid.Executor(place)
         parameter_list = list(
-            filter(framework.io_utils.is_parameter, program.list_vars())
+            filter(paddle.framework.is_parameter, program.list_vars())
         )
 
         fluid.core._create_loaded_parameter(
