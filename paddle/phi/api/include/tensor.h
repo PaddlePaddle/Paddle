@@ -677,12 +677,13 @@ class PADDLE_API Tensor final {
   Tensor divide(const Scalar& y) const;
   Tensor multiply(const Scalar& y) const;
   Tensor subtract(const Scalar& y) const;
+  Tensor pow(const Tensor& y) const;
+  Tensor pow(const Scalar& y) const;
 
   Tensor exp() const;
   Tensor floor() const;
   Tensor gather_nd(const Tensor& index) const;
   Tensor log() const;
-  Tensor pow(const Scalar& y) const;
   Tensor roll(const IntArray& shifts, const std::vector<int64_t>& axis) const;
   Tensor scatter(const Tensor& index,
                  const Tensor& updates,
