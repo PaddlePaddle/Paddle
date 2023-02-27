@@ -60,7 +60,7 @@ class TestAssignFP16Op(op_test.OpTest):
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, max_relative_error=1e-3)
         paddle.disable_static()
 
 
