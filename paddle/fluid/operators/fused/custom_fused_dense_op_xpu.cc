@@ -87,7 +87,7 @@ class CustomFusedDenseXPUKernel : public framework::OpKernel<T> {
           reserve_space->mutable_data<T>(ctx.GetPlace()));
     }
     // 2 bias
-    const biasType* bias_ptr = reinterpret_cast<const biasType*>(bias->data<T>());
+    const biasType* bias_ptr = reinterpret_cast<const biasType*>(bias->data<float>());
 
     int m = fc_info.m;
     int n = fc_info.n;
@@ -126,7 +126,7 @@ class CustomFusedDenseXPUKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class CustomFusedDenseXPUGradKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
+  using dbiasType= typename XPUTypeTrait<float>::Type;
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     bool transx = ctx.Attr<bool>("transx");
@@ -226,14 +226,32 @@ class CustomFusedDenseXPUGradKernel : public framework::OpKernel<T> {
                                         y_ptr,
                                         dout_fc_ptr);
     std::tie(info_dx, info_dy, a_1, b_1, a_2, b_2) = fc_info;
+
     if (dx) {
       phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
     }
     if (dy) {
-      phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
+      //phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
+    	int m = info_dy.m;
+    	int n = info_dy.n;
+    	int k = info_dy.k;
+    	int ldx = info_dy.stride_x;
+    	int ldy = info_dy.stride_y;
+    	int ldout = info_dy.stride_out;
+    	bool trans_x = info_dy.trans_x;
+    	bool trans_y = info_dy.trans_y;
+    	float* max_x = info_dy.max_x;
+    	float* max_y = info_dy.max_y;
+    	float* max_out = info_dy.max_out;
+
+	dbiasType* dbias_ptr = reinterpret_cast<dbiasType*>(dbias->mutable_data<float>(ctx.GetPlace()));
+    	r = xpu::fc_dbias_fusion<XPUType, XPUType, XPUType, float, int16_t>(xpu_ctx, reinterpret_cast<const XPUType*>(a_2), reinterpret_cast<const XPUType*>(b_2), reinterpret_cast<XPUType*>(c_2), m, n, k, trans_x,
+        	trans_y, max_x, max_y, max_out, ldx, ldy, ldout, 1.0f, 0.0f,
+        	nullptr, dbias_ptr);
+
     }
     // 3. dbias
-    if (dbias) {
+    /*if (dbias) {
       XPUType* dbias_ptr =
           reinterpret_cast<XPUType*>(dbias->mutable_data<T>(ctx.GetPlace()));
       r = xpu::reduce_sum(xpu_ctx,
@@ -242,7 +260,7 @@ class CustomFusedDenseXPUGradKernel : public framework::OpKernel<T> {
                           {info_forward.m, info_forward.n},
                           {0});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
-    }
+    }*/
 
     if (std::getenv("XPU_PADDLE_FC_PRINT") != nullptr) {
       auto tag_end = std::chrono::steady_clock::now();
@@ -262,11 +280,11 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
     custom_fused_dense,
-    ops::CustomFusedDenseXPUKernel<phi::XPUContext, float>,
+    /*ops::CustomFusedDenseXPUKernel<phi::XPUContext, float>,*/
     ops::CustomFusedDenseXPUKernel<phi::XPUContext, paddle::platform::float16>);
 
 REGISTER_OP_XPU_KERNEL(
     custom_fused_dense_grad,
-    ops::CustomFusedDenseXPUGradKernel<phi::XPUContext, float>,
+    /*ops::CustomFusedDenseXPUGradKernel<phi::XPUContext, float>,*/
     ops::CustomFusedDenseXPUGradKernel<phi::XPUContext,
                                        paddle::platform::float16>);
