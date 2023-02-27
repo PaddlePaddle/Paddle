@@ -26,6 +26,8 @@ class TestComplexAbsOp(OpTest):
         paddle.enable_static()
         self.python_api = paddle.abs
         self.op_type = "abs"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
@@ -54,6 +56,7 @@ class TestComplexAbsOp(OpTest):
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
             check_eager=False,
+            check_prim=True,
         )
 
 
@@ -61,6 +64,8 @@ class TestComplexAbsOpZeroValues(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "abs"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.python_api = paddle.abs
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
@@ -90,6 +95,7 @@ class TestComplexAbsOpZeroValues(OpTest):
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
             check_eager=False,
+            check_prim=True,
         )
 
 
@@ -114,6 +120,8 @@ class TestRealAbsOp(OpTest):
         paddle.enable_static()
         self.python_api = paddle.abs
         self.op_type = "abs"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
@@ -140,6 +148,7 @@ class TestRealAbsOp(OpTest):
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
             check_eager=False,
+            check_prim=True,
         )
 
 

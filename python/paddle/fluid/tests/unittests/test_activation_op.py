@@ -1271,6 +1271,9 @@ class TestRsqrt_ZeroDim(TestRsqrt):
 class TestAbs(TestActivation):
     def setUp(self):
         self.op_type = "abs"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.abs
+        self.enable_cinn = False
         self.init_dtype()
         self.init_shape()
 
@@ -1292,7 +1295,7 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestAbs_ZeroDim(TestAbs):

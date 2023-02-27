@@ -19,6 +19,9 @@
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -89,6 +92,25 @@ class AbsGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetInput("X", this->Input("X"));
     retv->SetAttrMap(this->Attrs());
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+  }
+};
+
+class AbsCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+ public:
+  void Apply() override {
+    paddle::experimental::Tensor input = this->GetSingleForwardInput("Input");
+    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::experimental::Tensor input_grad = this->GetSingleInputGrad("Input");
+    
+    auto dx_ptr = this->GetOutputPtr(&input_grad);
+    std::string dx_name = this->GetOutputName(input_grad);
+
+    VLOG(6) << "Running abs_grad composite func";
+    prim::abs_grad<prim::DescTensor>(input,
+                                     out_grad,
+                                     dx_ptr);
+    this->RecoverOutputName(input_grad, dx_name);
   }
 };
 
