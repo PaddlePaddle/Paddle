@@ -305,8 +305,7 @@ class TrtConvertSplitTest2(TrtLayerAutoScanTest):
                             "sections": sections,
                             "num": num,
                             "axis": axis,
-                        },
-                        {},
+                        }
                     ]
                     dics_intput = [
                         {
