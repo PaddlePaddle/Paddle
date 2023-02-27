@@ -52,8 +52,8 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "The forward vectors for the entire batch. Denote it as $\alpha$. "
         "$\alpha$ is a memo table used to calculate the normalization "
         "factor in CRF. $\alpha[k, v]$ stores the unnormalized "
-        "probabilites of all possible unfinished sequences of tags that end at "
-        "position $k$ with tag $v$. For each $k$, "
+        "probabilities of all possible unfinished sequences of tags that end "
+        "at position $k$ with tag $v$. For each $k$, "
         "$\alpha[k, v]$ is a vector of length $D$ with a component for "
         "each tag value $v$. This vector is called a forward vecotr and "
         "will also be used in backward computations.")
