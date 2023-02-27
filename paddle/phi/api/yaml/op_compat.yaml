@@ -251,24 +251,6 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false, str mkldnn_data_type = "float32"]
 
-- op : split
-  backward : split_grad
-  inputs :
-      x : X
-  outputs:
-    out: Out
-  attrs:
-    axis: axis
-    sections: sections
-  scalar :
-    axis :
-      data_type : int
-      tensor_name : AxisTensor
-  int_array:
-    sections :
-      data_type : int
-      tensor_name : SectionsTensorList 
-
 - op : conditional_block
   backward : conditional_block_grad
   extra :
@@ -1534,6 +1516,24 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : split
+  backward : split_grad
+  inputs :
+      x : X
+  outputs:
+    out: Out
+  attrs:
+    axis: axis
+    sections: sections
+  scalar :
+    axis :
+      data_type : int
+      tensor_name : AxisTensor
+  int_array:
+    sections :
+      data_type : int
+      tensor_name : SectionsTensorList
 
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
