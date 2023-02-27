@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
-#include "paddle/fluid/inference/tensorrt/helper.h"
 
 namespace paddle {
 namespace inference {
@@ -28,9 +27,7 @@ USE_TRT_DYNAMIC_INFER_META_FN(unfold);
 USE_TRT_DYNAMIC_INFER_META_FN(scatter_nd_add);
 USE_TRT_DYNAMIC_INFER_META_FN(pad3d);
 USE_TRT_DYNAMIC_INFER_META_FN(inverse);
-#if !IS_TRT_VERSION_GE(8500)
 USE_TRT_DYNAMIC_INFER_META_FN(grid_sampler);
-#endif
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

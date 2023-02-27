@@ -2543,8 +2543,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "grid_sampler") {
-#if !IS_TRT_VERSION_GE(8500)
-      VLOG(3) << "grid_sampler is not supported when TensorRT < 8.5";
+#if !IS_TRT_VERSION_GE(8510)
+      VLOG(3) << "grid_sampler is not supported when TensorRT < 8.5.1";
       return false;
 #else
       if (!with_dynamic_shape) {

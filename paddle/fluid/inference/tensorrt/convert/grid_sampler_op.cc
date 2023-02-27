@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,16 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -36,6 +26,7 @@ class GridSamplerOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+#if IS_TRT_VERSION_GE(8510)
     VLOG(3) << "convert a fluid grid_sampler op to tensorrt GridSample layer";
     framework::OpDesc op_desc(op, nullptr);
     std::string input_x_name = op_desc.Input("X").front();
@@ -83,6 +74,9 @@ class GridSamplerOpConverter : public OpConverter {
     layer->setAlignCorners(align_corners);
 
     RreplenishLayerAndOutput(layer, "grid_sampler", {output_name}, test_mode);
+#else
+    VLOG(3) << "grid_sampler is not supported when TensorRT < 8.5.1";
+#endif
   }
 };
 
