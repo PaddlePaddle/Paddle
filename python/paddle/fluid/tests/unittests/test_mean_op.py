@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, OpTestTool
+from op_test import OpTest
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
@@ -119,18 +119,16 @@ class TestFP16MeanOp(TestMeanOp):
                 np.testing.assert_array_equal(dx, dx_expected)
 
 
-@OpTestTool.skip_if_not_cpu_bf16()
 class TestBF16MeanOp(TestMeanOp):
     def init_dtype_type(self):
         self.dtype = np.uint16
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output_with_place(core.CPUPlace(), check_eager=True)
+        self.check_output(check_eager=True)
 
     def test_checkout_grad(self):
-        place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
