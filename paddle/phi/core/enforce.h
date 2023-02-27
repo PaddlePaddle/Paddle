@@ -101,8 +101,6 @@ limitations under the License. */
 
 #include "paddle/utils/variant.h"
 
-DECLARE_int32(call_stack_level);
-
 namespace phi {
 class ErrorSummary;
 }  // namespace phi
@@ -235,6 +233,7 @@ struct BinaryCompareMessageConverter<false> {
 };
 }  // namespace details
 
+int GetCallStackLevel();
 std::string GetCurrentTraceBackString(bool for_signal = false);
 std::string SimplifyErrorTypeFormat(const std::string& str);
 
@@ -243,7 +242,7 @@ static std::string GetErrorSumaryString(StrType&& what,
                                         const char* file,
                                         int line) {
   std::ostringstream sout;
-  if (FLAGS_call_stack_level > 1) {
+  if (GetCallStackLevel() > 1) {
     sout << "\n----------------------\nError Message "
             "Summary:\n----------------------\n";
   }
@@ -270,7 +269,7 @@ template <typename StrType>
 static std::string GetTraceBackString(StrType&& what,
                                       const char* file,
                                       int line) {
-  if (FLAGS_call_stack_level > 1) {
+  if (GetCallStackLevel() > 1) {
     // FLAGS_call_stack_level>1 means showing c++ call stack
     return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
   } else {
@@ -317,7 +316,7 @@ struct EnforceNotMet : public std::exception {
   }
 
   const char* what() const noexcept override {
-    if (FLAGS_call_stack_level > 1) {
+    if (GetCallStackLevel() > 1) {
       return err_str_.c_str();
     } else {
       return simple_err_str_.c_str();
@@ -331,7 +330,7 @@ struct EnforceNotMet : public std::exception {
   const std::string& simple_error_str() const { return simple_err_str_; }
 
   void set_error_str(std::string str) {
-    if (FLAGS_call_stack_level > 1) {
+    if (GetCallStackLevel() > 1) {
       err_str_ = str;
     } else {
       simple_err_str_ = str;
