@@ -164,11 +164,11 @@ class ElementwiseTensorOpConverter : public OpConverter {
 
       RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     } else if (op_type_ == "mod"){
-        audo* div_layer = TRT_ENGINE_ADD_LAYER(engine_,
+        auto* div_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                                ElementWise,
                                                *X,
                                                *reshape_y_tensor,
-                                               nvinfer1::ElementWiseOperation::kDIV);
+                                               nvinfer1::ElementWiseOperation::kFLOOR_DIV);
         auto* mul_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                                ElementWise,
                                                *(div_layer->getOutput(0)),
@@ -315,7 +315,7 @@ REGISTER_TRT_OP_CONVERTER(elementwise_pow_weight,
 REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_weight,
                           ElementwiseTensorFloorDivOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_mod_weight,
-        ElementwiseTensorModOpConverter);
+                          ElementwiseTensorModOpConverter);
 
 REGISTER_TRT_OP_CONVERTER(elementwise_add_tensor,
                           ElementwiseTensorAddOpConverter);
@@ -333,6 +333,8 @@ REGISTER_TRT_OP_CONVERTER(elementwise_pow_tensor,
                           ElementwiseTensorPowOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_tensor,
                           ElementwiseTensorFloorDivOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_mod_tensor,
+                          ElementwiseTensorModOpConverter);
 REGISTER_TRT_OP_CONVERTER(less_than, ElementwiseTensorLessThanOpConverter);
 REGISTER_TRT_OP_CONVERTER(greater_than,
                           ElementwiseTensorGreaterThanOpConverter);
@@ -340,4 +342,3 @@ REGISTER_TRT_OP_CONVERTER(logical_or, ElementwiseTensorLogicalOrOpConverter);
 REGISTER_TRT_OP_CONVERTER(logical_xor, ElementwiseTensorLogicalXorOpConverter);
 REGISTER_TRT_OP_CONVERTER(logical_and, ElementwiseTensorLogicalAndOpConverter);
 REGISTER_TRT_OP_CONVERTER(less_equal, ElementwiseTensorLessEqualOpConverter);
-REGISTER_TRT_OP_CONVERTER(elementwise_add_tensor, ElementwiseTensorAddOpConverter);
