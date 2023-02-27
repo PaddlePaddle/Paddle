@@ -46,7 +46,8 @@ class ConcatOpConverter : public OpConverter {
     }
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
     if (axis < 0) {
-      axis = (engine_->GetITensor(op_desc.Input("X").front())->getDimensions())
+      axis = engine_->GetITensor(op_desc.Input("X").front())
+                 ->getDimensions()
                  .nbDims +
              axis;
     } else {
