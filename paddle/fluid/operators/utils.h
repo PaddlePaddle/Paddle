@@ -13,11 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include <paddle/fluid/framework/operator.h>
-#include <paddle/phi/core/tensor_utils.h>
 
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
