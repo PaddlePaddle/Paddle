@@ -148,7 +148,7 @@ class InputSpec:
             print(label)  # InputSpec(shape=(-1, 1), dtype=paddle.int64, name=label)
     """
 
-    def __init__(self, shape, dtype='float32', name=None):
+    def __init__(self, shape, dtype='float32', name=None, stop_gradient=False):
         # replace `None` in shape  with -1
         self.shape = self._verify(shape)
         # convert dtype into united represention
@@ -157,7 +157,7 @@ class InputSpec:
                 dtype = convert_np_dtype_to_dtype_(dtype)
         self.dtype = dtype
         self.name = name
-        self.stop_gradient = False
+        self.stop_gradient = stop_gradient
 
     def _create_feed_layer(self):
         return data(self.name, shape=self.shape, dtype=self.dtype)

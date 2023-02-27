@@ -291,9 +291,14 @@ def _replace_value_with_input_spec(args):
             stop_gradient = input_var.stop_gradient
             input_var = paddle.static.InputSpec.from_tensor(input_var)
             input_var.stop_gradient = stop_gradient
+        elif isinstance(input_var, paddle.fluid.framework.Variable):
+            stop_gradient = input_var.stop_gradient
+            input_var = paddle.static.InputSpec(
+                input_var.shape, input_var.dtype, input_var.name
+            )
+            input_var.stop_gradient = stop_gradient
 
         args_with_spec.append(input_var)
-
     args_with_spec = pack_sequence_as(args, args_with_spec)
     return args_with_spec
 
@@ -361,6 +366,13 @@ def convert_to_input_spec(inputs, input_spec):
     elif isinstance(input_spec, paddle.static.InputSpec):
         """we compare input_spec with real_input_spec constructed from arguments."""
         real_spec = _replace_value_with_input_spec([inputs])[0]
+        if isinstance(real_spec, paddle.static.InputSpec):
+            raise RuntimeError(
+                "Give input spec into a non-tensorable arguments `{}`.".format(
+                    inputs
+                )
+            )
+        real_spec.name = input_spec.name
         if input_spec.greater(real_spec):
             return input_spec
         return real_spec
