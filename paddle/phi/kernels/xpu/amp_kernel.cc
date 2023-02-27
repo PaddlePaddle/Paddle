@@ -171,11 +171,12 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
 
   printf(
       "update_loss_scaling ===> cur: %f, last: %f, cpu_bad: %d, tar:%d, "
-      "good_tar: %d\n",
+      "cpu_good: %d, good_tar: %d\n",
       cpu_updated_loss_scaling_data,
       cpu_pre_loss_scaling_data,
       cpu_bad_out_data,
       decr_every_n_nan_or_inf,
+      cpu_good_in_data,
       incr_every_n_steps);
 }
 

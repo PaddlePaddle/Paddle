@@ -30,18 +30,24 @@ class CustomLrXPUKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "The custom_lr operator does not support XPU yet."));
-    // auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
+    // PADDLE_THROW(platform::errors::Unimplemented(
+    // "The custom_lr operator does not support XPU yet."));
+    auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
 
-    // const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
 
-    // phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
 
-    // bool base_lr = ctx.Attr<float>("base_lr");
-    // bool max_step = ctx.Attr<int64_t>("max_step");
+    bool base_lr = ctx.Attr<float>("base_lr");
+    bool max_step = ctx.Attr<int64_t>("max_step");
 
-    // VLOG(5) << "base_lr = " << base_lr << " , max_step = " << max_step;
+    (void)dev_ctx;
+    (void)x;
+    (void)out;
+    (void)base_lr;
+    (void)max_step;
+
+    VLOG(5) << "base_lr = " << base_lr << " , max_step = " << max_step;
   }
 };
 
@@ -50,6 +56,5 @@ class CustomLrXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_XPU_KERNEL(
-    custom_lr,
-    ops::CustomLrXPUKernel<phi::XPUContext, int64_t>);
+REGISTER_OP_XPU_KERNEL(custom_lr,
+                       ops::CustomLrXPUKernel<phi::XPUContext, int64_t>);
