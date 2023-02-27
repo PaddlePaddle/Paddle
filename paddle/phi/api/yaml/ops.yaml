@@ -1394,3 +1394,12 @@
   kernel :
     func : where
   backward : where_grad
+
+- op : graph_weighted_sample_neighbors
+  args : (Tensor row, Tensor colptr, Tensor edge_weights, Tensor input_nodes, int sample_size, Tensor eids, bool return_eids)
+  output : Tensor(out_neighbors), Tensor(out_count), Tensor(out_eids)
+  infer_meta :
+    func : GraphWeightedSampleNeighborsInferMeta
+  kernel :
+    func : graph_weighted_sample_neighbors
+  optional: eids
