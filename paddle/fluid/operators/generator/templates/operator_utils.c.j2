@@ -694,7 +694,11 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
 {% macro construct_composite_attr(attrs, fluid_attrs, attr_dict) %}
   {% set attrs_length = attrs | length %}
   {% for i in range(attrs_length) %}
-    {% set attrs_data_type = attr_dict[attrs[i]]["typename"] | to_op_attr_type %}
+    {% if "data_type" in attr_dict[attrs[i]] %}
+      {% set attrs_data_type = attr_dict[attrs[i]]["data_type"]%}
+    {% else %}
+      {% set attrs_data_type = attr_dict[attrs[i]]["typename"] | to_op_attr_type %}
+    {%- endif %}
     const {{attrs_data_type}} {{attrs[i]}} = this->Attr<{{attrs_data_type}}>("{{fluid_attrs[i]}}");
   {% endfor %}
 {%- endmacro %}
