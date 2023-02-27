@@ -169,21 +169,21 @@ class StridedSliceMLUKernel : public framework::OpKernel<T> {
       starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
     } else if (ctx.HasInput("StartsTensor")) {
       auto* starts_tensor = ctx.Input<phi::DenseTensor>("StartsTensor");
-      starts = phi::GetDataFromTensor<int64_t>(starts_tensor);
+      starts = phi::GetVectorFromTensor<int64_t>(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(list_new_ends_tensor);
     } else if (ctx.HasInput("EndsTensor")) {
       auto* ends_tensor = ctx.Input<phi::DenseTensor>("EndsTensor");
-      ends = phi::GetDataFromTensor<int64_t>(ends_tensor);
+      ends = phi::GetVectorFromTensor<int64_t>(ends_tensor);
     }
 
     if (list_new_strides_tensor.size() > 0) {
       strides = GetDataFromTensorList<int64_t>(list_new_strides_tensor);
     } else if (ctx.HasInput("StridesTensor")) {
       auto* strides_tensor = ctx.Input<phi::DenseTensor>("StridesTensor");
-      strides = phi::GetDataFromTensor<int64_t>(strides_tensor);
+      strides = phi::GetVectorFromTensor<int64_t>(strides_tensor);
     }
 
     // out dims calculation
@@ -337,21 +337,21 @@ class StridedSliceGradMLUKernel : public framework::OpKernel<T> {
       starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
     } else if (ctx.HasInput("StartsTensor")) {
       auto* starts_tensor = ctx.Input<phi::DenseTensor>("StartsTensor");
-      starts = phi::GetDataFromTensor<int64_t>(starts_tensor);
+      starts = phi::GetVectorFromTensor<int64_t>(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(list_new_ends_tensor);
     } else if (ctx.HasInput("EndsTensor")) {
       auto* ends_tensor = ctx.Input<phi::DenseTensor>("EndsTensor");
-      ends = phi::GetDataFromTensor<int64_t>(ends_tensor);
+      ends = phi::GetVectorFromTensor<int64_t>(ends_tensor);
     }
 
     if (list_new_strides_tensor.size() > 0) {
       strides = GetDataFromTensorList<int64_t>(list_new_strides_tensor);
     } else if (ctx.HasInput("StridesTensor")) {
       auto* strides_tensor = ctx.Input<phi::DenseTensor>("StridesTensor");
-      strides = phi::GetDataFromTensor<int64_t>(strides_tensor);
+      strides = phi::GetVectorFromTensor<int64_t>(strides_tensor);
     }
 
     std::vector<int64_t> out_dims_vector(input_dims.size(), -1);

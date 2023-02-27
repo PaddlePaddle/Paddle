@@ -148,7 +148,7 @@ inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
 }
 
 template <typename T = int32_t>
-inline std::vector<T> GetDataFromTensor(const DenseTensor* x) {
+inline std::vector<T> GetVectorFromTensor(const DenseTensor* x) {
   std::vector<T> vec_new_data;
   if (x->dtype() == DataType::INT32) {
     auto* data = x->data<int>();

@@ -33,7 +33,7 @@ class ConcatMLUKernel : public framework::OpKernel<T> {
     bool need_resize_out_dims = false;
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
-      axis = phi::GetDataFromTensor<int>(axis_tensor)[0];
+      axis = phi::GetVectorFromTensor<int>(axis_tensor)[0];
       need_resize_out_dims = true;
     }
     axis = ComputeAxis(static_cast<int64_t>(axis),
@@ -98,7 +98,7 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
 
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
-      axis = phi::GetDataFromTensor<int>(axis_tensor)[0];
+      axis = phi::GetVectorFromTensor<int>(axis_tensor)[0];
     }
 
     axis = ComputeAxis(static_cast<int64_t>(axis),

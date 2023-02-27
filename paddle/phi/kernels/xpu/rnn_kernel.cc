@@ -119,7 +119,7 @@ void RnnKernel(const Context& dev_ctx,
   bool has_seq_length = sequence_length.is_initialized();
 
   if (has_seq_length) {
-    seq_len_tensor = phi::GetDataFromTensor<int>(sequence_length.get_ptr());
+    seq_len_tensor = phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
   }
 
   int state_offset = pre_state[0]->dims()[1] * pre_state[0]->dims()[2];

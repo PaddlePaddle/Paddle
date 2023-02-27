@@ -78,7 +78,7 @@ class SliceNPUKernel : public framework::OpKernel<T> {
     auto starts_tensor_list =
         ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts = phi::GetDataFromTensor<int>(
+      starts = phi::GetVectorFromTensor<int>(
           ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
@@ -86,7 +86,7 @@ class SliceNPUKernel : public framework::OpKernel<T> {
 
     auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = phi::GetDataFromTensor<int>(
+      ends = phi::GetVectorFromTensor<int>(
           ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
@@ -174,7 +174,7 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
     auto starts_tensor_list =
         ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts = phi::GetDataFromTensor<int>(
+      starts = phi::GetVectorFromTensor<int>(
           ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
@@ -182,7 +182,7 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
 
     auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = phi::GetDataFromTensor<int>(
+      ends = phi::GetVectorFromTensor<int>(
           ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
