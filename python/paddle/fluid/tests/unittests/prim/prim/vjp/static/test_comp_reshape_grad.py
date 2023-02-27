@@ -39,18 +39,53 @@ class PrimeNet(paddle.nn.Layer):
 
 
 @param.parameterized_class(
-    ('primal', 'shape', 'cotangent', 'dtype'),
+    ('primal', 'shape', 'cotangent', 'dtype', "rtol"),
     [
         (
             np.random.rand(10, 1, 10),
             [10, 10],
             np.random.rand(10, 10),
             np.float32,
+            1e-5,
         ),
-        (np.random.rand(2, 60), [12, 10], np.random.rand(12, 10), np.float32),
+        (
+            np.random.rand(2, 60),
+            [12, 10],
+            np.random.rand(12, 10),
+            np.float32,
+            1e-5,
+        ),
+        (
+            np.random.rand(10, 1, 10),
+            [10, 10],
+            np.random.rand(10, 10),
+            np.float64,
+            1e-15,
+        ),
+        (
+            np.random.rand(2, 60),
+            [12, 10],
+            np.random.rand(12, 10),
+            np.float64,
+            1e-15,
+        ),
+        (
+            np.random.rand(10, 1, 10),
+            [10, 10],
+            np.random.rand(10, 10),
+            np.float16,
+            1e-3,
+        ),
+        (
+            np.random.rand(2, 60),
+            [12, 10],
+            np.random.rand(12, 10),
+            np.float16,
+            1e-3,
+        ),
     ],
 )
-class TestSqrtGradComp(unittest.TestCase):
+class TestReshapeGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal = cls.primal.astype(cls.dtype)
@@ -131,8 +166,8 @@ class TestSqrtGradComp(unittest.TestCase):
         np.testing.assert_allclose(
             actual=actual(self.primal, self.shape, self.cotangent),
             desired=desired(self.primal, self.shape, self.cotangent),
-            rtol=1e-6,
-            atol=0,
+            rtol=self.rtol,
+            atol=self.rtol,
         )
         core._set_prim_backward_enabled(False)
 

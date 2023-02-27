@@ -53,7 +53,7 @@ core._set_prim_backward_enabled(True)
         ),
     ],
 )
-class TestTanhGradComp(unittest.TestCase):
+class TestAddGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal0 = cls.primal0.astype(cls.dtype)

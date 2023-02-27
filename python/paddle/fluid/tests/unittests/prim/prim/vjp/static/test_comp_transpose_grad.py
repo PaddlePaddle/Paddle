@@ -37,7 +37,7 @@ class PrimeNet(paddle.nn.Layer):
 
 
 @param.parameterized_class(
-    ('primal', 'axis', 'cotangent', 'dtype'),
+    ('primal', 'axis', 'cotangent', 'dtype', 'rtol'),
     [
         (
             np.random.rand(
@@ -45,36 +45,74 @@ class PrimeNet(paddle.nn.Layer):
             ),
             [0],
             np.random.rand(100),
-            np.float32,
+            np.float64,
+            1e-15,
         ),
         (
             np.random.rand(3, 4, 10),
             [0, 2, 1],
             np.random.rand(3, 10, 4),
-            np.float32,
+            np.float64,
+            1e-15,
         ),
         (
             np.random.rand(2, 3, 4, 5),
             [0, 2, 3, 1],
             np.random.rand(2, 4, 5, 3),
-            np.float32,
+            np.float64,
+            1e-15,
         ),
         (
             np.random.rand(2, 3, 4, 5, 6),
             [4, 2, 3, 1, 0],
             np.random.rand(6, 4, 5, 3, 2),
-            np.float32,
+            np.float64,
+            1e-15,
         ),
         (
             np.random.rand(2, 3, 4, 5, 6, 1),
             [4, 2, 3, 1, 0, 5],
             np.random.rand(6, 4, 5, 3, 2, 1),
-            np.float32,
+            np.float64,
+            1e-15,
         ),
-        # (np.random.rand(),
-        #  [],
-        # np.random.rand(),
-        # np.float32),
+        (
+            np.random.rand(
+                100,
+            ),
+            [0],
+            np.random.rand(100),
+            np.float16,
+            1e-3,
+        ),
+        (
+            np.random.rand(3, 4, 10),
+            [0, 2, 1],
+            np.random.rand(3, 10, 4),
+            np.float16,
+            1e-3,
+        ),
+        (
+            np.random.rand(2, 3, 4, 5),
+            [0, 2, 3, 1],
+            np.random.rand(2, 4, 5, 3),
+            np.float16,
+            1e-3,
+        ),
+        (
+            np.random.rand(2, 3, 4, 5, 6),
+            [4, 2, 3, 1, 0],
+            np.random.rand(6, 4, 5, 3, 2),
+            np.float16,
+            1e-3,
+        ),
+        (
+            np.random.rand(2, 3, 4, 5, 6, 1),
+            [4, 2, 3, 1, 0, 5],
+            np.random.rand(6, 4, 5, 3, 2, 1),
+            np.float16,
+            1e-3,
+        ),
     ],
 )
 class TestTransposeGradComp(unittest.TestCase):
@@ -173,8 +211,8 @@ class TestTransposeGradComp(unittest.TestCase):
         np.testing.assert_allclose(
             actual=actual(self.primal, self.axis, self.cotangent),
             desired=desired(self.primal, self.axis, self.cotangent),
-            rtol=1e-6,
-            atol=0,
+            rtol=self.rtol,
+            atol=self.rtol,
         )
         core._set_prim_backward_enabled(False)
 

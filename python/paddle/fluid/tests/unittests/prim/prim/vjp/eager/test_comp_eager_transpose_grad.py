@@ -64,7 +64,7 @@ core._set_prim_backward_enabled(True)
         # np.float32),
     ],
 )
-class TestSqrtGradComp(unittest.TestCase):
+class TestTransposeGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if isinstance(cls.primal, np.ndarray):

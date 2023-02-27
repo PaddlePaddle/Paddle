@@ -35,7 +35,7 @@ core._set_prim_backward_enabled(True)
         (np.random.rand(2, 60), [12, 10], np.random.rand(12, 10), np.float32),
     ],
 )
-class TestSqrtGradComp(unittest.TestCase):
+class TestReshapeGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal = cls.primal.astype(cls.dtype)
