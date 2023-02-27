@@ -65,7 +65,7 @@ void BatchNormGradRawKernel(const Context& dev_ctx,
        {DNNL_ARG_VARIANCE, *variance_memory},
        {DNNL_ARG_DIFF_DST, *diff_dst_memory},
        {DNNL_ARG_SCALE, *(std::get<0>(scaleshift_mems))},
-       {DNNL_ARG_SHIFT, *(std::get<1>(scaleshift_mems))},
+       //     {DNNL_ARG_SHIFT, *(std::get<1>(scaleshift_mems))}, // not needed
        {DNNL_ARG_DIFF_SRC, *diff_src_memory},
        {DNNL_ARG_DIFF_SCALE, *(std::get<0>(diff_scaleshift_mems))},
        {DNNL_ARG_DIFF_SHIFT, *(std::get<1>(diff_scaleshift_mems))}});
