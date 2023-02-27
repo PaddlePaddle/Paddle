@@ -470,8 +470,11 @@ void InitMemoryMethod() {
     memory_method->in_same_stream = paddle::memory::InSameStream;
     memory_method->allocation_deleter =
         paddle::memory::allocation::Allocator::AllocationDeleter;
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_HIP)
     memory_method->copy_with_stream =
         paddle::memory::Copy<phi::Place, phi::Place>;
+#endif
     memory_method->copy = paddle::memory::Copy<phi::Place, phi::Place>;
     memory_method->device_memory_stat_current_value =
         paddle::memory::DeviceMemoryStatCurrentValue;
