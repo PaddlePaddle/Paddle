@@ -373,7 +373,7 @@ class TestRMSOpMultiPrecison(unittest.TestCase):
             parameters=model.parameters(),
             weight_decay=0.01,
         )
-        optimizer.multi_precision_ = use_amp
+        optimizer._multi_precision = use_amp
         for idx in range(2):
             if place == 'gpu' and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
@@ -418,7 +418,7 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.optimizer.RMSProp(0.5, parameters=model.parameters())
-        optimizer.multi_precision_ = mp
+        optimizer._multi_precision = mp
         if use_amp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -449,7 +449,7 @@ class TestRMSPropMultiPrecision2_0(unittest.TestCase):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.optimizer.RMSProp(0.1)
-        optimizer.multi_precision_ = mp
+        optimizer._multi_precision = mp
 
         if use_amp:
             optimizer = paddle.static.amp.decorate(
@@ -530,7 +530,7 @@ class TestRMSPropMultiPrecision1_0(unittest.TestCase):
             learning_rate=0.001,
             parameter_list=model.parameters(),
         )
-        optimizer.multi_precision_ = mp
+        optimizer._multi_precision = mp
         if use_amp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -560,7 +560,7 @@ class TestRMSPropMultiPrecision1_0(unittest.TestCase):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.fluid.optimizer.RMSProp(learning_rate=0.001)
-        optimizer.multi_precision_ = mp
+        optimizer._multi_precision = mp
 
         if use_amp:
             optimizer = paddle.static.amp.decorate(
