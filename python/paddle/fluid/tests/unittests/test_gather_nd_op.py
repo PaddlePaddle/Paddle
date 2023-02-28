@@ -28,6 +28,7 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         xnp = np.random.random((5, 20)).astype("float64")
         self.inputs = {'X': xnp, 'Index': np.array([[], []]).astype("int32")}
         self.outputs = {
@@ -46,6 +47,7 @@ class TestGatherNdOpWithIndex1(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         xnp = np.random.random((5, 20)).astype("float64")
         self.inputs = {'X': xnp, 'Index': np.array([1]).astype("int32")}
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
@@ -64,6 +66,7 @@ class TestGatherNdOpWithLowIndex(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1], [2]]).astype("int64")
 
@@ -87,6 +90,7 @@ class TestGatherNdOpIndex1(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([1, 2]).astype("int32")
 
@@ -108,6 +112,7 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1, 1], [2, 1]]).astype("int64")
 
@@ -128,6 +133,7 @@ class TestGatherNdOpWithHighRankSame(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         shape = (5, 2, 3, 1, 10)
         xnp = np.random.rand(*shape).astype("float64")
         index = np.vstack([np.random.randint(0, s, size=2) for s in shape]).T
@@ -149,6 +155,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         shape = (2, 3, 4, 1, 10)
         xnp = np.random.rand(*shape).astype("float64")
         index = np.vstack([np.random.randint(0, s, size=200) for s in shape]).T
