@@ -24,6 +24,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #endif
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -62,6 +65,24 @@ class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
     grad->SetAttr("out_dtype", this->GetAttr("in_dtype"));
     grad->SetAttr("in_dtype", this->GetAttr("out_dtype"));
     grad->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
+  }
+};
+
+class CastCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+ public:
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+  void Apply() override {
+    paddle::experimental::Tensor out_grad = paddle::experimental::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleOutputGrad("Out")));
+    paddle::experimental::Tensor x_grad = paddle::experimental::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleInputGrad("X")));
+    auto dx_ptr = this->GetOutputPtr(&x_grad);
+    std::string dx_name = this->GetOutputName(x_grad);
+    auto dtype = static_cast<paddle::experimental::DataType>(
+        this->Attr<int>("in_dtype"));
+    prim::cast_grad<prim::DescTensor>(out_grad, dtype, dx_ptr);
+    this->RecoverOutputName(x_grad, dx_name);
   }
 };
 
@@ -133,6 +154,7 @@ REGISTER_OPERATOR(cast,
                   ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
+                  ops::CastCompositeGradOpMaker,
                   ops::CastOpProtoMaker,
                   CastInferShapeFunctor);
 

@@ -81,7 +81,8 @@ PD_REGISTER_KERNEL(shape,
                    int,
                    int64_t,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::INT32);

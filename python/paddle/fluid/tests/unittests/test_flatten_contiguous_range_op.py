@@ -25,21 +25,25 @@ class TestFlattenOp(OpTest):
         self.python_api = paddle.flatten
         self.python_out_sig = ["Out"]
         self.op_type = "flatten_contiguous_range"
+        self.prim_op_type = "comp"
         self.start_axis = 0
         self.stop_axis = -1
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.in_shape).astype("float64")}
         self.init_attrs()
+        self.enable_cinn = False
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
             "XShape": np.random.random(self.in_shape).astype("float32"),
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_eager=True)
+        self.check_output(
+            no_check_set=["XShape"], check_eager=True, check_prim=True
+        )
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out", check_eager=True, check_prim=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -205,25 +209,6 @@ class TestFlatten2OpError(unittest.TestCase):
             paddle.flatten(x_var, start_axis=2, stop_axis=10.0)
 
         self.assertRaises(ValueError, test_ValueError5)
-
-        def test_type():
-            # dtype must be float32, float64, int8, int32, int64, uint8.
-            x2 = (
-                np.arange(
-                    image_shape[0]
-                    * image_shape[1]
-                    * image_shape[2]
-                    * image_shape[3]
-                ).reshape(image_shape)
-                / 100.0
-            )
-            x2 = x2.astype('float16')
-            x2_var = paddle.fluid.data(
-                name='x2', shape=[3, 2, 4, 5], dtype='float16'
-            )
-            paddle.flatten(x2_var)
-
-        self.assertRaises(TypeError, test_type)
 
         def test_InputError():
             out = paddle.flatten(x)

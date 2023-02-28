@@ -30,6 +30,20 @@ import paddle
 paddle.enable_static()
 
 
+def random_unique_float(shape, dtype):
+    # create a random float array with 10x length
+    numel = np.prod(shape)
+    arr = np.random.uniform(-10.0, 10.0, numel * 10).astype(dtype)
+    arr = np.unique(arr)
+    assert (
+        arr.shape[0] >= numel
+    ), "failed to create enough unique values: %d vs %d" % (arr.shape[0], numel)
+    arr = arr[:numel]
+    np.random.shuffle(arr)
+    arr = arr.reshape(shape)
+    return arr
+
+
 def numpy_topk(x, k=1, axis=-1, largest=True):
     if axis < 0:
         axis = len(x.shape) + axis
@@ -52,16 +66,14 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
         self.use_dynamic_create_class = False
 
     class TestTopkOp(XPUOpTest):
-        def init_args(self):
-            self.k = 3
-            self.axis = 1
-            self.largest = True
-            self.input_data = np.random.rand(10, 20).astype(self.dtype)
-
         def setUp(self):
+            self.place = paddle.XPUPlace(0)
             self.op_type = "top_k_v2"
-            self.init_args()
             self.dtype = self.in_type
+            self.init_args()
+            self.input_data = random_unique_float(
+                self.input_data_shape, self.dtype
+            )
             self.inputs = {'X': self.input_data}
             self.attrs = {
                 'k': self.k,
@@ -74,98 +86,112 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.outputs = {'Out': output, 'Indices': indices}
 
         def test_check_output(self):
-            if paddle.is_compiled_with_xpu():
-                place = paddle.XPUPlace(0)
-                self.check_output_with_place(place)
+            self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            if paddle.is_compiled_with_xpu():
-                place = paddle.XPUPlace(0)
-                self.check_grad(set(['X']), 'Out')
+            self.check_grad_with_place(self.place, ['X'], 'Out')
+
+        def init_args(self):
+            self.k = 3
+            self.axis = 1
+            self.largest = True
+            self.input_data_shape = (10, 20)
 
     class TestTopkOp1(TestTopkOp):
         def init_args(self):
             self.k = 3
             self.axis = 1
             self.largest = True
-            self.input_data = np.random.rand(100, 155).astype(self.dtype)
+            # too many values for fp16 will lead to failure in random_unique_float function
+            if self.dtype == np.float16:
+                self.input_data_shape = (100, 55)
+            else:
+                self.input_data_shape = (100, 155)
 
     class TestTopkOp2(TestTopkOp):
         def init_args(self):
             self.k = 3
             self.axis = 1
             self.largest = True
-            self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
+            self.input_data_shape = (10, 10, 5)
 
     class TestTopkOp3(TestTopkOp):
         def init_args(self):
             self.k = 5
             self.axis = 1
             self.largest = True
-            self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
+            self.input_data_shape = (10, 10, 5)
 
     class TestTopkOp4(TestTopkOp):
         def init_args(self):
             self.k = 1
             self.axis = 1
             self.largest = True
-            self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
+            self.input_data_shape = (10, 10, 5)
 
     class TestTopkOp5(TestTopkOp):
         def init_args(self):
             self.k = 3
             self.axis = 2
             self.largest = True
-            self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
+            self.input_data_shape = (10, 10, 5)
 
     class TestTopkOp6(TestTopkOp):
         def init_args(self):
             self.k = 5
             self.axis = 1
             self.largest = True
-            self.input_data = np.random.rand(8, 32, 64).astype(self.dtype)
+            # too many values for fp16 will lead to failure in random_unique_float function
+            if self.dtype == np.float16:
+                self.input_data_shape = (8, 32, 32)
+            else:
+                self.input_data_shape = (8, 32, 64)
 
     class TestTopkOp7(TestTopkOp):
         def init_args(self):
             self.k = 10
             self.axis = 2
             self.largest = True
-            self.input_data = np.random.rand(8, 5, 10, 16).astype(self.dtype)
+            self.input_data_shape = (8, 5, 10, 16)
 
     class TestTopkOp8(TestTopkOp):
         def init_args(self):
             self.k = 1
             self.axis = 1
             self.largest = True
-            self.input_data = np.random.rand(8, 32, 64).astype(self.dtype)
+            # too many values for fp16 will lead to failure in random_unique_float function
+            if self.dtype == np.float16:
+                self.input_data_shape = (8, 32, 32)
+            else:
+                self.input_data_shape = (8, 32, 64)
 
     class TestTopkOp9(TestTopkOp):
         def init_args(self):
             self.k = 3
             self.axis = 1
             self.largest = True
-            self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
+            self.input_data_shape = (10, 10, 5)
 
     class TestTopkOp10(TestTopkOp):
         def init_args(self):
             self.k = 3
             self.axis = 1
             self.largest = True
-            self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
+            self.input_data_shape = (10, 10, 5)
 
     class TestTopkOp11(TestTopkOp):
         def init_args(self):
             self.k = 5
             self.axis = 1
             self.largest = True
-            self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
+            self.input_data_shape = (10, 10, 5)
 
     class TestTopkOp12(TestTopkOp):
         def init_args(self):
             self.k = 1
             self.axis = 1
             self.largest = True
-            self.input_data = np.random.rand(10, 10, 5).astype(self.dtype)
+            self.input_data_shape = (10, 10, 5)
 
 
 support_types = get_xpu_op_support_types('top_k_v2')

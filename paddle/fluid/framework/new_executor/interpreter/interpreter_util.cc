@@ -47,22 +47,91 @@ namespace interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
-// Cannot static analysis these Ops' output dtype because their InferShapes have
-// not moved to PHI yet.
-static std::set<std::string> OpsWithFunctionKernelAndFluidInferShape = {
-    "batch_norm",
-    "batch_norm_grad",
-    "batch_norm_grad_grad",
-    "conv2d",
-    "conv2d_grad",
-    "conv2d_grad_grad",
-    "conv3d",
-    "conv3d_grad",
-    "conv3d_grad_grad"
-    "depthwise_conv2d",
-    "depthwise_conv2d_grad",
-    "depthwise_conv2d_grad_grad",
-    "transpose2"};
+// These Op needs set output dtype when register phi kernel, but they didn't
+static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
+    "abs",
+    "accuracy",
+    "adam",
+    "adamw",
+    "all_close",
+    "all_raw",
+    "angle",
+    "any_raw",
+    "arg_sort",
+    "argmax",
+    "argmin",
+    "as_real",
+    "atan2",
+    "auc",
+    "bincount",
+    "clip_by_norm",
+    "complex",
+    "conv3d_coo",
+    "distribute_fpn_proposals",
+    "dropout",
+    "edit_distance",
+    "eig",
+    "eig_grad",
+    "eigh",
+    "eigvals",
+    "ftt_c2r",
+    "ftt_r2c",
+    "fused_adam",
+    "fused_matmul",
+    "generate_proposals",
+    "graph_sample_neighbors",
+    "group_norm",
+    "histogram",
+    "instance_norm",
+    "is_empty",
+    "is_finite",
+    "kthvalue",
+    "lamb",
+    "layer_norm",
+    "layer_norm_grad",
+    "less_equal",
+    "less_than",
+    "logical_and",
+    "logical_not",
+    "logical_or",
+    "logical_xor",
+    "lstsq",
+    "lu",
+    "matmul",
+    "matmul_with_flatten",
+    "matrix_nms",
+    "matrix_rank_tol",
+    "mode",
+    "momentum",
+    "multiclass_nms3",
+    "multinomial",
+    "nanmedian",
+    "nms",
+    "nonzero",
+    "numl",
+    "qr",
+    "qr_grad",
+    "rnn",
+    "roi_pool",
+    "search_sort",
+    "select",
+    "send_recv",
+    "send_ue_recv",
+    "sgd",
+    "svd",
+    "sync_batch_norm_grad",
+    "top_k",
+    "unique",
+    "unique_consecutive_flattened_tensor",
+    "unique_raw",
+    "viterbi_decode",
+    "viterbi_devode",
+    "yolo_loss"};
+
+// These Ops can use InferMeta to infer the output dtype
+static std::set<std::string> OpsWithAvailablePhiInferMeta = {
+    // TODO(Ruibiao): Add OP names here when needed.
+};
 
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
@@ -139,8 +208,10 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
 }
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
-  // has_fluid_kernel = KernelCode & 1
-  // has_structed_kernel = (kernelCode >> 1) & 1
+  // has_fluid_kernel = (kernelCode >> 3) & 1
+  // has_structed_kernel = (kernelCode >> 2) & 1
+  // need_move_to_phi = (kernelCode >> 1) & 1
+  // need_set_dtype =  KernelCode & 1
   using KernelCode = int8_t;
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
@@ -148,9 +219,17 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
+    bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel) &&
+                            OpsWithFluidKernelNeedMoveToPhi.count(op_type);
+    bool need_set_dtype =
+        !has_fluid_kernel && !has_structured_kernel &&
+        OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_type) &&
+        !OpsWithAvailablePhiInferMeta.count(op_type);
 
-    KernelCode kernel_code = (has_fluid_kernel << 1) + has_structured_kernel;
-    if (kernel_code != 0 && OpsWithFluidKernelNeedMoveToPhi.count(op_type)) {
+    KernelCode kernel_code = (has_fluid_kernel << 3) +
+                             (has_structured_kernel << 2) +
+                             (need_move_to_phi << 1) + need_set_dtype;
+    if (need_move_to_phi || need_set_dtype) {
       invalid_ops.insert(std::make_pair(op_type, kernel_code));
     }
   }
@@ -159,8 +238,10 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     std::stringstream ss;
     ss << "The following OPs are unable to static build:\n";
     for (auto& item : invalid_ops) {
-      ss << item.first << " [has_fluid_kernel = " << (item.second >> 1 & 1)
-         << ", has_structed_kerenl = " << (item.second & 1) << "]\n";
+      ss << item.first << " [has_fluid_kernel = " << (item.second >> 3 & 1)
+         << ", has_structed_kerenl = " << (item.second >> 2 & 1)
+         << ", need_move_to_phi = " << (item.second >> 1 & 1)
+         << ", need_set_dtype = " << (item.second & 1) << "]\n";
     }
     VLOG(4) << ss.str();
   }
@@ -676,12 +757,22 @@ void BuildOpFuncList(const platform::Place& place,
                 op_with_kernel->Type())) {
           auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
           auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
-
-          if (op_with_kernel->PhiKernel()->IsValid()) {
+          bool in_custom_back_list = false;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+          in_custom_back_list =
+              phi::backends::custom_device::is_in_custom_black_list(
+                  phi_kernel_name);
+#endif
+          if (op_with_kernel->PhiKernel()->IsValid() && !in_custom_back_list) {
             run_phi_kernel = true;
           } else {
-            if (!op_with_kernel->SupportsKernelType(expected_kernel_key,
-                                                    exec_ctx)) {
+            if ((!op_with_kernel->SupportsKernelType(expected_kernel_key,
+                                                     exec_ctx)) ||
+                in_custom_back_list) {
+              std::string info = in_custom_back_list ? "fluid in black list "
+                                                     : "fluid missing ";
+              VLOG(3) << info << phi_kernel_key
+                      << " kernel: " << phi_kernel_name;
               auto phi_cpu_kernel_key =
                   FallBackToCpu(phi_kernel_key, *op_with_kernel);
               op_with_kernel->ResetPhiKernel(
@@ -981,6 +1072,19 @@ void FakeInitializeOutputsForFunctionKernel(
     const phi::KernelSignature& kernel_sig,
     const RuntimeContext& ctx,
     const platform::DeviceContext& dev_ctx) {
+  std::string op_name = std::string(kernel_sig.name);
+  if (OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_name)) {
+    PADDLE_ENFORCE_GT(
+        OpsWithAvailablePhiInferMeta.count(op_name),
+        0,
+        phi::errors::Unavailable(
+            "Cannot static build for op %s because it did not set output dtype "
+            "in phi kernel register. Please set its output dtype and remove it "
+            "from OpsNeedSetOutputDtypeWhenRegisterPhiKernel set, or add it to "
+            " OpsWithAvailablePhiInferMeta set if its InferMeta is available.",
+            op_name));
+  }
+
   auto output_names = kernel_sig.output_names;
   auto output_defs = phi_kernel.args_def().output_defs();
   PADDLE_ENFORCE_EQ(output_names.size(),
@@ -1012,7 +1116,10 @@ void FakeInitializeOutputsForFunctionKernel(
         phi::DataType dtype = tensor_arg_def.dtype;
         phi::Place place = phi::TransToPhiPlace(tensor_arg_def.backend);
 
-        if (dtype == DataType::UNDEFINED) {
+        if (dtype == DataType::UNDEFINED ||
+            OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
+                std::string(kernel_sig.name))) {
+          VLOG(4) << "Get dtype result from InferMeta";
           dtype = out_tensor->dtype();  // dtype from InferMeta
         }
 

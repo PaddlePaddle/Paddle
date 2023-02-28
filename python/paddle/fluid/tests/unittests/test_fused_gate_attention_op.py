@@ -338,7 +338,7 @@ class TestFusedGateAttentionOp(OpTest):
                 # matmul(x, y, transpose_x=False, transpose_y=True). With different
                 # transpose_x and transpose_y, cublas will launch different kernels
                 # and the result cannot be exactly equal.
-                # Because the arguments of matmul in einsum is the the same as
+                # Because the arguments of matmul in einsum are the same as
                 # that in fused ops, check_equal is set to False and we use allclose
                 # to check the correctness.
                 check_equal = False
