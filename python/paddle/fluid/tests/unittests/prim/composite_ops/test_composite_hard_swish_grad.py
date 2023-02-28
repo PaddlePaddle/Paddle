@@ -25,7 +25,7 @@ from paddle.fluid import core
 
 
 def generate_data(shape, dtype="float32"):
-    np_data = np.random.random(shape).astype(dtype)
+    np_data = (np.random.random(shape) * 12 - 6).astype(dtype)
     return np_data
 
 
