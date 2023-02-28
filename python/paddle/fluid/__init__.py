@@ -64,7 +64,6 @@ from .backward import gradients
 from . import regularizer
 from . import average
 from . import metrics
-from . import transpiler
 from . import incubate
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
@@ -111,7 +110,6 @@ __all__ = (
     framework.__all__
     + executor.__all__
     + trainer_desc.__all__
-    + transpiler.__all__
     + parallel_executor.__all__
     + lod_tensor.__all__
     + data_feed_desc.__all__
@@ -128,7 +126,6 @@ __all__ = (
         'disable_dygraph',
         'enable_imperative',
         'disable_imperative',
-        'transpiler',
         'nets',
         'optimizer',
         'backward',
