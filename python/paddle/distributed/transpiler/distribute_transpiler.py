@@ -28,34 +28,29 @@ Steps to transpile pserver:
 5. add listen_and_serv op
 """
 
-import os
-import sys
-import math
-from functools import reduce
-
 import collections
 import logging
+import math
+import os
+import sys
+from functools import reduce
 
 import numpy as np
 
-from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
-    RoundRobin,
-    PSDispatcher,
-)
-from paddle.utils import unique_name
 from paddle import framework
 from paddle.fluid.framework import grad_var_name
-from paddle.framework import (
-    core,
-    Program,
-    Block,
+from paddle.framework import Block, Program, core
+from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
+    PSDispatcher,
+    RoundRobin,
 )
+from paddle.nn.initializer import Constant
 from paddle.static import (
+    Parameter,
     default_main_program,
     default_startup_program,
-    Parameter,
 )
-
+from paddle.utils import unique_name
 
 LOOKUP_TABLE_TYPE = ["lookup_table", "lookup_table_v2"]
 LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_grad", "lookup_table_v2_grad"]
@@ -1358,8 +1353,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 opt_op_on_pserver.append(op)
         # step 3.3
         # prepare if dc asgd is enabled
-        if self.config.enable_dc_asgd == True:
-            assert self.sync_mode == False
+        if self.config.enable_dc_asgd is True:
+            assert self.sync_mode is False
             self.param_bak_list = []
             # add param_bak for each trainer
             for p in self.param_grad_ep_mapping[endpoint]["params"]:
@@ -1860,7 +1855,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         param_grad_set = set()
         for p, g in self.params_grads:
             # skip parameter marked not trainable
-            if type(p) == Parameter and p.trainable == False:
+            if type(p) == Parameter and p.trainable is False:
                 continue
             if p.name not in param_grad_set:
                 param_list.append(p)
@@ -2843,7 +2838,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or role_id == int(
                 LR_SCHED_OP_ROLE_ATTR_VALUE
             ) | int(OPT_OP_ROLE_ATTR_VALUE):
-                if self.sync_mode == False and op.type == 'increment':
+                if self.sync_mode is False and op.type == 'increment':
                     inputs = self._get_input_map_from_op(
                         self.origin_program.global_block().vars, op
                     )
@@ -2888,7 +2883,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                             dtype=var.dtype,
                             shape=var.shape,
                             persistable=var.persistable,
-                            initializer=paddle.nn.initializer.Constant(1),
+                            initializer=Constant(1),
                         )
                     op_role_attr_name = (
                         core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -2987,7 +2982,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 if op.attr(OP_ROLE_VAR_ATTR_NAME):
                     param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
                     grad_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
-                    if not param_name in optimize_params:
+                    if param_name not in optimize_params:
                         optimize_params.add(param_name)
                         log("adding param_grad pair: ", param_name, grad_name)
                         params_grads.append(
