@@ -244,7 +244,11 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
         if is_infer_mode:
-            return self._origin_main_program.clone(for_test=is_infer_mode)
+            infer_program = self._origin_main_program.clone(
+                for_test=is_infer_mode
+            )
+            to_prim(infer_program.block(0))
+            return infer_program
         else:
             train_program = self._append_backward_desc(
                 self._origin_main_program
@@ -608,7 +612,9 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
         # make sure all status of is_test are False in train mode.
+        custom_vjps = {"softmax"}
         program = _change_is_test_status(main_program.clone(), is_test=False)
+        to_prim(program.block(0), custom_vjps)
         targets = []
         for out in self._outputs.tolist():
             if isinstance(out, framework.Variable):
@@ -622,6 +628,7 @@ class PartialProgramLayer:
         start_idx = len(main_program.block(0).ops) + len(self._outputs.tolist())
 
         self.prepare_gradient_aggregation(start_idx, main_program, program)
+        to_prim(program.block(0), {name + "_grad" for name in custom_vjps})
 
         return program
 
@@ -701,6 +708,11 @@ class PartialProgramLayer:
             'program_id',
             self.program_id,
         ]
+
+        print(self.forward_program)
+        print(self.backward_program)
+        print(self.program_id)
+
         if self.training:
             # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
             # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
@@ -1121,3 +1133,11 @@ def add_build_strategy_for(
     else:
         builded_program = program
     return builded_program
+
+
+@switch_to_static_graph
+def to_prim(blocks, exclude=frozenset()):
+    # TODO(Aurelius84): Fix this cycle import problem
+    from paddle.incubate.autograd import primapi
+
+    primapi.to_prim(blocks, exclude)

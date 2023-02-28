@@ -19,7 +19,6 @@ import threading
 import warnings
 import weakref
 
-from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
@@ -1183,24 +1182,7 @@ class ProgramCache:
                         )
                     )
 
-        custom_vjps = set()
-        if core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled():
-            custom_vjps = {
-                op.type
-                for op in concrete_program.block(0).ops
-                if core.has_comp_grad_op_maker(op.type)
-            }
-
-        if core._is_fwd_prim_enabled():
-            if not _in_amp_guard() and not _in_pure_fp16_guard():
-                _to_prim(concrete_program, exclude=custom_vjps)
-
         partial_program = partial_program_from(concrete_program)
-
-        if core._is_fwd_prim_enabled() and len(custom_vjps) != 0:
-            if not _in_amp_guard() and not _in_pure_fp16_guard():
-                _to_prim(partial_program.forward.blocks)
-
         return concrete_program, partial_program
 
     def __getitem__(self, item):
@@ -1677,4 +1659,4 @@ def _to_prim(blocks, exclude=frozenset()):
     # TODO(Aurelius84): Fix this cycle import problem
     from paddle.incubate.autograd import primapi
 
-    primapi.to_prim(blocks)
+    primapi.to_prim(blocks, exclude)
