@@ -2490,6 +2490,7 @@ USE_TRT_CONVERTER(mish);
 USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
 USE_TRT_CONVERTER(square);
+USE_TRT_CONVERTER(temporal_shift);
 // unary op
 USE_TRT_CONVERTER(exp);
 USE_TRT_CONVERTER(log);

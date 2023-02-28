@@ -2701,7 +2701,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "expand_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
-      "preln_groupnorm_act"};
+      "preln_groupnorm_act",
+      "temporal_shift"};
 
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -2853,7 +2854,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "expand_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
-      "preln_groupnorm_act"};
+      "preln_groupnorm_act",
+      "temporal_shift"};
 };
 
 struct GenericPluginTeller : public Teller {
