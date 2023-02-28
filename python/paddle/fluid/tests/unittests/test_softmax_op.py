@@ -44,38 +44,30 @@ def ref_softmax(x, axis=None, dtype=None):
 
 
 class TestSoftmaxOp(OpTest):
-    def get_shape(self):
+    def get_x_shape(self):
         return [10, 10]
 
     def get_axis(self):
         return -1
 
-    def init_data_type(self):
-        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
-        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
-
-    def get_input(self):
-        return np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
-
-    def get_output(self):
-        return np.apply_along_axis(stable_softmax, self.axis, self.x)
-
     def setUp(self):
         self.op_type = "softmax"
+        self.prim_op_type = "comp"
         self.python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
-        self.init_prim_op()
-        self.init_data_type()
+        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.init_kernel_type()
-        self.shape = self.get_shape()
+        self.shape = self.get_x_shape()
         self.axis = self.get_axis()
-        np.random.seed(0)
 
-        self.x = self.get_input()
-        self.out = self.get_output()
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
-        self.outputs = {'Out': self.out}
+        np.random.seed(0)
+        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        out = np.apply_along_axis(stable_softmax, self.axis, x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,
@@ -86,10 +78,8 @@ class TestSoftmaxOp(OpTest):
     def init_kernel_type(self):
         pass
 
-    def init_prim_op(self):
-        self.prim_op_type = "comp"
-
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
@@ -97,6 +87,7 @@ class TestSoftmaxOp(OpTest):
             self.check_output(check_prim=True)
 
     def test_check_grad(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn or self.dtype == np.float16:
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
@@ -118,42 +109,83 @@ class TestSoftmaxOp(OpTest):
 
 
 class TestSoftmaxOpfp32(TestSoftmaxOp):
-    def init_data_type(self):
+    def init_kernel_type(self):
         self.dtype = np.float32
 
 
 class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
-    def get_input(self):
-        return np.random.uniform(0.1, 1, []).astype(self.dtype)
+    def setUp(self):
+        self.op_type = "softmax"
+        self.prim_op_type = "comp"
+        self.python_api = F.softmax
+        self.use_cudnn = False
+        self.use_mkldnn = False
+        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
-    def get_output(self):
-        return np.array(1.0).astype(self.dtype)
+        np.random.seed(0)
+        x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        out = np.array(1.0).astype(self.dtype)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {
+            'axis': -1,
+            'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output(check_prim=True)
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
-    def get_input(self):
-        return np.random.uniform(0.1, 1, []).astype(self.dtype)
-
-    def get_output(self):
-        np.array(1.0).astype(self.dtype)
-
-    def init_kernel_type(self):
+    def setUp(self):
+        self.op_type = "softmax"
+        self.python_api = F.softmax
         self.use_cudnn = True
+        self.use_mkldnn = False
+        # explicilty use float32 for ROCm, as MIOpen does not yet support float64
+        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
 
-    def init_prim_op(self):
-        pass
+        np.random.seed(0)
+        x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        out = np.array(1.0).astype(self.dtype)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {
+            'axis': -1,
+            'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output(check_prim=True)
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5]
 
 
 class TestSoftmaxOp3(TestSoftmaxOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -161,7 +193,7 @@ class TestSoftmaxOp3(TestSoftmaxOp):
 
 
 class TestSoftmaxOp4(TestSoftmaxOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -169,7 +201,7 @@ class TestSoftmaxOp4(TestSoftmaxOp):
 
 
 class TestSoftmaxOp5(TestSoftmaxOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -177,7 +209,7 @@ class TestSoftmaxOp5(TestSoftmaxOp):
 
 
 class TestSoftmaxOp6(TestSoftmaxOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -196,7 +228,7 @@ class TestSoftmaxCUDNNOp(TestSoftmaxOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxCUDNNOp2(TestSoftmaxCUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5]
 
 
@@ -204,7 +236,7 @@ class TestSoftmaxCUDNNOp2(TestSoftmaxCUDNNOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxCUDNNOp3(TestSoftmaxCUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -215,7 +247,7 @@ class TestSoftmaxCUDNNOp3(TestSoftmaxCUDNNOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxCUDNNOp4(TestSoftmaxCUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -226,7 +258,7 @@ class TestSoftmaxCUDNNOp4(TestSoftmaxCUDNNOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxCUDNNOp5(TestSoftmaxCUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -237,7 +269,7 @@ class TestSoftmaxCUDNNOp5(TestSoftmaxCUDNNOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxCUDNNOp6(TestSoftmaxCUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5]
 
     def get_axis(self):
@@ -248,7 +280,7 @@ class TestSoftmaxCUDNNOp6(TestSoftmaxCUDNNOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxCUDNNOp7(TestSoftmaxCUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5, 6]
 
 
@@ -256,7 +288,7 @@ class TestSoftmaxCUDNNOp7(TestSoftmaxCUDNNOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxCUDNNOp8(TestSoftmaxCUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -267,7 +299,7 @@ class TestSoftmaxCUDNNOp8(TestSoftmaxCUDNNOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxCUDNNOp9(TestSoftmaxCUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -278,7 +310,7 @@ class TestSoftmaxCUDNNOp9(TestSoftmaxCUDNNOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxCUDNNOp10(TestSoftmaxCUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -289,7 +321,7 @@ class TestSoftmaxCUDNNOp10(TestSoftmaxCUDNNOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxCUDNNOp11(TestSoftmaxCUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -300,7 +332,7 @@ class TestSoftmaxCUDNNOp11(TestSoftmaxCUDNNOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxCUDNNOp12(TestSoftmaxCUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5, 6]
 
     def get_axis(self):
@@ -329,7 +361,7 @@ class TestSoftmaxFP16Op(TestSoftmaxOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxFP16Op2(TestSoftmaxFP16Op):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 10]
 
 
@@ -339,8 +371,6 @@ class TestSoftmaxFP16Op2(TestSoftmaxFP16Op):
 class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
     def init_kernel_type(self):
         self.use_cudnn = True
-
-    def init_data_type(self):
         self.dtype = np.float16
 
     def test_check_output(self):
@@ -354,7 +384,7 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
-    def get_shape(self):
+    def get_x_shape(self):
         return [2, 3, 4, 5]
 
 
