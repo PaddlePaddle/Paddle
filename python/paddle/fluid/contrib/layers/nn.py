@@ -632,9 +632,10 @@ def partial_sum(input, start_index=0, length=-1):
         import paddle.fluid as fluid
         import numpy as np
         import paddle
+        paddle.enable_static()
         x = paddle.randn(name="x", shape=[2, 3], dtype="float32")
         y = paddle.randn(name="y", shape=[2, 3], dtype="float32")
-        sum = layers.partial_sum([x,y], start_index=0, length=2)
+        sum = fluid.contrib.layers.partial_sum([x,y], start_index=0, length=2)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         xx = np.array([1,2,3,4,5,6]).reshape((2,3)).astype("float32")
@@ -1203,16 +1204,14 @@ def rank_attention(
            import numpy as np
            import paddle
 
-           input = paddle.randn(name="input", shape=[4, 2], dtype="float32")
-           rank_offset = paddle.randn(name="rank_offset", shape=[4, 7], dtype="int32")
+           input = paddle.rand(name="input", shape=[4, 2], dtype="float32")
+           rank_offset = paddle.rand(name="rank_offset", shape=[4, 7], dtype="int32")
            out = fluid.contrib.layers.rank_attention(input=input,
                                                      rank_offset=rank_offset,
                                                      rank_param_shape=[18,3],
                                                      rank_param_attr=
-                                                       fluid.ParamAttr(learning_rate=1.0,
-                                                                     name="ubm_rank_param.w_0",
-                                                                     initializer=
-                                                                     fluid.initializer.Xavier(uniform=False)),
+                                                     paddle.ParamAttr(learning_rate=1.0,
+                                                                     name="ubm_rank_param.w_0"),
                                                       max_rank=3,
                                                       max_size=0)
     """
@@ -1269,17 +1268,13 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
            out = fluid.contrib.layers.batch_fc(input=input,
                                                param_size=[16, 3, 10],
                                                param_attr=
-                                                 fluid.ParamAttr(learning_rate=1.0,
-                                                               name="w_0",
-                                                               initializer=
-                                                               fluid.initializer.Xavier(uniform=False)),
+                                               paddle.ParamAttr(learning_rate=1.0,
+                                                               name="w_0"),
                                                bias_size=[16, 10],
                                                bias_attr=
-                                                 fluid.ParamAttr(learning_rate=1.0,
+                                               paddle.ParamAttr(learning_rate=1.0,
                                                                name="b_0",
-                                                               initializer=
-                                                               fluid.initializer.Xavier(uniform=False)),
-                                                   act="relu")
+                                                act="relu")
     """
 
     helper = LayerHelper("batch_fc", **locals())
@@ -1386,6 +1381,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
 
             import paddle.fluid as fluid
             import paddle
+            paddle.enable_static()
 
             x = paddle.randn(name='x', shape=[1, 3, 101, 60], dtype='float32')
             guide = paddle.randn(name='guide', shape=[1, 101, 60], dtype='float32')

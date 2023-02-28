@@ -186,7 +186,7 @@ def monkey_patch_variable():
             .. code-block:: python
                 import paddle
                 import paddle.fluid as fluid
-
+                paddle.enable_static()
                 startup_prog = fluid.Program()
                 main_prog = fluid.Program()
                 with fluid.program_guard(startup_prog, main_prog):
