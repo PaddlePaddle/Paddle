@@ -49,11 +49,13 @@ class Dialect {
   ///
   template <typename T>
   void RegisterType() {
+    VLOG(4) << "Type registered into Dialect. --->";
     ir::AbstractType *abstract_type =
         new ir::AbstractType(std::move(ir::AbstractType::get<T>(*this)));
     this->ir_context()->RegisterAbstractType(ir::TypeId::get<T>(),
                                              abstract_type);
     ir::TypeManager::RegisterType<T>(this->ir_context());
+    VLOG(4) << "----------------------------------";
   }
 
   ///

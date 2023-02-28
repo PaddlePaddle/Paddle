@@ -72,7 +72,7 @@ StorageManager::StorageBase *StorageManager::GetParametricStorageTypeImpl(
     std::function<bool(const StorageBase *)> equal_func,
     std::function<StorageBase *()> constructor) {
   std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
-  VLOG(4) << "StorageManager get parameteretric storage of: [TypeId_hash="
+  VLOG(4) << "Try to get a parameteretric storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << ", param_hash=" << hash_value
           << "].";
   if (parametric_instance_.find(type_id) == parametric_instance_.end())
@@ -84,7 +84,7 @@ StorageManager::StorageBase *StorageManager::GetParametricStorageTypeImpl(
 StorageManager::StorageBase *StorageManager::GetParameterlessStorageTypeImpl(
     TypeId type_id) {
   std::lock_guard<ir::SpinLock> guard(parameterless_instance_lock_);
-  VLOG(4) << "StorageManager get parameterless storage of: [TypeId_hash="
+  VLOG(4) << "Try to get a parameterless storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
   if (parameterless_instance_.find(type_id) == parameterless_instance_.end())
     throw("TypeId not found in IrContext.");
@@ -94,7 +94,7 @@ StorageManager::StorageBase *StorageManager::GetParameterlessStorageTypeImpl(
 
 void StorageManager::RegisterParametricStorageTypeImpl(TypeId type_id) {
   std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
-  VLOG(4) << "StorageManager register parameteric storage of: [TypeId_hash="
+  VLOG(4) << "Register a parameteric storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
   parametric_instance_.emplace(type_id,
                                std::make_unique<ParametricStorageManager>());
@@ -103,7 +103,7 @@ void StorageManager::RegisterParametricStorageTypeImpl(TypeId type_id) {
 void StorageManager::RegisterParameterlessStorageTypeImpl(
     TypeId type_id, std::function<StorageBase *()> constructor) {
   std::lock_guard<ir::SpinLock> guard(parameterless_instance_lock_);
-  VLOG(4) << "StorageManager register parameterless storage of: [TypeId_hash="
+  VLOG(4) << "Register a parameterless storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
   if (parameterless_instance_.find(type_id) != parameterless_instance_.end())
     throw("storage class already registered");

@@ -44,7 +44,7 @@ class IrContextImpl {
 
   void RegisterAbstractType(ir::TypeId type_id, AbstractType *abstract_type) {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
-    VLOG(4) << "IrContext register an abstract_type of: [TypeId_hash="
+    VLOG(4) << "Register an abstract_type of: [TypeId_hash="
             << std::hash<ir::TypeId>()(type_id)
             << ", AbstractType_ptr=" << abstract_type << "].";
     registed_abstract_types_.emplace(type_id, abstract_type);
@@ -54,20 +54,19 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
     auto iter = registed_abstract_types_.find(type_id);
     if (iter != registed_abstract_types_.end()) {
-      VLOG(4) << "IrContext fonund a cached abstract_type of: [TypeId_hash="
+      VLOG(4) << "Fonund a cached abstract_type of: [TypeId_hash="
               << std::hash<ir::TypeId>()(type_id)
               << ", AbstractType_ptr=" << iter->second << "].";
       return iter->second;
     }
-    LOG(WARNING)
-        << "IrContext not fonund cached abstract_type of: [TypeId_hash="
-        << std::hash<ir::TypeId>()(type_id) << "].";
+    LOG(WARNING) << "No cache found abstract_type of: [TypeId_hash="
+                 << std::hash<ir::TypeId>()(type_id) << "].";
     return nullptr;
   }
 
   void RegisterDialect(std::string name, Dialect *dialect) {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
-    VLOG(4) << "IrContext register a dialect of: [name=" << name
+    VLOG(4) << "Register a dialect of: [name=" << name
             << ", dialect_ptr=" << dialect << "].";
     registed_dialect_.emplace(name, dialect);
   }
@@ -76,12 +75,11 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
     auto iter = registed_dialect_.find(name);
     if (iter != registed_dialect_.end()) {
-      VLOG(4) << "IrContext fonund a cached dialect of: [name=" << name
+      VLOG(4) << "Fonund a cached dialect of: [name=" << name
               << ", dialect_ptr=" << iter->second << "].";
       return iter->second;
     }
-    LOG(WARNING) << "IrContext not fonund cached dialect of: [name=" << name
-                 << "].";
+    LOG(WARNING) << "No cache fonund dialect of: [name=" << name << "].";
     return nullptr;
   }
 
@@ -111,8 +109,9 @@ IrContext *IrContext::Instance() {
 }
 
 IrContext::IrContext() : impl_(new IrContextImpl()) {
-  VLOG(4) << "BuiltinDialect registered into IrContext.";
+  VLOG(4) << "BuiltinDialect registered into IrContext. ===>";
   GetOrRegisterDialect<BuiltinDialect>();
+  VLOG(4) << "==============================================";
 
   impl_->fp32_type = TypeManager::get<Float32Type>(this);
   impl_->int32_type = TypeManager::get<Int32Type>(this);
@@ -134,11 +133,12 @@ std::unordered_map<TypeId, AbstractType *>
 
 Dialect *IrContext::GetOrRegisterDialect(
     std::string dialect_name, std::function<Dialect *()> constructor) {
-  VLOG(4) << "IrContext get or register a dialect of: [name=" << dialect_name
+  VLOG(4) << "Try to get or register a Dialect of: [name=" << dialect_name
           << "].";
   Dialect *dialect = impl().GetDialect(dialect_name);
   if (dialect == nullptr) {
-    VLOG(4) << "Not fonund cached dialect, create and register a new dialect.";
+    VLOG(4) << "Create and register a new Dialect of: [name=" << dialect_name
+            << "].";
     dialect = constructor();
     impl().RegisterDialect(dialect_name, dialect);
   }
@@ -164,9 +164,6 @@ Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
 }
 
 const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
-  VLOG(4) << "Lookup abstract type [TypeId_hash="
-          << std::hash<ir::TypeId>()(type_id) << "] from IrContext [ptr=" << ctx
-          << "].";
   auto &impl = ctx->impl();
   AbstractType *abstract_type = impl.GetAbstractType(type_id);
   if (abstract_type) {
