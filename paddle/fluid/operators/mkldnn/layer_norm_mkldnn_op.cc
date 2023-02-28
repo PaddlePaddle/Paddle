@@ -30,7 +30,6 @@ class LayerNormOneDNNHandler
                          const dnnl::normalization_flags& flags,
                          const bool& is_test,
                          const phi::DenseTensor* x,
-                         const phi::DenseTensor* scale,
                          const dnnl::engine engine,
                          platform::Place cpu_place)
       : phi::funcs::OneDNNHandlerNoCachingT<T,
@@ -39,16 +38,8 @@ class LayerNormOneDNNHandler
     const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                        : dnnl::prop_kind::forward_training;
 
-    const unsigned int C = phi::vectorize(scale->dims())[0];
-    auto scaleshift_md = dnnl::memory::desc(
-        {C}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-
-    this->AcquireForwardPrimitiveDescriptor(fwd_prop_kind,
-                                            x->mem_desc(),
-                                            x->mem_desc(),
-                                            scaleshift_md,
-                                            epsilon,
-                                            flags);
+    this->AcquireForwardPrimitiveDescriptor(
+        fwd_prop_kind, x->mem_desc(), x->mem_desc(), epsilon, flags);
   }
 
   std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
@@ -112,14 +103,8 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                dnnl::normalization_flags::use_shift;
     }
 
-    LayerNormOneDNNHandler<T> handler(src_tz,
-                                      epsilon,
-                                      flags,
-                                      is_test,
-                                      x,
-                                      scale,
-                                      onednn_engine,
-                                      ctx.GetPlace());
+    LayerNormOneDNNHandler<T> handler(
+        src_tz, epsilon, flags, is_test, x, onednn_engine, ctx.GetPlace());
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto dst_memory = handler.AcquireDstMemory(out);
