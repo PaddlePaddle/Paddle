@@ -40,7 +40,7 @@ from .origin_info import (
     create_and_update_origin_info_map,
     update_op_callstack_with_origin_info,
 )
-from .partial_program import partial_program_from
+from .partial_program import PartialProgramLayerHook, partial_program_from
 from .utils import (
     ALREADY_D2S,
     ast_to_func,
@@ -1183,6 +1183,38 @@ class ProgramCache:
                     )
 
         partial_program = partial_program_from(concrete_program)
+
+        class PrimHooker(PartialProgramLayerHook):
+            def __init__(self):
+                self.custom_vjps = {"softmax"}
+
+            def before_append_backward(
+                self, partial_program_layer, forward_program
+            ):
+                if core._is_fwd_prim_enabled():
+                    to_prim(forward_program.block(0), self.custom_vjps)
+                return forward_program
+
+            def after_append_backward(
+                self, partial_program_layer, whole_program, backward_start_idx
+            ):
+                backward_length = (
+                    len(whole_program.block(0).ops) - backward_start_idx
+                )
+                if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+                    to_prim(whole_program.block(0))
+                new_start_index = (
+                    len(whole_program.block(0).ops) - backward_length
+                )
+                return whole_program, new_start_index
+
+            def after_infer(self, partial_program_layer, infer_program):
+                if core._is_fwd_prim_enabled():
+                    to_prim(infer_program.block(0))
+                return infer_program
+
+        partial_program.set_hooker(PrimHooker())
+
         return concrete_program, partial_program
 
     def __getitem__(self, item):
@@ -1655,7 +1687,7 @@ def enable_to_static(enable_to_static_bool):
 
 
 @switch_to_static_graph
-def _to_prim(blocks, exclude=frozenset()):
+def to_prim(blocks, exclude=frozenset()):
     # TODO(Aurelius84): Fix this cycle import problem
     from paddle.incubate.autograd import primapi
 

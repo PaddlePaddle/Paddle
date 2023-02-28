@@ -145,6 +145,19 @@ class ProgramInfo:
         return self.programs[key], self.op_size[key]
 
 
+class PartialProgramLayerHook:
+    def before_append_backward(self, partial_program_layer, forward_program):
+        ...
+
+    def after_append_backward(
+        self, partial_program_layer, whole_program, backward_start_idx
+    ):
+        ...
+
+    def after_infer(self, partial_program_layer, infer_program):
+        ...
+
+
 class PartialProgramLayer:
     """
     PartialProgramLayer wraps all the ops from layers decorated by `@to_static`
@@ -184,6 +197,7 @@ class PartialProgramLayer:
         # Set default mode to train
         self.training = True
         self._infer_info = ProgramInfo()
+        self._backward_start_index_map = {}
 
         custom_white_list, custom_black_list = None, None
         tracer = framework._dygraph_tracer()
@@ -197,6 +211,7 @@ class PartialProgramLayer:
 
         # program_id -> list(scope)
         self._scope_cache = {}
+        self._hooker = None
 
     def __call__(self, inputs):
         """
@@ -219,6 +234,9 @@ class PartialProgramLayer:
         )
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
+
+    def set_hooker(self, hooker):
+        self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
         if use_scope_cache:
@@ -247,7 +265,8 @@ class PartialProgramLayer:
             infer_program = self._origin_main_program.clone(
                 for_test=is_infer_mode
             )
-            to_prim(infer_program.block(0))
+            if self._hooker:
+                infer_program = self._hooker.after_infer(self, infer_program)
             return infer_program
         else:
             train_program = self._append_backward_desc(
@@ -612,9 +631,9 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
         # make sure all status of is_test are False in train mode.
-        custom_vjps = {"softmax"}
         program = _change_is_test_status(main_program.clone(), is_test=False)
-        to_prim(program.block(0), custom_vjps)
+        if self._hooker:
+            program = self._hooker.before_append_backward(self, program)
         targets = []
         for out in self._outputs.tolist():
             if isinstance(out, framework.Variable):
@@ -624,11 +643,16 @@ class PartialProgramLayer:
             # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
             core.check_and_set_prim_all_enabled()
             backward.gradients(targets=targets, inputs=[])
-
-        start_idx = len(main_program.block(0).ops) + len(self._outputs.tolist())
-
-        self.prepare_gradient_aggregation(start_idx, main_program, program)
-        to_prim(program.block(0), {name + "_grad" for name in custom_vjps})
+            start_idx = (
+                len(main_program.block(0).ops) + len(self._outputs.tolist()) + 1
+            )
+            if self._hooker:
+                program, start_idx = self._hooker.after_append_backward(
+                    self, program, start_idx
+                )
+                # self._backward_start_index_map[self._hash_with_id(program, self)]
+            # TODO: prim make this complicate
+            self.prepare_gradient_aggregation(start_idx, main_program, program)
 
         return program
 
@@ -1133,11 +1157,3 @@ def add_build_strategy_for(
     else:
         builded_program = program
     return builded_program
-
-
-@switch_to_static_graph
-def to_prim(blocks, exclude=frozenset()):
-    # TODO(Aurelius84): Fix this cycle import problem
-    from paddle.incubate.autograd import primapi
-
-    primapi.to_prim(blocks, exclude)
