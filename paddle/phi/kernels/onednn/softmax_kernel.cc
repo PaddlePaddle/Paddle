@@ -61,10 +61,6 @@ void SoftmaxKernel(const Context& dev_ctx,
   bool is_inplace = x.IsSharedBufferWith(*out);
 
   if (phi::funcs::is_int8<T>()) {
-    PADDLE_ENFORCE(!is_inplace,
-                   phi::errors::Unimplemented(
-                       "Inplace not implemeneted for int8 onednn softmax."));
-
     funcs::SoftmaxV2OneDNNHandler<T> handler(
         dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out);
     SoftmaxExecute(is_inplace, &handler, x, out, dev_ctx);
