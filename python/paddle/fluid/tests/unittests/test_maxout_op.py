@@ -147,10 +147,7 @@ class TestMaxOutOpFP16(OpTest):
         self.groups = 2
         self.axis = 1
         output_np = maxout_forward_naive(input_np, self.groups, self.axis)
-        self.attrs = {
-            'groups': self.groups,
-            'axis': self.axis
-        }
+        self.attrs = {'groups': self.groups, 'axis': self.axis}
         self.inputs = {'X': input_np}
         self.outputs = {'Out': output_np}
 
