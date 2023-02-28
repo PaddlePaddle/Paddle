@@ -184,6 +184,8 @@ class Tracer {
     }
   }
 
+  phi::DataType GetAmpPhiDtype() const { return amp_dtype_; }
+
   void DisableLayoutAutoTune() { use_layout_autotune_ = false; }
 
   void EnableLayoutAutoTune() { use_layout_autotune_ = true; }
