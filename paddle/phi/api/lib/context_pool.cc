@@ -61,7 +61,7 @@ PADDLE_API phi::Allocator* GetAllocator(const phi::Place& place) {
   return const_cast<phi::Allocator*>(&dev_ctx->GetAllocator());
 }
 
-PADDLE_API phi::CUDAStream* getCurrentCUDAStream(const phi::Place& place) {
+PADDLE_API phi::CUDAStream* GetCurrentCUDAStream(const phi::Place& place) {
   PADDLE_ENFORCE(place.GetType() == phi::AllocationType::GPU,
                  phi::errors::InvalidArgument(
                      "getCurrentCUDAStream only supports GPUPlace input. "
