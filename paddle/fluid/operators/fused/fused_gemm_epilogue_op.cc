@@ -390,7 +390,7 @@ class FusedGemmEpilogueOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
     if (act_type != "none") {
-      op->SetInput("ReserveSpace", this->Input("ReserveSpace"));
+      op->SetInput("ReserveSpace", this->Output("ReserveSpace"));
     }
     op->SetInput("DOut", this->OutputGrad("Out"));
 
