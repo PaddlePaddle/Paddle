@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,11 @@ from paddle.static import Program, program_guard
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 paddle.enable_static()
 
@@ -45,7 +50,7 @@ def error_msg(data_np):
 
 
 def convert_dtype(dtype_str):
-    dtype_str_list = ["int32", "int64", "float32", "float64"]
+    dtype_str_list = [np.int32, np.int64, np.float32, np.float64]
     dtype_num_list = [
         core.VarDesc.VarType.INT32,
         core.VarDesc.VarType.INT64,
@@ -58,61 +63,78 @@ def convert_dtype(dtype_str):
     return dtype_num_list[dtype_str_list.index(dtype_str)]
 
 
-class TestXPURandpermOp(XPUOpTest):
-    """Test randperm op."""
+class XPUTestRandpermOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = "randperm"
+        self.use_dynamic_create_class = False
 
-    def setUp(self):
-        self.init_op_type()
-        self.initTestCase()
-        self.n = 200
-        self.dtype = "int32"
-        self.use_xpu = True
-        self.use_mkldnn = False
-        self.inputs = {}
-        self.outputs = {"Out": np.zeros((self.n)).astype(self.dtype)}
-        self.attrs = {
-            "n": self.n,
-            "dtype": convert_dtype(self.dtype),
-        }
+    class TestXPURandpermOp(XPUOpTest):
+        """Test randperm op."""
 
-    def init_op_type(self):
-        self.op_type = "randperm"
-        self.use_mkldnn = False
+        def setUp(self):
+            self.init_op_type()
+            self.initTestCase()
+            self.dtype = self.in_type
+            self.use_xpu = True
+            self.use_mkldnn = False
+            self.inputs = {}
+            self.outputs = {"Out": np.zeros((self.n)).astype(self.dtype)}
+            self.attrs = {
+                "n": self.n,
+                "dtype": convert_dtype(self.dtype),
+            }
 
-    def initTestCase(self):
-        pass
+        def init_op_type(self):
+            self.op_type = "randperm"
+            self.use_mkldnn = False
 
-    def test_check_output(self):
-        if paddle.is_compiled_with_xpu():
+        def initTestCase(self):
+            self.n = 200
+
+        def test_check_output(self):
+            if paddle.is_compiled_with_xpu():
+                paddle.enable_static()
+                place = paddle.XPUPlace(0)
+                self.check_output_customized(self.verify_output)
+
+        def verify_output(self, outs):
+            out_np = np.array(outs[0])
+            self.assertTrue(
+                check_randperm_out(self.n, out_np), msg=error_msg(out_np)
+            )
+
+    class TestXPURandpermOpN(TestXPURandpermOp):
+        def initTestCase(self):
+            self.n = 10000
+
+    class TestRandpermImperative(unittest.TestCase):
+        def test_out(self):
+            paddle.disable_static()
+            n = 10
+            dtype = self.in_type
+            data_p = paddle.randperm(n, dtype)
+            data_np = data_p.numpy()
+            self.assertTrue(
+                check_randperm_out(n, data_np), msg=error_msg(data_np)
+            )
             paddle.enable_static()
-            place = paddle.XPUPlace(0)
-            self.check_output_customized(self.verify_output)
 
-    def verify_output(self, outs):
-        out_np = np.array(outs[0])
-        self.assertTrue(
-            check_randperm_out(self.n, out_np), msg=error_msg(out_np)
-        )
-
-
-class TestXPURandpermOpN(TestXPURandpermOp):
-    def initTestCase(self):
-        self.n = 10000
-
-
-class TestXPURandpermOpInt32(TestXPURandpermOp):
-    def initTestCase(self):
-        self.dtype = "int32"
+    class TestRandpermEager(unittest.TestCase):
+        def test_out(self):
+            paddle.disable_static()
+            n = 10
+            dtype = self.in_type
+            data_p = paddle.randperm(n, dtype)
+            data_np = data_p.numpy()
+            self.assertTrue(
+                check_randperm_out(n, data_np), msg=error_msg(data_np)
+            )
+            paddle.enable_static()
 
 
-class TestXPURandpermOpFloat32(TestXPURandpermOp):
-    def initTestCase(self):
-        self.dtype = "float32"
-
-
-class TestXPURandpermOpFloat64(TestXPURandpermOp):
-    def initTestCase(self):
-        self.dtype = "float64"
+support_types = get_xpu_op_support_types("randperm")
+for stype in support_types:
+    create_test_class(globals(), XPUTestRandpermOp, stype)
 
 
 class TestRandpermAPI(unittest.TestCase):
@@ -133,32 +155,6 @@ class TestRandpermAPI(unittest.TestCase):
             self.assertEqual(res[1].dtype, np.float32)
             self.assertTrue(check_randperm_out(n, res[0]))
             self.assertTrue(check_randperm_out(n, res[1]))
-
-
-class TestRandpermImperative(unittest.TestCase):
-    def test_out(self):
-        paddle.disable_static()
-        n = 10
-        for dtype in ['int32', np.int64, 'float32', 'float64']:
-            data_p = paddle.randperm(n, dtype)
-            data_np = data_p.numpy()
-            self.assertTrue(
-                check_randperm_out(n, data_np), msg=error_msg(data_np)
-            )
-        paddle.enable_static()
-
-
-class TestRandpermEager(unittest.TestCase):
-    def test_out(self):
-        paddle.disable_static()
-        n = 10
-        for dtype in ['int32', np.int64, 'float32', 'float64']:
-            data_p = paddle.randperm(n, dtype)
-            data_np = data_p.numpy()
-            self.assertTrue(
-                check_randperm_out(n, data_np), msg=error_msg(data_np)
-            )
-        paddle.enable_static()
 
 
 if __name__ == "__main__":

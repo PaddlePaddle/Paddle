@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -102,7 +102,7 @@ void DistributeFpnProposalsKernel(
   int* target_lvls_data = dev_ctx.template Alloc<int>(&target_lvls);
 
   std::vector<int> rois_lod_vec(fpn_rois_lod.size(), 0);
-  for (int i = 0; i < fpn_rois_lod.size(); ++i) {
+  for (auto i = 0; i < fpn_rois_lod.size(); ++i) {
     rois_lod_vec[i] = static_cast<int>(fpn_rois_lod[i]);
   }
   xpu::VectorParam<int> rois_lod = {
@@ -122,18 +122,14 @@ void DistributeFpnProposalsKernel(
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "distribute_fpn_proposals_helper");
 
-  auto place = dev_ctx.GetPlace();
-
   DenseTensor index_out_t;
   Sort<int>(dev_ctx, target_lvls, &index_out_t);
-  // Sort<int>(dev_ctx, target_lvls, &index_out_t);
-
   Sort<int>(dev_ctx, index_out_t, restore_index);
   restore_index->Resize({roi_num, 1});
+
   int start = 0;
   std::vector<int> sub_lod_list_cpu(lod_size * num_level);
   phi::TensorToVector<int>(sub_lod_list, dev_ctx, &sub_lod_list_cpu);
-  dev_ctx.Wait();
 
   for (int i = 0; i < num_level; ++i) {
     DenseTensor sub_lod = sub_lod_list.Slice(i, i + 1);
