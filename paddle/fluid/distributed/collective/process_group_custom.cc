@@ -270,6 +270,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
       CommType::ALLGATHER);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    int64_t offset,
+    int64_t numel,
+    bool sync_op) {
+  return AllGather(out_tensor, in_tensor, offset, numel, sync_op);
+}
+
 // TODO(sunyilun): methods below will be removed later
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
     std::vector<phi::DenseTensor>& in_tensors,
