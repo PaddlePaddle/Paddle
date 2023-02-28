@@ -124,6 +124,22 @@ Tensor full<DescTensor>(const IntArray& shape,
   op->InferShape(*block);
   return out;
 }
-
+template <>
+Tensor cast<DescTensor>(const Tensor& x, DataType dtype) {
+  Tensor out = empty<DescTensor>({}, DataType::FLOAT32, paddle::Place());
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("cast");
+  op->SetInput("X",
+               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  op->SetOutput(
+      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->SetAttr("in_dtype", static_cast<int>(x.dtype()));
+  op->SetAttr("out_dtype", static_cast<int>(dtype));
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
+  return out;
+}
 }  // namespace prim
 }  // namespace paddle
