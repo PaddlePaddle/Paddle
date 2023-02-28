@@ -32,6 +32,7 @@ class TestConcatOp(OpTest):
     def setUp(self):
         self.op_type = "concat"
         self.python_api = paddle.concat
+        self.prim_op_type = "prim"
         self.dtype = self.get_dtype()
         self.init_test_data()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
@@ -61,13 +62,13 @@ class TestConcatOp(OpTest):
     def test_check_grad(self):
         if self.dtype == np.uint16:
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['x0'], 'Out')
-            self.check_grad_with_place(place, ['x1'], 'Out')
-            self.check_grad_with_place(place, ['x2'], 'Out')
+            self.check_grad_with_place(place, ['x0'], 'Out', check_prim=True)
+            self.check_grad_with_place(place, ['x1'], 'Out', check_prim=True)
+            self.check_grad_with_place(place, ['x2'], 'Out', check_prim=True)
         else:
-            self.check_grad(['x0'], 'Out', check_eager=True)
-            self.check_grad(['x1'], 'Out', check_eager=True)
-            self.check_grad(['x2'], 'Out', check_eager=True)
+            self.check_grad(['x0'], 'Out', check_eager=True, check_prim=True)
+            self.check_grad(['x1'], 'Out', check_eager=True, check_prim=True)
+            self.check_grad(['x2'], 'Out', check_eager=True, check_prim=True)
 
     def init_test_data(self):
         if self.dtype == np.uint16:
@@ -133,6 +134,7 @@ class TestConcatOp6(TestConcatOp):
         self.op_type = "concat"
         self.dtype = self.get_dtype()
         self.python_api = paddle.concat
+        self.prim_op_type = "prim"
         self.init_test_data()
         self.lod = [[20, 80]]
         self.out_lod = [[20, 80, 20, 80, 20, 80]]
@@ -156,9 +158,9 @@ class TestConcatOp6(TestConcatOp):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_eager=True)
-        self.check_grad(['x1'], 'Out', check_eager=True)
-        self.check_grad(['x2'], 'Out', check_eager=True)
+        self.check_grad(['x0'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['x1'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['x2'], 'Out', check_eager=True, check_prim=True)
 
     def init_test_data(self):
         self.x0 = np.random.random([100]).astype(self.dtype)

@@ -21,6 +21,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -159,14 +162,20 @@ class ConcatCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
  public:
   void Apply() override {
     std::vector<paddle::experimental::Tensor> input =
-        this->GetSingleForwardInput("X");
+        this->GetMultiForwardInput("X");
     paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
     std::vector<paddle::experimental::Tensor> input_grad =
-        this->GetSingleInputGrad("X");
+        this->GetMultiForwardInput("X");
 
+    std::vector<paddle::experimental::Tensor *> input_grad_ptr(
+        input_grad.size());
+    for (auto sub_tensor : input_grad) {
+      input_grad_ptr.push_back(&sub_tensor);
+    }
     int axis = static_cast<int>(this->Attr<int>("axis"));
-    auto dx_ptr = this->GetOutputPtr(&input_grad);
-    std::string dx_name = this->GetOutputName(input_grad);
+    std::vector<paddle::experimental::Tensor *> dx_ptr =
+        this->GetOutputPtr(input_grad_ptr);
+    std::vector<std::string> dx_name = this->GetOutputName(input_grad);
 
     VLOG(6) << "Runing concat_grad composite func";
     prim::concat_grad<prim::DescTensor>(input, out_grad, axis, dx_ptr);
