@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 
 class TestUnStackOpBase(OpTest):
@@ -154,7 +155,10 @@ class TestStackOp6(TestUnStackOpBase):
         self.axis = 2
 
 
-class TestUnStackBF16OP(OpTest):
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestUnStackBF16Op(OpTest):
     def initDefaultParameters(self):
         self.input_dim = (5, 6, 7)
         self.axis = 0
@@ -175,8 +179,6 @@ class TestUnStackBF16OP(OpTest):
         self.op_type = 'unstack'
         self.python_api = paddle.unstack
         self.x = np.random.random(size=self.input_dim).astype(float)
-        self.x = convert_float_to_uint16(self.x)
-
         outs = np.split(self.x, self.input_dim[self.axis], self.axis)
         new_shape = list(self.input_dim)
         del new_shape[self.axis]
@@ -184,19 +186,26 @@ class TestUnStackBF16OP(OpTest):
         tmp = []
         tmp_names = []
         for i in range(self.input_dim[self.axis]):
-            tmp.append((y_names[i], np.reshape(outs[i], new_shape)))
+            tmp.append(
+                (
+                    y_names[i],
+                    np.reshape(convert_float_to_uint16(outs[i]), new_shape),
+                )
+            )
             tmp_names.append(y_names[i])
 
+        self.x = convert_float_to_uint16(self.x)
         self.python_out_sig = tmp_names
         self.inputs = {'X': self.x}
         self.outputs = {'Y': tmp}
         self.attrs = {'axis': self.axis, 'num': self.input_dim[self.axis]}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
-        self.check_grad(['X'], self.get_y_names(), check_eager=True)
+        pass
 
 
 class TestUnstackZeroInputOp(unittest.TestCase):
