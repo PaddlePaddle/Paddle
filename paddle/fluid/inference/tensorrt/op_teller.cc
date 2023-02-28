@@ -2542,6 +2542,31 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "expand_as_v2") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the expand_as_v2 does not support "
+                   "static shape yet";
+        return false;
+      }
+      auto* block = desc.Block();
+      auto input_x_name = desc.Input("X")[0];
+      auto* input_x_desc = block->FindVar(input_x_name);
+      const auto input_x_shape = input_x_desc->GetShape();
+      auto intput_y_name = desc.Input("Y")[0];
+      auto* intput_y_desc = block->FindVar(intput_y_name);
+      const auto input_y_shape = intput_y_desc->GetShape();
+      if (input_y_shape.size() < input_x_shape.size()) {
+        VLOG(3) << "in expand_as_v2, the dimension of input_x should "
+                   "less than input_y";
+        return false;
+      }
+      if (input_y_shape.size() > 6) {
+        VLOG(3) << "in expand_as_v2, the dimension of input_x and "
+                   "input_y should less than 6";
+        return false;
+      }
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2699,6 +2724,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "skip_merge_layernorm",
       "lookup_table_v2",
       "expand_v2",
+      "expand_as_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
@@ -2851,6 +2877,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "lookup_table",
       "lookup_table_v2",
       "expand_v2",
+      "expand_as_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act"};
