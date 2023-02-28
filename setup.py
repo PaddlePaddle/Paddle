@@ -1304,7 +1304,6 @@ def get_setup_parameters():
         'paddle.fluid.incubate',
         'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',
-        'paddle.fluid.incubate.fleet.parameter_server',
         'paddle.amp',
         'paddle.cost_model',
         'paddle.hapi',
