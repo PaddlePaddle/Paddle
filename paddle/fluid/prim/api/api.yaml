@@ -25,4 +25,5 @@
 - tile
 - transpose
 - pad
+- cumsum
 - put_along_axis
