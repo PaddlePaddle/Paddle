@@ -1182,10 +1182,16 @@ class ProgramCache:
                         )
                     )
 
-        partial_program = partial_program_from(concrete_program)
-
         class PrimHooker(PartialProgramLayerHook):
             def __init__(self):
+                custom_vjps = set()
+                if core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled():
+                    custom_vjps = {
+                        op.type
+                        for op in concrete_program.main_program.block(0).ops
+                        if core.has_comp_grad_op_maker(op.type)
+                    }
+                self.custom_vjps = custom_vjps
                 self.custom_vjps = {"softmax"}
 
             def before_append_backward(
@@ -1213,8 +1219,8 @@ class ProgramCache:
                     to_prim(infer_program.block(0))
                 return infer_program
 
+        partial_program = partial_program_from(concrete_program)
         partial_program.set_hooker(PrimHooker())
-
         return concrete_program, partial_program
 
     def __getitem__(self, item):

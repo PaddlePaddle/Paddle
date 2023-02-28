@@ -25,6 +25,13 @@ using IntArray =
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
+void cast_grad(const Tensor& out_grad, DataType dtype, Tensor* x_grad) {
+  if (x_grad) {
+    auto res = cast<T>(out_grad, dtype);
+    set_output<T>(res, x_grad);
+  }
+}
+template <typename T>
 void gather_grad(const Tensor& x,
                  const Tensor& index,
                  const Tensor& out_grad,
@@ -63,6 +70,29 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   if (!grad_x) return;
   auto grad_x_tmp = grad_out * (1.0 - out.pow(2.0));
   set_output<T>(grad_x_tmp, grad_x);
+}
+
+template <typename T>
+void reshape_grad(const Tensor& x, const Tensor& grad_out, Tensor* grad_x) {
+  if (grad_x) {
+    auto grad_x_tmp = reshape<T>(grad_out, phi::vectorize(x.dims()));
+    set_output<T>(grad_x_tmp, grad_x);
+  }
+}
+
+template <typename T>
+void transpose_grad(const Tensor& grad_out,
+                    const std::vector<int>& perm,
+                    Tensor* grad_x) {
+  if (grad_x) {
+    std::vector<int> reverse_perm(perm);
+    // make origin ranks
+    for (int i = 0; i < static_cast<int>(perm.size()); ++i) {
+      reverse_perm[perm[i]] = i;
+    }
+    auto grad_x_tmp = transpose<T>(grad_out, reverse_perm);
+    set_output<T>(grad_x_tmp, grad_x);
+  }
 }
 
 template <typename T>
@@ -384,5 +414,33 @@ void slice_grad(const Tensor& input,
   }
 }
 
+template <typename T>
+void dropout_grad(const Tensor& mask,
+                  const Tensor& out_grad,
+                  const Scalar& p,
+                  bool is_test,
+                  const std::string& mode,
+                  Tensor* x_grad) {
+  if (!x_grad) return;
+  if (is_test) {
+    if (mode == "unscale_in_train") {
+      by_pass<T>(out_grad, x_grad);
+    } else {
+      set_output<T>(out_grad * (1.0 - p.to<float>()), x_grad);
+    }
+  } else {
+    if (mode == "unscale_in_train") {
+      if (p.to<float>() == 1.0f) {
+        set_output<T>(out_grad * 0.0, x_grad);
+      } else {
+        set_output<T>(
+            out_grad * cast<T>(mask, out_grad.dtype()) / (1.0 - p.to<float>()),
+            x_grad);
+      }
+    } else {
+      set_output<T>(out_grad * cast<T>(mask, out_grad.dtype()), x_grad);
+    }
+  }
+}
 }  // namespace prim
 }  // namespace paddle

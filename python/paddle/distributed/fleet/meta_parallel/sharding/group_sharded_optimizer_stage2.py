@@ -203,10 +203,6 @@ class GroupShardedOptimizerStage2(Optimizer):
         # Update optimizer parameters and adjust parameter storage and use according to rank.
         self._update_opt_status()
 
-    def _set_auxiliary_var(self, key, val):
-        super()._set_auxiliary_var(key, val)
-        self._optim._set_auxiliary_var(key, val)
-
     @paddle.autograd.no_grad()
     def _sync_params_and_buffers(self):
         """
