@@ -55,9 +55,11 @@ class LayerNormOneDNNHandler
   AcquireScaleShiftMemory(const phi::DenseTensor* scale,
                           const phi::DenseTensor* shift) {
     auto scale_memory = this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->weights_desc(), to_void_cast<T>(scale->data<T>()));
+        this->fwd_pd_->weights_desc(),
+        phi::funcs::to_void_cast<T>(scale->data<T>()));
     auto shift_memory = this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->weights_desc(), to_void_cast<T>(shift->data<T>()));
+        this->fwd_pd_->weights_desc(),
+        phi::funcs::to_void_cast<T>(shift->data<T>()));
 
     return std::make_tuple(scale_memory, shift_memory);
   }
