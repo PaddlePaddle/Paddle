@@ -20,6 +20,8 @@
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
+DECLARE_bool(use_stride_kernel);
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -28,10 +30,16 @@ void FlattenInferKernel(const Context& dev_ctx,
                         int start_axis,
                         int stop_axis,
                         DenseTensor* out) {
-  dev_ctx.Alloc(out, x.dtype());
-  auto out_dims = out->dims();
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-  out->Resize(out_dims);
+  // auto out_dims = out->dims();
+  if (FLAGS_use_stride_kernel) {
+    LOG(WARNING) << " use flatten stride kernel";
+    out->ResetHolder(x.Holder());
+  } else {
+    dev_ctx.Alloc(out, x.dtype());
+    auto out_dims = out->dims();
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    out->Resize(out_dims);
+  }
 }
 
 // TODO(yuanrisheng): this kernel is for training and xshape is a Intermediate

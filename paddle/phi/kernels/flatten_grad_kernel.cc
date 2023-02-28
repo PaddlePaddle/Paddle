@@ -18,6 +18,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
+DECLARE_bool(use_stride_kernel);
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -26,10 +28,16 @@ void FlattenGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
   auto xshape_dims = xshape.dims();
-  dev_ctx.Alloc(x_grad, out_grad.dtype());
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
-  phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
-  x_grad->Resize(x_dims);
+  if (FLAGS_use_stride_kernel) {
+    LOG(WARNING) << "use flatten grad stride kernel";
+    x_grad->Resize(x_dims);
+    x_grad->ResetHolder(out_grad.Holder());
+  } else {
+    dev_ctx.Alloc(x_grad, out_grad.dtype());
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    x_grad->Resize(x_dims);
+  }
 }
 
 }  // namespace phi
