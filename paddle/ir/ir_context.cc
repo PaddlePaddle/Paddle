@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/ir/ir_context.h"
+
 #include <unordered_map>
 
 #include "paddle/ir/builtin_dialect.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/dialect.h"
-#include "paddle/ir/ir_context.h"
 #include "paddle/ir/spin_lock.h"
 #include "paddle/ir/type_base.h"
 

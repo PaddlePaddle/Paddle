@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/ir/storage_manager.h"
+
 #include <memory>
 #include <unordered_map>
-
-#include "paddle/ir/storage_manager.h"
 
 namespace ir {
 // This is a structure for creating, caching, and looking up Storage of
