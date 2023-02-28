@@ -23,6 +23,7 @@
 - roll
 - scatter
 - scatter_nd_add
+- split_with_num
 - tile
 - transpose
 - subtract
