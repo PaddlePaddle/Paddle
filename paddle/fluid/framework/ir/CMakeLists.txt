@@ -215,12 +215,13 @@ if(WITH_XPU)
   cc_library(
     xpu_quant_utils
     SRCS xpu/quant_utils.cc
-    DEPS pass)
+    DEPS pass phi)
   cc_library(
     xpu_pass_utils
     SRCS xpu/pass_utils.cc
     DEPS pass)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu)
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})

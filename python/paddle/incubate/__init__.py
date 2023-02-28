@@ -38,7 +38,7 @@ from . import multiprocessing  # noqa: F401
 
 from .nn.loss import identity_loss
 
-from ..fluid.incubate import fleet
+from ..distributed import fleet
 from . import xpu
 
 __all__ = [

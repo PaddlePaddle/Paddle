@@ -42,11 +42,10 @@ from paddle.fluid import core, framework
             set(),
             tuple(),
             (
-                'pow',
                 'fill_constant',
-                'elementwise_mul',
+                'elementwise_pow',
                 'fill_constant',
-                'elementwise_add',
+                'elementwise_sub',
                 'elementwise_mul',
             ),
         ),
