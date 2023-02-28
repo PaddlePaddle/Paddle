@@ -217,8 +217,6 @@ def flatten_contiguous_range_composite(x, start_axis, stop_axis):
         shape_out.append(shape_in[i])
     return reshape(x, shape=shape_out), None
 
-=======
->>>>>>> some modification as reviewers suggested
 
 @REGISTER_COMPOSITE('dropout')
 def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
