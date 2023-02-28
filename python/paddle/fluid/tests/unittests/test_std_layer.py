@@ -118,7 +118,10 @@ class TestStdError(unittest.TestCase):
             x = paddle.fluid.data('X', [2, 3, 4], 'int32')
             self.assertRaises(TypeError, paddle.std, x)
 
+
+class Testfp16Std(unittest.TestCase):
     def test_fp16_with_gpu(self):
+        paddle.enable_static()
         if paddle.fluid.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
