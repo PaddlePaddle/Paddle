@@ -28,14 +28,14 @@ void SqueezeInferKernel(const Context& dev_ctx,
                         const IntArray& axes,
                         DenseTensor* out) {
   auto out_dims = out->dims();
-  if (false) {
+  if (FLAGS_use_stride_kernel) {
     LOG(WARNING) << "Use stride with squeeze";
     out->ResetHolder(x.Holder());
   } else {
     dev_ctx.template Alloc<T>(out);
     phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    out->Resize(out_dims);  // copy will reset the dims.
   }
-  out->Resize(out_dims);  // copy will reset the dims.
 }
 
 template <typename T, typename Context>

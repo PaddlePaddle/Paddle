@@ -27,9 +27,6 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const IntArray& axes,
                           DenseTensor* out) {
-  if (FLAGS_use_stride_kernel) {
-    LOG(WARNING) << "use stride kernel";
-  }
   auto x_dims = x.dims();
   auto out_dims = out->dims();
   if (axes.FromTensor()) {
@@ -41,9 +38,14 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
     out_dims = funcs::GetUnsqueezeShape(tmp, x_dims);
   }
   out->Resize(out_dims);
-  dev_ctx.template Alloc<T>(out);
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-  out->Resize(out_dims);  // copy will reset the dims.
+  if (FLAGS_use_stride_kernel) {
+    LOG(WARNING) << "use stride kernel";
+    out->ResetHolder(x.Holder());
+  } else {
+    dev_ctx.template Alloc<T>(out);
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    out->Resize(out_dims);  // copy will reset the dims.
+  }
 }
 
 template <typename T, typename Context>
