@@ -325,13 +325,71 @@ class TestElementwiseDivOpInt(ElementwiseDivOp):
         return x // y
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
-class TestElementwiseDivOpFp16(ElementwiseDivOp):
-    def init_dtype(self):
-        self.dtype = np.float16
-        self.val_dtype = np.float16
+def create_test_fp16_class(parent, atol=1e-3, max_relative_error=1e-3):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestElementwiseDivOpFp16(parent):
+        def init_dtype(self):
+            self.dtype = np.float16
+            self.val_dtype = np.float16
+
+        def test_check_output(self):
+            if self.place is None:
+                self.check_output(atol=atol)
+            else:
+                self.check_output_with_place(self.place, atol=atol)
+
+        def test_check_gradient(self):
+            check_list = []
+            check_list.append(
+                {
+                    'grad': ['X', 'Y'],
+                    'no_grad': None,
+                    'val_grad': [self.grad_x, self.grad_y],
+                }
+            )
+            check_list.append(
+                {'grad': ['Y'], 'no_grad': set('X'), 'val_grad': [self.grad_y]}
+            )
+            check_list.append(
+                {'grad': ['X'], 'no_grad': set('Y'), 'val_grad': [self.grad_x]}
+            )
+            for check_option in check_list:
+                check_args = [check_option['grad'], 'Out']
+                check_kwargs = {
+                    'no_grad_set': check_option['no_grad'],
+                    'user_defined_grads': check_option['val_grad'],
+                    'user_defined_grad_outputs': [self.grad_out],
+                    'check_dygraph': self.check_dygraph,
+                    'max_relative_error': max_relative_error,
+                }
+                if self.place is None:
+                    self.check_grad(*check_args, **check_kwargs)
+                else:
+                    check_args.insert(0, self.place)
+                    self.check_grad_with_place(*check_args, **check_kwargs)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    TestElementwiseDivOpFp16.__name__ = cls_name
+    globals()[cls_name] = TestElementwiseDivOpFp16
+
+
+create_test_fp16_class(ElementwiseDivOp)
+create_test_fp16_class(TestElementwiseDivOp_ZeroDim1)
+create_test_fp16_class(TestElementwiseDivOp_ZeroDim2)
+create_test_fp16_class(TestElementwiseDivOp_ZeroDim3)
+create_test_fp16_class(TestElementwiseDivOpScalar)
+create_test_fp16_class(TestElementwiseDivOpVector)
+create_test_fp16_class(TestElementwiseDivOpBroadcast0)
+create_test_fp16_class(TestElementwiseDivOpBroadcast1)
+create_test_fp16_class(TestElementwiseDivOpBroadcast2)
+create_test_fp16_class(TestElementwiseDivOpBroadcast3)
+create_test_fp16_class(TestElementwiseDivOpBroadcast4)
+create_test_fp16_class(TestElementwiseDivOpBroadcast5)
+create_test_fp16_class(TestElementwiseDivOpCommonuse1)
+create_test_fp16_class(TestElementwiseDivOpCommonuse2)
+create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
