@@ -16,6 +16,7 @@
 #include <string>
 #include <tuple>
 
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
@@ -39,6 +40,12 @@ struct MkldnnQuantizerConfig;
 extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kDlnneSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
+
+AnalysisConfig::AnalysisConfig() {
+  // NOTE(liuyuanle): Why put the following code here?
+  // ref to https://github.com/PaddlePaddle/Paddle/pull/50864
+  inference::InitGflagsFromEnv();
+}
 
 PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {

@@ -24,47 +24,48 @@ core._set_prim_backward_enabled(True)
 
 
 @param.parameterized_class(
-    ('primal', 'dtype'),
+    ('primal', 'shape', 'cotangent', 'dtype'),
     [
         (
-            np.random.rand(2, 3, 4),
+            np.random.rand(10, 1, 10),
+            [10, 10],
+            np.random.rand(10, 10),
             np.float32,
         ),
-        (
-            np.random.rand(2, 3, 3, 4),
-            np.float32,
-        ),
+        (np.random.rand(2, 60), [12, 10], np.random.rand(12, 10), np.float32),
     ],
 )
-class TestTanhGradComp(unittest.TestCase):
+class TestReshapeGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal = cls.primal.astype(cls.dtype)
 
-    def test_tanh_grad_comp(self):
-        def actual(primal):
+    def test_reshape_grad_comp(self):
+        def actual(primal0, shape):
+            core._set_prim_backward_enabled(True)
             paddle.disable_static()
-            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
+            x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
-            y = paddle.tanh(x)
-            x_cotangent = paddle.grad(
-                y, x, create_graph=True, retain_graph=True
-            )
-            return x_cotangent[0]
+            out = paddle.reshape(x, shape)
+            res = paddle.grad(out, [x], create_graph=True, retain_graph=True)
+            return res[0].numpy()
 
-        def desired(primal):
+        def desired(primal0, shape):
+            core._set_prim_backward_enabled(False)
             paddle.disable_static()
-            x = paddle.to_tensor(primal, dtype='float32', stop_gradient=False)
+            x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
-            y = paddle.tanh(x)
-            x_cotangent = paddle.grad(
-                y, x, create_graph=True, retain_graph=True
-            )
-            return x_cotangent[0]
+            out = paddle.reshape(x, shape)
+            res = paddle.grad(out, [x], create_graph=True, retain_graph=True)
+            return res[0].numpy()
+
+        dx = actual(self.primal, self.shape)
+
+        ddx = desired(self.primal, self.shape)
 
         np.testing.assert_allclose(
-            actual=actual(self.primal),
-            desired=desired(self.primal),
+            actual=dx,
+            desired=ddx,
             rtol=1e-6,
             atol=0,
         )

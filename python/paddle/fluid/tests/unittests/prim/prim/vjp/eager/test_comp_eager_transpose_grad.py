@@ -24,77 +24,78 @@ core._set_prim_backward_enabled(True)
 
 
 @param.parameterized_class(
-    ('primal0', 'primal1', 'dtype'),
+    ('primal', 'axis', 'cotangent', 'dtype'),
     [
         (
-            np.random.rand(2, 3, 4),
-            np.random.rand(2, 3, 4),
+            np.random.rand(
+                100,
+            ),
+            [0],
+            np.random.rand(100),
             np.float32,
         ),
         (
-            np.random.rand(2, 3, 3, 4),
-            np.random.rand(3, 1, 4),
+            np.random.rand(3, 4, 10),
+            [0, 2, 1],
+            np.random.rand(3, 10, 4),
             np.float32,
         ),
         (
-            np.random.rand(2, 3, 3, 4),
-            np.random.rand(2, 3, 1, 4),
+            np.random.rand(2, 3, 4, 5),
+            [0, 2, 3, 1],
+            np.random.rand(2, 4, 5, 3),
             np.float32,
         ),
         (
-            np.random.rand(2, 3, 3, 4),
-            np.random.rand(2, 3, 1, 4),
+            np.random.rand(2, 3, 4, 5, 6),
+            [4, 2, 3, 1, 0],
+            np.random.rand(6, 4, 5, 3, 2),
             np.float32,
         ),
         (
-            np.random.rand(2, 3, 3, 4),
-            np.random.rand(2, 3, 1, 1),
+            np.random.rand(2, 3, 4, 5, 6, 1),
+            [4, 2, 3, 1, 0, 5],
+            np.random.rand(6, 4, 5, 3, 2, 1),
             np.float32,
         ),
+        # (np.random.rand(),
+        #  [],
+        # np.random.rand(),
+        # np.float32),
     ],
 )
-class TestDivGradComp(unittest.TestCase):
+class TestTransposeGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.primal0 = cls.primal0.astype(cls.dtype)
-        cls.primal1 = cls.primal1.astype(cls.dtype)
+        if isinstance(cls.primal, np.ndarray):
+            cls.primal = cls.primal.astype(cls.dtype)
 
-    def test_div_grad_comp(self):
-        def actual(primal0, primal1):
+    def test_transpose_grad_comp(self):
+        def actual(primal0, shape):
             core._set_prim_backward_enabled(True)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
-            y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
-            y.stop_gradient = False
-            out = paddle.divide(x, y)
-            res = paddle.grad(out, [x, y], create_graph=True, retain_graph=True)
-            return res[0].numpy(), res[1].numpy()
+            out = paddle.transpose(x, shape)
+            res = paddle.grad(out, [x], create_graph=True, retain_graph=True)
+            return res[0].numpy()
 
-        def desired(primal0, primal1):
+        def desired(primal0, shape):
             core._set_prim_backward_enabled(False)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype='float32', stop_gradient=False)
-            y = paddle.to_tensor(primal1, dtype='float32', stop_gradient=False)
             x.stop_gradient = False
-            y.stop_gradient = False
-            out = paddle.divide(x, y)
-            res = paddle.grad(out, [x, y], create_graph=True, retain_graph=True)
-            return res[0].numpy(), res[1].numpy()
+            out = paddle.transpose(x, shape)
+            res = paddle.grad(out, [x], create_graph=True, retain_graph=True)
+            return res[0].numpy()
 
-        dx, dy = actual(self.primal0, self.primal1)
+        dx = actual(self.primal, self.axis)
 
-        ddx, ddy = desired(self.primal0, self.primal1)
+        ddx = desired(self.primal, self.axis)
 
         np.testing.assert_allclose(
             actual=dx,
             desired=ddx,
-            rtol=1e-6,
-            atol=0,
-        )
-        np.testing.assert_allclose(
-            actual=dy,
-            desired=ddy,
             rtol=1e-6,
             atol=0,
         )

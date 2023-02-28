@@ -1497,32 +1497,6 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
           SetGflag("initial_cpu_memory_in_mb", "0");
         }
-
-        // support set gflags from environment.
-        std::vector<std::string> gflags;
-        const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
-        std::ostringstream os;
-        for (auto &pair : env_map) {
-          os << pair.second.name << ",";
-        }
-        std::string tryfromenv_str = os.str();
-        if (!tryfromenv_str.empty()) {
-          tryfromenv_str.pop_back();
-          tryfromenv_str = "--tryfromenv=" + tryfromenv_str;
-          gflags.push_back(tryfromenv_str);
-        }
-        if (framework::InitGflags(gflags)) {
-          VLOG(3)
-              << "The following gpu analysis configurations only take effect "
-                 "for the first predictor: ";
-          for (const auto &gflag : gflags) {
-            VLOG(3) << gflag;
-          }
-        } else {
-          LOG(WARNING) << "The one-time configuration of analysis predictor "
-                          "failed, which may be due to native predictor called "
-                          "first and its configurations taken effect.";
-        }
       });
 
       if (config.thread_local_stream_enabled() &&
