@@ -384,6 +384,7 @@ void slice_grad(const Tensor& input,
   }
 }
 
+template <typename T>
 void cumsum_grad(const Tensor& x,
                  const Tensor& out_grad,
                  const Scalar& axis,
