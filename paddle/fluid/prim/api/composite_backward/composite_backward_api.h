@@ -414,5 +414,20 @@ void slice_grad(const Tensor& input,
   }
 }
 
+template <typename T>
+void cumsum_grad(const Tensor& x,
+                 const Tensor& out_grad,
+                 const Scalar& axis,
+                 bool flatten,
+                 bool exclusive,
+                 bool reverse,
+                 Tensor* x_grad) {
+  if (x_grad) {
+    auto grad = cumsum<T>(out_grad, axis, flatten, exclusive, !reverse);
+    grad = reshape<T>(grad, x.shape());
+    set_output<T>(grad, x_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle
