@@ -117,6 +117,12 @@ class TestCase9(TestTransposeOp):
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
+class TestCase10(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (10, 8, 2)
+        self.axis = (-1, 1, -3)
+
+
 class TestCase_ZeroDim(TestTransposeOp):
     def initTestCase(self):
         self.shape = ()

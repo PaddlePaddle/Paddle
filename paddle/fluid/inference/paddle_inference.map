@@ -73,6 +73,7 @@
 		*Pass*;
 		*profile*;
 		*phi*;
+		PD_*;
 		*cinn*;
 	local:
 		*;
