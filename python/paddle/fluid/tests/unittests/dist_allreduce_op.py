@@ -71,7 +71,7 @@ def cnn_model(data):
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
-    def c(self, batch_size=2, single_device=False):
+    def get_model(self, batch_size=2, single_device=False):
         # Input data
         images = paddle.static.data(
             name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
