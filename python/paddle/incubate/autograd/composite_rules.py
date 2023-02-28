@@ -260,7 +260,6 @@ def bernoulli(shape, dtype, p, seed=0):
     )
 
 
-
 @REGISTER_COMPOSITE('sigmoid')
 def sigmoid_composite(x):
     """
@@ -270,6 +269,7 @@ def sigmoid_composite(x):
     sum_temp = 1 + exp(-x)
     res = 1 / sum_temp
     return res
+
 
 @REGISTER_COMPOSITE('silu')
 def silu_composite(x):
