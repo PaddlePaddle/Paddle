@@ -2567,6 +2567,20 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
+      auto input_name = desc.Input("X")[0];
+      auto* input_desc = block->FindVar(input_name);
+      const auto input_shape = input_desc->GetShape();
+
+      auto grid_name = desc.Input("Grid")[0];
+      auto* grid_desc = block->FindVar(grid_name);
+      const auto grid_shape = grid_desc->GetShape();
+
+      if (input_shape.size() != 4 || grid_shape.size() != 4) {
+        VLOG(3) << "The input and grid tensors must be shape tensors of rank 4 "
+                   "using TRT GridSample layer.";
+        return false;
+      }
+
 #endif
     }
 

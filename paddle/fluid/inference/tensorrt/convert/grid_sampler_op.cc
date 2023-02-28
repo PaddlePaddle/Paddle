@@ -33,14 +33,7 @@ class GridSamplerOpConverter : public OpConverter {
     std::string input_grid_name = op_desc.Input("Grid").front();
     std::string output_name = op_desc.Output("Output").front();
     auto* input_x_tensor = engine_->GetITensor(input_x_name);
-    int32_t const inputRank = input_x_tensor->getDimensions().nbDims;
     auto* input_grid_tensor = engine_->GetITensor(input_grid_name);
-    int32_t const gridRank = input_grid_tensor->getDimensions().nbDims;
-
-    if (inputRank != gridRank) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "The input tensor and the grid tensor must have the same rank"));
-    }
 
     auto* layer = TRT_ENGINE_ADD_LAYER(
         engine_, GridSample, *input_x_tensor, *input_grid_tensor);
