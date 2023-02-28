@@ -59,10 +59,11 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
 
     def setUp(self, type=None):
         self.shape = [10, 2]
-        if type == 'float64':
-            self.input_np = np.random.random(self.shape).astype(np.float64)
-            self.target_np = np.random.random(self.shape).astype(np.float64)
-            self.var_np = np.ones(self.shape).astype(np.float64)
+        if type in ['float16', 'float64', 'int16', 'int32']:
+            dtype = np.dtype(type)
+            self.input_np = np.random.random(self.shape).astype(dtype)
+            self.target_np = np.random.random(self.shape).astype(dtype)
+            self.var_np = np.ones(self.shape).astype(dtype)
         elif type == 'broadcast':
             self.shape = [10, 2, 3]
             self.broadcast_shape = [10, 2]
@@ -70,9 +71,12 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
             self.target_np = np.random.random(self.shape).astype(np.float32)
             self.var_np = np.ones(self.broadcast_shape).astype(np.float32)
         else:
-            self.input_np = np.random.random(self.shape).astype(np.float32)
-            self.target_np = np.random.random(self.shape).astype(np.float32)
-            self.var_np = np.ones(self.shape).astype(np.float32)
+            dtype = np.dtype('float32')
+            self.input_np = np.random.random(self.shape).astype(dtype)
+            self.target_np = np.random.random(self.shape).astype(dtype)
+            self.var_np = np.ones(self.shape).astype(dtype)
+        if type == 'test_err':
+            self.var_np = -np.ones(self.shape).astype(np.float32)
 
         self.place = (
             paddle.CUDAPlace(0)
@@ -82,37 +86,42 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
 
     def test_dynamic_case(self, type=None, full=False, reduction='none'):
         self.setUp(type)
-        out_ref = ref_gaussian_nll_loss(
-            self.input_np,
-            self.target_np,
-            self.var_np,
-            full=full,
-            reduction=reduction,
-        )
         paddle.disable_static(self.place)
 
         input_x = paddle.to_tensor(self.input_np)
         target = paddle.to_tensor(self.target_np)
         var = paddle.to_tensor(self.var_np)
-        out1 = F.gaussian_nll_loss(
-            input_x, target, var, full=full, reduction=reduction
-        )
-        gaussian_nll_loss = paddle.nn.GaussianNLLLoss(full, reduction=reduction)
-        out2 = gaussian_nll_loss(input_x, target, var)
+        if type == 'test_err':
+            self.assertRaises(
+                ValueError,
+                paddle.nn.functional.gaussian_nll_loss,
+                input=input_x,
+                target=target,
+                var=var,
+                reduction="unsupport reduction",
+            )
+        else:
+            out_ref = ref_gaussian_nll_loss(
+                self.input_np,
+                self.target_np,
+                self.var_np,
+                full=full,
+                reduction=reduction,
+            )
+            out1 = F.gaussian_nll_loss(
+                input_x, target, var, full=full, reduction=reduction
+            )
+            gaussian_nll_loss = paddle.nn.GaussianNLLLoss(
+                full, reduction=reduction
+            )
+            out2 = gaussian_nll_loss(input_x, target, var)
 
-        for r in [out1, out2]:
-            np.allclose(out_ref, r.numpy(), rtol=1e-5, atol=1e-5)
+            for r in [out1, out2]:
+                np.allclose(out_ref, r.numpy(), rtol=1e-5, atol=1e-5)
         paddle.enable_static()
 
     def test_static_case(self, type=None, full=False, reduction='none'):
         self.setUp(type)
-        out_ref = ref_gaussian_nll_loss(
-            self.input_np,
-            self.target_np,
-            self.var_np,
-            full=full,
-            reduction=reduction,
-        )
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             if type == 'float64':
@@ -127,35 +136,55 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
                 input_x = paddle.static.data('Input_x', self.shape, 'float32')
                 target = paddle.static.data('Target', self.shape, 'float32')
                 var = paddle.static.data('Var', self.shape, 'float32')
-            check, out1 = F.gaussian_nll_loss(
+            out1 = F.gaussian_nll_loss(
                 input_x, target, var, full=full, reduction=reduction
             )
             gaussian_nll_loss = paddle.nn.GaussianNLLLoss(
                 full, reduction=reduction
             )
             out2 = gaussian_nll_loss(input_x, target, var)
-
             exe = paddle.static.Executor(self.place)
-            res = exe.run(
-                feed={
-                    'Input_x': self.input_np,
-                    'Target': self.target_np,
-                    'Var': self.var_np,
-                },
-                fetch_list=[check, out1, out2],
-            )
-        for r in res:
-            np.allclose(out_ref, r, rtol=1e-5, atol=1e-5)
+            if not type == 'test_err':
+                out_ref = ref_gaussian_nll_loss(
+                    self.input_np,
+                    self.target_np,
+                    self.var_np,
+                    full=full,
+                    reduction=reduction,
+                )
+                res = exe.run(
+                    feed={
+                        'Input_x': self.input_np,
+                        'Target': self.target_np,
+                        'Var': self.var_np,
+                    },
+                    fetch_list=[out1, out2],
+                )
+                for r in res:
+                    np.allclose(out_ref, r, rtol=1e-5, atol=1e-5)
+            else:
+                try:
+                    res = exe.run(
+                        feed={
+                            'Input_x': self.input_np,
+                            'Target': self.target_np,
+                            'Var': self.var_np,
+                        },
+                        fetch_list=[out1, out2],
+                    )
+                except ValueError:
+                    pass
 
     def test_api(self):
         self.test_dynamic_case('float64')
         self.test_dynamic_case('broadcast')
         self.test_dynamic_case()
+        self.test_dynamic_case('test_err')
         self.test_dynamic_case(full=True, reduction='mean')
         self.test_static_case(full=True, reduction='mean')
         self.test_static_case()
         self.test_static_case('broadcast')
-        self.test_static_case('float64')
+        self.test_static_case('test_err')
 
 
 if __name__ == "__main__":

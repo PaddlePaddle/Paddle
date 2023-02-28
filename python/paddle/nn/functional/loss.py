@@ -20,6 +20,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.framework import core
+from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
 from ...common_ops_import import Variable
@@ -3986,7 +3987,10 @@ def gaussian_nll_loss(
     # print(paddle.any(var < 0))
     if not in_dygraph_mode():
         check_variable_and_dtype(
-            input, 'Input', ['float32', 'float64'], 'gaussian_nll_loss'
+            input,
+            'Input',
+            ['float32', 'float64'],
+            'gaussian_nll_loss',
         )
         check_variable_and_dtype(
             target,
@@ -4000,6 +4004,8 @@ def gaussian_nll_loss(
             ['float32', 'float64'],
             'gaussian_nll_loss',
         )
+        condition = paddle.all(var > 0)
+        Assert(condition)
     else:
         if paddle.any(var < 0):
             raise ValueError("var has negative entry/entries")
