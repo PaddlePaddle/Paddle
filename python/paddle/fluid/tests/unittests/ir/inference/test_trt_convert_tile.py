@@ -119,9 +119,6 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
 
 class TrtConvertTileTest2(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        attrs = [
-            program_config.ops[i].attrs for i in range(len(program_config.ops))
-        ]
         return True
 
     def sample_program_configs(self):
@@ -167,7 +164,7 @@ class TrtConvertTileTest2(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
-        def generate_dynamic_shape():
+        def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"tile_input": [1, 2, 3, 4]}
             self.dynamic_shape.max_input_shape = {"tile_input": [4, 3, 64, 64]}
             self.dynamic_shape.opt_input_shape = {"tile_input": [1, 2, 3, 4]}
@@ -177,13 +174,23 @@ class TrtConvertTileTest2(TrtLayerAutoScanTest):
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            return 1, 2
+
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+
         # for dynamic_shape
-        generate_dynamic_shape()
+        generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        # fill_constant will be folded by constnt folding pass!
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-3
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-3
 
     def add_skip_trt_case(self):
         pass
@@ -256,7 +263,7 @@ class TrtConvertTileTest3(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
-        def generate_dynamic_shape():
+        def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"tile_input": [1, 2, 3, 4]}
             self.dynamic_shape.max_input_shape = {"tile_input": [4, 3, 64, 64]}
             self.dynamic_shape.opt_input_shape = {"tile_input": [1, 2, 3, 4]}
@@ -266,13 +273,23 @@ class TrtConvertTileTest3(TrtLayerAutoScanTest):
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            return 1, 2
+
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+
         # for dynamic_shape
-        generate_dynamic_shape()
+        generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        # fill_constant will be folded by constnt folding pass!
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-3
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-3
 
     def add_skip_trt_case(self):
         pass
