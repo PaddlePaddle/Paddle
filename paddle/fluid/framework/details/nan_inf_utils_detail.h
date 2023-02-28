@@ -69,6 +69,7 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
                                        int64_t numel,
                                        int64_t num_nan,
                                        int64_t num_inf,
+                                       int64_t num_zero,
                                        MT max_value,
                                        MT min_value,
                                        MT mean_value,
@@ -76,26 +77,31 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
   if (num_nan > 0 || num_inf > 0) {
     printf(
         "[PRECISION] [ERROR] in %s, numel=%lld, num_nan=%lld, "
-        "num_inf=%lld, max=%e, min=%e, mean=%e\n",
+        "num_inf=%lld, num_zero=%lld, max=%e, min=%e, mean=%e\n",
         debug_info,
-        static_cast<long long>(numel),    // NOLINT
-        static_cast<long long>(num_nan),  // NOLINT
-        static_cast<long long>(num_inf),  // NOLINT
+        static_cast<long long>(numel),     // NOLINT
+        static_cast<long long>(num_nan),   // NOLINT
+        static_cast<long long>(num_inf),   // NOLINT
+        static_cast<long long>(num_zero),  // NOLINT
         static_cast<float>(max_value),
         static_cast<float>(min_value),
         static_cast<float>(mean_value));
     if (check_nan_inf_level == 0) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       PADDLE_ENFORCE(false,
-                     "There are NAN or INF (num_nan=%ld, num_inf=%lld) in %s.",
-                     static_cast<long long>(num_nan),  // NOLINT
-                     static_cast<long long>(num_inf),  // NOLINT
+                     "There are NAN or INF (num_nan=%ld, num_inf=%lld, "
+                     "num_zero=%lld) in %s.",
+                     static_cast<long long>(num_nan),   // NOLINT
+                     static_cast<long long>(num_inf),   // NOLINT
+                     static_cast<long long>(num_zero),  // NOLINT
                      debug_info);
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "There are NAN or INF (num_nan=%lld, num_inf=%lld) in %s.",
-          static_cast<long long>(num_nan),  // NOLINT
-          static_cast<long long>(num_inf),  // NOLINT
+          "There are NAN or INF (num_nan=%lld, num_inf=%lld, num_zero=%lld) in "
+          "%s.",
+          static_cast<long long>(num_nan),   // NOLINT
+          static_cast<long long>(num_inf),   // NOLINT
+          static_cast<long long>(num_zero),  // NOLINT
           debug_info));
 #endif
     }
@@ -114,6 +120,7 @@ void PrintForDifferentLevelFile(const char* debug_info,
                                 int64_t numel,
                                 int64_t num_nan,
                                 int64_t num_inf,
+                                int64_t num_zero,
                                 MT max_value,
                                 MT min_value,
                                 MT mean_value,
@@ -136,9 +143,10 @@ void PrintForDifferentLevelFile(const char* debug_info,
 
   if (num_nan > 0 || num_inf > 0) {
     outfile << "[PRECISION] [ERROR] in " << debug_info
-            << ", numel=" << static_cast<long long>(numel)      // NOLINT
-            << ", num_nan=" << static_cast<long long>(num_nan)  // NOLINT
-            << ", num_inf=" << static_cast<long long>(num_inf)  // NOLINT
+            << ", numel=" << static_cast<long long>(numel)        // NOLINT
+            << ", num_nan=" << static_cast<long long>(num_nan)    // NOLINT
+            << ", num_inf=" << static_cast<long long>(num_inf)    // NOLINT
+            << ", num_zero=" << static_cast<long long>(num_zero)  // NOLINT
             << ", max=" << static_cast<float>(max_value)
             << ", min=" << static_cast<float>(min_value)
             << ", mean=" << static_cast<float>(mean_value) << std::endl;
@@ -200,6 +208,7 @@ static void CheckNanInfCpuImpl(const T* value_ptr,
 
   std::vector<int64_t> thread_num_nan(num_threads, 0);
   std::vector<int64_t> thread_num_inf(num_threads, 0);
+  std::vector<int64_t> thread_num_zero(num_threads, 0);
   std::vector<MT> thread_min_value(num_threads, static_cast<MT>(value_ptr[0]));
   std::vector<MT> thread_max_value(num_threads, static_cast<MT>(value_ptr[0]));
   std::vector<MT> thread_mean_value(num_threads, static_cast<MT>(0));
@@ -230,17 +239,22 @@ static void CheckNanInfCpuImpl(const T* value_ptr,
       } else if (std::isinf(value)) {
         thread_num_inf[tid] += 1;
       }
+      if (value == 0) {
+        thread_num_zero[tid] += 1;
+      }
     }
   }
 
   int64_t num_nan = 0;
   int64_t num_inf = 0;
+  int64_t num_zero = 0;
   MT min_value = thread_min_value[0];
   MT max_value = thread_max_value[0];
   MT mean_value = static_cast<MT>(0);
   for (int i = 0; i < num_threads; ++i) {
     num_nan += thread_num_nan[i];
     num_inf += thread_num_inf[i];
+    num_zero += thread_num_zero[i];
     min_value = std::min(thread_min_value[i], min_value);
     max_value = std::max(thread_max_value[i], max_value);
     mean_value += thread_mean_value[i];
@@ -254,6 +268,7 @@ static void CheckNanInfCpuImpl(const T* value_ptr,
                                       numel,
                                       num_nan,
                                       num_inf,
+                                      num_zero,
                                       max_value,
                                       min_value,
                                       mean_value,
@@ -266,6 +281,7 @@ static void CheckNanInfCpuImpl(const T* value_ptr,
                                 numel,
                                 num_nan,
                                 num_inf,
+                                num_zero,
                                 max_value,
                                 min_value,
                                 mean_value,

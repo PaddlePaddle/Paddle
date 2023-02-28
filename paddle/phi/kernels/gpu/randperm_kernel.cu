@@ -26,13 +26,11 @@
 namespace cub = hipcub;
 #endif
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/randint_kernel.h"
-
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/memcpy.h"
 
 DECLARE_bool(use_curand);
 
@@ -127,7 +125,7 @@ void RandpermRawKernel(
                                           end_bit < 32 ? end_bit : 32,
                                           dev_ctx.stream());
 
-  auto d_temp_storage = paddle::memory::Alloc(
+  auto d_temp_storage = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       temp_storage_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

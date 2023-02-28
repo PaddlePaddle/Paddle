@@ -286,6 +286,7 @@ try:
     from .libpaddle import _cleanup, _Scope
     from .libpaddle import _get_use_default_grad_op_desc_maker_ops
     from .libpaddle import _get_all_register_op_kernels
+    from .libpaddle import _get_registered_phi_kernels
     from .libpaddle import _is_program_version_supported
     from .libpaddle import _set_eager_deletion_mode
     from .libpaddle import _get_eager_deletion_vars

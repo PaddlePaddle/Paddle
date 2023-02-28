@@ -23,6 +23,7 @@ math_library(softmax DEPS math_function)
 math_library(maxouting)
 math_library(matrix_bit_code)
 math_library(sequence_scale)
+math_library(sequence_padding DEPS lod_utils)
 
 cc_library(
   phi_data_layout_transform

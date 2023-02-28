@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 
