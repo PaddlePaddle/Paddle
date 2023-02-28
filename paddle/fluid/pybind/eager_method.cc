@@ -1971,6 +1971,10 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
+//   // Parse Attributes if needed
+//    PyObject* shape_obj = PyTuple_GET_ITEM(args, 1);
+//     paddle::experimental::IntArray shape = CastPyArg2IntArray(shape_obj,
+//     "view", 1);
 static PyObject* tensor_contiguous(TensorObject* self,
                                    PyObject* args,
                                    PyObject* kwargs) {
@@ -1986,6 +1990,48 @@ static PyObject* tensor_contiguous(TensorObject* self,
                         self->tensor.name()));
   LOG(WARNING) << " use contiguous here in eager method";
   out = contiguous_ad_func(self->tensor);
+  return ToPyObject(out);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_view(TensorObject* self,
+                             PyObject* args,
+                             PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor out;
+  PyObject* shape_obj = PyTuple_GET_ITEM(args, 0);
+  paddle::experimental::IntArray shape =
+      CastPyArg2IntArray(shape_obj, "view", 0);
+
+  eager_gil_scoped_release guard;
+  PADDLE_ENFORCE_EQ(self->tensor.initialized(),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "We can only support initialized tensor in contiguous, "
+                        "however we got "
+                        "uninitialized tensor %s, please check your code.",
+                        self->tensor.name()));
+  out = view_ad_func(self->tensor, shape);
+  return ToPyObject(out);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor_view_as(TensorObject* self,
+                                PyObject* args,
+                                PyObject* kwargs) {
+  EAGER_TRY
+  paddle::experimental::Tensor out;
+  auto y = GetTensorFromArgs("view_as", "y", args, 0, false);
+  paddle::experimental::IntArray shape{y.shape()};
+  eager_gil_scoped_release guard;
+  PADDLE_ENFORCE_EQ(self->tensor.initialized(),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "We can only support initialized tensor in view as, "
+                        "however we got "
+                        "uninitialized tensor %s, please check your code.",
+                        self->tensor.name()));
+  out = view_ad_func(self->tensor, shape);
   return ToPyObject(out);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -2058,6 +2104,14 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"contiguous",
      (PyCFunction)(void (*)(void))tensor_contiguous,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"view",
+     (PyCFunction)(void (*)(void))tensor_view,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"view_as",
+     (PyCFunction)(void (*)(void))tensor_view_as,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"get_tensor",

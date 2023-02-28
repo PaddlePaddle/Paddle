@@ -32,7 +32,7 @@ void TransposeKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
-  if (true) {
+  if (FLAGS_use_stride_kernel) {
     LOG(WARNING) << "use transpose stride kernel";
     MetaTensor meta_out(out);
     if (FLAGS_use_stride_kernel) {

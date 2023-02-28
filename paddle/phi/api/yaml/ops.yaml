@@ -1374,6 +1374,14 @@
     func : unstack
   backward : unstack_grad
 
+- op : view
+  args : (Tensor x, IntArray shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ViewWithXShapeInferMeta
+  kernel :
+    func : view
+
 - op : viterbi_decode
   args : (Tensor potentials, Tensor transition_params, Tensor lengths, bool include_bos_eos_tag = true)
   output : Tensor(scores), Tensor(path)

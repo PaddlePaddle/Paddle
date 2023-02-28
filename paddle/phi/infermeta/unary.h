@@ -440,6 +440,11 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* xshape,
                                 MetaConfig config = MetaConfig());
 
+void ViewWithXShapeInferMeta(const MetaTensor& x,
+                             const IntArray& shape,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
 void ReverseInferMeta(const MetaTensor& x,
                       const IntArray& axis,
                       MetaTensor* out,

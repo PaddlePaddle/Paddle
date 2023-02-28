@@ -3173,6 +3173,19 @@ void ReshapeWithXShapeInferMeta(const MetaTensor& x,
   ReshapeInferMeta(x, shape, out, config);
 }
 
+void ViewWithXShapeInferMeta(const MetaTensor& x,
+                             const IntArray& shape,
+                             MetaTensor* out,
+                             MetaConfig config) {
+  const auto& x_dims = x.dims();
+  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    xshape_dims[i + 1] = x_dims[i];
+  }
+  ReshapeInferMeta(x, shape, out, config);
+}
+
 void ReverseInferMeta(const MetaTensor& x,
                       const IntArray& axis,
                       MetaTensor* out,
