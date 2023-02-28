@@ -141,7 +141,39 @@ if _enable_printing_extra_attrs_:
         "elementwise_div": [{"axis": -1}],
         "elementwise_mod": [{"axis": -1}],
         "elementwise_floordiv": [{"axis": -1}],
+        "elementwise_max": [{"axis": -1}],
+        "elementwise_min": [{"axis": -1}],
+        "less_than": [{"axis": -1}],
+        "less_equal": [{"axis": -1}],
+        "greater_than": [{"axis": -1}],
+        "greater_equal": [{"axis": -1}],
+        "equal": [{"axis": -1}],
+        "not_equal": [{"axis": -1}],
+        "amax": [{"reduce_all": False}],
+        "amin": [{"reduce_all": False}],
+        "any": [{"reduce_all": False}],
+        "amax": [{"reduce_all": False}],
+        "frobenius_norm": [{"reduce_all": False}],
+        "logsumexp": [{"reduce_all": False}],
+        "reduce_max": [{"reduce_all": False}],
+        "reduce_max": [{"reduce_all": False}],
+        "reduce_mean": [{"reduce_all": False}],
+        "reduce_prod": [{"reduce_all": False}],
+        "reduce_sum": [{"reduce_all": False}],
     }
+
+    extra_op_attrs = {
+        "gather": ["overwrite"],
+        "graph_reindex": ["flag_buffer_hashtable"],
+        "graph_sample_neighbors": ["flag_perm_buffer"],
+        "relu6": ["threshold"],
+        "swish": ["beta"],
+        "hsigmoid_loss": ["remote_prefetch"],
+        "max_pool2d_with_index": ["global_pooling"],
+        "uniform": ["diag_num"],
+        "unique": ["is_sorted"],
+    }
+
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -3082,7 +3114,7 @@ class Operator:
                 for attr_name in extra_attrs_map.keys():
                     if _enable_printing_extra_attrs_:
                         warnings.warn(
-                            "op %s has extra_attr: %s" % (type, attr_name)
+                            "op %s use extra_attr: %s" % (type, attr_name)
                         )
 
                     if (attr_name not in op_attrs) or (
@@ -3095,6 +3127,14 @@ class Operator:
                         self._update_desc_attr(attr_name, op_attrs[attr_name])
 
                 if _enable_printing_extra_attrs_:
+                    if type in extra_op_attrs:
+                        attrs = extra_op_attrs.get(type, [])
+                        for attr in attrs:
+                            if attr in op_attrs.keys():
+                                warnings.warn(
+                                    "op %s use extra_attr: %s" % (type, attr)
+                                )
+
                     if type in special_ap_attrs:
                         attrs = special_ap_attrs.get(type, [])
                         for attr in attrs:
@@ -3105,7 +3145,7 @@ class Operator:
                                 and default_value != op_attrs[a_name]
                             ):
                                 warnings.warn(
-                                    "op %s's attr %s = %d is not the default value: %s"
+                                    "op %s's attr %s = %s is not the default value: %s"
                                     % (
                                         type,
                                         a_name,
