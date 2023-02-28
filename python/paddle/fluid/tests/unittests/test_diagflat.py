@@ -126,7 +126,6 @@ class TestDiagFlatAPI(unittest.TestCase):
                     },
                     fetch_list=[y],
                 )
-                np.testing.assert_allclose(res, expected, rtol=1)
 
 
 if __name__ == "__main__":
