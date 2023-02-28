@@ -19,7 +19,9 @@
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/enforce.h"
 
-#ifndef _WIN32
+#ifdef _WIN32
+#define posix_memalign_free _aligned_free
+#else
 #define posix_memalign_free free
 #endif
 
