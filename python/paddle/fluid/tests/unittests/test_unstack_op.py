@@ -179,7 +179,7 @@ class TestUnStackBF16Op(OpTest):
         self.initParameters()
         self.op_type = 'unstack'
         self.python_api = paddle.unstack
-        self.x = np.random.random(size=self.input_dim).astype(float)
+        self.x = np.random.random(size=self.input_dim).astype(np.float32)
         outs = np.split(self.x, self.input_dim[self.axis], self.axis)
         new_shape = list(self.input_dim)
         del new_shape[self.axis]
@@ -203,7 +203,7 @@ class TestUnStackBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output()
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
