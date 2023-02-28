@@ -517,6 +517,7 @@ XPUOpMap& get_kl2_ops() {
       {"reduce_sum",
        XPUKernelSet({phi::DataType::FLOAT16,
                      phi::DataType::INT64,
+                     phi::DataType::INT32,
                      phi::DataType::INT8,
                      phi::DataType::FLOAT32})},
       {"relu6", XPUKernelSet({phi::DataType::FLOAT32})},

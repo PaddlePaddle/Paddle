@@ -102,7 +102,7 @@ void DistributeFpnProposalsKernel(
   int* target_lvls_data = dev_ctx.template Alloc<int>(&target_lvls);
 
   std::vector<int> rois_lod_vec(fpn_rois_lod.size(), 0);
-  for (auto i = 0; i < fpn_rois_lod.size(); ++i) {
+  for (size_t i = 0; i < fpn_rois_lod.size(); ++i) {
     rois_lod_vec[i] = static_cast<int>(fpn_rois_lod[i]);
   }
   xpu::VectorParam<int> rois_lod = {
