@@ -18,7 +18,11 @@ from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
+import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
+from paddle.distributed.fleet.meta_optimizers import (
+    RawProgramOptimizer as RawProgram,
+)
 
 paddle.enable_static()
 
@@ -118,12 +122,34 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         if dist_strategy:
             warnings.warn("Use dist strategy.")
-            dist_strategy.without_graph_optimization = True
-            paddle.distributed.fleet.init()
-            dist_opt = paddle.distributed.fleet.distributed_optimizer(
-                optimizer=opt, strategy=dist_strategy
+            opt = RawProgram(opt)
+            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            strategy = (
+                paddle.distributed.fleet.DistributedStrategy()
+                if dist_strategy is None
+                else dist_strategy
             )
-            _, param_grads = dist_opt.minimize(avg_cost)
+            opt._set_basic_info(avg_cost, role, opt, strategy)
+
+            # following code is a copy of RawProgramOptimizer.minimize except init_comm_group
+            opt.endpoints = opt.role_maker._get_trainer_endpoints()
+            opt.current_endpoint = opt.endpoints[opt.role_maker._worker_index()]
+            opt.rank = opt.role_maker._worker_index()
+            opt.nranks = opt.role_maker._worker_num()
+            startup_program = paddle.static.default_startup_program()
+            opt.startup_program = startup_program
+
+            block = avg_cost.block
+            program = block.program
+            opt.main_program = program
+
+            optimize_ops, params_grads = opt.inner_opt.minimize(
+                avg_cost, startup_program
+            )
+
+            opt.main_program = program
+            if opt.nranks > 1:
+                opt._transpile_main_program(avg_cost)
         else:
             opt.minimize(avg_cost)
 
