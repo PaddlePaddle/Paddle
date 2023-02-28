@@ -186,7 +186,6 @@ static T *TensorFillConstant(const phi::XPUContext &dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   tensor->Resize(dims);
   auto *ptr = tensor->mutable_data<T>(dev_ctx.GetPlace());
-  // Todo:
   //   phi::funcs::SetConstant<phi::XPUContext, T> set_constant;
   //   set_constant(dev_ctx, tensor, value);
   int r = xpu::constant(dev_ctx.x_context(),
@@ -201,6 +200,7 @@ static phi::DenseTensor CastDataForInitedTensor(const phi::XPUContext &dev_ctx,
                                                 phi::DenseTensor *origin,
                                                 phi::DenseTensor *fused_out,
                                                 size_t numel_offset) {
+  using xpu_fp16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
   PADDLE_ENFORCE_EQ(origin->IsInitialized(),
                     true,
                     platform::errors::InvalidArgument(
@@ -215,12 +215,12 @@ static phi::DenseTensor CastDataForInitedTensor(const phi::XPUContext &dev_ctx,
                     platform::errors::InvalidArgument(
                         "The src tensor to be cast should be FP16 tensor."));
   auto *dst = fused_out->data<float>() + numel_offset;
-  auto *src = origin->data<platform::float16>();
+  auto *src = reinterpret_cast<xpu_fp16 *>(origin->data<platform::float16>());
   auto numel = origin->numel();
   // Todo:
   //   LaunchCastKernel(dev_ctx, src, dst, numel);
-  (void)dst;
-  (void)src;
+  int r = xpu::cast<xpu_fp16, float>(dev_ctx.x_context(), src, dst, numel);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   VLOG(10) << "Cast from FP32 -> FP16, range: [" << numel_offset << ", "
            << numel_offset + numel << ")"
            << " , total: [0, " << fused_out->numel() << ")";
@@ -272,6 +272,11 @@ static phi::DenseTensor CopyAndShareBufferForInitedTensor(
   //                origin->data(),
   //                numel * paddle::experimental::SizeOf(dtype),
   //                stream);
+  memory::Copy(place,
+               sliced_tensor.data(),
+               place,
+               origin->data(),
+               numel * paddle::experimental::SizeOf(dtype));
   origin->ShareBufferWith(sliced_tensor);
   fused_out->Resize(fused_out_dim);
   VLOG(10) << "Copy and share buffer, range: [" << numel_offset << ", "

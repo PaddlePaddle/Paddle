@@ -2160,6 +2160,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
                                           numel);
     }
     float *master_param = nullptr;
+    master_param = fp32_param + fp32_numel;
     if (has_fp16_param && fp16_nums_inf_nans == 0) {
       //   master_param = fp32_param + fp32_numel;
       //   VLOG(10) << "Update FP16 Moment and TrustRatioDiv starts";
@@ -2187,7 +2188,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
       //       epsilon,
       //       max_global_grad_norm,
       //       rescale_grad);
-      master_param = fp32_param + fp32_numel;
+      //   master_param = fp32_param + fp32_numel;
 
       int numel = fp16_partial_fused_offsets[fp16_local_param_num] -
                   fp16_partial_fused_offsets[0];
