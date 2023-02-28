@@ -1047,7 +1047,7 @@ class DistributedOperatorContext:
         # NOTE Support correct parallelism for high-order differential model.
         # by default exceed_backward_init_op is False and it means we are in Forward phase; After exceed_backward_init_op = True,
         # it means we are in Backward phase.
-        # And the final sulotion should be revise high-order differential logic for these two phases in future.
+        # And the final solution should be revise high-order differential logic for these two phases in future.
         self._exceed_backward_init_op = False
 
     def __deepcopy__(self, memo):

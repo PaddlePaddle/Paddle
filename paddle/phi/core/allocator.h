@@ -18,6 +18,7 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 
+#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/place.h"
 
 namespace phi {
