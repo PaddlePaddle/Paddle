@@ -41,12 +41,6 @@ class TestTanhGradComp(unittest.TestCase):
     def setUpClass(cls):
         cls.primal = cls.primal.astype(cls.dtype)
 
-    def setUp(self):
-        paddle.enable_static()
-
-    def tearDown(self):
-        paddle.disable_static()
-
     def test_tanh_grad_comp(self):
         def actual(primal):
             paddle.disable_static()

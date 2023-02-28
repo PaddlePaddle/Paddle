@@ -431,8 +431,8 @@ def equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
-        y(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
+        x(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
+        y(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -465,13 +465,13 @@ def equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "equal",
         )
         helper = LayerHelper("equal", **locals())

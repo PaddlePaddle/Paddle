@@ -289,7 +289,7 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_backends phi_enforce place init)
+  DEPS phi_backends phi_enforce place init phi_device_context)
 
 cc_library(
   kernel_dispatch
