@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid import core
 
 
@@ -205,7 +206,18 @@ class TestUnStackBF16Op(OpTest):
         self.check_output_with_place(place)
 
     def test_check_grad(self):
-        pass
+        place = core.CUDAPlace(0)
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(self.inputs['X'])
+            x.stop_gradient = False
+            y = paddle.unstack(
+                x, axis=self.attrs['axis'], num=self.attrs['num']
+            )
+            dx = paddle.grad(y, x)[0].numpy()
+            dx_expected = convert_float_to_uint16(
+                np.ones(self.input_dim, np.float32)
+            )
+            np.testing.assert_array_equal(dx, dx_expected)
 
 
 class TestUnstackZeroInputOp(unittest.TestCase):
