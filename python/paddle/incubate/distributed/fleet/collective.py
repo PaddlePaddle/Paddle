@@ -472,13 +472,8 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._strategy.trainers_endpoints = fleet.worker_endpoints()
         self._strategy.enable_backward_optimizer_op_deps = True
 
-        self._compiled_program = CompiledProgram(main_program)
-
-        self._compiled_program.with_data_parallel(
-            loss_name=self._loss.name,
-            build_strategy=self._strategy,
-            exec_strategy=self._strategy.exec_strategy,
-            share_vars_from=None,
+        self._compiled_program = CompiledProgram(
+            main_program, build_strategy=self._strategy
         )
 
         return self._compiled_program
