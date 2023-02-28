@@ -53,8 +53,12 @@ DEFINE_bool(with_accuracy_layer,
             "Calculate the accuracy while label is in the input");
 DEFINE_bool(enable_fp32, true, "Enable FP32 type prediction");
 DEFINE_bool(enable_bf16, false, "Enable BF16 type prediction");
-DEFINE_bool(enable_int8, false, "Enable INT8 type prediction");
-DEFINE_bool(enable_quant_int8, false, "Enable QUANT INT8 type prediction");
+DEFINE_bool(enable_int8_ptq,
+            false,
+            "Enable INT8 post-training quantization prediction");
+DEFINE_bool(enable_int8_qat,
+            false,
+            "Enable INT8 quant-aware training prediction");
 DEFINE_int32(warmup_batch_size, 100, "batch size for quantization warmup");
 // setting iterations to 0 means processing the whole dataset
 DEFINE_int32(iterations, 0, "number of batches to process");
@@ -701,7 +705,7 @@ void SummarizePerformance(const char *title_fp32,
                           const char *title,
                           float sample_latency) {
   if (FLAGS_enable_fp32) SummarizePerformance(title_fp32, sample_latency_fp32);
-  if (FLAGS_enable_int8 || FLAGS_enable_bf16)
+  if (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16)
     SummarizePerformance(title, sample_latency);
 }
 
@@ -760,7 +764,8 @@ void CompareAccuracy(
     const std::vector<std::vector<PaddleTensor>> &output_slots_quant,
     const std::vector<std::vector<PaddleTensor>> &output_slots_ref,
     int compared_idx) {
-  if ((FLAGS_enable_fp32 && (FLAGS_enable_int8 || FLAGS_enable_bf16)) &&
+  if ((FLAGS_enable_fp32 &&
+       (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16)) &&
       (output_slots_quant.size() == 0 || output_slots_ref.size()) == 0)
     throw std::invalid_argument(
         "CompareAccuracy: output_slots vector is empty.");
@@ -768,7 +773,7 @@ void CompareAccuracy(
   float avg_acc_quant = 0.0;
   float avg_acc_ref = 0.0;
 
-  if (FLAGS_enable_int8 || FLAGS_enable_bf16)
+  if (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16)
     avg_acc_quant = CompareAccuracyOne(output_slots_quant, compared_idx);
 
   if (FLAGS_enable_fp32)
@@ -778,9 +783,11 @@ void CompareAccuracy(
 
   if (FLAGS_enable_fp32) CHECK_GT(avg_acc_ref, 0.0);
 
-  if (FLAGS_enable_int8 || FLAGS_enable_bf16) CHECK_GT(avg_acc_quant, 0.0);
+  if (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16)
+    CHECK_GT(avg_acc_quant, 0.0);
 
-  if (FLAGS_enable_fp32 && (FLAGS_enable_int8 || FLAGS_enable_bf16))
+  if (FLAGS_enable_fp32 &&
+      (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat || FLAGS_enable_bf16))
     CHECK_LE(avg_acc_ref - avg_acc_quant, FLAGS_quantized_accuracy);
 }
 
@@ -864,7 +871,7 @@ void CompareQuantizedAndAnalysis(
   std::vector<std::vector<PaddleTensor>> quantized_outputs;
   float sample_latency_int8{-1};
 
-  if (FLAGS_enable_int8) {
+  if (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat) {
     TestOneThreadPrediction(qcfg,
                             inputs,
                             &quantized_outputs,
@@ -965,7 +972,7 @@ void CompareAnalysisAndAnalysis(
   std::vector<std::vector<PaddleTensor>> int8_outputs;
   float sample_latency_int8{-1};
 
-  if (FLAGS_enable_int8) {
+  if (FLAGS_enable_int8_ptq || FLAGS_enable_int8_qat) {
     TestOneThreadPrediction(
         cfg2, inputs, &int8_outputs, true, VarType::INT8, &sample_latency_int8);
   }
