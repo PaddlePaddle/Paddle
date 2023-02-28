@@ -243,7 +243,7 @@ void HardSwishGradKernel(const Context& dev_ctx,
                          float offset,
                          DenseTensor* dx) {
   HardSwishOneDNNGradFunctor<T> functor;
-  functor(dev_ctx, x, dout, 0, 0, dx);
+  functor(dev_ctx, x, dout, 1.0 / 6.0, 1.0 / 2.0, dx);
 }
 
 template <typename T, typename Context>
