@@ -26,7 +26,7 @@ class TunableSpace:
     def __init__(self):
         # Tunable variables for this tunable variables
         self._variables = {}
-        # Specific values coresponding to each tunable variable
+        # Specific values corresponding to each tunable variable
         self._values = {}
 
     @property
