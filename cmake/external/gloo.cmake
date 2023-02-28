@@ -32,14 +32,14 @@ set(GLOO_LIBRARIES
     CACHE FILEPATH "gloo library." FORCE)
 
 set(GLOO_PATCH_COMMAND "")
-if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
-                                                  VERSION_GREATER 12.0)
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/device.cc.patch
-         native_dst)
-    set(GLOO_PATCH_COMMAND patch -d ${GLOO_SOURCE_DIR}/gloo/transport/tcp <
-                           ${native_dst})
-  endif()
+
+if((${CMAKE_CUDA_COMPILER_VERSION})
+   LESS 12.0
+   AND (${CMAKE_CXX_COMPILER_VERSION}) VERSION_GREATER 12.0)
+  file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/device.cc.patch
+       native_dst)
+  set(GLOO_PATCH_COMMAND patch -d ${GLOO_SOURCE_DIR}/gloo/transport/tcp <
+                         ${native_dst})
 endif()
 
 include_directories(${GLOO_INCLUDE_DIR})
