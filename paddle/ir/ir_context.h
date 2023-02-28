@@ -115,7 +115,7 @@ class IrContext {
   ///
   /// \return The dialect named "name" from the context.
   ///
-  Dialect *GetRegisteredDialect(std::string dialect_name);
+  Dialect *GetRegisteredDialect(const std::string &dialect_name);
 
   ///
   /// \brief Get a registered dialect for the given dialect type T. The

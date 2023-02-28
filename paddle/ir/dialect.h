@@ -29,7 +29,7 @@ class Dialect {
  public:
   Dialect(std::string name, ir::IrContext *context, ir::TypeId id);
 
-  std::string name() const { return name_; }
+  const std::string &name() const { return name_; }
 
   ir::IrContext *ir_context() const { return context_; }
 
@@ -57,13 +57,13 @@ class Dialect {
   }
 
   ///
-  /// \brief Register type_id and abstract_type into context.
+  /// \brief Register abstract_type into context.
   /// NOTE: It's not recommended to use this interface directly. This interface
   /// only registers abstract_type. To register TypeStorage into context, you
   /// need to call ir::TypeManager::RegisterType<T>() additionally,
   /// RegisterType<T>() is recommended to use.
   ///
-  void RegisterType(ir::TypeId type_id, ir::AbstractType &&abstract_type);
+  void RegisterType(ir::AbstractType &&abstract_type);
 
  private:
   std::string name_;

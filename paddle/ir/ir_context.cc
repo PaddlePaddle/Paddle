@@ -29,12 +29,12 @@ class IrContextImpl {
 
   ~IrContextImpl() {
     std::lock_guard<ir::SpinLock> guard(destructor_lock_);
-    for (auto abstract_type_map : registed_abstract_types_) {
+    for (auto &abstract_type_map : registed_abstract_types_) {
       delete abstract_type_map.second;
     }
     registed_abstract_types_.clear();
 
-    for (auto dialect_map : registed_dialect_) {
+    for (auto &dialect_map : registed_dialect_) {
       delete dialect_map.second;
     }
     registed_dialect_.clear();
@@ -51,17 +51,16 @@ class IrContextImpl {
   AbstractType *GetAbstractType(ir::TypeId type_id) {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
     auto iter = registed_abstract_types_.find(type_id);
-    if (iter == registed_abstract_types_.end()) {
-      LOG(WARNING)
-          << "IrContext not fonund cached abstract_type of: [TypeId_hash="
-          << std::hash<ir::TypeId>()(type_id) << "].";
-      return nullptr;
-    } else {
+    if (iter != registed_abstract_types_.end()) {
       VLOG(4) << "IrContext fonund a cached abstract_type of: [TypeId_hash="
               << std::hash<ir::TypeId>()(type_id)
               << ", AbstractType_ptr=" << iter->second << "].";
       return iter->second;
     }
+    LOG(WARNING)
+        << "IrContext not fonund cached abstract_type of: [TypeId_hash="
+        << std::hash<ir::TypeId>()(type_id) << "].";
+    return nullptr;
   }
 
   void RegisterDialect(std::string name, Dialect *dialect) {
@@ -74,15 +73,14 @@ class IrContextImpl {
   Dialect *GetDialect(std::string name) {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
     auto iter = registed_dialect_.find(name);
-    if (iter == registed_dialect_.end()) {
-      LOG(WARNING) << "IrContext not fonund cached dialect of: [name=" << name
-                   << "].";
-      return nullptr;
-    } else {
+    if (iter != registed_dialect_.end()) {
       VLOG(4) << "IrContext fonund a cached dialect of: [name=" << name
               << ", dialect_ptr=" << iter->second << "].";
       return iter->second;
     }
+    LOG(WARNING) << "IrContext not fonund cached dialect of: [name=" << name
+                 << "].";
+    return nullptr;
   }
 
   ir::SpinLock registed_abstract_types_lock_;
@@ -153,7 +151,7 @@ std::vector<Dialect *> IrContext::GetRegisteredDialects() {
   return result;
 }
 
-Dialect *IrContext::GetRegisteredDialect(std::string dialect_name) {
+Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
   for (auto dialect_map : impl().registed_dialect_) {
     if (dialect_map.first == dialect_name) {
       return dialect_map.second;

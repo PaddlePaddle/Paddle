@@ -29,7 +29,7 @@ class BuiltinDialect : public ir::Dialect {
   /// \brief Each Dialect needs to provide a name function to return the name of
   /// the Dialect.
   ///
-  static const std::string name() { return "builtin"; }
+  static const char *name() { return "builtin"; }
 
  private:
   void initialize();

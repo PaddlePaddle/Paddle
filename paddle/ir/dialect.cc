@@ -16,13 +16,13 @@
 
 namespace ir {
 Dialect::Dialect(std::string name, ir::IrContext *context, ir::TypeId id)
-    : name_(name), context_(context), id_(id) {}
+    : name_(std::move(name)), context_(context), id_(id) {}
 
-void Dialect::RegisterType(ir::TypeId type_id,
-                           ir::AbstractType &&abstract_type) {
+void Dialect::RegisterType(ir::AbstractType &&abstract_type) {
   ir::AbstractType *new_abstract_type =
       new ir::AbstractType(std::move(abstract_type));
-  this->ir_context()->RegisterAbstractType(type_id, new_abstract_type);
+  this->ir_context()->RegisterAbstractType(new_abstract_type->type_id(),
+                                           new_abstract_type);
 }
 
 }  // namespace ir

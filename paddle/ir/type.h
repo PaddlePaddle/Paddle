@@ -52,7 +52,7 @@ class Type {
 
   StorageType *storage() const { return storage_; }
 
-  Dialect &dialect() const { return storage_->abstract_type().dialect(); }
+  const Dialect &dialect() const { return storage_->abstract_type().dialect(); }
 
   IrContext *ir_context() const;
 
