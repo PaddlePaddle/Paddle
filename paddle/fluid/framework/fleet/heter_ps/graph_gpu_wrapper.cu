@@ -585,7 +585,8 @@ void GraphGpuWrapper::load_node_and_edge(
                                                   graph_data_local_path,
                                                   part_num,
                                                   reverse,
-                                                  is_reverse_edge_map);
+                                                  is_reverse_edge_map,
+                                                  false);
 }
 
 void GraphGpuWrapper::add_table_feat_conf(std::string table_name,
@@ -868,7 +869,7 @@ std::vector<uint64_t> GraphGpuWrapper::graph_neighbor_sample(
   auto neighbor_sample_res =
       reinterpret_cast<GpuPsGraphTable *>(graph_table)
           ->graph_neighbor_sample_v2(
-              gpu_id, idx, cuda_key, sample_size, key.size(), false, true);
+              gpu_id, idx, cuda_key, sample_size, key.size(), false, true, false);
   int *actual_sample_size = new int[key.size()];
   cudaMemcpy(actual_sample_size,
              neighbor_sample_res.actual_sample_size,

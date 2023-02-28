@@ -567,7 +567,8 @@ class GraphTable : public Table {
                                   std::string graph_data_local_path,
                                   int part_num,
                                   bool reverse,
-                                  const std::vector<bool> &is_reverse_edge_map);
+                                  const std::vector<bool> &is_reverse_edge_map,
+                                  bool use_weight);
   int32_t parse_edge_and_load(std::string etype2files,
                               std::string graph_data_local_path,
                               int part_num,
@@ -613,7 +614,8 @@ class GraphTable : public Table {
                      bool load_slot = true);
   std::pair<uint64_t, uint64_t> parse_edge_file(const std::string &path,
                                                 int idx,
-                                                bool reverse);
+                                                bool reverse,
+                                                bool use_weight);
   std::pair<uint64_t, uint64_t> parse_node_file(const std::string &path,
                                                 const std::string &node_type,
                                                 int idx,

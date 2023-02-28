@@ -214,7 +214,7 @@ paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
             for (size_t k = 0; k < v->get_neighbor_size(); k++) {
               edge_array[i].push_back(v->get_neighbor_id(k));
               if (is_weighted_) {
-                weight_array[i].push_back(v->get_weight(k));
+                weight_array[i].push_back(v->get_neighbor_weight(k));
               }
             }
           } else {
