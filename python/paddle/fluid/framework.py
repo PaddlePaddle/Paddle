@@ -131,7 +131,7 @@ _cuda_graph_enable_standalone_executor_ = os.environ.get(
 _enable_printing_extra_attrs_ = os.environ.get('FLAGS_print_extra_attrs', 0)
 
 if _enable_printing_extra_attrs_:
-    special_ap_attrs = {
+    special_op_attrs = {
         "elementwise_add": [{"axis": -1}],
         "elementwise_sub": [{"axis": -1}],
         "elementwise_mul": [{"axis": -1}],
@@ -3135,8 +3135,8 @@ class Operator:
                                     "op %s use extra_attr: %s" % (type, attr)
                                 )
 
-                    if type in special_ap_attrs:
-                        attrs = special_ap_attrs.get(type, [])
+                    if type in special_op_attrs:
+                        attrs = special_op_attrs.get(type, [])
                         for attr in attrs:
                             a_name = list(attr.keys())[0]
                             default_value = list(attr.values())[0]
