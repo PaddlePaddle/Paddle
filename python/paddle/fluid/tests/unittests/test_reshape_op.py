@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid as fluid
@@ -78,11 +78,11 @@ class TestReshapeBF16Op(OpTest):
         self.dtype = np.uint16
         x = np.random.random(self.ori_shape).astype("float32")
         out = x.reshape(self.infered_shape)
-        self.inputs = {"X": convert_float_to_uint16(x)}
+        self.inputs = {"X": convert_float_to_bfloat16(x)}
         self.attrs = {"shape": self.new_shape}
         self.outputs = {
-            "Out": convert_float_to_uint16(out),
-            'XShape': convert_float_to_uint16(
+            "Out": convert_float_to_bfloat16(out),
+            'XShape': convert_float_to_bfloat16(
                 np.random.random(self.ori_shape).astype("float32")
             ),
         }

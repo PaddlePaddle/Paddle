@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import OpTest, convert_float_to_bfloat16, convert_uint16_to_float
 
 import paddle
 import paddle.fluid.core as core
@@ -85,7 +85,7 @@ class TestTransferDtypeFp32ToBf16(OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10]).astype('float32')
         self.inputs = {'X': ipt}
-        self.outputs = {'Out': convert_float_to_uint16(ipt)}
+        self.outputs = {'Out': convert_float_to_bfloat16(ipt)}
         self.attrs = {
             'out_dtype': int(core.VarDesc.VarType.BF16),
             'in_dtype': int(core.VarDesc.VarType.FP32),

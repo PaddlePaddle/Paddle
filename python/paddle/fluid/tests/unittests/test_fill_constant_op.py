@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid as fluid
@@ -101,7 +101,9 @@ class TestFillConstantBF16Op(OpTest):
             'value': 3.8,
             'dtype': core.VarDesc.VarType.BF16,
         }
-        self.outputs = {'Out': convert_float_to_uint16(np.full((123, 92), 3.8))}
+        self.outputs = {
+            'Out': convert_float_to_bfloat16(np.full((123, 92), 3.8))
+        }
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -472,7 +474,7 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
 
         self.inputs = {
             "ShapeTensor": np.array(self.shape).astype("int32"),
-            'ValueTensor': convert_float_to_uint16(
+            'ValueTensor': convert_float_to_bfloat16(
                 np.array([self.value]).astype("float32")
             ),
         }

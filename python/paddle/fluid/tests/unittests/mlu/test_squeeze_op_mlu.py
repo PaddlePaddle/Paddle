@@ -22,7 +22,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_bfloat16
 import paddle.fluid.core as core
 
 paddle.enable_static()
@@ -66,9 +66,9 @@ class TestSqueezeBF16Op(OpTest):
         self.init_test_case()
         x = np.random.random(self.ori_shape).astype("float32")
         out = x.reshape(self.new_shape)
-        self.inputs = {"X": convert_float_to_uint16(x)}
+        self.inputs = {"X": convert_float_to_bfloat16(x)}
         self.init_attrs()
-        self.outputs = {"Out": convert_float_to_uint16(out)}
+        self.outputs = {"Out": convert_float_to_bfloat16(out)}
 
     def test_check_output(self):
         self.check_output()

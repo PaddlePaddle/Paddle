@@ -18,7 +18,10 @@ import numpy as np
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 
 
 @unittest.skipIf(
@@ -27,7 +30,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 class TestCastBF16ToFP32MKLDNNOp(OpTest):
     def init_data(self):
         self.out = np.random.random(size=[10, 10]).astype("float32")
-        self.x = convert_float_to_uint16(self.out)
+        self.x = convert_float_to_bfloat16(self.out)
 
     def setUp(self):
         self.init_data()
@@ -62,7 +65,7 @@ class TestCastBF16ToFP32MKLDNNOp(OpTest):
 class TestCastFP32ToBF16MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
     def init_data(self):
         self.x = np.random.random(size=[2, 6]).astype("float32")
-        self.out = convert_float_to_uint16(self.x)
+        self.out = convert_float_to_bfloat16(self.x)
 
 
 class TestCastBF16ToBF16MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):

@@ -38,7 +38,7 @@ def convert_uint16_to_float(in_list):
     return numpy.reshape(out, in_list.shape)
 
 
-def convert_float_to_uint16(in_list):
+def convert_float_to_bfloat16(in_list):
     out = []
     for x in numpy.nditer(in_list):
         out.append(
@@ -190,7 +190,7 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
         )
 
         if use_bf16:
-            test_feat = convert_float_to_uint16(test_feat)
+            test_feat = convert_float_to_bfloat16(test_feat)
 
         test_label = numpy.array([data[1] for data in test_data]).astype(
             "float32"

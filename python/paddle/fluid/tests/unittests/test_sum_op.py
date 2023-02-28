@@ -21,7 +21,7 @@ import numpy as np
 from decorator_helper import prog_scope
 from eager_op_test import (
     OpTest,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
     convert_uint16_to_float,
 )
 
@@ -183,7 +183,7 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
 
     def _get_array(self, rows, row_numel):
         if len(rows) > 0:
-            return convert_float_to_uint16(self.data)
+            return convert_float_to_bfloat16(self.data)
         else:
             return np.ndarray((0, row_numel), dtype=self.dtype)
 
@@ -338,12 +338,12 @@ class TestSumBF16Op(OpTest):
         y = x0 + x1 + x2
         self.inputs = {
             "X": [
-                ("x0", convert_float_to_uint16(x0)),
-                ("x1", convert_float_to_uint16(x1)),
-                ("x2", convert_float_to_uint16(x2)),
+                ("x0", convert_float_to_bfloat16(x0)),
+                ("x1", convert_float_to_bfloat16(x1)),
+                ("x2", convert_float_to_bfloat16(x2)),
             ]
         }
-        self.outputs = {'Out': convert_float_to_uint16(y)}
+        self.outputs = {'Out': convert_float_to_bfloat16(y)}
 
     def init_kernel_type(self):
         self.dtype = np.uint16

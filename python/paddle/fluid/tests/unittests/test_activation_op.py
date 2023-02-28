@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_bfloat16
 from scipy.special import erf, expit
 
 import paddle
@@ -294,9 +294,9 @@ class TestSigmoidBF16(OpTest):
         out = 1 / (1 + np.exp(-x))
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_bfloat16(x))
         }
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.outputs = {'Out': convert_float_to_bfloat16(out)}
 
     def init_dtype(self):
         self.dtype = np.uint16
@@ -1247,9 +1247,9 @@ class TestSqrtBF16(OpTest):
         out = np.sqrt(x)
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_bfloat16(x))
         }
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.outputs = {'Out': convert_float_to_bfloat16(out)}
         # TODO(wanghao107): add prim test
         self.enable_cinn = False
 
@@ -1695,8 +1695,8 @@ class TestRelu(TestActivation):
             x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
             # The same reason with TestAbs
             x[np.abs(x) < 0.005] = 0.02
-            out = convert_float_to_uint16(np.maximum(x, 0))
-            self.inputs = {'X': convert_float_to_uint16(x)}
+            out = convert_float_to_bfloat16(np.maximum(x, 0))
+            self.inputs = {'X': convert_float_to_bfloat16(x)}
         else:
             x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             # The same reason with TestAbs
@@ -2781,9 +2781,9 @@ class TestSquareBF16(OpTest):
         out = np.square(x)
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_bfloat16(x))
         }
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.outputs = {'Out': convert_float_to_bfloat16(out)}
 
     def init_dtype(self):
         self.dtype = np.uint16
@@ -3065,9 +3065,9 @@ class TestSoftplusBF16(OpTest):
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, [10, 12]).astype(np.float32)
         out = ref_softplus(x, beta, threshold)
-        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.inputs = {'X': convert_float_to_bfloat16(x)}
         self.attrs = {'beta': beta, "threshold": threshold}
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.outputs = {'Out': convert_float_to_bfloat16(out)}
 
     def init_dtype(self):
         self.dtype = np.uint16

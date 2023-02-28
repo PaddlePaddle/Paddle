@@ -92,8 +92,8 @@ class TestModelCastBF16(unittest.TestCase):
         n = np.ones([size, size], dtype='float32') * 3.2
         nn = np.ones([size, size], dtype='float32') * -2.7
 
-        n_bf16 = amp.bf16.convert_float_to_uint16(n)
-        nn_bf16 = amp.bf16.convert_float_to_uint16(nn)
+        n_bf16 = amp.bf16.convert_float_to_bfloat16(n)
+        nn_bf16 = amp.bf16.convert_float_to_bfloat16(nn)
 
         with self.static_graph():
             t_bf16 = paddle.static.data(

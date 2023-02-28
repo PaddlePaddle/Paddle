@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid.core as core
@@ -57,7 +57,7 @@ class TestFillAnyLikeOpBfloat16(OpTest):
         self.inputs = {'X': np.random.random((219, 232)).astype(np.float32)}
         self.attrs = {'value': self.value, 'dtype': core.VarDesc.VarType.BF16}
         self.outputs = {
-            'Out': convert_float_to_uint16(
+            'Out': convert_float_to_bfloat16(
                 self.value * np.ones_like(self.inputs["X"])
             )
         }

@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid as fluid
@@ -576,8 +576,8 @@ class TestBF16(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.slice
         self.config()
-        self.inputs = {'Input': convert_float_to_uint16(self.input)}
-        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.inputs = {'Input': convert_float_to_bfloat16(self.input)}
+        self.outputs = {'Out': convert_float_to_bfloat16(self.out)}
         self.attrs = {
             'axes': self.axes,
             'starts': self.starts,

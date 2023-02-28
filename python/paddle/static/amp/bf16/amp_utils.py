@@ -44,7 +44,7 @@ _valid_types = [
 _bf16_guard_pattern = "__use_bf16__"
 
 
-def convert_float_to_uint16(in_list):
+def convert_float_to_bfloat16(in_list):
     in_list = np.asarray(in_list)
     out = np.vectorize(
         lambda x: struct.unpack('<I', struct.pack('<f', x))[0] >> 16,
@@ -502,7 +502,7 @@ def cast_parameters_to_bf16(place, program, scope=None, to_bf16_var_names=None):
             _logger.debug("---- cast {} to bf16 dtype ----".format(param.name))
             param_t = var_scope.find_var(param.name).get_tensor()
             data = np.array(param_t)
-            param_t.set(convert_float_to_uint16(data), place)
+            param_t.set(convert_float_to_bfloat16(data), place)
 
 
 def rewrite_program_bf16(main_prog, amp_lists=None):

@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid as fluid
@@ -170,13 +170,13 @@ class TestAutoTuneTransposeBF16Op(OpTest):
         self.dtype = np.uint16
         self.python_api = paddle.transpose
         x = np.random.random(self.shape).astype("float32")
-        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.inputs = {'X': convert_float_to_bfloat16(x)}
         self.attrs = {
             'axis': list(self.axis),
             'use_mkldnn': self.use_mkldnn,
         }
         self.outputs = {
-            'XShape': convert_float_to_uint16(
+            'XShape': convert_float_to_bfloat16(
                 np.random.random(self.shape).astype("float32")
             ),
             'Out': self.inputs['X'].transpose(self.axis),
@@ -209,13 +209,13 @@ class TestTransposeBF16Op(OpTest):
         self.python_api = paddle.transpose
         x = np.random.random(self.shape).astype("float32")
 
-        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.inputs = {'X': convert_float_to_bfloat16(x)}
         self.attrs = {
             'axis': list(self.axis),
             'use_mkldnn': self.use_mkldnn,
         }
         self.outputs = {
-            'XShape': convert_float_to_uint16(
+            'XShape': convert_float_to_bfloat16(
                 np.random.random(self.shape).astype("float32")
             ),
             'Out': self.inputs['X'].transpose(self.axis),

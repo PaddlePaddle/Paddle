@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from eager_op_test import OpTest, convert_float_to_bfloat16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -160,14 +160,14 @@ class TestBF16ElementwiseAddOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(
-                convert_float_to_uint16(self.x)
+                convert_float_to_bfloat16(self.x)
             ),
             'Y': OpTest.np_dtype_to_fluid_dtype(
-                convert_float_to_uint16(self.y)
+                convert_float_to_bfloat16(self.y)
             ),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
-        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.outputs = {'Out': convert_float_to_bfloat16(self.out)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)

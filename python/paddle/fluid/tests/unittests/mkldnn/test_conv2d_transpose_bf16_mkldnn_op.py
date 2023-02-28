@@ -18,7 +18,10 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 from paddle.fluid.tests.unittests.test_conv2d_transpose_op import (
     conv2dtranspose_forward_naive,
 )
@@ -111,7 +114,7 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
         ).astype(np.float32)
 
         if self.input_type is not np.float32:
-            input = convert_float_to_uint16(input)
+            input = convert_float_to_bfloat16(input)
 
         self.inputs = {
             'Input': input.view(self.input_type),
@@ -130,7 +133,9 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
         output = output.astype(np.float32)
 
         if not self.force_fp32_output:
-            output = convert_float_to_uint16(output, self.attrs['data_format'])
+            output = convert_float_to_bfloat16(
+                output, self.attrs['data_format']
+            )
 
         self.outputs['Output'] = output
 

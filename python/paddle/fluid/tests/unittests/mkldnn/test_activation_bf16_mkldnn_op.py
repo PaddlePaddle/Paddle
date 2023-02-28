@@ -21,7 +21,7 @@ from scipy.special import erf
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 from paddle.fluid.tests.unittests.test_activation_op import TestActivation
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
@@ -54,7 +54,7 @@ class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
         self.set_attrs()
         self.out = self.op_forward(self.x)
 
-        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.inputs = {'X': convert_float_to_bfloat16(self.x)}
         self.outputs = {'Out': self.out}
 
     def calculate_grads(self):
@@ -70,7 +70,7 @@ class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
             ["X"],
             "Out",
             user_defined_grads=[self.dx],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.out)],
+            user_defined_grad_outputs=[convert_float_to_bfloat16(self.out)],
         )
 
 

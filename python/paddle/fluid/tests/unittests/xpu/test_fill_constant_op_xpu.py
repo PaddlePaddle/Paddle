@@ -18,7 +18,7 @@ sys.path.append("..")
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from op_test import convert_float_to_bfloat16
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
     XPUOpTestWrapper,
@@ -161,7 +161,7 @@ class XPUTestFillConstantOp(XPUOpTestWrapper):
                 self.outputs = {
                     'Out': np.full(
                         self.shape,
-                        convert_float_to_uint16(
+                        convert_float_to_bfloat16(
                             np.array([self.value]).astype("float32")
                         ),
                     )
@@ -215,7 +215,7 @@ class XPUTestFillConstantOp(XPUOpTestWrapper):
                 self.outputs = {
                     'Out': np.full(
                         self.shape,
-                        convert_float_to_uint16(
+                        convert_float_to_bfloat16(
                             np.array([self.value]).astype("float32")
                         ),
                     )
@@ -235,7 +235,7 @@ class XPUTestFillConstantOp(XPUOpTestWrapper):
             }
             if self.index == 22:
                 self.inputs = {
-                    'ValueTensor': convert_float_to_uint16(
+                    'ValueTensor': convert_float_to_bfloat16(
                         np.array([self.value]).astype("float32")
                     )
                 }

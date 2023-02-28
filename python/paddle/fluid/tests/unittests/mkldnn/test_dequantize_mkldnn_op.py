@@ -17,7 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 
 
 class TestDeQuantizeOp(OpTest):
@@ -39,7 +42,7 @@ class TestDeQuantizeOp(OpTest):
 
     def prepare_input_output_bf16(self):
         output = np.random.random(self.input_size).astype(np.float32)
-        input = convert_float_to_uint16(output)
+        input = convert_float_to_bfloat16(output)
         self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(input)}
         self.outputs = {'Output': output}
 

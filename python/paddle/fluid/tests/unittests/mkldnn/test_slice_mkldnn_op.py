@@ -21,7 +21,7 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 
 
@@ -201,7 +201,7 @@ def create_bf16_test_class(parent):
     class TestSliceBF16OneDNNOp(parent):
         def set_inputs(self):
             self.dtype = np.uint16
-            self.inputs = {'Input': convert_float_to_uint16(self.input)}
+            self.inputs = {'Input': convert_float_to_bfloat16(self.input)}
 
         def calculate_grads(self):
             self.dout = self.out
@@ -230,7 +230,9 @@ def create_bf16_test_class(parent):
                 ["Input"],
                 "Out",
                 user_defined_grads=[self.dx],
-                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+                user_defined_grad_outputs=[
+                    convert_float_to_bfloat16(self.dout)
+                ],
             )
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")

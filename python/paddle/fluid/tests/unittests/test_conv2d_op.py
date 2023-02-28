@@ -22,7 +22,7 @@ import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
     get_numeric_gradient,
 )
 from paddle.fluid.tests.unittests.testsuite import create_op
@@ -441,8 +441,8 @@ class TestConv2DOp(OpTest):
         if self.is_bfloat16_op():
             output = output.astype(np.float32)
             self.inputs = {
-                'Input': convert_float_to_uint16(input),
-                'Filter': convert_float_to_uint16(filter),
+                'Input': convert_float_to_bfloat16(input),
+                'Filter': convert_float_to_bfloat16(filter),
             }
             self.inputs_fp32 = {
                 'Input': OpTest.np_dtype_to_fluid_dtype(input),

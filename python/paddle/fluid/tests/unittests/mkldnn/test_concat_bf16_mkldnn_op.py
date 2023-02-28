@@ -18,7 +18,10 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 
 
 @unittest.skipIf(
@@ -67,13 +70,13 @@ class TestConcatBf16Op(OpTest):
     # --------------------test concat bf16 in with axis 0--------------------
 
     def init_test_data(self):
-        self.x0 = convert_float_to_uint16(
+        self.x0 = convert_float_to_bfloat16(
             np.random.random(self.x0_shape).astype(np.float32)
         )
-        self.x1 = convert_float_to_uint16(
+        self.x1 = convert_float_to_bfloat16(
             np.random.random(self.x1_shape).astype(np.float32)
         )
-        self.x2 = convert_float_to_uint16(
+        self.x2 = convert_float_to_bfloat16(
             np.random.random(self.x2_shape).astype(np.float32)
         )
 

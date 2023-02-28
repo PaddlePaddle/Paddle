@@ -20,7 +20,7 @@ import paddle
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 
 
@@ -46,7 +46,7 @@ class TestSoftplusOneDNNOp(OpTest):
         self.out = ref_softplus(self.x, self.beta, self.threshold)
 
         if self.dtype != np.float32:
-            self.x = convert_float_to_uint16(self.x)
+            self.x = convert_float_to_bfloat16(self.x)
 
         self.inputs = {'X': self.out}
         self.outputs = {

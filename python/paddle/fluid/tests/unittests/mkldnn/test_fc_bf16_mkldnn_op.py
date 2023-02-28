@@ -18,7 +18,10 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 
 
 def fully_connected_naive(input, weights, bias_data):
@@ -51,10 +54,10 @@ class TestFcBf16MklDNNOp(OpTest):
             self.matrix.input, self.matrix.weights, self.bias
         )
         if not self.force_fp32_output:
-            self.output = convert_float_to_uint16(self.output)
+            self.output = convert_float_to_bfloat16(self.output)
 
         self.inputs = {
-            'Input': convert_float_to_uint16(self.matrix.input),
+            'Input': convert_float_to_bfloat16(self.matrix.input),
             'W': self.matrix.weights,
             'Bias': self.bias,
         }

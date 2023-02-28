@@ -19,7 +19,7 @@ from scipy.special import expit, erf
 
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
     skip_check_grad_ci,
 )
 import paddle

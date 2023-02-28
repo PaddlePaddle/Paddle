@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid as fluid
@@ -406,9 +406,9 @@ class TestSoftmaxBF16Op(OpTest):
         out = np.apply_along_axis(stable_softmax, self.axis, x)
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_bfloat16(x))
         }
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.outputs = {'Out': convert_float_to_bfloat16(out)}
         self.attrs = {
             'axis': self.axis,
             'use_cudnn': self.use_cudnn,

@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, core, program_guard
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
     skip_check_grad_ci,
 )
 
@@ -72,11 +72,11 @@ class TestConcatOp(OpTest):
     def init_test_data(self):
         if self.dtype == np.uint16:
             x0 = np.random.random((5, 1, 4, 5)).astype(np.float32)
-            self.x0 = convert_float_to_uint16(x0)
+            self.x0 = convert_float_to_bfloat16(x0)
             x1 = np.random.random((5, 2, 4, 5)).astype(np.float32)
-            self.x1 = convert_float_to_uint16(x1)
+            self.x1 = convert_float_to_bfloat16(x1)
             x2 = np.random.random((5, 3, 4, 5)).astype(np.float32)
-            self.x2 = convert_float_to_uint16(x2)
+            self.x2 = convert_float_to_bfloat16(x2)
         else:
             self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
             self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)

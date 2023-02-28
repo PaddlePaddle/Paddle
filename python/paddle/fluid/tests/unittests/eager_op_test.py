@@ -285,7 +285,7 @@ def copy_bits_from_float_to_uint16(f):
     return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
 
 
-def convert_float_to_uint16(float_list, data_format="NCHW"):
+def convert_float_to_bfloat16(float_list, data_format="NCHW"):
     if data_format == "NHWC":
         float_list = np.transpose(float_list, [0, 3, 1, 2])
 

@@ -23,7 +23,7 @@ from paddle import enable_static
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
     convert_uint16_to_float,
     skip_check_grad_ci,
 )
@@ -72,7 +72,7 @@ class TestLookupTableBF16Op(OpTest):
         self.ids = np.random.randint(0, 17, self.ids_shape).astype("int64")
         self.flat_ids = self.ids.flatten()
 
-        self.w_bf16 = convert_float_to_uint16(table)
+        self.w_bf16 = convert_float_to_bfloat16(table)
         self.out_bf16 = _lookup(
             self.w_bf16, self.ids, self.flat_ids, self.op_type
         )
@@ -124,7 +124,7 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
         ).astype("int64")
         self.flat_ids = self.ids.flatten()
         self.w_fp32 = np.random.random((15, 32)).astype("float32")
-        self.w_bf16 = convert_float_to_uint16(self.w_fp32)
+        self.w_bf16 = convert_float_to_bfloat16(self.w_fp32)
         self.scope = core.Scope()
         self.place = core.CPUPlace()
 

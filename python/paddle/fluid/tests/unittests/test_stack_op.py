@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid as fluid
@@ -134,10 +134,10 @@ class TestStackBF16Op(OpTest):
         tmp = []
         x_names = self.get_x_names()
         for i in range(self.num_inputs):
-            tmp.append((x_names[i], convert_float_to_uint16(self.x[i])))
+            tmp.append((x_names[i], convert_float_to_bfloat16(self.x[i])))
 
         self.inputs = {'X': tmp}
-        self.outputs = {'Y': convert_float_to_uint16(out)}
+        self.outputs = {'Y': convert_float_to_bfloat16(out)}
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):

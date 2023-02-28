@@ -21,7 +21,7 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 
 
@@ -134,7 +134,7 @@ def create_squeeze_bf16_test_classes(parent):
     class TestSqueeze2BF16OneDNNOp(parent):
         def set_inputs(self):
             self.dtype = np.uint16
-            self.inputs = {"X": convert_float_to_uint16(self.x)}
+            self.inputs = {"X": convert_float_to_bfloat16(self.x)}
 
         def calculate_grads(self):
             self.dout = self.outputs['Out']

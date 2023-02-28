@@ -19,7 +19,7 @@ import numpy as np
 from decorator_helper import prog_scope
 from eager_op_test import (
     OpTest,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
     convert_uint16_to_float,
 )
 
@@ -132,7 +132,7 @@ class TestCastOpFp32ToBf16(OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10]).astype('float32')
         self.inputs = {'X': ipt}
-        self.outputs = {'Out': convert_float_to_uint16(ipt)}
+        self.outputs = {'Out': convert_float_to_bfloat16(ipt)}
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP32),
             'out_dtype': int(core.VarDesc.VarType.BF16),

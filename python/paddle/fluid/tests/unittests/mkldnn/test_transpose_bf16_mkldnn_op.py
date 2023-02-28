@@ -18,7 +18,10 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 
 
 @unittest.skipIf(
@@ -53,7 +56,7 @@ class TestTransposeOp(OpTest):
         self.shape = (2, 3, 4, 5)
 
     def init_test_data(self):
-        self.input_data = convert_float_to_uint16(
+        self.input_data = convert_float_to_bfloat16(
             np.random.random(self.shape).astype(np.float32)
         )
 

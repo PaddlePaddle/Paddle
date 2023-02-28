@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_bfloat16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -110,8 +110,8 @@ class TestSumOp_bf16(OpTest):
         self.out = self.x.sum(axis=tuple(self.attrs['dim']))
         self.gradient = self.calc_gradient()
 
-        self.inputs = {'X': convert_float_to_uint16(self.x)}
-        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.inputs = {'X': convert_float_to_bfloat16(self.x)}
+        self.outputs = {'Out': convert_float_to_bfloat16(self.out)}
         self.gradient = self.calc_gradient()
         self.enable_cinn = False
 

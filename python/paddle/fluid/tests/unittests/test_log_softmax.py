@@ -19,7 +19,10 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 
 np.random.seed(10)
 
@@ -116,8 +119,8 @@ class TestLogSoftmaxBF16Op(OpTest):
         out = np.apply_along_axis(ref_log_softmax, self.axis, x)
         self.x_grad = ref_log_softmax_grad(x, self.axis)
 
-        self.inputs = {'X': convert_float_to_uint16(x)}
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.inputs = {'X': convert_float_to_bfloat16(x)}
+        self.outputs = {'Out': convert_float_to_bfloat16(out)}
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):

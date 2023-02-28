@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from eager_op_test import OpTest, convert_float_to_bfloat16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -101,10 +101,10 @@ class TestBF16ElementwiseOp(OpTest):
         out = x - y
 
         self.inputs = {
-            'X': convert_float_to_uint16(x),
-            'Y': convert_float_to_uint16(y),
+            'X': convert_float_to_bfloat16(x),
+            'Y': convert_float_to_bfloat16(y),
         }
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.outputs = {'Out': convert_float_to_bfloat16(out)}
 
     def test_check_output(self):
         self.check_output()

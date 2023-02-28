@@ -17,7 +17,10 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 from paddle.fluid.tests.unittests.test_fusion_gru_op import fusion_gru
 from paddle.fluid.tests.unittests.test_fusion_lstm_op import ACTIVATION
 
@@ -59,13 +62,13 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
         # fp32 X input for reference implementation and
         # corressponding bf16 data as input to GRU oneDNN bf16 kernel
         x_fp32 = np.random.rand(T, self.M).astype('float32')
-        x_bf16 = convert_float_to_uint16(x_fp32)
+        x_bf16 = convert_float_to_bfloat16(x_fp32)
 
         wx_fp32 = np.random.rand(self.M, 3 * self.D).astype('float32')
         wh_fp32 = np.random.rand(self.D, 3 * self.D).astype('float32')
 
-        wx_bf16 = convert_float_to_uint16(wx_fp32)
-        wh_bf16 = convert_float_to_uint16(wh_fp32)
+        wx_bf16 = convert_float_to_bfloat16(wx_fp32)
+        wh_bf16 = convert_float_to_bfloat16(wh_fp32)
 
         # bias is fp32 despite other inputs being in bf16
         bias = (
@@ -93,7 +96,7 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
             ACTIVATION[self.act_gate],
         )
 
-        hidden_bf16 = convert_float_to_uint16(hidden)
+        hidden_bf16 = convert_float_to_bfloat16(hidden)
 
         if self.weights_dtype == 'bf16':
             self.inputs = {
@@ -111,7 +114,7 @@ class TestFusionGRUBF16MKLDNNOp(OpTest):
         if self.with_bias:
             self.inputs['Bias'] = bias
 
-        h0_bf16 = convert_float_to_uint16(h0_fp32)
+        h0_bf16 = convert_float_to_bfloat16(h0_fp32)
 
         if self.with_h0:
             if self.weights_dtype == 'bf16':

@@ -18,7 +18,10 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 
 
 @unittest.skipIf(
@@ -32,12 +35,12 @@ class TestElementwiseAddBf16MklDNNOp(OpTest):
         self.axis = -1
 
         self.generate_data()
-        self.x_bf16 = convert_float_to_uint16(self.x)
-        self.y_bf16 = convert_float_to_uint16(self.y)
+        self.x_bf16 = convert_float_to_bfloat16(self.x)
+        self.y_bf16 = convert_float_to_bfloat16(self.y)
 
         self.inputs = {'X': self.x_bf16, 'Y': self.y_bf16}
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
-        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.outputs = {'Out': convert_float_to_bfloat16(self.out)}
 
     def generate_data(self):
         self.x = np.random.random(

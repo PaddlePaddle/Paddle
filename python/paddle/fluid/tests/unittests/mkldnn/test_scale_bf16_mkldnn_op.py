@@ -18,7 +18,10 @@ import numpy as np
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 
 
 @unittest.skipIf(
@@ -32,7 +35,7 @@ class TestScaleOpBF16(OpTest):
     def setUp(self):
         self.op_type = "scale"
         self.x_fp32 = np.random.random((10, 10)).astype(np.float32)
-        self.x_bf16 = convert_float_to_uint16(self.x_fp32)
+        self.x_bf16 = convert_float_to_bfloat16(self.x_fp32)
         self.scale = -2.3
         self.inputs = {'X': self.x_bf16}
         self.attrs = {'scale': self.scale, 'use_mkldnn': True, 'bias': 0.4}
@@ -64,7 +67,7 @@ class TestScaleOpBF16(OpTest):
             "Out",
             check_dygraph=False,
             user_defined_grads=[self.dx],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.out)],
+            user_defined_grad_outputs=[convert_float_to_bfloat16(self.out)],
         )
 
 
@@ -72,7 +75,7 @@ class TestScaleOpBF16BiasNotAfterScale(TestScaleOpBF16):
     def setUp(self):
         self.op_type = "scale"
         self.x_fp32 = np.random.random((10, 10)).astype(np.float32)
-        self.x_bf16 = convert_float_to_uint16(self.x_fp32)
+        self.x_bf16 = convert_float_to_bfloat16(self.x_fp32)
         self.scale = 1.5
         self.inputs = {'X': self.x_bf16}
         self.attrs = {
@@ -92,11 +95,11 @@ class TestScaleOpBF16ScaleTensor(TestScaleOpBF16):
         self.op_type = "scale"
         self.scale = -2.3
         self.x_fp32 = np.random.random((10, 10)).astype(np.float32)
-        self.x_bf16 = convert_float_to_uint16(self.x_fp32)
+        self.x_bf16 = convert_float_to_bfloat16(self.x_fp32)
         self.scale_tensor = np.array([self.scale]).astype(np.float32)
         self.inputs = {
             'X': self.x_bf16,
-            'ScaleTensor': convert_float_to_uint16(self.scale_tensor),
+            'ScaleTensor': convert_float_to_bfloat16(self.scale_tensor),
         }
         self.attrs = {'use_mkldnn': True}
         self.outputs = {'Out': self.x_fp32 * self.scale}
@@ -107,11 +110,11 @@ class TestScaleOpBF16ScaleTensorNotBiasAfterScale(TestScaleOpBF16):
         self.op_type = "scale"
         self.scale = 1.2
         self.x_fp32 = np.random.random((9, 13)).astype(np.float32)
-        self.x_bf16 = convert_float_to_uint16(self.x_fp32)
+        self.x_bf16 = convert_float_to_bfloat16(self.x_fp32)
         self.scale_tensor = np.array([self.scale]).astype(np.float32)
         self.inputs = {
             'X': self.x_bf16,
-            'ScaleTensor': convert_float_to_uint16(self.scale_tensor),
+            'ScaleTensor': convert_float_to_bfloat16(self.scale_tensor),
         }
         self.attrs = {
             'bias': -1.1,

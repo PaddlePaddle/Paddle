@@ -25,7 +25,7 @@ from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
     convert_uint16_to_float,
 )
 
@@ -40,11 +40,11 @@ class TestSGDOpBF16(OpTest):
         self.use_mkldnn = True
         self.conf()
         w = np.random.random((self.h, self.w)).astype('float32')
-        w_bf16 = convert_float_to_uint16(w)
+        w_bf16 = convert_float_to_bfloat16(w)
         g = np.random.random((self.h, self.w)).astype('float32')
-        g_bf16 = convert_float_to_uint16(g)
+        g_bf16 = convert_float_to_bfloat16(g)
         lr = np.array([0.1]).astype('float32')
-        lr_bf16 = convert_float_to_uint16(lr)
+        lr_bf16 = convert_float_to_bfloat16(lr)
 
         self.inputs = {'Param': w_bf16, 'Grad': g_bf16, 'LearningRate': lr_bf16}
         self.outputs = {'ParamOut': w - lr * g}
@@ -87,7 +87,7 @@ class TestSparseSGDOpBF16(unittest.TestCase):
         grad_selected_rows.set_height(height)
         grad_selected_rows.set_rows(rows)
         grad_array = np.random.random((len(rows), row_numel)).astype('float32')
-        np_array_bf16 = convert_float_to_uint16(grad_array)
+        np_array_bf16 = convert_float_to_bfloat16(grad_array)
 
         grad_tensor = grad_selected_rows.get_tensor()
         grad_tensor.set(np_array_bf16, place)
@@ -97,7 +97,7 @@ class TestSparseSGDOpBF16(unittest.TestCase):
     def create_dense_param_var(self, scope, place, height, width):
         param_tensor = scope.var('Param').get_tensor()
         param_array = np.random.random((height, width)).astype('float32')
-        param_array_bf16 = convert_float_to_uint16(param_array)
+        param_array_bf16 = convert_float_to_bfloat16(param_array)
         param_tensor.set(param_array_bf16, place)
 
         return param_tensor, param_array
@@ -108,7 +108,7 @@ class TestSparseSGDOpBF16(unittest.TestCase):
         param_selected_rows.set_rows(rows)
         param_selected_rows.sync_index()
         param_array = np.random.random((len(rows), row_numel)).astype('float32')
-        np_array_bf16 = convert_float_to_uint16(param_array)
+        np_array_bf16 = convert_float_to_bfloat16(param_array)
 
         param_tensor = param_selected_rows.get_tensor()
         param_tensor.set(np_array_bf16, place)
@@ -119,7 +119,7 @@ class TestSparseSGDOpBF16(unittest.TestCase):
         lr_tensor = scope.var('LearningRate').get_tensor()
         lr_value = np.random.uniform()
         lr_array = np.full((1), lr_value, np.float32)
-        lr_array_bf16 = convert_float_to_uint16(lr_array)
+        lr_array_bf16 = convert_float_to_bfloat16(lr_array)
         lr_tensor.set(lr_array_bf16, place)
 
         return lr_tensor, lr_value
@@ -388,7 +388,7 @@ class TestSGDOpBF16API(unittest.TestCase):
             for sample in train_reader():
                 data = sample[0][0]
                 label = sample[0][1]
-                y_bf16 = convert_float_to_uint16(label)
+                y_bf16 = convert_float_to_bfloat16(label)
                 emb_weight = exe.run(
                     main,
                     feed={'X': data, 'Y': y_bf16},

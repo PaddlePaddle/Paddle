@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid as fluid
@@ -322,7 +322,7 @@ class TestPnormBF16Op(OpTest):
             self.x, self.axis, self.porder, self.keepdim, self.asvector
         )
         self.gradient = self.calc_gradient()
-        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.inputs = {'X': convert_float_to_bfloat16(self.x)}
         self.attrs = {
             'epsilon': self.epsilon,
             'axis': self.axis,
@@ -330,7 +330,7 @@ class TestPnormBF16Op(OpTest):
             'porder': float(self.porder),
             'asvector': self.asvector,
         }
-        self.outputs = {'Out': convert_float_to_uint16(self.norm)}
+        self.outputs = {'Out': convert_float_to_bfloat16(self.norm)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
