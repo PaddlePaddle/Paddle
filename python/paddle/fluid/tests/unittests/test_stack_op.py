@@ -100,6 +100,17 @@ class TestStackOp6(TestStackOpBase):
         self.axis = 3
 
 
+class TestStackF16Op1(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = 'float16'
+
+
+class TestStackF16Op2(TestStackOpBase):
+    def initParameters(self):
+        self.dtype = 'float16'
+        self.axis = -1
+
+
 class TestStackOp_ZeroDim(TestStackOpBase):
     def initParameters(self):
         self.input_dim = ()

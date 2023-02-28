@@ -193,7 +193,10 @@ def mean_composite(x, axis, keepdim):
 
 @REGISTER_COMPOSITE('stack')
 def stack_composite(x, axis):
-    """define composite rule of op stack"""
+    """
+    define composite rule of op stack
+    unsqueeze each dimension of the input (use reshape), and then concat
+    """
     x_shape = x[0].shape
     if axis < 0:
         axis += len(x_shape) + 1
