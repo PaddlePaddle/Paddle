@@ -500,5 +500,21 @@ class TestTensorAxis(unittest.TestCase):
             np.testing.assert_allclose(static_out[0], infer_out)
 
 
+class TestCumSumOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        x_np = np.random.random((100, 100)).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[100, 100], name='x', dtype='float16')
+            y1 = paddle.cumsum(x)
+            y2 = paddle.cumsum(x, axis=0)
+            y3 = paddle.cumsum(x, axis=-1)
+            y4 = paddle.cumsum(x, axis=-2)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_np}, fetch_list=[y1, y2, y3, y4])
+
+
 if __name__ == '__main__':
     unittest.main()
