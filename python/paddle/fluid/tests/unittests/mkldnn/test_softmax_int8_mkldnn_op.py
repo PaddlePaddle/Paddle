@@ -19,7 +19,7 @@ import numpy as np
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 
 def stable_softmax(x, clip):
@@ -29,9 +29,6 @@ def stable_softmax(x, clip):
     return exps / np.sum(exps)
 
 
-@skip_check_grad_ci(
-    reason="softmax_mkldnn_op does not implement grad operator, check_grad is not required."
-)
 class TestSoftmaxMKLDNNOpInt8(OpTest):
     def init_data_type(self):
         self.dtype = np.int8
@@ -52,6 +49,7 @@ class TestSoftmaxMKLDNNOpInt8(OpTest):
 
     def setUp(self):
         self.op_type = 'softmax'
+        self.prim_op_type = "comp"
         self._cpu_only = True
         self.init_data_type()
         self.shape = self.get_shape()
@@ -68,106 +66,100 @@ class TestSoftmaxMKLDNNOpInt8(OpTest):
             'use_mkldnn': True,
             'mkldnn_data_type': self.mkldnn_data_type,
         }
-        print("X:", self.x)
-        print("Out:", self.out)
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
-
-# class TestSoftmaxOp_ZeroDim1Int8(TestSoftmaxMKLDNNOpInt8):
-#     def get_input(self):
-#         return np.random.uniform(0, 127, []).astype(self.dtype)
-
-#     def get_output(self):
-#         return np.array(1).astype(self.dtype)
+    def test_check_grad(self):
+        pass
 
 
-# class TestSoftmaxMKLDNNOp2Int8(TestSoftmaxMKLDNNOpInt8):
-#     def get_shape(self):
-#         return [2, 3, 4, 5]
+class TestSoftmaxMKLDNNOp2Int8(TestSoftmaxMKLDNNOpInt8):
+    def get_shape(self):
+        return [2, 3, 4, 5]
 
 
-# class TestSoftmaxMKLDNNOp3Int8(TestSoftmaxMKLDNNOpInt8):
-#     def get_shape(self):
-#         return [2, 3, 4, 5]
+class TestSoftmaxMKLDNNOp3Int8(TestSoftmaxMKLDNNOpInt8):
+    def get_shape(self):
+        return [2, 3, 4, 5]
 
-#     def get_axis(self):
-#         return 0
-
-
-# class TestSoftmaxMKLDNNOp4Int8(TestSoftmaxMKLDNNOpInt8):
-#     def get_shape(self):
-#         return [2, 3, 4, 5]
-
-#     def get_axis(self):
-#         return 1
+    def get_axis(self):
+        return 0
 
 
-# class TestSoftmaxMKLDNNOp5Int8(TestSoftmaxMKLDNNOpInt8):
-#     def get_shape(self):
-#         return [2, 3, 4, 5]
+class TestSoftmaxMKLDNNOp4Int8(TestSoftmaxMKLDNNOpInt8):
+    def get_shape(self):
+        return [2, 3, 4, 5]
 
-#     def get_axis(self):
-#         return 2
-
-
-# class TestSoftmaxMKLDNNOp6Int8(TestSoftmaxMKLDNNOpInt8):
-#     def get_shape(self):
-#         return [2, 3, 4, 5]
-
-#     def get_axis(self):
-#         return 3
+    def get_axis(self):
+        return 1
 
 
-# class TestSoftmaxMKLDNNOpUint8(TestSoftmaxMKLDNNOpInt8):
-#     def init_data_type(self):
-#         self.dtype = np.uint8
-#         self.mkldnn_data_type = 'uint8'
+class TestSoftmaxMKLDNNOp5Int8(TestSoftmaxMKLDNNOpInt8):
+    def get_shape(self):
+        return [2, 3, 4, 5]
 
-#     def get_input(self):
-#         return np.random.uniform(0, 255, self.shape).astype(self.dtype)
-
-#     def get_output(self):
-#         out = np.apply_along_axis(stable_softmax, self.axis, self.x, -64)
-#         return np.round(out * 255).astype(self.dtype)
+    def get_axis(self):
+        return 2
 
 
-# class TestSoftmaxMKLDNNOp2Uint8(TestSoftmaxMKLDNNOpUint8):
-#     def get_shape(self):
-#         return [2, 3, 4, 5]
+class TestSoftmaxMKLDNNOp6Int8(TestSoftmaxMKLDNNOpInt8):
+    def get_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 3
 
 
-# class TestSoftmaxMKLDNNOp3Uint8(TestSoftmaxMKLDNNOpUint8):
-#     def get_shape(self):
-#         return [2, 3, 4, 5]
+class TestSoftmaxMKLDNNOpUint8(TestSoftmaxMKLDNNOpInt8):
+    def init_data_type(self):
+        self.dtype = np.uint8
+        self.mkldnn_data_type = 'uint8'
 
-#     def get_axis(self):
-#         return 0
+    def get_input(self):
+        return np.random.uniform(0, 255, self.shape).astype(self.dtype)
 
-
-# class TestSoftmaxMKLDNNOp4Uint8(TestSoftmaxMKLDNNOpUint8):
-#     def get_shape(self):
-#         return [2, 3, 4, 5]
-
-#     def get_axis(self):
-#         return 1
+    def get_output(self):
+        out = np.apply_along_axis(stable_softmax, self.axis, self.x, -64)
+        return np.round(out * 255).astype(self.dtype)
 
 
-# class TestSoftmaxMKLDNNOp5Uint8(TestSoftmaxMKLDNNOpUint8):
-#     def get_shape(self):
-#         return [2, 3, 4, 5]
-
-#     def get_axis(self):
-#         return 2
+class TestSoftmaxMKLDNNOp2Uint8(TestSoftmaxMKLDNNOpUint8):
+    def get_shape(self):
+        return [2, 3, 4, 5]
 
 
-# class TestSoftmaxMKLDNNOp6Uint8(TestSoftmaxMKLDNNOpUint8):
-#     def get_shape(self):
-#         return [2, 3, 4, 5]
+class TestSoftmaxMKLDNNOp3Uint8(TestSoftmaxMKLDNNOpUint8):
+    def get_shape(self):
+        return [2, 3, 4, 5]
 
-#     def get_axis(self):
-#         return 3
+    def get_axis(self):
+        return 0
+
+
+class TestSoftmaxMKLDNNOp4Uint8(TestSoftmaxMKLDNNOpUint8):
+    def get_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 1
+
+
+class TestSoftmaxMKLDNNOp5Uint8(TestSoftmaxMKLDNNOpUint8):
+    def get_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 2
+
+
+class TestSoftmaxMKLDNNOp6Uint8(TestSoftmaxMKLDNNOpUint8):
+    def get_shape(self):
+        return [2, 3, 4, 5]
+
+    def get_axis(self):
+        return 3
 
 
 if __name__ == '__main__':
