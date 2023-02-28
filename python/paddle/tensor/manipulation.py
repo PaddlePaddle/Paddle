@@ -3940,7 +3940,7 @@ def tensordot(x, y, axes=2, name=None):
     This function computes a contraction, which sum the product of elements from two tensors along the given axes.
 
     Args:
-        x (Tensor): The left tensor for contraction with data type ``float32`` or ``float64``.
+        x (Tensor): The left tensor for contraction with data type ``float16`` or ``float32`` or ``float64``.
         y (Tensor): The right tensor for contraction with the same data type as ``x``.
         axes (int|tuple|list|Tensor, optional):  The axes to contract for ``x`` and ``y``, defaulted to integer ``2``.
 
@@ -4048,7 +4048,7 @@ def tensordot(x, y, axes=2, name=None):
             #      [28312230., 30496530., 32680830., 34865130.]]
     """
     op_type = 'tensordot'
-    input_dtype = ['float32', 'float64']
+    input_dtype = ['float16', 'float32', 'float64']
 
     check_variable_and_dtype(x, 'x', input_dtype, op_type)
     check_variable_and_dtype(y, 'y', input_dtype, op_type)
