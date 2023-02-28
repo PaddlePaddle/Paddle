@@ -155,7 +155,7 @@ class TestFleetExecutor(unittest.TestCase):
             task_id=3,
             program=paddle.static.Program(),
             vars_to_dtype={'x': 'float32', 'tmp_1': 'int64'},
-            vars_to_shape={'x': [1], 'tmp_1': [1]},
+            vars_to_shape={'x': (1,), 'tmp_1': (1,)},
             lazy_initialize=True,
         )
         task_e = TaskNode(
@@ -207,7 +207,7 @@ class TestFleetExecutor(unittest.TestCase):
         exe = paddle.static.Executor(place)
         loader.start()
         res = exe.run(main_program)
-        ref_res = np.full([1], 10, dtype="float32")
+        ref_res = np.full([1, 1], 10, dtype="float32")
         for data in res:
             np.testing.assert_allclose(data, ref_res, rtol=1e-05)
             ref_res = ref_res + 1
