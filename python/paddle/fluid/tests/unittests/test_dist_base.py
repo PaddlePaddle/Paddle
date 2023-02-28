@@ -443,8 +443,6 @@ class TestDistRunnerBase:
             # case args.update_method == "nccl2_reduce_layer":
             build_stra.num_trainers = 1
             build_stra.trainer_id = 0
-        dist_strategy = paddle.distributed.fleet.DistributedStrategy()
-        dist_strategy.build_strategy = build_stra
 
         self.lr = args.lr
         if args.nccl2_reduce_layer_local_run:
@@ -467,7 +465,7 @@ class TestDistRunnerBase:
             ) = self.get_model(
                 batch_size=args.batch_size,
                 use_dgc=args.use_dgc,
-                dist_strategy=dist_strategy,
+                build_strategy=build_stra,
             )
         else:
             (

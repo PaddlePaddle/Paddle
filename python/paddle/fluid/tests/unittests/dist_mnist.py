@@ -75,7 +75,7 @@ def cnn_model(data):
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
-    def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
+    def get_model(self, batch_size=2, use_dgc=False, build_strategy=None):
         # Input data
         images = paddle.static.data(
             name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
@@ -107,8 +107,8 @@ class TestDistMnist2x2(TestDistRunnerBase):
                 learning_rate=self.lr,
                 momentum=0.9,
                 rampup_begin_step=2,
-                num_trainers=dist_strategy.build_strategy.num_trainers
-                if dist_strategy
+                num_trainers=build_strategy.num_trainers
+                if build_strategy
                 else None,
             )
 
@@ -120,15 +120,12 @@ class TestDistMnist2x2(TestDistRunnerBase):
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
 
-        if dist_strategy:
+        if build_strategy:
             warnings.warn("Use dist strategy.")
             opt = RawProgram(opt)
             role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-            strategy = (
-                paddle.distributed.fleet.DistributedStrategy()
-                if dist_strategy is None
-                else dist_strategy
-            )
+            strategy = paddle.distributed.fleet.DistributedStrategy()
+            strategy.build_strategy = build_strategy
             opt._set_basic_info(avg_cost, role, opt, strategy)
 
             # following code is a copy of RawProgramOptimizer.minimize except init_comm_group
