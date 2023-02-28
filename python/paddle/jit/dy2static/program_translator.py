@@ -19,7 +19,6 @@ import threading
 import warnings
 import weakref
 
-from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
@@ -39,7 +38,7 @@ from .origin_info import (
     create_and_update_origin_info_map,
     update_op_callstack_with_origin_info,
 )
-from .partial_program import partial_program_from
+from .partial_program import PartialProgramLayerHook, partial_program_from
 from .utils import (
     ALREADY_D2S,
     ast_to_func,
@@ -1182,26 +1181,45 @@ class ProgramCache:
                         )
                     )
 
-        custom_vjps = set()
-        if core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled():
-            custom_vjps = {
-                op.type
-                for op in concrete_program.main_program.block(0).ops
-                if core.has_comp_grad_op_maker(op.type)
-            }
+        class PrimHooker(PartialProgramLayerHook):
+            def __init__(self):
+                custom_vjps = set()
+                if core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled():
+                    custom_vjps = {
+                        op.type
+                        for op in concrete_program.main_program.block(0).ops
+                        if core.has_comp_grad_op_maker(op.type)
+                    }
+                self.custom_vjps = custom_vjps
+                self.custom_vjps = {"softmax"}
 
-        if core._is_fwd_prim_enabled():
-            if not _in_amp_guard() and not _in_pure_fp16_guard():
-                _to_prim(
-                    concrete_program.main_program.blocks, exclude=custom_vjps
+            def before_append_backward(
+                self, partial_program_layer, forward_program
+            ):
+                if core._is_fwd_prim_enabled():
+                    to_prim(forward_program.block(0), self.custom_vjps)
+                return forward_program
+
+            def after_append_backward(
+                self, partial_program_layer, whole_program, backward_start_idx
+            ):
+                backward_length = (
+                    len(whole_program.block(0).ops) - backward_start_idx
                 )
+                if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+                    to_prim(whole_program.block(0))
+                new_start_index = (
+                    len(whole_program.block(0).ops) - backward_length
+                )
+                return whole_program, new_start_index
+
+            def after_infer(self, partial_program_layer, infer_program):
+                if core._is_fwd_prim_enabled():
+                    to_prim(infer_program.block(0))
+                return infer_program
 
         partial_program = partial_program_from(concrete_program)
-
-        if core._is_fwd_prim_enabled() and len(custom_vjps) != 0:
-            if not _in_amp_guard() and not _in_pure_fp16_guard():
-                _to_prim(partial_program.forward_program.blocks)
-
+        partial_program.set_hooker(PrimHooker())
         return concrete_program, partial_program
 
 
@@ -1675,8 +1693,8 @@ def enable_to_static(enable_to_static_bool):
 
 
 @switch_to_static_graph
-def _to_prim(blocks, exclude=frozenset()):
+def to_prim(blocks, exclude=frozenset()):
     # TODO(Aurelius84): Fix this cycle import problem
     from paddle.incubate.autograd import primapi
 
-    primapi.to_prim(blocks, exclude=exclude)
+    primapi.to_prim(blocks, exclude)
