@@ -2524,10 +2524,10 @@ class TestLog(TestActivation):
         out = paddle.log(x)
         exe = paddle.static.Executor()
         exe.run(paddle.static.default_startup_program())
-        out = exe.run(feed={'x': x_np},
-                      fetch_list=[out])
+        (res, ) = exe.run(feed={'x': x_np},
+                           fetch_list=[out])
         ref = np.array(np.log(x_np))
-        np.testing.assert_allclose(ref, out.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(ref, res, rtol=1e-05)
         paddle.disable_static()
 
     def test_dynamic_api(self):
