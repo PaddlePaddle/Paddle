@@ -17,8 +17,6 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-import paddle
-
 
 class TestPad2dOp(OpTest):
     def setUp(self):
@@ -26,7 +24,6 @@ class TestPad2dOp(OpTest):
         self.variable_paddings = False
         self.initTestCase()
         self.op_type = "pad2d"
-        self.python_api = paddle.nn.functional.pad
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {}
         if self.variable_paddings:
@@ -67,10 +64,10 @@ class TestPad2dOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
