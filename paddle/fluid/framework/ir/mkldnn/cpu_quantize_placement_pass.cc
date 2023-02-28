@@ -15,24 +15,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_placement_pass.h"
 
 #include <unordered_set>
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
 class Graph;
-
-void ReplaceWithFusedOp(Node* op) {
-  const std::string matmul_type = op->Op()->Type();
-  if (matmul_type == "matmul" || matmul_type == "matmul_v2") {
-    op->Op()->SetType("fused_matmul");
-    if (matmul_type == "matmul") {
-      op->Op()->SetAttr("trans_x", op->Op()->GetAttr("transpose_X"));
-      op->Op()->SetAttr("trans_y", op->Op()->GetAttr("transpose_Y"));
-      op->Op()->SetAttr("matmul_alpha", op->Op()->GetAttr("alpha"));
-    }
-  }
-}
 
 void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Marks operators which are to be quantized.";
@@ -97,7 +86,7 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
-    ReplaceWithFusedOp(op);
+    ConvertToFusedOp(op->Op());
     op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
   };
   gpd(graph, handler);

@@ -26,7 +26,6 @@ namespace cub = hipcub;
 
 #include <algorithm>
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/ddim.h"

@@ -47,6 +47,16 @@ namespace paddle {
 
 namespace experimental {
 
+class Tensor;
+
+template <typename T>
+class ScalarBase;
+using Scalar = paddle::experimental::ScalarBase<Tensor>;
+
+template <typename T>
+class IntArrayBase;
+using IntArray = paddle::experimental::IntArrayBase<Tensor>;
+
 class AbstractAutogradMeta {
  public:
   // No AbstractAutogradMeta should be created
@@ -380,21 +390,21 @@ class PADDLE_API Tensor final {
   Tensor slice(int64_t begin_idx, int64_t end_idx) const;
 
   /**
-   * @brief Return the implemention of current Tensor.
+   * @brief Return the implementation of current Tensor.
    *
    * @return std::shared_ptr<phi::TensorBase>
    */
   const std::shared_ptr<phi::TensorBase>& impl() const;
 
   /**
-   * @brief Set the implemention of current Tensor.
+   * @brief Set the implementation of current Tensor.
    *
    * @param impl
    */
   void set_impl(const std::shared_ptr<phi::TensorBase>& impl);
 
   /**
-   * @brief Set the implemention of current Tensor.
+   * @brief Set the implementation of current Tensor.
    *
    * @param impl
    */
@@ -538,6 +548,16 @@ class PADDLE_API Tensor final {
 
   Tensor operator/(const Tensor& other) const;
 
+  Tensor operator+(const Scalar& other) const;
+
+  Tensor operator-(const Scalar& other) const;
+
+  Tensor operator*(const Scalar& other) const;
+
+  Tensor operator/(const Scalar& other) const;
+
+  Tensor operator-() const;
+
   /* Part 8: Autograd methods */
 
   /**
@@ -646,13 +666,49 @@ class PADDLE_API Tensor final {
    */
   std::string name_{""};
 
+ public:
   // Tensor C++ APIs
   // Example: Tensor add(const Tensor& other) const;
   Tensor add(const Tensor& y) const;
   Tensor divide(const Tensor& y) const;
   Tensor multiply(const Tensor& y) const;
   Tensor subtract(const Tensor& y) const;
+  Tensor add(const Scalar& y) const;
+  Tensor divide(const Scalar& y) const;
+  Tensor multiply(const Scalar& y) const;
+  Tensor subtract(const Scalar& y) const;
+  Tensor pow(const Tensor& y) const;
+  Tensor pow(const Scalar& y) const;
+
+  Tensor exp() const;
+  Tensor floor() const;
+  Tensor gather_nd(const Tensor& index) const;
+  Tensor log() const;
+  Tensor roll(const IntArray& shifts, const std::vector<int64_t>& axis) const;
+  Tensor scatter(const Tensor& index,
+                 const Tensor& updates,
+                 bool overwrite) const;
+  Tensor scatter_nd_add(const Tensor& index, const Tensor& updates) const;
+  Tensor abs() const;
+  Tensor assign() const;
+  Tensor elementwise_pow(const Tensor& y) const;
+  Tensor expand(const IntArray& shape) const;
+  Tensor matmul(const Tensor& y, bool transpose_x, bool transpose_y) const;
+  Tensor max(const IntArray& axis, bool keepdim) const;
+  Tensor maximum(const Tensor& y) const;
+  Tensor minimum(const Tensor& y) const;
+  Tensor scale(const Scalar& scale, float bias, bool bias_after_scale) const;
+  Tensor sum(const IntArray& axis, DataType dtype, bool keepdim) const;
+  Tensor tile(const IntArray& repeat_times) const;
 };
+
+PADDLE_API Tensor operator+(const Scalar& x, const Tensor& y);
+
+PADDLE_API Tensor operator-(const Scalar& x, const Tensor& y);
+
+PADDLE_API Tensor operator*(const Scalar& x, const Tensor& y);
+
+PADDLE_API Tensor operator/(const Scalar& x, const Tensor& y);
 
 }  // namespace experimental
 }  // namespace paddle

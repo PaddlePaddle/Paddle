@@ -171,6 +171,30 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : bitwise_and
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : bitwise_not
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+
+- op : bitwise_or
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : bitwise_xor
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
 - op : bmm
   inputs :
     {x : X, y : Y}
@@ -489,6 +513,12 @@
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
              'str[] table_names = {}']
 
+- op : equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : equal_all
   inputs :
     {x : X, y : Y}
@@ -594,6 +624,14 @@
   outputs :
     out : Out
 
+- op : flatten (flatten_contiguous_range)
+  inputs :
+    x : X
+  outputs :
+    {out : Out, xshape : XShape}
+  attrs :
+    {start_axis : start_axis, stop_axis : stop_axis}
+
 - op : flip
   inputs :
     x : X
@@ -648,6 +686,14 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : full_like (fill_any_like)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {value: value, dtype: dtype}
+
 - op : fused_conv2d
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
@@ -685,14 +731,17 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
-- op : greater_than
+- op : greater_equal
   inputs :
-    x : X
-    y : Y
+    {x : X, y : Y}
   outputs :
     out : Out
-  extra :
-    attrs : [int axis = -1, bool force_cpu = false]
+
+- op : greater_than
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : grid_sample(grid_sampler)
   backward : grid_sample_grad (grid_sampler_grad)
@@ -821,6 +870,14 @@
   outputs :
     out : Out
 
+- op : kron
+  backward : kron_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+  complex_promote : [X, Y]
+
 - op : kthvalue
   inputs :
     x : X
@@ -866,12 +923,15 @@
 
 - op : less_equal
   inputs :
-    x : X
-    y : Y
+    {x : X, y : Y}
   outputs :
     out : Out
-  extra :
-    attrs : [int axis = -1, bool force_cpu = false]
+
+- op : less_than
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : lgamma
   inputs :
@@ -1113,6 +1173,12 @@
   outputs :
     {out : Out, total_weight : Total_weight}
 
+- op : not_equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : numel(size)
   inputs :
     x : Input
@@ -1328,10 +1394,15 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : scale
+  backward : scale_grad
   inputs :
     x : X
   outputs :
-    out: Out
+    out : Out
+  scalar :
+    scale :
+      data_type : float
+      tensor_name : ScaleTensor
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1426,6 +1497,13 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+
+- op : sign
+  backward : sign_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : silu
   backward : silu_grad
@@ -1665,7 +1743,10 @@
 
 - op : transpose (transpose2)
   backward : transpose_grad (transpose2_grad)
+  attrs:
+    perm : axis
   extra :
+    outputs : [XShape]
     attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", bool use_quantizer = false,
               str mkldnn_data_type = "float32"]
 

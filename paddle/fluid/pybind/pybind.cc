@@ -863,6 +863,58 @@ PYBIND11_MODULE(libpaddle, m) {
                lib[string]: the libarary, could be 'phi', 'fluid' and 'all'.
            )DOC");
 
+  m.def(
+      "_get_registered_phi_kernels",
+      [](const std::string &kernel_registered_type) {
+        std::unordered_map<std::string, std::vector<std::string>>
+            all_kernels_info;
+        auto phi_kernels = phi::KernelFactory::Instance().kernels();
+        for (auto &kernel_pair : phi_kernels) {
+          auto kernel_name = kernel_pair.first;
+          std::vector<std::string> kernel_keys;
+          for (auto &info_pair : kernel_pair.second) {
+            bool get_function_kernel =
+                kernel_registered_type == "function" &&
+                info_pair.second.GetKernelRegisteredType() ==
+                    phi::KernelRegisteredType::FUNCTION;
+            bool get_structure_kernel =
+                kernel_registered_type == "structure" &&
+                info_pair.second.GetKernelRegisteredType() ==
+                    phi::KernelRegisteredType::STRUCTURE;
+            if (kernel_registered_type == "all" || get_function_kernel ||
+                get_structure_kernel) {
+              std::ostringstream stream;
+              stream << info_pair.first;
+              std::string kernel_key_str = stream.str();
+              if (all_kernels_info.count(kernel_name)) {
+                bool kernel_exist =
+                    std::find(all_kernels_info[kernel_name].begin(),
+                              all_kernels_info[kernel_name].end(),
+                              kernel_key_str) !=
+                    all_kernels_info[kernel_name].end();
+                if (!kernel_exist) {
+                  all_kernels_info[kernel_name].emplace_back(kernel_key_str);
+                }
+              } else {
+                kernel_keys.emplace_back(kernel_key_str);
+              }
+            }
+          }
+          if (!kernel_keys.empty()) {
+            all_kernels_info.emplace(kernel_name, kernel_keys);
+          }
+        }
+
+        return all_kernels_info;
+      },
+      py::arg("kernel_registered_type") = "function",
+      R"DOC(
+           Return the registered kernels in phi.
+
+           Args:
+               kernel_registered_type[string]: the libarary, could be 'function', 'structure', and 'all'.
+           )DOC");
+
   // NOTE(Aganlengzi): KernelFactory static instance is initialized BEFORE
   // plugins are loaded for custom kernels, but de-initialized AFTER they are
   // unloaded. We need manually clear symbols(may contain plugins' symbols)
@@ -1844,6 +1896,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
+  m.def("init_memory_method", framework::InitMemoryMethod);
   m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
     egr::Controller::Instance().MergeOpMetaInfoMap(
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
@@ -2452,8 +2505,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
-  m.def("enable_op_info_recorder", &paddle::platform::EnableOpInfoRecorder);
-  m.def("disable_op_info_recorder", &paddle::platform::DisableOpInfoRecorder);
+  m.def("enable_op_info_recorder", &phi::EnableOpInfoRecorder);
+  m.def("disable_op_info_recorder", &phi::DisableOpInfoRecorder);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);

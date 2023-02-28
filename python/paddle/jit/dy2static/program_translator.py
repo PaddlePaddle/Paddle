@@ -19,6 +19,7 @@ import threading
 import warnings
 import weakref
 
+from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
@@ -324,8 +325,10 @@ class StaticFunction:
         if input_spec is not None and prim_or_cinn_is_enabled(
             kwargs.get("build_strategy", None)
         ):
-            for spec in input_spec:
-                if spec is not None and -1 in spec.shape:
+            from paddle.static import InputSpec
+
+            for spec in flatten(input_spec):
+                if isinstance(spec, InputSpec) and -1 in spec.shape:
                     input_spec = None
                     warnings.warn(
                         'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
@@ -1186,8 +1189,8 @@ class ProgramCache:
                             var.name, var.shape
                         )
                     )
-
-        concrete_program._to_prim()
+        if not _in_amp_guard() and not _in_pure_fp16_guard():
+            concrete_program._to_prim()
         return concrete_program, partial_program_from(concrete_program)
 
     def __getitem__(self, item):
@@ -1238,6 +1241,9 @@ class ProgramCache:
 
     def concrete_programs(self):
         return [cp for key, (cp, _) in self._caches.items()]
+
+    def clear(self):
+        self._caches = collections.OrderedDict()
 
 
 class ProgramTranslator:
