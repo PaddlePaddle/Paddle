@@ -24,7 +24,7 @@ logger.addHandler(ch)
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY
 from paddle.fluid import core
-from paddle.static import Parameter
+from paddle.fluid.framework import Parameter
 
 _supported_optimizer_type = [
     "adam",
