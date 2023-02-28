@@ -1952,6 +1952,23 @@ static PyObject* tensor_method__is_string_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method_get_strides(TensorObject* self,
+                                           PyObject* args,
+                                           PyObject* kwargs) {
+  EAGER_TRY
+  std::vector<int64_t> value;
+  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+    return ToPyObject(value);
+  }
+  auto strides = self->tensor.stride();
+  size_t rank = static_cast<size_t>(strides.size());
+  value.resize(rank);
+  for (size_t i = 0; i < rank; i++) {
+    value[i] = strides[i];
+  }
+  return ToPyObject(value);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
 static PyObject* tensor_is_contiguous(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
@@ -2100,6 +2117,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"detach",
      (PyCFunction)(void (*)(void))tensor_method_detach,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"stride",
+     (PyCFunction)(void (*)(void))tensor_method_get_strides,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"contiguous",

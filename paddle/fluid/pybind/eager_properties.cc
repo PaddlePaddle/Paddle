@@ -324,7 +324,7 @@ struct PyGetSetDef variable_properties[] = {
      nullptr,
      nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
-    {"stride",
+    {"strides",
      (getter)tensor_properties_get_strides,
      nullptr,
      nullptr,
