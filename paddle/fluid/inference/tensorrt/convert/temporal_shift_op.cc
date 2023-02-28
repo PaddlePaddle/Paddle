@@ -53,32 +53,58 @@ class TemporalShiftOpConverter : public OpConverter {
 
     // Reshape input to [N,T,C,H,W]
     auto reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    reshape_layer->setReshapeDimensions(nvinfer1::Dims5(N, T, C, H, W));
+    nvinfer1::Dims reshape_dims{5, {N, T, C, H, W}};
+    reshape_layer->setReshapeDimensions(reshape_dims);
     input = reshape_layer->getOutput(0);
 
     // Pad input
-    auto* pad_layer = TRT_ENGINE_ADD_LAYER(engine_, Padding, *input, nvinfer1::Dims4(0, 0, 1, 1), nvinfer1::Dims4(0, 0, 1, 1));
+    auto* pad_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                           PaddingNd,
+                                           *input,
+                                           nvinfer1::Dims4(0, 1, 0, 0),
+                                           nvinfer1::Dims4(0, 1, 0, 0));
     input = pad_layer->getOutput(0);
 
     // Slice input
-    int slice_size = static_cast<int>(C * shift_ratio);
-    auto slice1_layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, nvinfer1::Dims3(0, 0, 0), nvinfer1::Dims3(N, T, slice_size), nvinfer1::Dims3(1, 1, 1));
-    auto slice2_layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, nvinfer1::Dims3(0, 2, slice_size), nvinfer1::Dims3(N, T, slice_size), nvinfer1::Dims3(1, 1, 1));
-    auto slice3_layer = TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, nvinfer1::Dims3(0, 1, slice_size * 2), nvinfer1::Dims3(N, T, C - slice_size * 2), nvinfer1::Dims3(1, 1, 1));
+    int slice_c = int(C * shift_ratio);
+    int slice_c2 = int(C * shift_ratio * 2);
+    auto* slice1_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                              Slice,
+                                              *pad_layer->getOutput(0),
+                                              nvinfer1::Dims3{0, 0, 0},
+                                              nvinfer1::Dims3{T, slice_c, H},
+                                              nvinfer1::Dims3{1, 1, 1});
+    auto* slice2_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                              Slice,
+                                              *pad_layer->getOutput(0),
+                                              nvinfer1::Dims3{0, 2, 0},
+                                              nvinfer1::Dims3{T, slice_c2 - slice_c, H},
+                                              nvinfer1::Dims3{1, 1, 1});
+    auto* slice3_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                              Slice,
+                                              *pad_layer->getOutput(0),
+                                              nvinfer1::Dims3{0, 1, 0},
+                                              nvinfer1::Dims3{T, C - slice_c2, H},
+                                              nvinfer1::Dims3{1, 1, 1});
 
     // Concatenate slices along the third dimension (C)
-    auto concat_layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, &slice1_layer->getOutput(0), 3);
-    concat_layer->setInput(1, slice2_layer->getOutput(0));
-    concat_layer->setInput(2, slice3_layer->getOutput(0));
+    nvinfer1::ITensor* concat_inputs[3] = {slice1_layer->getOutput(0),
+                                           slice2_layer->getOutput(0),
+                                           slice3_layer->getOutput(0)};
+    auto* concat_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                              Concatenation,
+                                              concat_inputs, 3);
     concat_layer->setAxis(2);
 
     // Reshape output to [N*T,C,H,W]
-    auto reshape_layer2 = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *concat_layer->getOutput(0));
-    reshape_layer2->setReshapeDimensions(nvinfer1::Dims4(NT, C, H, W));
+    nvinfer1::Dims output_shape{4, {N * T, C, H, W}};
+    auto* reshape_layer2 = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *concat_layer->getOutput(0));
+    reshape_layer2->setReshapeDimensions(output_shape);
 
     // Set output
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(reshape_layer2, "temporal_shift", {output_name}, test_mode);
+
   }
 };
 
@@ -86,4 +112,4 @@ class TemporalShiftOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(temporal_shift, TemporalShiftOp);
+REGISTER_TRT_OP_CONVERTER(temporal_shift, TemporalShiftOpConverter);
