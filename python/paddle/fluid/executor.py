@@ -854,7 +854,7 @@ class _ExecutorCache:
                 else program._graph
             )
             build_strategy = compiled_program._build_strategy
-            # print(f"Program before convert:\n {inner_program}", flush=True)
+            warnings.warn(f"Program before convert:\n {inner_program}")
             use_cuda_graph = False
             # When using cuda graph, the cuda graph preparation logic in PE is not
             # executed, but it is processed in the constructor of new executor.
@@ -875,7 +875,7 @@ class _ExecutorCache:
                 converted_program.lr_sheduler = inner_program.lr_sheduler
 
             inner_program = converted_program
-            # print(f"Program after convert:\n {inner_program}", flush=True)
+            warnings.warn(f"Program after convert:\n {inner_program}")
         else:
             build_strategy = None
             from paddle.incubate.autograd import prim_enabled, prim2orig
@@ -884,6 +884,7 @@ class _ExecutorCache:
                 prim2orig()
 
             inner_program = program
+            warnings.warn(f"no transform:\n {inner_program}")
 
         program = _add_feed_fetch_ops(
             program=inner_program,

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from functools import reduce
 
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.incubate.distributed.fleet.collective import fleet
 
 paddle.enable_static()
 
@@ -100,7 +100,12 @@ class TestDistMnist2x2(TestDistRunnerBase):
             opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
         else:
             opt = paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer(
-                learning_rate=self.lr, momentum=0.9, rampup_begin_step=2
+                learning_rate=self.lr,
+                momentum=0.9,
+                rampup_begin_step=2,
+                num_trainers=dist_strategy.build_strategy.num_trainers
+                if dist_strategy
+                else None,
             )
 
         # Reader
@@ -112,7 +117,10 @@ class TestDistMnist2x2(TestDistRunnerBase):
         )
 
         if dist_strategy:
-            dist_opt = fleet.distributed_optimizer(
+            warnings.warn("Use dist strategy.")
+            dist_strategy.without_graph_optimization = True
+            paddle.distributed.fleet.init()
+            dist_opt = paddle.distributed.fleet.distributed_optimizer(
                 optimizer=opt, strategy=dist_strategy
             )
             _, param_grads = dist_opt.minimize(avg_cost)

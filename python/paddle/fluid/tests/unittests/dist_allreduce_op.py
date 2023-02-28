@@ -71,7 +71,7 @@ def cnn_model(data):
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
-    def get_model(self, batch_size=2, single_device=False):
+    def c(self, batch_size=2, single_device=False):
         # Input data
         images = paddle.static.data(
             name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
@@ -112,9 +112,16 @@ class TestDistMnist2x2(TestDistRunnerBase):
             # multi device or distributed multi device
             strategy = fleet.DistributedStrategy()
             strategy.without_graph_optimization = True
-            fleet.init(is_collective=True, strategy=strategy)
+            fleet.init(strategy=strategy)
             optimizer = fleet.distributed_optimizer(opt)
             optimizer.minimize(avg_cost)
+            # params_grads = opt.backward(avg_cost)
+            # data_parallel_param_grads = []
+            # for p, g in params_grads:
+            #     # NOTE: scale will be done on loss scale in multi_devices_graph_pass using nranks.
+            #     grad_reduce = fluid.layers.collective._allreduce(g)
+            #     data_parallel_param_grads.append([p, grad_reduce])
+            # opt.apply_gradients(data_parallel_param_grads)
 
         return (
             inference_program,
@@ -127,4 +134,5 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
+
     runtime_main(TestDistMnist2x2)
