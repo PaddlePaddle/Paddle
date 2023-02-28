@@ -241,5 +241,6 @@ PD_REGISTER_KERNEL(nearest_interp,
                    phi::NearestInterpKernel,
                    float,
                    phi::dtype::bfloat16,
+                   phi::dtype::float16,
                    int8_t,
                    uint8_t) {}
