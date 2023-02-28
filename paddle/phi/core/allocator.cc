@@ -14,4 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/allocator.h"
 
+#include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/core/device_context.h"
+
 namespace phi {}  // namespace phi

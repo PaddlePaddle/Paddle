@@ -191,6 +191,32 @@ def mean_composite(x, axis, keepdim):
     return divide(sum_x, norm)
 
 
+@REGISTER_COMPOSITE('flatten_contiguous_range')
+def flatten_contiguous_range_composite(x, start_axis, stop_axis):
+    """
+    define composite rule of op flatten, flatten_contiguous_range -> flatten.
+    CINN doesn't need xshape for backward pass, return none instead of xshape.
+    shape_out is the parameter of reshape, get from start_axis and stop_axis.
+    out = reshape(x, shape=shape_out), xshape
+    """
+    shape_in = x.shape
+    start_dim = start_axis if len(shape_in) != 0 else 0
+    end_dim = stop_axis if len(shape_in) != 0 else 0
+    assert start_dim <= end_dim
+    if len(shape_in) == 0 or start_dim == end_dim:
+        return reshape(x, shape=shape_in), None
+    slice_numel = 1
+    for i in range(start_dim, end_dim + 1):
+        slice_numel *= shape_in[i]
+    shape_out = []
+    for i in range(start_dim):
+        shape_out.append(shape_in[i])
+    shape_out.append(slice_numel)
+    for i in range(end_dim + 1, len(shape_in)):
+        shape_out.append(shape_in[i])
+    return reshape(x, shape=shape_out), None
+
+
 @REGISTER_COMPOSITE('dropout')
 def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
     """define composite rule of op dropout.
@@ -232,3 +258,14 @@ def bernoulli(shape, dtype, p, seed=0):
         ),
         dtype,
     )
+
+
+@REGISTER_COMPOSITE('silu')
+def silu_composite(x):
+    """
+    define composite rule of op silu
+    res = x / (1 + exp(-x))
+    """
+    sum_temp = 1 + exp(-x)
+    res = x / sum_temp
+    return res
