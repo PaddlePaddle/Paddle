@@ -37,6 +37,7 @@ class ElementwiseDivOp(OpTest):
         self.init_args()
         self.init_dtype()
         self.init_shape()
+        self.init_check_prim()
         self.skip_cinn()
 
         x = self.gen_data(self.x_shape).astype(self.val_dtype)
@@ -78,6 +79,9 @@ class ElementwiseDivOp(OpTest):
         self.x_shape = [13, 17]
         self.y_shape = [13, 17]
 
+    def init_check_prim(self):
+        self.check_prim = True
+
     def gen_data(self, shape):
         return np.random.uniform(0.1, 1, shape)
 
@@ -118,7 +122,7 @@ class ElementwiseDivOp(OpTest):
                 'user_defined_grads': check_option['val_grad'],
                 'user_defined_grad_outputs': [self.grad_out],
                 'check_dygraph': self.check_dygraph,
-                'check_prim': True,
+                'check_prim': self.check_prim,
             }
             if self.place is None:
                 self.check_grad(*check_args, **check_kwargs)
@@ -190,6 +194,10 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
     def init_shape(self):
         self.x_shape = [12, 13]
         self.y_shape = [12, 13]
+
+    # elementwise_pow does't support bfloat16
+    def init_check_prim(self):
+        self.check_prim = False
 
 
 @skip_check_grad_ci(
