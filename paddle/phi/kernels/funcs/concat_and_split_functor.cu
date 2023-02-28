@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/segmented_array.h"
 
 namespace phi {
@@ -571,10 +572,10 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
 #ifdef PADDLE_WITH_HIP
   // TODO(chentianyu03): try to find a method to remove the Alloc function
   phi::Allocator::AllocationPtr data_alloc =
-      phi::memory_utils::Alloc(phi::CUDAPinnedPlace(), in_num * sizeof(T*));
+      phi::memory_utils::Alloc(phi::GPUPinnedPlace(), in_num * sizeof(T*));
   inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
   phi::Allocator::AllocationPtr col_alloc = phi::memory_utils::Alloc(
-      phi::CUDAPinnedPlace(), inputs_col_num * sizeof(IndexT));
+      phi::GPUPinnedPlace(), inputs_col_num * sizeof(IndexT));
   inputs_col = reinterpret_cast<IndexT*>(col_alloc->ptr());
 #endif
 
@@ -787,10 +788,10 @@ void SplitFunctorDispatchWithIndexType(
   phi::Allocator::AllocationPtr data_alloc, cols_alloc;
   // TODO(chentianyu03): try to find a method to remove the Alloc function
   data_alloc =
-      phi::memory_utils::Alloc(phi::CUDAPinnedPlace(), out_num * sizeof(T*));
+      phi::memory_utils::Alloc(phi::GPUPinnedPlace(), out_num * sizeof(T*));
   outs_data = reinterpret_cast<T**>(data_alloc->ptr());
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  cols_alloc = phi::memory_utils::Alloc(phi::CUDAPinnedPlace(),
+  cols_alloc = phi::memory_utils::Alloc(phi::GPUPinnedPlace(),
                                         (out_cols_num) * sizeof(IndexT));
   outs_cols = reinterpret_cast<IndexT*>(cols_alloc->ptr());
 #endif
