@@ -31,7 +31,6 @@ void ExpandAs(const Context& context,
   auto vec_in_dims = phi::vectorize<int>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
-
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
     PADDLE_ENFORCE_NE(target_shape[i],
                       0,
@@ -66,9 +65,6 @@ void ExpandAs(const Context& context,
   out->Resize(out_dims);
   context.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
-  if (x.dims().size() == 0) {
-    x_shape = std::vector<int>({1});
-  }
   auto out_shape = phi::vectorize<int>(out_dims);
 
   int r = XPU_SUCCESS;

@@ -110,9 +110,6 @@ void ExpandKernel(const Context& ctx,
   out->Resize(out_dims);
   ctx.template Alloc<T>(out);
   auto& x_shape = vec_in_dims;
-  if (rank == 0) {
-    x_shape = std::vector<int>({1});
-  }
   auto out_shape = phi::vectorize<int>(out_dims);
 
   int r = XPU_SUCCESS;
