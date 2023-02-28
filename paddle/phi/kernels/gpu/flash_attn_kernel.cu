@@ -81,12 +81,10 @@ void FlashAttnKernel(const Context& ctx,
   bool zero_tensors = false;
 
   auto gen = ctx.GetGenerator();
-  auto state = gen->GetState();
   uint64_t inc = batch_size * num_heads * 32;
   auto seed_offset_pair = gen->IncrementOffset(inc);
   uint64_t seed = seed_offset_pair.first;
-  uint64_t offset = seed_offset_pair.second - inc;  // offset before increment
-  gen->SetState(state);
+  uint64_t offset = seed_offset_pair.second;
 
   std::vector<int64_t> seed_offset_vec{int64_t(seed), int64_t(offset)};
   paddle::framework::TensorFromVector<int64_t>(seed_offset_vec, seed_offset);
