@@ -4449,19 +4449,15 @@ def gcd(x, y, name=None):
     y = paddle.broadcast_to(y, shape)
     x = paddle.abs(x)
     y = paddle.abs(y)
-    # TODO(zhouwei25): Support 0D for not_equal tensor with scalar
-    zero = paddle.full([], 0)
 
     def _gcd_cond_fn(x, y):
-        # return paddle.any(y != 0)
-        return paddle.any(y != zero)
+        return paddle.any(y != 0)
 
     def _gcd_body_fn(x, y):
         # paddle.mod will raise an error when any element of y is 0. To avoid
         # that, we change those zeros to ones. Their values don't matter because
         # they won't be used.
-        # y_not_equal_0 = y != 0
-        y_not_equal_0 = y != zero
+        y_not_equal_0 = y != 0
         y_safe = paddle.where(y_not_equal_0, y, paddle.ones(y.shape, y.dtype))
         x, y = (
             paddle.where(y_not_equal_0, y, x),
