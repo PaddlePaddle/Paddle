@@ -211,7 +211,7 @@ TEST(StaticPrim, TanhBackwardComposite) {
   ASSERT_EQ(grad_ops[0]->Inputs().at("X")[0], "b");
 
   ASSERT_EQ(grad_ops[1]->Type(), "fill_constant");
-  ASSERT_EQ(PADDLE_GET_CONST(int, grad_ops[2]->GetAttr("dtype")),
+  ASSERT_EQ(PADDLE_GET_CONST(int, grad_ops[1]->GetAttr("dtype")),
             static_cast<int>(5));  // ProtoDataType::FP32
   ASSERT_EQ(grad_ops[1]->Outputs().at("Out").size(),
             static_cast<std::size_t>(1));
