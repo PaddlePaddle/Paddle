@@ -69,10 +69,14 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
 #if IS_TRT_VERSION_GE(8400)
     case FluidDT::VarType_Type_BOOL:
       return TRT_DT::kBOOL;
+
 #endif
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "unknown fluid datatype in TRT op converter"));
+          "unsupported datatype in TRT op converter, type: %s. "
+          "Boolean type is supported as TRT input/output "
+          "using TensorRT v8.4+.",
+          VarType_Type_Name(type)));
   }
   return TRT_DT::kINT32;
 }
