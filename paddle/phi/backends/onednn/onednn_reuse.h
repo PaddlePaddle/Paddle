@@ -1138,10 +1138,11 @@ class BroadcastDataOneDNNHandler
   }
 
   inline dnnl::memory Get_Scale_Memory(float scale_value) {
-    std::vector<float> scales(1, scale_value);
     auto scale_md = dnnl::memory::desc(
         {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
-    return dnnl::memory(scale_md, this->engine_, scales.data());
+    auto scale_mem = dnnl::memory(scale_md, this->engine_);
+    static_cast<float*>(scale_mem.get_data_handle())[0] = scale_value;
+    return scale_mem;
   }
 };
 
