@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid.core as core
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.fluid import Executor, Program, default_main_program, program_guard  
+from paddle.fluid import Executor, Program, default_main_program, program_guard
 
 
 class TestPad3dOp(OpTest):
@@ -32,9 +32,11 @@ class TestPad3dOp(OpTest):
         self.dtype = self.get_dtype()
         self.op_type = "pad3d"
         self.python_api = paddle.nn.functional.pad
-        self.inputs = {'X': 
-                np.random.random(self.shape).astype("float32") if self.dtype==np.uint16 
-                else np.random.random(self.shape).astype(self.dtype)}
+        self.inputs = {
+            'X': np.random.random(self.shape).astype("float32")
+            if self.dtype == np.uint16
+            else np.random.random(self.shape).astype(self.dtype)
+        }
         self.attrs = {}
         if self.variable_paddings:
             self.attrs['paddings'] = []
@@ -79,16 +81,16 @@ class TestPad3dOp(OpTest):
             out = np.pad(self.inputs['X'], paddings, mode="wrap")
         self.outputs = {'Out': out}
 
-        if self.dtype==np.uint16:
+        if self.dtype == np.uint16:
             self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
-            self.outputs['Out'] = convert_float_to_uint16( self.outputs['Out'])
+            self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out', check_eager=True)
-    
+
     def get_dtype(self):
         return np.float64
 
@@ -197,6 +199,7 @@ class TestCase10(TestPad3dOp):
 
 # ----------------Pad3d Fp16----------------
 
+
 def create_test_fp16(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -207,13 +210,14 @@ def create_test_fp16(parent):
 
         def test_check_output(self):
             self.check_output(check_eager=True, atol=1e-3)
-            
+
         def test_check_grad(self):
             self.check_grad(['X'], 'Out', max_relative_error=0.3)
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
     TestPad3dFp16.__name__ = cls_name
     globals()[cls_name] = TestPad3dFp16
+
 
 create_test_fp16(TestCase1)
 create_test_fp16(TestCase2)
@@ -229,6 +233,7 @@ create_test_fp16(TestCase10)
 
 # ----------------Pad3d Bf16----------------
 
+
 def create_test_bf16(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
@@ -241,13 +246,14 @@ def create_test_bf16(parent):
 
         def test_check_output(self):
             self.check_output(check_eager=True, atol=1e-2)
-            
+
         def test_check_grad(self):
             self.check_grad(['X'], 'Out', max_relative_error=1e-2)
 
     cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
     TestPad3dBf16.__name__ = cls_name
     globals()[cls_name] = TestPad3dBf16
+
 
 create_test_bf16(TestCase1)
 create_test_bf16(TestCase2)
