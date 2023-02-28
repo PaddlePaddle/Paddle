@@ -26,6 +26,13 @@ using IntArray =
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
+void cast_grad(const Tensor& out_grad, DataType dtype, Tensor* x_grad) {
+  if (x_grad) {
+    auto res = cast<T>(out_grad, dtype);
+    set_output<T>(res, x_grad);
+  }
+}
+template <typename T>
 void gather_grad(const Tensor& x,
                  const Tensor& index,
                  const Tensor& out_grad,
@@ -64,6 +71,29 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   if (!grad_x) return;
   auto grad_x_tmp = grad_out * (1 - out * out);
   set_output<T>(grad_x_tmp, grad_x);
+}
+
+template <typename T>
+void reshape_grad(const Tensor& x, const Tensor& grad_out, Tensor* grad_x) {
+  if (grad_x) {
+    auto grad_x_tmp = reshape<T>(grad_out, phi::vectorize(x.dims()));
+    set_output<T>(grad_x_tmp, grad_x);
+  }
+}
+
+template <typename T>
+void transpose_grad(const Tensor& grad_out,
+                    const std::vector<int>& perm,
+                    Tensor* grad_x) {
+  if (grad_x) {
+    std::vector<int> reverse_perm(perm);
+    // make origin ranks
+    for (int i = 0; i < static_cast<int>(perm.size()); ++i) {
+      reverse_perm[perm[i]] = i;
+    }
+    auto grad_x_tmp = transpose<T>(grad_out, reverse_perm);
+    set_output<T>(grad_x_tmp, grad_x);
+  }
 }
 
 template <typename T>
