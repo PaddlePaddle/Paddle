@@ -82,8 +82,7 @@ struct MatmulDescriptor {
     }
   }
 
-  // As far as concerned, x_desc, y_desc, op_desc are all
-  // allocated in heap memory.
+  // x_desc, y_desc, op_desc are all allocated in heap memory.
   template <typename T>
   void Create(const int M,
               const int N,
