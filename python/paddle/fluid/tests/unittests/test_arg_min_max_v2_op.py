@@ -366,7 +366,7 @@ class TestArgMinMaxOpError(unittest.TestCase):
             self.assertRaises(ValueError, test_argmin_dtype_type)
 
 
-class TestArgMinOpFp16(unittest.TestCase):
+class TestArgMaxOpFp16(unittest.TestCase):
     def test_fp16(self):
         x_np = np.random.random((10, 16)).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
@@ -379,7 +379,7 @@ class TestArgMinOpFp16(unittest.TestCase):
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
-class TestArgMaxOpFp16(unittest.TestCase):
+class TestArgMinOpFp16(unittest.TestCase):
     def test_fp16(self):
         x_np = np.random.random((10, 16)).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
