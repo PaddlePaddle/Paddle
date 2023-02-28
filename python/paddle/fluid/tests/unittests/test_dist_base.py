@@ -80,7 +80,7 @@ class TestDistRunnerBase:
         hogwild_mode=False,
     ):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
         config.sync_mode = sync_mode
         config.runtime_split_send_recv = hogwild_mode
@@ -88,7 +88,7 @@ class TestDistRunnerBase:
         if nccl_comm_num > 1:
             config.nccl_comm_num = nccl_comm_num
         # config.runtime_split_send_recv = True
-        t = fluid.DistributeTranspiler(config=config)
+        t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id=trainer_id,
             program=main_program,
@@ -454,7 +454,7 @@ class TestDistRunnerBase:
             or args.update_method == "nccl2_reduce_layer"
         ):
             # transpile for nccl2
-            config = fluid.DistributeTranspilerConfig()
+            config = paddle.distributed.transpiler.DistributeTranspilerConfig()
             config.mode = "nccl2"
             config.nccl_comm_num = args.nccl_comm_num
             if args.use_hallreduce:
@@ -466,7 +466,7 @@ class TestDistRunnerBase:
                 type(self).__name__,
                 "begin to run transpile on trainer with nccl2 mode",
             )
-            nccl2_t = fluid.DistributeTranspiler(config=config)
+            nccl2_t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
             nccl2_t.transpile(
                 args.trainer_id,
                 program=fluid.default_main_program(),

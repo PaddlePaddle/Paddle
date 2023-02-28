@@ -80,12 +80,6 @@ from .core import (
     MLUPlace,
     CustomPlace,
 )
-from .transpiler import (
-    DistributeTranspiler,
-    memory_optimize,
-    release_memory,
-    DistributeTranspilerConfig,
-)
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import profiler
 from . import unique_name
@@ -107,7 +101,6 @@ from .trainer_desc import (
     MultiTrainer,
     HeterXpuTrainer,
 )
-from .transpiler import HashName, RoundRobin
 from .backward import append_backward
 
 Tensor = LoDTensor
