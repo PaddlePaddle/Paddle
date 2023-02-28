@@ -98,7 +98,6 @@ class SplitOpConverter : public OpConverter {
       auto zeros_tensor = Add1DConstantLayer(zeros);
       auto stride_tensor = Add1DConstantLayer(stride);
       // input : [N,C,H,W]
-      int start_point = 0;
       nvinfer1::ITensor* start_point_tensor = zeros_tensor;
       nvinfer1::ITensor* this_len_tensor = zeros_tensor;
       for (size_t i = 0; i < output_num; i++) {
