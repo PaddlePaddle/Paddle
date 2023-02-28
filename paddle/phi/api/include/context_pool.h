@@ -87,3 +87,10 @@ class PADDLE_API DeviceContextPool {
 
 }  // namespace experimental
 }  // namespace paddle
+
+namespace phi {
+class Allocator;
+
+PADDLE_API Allocator* GetAllocator(const Place& place);
+
+}  // namespace phi
