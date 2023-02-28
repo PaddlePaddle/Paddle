@@ -86,8 +86,8 @@ def np_logcumsumexp_grad(
             flatten=flatten,
             reverse=not reverse,
             exclusive=exclusive,
-        ).reshape(x.shape)
-        + x
+        ).reshape(x.shape) +
+        x
     )
     output_neg = np.exp(
         np_logcumsumexp(
@@ -96,8 +96,8 @@ def np_logcumsumexp_grad(
             flatten=flatten,
             reverse=not reverse,
             exclusive=exclusive,
-        ).reshape(x.shape)
-        + x
+        ).reshape(x.shape) +
+        x
     )
 
     return output_pos - output_neg

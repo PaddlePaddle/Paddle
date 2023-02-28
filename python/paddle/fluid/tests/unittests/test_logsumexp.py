@@ -196,14 +196,15 @@ class TestLogsumexpError(unittest.TestCase):
 class TestLogsumexpAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 3, 4, 5]
-        self.x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
+        self.x = np.random.uniform(-1, 1, self.shape)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
 
-    def api_case(self, axis=None, keepdim=False):
+    def api_case(self, dtype=np.float32, axis=None, keepdim=False):
+        self.x = self.x.astype(dtype)
         out_ref = ref_logsumexp(self.x, axis, keepdim)
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', self.shape)
@@ -218,7 +219,7 @@ class TestLogsumexpAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
 
-    def test_api(self):
+    def test_api_fp32(self):
         self.api_case()
         self.api_case(2)
         self.api_case([-1])
@@ -226,9 +227,28 @@ class TestLogsumexpAPI(unittest.TestCase):
         self.api_case((0, 1, -1))
         self.api_case(keepdim=True)
 
-    def test_alias(self):
+    def test_api_fp16(self):
+        self.api_case(np.float16)
+        self.api_case(np.float16, 2)
+        self.api_case(np.float16, [-1])
+        self.api_case(np.float16, [2, -3])
+        self.api_case(np.float16, (0, 1, -1))
+        self.api_case(np.float16, keepdim=True)
+
+    def test_alias_fp32(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x)
+        out1 = paddle.logsumexp(x)
+        out2 = paddle.tensor.logsumexp(x)
+        out3 = paddle.tensor.math.logsumexp(x)
+        out_ref = ref_logsumexp(self.x)
+        for out in [out1, out2, out3]:
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_alias_fp16(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x.astype(np.float16))
         out1 = paddle.logsumexp(x)
         out2 = paddle.tensor.logsumexp(x)
         out3 = paddle.tensor.math.logsumexp(x)

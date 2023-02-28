@@ -2517,6 +2517,26 @@ class TestLog(TestActivation):
         self.assertRaises(TypeError, paddle.log, in1)
         self.assertRaises(TypeError, paddle.log, in2)
 
+    def test_static_api(self):
+        paddle.enable_static()
+        x_np = np.random.random((10, 16)).astype(self.dtype)
+        x = paddle.static.data(shape=[10, 16], name='x', dtype=self.dtype)
+        out = paddle.log(x)
+        exe = paddle.static.Executor()
+        exe.run(paddle.static.default_startup_program())
+        out = exe.run(feed={'x': x_np},
+                      fetch_list=[out])
+        ref = np.array(np.log(x_np))
+        np.testing.assert_allclose(ref, out.numpy(), rtol=1e-05)
+        paddle.disable_static()
+
+    def test_dynamic_api(self):
+        x_np = np.random.random((10, 16)).astype(self.dtype)
+        x = paddle.to_tensor(x_np)
+        y = paddle.log(x)
+        ref = np.array(np.log(x_np))
+        np.testing.assert_allclose(ref, y.numpy(), rtol=1e-05)
+
 
 class TestLog_ZeroDim(TestLog):
     def init_shape(self):
