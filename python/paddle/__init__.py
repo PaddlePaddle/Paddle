@@ -400,7 +400,8 @@ if is_compiled_with_cinn():
 disable_static()
 __all__ = [  # noqa
     'iinfo',
-    'finfo' 'dtype',
+    'finfo',
+    'dtype',
     'uint8',
     'int8',
     'int16',
