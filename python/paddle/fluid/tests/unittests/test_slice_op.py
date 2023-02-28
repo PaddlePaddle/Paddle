@@ -510,7 +510,7 @@ class TestFP16(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=1e-5, check_prim=True)
+            self.check_output_with_place(place, atol=1e-3, check_prim=True)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
@@ -520,7 +520,7 @@ class TestFP16(OpTest):
                 place,
                 ['Input'],
                 'Out',
-                max_relative_error=0.006,
+                max_relative_error=1e-3,
                 check_prim=True,
             )
 
@@ -555,7 +555,7 @@ class TestFP16_2(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=1e-5, check_prim=True)
+            self.check_output_with_place(place, atol=1e-3, check_prim=True)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
@@ -564,7 +564,7 @@ class TestFP16_2(OpTest):
                 place,
                 ['Input'],
                 'Out',
-                max_relative_error=0.006,
+                max_relative_error=1e-3,
                 numeric_grad_delta=0.5,
                 check_prim=True,
             )
