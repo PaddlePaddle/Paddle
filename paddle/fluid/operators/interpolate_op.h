@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -144,6 +145,7 @@ static void LinearInterpolation(const phi::DenseTensor& input,
   auto input_t = EigenTensor<T, 3>::From(input);
   auto output_t = EigenTensor<T, 3>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   std::vector<int> vx_w, vx_e;
   std::vector<float> vd_w, vd_e;
@@ -181,12 +183,14 @@ static void LinearInterpolation(const phi::DenseTensor& input,
         // linear interpolation
         T out_t;
         if (data_layout == DataLayout::kNCHW) {
-          out_t = input_t(i, j, vx_w[l]) * vd_e[l] +
-                  input_t(i, j, vx_e[l]) * vd_w[l];
+          out_t =
+              static_cast<T>(static_cast<MT>(input_t(i, j, vx_w[l])) * vd_e[l] +
+                             static_cast<MT>(input_t(i, j, vx_e[l])) * vd_w[l]);
           output_t(i, j, l) = out_t;
         } else {
-          out_t = input_t(i, vx_w[l], j) * vd_e[l] +
-                  input_t(i, vx_e[l], j) * vd_w[l];
+          out_t =
+              static_cast<T>(static_cast<MT>(input_t(i, vx_w[l], j)) * vd_e[l] +
+                             static_cast<MT>(input_t(i, vx_e[l], j)) * vd_w[l]);
           output_t(i, l, j) = out_t;
         }
       }
@@ -208,6 +212,8 @@ static void LinearInterpolationGrad(const phi::DenseTensor& output_grad,
   auto input_grad_t = EigenTensor<T, 3>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 3>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
   for (int l = 0; l < out_w; l++) {
     int x_w = align_flag ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
                          : static_cast<int>(ratio_w * l);
@@ -223,11 +229,11 @@ static void LinearInterpolationGrad(const phi::DenseTensor& output_grad,
       for (int j = 0; j < c; j++) {  // loop for channels
         // linear interpolation grad
         if (data_layout == DataLayout::kNCHW) {
-          const T grad = output_grad_t(i, j, l);
+          const MT grad = static_cast<MT>(output_grad_t(i, j, l));
           input_grad_t(i, j, x_w) += static_cast<T>(grad * d_e);
           input_grad_t(i, j, x_e) += static_cast<T>(grad * d_w);
         } else {
-          const T grad = output_grad_t(i, l, j);
+          const MT grad = static_cast<MT>(output_grad_t(i, l, j));
           input_grad_t(i, x_w, j) += static_cast<T>(grad * d_e);
           input_grad_t(i, x_e, j) += static_cast<T>(grad * d_w);
         }
@@ -253,6 +259,7 @@ static void BilinearInterpolation(const phi::DenseTensor& input,
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   std::vector<int> vy_n, vy_s;
   std::vector<float> vd_n, vd_s;
@@ -317,17 +324,27 @@ static void BilinearInterpolation(const phi::DenseTensor& input,
           // bilinear interpolation
           T out_t;
           if (data_layout == DataLayout::kNCHW) {
-            out_t = input_t(i, j, vy_n[k], vx_w[l]) * vd_s[k] * vd_e[l] +
-                    input_t(i, j, vy_s[k], vx_w[l]) * vd_n[k] * vd_e[l] +
-                    input_t(i, j, vy_n[k], vx_e[l]) * vd_s[k] * vd_w[l] +
-                    input_t(i, j, vy_s[k], vx_e[l]) * vd_n[k] * vd_w[l];
+            out_t = static_cast<T>(
+                static_cast<MT>(input_t(i, j, vy_n[k], vx_w[l])) * vd_s[k] *
+                    vd_e[l] +
+                static_cast<MT>(input_t(i, j, vy_s[k], vx_w[l])) * vd_n[k] *
+                    vd_e[l] +
+                static_cast<MT>(input_t(i, j, vy_n[k], vx_e[l])) * vd_s[k] *
+                    vd_w[l] +
+                static_cast<MT>(input_t(i, j, vy_s[k], vx_e[l])) * vd_n[k] *
+                    vd_w[l]);
             output_t(i, j, k, l) = out_t;
 
           } else {
-            out_t = input_t(i, vy_n[k], vx_w[l], j) * vd_s[k] * vd_e[l] +
-                    input_t(i, vy_s[k], vx_w[l], j) * vd_n[k] * vd_e[l] +
-                    input_t(i, vy_n[k], vx_e[l], j) * vd_s[k] * vd_w[l] +
-                    input_t(i, vy_s[k], vx_e[l], j) * vd_n[k] * vd_w[l];
+            out_t = static_cast<T>(
+                static_cast<MT>(input_t(i, vy_n[k], vx_w[l], j)) * vd_s[k] *
+                    vd_e[l] +
+                static_cast<MT>(input_t(i, vy_s[k], vx_w[l], j)) * vd_n[k] *
+                    vd_e[l] +
+                static_cast<MT>(input_t(i, vy_n[k], vx_e[l], j)) * vd_s[k] *
+                    vd_w[l] +
+                static_cast<MT>(input_t(i, vy_s[k], vx_e[l], j)) * vd_n[k] *
+                    vd_w[l]);
             output_t(i, k, l, j) = out_t;
           }
         }
@@ -356,6 +373,7 @@ static void TrilinearInterpolation(const phi::DenseTensor& input,
   auto input_t = EigenTensor<T, 5>::From(input);
   auto output_t = EigenTensor<T, 5>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   std::vector<int> vt_f, vt_b;
   std::vector<float> vd_f, vd_b;
@@ -446,40 +464,42 @@ static void TrilinearInterpolation(const phi::DenseTensor& input,
           for (int l = 0; l < out_w; l++) {
             // trilinear interpolation
             if (data_layout == DataLayout::kNCHW) {
-              T out_t = input_t(b, i, vt_f[j], vy_n[k], vx_w[l]) * vd_b[j] *
-                            vd_s[k] * vd_e[l] +
-                        input_t(b, i, vt_f[j], vy_n[k], vx_e[l]) * vd_b[j] *
-                            vd_s[k] * vd_w[l] +
-                        input_t(b, i, vt_f[j], vy_s[k], vx_w[l]) * vd_b[j] *
-                            vd_n[k] * vd_e[l] +
-                        input_t(b, i, vt_f[j], vy_s[k], vx_e[l]) * vd_b[j] *
-                            vd_n[k] * vd_w[l] +
-                        input_t(b, i, vt_b[j], vy_n[k], vx_w[l]) * vd_f[j] *
-                            vd_s[k] * vd_e[l] +
-                        input_t(b, i, vt_b[j], vy_n[k], vx_e[l]) * vd_f[j] *
-                            vd_s[k] * vd_w[l] +
-                        input_t(b, i, vt_b[j], vy_s[k], vx_w[l]) * vd_f[j] *
-                            vd_n[k] * vd_e[l] +
-                        input_t(b, i, vt_b[j], vy_s[k], vx_e[l]) * vd_f[j] *
-                            vd_n[k] * vd_w[l];
+              T out_t = static_cast<T>(
+                  static_cast<MT>(input_t(b, i, vt_f[j], vy_n[k], vx_w[l])) *
+                      vd_b[j] * vd_s[k] * vd_e[l] +
+                  static_cast<MT>(input_t(b, i, vt_f[j], vy_n[k], vx_e[l])) *
+                      vd_b[j] * vd_s[k] * vd_w[l] +
+                  static_cast<MT>(input_t(b, i, vt_f[j], vy_s[k], vx_w[l])) *
+                      vd_b[j] * vd_n[k] * vd_e[l] +
+                  static_cast<MT>(input_t(b, i, vt_f[j], vy_s[k], vx_e[l])) *
+                      vd_b[j] * vd_n[k] * vd_w[l] +
+                  static_cast<MT>(input_t(b, i, vt_b[j], vy_n[k], vx_w[l])) *
+                      vd_f[j] * vd_s[k] * vd_e[l] +
+                  static_cast<MT>(input_t(b, i, vt_b[j], vy_n[k], vx_e[l])) *
+                      vd_f[j] * vd_s[k] * vd_w[l] +
+                  static_cast<MT>(input_t(b, i, vt_b[j], vy_s[k], vx_w[l])) *
+                      vd_f[j] * vd_n[k] * vd_e[l] +
+                  static_cast<MT>(input_t(b, i, vt_b[j], vy_s[k], vx_e[l])) *
+                      vd_f[j] * vd_n[k] * vd_w[l]);
               output_t(b, i, j, k, l) = out_t;
             } else {
-              T out_t = input_t(b, vt_f[j], vy_n[k], vx_w[l], i) * vd_b[j] *
-                            vd_s[k] * vd_e[l] +
-                        input_t(b, vt_f[j], vy_n[k], vx_e[l], i) * vd_b[j] *
-                            vd_s[k] * vd_w[l] +
-                        input_t(b, vt_f[j], vy_s[k], vx_w[l], i) * vd_b[j] *
-                            vd_n[k] * vd_e[l] +
-                        input_t(b, vt_f[j], vy_s[k], vx_e[l], i) * vd_b[j] *
-                            vd_n[k] * vd_w[l] +
-                        input_t(b, vt_b[j], vy_n[k], vx_w[l], i) * vd_f[j] *
-                            vd_s[k] * vd_e[l] +
-                        input_t(b, vt_b[j], vy_n[k], vx_e[l], i) * vd_f[j] *
-                            vd_s[k] * vd_w[l] +
-                        input_t(b, vt_b[j], vy_s[k], vx_w[l], i) * vd_f[j] *
-                            vd_n[k] * vd_e[l] +
-                        input_t(b, vt_b[j], vy_s[k], vx_e[l], i) * vd_f[j] *
-                            vd_n[k] * vd_w[l];
+              T out_t = static_cast<T>(
+                  static_cast<MT>(input_t(b, vt_f[j], vy_n[k], vx_w[l], i)) *
+                      vd_b[j] * vd_s[k] * vd_e[l] +
+                  static_cast<MT>(input_t(b, vt_f[j], vy_n[k], vx_e[l], i)) *
+                      vd_b[j] * vd_s[k] * vd_w[l] +
+                  static_cast<MT>(input_t(b, vt_f[j], vy_s[k], vx_w[l], i)) *
+                      vd_b[j] * vd_n[k] * vd_e[l] +
+                  static_cast<MT>(input_t(b, vt_f[j], vy_s[k], vx_e[l], i)) *
+                      vd_b[j] * vd_n[k] * vd_w[l] +
+                  static_cast<MT>(input_t(b, vt_b[j], vy_n[k], vx_w[l], i)) *
+                      vd_f[j] * vd_s[k] * vd_e[l] +
+                  static_cast<MT>(input_t(b, vt_b[j], vy_n[k], vx_e[l], i)) *
+                      vd_f[j] * vd_s[k] * vd_w[l] +
+                  static_cast<MT>(input_t(b, vt_b[j], vy_s[k], vx_w[l], i)) *
+                      vd_f[j] * vd_n[k] * vd_e[l] +
+                  static_cast<MT>(input_t(b, vt_b[j], vy_s[k], vx_e[l], i)) *
+                      vd_f[j] * vd_n[k] * vd_w[l]);
               output_t(b, j, k, l, i) = out_t;
             }
           }
@@ -491,12 +511,22 @@ static void TrilinearInterpolation(const phi::DenseTensor& input,
 
 template <typename T>
 HOSTDEVICE inline T cubic_convolution1(T x, T A) {
-  return ((A + 2) * x - (A + 3)) * x * x + 1;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  return static_cast<T>(((static_cast<MT>(A) + 2) * static_cast<MT>(x) -
+                         (static_cast<MT>(A) + 3)) *
+                            static_cast<MT>(x) * static_cast<MT>(x) +
+                        1);
 }
 
 template <typename T>
 HOSTDEVICE inline T cubic_convolution2(T x, T A) {
-  return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  return static_cast<T>(
+      ((static_cast<MT>(A) * static_cast<MT>(x) - 5 * static_cast<MT>(A)) *
+           static_cast<MT>(x) +
+       8 * static_cast<MT>(A)) *
+          static_cast<MT>(x) -
+      4 * static_cast<MT>(A));
 }
 
 template <typename T>
@@ -504,21 +534,25 @@ HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
   T A = static_cast<T>(-0.75);
 
   T x1 = t;
-  coeffs[0] = cubic_convolution2<T>(x1 + 1.0, A);
+  coeffs[0] = cubic_convolution2<T>(x1 + static_cast<T>(1.0), A);
   coeffs[1] = cubic_convolution1<T>(x1, A);
 
   // opposite coefficients
-  T x2 = 1.0 - t;
+  T x2 = static_cast<T>(1.0) - t;
   coeffs[2] = cubic_convolution1<T>(x2, A);
-  coeffs[3] = cubic_convolution2<T>(x2 + 1.0, A);
+  coeffs[3] = cubic_convolution2<T>(x2 + static_cast<T>(1.0), A);
 }
 
 template <typename T>
 static inline T cubic_interp(T x0, T x1, T x2, T x3, T t) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   T coeffs[4];
   get_cubic_upsample_coefficients<T>(coeffs, t);
 
-  return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
+  return static_cast<T>(static_cast<MT>(x0) * static_cast<MT>(coeffs[0]) +
+                        static_cast<MT>(x1) * static_cast<MT>(coeffs[1]) +
+                        static_cast<MT>(x2) * static_cast<MT>(coeffs[2]) +
+                        static_cast<MT>(x3) * static_cast<MT>(coeffs[3]));
 }
 
 template <typename T>
@@ -536,18 +570,19 @@ static void BicubicInterpolation(const phi::DenseTensor& input,
                                  const DataLayout data_layout) {
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (int k = 0; k < out_h; k++) {  // loop for images
-    T y_n = align_corners ? static_cast<T>(ratio_h * k)
-                          : static_cast<T>(ratio_h * (k + 0.5) - 0.5);
+    MT y_n = align_corners ? static_cast<MT>(ratio_h * k)
+                           : static_cast<MT>(ratio_h * (k + 0.5) - 0.5);
     int input_y = floorf(y_n);
-    const T y_t = y_n - input_y;
+    const T y_t = static_cast<T>(y_n - input_y);
 
     for (int l = 0; l < out_w; l++) {
-      T x_n = align_corners ? static_cast<T>(ratio_w * l)
-                            : static_cast<T>(ratio_w * (l + 0.5) - 0.5);
+      MT x_n = align_corners ? static_cast<MT>(ratio_w * l)
+                             : static_cast<MT>(ratio_w * (l + 0.5) - 0.5);
       int input_x = floorf(x_n);
-      const T x_t = x_n - input_x;
+      const T x_t = static_cast<T>(x_n - input_x);
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
@@ -653,6 +688,8 @@ static void BilinearInterpolationGrad(const phi::DenseTensor& output_grad,
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
   for (int k = 0; k < out_h; k++) {  // loop for images
     int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
                          : static_cast<int>(ratio_h * k);
@@ -677,13 +714,13 @@ static void BilinearInterpolationGrad(const phi::DenseTensor& output_grad,
         for (int j = 0; j < c; j++) {  // loop for channels
           // bilinear interpolation grad
           if (data_layout == DataLayout::kNCHW) {
-            const T grad = output_grad_t(i, j, k, l);
+            const MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
             input_grad_t(i, j, y_n, x_w) += static_cast<T>(grad * d_s * d_e);
             input_grad_t(i, j, y_s, x_w) += static_cast<T>(grad * d_n * d_e);
             input_grad_t(i, j, y_n, x_e) += static_cast<T>(grad * d_s * d_w);
             input_grad_t(i, j, y_s, x_e) += static_cast<T>(grad * d_n * d_w);
           } else {
-            const T grad = output_grad_t(i, k, l, j);
+            const MT grad = static_cast<MT>(output_grad_t(i, k, l, j));
             input_grad_t(i, y_n, x_w, j) += static_cast<T>(grad * d_s * d_e);
             input_grad_t(i, y_s, x_w, j) += static_cast<T>(grad * d_n * d_e);
             input_grad_t(i, y_n, x_e, j) += static_cast<T>(grad * d_s * d_w);
@@ -715,6 +752,8 @@ static void TrilinearInterpolationGrad(const phi::DenseTensor& output_grad,
   auto input_grad_t = EigenTensor<T, 5>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 5>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
   for (int j = 0; j < out_d; j++) {  // loop for D
     int t_f = align_flag ? static_cast<int>(ratio_d * (j + 0.5) - 0.5)
                          : static_cast<int>(ratio_d * j);
@@ -749,7 +788,7 @@ static void TrilinearInterpolationGrad(const phi::DenseTensor& output_grad,
           for (int i = 0; i < c; i++) {  // loop for channels
             // trilinear interpolation grad
             if (data_layout == DataLayout::kNCHW) {
-              const T grad = output_grad_t(b, i, j, k, l);
+              const MT grad = static_cast<MT>(output_grad_t(b, i, j, k, l));
               input_grad_t(b, i, t_f, y_n, x_w) +=
                   static_cast<T>(grad * d_b * d_s * d_e);
               input_grad_t(b, i, t_f, y_n, x_e) +=
@@ -767,7 +806,7 @@ static void TrilinearInterpolationGrad(const phi::DenseTensor& output_grad,
               input_grad_t(b, i, t_b, y_s, x_e) +=
                   static_cast<T>(grad * d_f * d_n * d_w);
             } else {
-              const T grad = output_grad_t(b, j, k, l, i);
+              const MT grad = static_cast<MT>(output_grad_t(b, j, k, l, i));
               input_grad_t(b, t_f, y_n, x_w, i) +=
                   static_cast<T>(grad * d_b * d_s * d_e);
               input_grad_t(b, t_f, y_n, x_e, i) +=
@@ -807,18 +846,19 @@ static void BicubicInterpolationGrad(const phi::DenseTensor& output_grad,
                                      const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (int k = 0; k < out_h; k++) {  // loop for images
-    T y_n = align_corners ? static_cast<T>(ratio_h * k)
-                          : static_cast<T>(ratio_h * (k + 0.5) - 0.5);
+    MT y_n = align_corners ? static_cast<MT>(ratio_h * k)
+                           : static_cast<MT>(ratio_h * (k + 0.5) - 0.5);
     int input_y = floorf(y_n);
-    T y_t = y_n - input_y;
+    T y_t = static_cast<T>(y_n - input_y);
 
     for (int l = 0; l < out_w; l++) {
-      T x_n = align_corners ? static_cast<T>(ratio_w * l)
-                            : static_cast<T>(ratio_w * (l + 0.5) - 0.5);
+      MT x_n = align_corners ? static_cast<MT>(ratio_w * l)
+                             : static_cast<MT>(ratio_w * (l + 0.5) - 0.5);
       int input_x = floorf(x_n);
-      T x_t = x_n - input_x;
+      T x_t = static_cast<T>(x_n - input_x);
 
       T x_coeffs[4];
       T y_coeffs[4];
@@ -836,13 +876,15 @@ static void BicubicInterpolationGrad(const phi::DenseTensor& output_grad,
               int access_y = std::max(std::min(input_y - 1 + jj, in_h - 1),
                                       static_cast<int>(0));
               if (data_layout == DataLayout::kNCHW) {
-                T grad = output_grad_t(i, j, k, l);
+                MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
                 input_grad_t(i, j, access_y, access_x) +=
-                    grad * y_coeffs[jj] * x_coeffs[ii];
+                    static_cast<T>(grad * static_cast<MT>(y_coeffs[jj]) *
+                                   static_cast<MT>(x_coeffs[ii]));
               } else {
-                T grad = output_grad_t(i, k, l, j);
+                MT grad = static_cast<MT>(output_grad_t(i, k, l, j));
                 input_grad_t(i, access_y, access_x, j) +=
-                    grad * y_coeffs[jj] * x_coeffs[ii];
+                    static_cast<T>(grad * static_cast<MT>(y_coeffs[jj]) *
+                                   static_cast<MT>(x_coeffs[ii]));
               }
             }
           }

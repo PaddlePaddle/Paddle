@@ -340,7 +340,11 @@ class TestBilinearInterpOpFP16(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', in_place=True, check_eager=self.check_eager, atol=1e-2
+            ['X'],
+            'Out',
+            in_place=True,
+            check_eager=self.check_eager,
+            max_relative_error=1e-2,
         )
 
     def init_test_case(self):
@@ -483,7 +487,11 @@ class TestBilinearInterpOpBF16(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', in_place=True, check_eager=self.check_eager, atol=1e-2
+            ['X'],
+            'Out',
+            in_place=True,
+            check_eager=self.check_eager,
+            max_relative_error=1e-2,
         )
 
     def init_test_case(self):
