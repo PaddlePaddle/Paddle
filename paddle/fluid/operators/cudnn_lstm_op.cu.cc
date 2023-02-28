@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/operators/cudnn_lstm_cache.h"
@@ -242,7 +242,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     std::vector<int> SequenceLength;
     if (has_seq_length) {
       auto *sequence_length = ctx.Input<phi::DenseTensor>("SequenceLength");
-      SequenceLength = operators::GetDataFromTensor<int>(sequence_length);
+      SequenceLength = phi::GetVectorFromTensor<int>(sequence_length);
     }
 
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
@@ -532,7 +532,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     std::vector<int> SequenceLength;
     if (has_seq_length) {
       auto *sequence_length = ctx.Input<phi::DenseTensor>("SequenceLength");
-      SequenceLength = operators::GetDataFromTensor<int>(sequence_length);
+      SequenceLength = phi::GetVectorFromTensor<int>(sequence_length);
     }
 
     int seq_length = input_dims[0];

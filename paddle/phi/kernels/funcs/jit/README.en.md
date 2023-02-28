@@ -10,9 +10,9 @@ Currently it's only supported on CPU yet.
 ## Contents
 
 ```txt
-PaddlePaddle/Paddle/paddle/phi/
+PaddlePaddle/Paddle/paddle/fluid/
 ├── ...
-└── kernels/
+└── operators/
     ├── .../
     └── jit/
         ├── ...
@@ -34,7 +34,7 @@ PaddlePaddle/Paddle/paddle/phi/
             └── ...
 ```
 
-All basical definations of jit kernels are addressed in `paddle/phi/kernels/funcs/jit` including these three key folders `refer`, `gen`, `more`. There is only one unique name for each kernel while may have seraval implementations with same functionality.
+All basical definitions of jit kernels are addressed in `paddle/fluid/operators/jit` including these three key folders `refer`, `gen`, `more`. There is only one unique name for each kernel while may have seraval implementations with same functionality.
 
 - `refer`: Each kernel must have one reference implementation on CPU, and it should only focus on the correctness and should not depends on any third-party libraries.
 - `gen`: The code generated should be kept here. They should be designed focusing on the best performance, which depends on Xbyak.
@@ -71,7 +71,7 @@ Get all implementations and run once:
     }
 ```
 
-All kernels are inlcuded in `paddle/phi/kernels/funcs/jit/kernels.h`, which is automatically generated in compile time, you can only include this one header to get all the registered kernels.
+All kernels are inlcuded in `paddle/fluid/operators/jit/kernels.h`, which is automatically generated in compile time, you can only include this one header to get all the registered kernels.
 
 ## Solid Test
 
