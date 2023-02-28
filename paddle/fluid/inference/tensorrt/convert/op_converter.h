@@ -416,6 +416,17 @@ class OpConverter {
     return TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
   }
 
+  nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
+                             nvinfer1::ITensor* newShape) {
+    nvinfer1::ITensor* oldShape = Shape(input);
+    if (oldShape == newShape) {
+      return input;
+    }
+    auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+    shuffle->setInput(1, *newShape);
+    return shuffle->getOutput(0);
+  }
+
   // Concat not make rank changed
   nvinfer1::ITensor* Concat(const std::vector<nvinfer1::ITensor*>& inputs,
                             int axis = 0) {
