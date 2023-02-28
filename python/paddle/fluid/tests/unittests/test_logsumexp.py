@@ -238,7 +238,7 @@ class TestLogsumexpAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-#Test logsumexp bug
+# Test logsumexp bug
 class TestLogZeroError(unittest.TestCase):
     def test_errors(self):
         with paddle.fluid.dygraph.guard():
@@ -248,7 +248,7 @@ class TestLogZeroError(unittest.TestCase):
                 x = paddle.to_tensor(
                     np.reshape(array, [0, 0, 0]), dtype='float32'
                 )
-                paddle.logsumexp(x,axis=1)
+                paddle.logsumexp(x, axis=1)
 
             self.assertRaises(ValueError, test_0_size)
 

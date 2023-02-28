@@ -36,7 +36,6 @@ struct LogsumexpFunctor {
   void operator()(const Context& place, X* x, Y* y, const Dim& dim) {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     auto x_dim = x->dimensions();
-
     auto t_dim = x_dim;
     for (int i = 0; i < static_cast<int>(dim.size()); i++) {
       t_dim[dim[i]] = 1;
