@@ -28,19 +28,13 @@ import sys
 import collections
 import numpy as np
 
-from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
-    RoundRobin,
-    PSDispatcher,
-)
-from paddle import framework
-from paddle.framework import (
-    core,
+from .ps_dispatcher import RoundRobin, PSDispatcher
+from .. import core, framework
+from ..framework import (
     Program,
-    Block,
-)
-from paddle.static import (
     default_main_program,
     default_startup_program,
+    Block,
     Parameter,
 )
 from paddle.distributed.transpiler.details import (

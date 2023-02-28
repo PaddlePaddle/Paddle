@@ -38,24 +38,16 @@ import logging
 
 import numpy as np
 
-from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
-    RoundRobin,
-    PSDispatcher,
-)
-from paddle.utils import unique_name
-from paddle import framework
-from paddle.fluid.framework import grad_var_name
-from paddle.framework import (
-    core,
+from .ps_dispatcher import RoundRobin, PSDispatcher
+from .. import core, framework, unique_name
+from ..framework import (
     Program,
-    Block,
-)
-from paddle.static import (
     default_main_program,
     default_startup_program,
+    Block,
     Parameter,
+    grad_var_name,
 )
-
 
 LOOKUP_TABLE_TYPE = ["lookup_table", "lookup_table_v2"]
 LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_grad", "lookup_table_v2_grad"]
@@ -180,10 +172,10 @@ class DistributeTranspilerConfig:
     Examples:
         .. code-block:: python
 
-            from paddle.distributed.transpiler.ps_dispatcher import RoundRobin
-            import paddle.distributed.transpiler as transpiler
+            from paddle.fluid.transpiler.ps_dispatcher import RoundRobin
+            import paddle.fluid as fluid
 
-            config = transpiler.DistributeTranspilerConfig()
+            config = fluid.DistributeTranspilerConfig()
             config.slice_var_up = True
             config.split_method = RoundRobin
             config.min_block_size = 81920
@@ -289,12 +281,11 @@ class DistributeTranspiler:
 
             import paddle
             import paddle.fluid as fluid
-            import paddle.distributed.transpiler as transpiler
 
             paddle.enable_static()
 
-            x = paddle.static.data(name='x', shape=[1,13], dtype='float32')
-            y = paddle.static.data(name='y', shape=[1], dtype='float32')
+            x = fluid.data(name='x', shape=[1,13], dtype='float32')
+            y = fluid.data(name='y', shape=[1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost =paddle.nn.functional.square_error_cost(input=y_predict, label=y)
@@ -310,7 +301,7 @@ class DistributeTranspiler:
             trainer_id = 0
             trainers = 4
             role = "PSERVER"
-            t = transpiler.DistributeTranspiler()
+            t = fluid.DistributeTranspiler()
             t.transpile(
                  trainer_id, pservers=pserver_endpoints, trainers=trainers)
             if role == "PSERVER":
@@ -323,12 +314,12 @@ class DistributeTranspiler:
             # for nccl2 mode
             trainer_num = 2
             trainer_id = 0
-            config = transpiler.DistributeTranspilerConfig()
+            config = fluid.DistributeTranspilerConfig()
             config.mode = "nccl2"
             trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-            t = transpiler.DistributeTranspiler(config=config)
+            t = fluid.DistributeTranspiler(config=config)
             t.transpile(trainer_id=trainer_id, trainers=trainer_endpoints, current_endpoint="192.168.0.1:6174")
-            exe = paddle.static.ParallelExecutor(
+            exe = fluid.ParallelExecutor(
                 use_cuda=True,
                 loss_name=avg_loss.name,
                 num_trainers=trainer_num,
@@ -597,9 +588,9 @@ class DistributeTranspiler:
             trainer_id (int): id for current trainer worker, if you have
                 n workers, the id may range from 0 ~ n-1
             program (Program|None): program to transpile,
-                default is paddle.static.default_main_program().
+                default is fluid.default_main_program().
             startup_program (Program|None): startup_program to transpile,
-                default is paddle.static.default_startup_program().
+                default is fluid.default_startup_program().
             pservers (str): comma separated ip:port string for the pserver
                 list.
             trainers (int|str): in pserver mode this is the number of
@@ -607,7 +598,7 @@ class DistributeTranspiler:
                 endpoints.
             sync_mode (bool): Do sync training or not, default is True.
             startup_program (Program|None): startup_program to transpile,
-                default is paddle.static.default_main_program().
+                default is fluid.default_main_program().
             current_endpoint (str): need pass current endpoint when
                 transpile as nccl2 distributed mode. In pserver mode
                 this argument is not used.
@@ -615,7 +606,7 @@ class DistributeTranspiler:
         Examples:
             .. code-block:: python
 
-                transpiler = paddle.distributed.transpiler.DistributeTranspiler()
+                transpiler = fluid.DistributeTranspiler()
                 t.transpile(
                     trainer_id=0,
                     pservers="127.0.0.1:7000,127.0.0.1:7001",
@@ -1133,12 +1124,12 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-              import paddle.distributed.transpiler as transpiler
+              import paddle.fluid as fluid
               #this is an example, find available endpoints in your case
               pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
               trainer_id = 0
               trainers = 4
-              t = transpiler.DistributeTranspiler()
+              t = fluid.DistributeTranspiler()
               t.transpile(trainer_id, trainers=trainers, pservers=pserver_endpoints)
               trainer_program = t.get_trainer_program()
         """
@@ -1279,13 +1270,13 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-              import paddle.distributed.transpiler as transpiler
+              import paddle.fluid as fluid
               #this is an example, find available endpoints in your case
               pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
               current_endpoint = "192.168.0.1:6174"
               trainer_id = 0
               trainers = 4
-              t = transpiler.DistributeTranspiler()
+              t = fluid.DistributeTranspiler()
               t.transpile(
                    trainer_id, pservers=pserver_endpoints, trainers=trainers)
               pserver_program = t.get_pserver_program(current_endpoint)
@@ -1588,13 +1579,13 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-              import paddle.distributed.transpiler as transpiler
+              import paddle.fluid as fluid
               #this is an example, find available endpoints in your case
               pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
               current_endpoint = "192.168.0.1:6174"
               trainer_id = 0
               trainers = 4
-              t = transpiler.DistributeTranspiler()
+              t = fluid.DistributeTranspiler()
               t.transpile(
                    trainer_id, pservers=pserver_endpoints, trainers=trainers)
               pserver_program, pserver_startup_program = t.get_pserver_programs(current_endpoint)
@@ -1633,7 +1624,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 trainer_id = 0
                 trainers = 4
 
-                t = paddle.distributed.transpiler.DistributeTranspiler()
+                t = fluid.DistributeTranspiler()
                 t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
                 pserver_program = t.get_pserver_program(current_endpoint)
                 pserver_startup_program = t.get_startup_program(current_endpoint,
