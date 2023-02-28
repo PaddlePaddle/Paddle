@@ -623,7 +623,7 @@ def _lower_composite(block, blacklist=[]):
                     new_outs,
                 ):
                     if orig_out is None:
-                        # to keep same as phi op defination, orig_out may receive None
+                        # to keep same as phi op definition, orig_out may receive None
                         continue
                     elif new_out is not None:
                         assert orig_out.dtype == new_out.dtype, (
