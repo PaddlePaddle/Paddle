@@ -202,13 +202,15 @@ TEST(CustomKernel, custom_kernel_dot) {
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::UINT8, phi::make_ddim({2, 3}), phi::DataLayout::NCHW));
-  auto* dense_x_data = dense_x->mutable_data<uint8_t>(phi::CPUPlace());
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+  auto* dense_x_data = dev_ctx->template Alloc<int64_t>(dense_x);
 
   auto dense_y = std::make_shared<phi::DenseTensor>(
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::UINT8, phi::make_ddim({2, 3}), phi::DataLayout::NCHW));
-  auto* dense_y_data = dense_y->mutable_data<uint8_t>(phi::CPUPlace());
+  auto* dense_y_data = dev_ctx->template Alloc<int64_t>(dense_y);
 
   // dot x,y and result
   uint8_t sum[2] = {0, 0};
@@ -221,8 +223,6 @@ TEST(CustomKernel, custom_kernel_dot) {
   }
 
   // 6.prepare kernel_context
-  auto& pool = phi::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(phi::CPUPlace());
   auto kernel_context = phi::KernelContext(dev_ctx);
   kernel_context.EmplaceBackInput(dense_x.get());  // idx:0, index:[0,1)
   kernel_context.EmplaceBackInput(dense_y.get());  // idx:1, index:[1,2)
@@ -244,7 +244,8 @@ TEST(CustomKernel, custom_kernel_dot) {
   int64_t fake_attr_int64 = 4;
   phi::DataType fake_attr_dtype = phi::DataType::UINT32;
   phi::DenseTensor tmp_tensor;
-  tmp_tensor.mutable_data<uint8_t>({1}, phi::TransToPhiPlace(backend));
+  tmp_tensor.Resize({1});
+  dev_ctx->template Alloc<uint8_t>(&tmp_tensor);
   phi::Scalar fake_attr_scalar{tmp_tensor};
   phi::IntArray fake_attr_int_array;
   std::vector<int64_t> fake_attr_int64_vec;

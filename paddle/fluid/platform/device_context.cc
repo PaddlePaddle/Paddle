@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
 #endif
 
-#include "paddle/phi/backends/context_pool_impl.h"
+#include "paddle/phi/backends/context_pool_utils.h"
 
 namespace paddle {
 namespace platform {
