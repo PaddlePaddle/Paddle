@@ -313,6 +313,7 @@
   kernel :
     func : cumsum_grad
     data_type: x
+  composite: cumsum_grad(x, out_grad, axis, flatten, exclusive, reverse, x_grad)
 
 - backward_op : deformable_conv_grad
   forward : deformable_conv(Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step) -> Tensor(out)
@@ -721,6 +722,7 @@
     param : [x, y, grad_out]
   kernel :
     func : matmul_double_grad
+  composite : matmul_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x=false, transpose_y=false)
   backward : matmul_triple_grad
   optional : grad_x_grad, grad_y_grad
 
