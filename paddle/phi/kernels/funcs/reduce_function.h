@@ -1008,7 +1008,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
 
   config.SetOutputData(y_data, dev_ctx, &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
-  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
+  constexpr bool kIsTxBF16 = std::is_same<Tx, phi::dtype::bfloat16>::value;
+  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16 && !kIsTxBF16;
 #ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
     if (is_mean) {
