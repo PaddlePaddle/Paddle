@@ -247,7 +247,7 @@ class Engine:
                 labels = sample[split:]
         else:
             raise TypeError(
-                "Data should be a Dataset or IterableDatset, but received {}.".format(
+                "Data should be a Dataset or IterableDataset, but received {}.".format(
                     type(data).__name__
                 )
             )
@@ -699,7 +699,7 @@ class Engine:
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
         # For now, the completer has to be passed to the planner,
-        # because we may use it to complete the annotation of the backwarkward and update.
+        # because we may use it to complete the annotation of the backward and update.
         parallelizer = Parallelizer(
             mode,
             self._planners[mode].completer,

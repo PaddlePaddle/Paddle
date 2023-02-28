@@ -178,9 +178,12 @@ class AdamW(Optimizer):
             raise TypeError("weight_decay should be float or Tensor.")
         if lr_ratio is not None:
             assert isinstance(lr_ratio, Callable)
-            if not core.is_compiled_with_cuda():
+            if (
+                not core.is_compiled_with_cuda()
+                and not core.is_compiled_with_xpu()
+            ):
                 raise NotImplementedError(
-                    "'lr_ratio' is unimplemented in CPU, XPU and NPU"
+                    "'lr_ratio' is unimplemented in CPU, and NPU"
                 )
 
         if parameters is not None:
@@ -281,7 +284,6 @@ class AdamW(Optimizer):
         self._use_multi_tensor = None
         self.regularization = None
         self._auxiliary_vars = {}
-        self._already_create_accumulater = set()
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
@@ -423,12 +425,9 @@ class AdamW(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if p.name in self._already_create_accumulater:
-                continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
-                self._already_create_accumulater.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -439,7 +438,6 @@ class AdamW(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
-            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -496,6 +494,7 @@ class AdamW(Optimizer):
                 else self._beta2.numpy().item(0)
             )
 
+            found_inf = self._get_auxiliary_var('found_inf')
             _, _, _, _, _, _ = _C_ops.adamw_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -505,7 +504,7 @@ class AdamW(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                None,
+                found_inf,
                 _beta1,
                 _beta2,
                 self._epsilon,

@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
@@ -77,15 +78,16 @@ class SliceNPUKernel : public framework::OpKernel<T> {
     auto starts_tensor_list =
         ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts =
-          GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("StartsTensor"));
+      starts = phi::GetVectorFromTensor<int>(
+          ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
     }
 
     auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("EndsTensor"));
+      ends = phi::GetVectorFromTensor<int>(
+          ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
     }
@@ -172,15 +174,16 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
     auto starts_tensor_list =
         ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts =
-          GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("StartsTensor"));
+      starts = phi::GetVectorFromTensor<int>(
+          ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
     }
 
     auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("EndsTensor"));
+      ends = phi::GetVectorFromTensor<int>(
+          ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
     }

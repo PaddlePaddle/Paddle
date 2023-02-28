@@ -36,5 +36,7 @@ Tensor full(const IntArray& shape,
             const Scalar& value,
             DataType dtype = DataType::FLOAT32,
             const Place& place = CPUPlace());
+template <typename T>
+Tensor cast(const Tensor& x, DataType dtype);
 }  // namespace prim
 }  // namespace paddle
