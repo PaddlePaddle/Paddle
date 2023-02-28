@@ -171,9 +171,6 @@ class TestReduceMeanOp(OpTest):
             'reduce_all': self.reduce_all,
         }
 
-        if self.dtype == 'float16':
-            self.__class__.no_need_check_grad = True
-
     def set_attrs(self):
         pass
 
