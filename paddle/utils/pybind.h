@@ -40,7 +40,8 @@ typedef struct {
 bool PyCheckTensor(PyObject* obj);
 
 // Internal use only, to expose the Tensor type to Python.
-paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
+paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj,
+                                              Py_ssize_t arg_pos);
 
 // Internal use only, to expose the Tensor type to Python.
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,

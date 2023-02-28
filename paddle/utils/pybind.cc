@@ -31,7 +31,8 @@ bool PyCheckTensor(PyObject* obj) {
   return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
 }
 
-paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
+paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj,
+                                              Py_ssize_t arg_pos) {
   if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type)) ||
       PyObject_IsInstance(obj,
                           reinterpret_cast<PyObject*>(p_string_tensor_type))) {
