@@ -127,5 +127,11 @@ class TestCase9(TestXPUTransposeOp):
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
+class TestCase10(TestXPUTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 3, 2)
+        self.axis = (-1, 1, -3)
+
+
 if __name__ == "__main__":
     unittest.main()

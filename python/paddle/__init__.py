@@ -535,6 +535,7 @@ __all__ = [  # noqa
     'quantile',
     'nanquantile',
     'no_grad',
+    'enable_grad',
     'set_grad_enabled',
     'is_grad_enabled',
     'mod',

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/operators/split_op.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -35,7 +36,7 @@ class SplitMLUKernel : public framework::OpKernel<T> {
     bool need_resize_outs_dims = false;
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
-      axis = GetDataFromTensor(axis_tensor)[0];
+      axis = phi::GetVectorFromTensor(axis_tensor)[0];
       need_resize_outs_dims = true;
     }
     auto sections_tensor_list =

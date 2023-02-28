@@ -5,11 +5,19 @@ if(WITH_GPU)
     test_phi_tensor
     SRCS test_phi_tensor.cc
     DEPS glog selected_rows ${COMMON_API_TEST_DEPS})
+  nv_test(
+    test_allocator
+    SRCS test_allocator.cu
+    DEPS memory place device_context context_pool)
 elseif(WITH_ROCM)
   hip_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
     DEPS glog selected_rows ${COMMON_API_TEST_DEPS})
+  hip_test(
+    test_allocator
+    SRCS test_allocator.cu
+    DEPS memory place device_context context_pool)
 else()
   cc_test(
     test_phi_tensor
