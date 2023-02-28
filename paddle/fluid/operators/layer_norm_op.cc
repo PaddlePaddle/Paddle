@@ -16,6 +16,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -253,6 +256,56 @@ class LayerNormGradOpMaker : public framework::SingleGradOpMaker<T> {
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(LayerNormGradNoNeedBufferVarInferer,
                                     "Bias");
 
+class LayerNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // get inputs
+    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
+    paddle::experimental::Tensor mean = this->GetSingleForwardOutput("Mean");
+    paddle::experimental::Tensor var = this->GetSingleForwardOutput("Variance");
+    paddle::experimental::Tensor y_grad = this->GetSingleOutputGrad("Y");
+    paddle::optional<paddle::experimental::Tensor> scale =
+        this->GetOptionalSingleForwardInput("Scale");
+    paddle::optional<paddle::experimental::Tensor> bias =
+        this->GetOptionalSingleForwardInput("Bias");
+
+    // get Attrs
+    auto epsilon = this->Attr<float>("epsilon");
+    auto begin_norm_axis = this->Attr<int>("begin_norm_axis");
+
+    // get outputs
+    paddle::experimental::Tensor x_grad = this->GetSingleInputGrad("X");
+    paddle::experimental::Tensor scale_grad = this->GetSingleInputGrad("Scale");
+    paddle::experimental::Tensor bias_grad = this->GetSingleInputGrad("Bias");
+
+    auto dx_ptr = this->GetOutputPtr(&x_grad);
+    std::string dx_name = this->GetOutputName(x_grad);
+    auto dscale_ptr = this->GetOutputPtr(&scale_grad);
+    std::string dscale_name = this->GetOutputName(scale_grad);
+    auto dbias_ptr = this->GetOutputPtr(&bias_grad);
+    std::string dbias_name = this->GetOutputName(bias_grad);
+
+    VLOG(6) << "Runing layer_norm_grad composite func";
+    prim::layer_norm_grad<prim::DescTensor>(x,
+                                            scale,
+                                            bias,
+                                            mean,
+                                            var,
+                                            y_grad,
+                                            epsilon,
+                                            begin_norm_axis,
+                                            dx_ptr,
+                                            dscale_ptr,
+                                            dbias_ptr);
+
+    this->RecoverOutputName(x_grad, dx_name);
+    this->RecoverOutputName(scale_grad, dscale_name);
+    this->RecoverOutputName(bias_grad, dbias_name);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -261,7 +314,8 @@ REGISTER_OPERATOR(layer_norm,
                   ops::LayerNormOp,
                   ops::LayerNormOpMaker,
                   ops::LayerNormGradOpMaker<paddle::framework::OpDesc>,
-                  ops::LayerNormGradOpMaker<paddle::imperative::OpBase>);
+                  ops::LayerNormGradOpMaker<paddle::imperative::OpBase>,
+                  ops::LayerNormCompositeGradOpMaker);
 REGISTER_OPERATOR(layer_norm_grad,
                   ops::LayerNormGradOp,
                   ops::LayerNormGradNoNeedBufferVarInferer);
