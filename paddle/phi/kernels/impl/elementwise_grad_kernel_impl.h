@@ -314,13 +314,13 @@ void ElementwiseFMinGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const DenseTensor& out_grad,
-                               int axis,
                                DenseTensor* x_grad,
                                DenseTensor* y_grad) {
   funcs::ElementwiseGradPreProcess(out_grad, x_grad);
   auto out = out_grad;  // Fake out, not used
   auto x_dim = x.dims();
   auto y_dim = y.dims();
+  int axis = -1;
   if (x.dims() == y.dims()) {
     funcs::ElemwiseGradComputeNoBroadcast<Context,
                                           T,
@@ -830,13 +830,12 @@ struct HeavisideGradDy {
 };
 
 template <typename T, typename Context>
-void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
-                                    const DenseTensor& x,
-                                    const DenseTensor& y,
-                                    const DenseTensor& dout,
-                                    int axis,
-                                    DenseTensor* dx,
-                                    DenseTensor* dy) {
+void HeavisideGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& dout,
+                         DenseTensor* dx,
+                         DenseTensor* dy) {
   funcs::ElementwiseGradPreProcess(dout, dx);
   phi::funcs::
       ElemwiseGradCompute<Context, T, HeavisideGradDx<T>, HeavisideGradDy<T>>(
@@ -845,7 +844,7 @@ void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
           y,
           dout,
           dout,
-          axis,
+          -1,
           dx,
           dy,
           HeavisideGradDx<T>(),

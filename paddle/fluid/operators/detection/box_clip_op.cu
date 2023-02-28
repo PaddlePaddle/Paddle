@@ -59,7 +59,7 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
     auto stream = dev_ctx.stream();
     const size_t batch_size = lod.back().size() - 1;
     T *output_data = output->mutable_data<T>(dev_ctx.GetPlace());
-    paddle::framework::MixVector<size_t> mix_vector(&abs_offset_lod[0]);
+    phi::MixVector<size_t> mix_vector(&abs_offset_lod[0]);
     GPUBoxClip<T, 512><<<batch_size, 512, 0, stream>>>(
         input->data<T>(),
         mix_vector.CUDAMutableData(dev_ctx.GetPlace()),
