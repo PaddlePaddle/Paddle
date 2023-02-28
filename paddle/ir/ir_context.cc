@@ -22,7 +22,8 @@
 #include "paddle/ir/type_base.h"
 
 namespace ir {
-// The implementation class of the IrContext class
+// The implementation class of the IrContext class, cache registered
+// AbstractType, TypeStorage, Dialect.
 class IrContextImpl {
  public:
   IrContextImpl() {}
@@ -83,20 +84,20 @@ class IrContextImpl {
     return nullptr;
   }
 
-  ir::SpinLock registed_abstract_types_lock_;
-
   // Cached AbstractType instances.
   std::unordered_map<TypeId, AbstractType *> registed_abstract_types_;
+
+  ir::SpinLock registed_abstract_types_lock_;
 
   // TypeStorage uniquer and cache instances.
   StorageManager registed_storage_manager_;
 
-  ir::SpinLock registed_dialect_lock_;
-
   // The dialcet registered in the context.
   std::unordered_map<std::string, Dialect *> registed_dialect_;
 
-  // Some built-in type.
+  ir::SpinLock registed_dialect_lock_;
+
+  // Some built-in types.
   Float32Type fp32_type;
   Int32Type int32_type;
 

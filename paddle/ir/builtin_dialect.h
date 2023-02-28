@@ -29,6 +29,8 @@ class BuiltinDialect : public ir::Dialect {
   /// \brief Each Dialect needs to provide a name function to return the name of
   /// the Dialect.
   ///
+  /// \return The name of this Dialect.
+  ///
   static const char *name() { return "builtin"; }
 
  private:

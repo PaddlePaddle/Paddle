@@ -24,7 +24,11 @@ namespace ir {
 
 ///
 /// \brief Definitions of built-in type classes. The built-in type object get
-/// method is as follows: Type fp32 = Float32Type::get(ctx);
+/// method is as follows:
+/// \code{cpp}
+///   ir::IrContext *ctx = ir::IrContext::Instance();
+///   Type fp32 = Float32Type::get(ctx);
+/// \endcode
 ///
 class Float32Type : public ir::Type {
  public:
