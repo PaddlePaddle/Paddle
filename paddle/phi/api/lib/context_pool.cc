@@ -16,8 +16,11 @@ limitations under the License. */
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/cuda_stream.h"
 #include "paddle/phi/core/enforce.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/core/cuda_stream.h"
+#endif
 
 #include "paddle/fluid/platform/init.h"
 
@@ -61,6 +64,7 @@ PADDLE_API phi::Allocator* GetAllocator(const phi::Place& place) {
   return const_cast<phi::Allocator*>(&dev_ctx->GetAllocator());
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PADDLE_API phi::CUDAStream* GetCurrentCUDAStream(const phi::Place& place) {
   PADDLE_ENFORCE(place.GetType() == phi::AllocationType::GPU,
                  phi::errors::InvalidArgument(
@@ -73,5 +77,6 @@ PADDLE_API phi::CUDAStream* GetCurrentCUDAStream(const phi::Place& place) {
       static_cast<const phi::GPUContext*>(pool.Get(place));
   return dev_ctx->cuda_stream();
 }
+#endif
 
 }  // namespace paddle
