@@ -191,6 +191,10 @@ bool IsCpuOp(const Instruction& instr) {
   return platform::is_cpu_place(instr.DeviceContext().GetPlace());
 }
 
+bool IsGradOp(const std::string& op_name) {
+  return paddle::string::ends_with(op_name, "_grad");
+}
+
 bool IsSupportedHeterPlace(const phi::Place& place) {
   return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
          platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
@@ -744,16 +748,16 @@ void BuildOpFuncList(const platform::Place& place,
             op_func_node.phi_kernel_->GetKernelRegisteredType() ==
                 phi::KernelRegisteredType::FUNCTION) {
           VLOG(6) << op_type << " run function kernel";
-          phi::KernelContext phi_kernel_context;
-          op_with_kernel->BuildPhiKernelContext(
-              runtime_context, dev_ctx, &phi_kernel_context);
           if (static_build) {
             FakeInitializeOutputsForFunctionKernel(
-                op_func_node,
+                *(op_func_node.phi_kernel_),
                 *(op_with_kernel->PhiKernelSignature()),
-                &phi_kernel_context);
-
+                runtime_context,
+                *dev_ctx);
           } else {
+            phi::KernelContext phi_kernel_context;
+            op_with_kernel->BuildPhiKernelContext(
+                runtime_context, dev_ctx, &phi_kernel_context);
             (*op_func_node.phi_kernel_)(&phi_kernel_context);
           }
         } else if (run_phi_kernel &&
@@ -784,14 +788,16 @@ void BuildOpFuncList(const platform::Place& place,
         // post-process grad_op.outputs if need cast complex grad into real
         // grad.
         // NOTE(Aurelius84): insert a transfer_dtype_op inplacely to cast it.
-        if (framework::IsComplexType(kernel_type.data_type_)) {
+        if (IsGradOp(op_type) &&
+            framework::IsComplexType(kernel_type.data_type_)) {
           interpreter::HandleComplexGradToRealGrad(op_func_node,
                                                    place,
                                                    output_name_map,
                                                    &runtime_context.outputs,
                                                    var_scope,
                                                    vec_func_list,
-                                                   local_scope);
+                                                   local_scope,
+                                                   static_build);
         }
         if (!op_func_node.inplace_back_map.empty()) {
           auto& m = op_func_node.inplace_back_map;
@@ -913,67 +919,110 @@ void BuildVariableScope(const framework::BlockDesc& block,
   }
 }
 
+phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
+  if (var) {
+    if (var->template IsType<phi::DenseTensor>()) {
+      return var->template GetMutable<phi::DenseTensor>();
+    } else if (var->template IsType<phi::SelectedRows>()) {
+      return var->template GetMutable<phi::SelectedRows>();
+    } else if (var->template IsType<phi::SparseCooTensor>()) {
+      return var->template GetMutable<phi::SparseCooTensor>();
+    } else if (var->template IsType<framework::LoDTensorArray>()) {
+      return var->template GetMutable<framework::LoDTensorArray>();
+    } else if (var->template IsType<framework::Strings>()) {
+      return var->template GetMutable<framework::Strings>();
+    } else if (var->template IsType<paddle::framework::RawTensor>()) {
+      return var->template GetMutable<paddle::framework::RawTensor>();
+    } else if (!var->IsInitialized()) {
+      // The following is for RAW type of var
+      return var->template GetMutable<paddle::framework::RawTensor>();
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported `%s` type when get tensor.",
+          framework::ToTypeName(var->Type())));
+    }
+  } else {
+    VLOG(4) << "Var is nullptr";
+    return nullptr;
+  }
+}
+
+void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
+                          const phi::DataType& dtype,
+                          const phi::Place& place,
+                          phi::TensorBase* tensor) {
+  PADDLE_ENFORCE_NOT_NULL(
+      tensor,
+      phi::errors::InvalidArgument(
+          "The tensor to fake intialize should not be null."));
+  if (place == phi::CPUPlace()) {
+    dev_ctx.HostAlloc(tensor,
+                      dtype,
+                      /*requested_size=*/0,
+                      /*fake_alloc=*/true);
+  } else {
+    PADDLE_ENFORCE_EQ(
+        place,
+        dev_ctx.GetPlace(),
+        phi::errors::Unavailable("The place %s for fack alloc is not equal to "
+                                 "the place %s of DeviceContext.",
+                                 place,
+                                 dev_ctx.GetPlace()));
+    dev_ctx.Alloc(tensor,
+                  dtype,
+                  /*requested_size=*/0,
+                  /*pinned=*/false,
+                  /*fake_alloc=*/true);
+  }
+}
+
 void FakeInitializeOutputsForFunctionKernel(
-    const OpFuncNode& op_func_node,
+    const phi::Kernel& phi_kernel,
     const phi::KernelSignature& kernel_sig,
-    phi::KernelContext* phi_kernel_context) {
-  // const std::string& op_type = op_func_node.operator_base_->Type();
-  auto output_defs = op_func_node.phi_kernel_->args_def().output_defs();
-  auto out_names = kernel_sig.output_names;
+    const RuntimeContext& ctx,
+    const platform::DeviceContext& dev_ctx) {
+  auto output_names = kernel_sig.output_names;
+  auto output_defs = phi_kernel.args_def().output_defs();
+  PADDLE_ENFORCE_EQ(output_names.size(),
+                    output_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "The size of outputs_args names (%d) must be equal to "
+                        "the size of kernel output_defs (%d).",
+                        output_names.size(),
+                        output_defs.size()));
 
-  for (size_t i = 0; i < out_names.size(); ++i) {
-    // calcute the start and end index of the output tensors
-    size_t start_idx = phi_kernel_context->OutputRangeAt(i).first;
-    size_t end_idx = phi_kernel_context->OutputRangeAt(i).second;
-    for (size_t j = start_idx; j < end_idx; ++j) {
-      auto* out_tensor = phi_kernel_context->MutableOutputAt(j);
-      if (out_tensor == nullptr) {
-        VLOG(4) << "Output" << out_names[i] << " is nullptr";
-        continue;
-      }
+  size_t start_idx = 0;
+  for (size_t i = 0; i < output_names.size(); ++i) {
+    auto it = ctx.outputs.find(output_names[i]);
 
-      if (phi::DenseTensor::classof(out_tensor) ||
-          phi::SelectedRows::classof(out_tensor) ||
-          phi::SparseCooTensor::classof(out_tensor) ||
-          phi::SparseCsrTensor::classof(out_tensor)) {
-        if (!out_tensor->initialized()) {
-          phi::DataType dtype = output_defs[j].dtype;
-          phi::Place place = phi::TransToPhiPlace(output_defs[j].backend);
-          auto* dev_ctx =
-              &(phi_kernel_context->GetDeviceContext<phi::DeviceContext>());
+    // Deal with the case that some outputs are not found or be NULL when run
+    // the kernel. For example : the outputs of matmul_grad are dx and dy,
+    // sometimes dx or dy may be NULL.
+    if (it == ctx.outputs.end() || it->second.empty()) {
+      VLOG(4) << "Output " << output_names[i] << " not found";
+      ++start_idx;
+      continue;
+    }
 
-          if (dtype == DataType::UNDEFINED) {
-            dtype = out_tensor->dtype();  // dtype from InferMeta
-          }
+    auto& outs_vector = it->second;
+    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+      phi::TensorBase* out_tensor = GetTensorFormVar(outs_vector[offset]);
+      if (out_tensor && !out_tensor->initialized()) {
+        phi::TensorArgDef& tensor_arg_def = output_defs[start_idx + offset];
+        phi::DataType dtype = tensor_arg_def.dtype;
+        phi::Place place = phi::TransToPhiPlace(tensor_arg_def.backend);
 
-          VLOG(4) << out_names[i] << " fake alloc with type " << dtype
-                  << " on place " << place << " " << out_tensor;
-
-          if (place == phi::CPUPlace()) {
-            dev_ctx->HostAlloc(out_tensor,
-                               dtype,
-                               /*requested_size=*/0,
-                               /*fake_alloc=*/true);
-          } else {
-            PADDLE_ENFORCE_EQ(place,
-                              dev_ctx->GetPlace(),
-                              phi::errors::Unavailable(
-                                  "The place %s for fack alloc is not equal to "
-                                  "the place %s of DeviceContext.",
-                                  place,
-                                  dev_ctx->GetPlace()));
-            dev_ctx->Alloc(out_tensor,
-                           dtype,
-                           /*requested_size=*/0,
-                           /*pinned=*/false,
-                           /*fake_alloc=*/true);
-          }
+        if (dtype == DataType::UNDEFINED) {
+          dtype = out_tensor->dtype();  // dtype from InferMeta
         }
-      } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "Unsupport %s type now", out_tensor->type_info().name()));
+
+        VLOG(4) << output_names[i] << " fake alloc with type " << dtype
+                << " on place " << place << " " << out_tensor;
+
+        FakeInitializeTensor(dev_ctx, dtype, place, out_tensor);
       }
     }
+    start_idx += outs_vector.size();
   }
 }
 
@@ -990,34 +1039,17 @@ void FakeInitializeOutputsForStructureKernel(
     const std::string& parameter_name = item.first;
     auto multi_output_var = execution_context->MultiOutputVar(parameter_name);
     for (Variable* var : multi_output_var) {
-      if (var) {
-        phi::TensorBase* out_tensor;
-        if (var->IsType<phi::DenseTensor>()) {
-          out_tensor = var->GetMutable<phi::DenseTensor>();
-        } else if (var->IsType<phi::SelectedRows>()) {
-          out_tensor = var->GetMutable<phi::SelectedRows>();
-        } else if (var->IsType<phi::SparseCsrTensor>()) {
-          out_tensor = var->GetMutable<phi::SparseCsrTensor>();
-        } else if (var->IsType<phi::SparseCooTensor>()) {
-          out_tensor = var->GetMutable<phi::SparseCooTensor>();
-        } else {
-          PADDLE_THROW(phi::errors::Unimplemented("Unsupport %s type now",
-                                                  ToTypeName(var->Type())));
-        }
+      phi::TensorBase* out_tensor = GetTensorFormVar(var);
+      if (out_tensor && !out_tensor->initialized()) {
+        phi::DataType dtype =
+            phi::TransToPhiDataType(op_kernel_type.data_type_);
+        phi::Place place = execution_context->GetPlace();
 
-        if (!out_tensor->initialized()) {
-          phi::DataType dtype =
-              phi::TransToPhiDataType(op_kernel_type.data_type_);
-          phi::Place place = execution_context->GetPlace();
+        VLOG(4) << parameter_name << " fake alloc with type " << dtype
+                << " on place " << place << " " << out_tensor;
 
-          VLOG(4) << parameter_name << " fake alloc with type " << dtype
-                  << " on place " << place << " " << out_tensor;
-          execution_context->device_context().Alloc(out_tensor,
-                                                    dtype,
-                                                    /*requested_size=*/0,
-                                                    /*pinned=*/false,
-                                                    /*fake_alloc=*/true);
-        }
+        FakeInitializeTensor(
+            execution_context->device_context(), dtype, place, out_tensor);
       }
     }
   }

@@ -73,6 +73,8 @@ bool IsCommunicationOp(const Instruction& instr);
 
 bool IsCpuOp(const Instruction& instr);
 
+bool IsGradOp(const std::string& op_name);
+
 bool IsMemcpyD2H(const Instruction& instr);
 
 bool IsMemcpyH2D(const Instruction& instr);
@@ -98,9 +100,10 @@ void BuildVariableScope(const framework::BlockDesc& block,
                         VariableScope* var_scope);
 
 void FakeInitializeOutputsForFunctionKernel(
-    const OpFuncNode& op_func_node,
+    const phi::Kernel& phi_kernel,
     const phi::KernelSignature& kernel_sig,
-    phi::KernelContext* phi_kernel_context);
+    const RuntimeContext& ctx,
+    const platform::DeviceContext& dev_ctx);
 
 void FakeInitializeOutputsForStructureKernel(
     const framework::OpKernelType& op_kernel_type,

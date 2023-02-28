@@ -202,16 +202,18 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     new_op_func_node.kernel_func_(exec_ctx);
   } else {
     new_op_func_node.phi_kernel_ = op_with_kernel->PhiKernel();
-    phi::KernelContext phi_kernel_context;
-    op_with_kernel->BuildPhiKernelContext(
-        runtime_context, dev_ctx, &phi_kernel_context);
-    if (!skip_run) {
-      (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
-    } else {
+
+    if (skip_run) {
       FakeInitializeOutputsForFunctionKernel(
-          new_op_func_node,
+          *(new_op_func_node.phi_kernel_),
           *(op_with_kernel->PhiKernelSignature()),
-          &phi_kernel_context);
+          runtime_context,
+          *dev_ctx);
+    } else {
+      phi::KernelContext phi_kernel_context;
+      op_with_kernel->BuildPhiKernelContext(
+          runtime_context, dev_ctx, &phi_kernel_context);
+      (*new_op_func_node.phi_kernel_)(&phi_kernel_context);
     }
   }
 
