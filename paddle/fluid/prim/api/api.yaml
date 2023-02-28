@@ -25,5 +25,6 @@
 - tile
 - transpose
 - pad
+- cumsum
 - greater_than
 - less_equal
