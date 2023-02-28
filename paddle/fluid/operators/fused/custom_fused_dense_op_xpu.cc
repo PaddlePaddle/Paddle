@@ -244,49 +244,50 @@ class CustomFusedDenseXPUGradKernel : public framework::OpKernel<T> {
       phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
     }
     if (dy) {
-      //phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
-    	int m = info_dy.m;
-    	int n = info_dy.n;
-    	int k = info_dy.k;
-    	int ldx = info_dy.stride_x;
-    	int ldy = info_dy.stride_y;
-    	int ldout = info_dy.stride_out;
-    	bool trans_x = info_dy.trans_x;
-    	bool trans_y = info_dy.trans_y;
-    	float* max_x = info_dy.max_x;
-    	float* max_y = info_dy.max_y;
-    	float* max_out = info_dy.max_out;
-
-      XPUType* dbias_ptr = reinterpret_cast<XPUType*>(dbias->mutable_data<T>(ctx.GetPlace()));
-      if ((dbias_ptr == nullptr) || std::is_same<T, float>::value) {
-        r = xpu::fc_dbias_fusion<XPUType, XPUType, XPUType, float, int16_t>(xpu_ctx, reinterpret_cast<const XPUType*>(a_2), reinterpret_cast<const XPUType*>(b_2), reinterpret_cast<XPUType*>(c_2), m, n, k, trans_x,
-            trans_y, max_x, max_y, max_out, ldx, ldy, ldout, 1.0f, 0.0f,
-            nullptr, reinterpret_cast<float*>(dbias_ptr));
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_dbias_fusion");
-      } else {
-        float* dbias_tmp_ptr = RAII_GUARD.alloc_l3_or_gm<float>(dbias->numel());
-        r = xpu::fc_dbias_fusion<XPUType, XPUType, XPUType, float, int16_t>(xpu_ctx, reinterpret_cast<const XPUType*>(a_2), reinterpret_cast<const XPUType*>(b_2), reinterpret_cast<XPUType*>(c_2), m, n, k, trans_x,
-            trans_y, max_x, max_y, max_out, ldx, ldy, ldout, 1.0f, 0.0f,
-            nullptr, dbias_tmp_ptr);
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_dbias_fusion");
-        r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
-                                dbias_tmp_ptr,
-                                dbias_ptr,
-                                dbias->numel());
-        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      phi::MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
+      // 3. dbias
+      if (dbias) {
+        XPUType* dbias_ptr =
+            reinterpret_cast<XPUType*>(dbias->mutable_data<T>(ctx.GetPlace()));
+        r = xpu::reduce_sum(xpu_ctx,
+                            dout_fc_ptr,
+                            dbias_ptr,
+                            {info_forward.m, info_forward.n},
+                            {0});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
       }
+      
+    	// int m = info_forward.k;
+    	// int n = info_forward.n;
+    	// int k = info_forward.m;
+    	// int ldx = info_forward.stride_x;
+    	// int ldy = info_forward.n;
+    	// int ldout = info_forward.n;
+    	// bool trans_x = !info_forward.trans_x;
+    	// bool trans_y = info_forward.trans_y;
+    	// float* max_x = nullptr;
+    	// float* max_y = nullptr;
+    	// float* max_out = nullptr;
+      // XPUType* dbias_ptr = reinterpret_cast<XPUType*>(dbias->mutable_data<T>(ctx.GetPlace()));
+      // if ((!dbias) || std::is_same<T, float>::value) {
+      //   r = xpu::fc_dbias_fusion<XPUType, XPUType, XPUType, float, int16_t>(xpu_ctx, reinterpret_cast<const XPUType*>(b_2), reinterpret_cast<const XPUType*>(a_2), reinterpret_cast<XPUType*>(c_2), m, n, k, trans_x,
+      //       trans_y, max_x, max_y, max_out, ldx, ldy, ldout, 1.0f, 0.0f,
+      //       nullptr, reinterpret_cast<float*>(dbias_ptr));
+      //   PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_dbias_fusion");
+      // } else {
+      //   float* dbias_tmp_ptr = RAII_GUARD.alloc_l3_or_gm<float>(dbias->numel());
+      //   r = xpu::fc_dbias_fusion<XPUType, XPUType, XPUType, float, int16_t>(xpu_ctx, reinterpret_cast<const XPUType*>(b_2), reinterpret_cast<const XPUType*>(a_2), reinterpret_cast<XPUType*>(c_2), m, n, k, trans_x,
+      //       trans_y, max_x, max_y, max_out, ldx, ldy, ldout, 1.0f, 0.0f,
+      //       nullptr, dbias_tmp_ptr);
+      //   PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_dbias_fusion");
+      //   r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
+      //                           dbias_tmp_ptr,
+      //                           dbias_ptr,
+      //                           dbias->numel());
+      //   PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      // }
     }
-    // 3. dbias
-    /*if (dbias) {
-      XPUType* dbias_ptr =
-          reinterpret_cast<XPUType*>(dbias->mutable_data<T>(ctx.GetPlace()));
-      r = xpu::reduce_sum(xpu_ctx,
-                          dout_fc_ptr,
-                          dbias_ptr,
-                          {info_forward.m, info_forward.n},
-                          {0});
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
-    }*/
+
 
     if (std::getenv("XPU_PADDLE_FC_PRINT") != nullptr) {
       auto tag_end = std::chrono::steady_clock::now();
