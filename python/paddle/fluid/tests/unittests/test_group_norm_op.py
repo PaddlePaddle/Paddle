@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 from testsuite import create_op
 
 import paddle
@@ -61,9 +61,17 @@ class TestGroupNormOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_dtype)
 
 
+def group_norm_wrapper(input, weight, bias, epsilon, num_groups, data_format):
+    return paddle._C_ops.group_norm(
+        input, weight, bias, epsilon, num_groups, data_format
+    )
+
+
 class TestGroupNormOp(OpTest):
     def setUp(self):
         self.op_type = "group_norm"
+        self.python_api = group_norm_wrapper
+        self.python_out_sig = ['Out']
         self.data_format = "NCHW"
         self.dtype = np.float64
         self.shape = (2, 100, 3, 5)
