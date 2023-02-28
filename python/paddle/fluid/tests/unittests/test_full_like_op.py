@@ -19,37 +19,19 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
+import paddle.framework.dtype as dtypes
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.static import Program, program_guard
 
 
-def convert_to_dtype_(dtype):
-    if dtype == 5:
-        return core.VarDesc.VarType.FP32
-    elif dtype == 6:
-        return core.VarDesc.VarType.FP64
-    elif dtype == 4:
-        return core.VarDesc.VarType.FP16
-    elif dtype == 2:
-        return core.VarDesc.VarType.INT32
-    elif dtype == 1:
-        return core.VarDesc.VarType.INT16
-    elif dtype == 3:
-        return core.VarDesc.VarType.INT64
-    elif dtype == 0:
-        return core.VarDesc.VarType.BOOL
-    elif dtype == 22:
-        return core.VarDesc.VarType.BF16
-    elif dtype == 20:
-        return core.VarDesc.VarType.UINT8
-    elif dtype == 21:
-        return core.VarDesc.VarType.INT8
-    elif dtype == np.complex64:
-        raise ValueError("Not supported dtype %s" % dtype)
-
-
 def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
-    return paddle.full_like(x, value, convert_to_dtype_(out_dtype), name)
+    if isinstance(out_dtype, int):
+        tmp_dtype = dtypes.dtype(out_dtype)
+    elif out_dtype == np.complex64:
+        raise ValueError("Not supported dtype %s" % out_dtype)
+    else:
+        tmp_dtype = out_dtype
+    return paddle.full_like(x, value, tmp_dtype, name)
 
 
 class TestFullOp(unittest.TestCase):
