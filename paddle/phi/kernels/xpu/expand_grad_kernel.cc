@@ -35,6 +35,11 @@ void ExpandGradKernel(const Context& ctx,
   in_grad_dims.insert(
       in_grad_dims.begin(), out_grad.dims().size() - in_grad->dims().size(), 1);
 
+  // Two zero
+  if (out_grad_dims.size() == 0 && in_grad_dims.size() == 0) {
+    return;
+  }
+
   int r = xpu::expand_grad<XPUType>(
       ctx.x_context(),
       reinterpret_cast<const XPUType*>(out_grad.data<T>()),

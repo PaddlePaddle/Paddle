@@ -28,6 +28,7 @@
 
 namespace paddle {
 namespace prim {
+
 class UniqueNameGenerator {
  public:
   explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}
@@ -94,7 +95,7 @@ class StaticCompositeContext {
       : current_block_desc_(nullptr),
         generator_(new UniqueNameGenerator()),
         skip_comp_ops_({"matmul_v2"}) {}
-
+  // TODO(Ruting) test cases when fix static backward
   framework::BlockDesc* current_block_desc_;
   std::unique_ptr<UniqueNameGenerator> generator_;
   std::unordered_set<std::string> skip_comp_ops_;

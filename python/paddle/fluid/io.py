@@ -563,7 +563,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
             paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
-            t = distribute_transpiler.DistributeTranspiler()
+            t = paddle.distributed.transpiler.DistributeTranspiler()
             t.transpile(...)
             train_program = t.get_trainer_program()
             _save_distributed_persistables(executor=exe, dirname=param_path, main_program=train_program)
@@ -1179,7 +1179,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
             paddle.enable_static()
             exe = fluid.Executor(fluid.CPUPlace())
             param_path = "./my_paddle_model"
-            t = distribute_transpiler.DistributeTranspiler()
+            t = paddle.distributed.transpiler.DistributeTranspiler()
             t.transpile(...)
             pserver_prog = t.get_pserver_program(...)
             _load_distributed_persistables(executor=exe, dirname=param_path, main_program=pserver_prog)

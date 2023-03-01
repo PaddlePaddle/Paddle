@@ -366,6 +366,20 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
 
+class Testfp16TileOp(unittest.TestCase):
+    def testfp16(self):
+        input_x = (np.random.random([1, 2, 3])).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[1, 2, 3], dtype='float16')
+            repeat_times = [2, 2]
+            out = paddle.tile(x, repeat_times=repeat_times)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': input_x}, fetch_list=[out])
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
