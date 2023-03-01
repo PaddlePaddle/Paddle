@@ -19,15 +19,7 @@ from multiprocessing import Manager, Process
 
 import paddle.fluid as fluid
 
-__all__ = [
-    'Role',
-    'RoleMakerBase',
-    'MPISymetricRoleMaker',
-    'UserDefinedRoleMaker',
-    'UserDefinedCollectiveRoleMaker',
-    'PaddleCloudRoleMaker',
-    'GeneralRoleMaker',
-]
+__all__ = []
 
 
 class Role:
