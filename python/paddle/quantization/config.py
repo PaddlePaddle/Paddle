@@ -93,15 +93,6 @@ class QuantConfig(object):
 
         self._customized_leaves = []
 
-        self._constraints = []
-
-    @property
-    def constraints(self):
-        return self._constraints
-
-    def add_constraints(self, constraint):
-        self._constraints.append(constraint)
-
     def add_layer_config(
         self,
         layer: Union[Layer, list],
