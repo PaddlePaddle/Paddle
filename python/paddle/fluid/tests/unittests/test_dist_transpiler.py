@@ -81,7 +81,11 @@ class TranspilerTest(unittest.TestCase):
     def _transpiler_instance(self, config=None, sync_mode=True):
         if not self.transpiler:
             main = self.get_main_program()
-            self.transpiler = fluid.DistributeTranspiler(config=config)
+            self.transpiler = (
+                paddle.distributed.transpiler.DistributeTranspiler(
+                    config=config
+                )
+            )
             self.transpiler.transpile(
                 self.trainer_id,
                 program=main,
@@ -202,7 +206,7 @@ class TestBasicModel(TranspilerTest):
 
 class TestBasicModelWithLargeBlockSize(TranspilerTest):
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.min_block_size = 1048576
 
         pserver, startup = self.get_pserver(self.pserver1_ep, config)
@@ -276,7 +280,7 @@ class TestNoSliceVar(TranspilerTest):
         super().setUp()
 
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.slice_var_up = False
 
         _, startup = self.get_pserver(self.pserver1_ep, config)
@@ -692,7 +696,7 @@ class TestEmptyPserverOptimizeBlocks(TranspilerTest):
         sgd_optimizer.minimize(avg_cost)
 
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.slice_var_up = False
 
         pserver, startup = self.get_pserver(ep=self.pserver2_ep, config=config)
@@ -924,7 +928,7 @@ class TestAsyncLocalLookupTable(TestDistLookupTableBase):
         self.network_with_table(is_sparse=True, is_distributed=False)
 
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         pserver1, startup1 = self.get_pserver(self.pserver1_ep, config, False)
 
         self.assertEqual(len(pserver1.blocks), 4)
@@ -991,7 +995,7 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
         self.network_with_table(is_sparse=True, is_distributed=True)
 
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
 
         pserver1, startup1 = self.get_pserver(self.pserver1_ep, config, False)
 
@@ -1089,7 +1093,7 @@ class TestDistLookupTableSliceSize(TestDistLookupTableBase):
         self.network_with_table(is_sparse=True, is_distributed=True)
 
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         pserver1, _ = self.get_pserver(self.pserver1_ep, config)
 
         self.assertTrue(self.transpiler.has_distributed_lookup_table)
@@ -1220,10 +1224,12 @@ class TestNCCL2Transpile(TranspilerTest):
             with fluid.program_guard(main, startup):
                 self.net_conf()
 
-            config = fluid.DistributeTranspilerConfig()
+            config = paddle.distributed.transpiler.DistributeTranspilerConfig()
             config.mode = "nccl2"
             config.wait_port = False
-            t = fluid.DistributeTranspiler(config=config)
+            t = paddle.distributed.transpiler.DistributeTranspiler(
+                config=config
+            )
             t.transpile(
                 0,
                 trainers="127.0.0.1:6174,127.0.0.1:6175",

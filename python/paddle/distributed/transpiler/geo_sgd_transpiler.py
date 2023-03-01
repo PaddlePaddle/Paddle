@@ -24,36 +24,34 @@ Steps to transpile pserver:
 4. append sum ops that should run on current server instance.
 5. add listen_and_serv op
 """
-import sys
 import collections
-import numpy as np
 
-from .ps_dispatcher import RoundRobin, PSDispatcher
-from .. import core, framework
-from ..framework import (
-    Program,
-    default_main_program,
-    default_startup_program,
-    Block,
-    Parameter,
+from paddle import framework
+from paddle.distributed.distribute_lookup_table import (
+    find_distributed_lookup_table,
 )
 from paddle.distributed.transpiler.details import (
-    wait_server_ready,
     VarsDistributed,
+    wait_server_ready,
 )
-from paddle.distributed.transpiler.details import delete_ops
-from .distribute_transpiler import (
-    DistributeTranspiler,
-    DistributeTranspilerConfig,
-    slice_variable,
-    same_or_split_var,
-    ServerRuntimeConfig,
+from paddle.framework import Program, core
+from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
+    PSDispatcher,
+    RoundRobin,
 )
 from paddle.incubate.distributed.fleet.parameter_server.mode import (
     DistributedMode,
 )
-from paddle.distributed.distribute_lookup_table import (
-    find_distributed_lookup_table,
+from paddle.static import (
+    Parameter,
+    default_main_program,
+    default_startup_program,
+)
+
+from .distribute_transpiler import (
+    DistributeTranspiler,
+    DistributeTranspilerConfig,
+    slice_variable,
 )
 
 RPC_OP_ROLE_ATTR_NAME = (
@@ -311,7 +309,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
         param_grad_set = set()
         # step 1. create param_list
         for p, g in self.params_grads:
-            if type(p) == Parameter and p.trainable == False:
+            if type(p) == Parameter and p.trainable is False:
                 continue
             if p.name not in param_grad_set:
                 param_list.append(p)
