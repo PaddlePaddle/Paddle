@@ -153,7 +153,7 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
 @REGISTER_COMPOSITE('instance_norm')
 def instancenorm_composite(x, scale, bias, epsilon):
     """
-    define composite rule of op layer_norm
+    define composite rule of op instance_norm
     out = (x - mean(x)) / sqrt(var + epsilon))
     var = mean((x-mean(x))^2)
     """
