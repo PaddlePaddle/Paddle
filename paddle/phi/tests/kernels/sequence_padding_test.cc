@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/sequence_padding.h"
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 template <typename DeviceContext, typename T>

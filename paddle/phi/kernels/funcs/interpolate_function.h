@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
