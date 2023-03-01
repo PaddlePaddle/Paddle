@@ -51,7 +51,7 @@ from paddle.utils import deprecated
 
 from . import parallel_helper
 
-__all__ = ["DataParallel"]
+__all__ = []
 
 ParallelStrategy = core.ParallelStrategy
 
