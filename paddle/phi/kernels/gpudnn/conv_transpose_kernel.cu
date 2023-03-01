@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -366,6 +367,24 @@ PD_REGISTER_KERNEL(conv3d_transpose,
                    float,
                    float16) {}
 #else
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(conv2d_transpose,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv2dTransposeGPUDNNKernel,
+                   float,
+                   double,
+                   float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(conv3d_transpose,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::Conv3dTransposeGPUDNNKernel,
+                   float,
+                   double,
+                   float16,
+                   phi::dtype::bfloat16) {}
+#else
 PD_REGISTER_KERNEL(conv2d_transpose,
                    GPUDNN,
                    ALL_LAYOUT,
@@ -380,4 +399,6 @@ PD_REGISTER_KERNEL(conv3d_transpose,
                    float,
                    double,
                    float16) {}
+#endif
+
 #endif
