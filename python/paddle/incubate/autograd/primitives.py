@@ -59,7 +59,6 @@ from paddle.tensor import tanh  # noqa: F401
 from paddle.tensor import uniform  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
 from paddle.tensor.creation import assign  # noqa: F401
-from paddle.tensor.creation import to_tensor  # noqa: F401
 from paddle.tensor.manipulation import cast  # noqa: F401
 from paddle.tensor.math import maximum  # noqa: F401
 from paddle.tensor.math import minimum  # noqa: F401
@@ -125,6 +124,5 @@ others = [
     'full',
     'uniform',
     'greater_equal',
-    'to_tensor'
 ]
 """
