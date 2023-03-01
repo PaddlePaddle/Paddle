@@ -917,6 +917,31 @@ void batch_norm_grad(const Tensor& x,
                      Tensor* x_grad,
                      Tensor* scale_grad,
                      Tensor* bias_grad) {
+  std::cout << "momentum ======================= " << momentum << std::endl;
+  std::cout << "epsilon ======================= " << epsilon << std::endl;
+  std::cout << "data_layout ======================= " << data_layout
+            << std::endl;
+  std::cout << "is_test ======================= " << is_test << std::endl;
+  std::cout << "use_global_stats ======================= " << use_global_stats
+            << std::endl;
+  std::cout << "trainable_statistics ======================= "
+            << trainable_statistics << std::endl;
+
+  use_global_stats = is_test || use_global_stats;
+
+  DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
+
+  auto x_dims = x.dims();
+  const int N = x_dims[0];
+  const int C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
+                                                   : x_dims[x_dims.size() - 1]);
+  const int sample_size = x.numel() / N / C;
+  std::cout << "h*w ======================= " << sample_size << std::endl;
+
+  if (x_dims.size() == 2 && data_layout_ == DataLayout::kNCHW) {
+    data_layout_ = DataLayout::kNHWC;
+  }
+
   if (x_grad) {
     set_output<T>(out_grad + 1, x_grad);
   }
