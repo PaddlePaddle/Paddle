@@ -483,10 +483,4 @@ if(WITH_MKLDNN)
     test_multi_gru_seq_fuse_pass
     SRCS mkldnn/multi_gru_seq_fuse_pass_tester.cc
     DEPS multi_gru_seq_fuse_pass)
-  set(TEST_FC_RNN_PASS_DEPS fc_gru_fuse_pass fc_lstm_fuse_pass
-                            mkldnn_placement_pass)
-  cc_test(
-    test_fc_rnn_mkldnn_fuse_pass
-    SRCS mkldnn/mkldnn_fc_rnn_fuse_pass_tester.cc
-    DEPS ${TEST_FC_RNN_PASS_DEPS})
 endif()
