@@ -21,6 +21,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+DECLARE_bool(use_stride_kernel);
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -28,6 +30,13 @@ void TransposeKernel(const Context& ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
+  if (FLAGS_use_stride_kernel) {
+    LOG(WARNING) << "use transpose cpu stride kernel";
+    MetaTensor meta_out(out);
+    TransposeInferMetaWithStride(x, axis, &meta_out);
+    out->ResetHolder(x.Holder());
+    return;
+  }
   size_t x_rank = x.dims().size();
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {

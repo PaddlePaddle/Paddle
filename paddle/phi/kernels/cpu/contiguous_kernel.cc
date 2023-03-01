@@ -28,9 +28,24 @@ void ContiguousKernel(const Context& dev_ctx,
   auto meta = out->meta();
   LOG(WARNING) << " use contiguous gpu kernel";
   meta.setStride(input.dims(), input.layout());
-  dev_ctx.template Alloc<T>(out);
+  int64_t numel = input.numel();
+  int64_t ndims = input.dims().size();
+  const int64_t* dims = input.dims().Get();
+  const int64_t* srcStrides = input.meta().strides.Get();
+  // const int64_t* dstStrides = out->stride().Get();
+  const T* input_data = input.data<T>();
+  T* output_data = dev_ctx.template Alloc<T>(out);
+  for (int64_t i = 0; i < numel; i++) {
+    int64_t input_offset = 0;
+    int64_t index_tmp = i;
+    for (int dim = ndims - 1; dim >= 0; --dim) {
+      int64_t mod = index_tmp % dims[dim];
+      index_tmp = index_tmp / dims[dim];
+      input_offset += mod * srcStrides[dim];
+    }
 
-  phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+    output_data[i] = input_data[input_offset];
+  }
 }
 }  // namespace phi
 

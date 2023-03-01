@@ -17,14 +17,68 @@ limitations under the License. */
 
 namespace phi {
 
+template <typename T>
+__global__ void ContiguousFunc(const T* input_data,
+                               T* out_data,
+                               const int64_t* input_stride,
+                               const int64_t* dims,
+                               const int rank,
+                               const int64_t numel) {
+  int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int64_t i = gid; i < numel; i += blockDim.x * gridDim.x) {
+    int64_t input_offset = 0;
+    int64_t index_tmp = i;
+    for (int dim = rank - 1; dim >= 0; --dim) {
+      int64_t mod = index_tmp % dims[dim];
+      index_tmp = index_tmp / dims[dim];
+      input_offset += mod * input_stride[dim];
+    }
+
+    out_data[i] = input_data[input_offset];
+  }
+}
+
 template <typename T, typename Context>
 void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       DenseTensor* out) {
   auto meta = out->meta();
   meta.setStride(input.dims(), input.layout());
-  dev_ctx.template Alloc<T>(out);
-  phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+  int64_t numel = input.numel();
+  int64_t rank = input.dims().size();
+  const int64_t* dims = input.dims().Get();
+  const int64_t* srcStrides = input.meta().strides.Get();
+  // const int64_t* dstStrides = out->stride().Get();
+  const T* input_data = input.data<T>();
+  T* output_data = dev_ctx.template Alloc<T>(out);
+  int64_t block = 512;
+  int64_t grid = (numel + block - 1) / block;
+  int64_t* tmp_data =
+      reinterpret_cast<int64_t*>(malloc(sizeof(int64_t) * rank * 2));
+  std::memcpy(tmp_data, dims, sizeof(int64_t) * rank);
+  std::memcpy(tmp_data + rank, srcStrides, sizeof(int64_t) * rank);
+  auto dims_strides = paddle::memory::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int64_t) * rank * 2,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  int64_t* dims_strides_data = reinterpret_cast<int64_t*>(dims_strides->ptr());
+  paddle::memory::Copy(dev_ctx.GetPlace(),
+                       dims_strides_data,
+                       phi::CPUPlace(),
+                       tmp_data,
+                       sizeof(int64_t) * rank * 2,
+                       dev_ctx.stream());
+  cudaStreamCallback_t free_when_cb = [](cudaStream_t stream,
+                                         cudaError_t status,
+                                         void* userData) { free(userData); };
+  cudaStreamAddCallback(dev_ctx.stream(), free_when_cb, tmp_data, 0);
+  ContiguousFunc<<<grid, block, 0, dev_ctx.stream()>>>(input_data,
+                                                       output_data,
+                                                       dims_strides_data + rank,
+                                                       dims_strides_data,
+                                                       rank,
+                                                       numel);
+  // phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
 }
 
 }  // namespace phi

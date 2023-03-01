@@ -20,6 +20,8 @@
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
+DECLARE_bool(use_stride_kernel);
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -34,7 +36,7 @@ DenseTensor Transpose(const Context& dev_ctx,
                       const std::vector<int>& axis) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  if (true) {
+  if (FLAGS_use_stride_kernel) {
     LOG(WARNING) << "use transpose stride kernel";
     TransposeInferMetaWithStride(x, axis, &meta_out);
     dense_out.ResetHolder(x.Holder());
