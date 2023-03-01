@@ -122,7 +122,7 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=40,
-            passes=['softplus_activation_mkldnn_fuse_pass'],
+            passes=['softplus_activation_onednn_fuse_pass'],
         )
 
 
