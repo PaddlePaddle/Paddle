@@ -16,6 +16,7 @@ limitations under the License. */
 #include <functional>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -43,9 +44,12 @@ void GetSize(T start, T end, T step, int64_t* size) {
                           "The step should be less than 0 while start > end."));
   }
 
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   *size = std::is_integral<T>::value
-              ? ((std::abs(end - start) + std::abs(step) - 1) / std::abs(step))
-              : std::ceil(std::abs((end - start) / step));
+              ? ((abs(end - start) + abs(step) - 1) / abs(step))
+              : static_cast<T>(std::ceil(std::abs(
+                    (static_cast<MPType>(end) - static_cast<MPType>(start)) /
+                    static_cast<MPType>(step))));
 }
 
 template <typename T>

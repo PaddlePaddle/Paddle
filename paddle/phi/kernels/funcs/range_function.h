@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace phi {
@@ -39,10 +40,13 @@ void GetSize(T start, T end, T step, int64_t* size) {
                       phi::errors::InvalidArgument(
                           "The step should be less than 0 while start > end."));
   }
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   *size = std::is_integral<T>::value
-              ? ((std::abs(end - start) + std::abs(step) - 1) / std::abs(step))
-              : std::ceil(std::abs((end - start) / step));
+              ? ((abs(end - start) + abs(step) - 1) / abs(step))
+              : static_cast<T>(std::ceil(std::abs(
+                    (static_cast<MPType>(end) - static_cast<MPType>(start)) /
+                    static_cast<MPType>(step))));
 }
 
 }  // namespace funcs
