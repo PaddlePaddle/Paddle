@@ -898,5 +898,35 @@ void erf_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void batch_norm_grad(const Tensor& x,
+                     const Tensor& scale,
+                     const Tensor& bias,
+                     const paddle::optional<Tensor>& mean_out,
+                     const paddle::optional<Tensor>& variance_out,
+                     const Tensor& saved_mean,
+                     const Tensor& saved_variance,
+                     const paddle::optional<Tensor>& reserve_space,
+                     const Tensor& out_grad,
+                     float momentum,
+                     float epsilon,
+                     const std::string& data_layout,
+                     bool is_test,
+                     bool use_global_stats,
+                     bool trainable_statistics,
+                     Tensor* x_grad,
+                     Tensor* scale_grad,
+                     Tensor* bias_grad) {
+  if (x_grad) {
+    set_output<T>(out_grad + 1, x_grad);
+  }
+  if (scale_grad) {
+    set_output<T>(out_grad + 2, scale_grad);
+  }
+  if (bias_grad) {
+    set_output<T>(out_grad + 3, bias_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle
