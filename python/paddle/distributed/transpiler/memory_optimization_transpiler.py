@@ -25,7 +25,7 @@ def memory_optimize(
     memory optimization strategies are enabled by default.
     """
     logging.warn(
-        'Caution! paddle.fluid.memory_optimize() is deprecated '
+        'Caution! paddle.distributed.transpiler.memory_optimize() is deprecated '
         'and not maintained any more, since it is not stable!\n'
         'This API would not take any memory optimizations on your Program '
         'now, since we have provided default strategies for you.\n'
@@ -48,6 +48,6 @@ def release_memory(input_program, skip_opt_set=None):
     memory optimization strategies are enabled by default.
     """
     logging.warn(
-        'paddle.fluid.release_memory() is deprecated, it would not'
+        'paddle.distributed.transpiler.release_memory() is deprecated, it would not'
         ' take any memory release on your program'
     )
