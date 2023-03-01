@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/funcs/math_function.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -49,7 +49,17 @@ void TopkKernel(const Context& dev_ctx,
       errors::External(
           "XPU API does not support smallest topk operation currently."
           " Operator will be supported in future update."));
+  if (in_dims.size() == 0) {
+    int r = xpu::copy<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUType*>(x.data<T>()),
+                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
 
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+
+    return;
+  }
   if (axis < 0) axis += in_dims.size();
 
   size_t k = k_scalar.to<int>();
