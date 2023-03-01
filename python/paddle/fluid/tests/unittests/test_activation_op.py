@@ -2921,24 +2921,20 @@ class TestPow_ZeroDim(TestPow):
         self.shape = []
 
 
-def pow_wrapper(x, y):
-    y = y.astype(x.dtype)
-    return paddle.pow(x, y)
-
-
 class TestPow_factor_tensor(TestActivation):
     def setUp(self):
         self.op_type = "pow"
-        self.python_api = pow_wrapper
+        self.python_api = paddle.pow
         self.init_dtype()
 
         np.random.seed(1024)
         x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        y = np.array([3.0]).astype(self.dtype)
         out = np.power(x, 3)
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'FactorTensor': np.array([3.0]).astype("float32"),
+            'FactorTensor': OpTest.np_dtype_to_fluid_dtype(y),
         }
 
         self.attrs = {}
