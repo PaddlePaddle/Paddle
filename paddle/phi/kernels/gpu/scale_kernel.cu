@@ -41,6 +41,28 @@ struct ScaleFunctor {
   }
 };
 
+struct ScaleFunctorFp16 {
+  float bias;
+  float scale;
+  bool bias_after_scale;
+
+  ScaleFunctorFp16(float scale_data, float bias_data, bool is_bias_after_sacle)
+      : bias(bias_data),
+        scale(scale_data),
+        bias_after_scale(is_bias_after_sacle) {}
+
+  __device__ __forceinline__ phi::dtype::float16 operator()(
+      const phi::dtype::float16 x) const {
+    if (bias_after_scale) {
+      return static_cast<phi::dtype::float16>(scale * static_cast<float>(x) +
+                                              bias);
+    } else {
+      return static_cast<phi::dtype::float16>(scale *
+                                              (static_cast<float>(x) + bias));
+    }
+  }
+};
+
 template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
                  const DenseTensor& x,
@@ -56,11 +78,20 @@ void ScaleKernel(const Context& dev_ctx,
   if (x.numel() <= 0 || (!x.IsInitialized())) {
     return;
   }
-  phi::funcs::ElementwiseKernel<T>(
-      dev_ctx,
-      inputs,
-      &outputs,
-      ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
+  if (x.dtype() == DataType::FLOAT16) {
+    phi::funcs::ElementwiseKernel<T>(
+        dev_ctx,
+        inputs,
+        &outputs,
+        ScaleFunctorFp16(
+            scale.to<float>(), static_cast<float>(bias), bias_after_scale));
+  } else {
+    phi::funcs::ElementwiseKernel<T>(
+        dev_ctx,
+        inputs,
+        &outputs,
+        ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
+  }
 }
 
 }  // namespace phi
