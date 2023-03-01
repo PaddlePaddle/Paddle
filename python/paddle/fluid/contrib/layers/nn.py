@@ -1205,7 +1205,7 @@ def rank_attention(
            import paddle
 
            input = paddle.rand(name="input", shape=[4, 2], dtype="float32")
-           rank_offset = paddle.randint(name="rank_offset", shape=[4, 7], dtype="int32")
+           rank_offset = paddle.randint(low = 5, name="rank_offset", shape=[4, 7], dtype="int32")
            out = fluid.contrib.layers.rank_attention(input=input,
                                                      rank_offset=rank_offset,
                                                      rank_param_shape=[18,3],
@@ -1273,7 +1273,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
                                                bias_size=[16, 10],
                                                bias_attr=
                                                paddle.ParamAttr(learning_rate=1.0,
-                                                               name="b_0")
+                                                               name="b_0"),
                                                act="relu")
     """
 
