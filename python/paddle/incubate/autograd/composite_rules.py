@@ -272,17 +272,18 @@ def hard_swish_composite(x):
     offset = 3.0
     threshold = 6.0
     scale = 6.0
-    return (
+    res = (
         minimum(
             maximum(
-                x + full([], offset, dtype=x.dtype),
-                full([], 0.0, dtype=x.dtype),
+                x + full(x.shape, offset, dtype=x.dtype),
+                full(x.shape, 0.0, dtype=x.dtype),
             ),
-            full([], threshold, dtype=x.dtype),
+            full(x.shape, threshold, dtype=x.dtype),
         )
         * x
-        / full([], scale, dtype=x.dtype)
+        / full(x.shape, scale, dtype=x.dtype)
     )
+    return res
 
 
 @REGISTER_COMPOSITE('silu')

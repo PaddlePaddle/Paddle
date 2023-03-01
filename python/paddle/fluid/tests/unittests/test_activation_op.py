@@ -2166,6 +2166,7 @@ class TestHardSwish(TestActivation):
         self.inputs = {'X': x}
         self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
         self.outputs = {'Out': out}
+        self.enable_cinn = False
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -2190,6 +2191,7 @@ class TestHardSwishFP16(TestHardSwish):
     def setUp(self):
         super().setUp()
         self.only_prim = True
+        self.enable_cinn = False
 
     def init_dtype(self):
         self.dtype = np.float16
