@@ -78,6 +78,9 @@ set(XPU_PACK_DEPENCE_URL
 set(XPU_CHECK_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/check_xpu_dependence.sh"
     CACHE STRING "" FORCE)
+set(XPU_XFT_GET_DEPENCE_URL
+    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xft_dependence.sh"
+    CACHE STRING "" FORCE)
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
 set(XPU_DOWNLOAD_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
@@ -93,10 +96,9 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${XPU_INSTALL_DIR}/lib")
 file(
   WRITE ${XPU_DOWNLOAD_DIR}/CMakeLists.txt
   "PROJECT(XPU)\n" "cmake_minimum_required(VERSION 3.0)\n"
-  "install(DIRECTORY xpu/include xpu/lib xpu/xft\n"
+  "install(DIRECTORY xpu/include xpu/lib \n"
   "        DESTINATION ${XPU_INSTALL_DIR})\n")
 
-set(XPU_XFT_LIB_RPATH "${XPU_XFT_DIR_NAME}/so/${XPU_XFT_LIB_NAME}")
 ExternalProject_Add(
   ${XPU_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -107,9 +109,8 @@ ExternalProject_Add(
     ${XPU_BASE_URL} ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} && bash
     pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL}
     ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} && wget
-    --no-check-certificate -c -q ${XPU_XFT_URL} -O xft.tar.gz && tar xvf
-    xft.tar.gz && cp -r ${XPU_XFT_DIR_NAME} xpu/xft && cp ${XPU_XFT_LIB_RPATH}
-    xpu/lib
+    ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
+    ${XPU_XFT_DIR_NAME}
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
@@ -141,10 +142,8 @@ if(WITH_XPU_XFT)
   message(STATUS "Compile with XPU XFT!")
   add_definitions(-DPADDLE_WITH_XPU_XFT)
 
-  set(XPU_XFT_INC_DIR "${THIRD_PARTY_PATH}/install/xpu/xft/include")
-  set(XPU_XFT_LIB_DIR "${THIRD_PARTY_PATH}/install/xpu/xft/so")
+  set(XPU_XFT_LIB_DIR "${XPU_INSTALL_DIR}/lib")
   set(XPU_XFT_LIB "${XPU_XFT_LIB_DIR}/${XPU_XFT_LIB_NAME}")
-  include_directories(${XPU_XFT_INC_DIR})
 endif()
 
 if(WITH_XPU_BKCL AND WITH_XPU_XFT)
