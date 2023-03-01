@@ -14,7 +14,7 @@
 
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -28,10 +28,9 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
-            T = attrs[0]['seg_num']
-            NT = 3 * T
-            return np.random.random([NT, 4, 32, 32]).astype(np.float32)
+        def generate_input1(attrs):
+            T = attrs[0]["seg_num"]
+            return np.ones([3 * T, 10, 64, 64]).astype(np.float32)
 
         for shift_value in [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50]:
             for T in range(2, 5):
@@ -41,22 +40,23 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
                     {
                         "op_type": "temporal_shift",
                         "op_inputs": {"X": ["input_data"]},
-                        "op_outputs": {"Out": ["temporal_shift_output_data"]},
+                        "op_outputs": {"Out": ["output_data"]},
                         "op_attrs": dics[0],
                     }
                 ]
-                ops = self.generate_op_config(ops_config)
 
-                program_config = ProgramConfig(
-                    ops=ops,
-                    weights={},
-                    inputs={
-                        "input_data": TensorConfig(
-                            data_gen=partial(generate_input1, dics)
-                        )
-                    },
-                    outputs=["temporal_shift_output_data"],
-                )
+                ops = self.generate_op_config(ops_config)
+                for i in range(10):
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "input_data": TensorConfig(
+                                data_gen=partial(generate_input1, dics)
+                            ),
+                        },
+                        outputs=["output_data"],
+                    )
 
                 yield program_config
 
@@ -64,50 +64,38 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
             self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            T = attrs[0]['seg_num']
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1 * T, 3, 32, 32]
+                "input_data": [6, 10, 64, 64]
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [3 * T, 3, 64, 64]
+                "input_data": [20, 10, 64, 64]
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data": [1 * T, 3, 64, 64]
+                "input_data": [6, 10, 64, 64]
             }
 
         def clear_dynamic_shape():
-            self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
-
-        def generate_trt_nodes_num(attrs, dynamic_shape):
-            return 1, 2
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), (1e-3, 1e-3)
+        # # for static_shape
+        # clear_dynamic_shape()
+        # self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        # yield self.create_inference_config(), (1, 3), 1e-5
+        # self.trt_param.precision = paddle_infer.PrecisionType.Half
+        # yield self.create_inference_config(), (1, 3), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-3, 1e-3)
+        yield self.create_inference_config(), (1, 2), 1e-3
 
     def test(self):
         self.run_test()

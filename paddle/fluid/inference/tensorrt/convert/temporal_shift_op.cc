@@ -37,73 +37,117 @@ class TemporalShiftOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
     VLOG(3) << "convert a fluid transpose op to tensorrt tranpose layer";
-
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
+
     const float shift_ratio = PADDLE_GET_CONST(float, op_desc.GetAttr("shift_ratio"));
     const int T = PADDLE_GET_CONST(int, op_desc.GetAttr("seg_num"));
 
-    const auto& input_dims = input->getDimensions();
-    int NT = input_dims.d[0];
-    int C = input_dims.d[1];
-    int H = input_dims.d[2];
-    int W = input_dims.d[3];
-    int N = NT / T;
+    auto input_dims = input->getDimensions();
 
-    // Reshape input to [N,T,C,H,W]
+    const int NT = input_dims.d[0];
+    const int C = input_dims.d[1];
+    const int H = input_dims.d[2];
+    const int W = input_dims.d[3];
+    const int N = NT / T;
+
+    // Reshape input to [N,C,H,W,T]
     auto reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    nvinfer1::Dims reshape_dims{5, {N, T, C, H, W}};
+    nvinfer1::Dims reshape_dims{5, {N, C, H, W, T}};
     reshape_layer->setReshapeDimensions(reshape_dims);
-    input = reshape_layer->getOutput(0);
 
     // Pad input
     auto* pad_layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                           PaddingNd,
-                                           *input,
-                                           nvinfer1::Dims4(0, 1, 0, 0),
-                                           nvinfer1::Dims4(0, 1, 0, 0));
-    input = pad_layer->getOutput(0);
+                                           Padding,
+                                           *reshape_layer->getOutput(0),
+                                           nvinfer1::DimsHW{0, 1},
+                                           nvinfer1::DimsHW{0, 1});
+
+    // Reshape input to [N,T,C,H,W]
+    auto reshape_layer2 = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *pad_layer->getOutput(0));
+    nvinfer1::Dims reshape_dims2{5, {N, T + 2, C, H, W}};
+    reshape_layer2->setReshapeDimensions(reshape_dims2);
+
+    // print pad_layer->getOutput(0)->getDimensions()
+    auto pad_dims = pad_layer->getOutput(0)->getDimensions();
+    int dims = pad_dims.nbDims;
+    for (int i = 0; i < dims; ++i) {
+        std::cout << pad_dims.d[i] << " ";
+    }
+    std::cout << std::endl;
 
     // Slice input
+//    int slice_c = int(C * shift_ratio);
+//    int slice_c2 = int(C * shift_ratio * 2);
+//
+//    auto* slice1_layer = TRT_ENGINE_ADD_LAYER(engine_,
+//                                              Slice,
+//                                              *pad_layer->getOutput(0),
+//                                              nvinfer1::Dims{5, {0, 0, 0, 0, 0}},
+//                                              nvinfer1::Dims{5, {N, slice_c, H, W, T}},
+//                                              nvinfer1::Dims{5, {1, 1, 1, 1, 1}});
+//    auto* slice2_layer = TRT_ENGINE_ADD_LAYER(engine_,
+//                                              Slice,
+//                                              *pad_layer->getOutput(0),
+//                                              nvinfer1::Dims{5, {0, slice_c, 0, 0, 2}},
+//                                              nvinfer1::Dims{5, {N, slice_c, H, W, T}},
+//                                              nvinfer1::Dims{5, {1, 1, 1, 1, 1}});
+//    auto* slice3_layer = TRT_ENGINE_ADD_LAYER(engine_,
+//                                              Slice,
+//                                              *pad_layer->getOutput(0),
+//                                              nvinfer1::Dims{5, {0, slice_c2, 0, 0, 1}},
+//                                              nvinfer1::Dims{5, {N, C - slice_c2, H, W, T}},
+//                                              nvinfer1::Dims{5, {1, 1, 1, 1, 1}});
     int slice_c = int(C * shift_ratio);
     int slice_c2 = int(C * shift_ratio * 2);
     auto* slice1_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                               Slice,
-                                              *pad_layer->getOutput(0),
-                                              nvinfer1::Dims3{0, 0, 0},
-                                              nvinfer1::Dims3{T, slice_c, H},
-                                              nvinfer1::Dims3{1, 1, 1});
+                                              *reshape_layer2->getOutput(0),
+                                              nvinfer1::Dims{5, {0, 0, 0, 0, 0}},
+                                              nvinfer1::Dims{5, {N, T, slice_c, H, W}},
+                                              nvinfer1::Dims{5, {1, 1, 1, 1, 1}});
     auto* slice2_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                               Slice,
-                                              *pad_layer->getOutput(0),
-                                              nvinfer1::Dims3{0, 2, 0},
-                                              nvinfer1::Dims3{T, slice_c2 - slice_c, H},
-                                              nvinfer1::Dims3{1, 1, 1});
+                                              *reshape_layer2->getOutput(0),
+                                              nvinfer1::Dims{5, {0, 2, slice_c, 0, 0}},
+                                              nvinfer1::Dims{5, {N, T, slice_c, H, W}},
+                                              nvinfer1::Dims{5, {1, 1, 1, 1, 1}});
     auto* slice3_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                               Slice,
-                                              *pad_layer->getOutput(0),
-                                              nvinfer1::Dims3{0, 1, 0},
-                                              nvinfer1::Dims3{T, C - slice_c2, H},
-                                              nvinfer1::Dims3{1, 1, 1});
+                                              *reshape_layer2->getOutput(0),
+                                              nvinfer1::Dims{5, {0, 1, slice_c2, 0, 0}},
+                                              nvinfer1::Dims{5, {N, T, C - slice_c2, H, W}},
+                                              nvinfer1::Dims{5, {1, 1, 1, 1, 1}});
 
     // Concatenate slices along the third dimension (C)
-    nvinfer1::ITensor* concat_inputs[3] = {slice1_layer->getOutput(0),
-                                           slice2_layer->getOutput(0),
-                                           slice3_layer->getOutput(0)};
-    auto* concat_layer = TRT_ENGINE_ADD_LAYER(engine_,
+    nvinfer1::IConcatenationLayer* concat_layer;
+    if(!slice_c){
+        nvinfer1::ITensor* concat_inputs[2] = {slice2_layer->getOutput(0),
+                                               slice3_layer->getOutput(0)};
+        concat_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                               Concatenation,
-                                              concat_inputs, 3);
-    concat_layer->setAxis(2);
+                                              concat_inputs, 2);
+        concat_layer->setAxis(2);
+    }
+    else{
+        nvinfer1::ITensor* concat_inputs[3] = {slice1_layer->getOutput(0),
+                                               slice2_layer->getOutput(0),
+                                               slice3_layer->getOutput(0)};
+        concat_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                                  Concatenation,
+                                                  concat_inputs, 3);
+        concat_layer->setAxis(2);
+    }
 
     // Reshape output to [N*T,C,H,W]
     nvinfer1::Dims output_shape{4, {N * T, C, H, W}};
-    auto* reshape_layer2 = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *concat_layer->getOutput(0));
-    reshape_layer2->setReshapeDimensions(output_shape);
+    auto* reshape_layer3 = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *concat_layer->getOutput(0));
+    reshape_layer3->setReshapeDimensions(output_shape);
 
     // Set output
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(reshape_layer2, "temporal_shift", {output_name}, test_mode);
+    RreplenishLayerAndOutput(reshape_layer3, "temporal_shift", {output_name}, test_mode);
 
   }
 };
