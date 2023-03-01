@@ -47,7 +47,7 @@ class TestTopkOp(OpTest):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.topk
-        self.dtype = np.float16
+        self.dtype = np.float64
         self.input_data = np.random.rand(10, 20)
         self.init_args()
         self.inputs = {'X': self.input_data}
@@ -88,7 +88,7 @@ class TestTopkOp3(TestTopkOp):
         self.op_type = "top_k_v2"
         self.prim_op_type = "prim"
         self.python_api = paddle.topk
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.input_data = np.random.rand(16, 100)
         self.init_args()
         self.inputs = {'X': self.input_data}
@@ -132,6 +132,48 @@ class TestTopkOp5(TestTopkOp):
         self.python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 10, 5)
+        self.init_args()
+        self.inputs = {'X': self.input_data}
+        self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
+        output, indices = numpy_topk(
+            self.input_data, axis=self.axis, k=self.k, largest=self.largest
+        )
+        self.outputs = {'Out': output, 'Indices': indices}
+
+
+class TestTopkOp6(TestTopkOp):
+    def init_args(self):
+        self.k = 3
+        self.axis = 1
+        self.largest = True
+
+    def setUp(self):
+        self.op_type = "top_k_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.topk
+        self.dtype = np.float32
+        self.input_data = np.random.rand(10, 10, 5)
+        self.init_args()
+        self.inputs = {'X': self.input_data}
+        self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
+        output, indices = numpy_topk(
+            self.input_data, axis=self.axis, k=self.k, largest=self.largest
+        )
+        self.outputs = {'Out': output, 'Indices': indices}
+
+
+class TestTopkOp7(TestTopkOp):
+    def init_args(self):
+        self.k = 10
+        self.axis = 1
+        self.largest = True
+
+    def setUp(self):
+        self.op_type = "top_k_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.topk
+        self.dtype = np.float16
+        self.input_data = np.random.rand(10, 20, 10)
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
