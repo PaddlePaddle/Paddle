@@ -1267,6 +1267,95 @@ class TestSqrtBF16(OpTest):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
 
+class TestSqrtComp(TestActivation, TestParameter):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.sqrt
+        self.init_dtype()
+        self.init_shape()
+
+        np.random.seed(1023)
+        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        out = np.sqrt(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.enable_cinn = False
+
+    # TODO(wanghao107) add prim test
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True,check_prim=True)
+
+
+class TestSqrtCompFp32(TestActivation):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.sqrt
+        self.init_dtype()
+        self.init_shape()
+        np.random.seed(1023)
+        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        out = np.sqrt(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.enable_cinn = False
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, check_prim=True)
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestSqrtBF16(OpTest):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.sqrt
+        self.init_dtype()
+        self.init_shape()
+
+        np.random.seed(1023)
+        x = np.random.uniform(0.1, 1, self.shape).astype(np.float32)
+        out = np.sqrt(x)
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+        # TODO(wanghao107): add prim test
+        self.enable_cinn = False
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def init_shape(self):
+        self.shape = [11, 17]
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=True, check_prim=True)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+
 
 class TestRsqrt(TestActivation):
     def setUp(self):
