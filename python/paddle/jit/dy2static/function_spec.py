@@ -373,7 +373,7 @@ def convert_to_input_spec(inputs, input_spec):
                 )
             )
         real_spec.name = input_spec.name
-        if input_spec.greater(real_spec):
+        if spec_greater(input_spec, real_spec):
             return input_spec
         return real_spec
     else:
@@ -470,3 +470,19 @@ def _hash_spec_names(args_specs, kwargs_specs):
     value = [to_idx(name) for name in spec_names]
 
     return tuple(value)
+
+
+def spec_greater(first, other):
+    def _shape_greater(first_shape, second_shape):
+        if len(first_shape) != len(second_shape):
+            return False
+        for first_n, second_n in zip(first_shape, second_shape):
+            if first_n != -1 and first_n != second_n:
+                return False
+        return True
+
+    return (
+        other.stop_gradient == first.stop_gradient
+        and other.dtype == first.dtype
+        and _shape_greater(first.shape, other.shape)
+    )

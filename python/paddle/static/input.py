@@ -342,23 +342,3 @@ class InputSpec:
 
     def __ne__(self, other):
         return not self == other
-
-    def greater(self, other):
-        """
-        greater means a input spec is a father class of subclass.
-        [-1, 3, 5] is a father class of [10, 3, 5]
-        """
-
-        def _shape_greater(first_shape, second_shape):
-            if len(first_shape) != len(second_shape):
-                return False
-            for first_n, second_n in zip(first_shape, second_shape):
-                if first_n != -1 and first_n != second_n:
-                    return False
-            return True
-
-        return (
-            other.stop_gradient == self.stop_gradient
-            and other.dtype == self.dtype
-            and _shape_greater(self.shape, other.shape)
-        )
