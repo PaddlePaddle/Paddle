@@ -952,7 +952,7 @@ def conv2d(
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
-    filter_size = paddle.utils.layers.convert_to_list(
+    filter_size = paddle.utils.layers_utils.convert_to_list(
         filter_size, 2, 'filter_size'
     )
     stride = paddle.utils.layers_utils.convert_to_list(stride, 2, 'stride')
