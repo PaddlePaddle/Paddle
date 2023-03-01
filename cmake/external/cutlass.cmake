@@ -26,6 +26,10 @@ include_directories(
 
 add_definitions("-DPADDLE_WITH_CUTLASS")
 
+if(NOT PYTHON_EXECUTABLE)
+  find_package(PythonInterp REQUIRED)
+endif()
+
 ExternalProject_Add(
   extern_cutlass
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}

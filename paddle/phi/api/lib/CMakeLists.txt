@@ -99,7 +99,7 @@ set(wrapped_infermeta_source_file
 
 # tensor and tensor operants file
 set(tensor_api_yaml_path
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/tensor_api.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/tensor_operants.yaml)
 set(tensor_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_operants_gen.py)
 set(operants_base_file
@@ -289,7 +289,7 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_backends phi_enforce place init)
+  DEPS phi_backends phi_enforce place init phi_device_context)
 
 cc_library(
   kernel_dispatch

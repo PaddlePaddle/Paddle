@@ -171,6 +171,30 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : bitwise_and
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : bitwise_not
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+
+- op : bitwise_or
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
+- op : bitwise_xor
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+
 - op : bmm
   inputs :
     {x : X, y : Y}
@@ -341,6 +365,17 @@
   outputs :
     out : Out
 
+- op : cumsum
+  backward: cumsum_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : int
+      tensor_name: AxisTensor
+
 - op : data_norm
   backward : data_norm_grad
   extra :
@@ -489,6 +524,12 @@
              int trainer_id = 0, int slot = 0, 'int64_t[] height_sections = {}', 'str[] epmap = {}',
              'str[] table_names = {}']
 
+- op : equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : equal_all
   inputs :
     {x : X, y : Y}
@@ -531,6 +572,13 @@
       tensors_name : expand_shapes_tensor
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+
+- op : expand_as (expand_as_v2)
+  inputs :
+    x : X
+    y : Y
+  outputs :
+    out : Out
 
 - op : expm1
   backward : expm1_grad
@@ -701,6 +749,18 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : greater_equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : greater_than
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
 - op : grid_sample(grid_sampler)
   backward : grid_sample_grad (grid_sampler_grad)
   inputs :
@@ -709,6 +769,16 @@
     out : Output
   extra :
     attrs : [bool use_cudnn = true]
+
+- op : group_norm
+  inputs :
+    x : X
+    scale : Scale
+    bias : Bias
+  outputs :
+    y : Y
+    mean : Mean
+    variance : Variance
 
 - op : gru
   backward : gru_grad
@@ -720,11 +790,6 @@
     x : X
   outputs :
     out : Out
-
-- op : hard_swish
-  backward : hard_swish_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
 
 - op : hardshrink (hard_shrink)
   backward : hardshrink_grad (hard_shrink_grad)
@@ -739,6 +804,15 @@
     x : X
   outputs :
     out : Out
+
+- op : hardswish (hard_swish)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  backward : hard_swish_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : hardtanh (brelu)
   backward : hardtanh_grad (brelu_grad)
@@ -785,6 +859,16 @@
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
+- op : instance_norm
+  inputs :
+    x : X
+    scale : Scale
+    bias : Bias
+  outputs :
+    y : Y
+    saved_mean : SavedMean
+    saved_variance : SavedVariance
+
 - op : inverse
   inputs :
     x : Input
@@ -828,6 +912,14 @@
   outputs :
     out : Out
 
+- op : kron
+  backward : kron_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
+  complex_promote : [X, Y]
+
 - op : kthvalue
   inputs :
     x : X
@@ -868,6 +960,18 @@
   backward : lerp_grad
   inputs :
     {x : X, y : Y, weight : Weight}
+  outputs :
+    out : Out
+
+- op : less_equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
+
+- op : less_than
+  inputs :
+    {x : X, y : Y}
   outputs :
     out : Out
 
@@ -1110,6 +1214,18 @@
     {input : X, label : Label, weight : Weight}
   outputs :
     {out : Out, total_weight : Total_weight}
+
+- op : nonzero (where_index)
+  inputs :
+    condition : Condition
+  outputs :
+    out : Out
+
+- op : not_equal
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : numel(size)
   inputs :
