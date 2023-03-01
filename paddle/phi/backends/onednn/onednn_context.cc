@@ -18,7 +18,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/expect.h"
 
 namespace phi {

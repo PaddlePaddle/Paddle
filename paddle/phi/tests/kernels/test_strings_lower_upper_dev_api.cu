@@ -26,7 +26,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/pstring.h"

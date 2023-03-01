@@ -45,7 +45,8 @@ list(
   stream.cc
   event.cc
   device_base.cc
-  device_manager.cc)
+  device_manager.cc
+  context_pool.cc)
 
 if(WITH_CUSTOM_DEVICE)
   list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc
@@ -54,7 +55,6 @@ endif()
 
 add_library(phi_backends "${BACKENDS_SRCS}")
 target_link_libraries(phi_backends ${BACKENDS_DEPS})
-add_dependencies(phi_backends eigen3)
 
 # for inference library
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)

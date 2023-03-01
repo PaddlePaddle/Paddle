@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/hostdevice.h"
 
 template <typename T>

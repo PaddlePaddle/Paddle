@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"

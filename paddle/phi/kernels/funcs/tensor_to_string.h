@@ -17,7 +17,7 @@
 #include <sstream>
 
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/string/string_helper.h"

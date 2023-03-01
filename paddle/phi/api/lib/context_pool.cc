@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/context_pool.h"
 
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
-#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/callback_manager.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/custom/enforce_custom.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_guard.h"

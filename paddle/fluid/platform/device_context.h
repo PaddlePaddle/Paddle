@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -94,8 +95,6 @@ struct GpuDevice;
 #include "acl/acl.h"
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #endif
-
-#include "paddle/phi/backends/all_context.h"
 
 namespace paddle {
 namespace platform {

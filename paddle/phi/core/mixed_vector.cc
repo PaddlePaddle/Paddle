@@ -23,7 +23,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"

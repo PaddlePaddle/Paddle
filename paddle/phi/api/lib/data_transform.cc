@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"

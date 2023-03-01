@@ -14,12 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <future>  // NOLINT
-#include <map>
-#include <memory>
-#include <mutex>  // NOLINT
-#include <set>
-
 // Note: Some scenarios need to include all types of Context declarations.
 // In order to avoid including the header files of each backend in turn,
 // add this header file
@@ -31,114 +25,5 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/device_context.h"
-#include "paddle/phi/core/macros.h"
 
-namespace phi {
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void SetAllowTF32Cublas(bool active);
-/*Get the global variable allow_tf32_cublas value*/
-bool AllowTF32Cublas();
-extern bool allow_tf32_cudnn;
-/*Set the value of the global variable allow_tf32_cudnn*/
-void SetAllowTF32Cudnn(bool active);
-/*Get the global variable allow_tf32_cudnn value*/
-bool AllowTF32Cudnn();
-#endif  // PADDLE_WITH_CUDA
-
-template <typename Place>
-struct DefaultDeviceContextType;
-
-template <>
-struct DefaultDeviceContextType<phi::CPUPlace> {
-  using TYPE = phi::CPUContext;
-};
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <>
-struct DefaultDeviceContextType<phi::GPUPlace> {
-  using TYPE = phi::GPUContext;
-};
-#endif
-
-#ifdef PADDLE_WITH_XPU
-template <>
-struct DefaultDeviceContextType<phi::XPUPlace> {
-  using TYPE = phi::XPUContext;
-};
-#endif
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-template <>
-struct DefaultDeviceContextType<phi::CustomPlace> {
-  using TYPE = phi::CustomContext;
-};
-#else
-template <>
-struct DefaultDeviceContextType<phi::CustomPlace> {
-  using TYPE = DeviceContext;
-};
-#endif
-
-using EmplaceExternalContextFunc = void (*)(
-    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*,
-    const phi::Place&,
-    bool,
-    int);
-
-void EmplaceDeviceContexts(
-    std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
-        place_to_device_context,
-    const std::vector<phi::Place>& places,
-    bool disable_setting_default_stream_for_allocator,
-    int stream_priority,
-    EmplaceExternalContextFunc emplace_external_context_func = nullptr);
-
-/*! \brief device context pool singleton */
-class DeviceContextPool {
- public:
-  static DeviceContextPool& Instance();
-
-  /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Init(const std::vector<phi::Place>& places,
-                                 EmplaceExternalContextFunc func = nullptr);
-
-  static bool IsInitialized();
-
-  static void SetPool(DeviceContextPool* dev_pool);
-
-  /*! \brief  Return handle of single device context. */
-  phi::DeviceContext* Get(const phi::Place& place);
-
-  template <typename Place>
-  const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
-      const Place& place) {
-    return reinterpret_cast<
-        const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
-  }
-
-  size_t Size() const;
-
-  const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
-  device_contexts() const;
-
-  static void SetDeviceContexts(
-      const std::map<Place,
-                     std::shared_future<std::unique_ptr<DeviceContext>>>*);
-
- private:
-  explicit DeviceContextPool(const std::vector<phi::Place>& places);
-
-  std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
-      device_contexts_;
-  static thread_local const std::
-      map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
-          external_device_contexts_;  // not owned
-  static EmplaceExternalContextFunc emplace_external_context_func_;
-
-  DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
-};
-
-}  // namespace phi
+namespace phi {}  // namespace phi

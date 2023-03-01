@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "paddle/extension.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 
 #define CHECK_CPU_INPUT(x) PD_CHECK(x.is_cpu(), #x " must be a CPU Tensor.")
 #define CHECK_CUSTOM_INPUT(x) \

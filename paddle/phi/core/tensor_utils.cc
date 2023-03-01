@@ -21,7 +21,7 @@ limitations under the License. */
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 
 namespace phi {
 
