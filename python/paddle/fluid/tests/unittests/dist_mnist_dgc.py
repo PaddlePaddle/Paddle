@@ -17,8 +17,11 @@ from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
+import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
-from paddle.incubate.distributed.fleet.collective import fleet
+from paddle.distributed.fleet.meta_optimizers import (
+    RawProgramOptimizer as RawProgram,
+)
 
 paddle.enable_static()
 
@@ -70,8 +73,8 @@ def cnn_model(data):
     return predict
 
 
-class TestDistMnist2x2(TestDistRunnerBase):
-    def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
+class TestDistMnistDGC(TestDistRunnerBase):
+    def get_model(self, batch_size=2, use_dgc=False, build_strategy=None):
         # Input data
         images = paddle.static.data(
             name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
@@ -92,16 +95,45 @@ class TestDistMnist2x2(TestDistRunnerBase):
         )
 
         inference_program = fluid.default_main_program().clone()
-        # Optimization
-        # TODO(typhoonzero): fix distributed adam optimizer
-        # opt = fluid.optimizer.AdamOptimizer(
-        #     learning_rate=0.001, beta1=0.9, beta2=0.999)
         if not use_dgc:
             opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
         else:
             opt = paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer(
-                learning_rate=self.lr, momentum=0.9, rampup_begin_step=2
+                learning_rate=self.lr,
+                momentum=0.9,
+                rampup_begin_step=2,
+                num_trainers=build_strategy.num_trainers
+                if build_strategy
+                else None,
             )
+        if build_strategy:
+            opt = RawProgram(opt)
+            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+            strategy = paddle.distributed.fleet.DistributedStrategy()
+            strategy.build_strategy = build_strategy
+            opt._set_basic_info(avg_cost, role, opt, strategy)
+
+            # following code is a copy of RawProgramOptimizer.minimize except init_comm_group
+            opt.endpoints = opt.role_maker._get_trainer_endpoints()
+            opt.current_endpoint = opt.endpoints[opt.role_maker._worker_index()]
+            opt.rank = opt.role_maker._worker_index()
+            opt.nranks = opt.role_maker._worker_num()
+            startup_program = paddle.static.default_startup_program()
+            opt.startup_program = startup_program
+
+            block = avg_cost.block
+            program = block.program
+            opt.main_program = program
+
+            optimize_ops, params_grads = opt.inner_opt.minimize(
+                avg_cost, startup_program
+            )
+
+            opt.main_program = program
+            if opt.nranks > 1:
+                opt._transpile_main_program(avg_cost)
+        else:
+            opt.minimize(avg_cost)
 
         # Reader
         train_reader = paddle.batch(
@@ -110,14 +142,6 @@ class TestDistMnist2x2(TestDistRunnerBase):
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size
         )
-
-        if dist_strategy:
-            dist_opt = fleet.distributed_optimizer(
-                optimizer=opt, strategy=dist_strategy
-            )
-            _, param_grads = dist_opt.minimize(avg_cost)
-        else:
-            opt.minimize(avg_cost)
 
         return (
             inference_program,
@@ -130,4 +154,4 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestDistMnist2x2)
+    runtime_main(TestDistMnistDGC)
