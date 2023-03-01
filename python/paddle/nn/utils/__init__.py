@@ -20,7 +20,6 @@ from .transform_parameters import (
     _stride_column,
 )  # noqa: F401
 from .clip_grad_norm_ import clip_grad_norm_  # noqa: F401
-from .dygraph_utils import append_bias_in_dygraph
 
 __all__ = [  # noqa
     'weight_norm',
@@ -29,5 +28,4 @@ __all__ = [  # noqa
     'parameters_to_vector',
     'vector_to_parameters',
     'clip_grad_norm_',
-    'append_bias_in_dygraph',
 ]

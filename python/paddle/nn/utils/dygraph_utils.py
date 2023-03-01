@@ -17,7 +17,7 @@ from paddle.framework import dygraph_only
 
 
 @dygraph_only
-def append_bias_in_dygraph(input, bias=None, axis=1, use_mkldnn=False):
+def _append_bias_in_dygraph(input, bias=None, axis=1, use_mkldnn=False):
     """Append bias operation in dygraph mode.
 
         Args:
