@@ -81,7 +81,11 @@ class TranspilerTest(unittest.TestCase):
     def _transpiler_instance(self, config=None, sync_mode=True):
         if not self.transpiler:
             main = self.get_main_program()
-            self.transpiler = paddle.distributed.transpiler.DistributeTranspiler(config=config)
+            self.transpiler = (
+                paddle.distributed.transpiler.DistributeTranspiler(
+                    config=config
+                )
+            )
             self.transpiler.transpile(
                 self.trainer_id,
                 program=main,
@@ -1223,7 +1227,9 @@ class TestNCCL2Transpile(TranspilerTest):
             config = paddle.distributed.transpiler.DistributeTranspilerConfig()
             config.mode = "nccl2"
             config.wait_port = False
-            t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
+            t = paddle.distributed.transpiler.DistributeTranspiler(
+                config=config
+            )
             t.transpile(
                 0,
                 trainers="127.0.0.1:6174,127.0.0.1:6175",

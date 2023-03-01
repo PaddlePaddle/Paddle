@@ -466,7 +466,9 @@ class TestDistRunnerBase:
                 type(self).__name__,
                 "begin to run transpile on trainer with nccl2 mode",
             )
-            nccl2_t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
+            nccl2_t = paddle.distributed.transpiler.DistributeTranspiler(
+                config=config
+            )
             nccl2_t.transpile(
                 args.trainer_id,
                 program=fluid.default_main_program(),
