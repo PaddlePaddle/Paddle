@@ -306,7 +306,7 @@ class HybridCommunicateGroup:
                 "The version of NCCL is "
                 "required to be at least v2.8.4 while training with pipeline parallelism, "
                 "because the previous version of NCCL has some bugs in p2p communication. "
-                "But "
+                "But we found v{}.".format(nccl_version_str)
             )
 
     def _set_p2p_group(self):
