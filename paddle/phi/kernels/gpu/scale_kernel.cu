@@ -60,8 +60,7 @@ void ScaleKernel(const Context& dev_ctx,
       dev_ctx,
       inputs,
       &outputs,
-      ScaleFunctor<T>(
-          scale.to<float>(), static_cast<float>(bias), bias_after_scale));
+      ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
 }
 
 }  // namespace phi

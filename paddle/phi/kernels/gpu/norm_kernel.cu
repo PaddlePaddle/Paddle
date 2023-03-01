@@ -43,7 +43,7 @@ __global__ void Normalize(const T* x,
                           const int pre,
                           const int axis_n,  // dim in axis
                           const int post,
-                          const T eps,
+                          const float eps,
                           T* y,
                           T* out_norm) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -66,7 +66,7 @@ __global__ void Normalize(const T* x,
     MT reduce_result = BlockReduce(temp_storage).Sum(sum);
 
     if (threadIdx.x == 0) {
-      norm = square_root(reduce_result + static_cast<MT>(eps));
+      norm = square_root(reduce_result + eps);
       out_norm[i] = static_cast<T>(norm);
     }
     __syncthreads();
@@ -90,7 +90,7 @@ void NormKernel(const Context& ctx,
 
   auto xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
-  T eps = static_cast<T>(epsilon);
+  float eps = epsilon;
 
   DenseTensor* out_norm;
   DenseTensor out_norm_tmp;
@@ -137,4 +137,5 @@ PD_REGISTER_KERNEL(norm,
                    phi::NormKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

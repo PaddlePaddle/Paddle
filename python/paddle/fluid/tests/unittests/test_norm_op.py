@@ -20,6 +20,7 @@ from op_test import convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 def l2_norm(x, axis, epsilon):
@@ -158,6 +159,11 @@ class TestNormTestOp(OpTest):
         self.epsilon = 1e-8
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestNormBF16Op(OpTest):
     def setUp(self):
         self.op_type = "norm"
