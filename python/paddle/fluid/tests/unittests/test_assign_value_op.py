@@ -117,5 +117,10 @@ class TestAssignApi4(TestAssignApi):
         self.dtype = "bool"
 
 
+class TestAssignApi5(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "float16"
+
+
 if __name__ == '__main__':
     unittest.main()
