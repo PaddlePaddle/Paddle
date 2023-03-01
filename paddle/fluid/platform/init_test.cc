@@ -39,7 +39,7 @@ TEST(InitDevices, CUDA) {
   int count = paddle::platform::GetGPUDeviceCount();
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  ASSERT_EQ(pool.size(), 2U + static_cast<unsigned>(count));
+  ASSERT_EQ(pool.Size(), 2U + static_cast<unsigned>(count));
 #endif
 }
 
