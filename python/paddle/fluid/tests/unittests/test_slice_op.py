@@ -213,9 +213,7 @@ class TestSliceOp_decs_dim_6(TestSliceOp_decs_dim):
 class TestSliceOp_starts_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.prim_op_type = "prim"
         self.python_api = paddle.slice
-        # self.enable_cinn = False
         self.config()
 
         starts_tensor = []
@@ -244,12 +242,10 @@ class TestSliceOp_starts_ListTensor(OpTest):
         self.starts_infer = [-1, 0, -1]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
-        )
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
 # Situation 2: starts(list, have tensor), ends(list, no tensor)
@@ -257,7 +253,6 @@ class TestSliceOp_starts_ListTensor(OpTest):
 class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.prim_op_type = "prim"
         self.python_api = paddle.slice
         self.config()
 
@@ -290,12 +285,10 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
         self.starts_infer = [1, -1, 2]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
-        )
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
 class TestSliceOp_decs_dim_5_starts_ListTensor(
@@ -318,7 +311,6 @@ class TestSliceOp_decs_dim_5_starts_ListTensor(
 class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.prim_op_type = "prim"
         self.python_api = paddle.slice
         self.config()
         self.inputs = {
@@ -344,12 +336,10 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         self.out = self.input[1, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
-        )
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
 # Situation 4: starts(tensor), ends(tensor)
@@ -357,7 +347,6 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
 class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.prim_op_type = "prim"
         self.python_api = paddle.slice
         self.config()
 
@@ -383,12 +372,10 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
-        )
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
 # Situation 5: starts(tensor), ends(tensor)
@@ -396,7 +383,6 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
 class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.prim_op_type = "prim"
         self.python_api = paddle.slice
         self.config()
         self.inputs = {
@@ -423,12 +409,10 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         self.out = self.input[1, 0, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
-        )
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
 # Situation 6: starts(tensor), ends(list, have tensor)
@@ -436,7 +420,6 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
 class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
     def setUp(self):
         self.op_type = "slice"
-        self.prim_op_type = "prim"
         self.python_api = paddle.slice
         self.config()
 
@@ -470,12 +453,10 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         self.ends_infer = [-1, 3, 4]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['Input'], 'Out', max_relative_error=0.006, check_prim=True
-        )
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
 
 
 # Test CUDA float16
