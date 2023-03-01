@@ -750,7 +750,7 @@ void gather_nd_grad(const Tensor& x,
                     const Tensor& out_grad,
                     Tensor* x_grad) {
   if (x_grad) {
-    auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0);
+    auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
     auto x_grad_tmp = scatter_nd_add<T>(zero_tensor, index, out_grad);
     set_output<T>(x_grad_tmp, x_grad);
   }
