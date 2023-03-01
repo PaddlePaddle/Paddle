@@ -202,8 +202,7 @@ TEST(CustomKernel, custom_kernel_dot) {
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::UINT8, phi::make_ddim({2, 3}), phi::DataLayout::NCHW));
-  auto* dev_ctx =
-      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+  auto* dev_ctx = phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
   auto* dense_x_data = dev_ctx->template Alloc<int64_t>(dense_x.get());
 
   auto dense_y = std::make_shared<phi::DenseTensor>(
