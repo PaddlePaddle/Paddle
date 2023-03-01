@@ -13,9 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
-#include "paddle/fluid/platform/device_context.h"
+
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/segmented_array.h"
 
 namespace phi {
@@ -571,11 +572,11 @@ void ConcatFunctorWithIndexType(const phi::GPUContext& ctx,
   IndexT* inputs_col = inputs_col_vec.data();
 #ifdef PADDLE_WITH_HIP
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  phi::Allocator::AllocationPtr data_alloc = phi::memory_utils::Alloc(
-      paddle::platform::CUDAPinnedPlace(), in_num * sizeof(T*));
+  phi::Allocator::AllocationPtr data_alloc =
+      phi::memory_utils::Alloc(phi::GPUPinnedPlace(), in_num * sizeof(T*));
   inputs_data = reinterpret_cast<const T**>(data_alloc->ptr());
   phi::Allocator::AllocationPtr col_alloc = phi::memory_utils::Alloc(
-      paddle::platform::CUDAPinnedPlace(), inputs_col_num * sizeof(IndexT));
+      phi::GPUPinnedPlace(), inputs_col_num * sizeof(IndexT));
   inputs_col = reinterpret_cast<IndexT*>(col_alloc->ptr());
 #endif
 
@@ -787,11 +788,11 @@ void SplitFunctorDispatchWithIndexType(
 #ifdef PADDLE_WITH_HIP
   phi::Allocator::AllocationPtr data_alloc, cols_alloc;
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  data_alloc = phi::memory_utils::Alloc(paddle::platform::CUDAPinnedPlace(),
-                                        out_num * sizeof(T*));
+  data_alloc =
+      phi::memory_utils::Alloc(phi::GPUPinnedPlace(), out_num * sizeof(T*));
   outs_data = reinterpret_cast<T**>(data_alloc->ptr());
   // TODO(chentianyu03): try to find a method to remove the Alloc function
-  cols_alloc = phi::memory_utils::Alloc(paddle::platform::CUDAPinnedPlace(),
+  cols_alloc = phi::memory_utils::Alloc(phi::GPUPinnedPlace(),
                                         (out_cols_num) * sizeof(IndexT));
   outs_cols = reinterpret_cast<IndexT*>(cols_alloc->ptr());
 #endif

@@ -204,13 +204,13 @@ TEST(CustomKernel, custom_kernel_dot) {
           phi::DataType::UINT8, phi::make_ddim({2, 3}), phi::DataLayout::NCHW));
   auto* dev_ctx =
       phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
-  auto* dense_x_data = dev_ctx->template Alloc<int64_t>(dense_x);
+  auto* dense_x_data = dev_ctx->template Alloc<int64_t>(dense_x.get());
 
   auto dense_y = std::make_shared<phi::DenseTensor>(
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::UINT8, phi::make_ddim({2, 3}), phi::DataLayout::NCHW));
-  auto* dense_y_data = dev_ctx->template Alloc<int64_t>(dense_y);
+  auto* dense_y_data = dev_ctx->template Alloc<int64_t>(dense_y.get());
 
   // dot x,y and result
   uint8_t sum[2] = {0, 0};
