@@ -2150,6 +2150,7 @@ class TestHardSwish(TestActivation):
         self.op_type = 'hard_swish'
         self.init_dtype()
         self.init_shape()
+        self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.hardswish
 
         np.random.seed(1024)
@@ -2170,10 +2171,10 @@ class TestHardSwish(TestActivation):
         self.shape = [10, 12]
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_prim=True)
 
 
 class TestHardSwish_ZeroDim(TestHardSwish):
