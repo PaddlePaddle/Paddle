@@ -19,7 +19,7 @@ limitations under the License. */
 
 TEST(CUDAStream, GPU) {
   phi::GPUPlace gpu0(0);
-  phi::CUDAStream* stream = paddle::getCurrentCUDAStream(gpu0);
+  phi::CUDAStream* stream = paddle::GetCurrentCUDAStream(gpu0);
   EXPECT_TRUE(stream != nullptr);
   gpuStream_t raw_stream = stream->raw_stream();
   EXPECT_TRUE(raw_stream != nullptr);
