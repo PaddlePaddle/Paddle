@@ -188,6 +188,7 @@ class HybridCommunicateGroup:
 
         # create p2p_groups
         if self._pp_degree > 1:
+            self._check_nccl_version()
             self._set_p2p_group()
 
         debug_str = (
@@ -285,6 +286,28 @@ class HybridCommunicateGroup:
     def _get_p2p_prev_rank(self):
         assert hasattr(self, 'prev_rank'), "prev_rank has not been inited"
         return self.prev_rank
+
+    def _check_nccl_version(self):
+        import subprocess
+
+        nccl_version_str = subprocess.check_output(
+            r"ldconfig -v | grep 'libnccl.so' | tail -n1 | sed -r 's/^.*\.so\.//'",
+            stderr=subprocess.DEVNULL,
+            shell=True,
+        ).decode('utf-8')
+
+        # NOTE: This is a hacking method to get nccl version, but it will be failed
+        # if current platform is not Linux. So we only check nccl version for Linux
+        # platform while training with pipeline parallelism.
+        if nccl_version_str:
+            nccl_version_int = [int(s) for s in nccl_version_str.split(".")]
+            nccl_version_baseline = [2, 8, 4]
+            assert nccl_version_int >= nccl_version_baseline, (
+                "The version of NCCL is "
+                "required to be at least v2.8.4 while training with pipeline parallelism, "
+                "because the previous version of NCCL has some bugs in p2p communication. "
+                "But "
+            )
 
     def _set_p2p_group(self):
         comm_lists = self._topo.get_comm_list('pipe')
