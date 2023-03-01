@@ -76,6 +76,7 @@ FcXPUPattern::FcXPUPattern(PDPattern* pattern,
   auto* mul_w = pattern->NewNode(mul_w_repr())
                     ->assert_is_op_input(mul_type_, "Y")
                     ->assert_is_persistable_var()
+                    ->assert_has_n_outputs(1)
                     ->assert_more([](Node* node) {
                       return node->Var()->GetShape().size() == 2;
                     });
