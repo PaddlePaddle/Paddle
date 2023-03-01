@@ -324,6 +324,9 @@ class TestSigmoidBF16_ZeroDim(TestSigmoidBF16):
 class TestSilu(TestActivation):
     def setUp(self):
         self.op_type = "silu"
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
+        self.python_api = paddle.nn.functional.silu
         self.init_dtype()
         self.init_shape()
 
@@ -340,12 +343,42 @@ class TestSilu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSilu_ZeroDim(TestSilu):
     def init_shape(self):
         self.shape = []
+
+
+class TestSiluFP16(TestActivation):
+    def setUp(self):
+        self.op_type = "silu"
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
+        self.only_prim = True
+        self.python_api = paddle.nn.functional.silu
+        self.init_dtype()
+        self.init_shape()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out = x / (np.exp(-x) + 1)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+    def test_check_output(self):
+        check_eager = False
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_output(check_eager=check_eager, check_prim=True)
 
 
 class TestSiluAPI(unittest.TestCase):
@@ -3647,6 +3680,7 @@ create_test_act_fp16_class(TestActivation)
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid)
 create_test_act_fp16_class(TestSilu)
+create_test_act_fp16_class(TestSiluFP16)
 create_test_act_fp16_class(TestLogSigmoid)
 create_test_act_fp16_class(TestTanh)
 create_test_act_fp16_class(TestTanhshrink)

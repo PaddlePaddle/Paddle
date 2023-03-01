@@ -282,6 +282,8 @@ binary_int_api_list = [
     paddle.bitwise_and,
     paddle.bitwise_or,
     paddle.bitwise_xor,
+    paddle.gcd,
+    paddle.lcm,
 ]
 
 
