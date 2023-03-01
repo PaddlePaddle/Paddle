@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -38,7 +39,7 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
             'shape should be %s, but get %s' % (self.dst_shape, shape),
         )
 
-        if data_type in ['float32', 'float64', 'int32', 'int64']:
+        if data_type in ['float16', 'float32', 'float64', 'int32', 'int64']:
             max_value = np.nanmax(out)
             min_value = np.nanmin(out)
             always_non_full_zero = max_value >= min_value
@@ -191,6 +192,17 @@ class TestEmptyLikeAPI_Static2(TestEmptyLikeAPI_Static):
     def init_config(self):
         self.x_shape = (3, 200, 3)
         self.data_x_shape = [-1, 200, 3]
+
+
+class TestEmptyLikeBfloat16(unittest.TestCase):
+    def TestEmptyLikeBF16(OpTest):
+        def setUp(self):
+            self.op_type = 'empty_like'
+            self.dtype = np.uint16
+            x = np.random.rand((200, 3)).astype(np.float32)
+            out = paddle.empty_like(x)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+            self.outputs = {'Out': convert_float_to_uint16(out)}
 
 
 class TestEmptyError(unittest.TestCase):
