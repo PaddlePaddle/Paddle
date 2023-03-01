@@ -19,6 +19,7 @@ import pickle
 import random
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 
@@ -526,10 +527,6 @@ class TestDistRunnerBase:
                 type(self).__name__, "get trainer program done. with nccl2 mode"
             )
             trainer_prog = fluid.default_main_program()
-            print_to_err(
-                type(self).__name__,
-                f"program compiled with data parallel: {trainer_prog}",
-            )
         else:
             print_to_err(
                 type(self).__name__,
@@ -558,11 +555,6 @@ class TestDistRunnerBase:
         binary = compiler.CompiledProgram(
             trainer_prog, build_strategy=build_stra
         )
-        # binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
-        #    loss_name=avg_cost.name,
-        #    build_strategy=build_stra,
-        #    exec_strategy=exec_strategy,
-        # )
         print_to_err(type(self).__name__, "program compiled with data parallel")
 
         feed_var_list = [
@@ -588,7 +580,6 @@ class TestDistRunnerBase:
         lr_scheduler = self.get_lr_scheduler(trainer_prog)
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
-
         for i in range(RUN_STEP):
             (loss,) = exe.run(
                 binary, fetch_list=[avg_cost.name], feed=feeder.feed(get_data())
@@ -651,7 +642,6 @@ class TestParallelDyGraphRunnerBase:
             return batch
 
     def run_trainer(self, args):
-
         seed = 90
         if args.update_method == 'gloo':
             place = fluid.CPUPlace()
@@ -1020,12 +1010,10 @@ class TestDistBase(unittest.TestCase):
 
         self._after_setup_config()
 
-        # self.temp_dir = tempfile.TemporaryDirectory()
-        self.temp_dir = "/home/lvyongkang/rfce/Paddle/build/log_debug"
+        self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
-        # self.temp_dir.cleanup()
-        pass
+        self.temp_dir.cleanup()
 
     def _find_free_port(self):
         def __free_port():
@@ -1077,8 +1065,8 @@ class TestDistBase(unittest.TestCase):
 
         print(ps0_cmd)
         print(ps1_cmd)
-        path0 = os.path.join(self.temp_dir, log_name + "_ps0_err.log")
-        path1 = os.path.join(self.temp_dir, log_name + "_ps1_err.log")
+        path0 = os.path.join(self.temp_dir.name, log_name + "_ps0_err.log")
+        path1 = os.path.join(self.temp_dir.name, log_name + "_ps1_err.log")
         ps0_pipe = open(path0, "wb")
         ps1_pipe = open(path1, "wb")
 
@@ -1166,7 +1154,7 @@ class TestDistBase(unittest.TestCase):
         print("local_cmd: {}, env: {}".format(cmd, env_local))
 
         if check_error_log:
-            path = os.path.join(self.temp_dir, log_name + "_local.log")
+            path = os.path.join(self.temp_dir.name, log_name + "_local.log")
             err_log = open(path, "wb")
             local_proc = subprocess.Popen(
                 cmd.split(" "),
@@ -1272,8 +1260,8 @@ class TestDistBase(unittest.TestCase):
         print("tr0_cmd: {}, env: {}".format(tr0_cmd, env0))
         print("tr1_cmd: {}, env: {}".format(tr1_cmd, env1))
 
-        path0 = os.path.join(self.temp_dir, log_name + "_tr0_err.log")
-        path1 = os.path.join(self.temp_dir, log_name + "_tr1_err.log")
+        path0 = os.path.join(self.temp_dir.name, log_name + "_tr0_err.log")
+        path1 = os.path.join(self.temp_dir.name, log_name + "_tr1_err.log")
         tr0_pipe = open(path0, "wb")
         tr1_pipe = open(path1, "wb")
 
@@ -1542,7 +1530,7 @@ class TestDistBase(unittest.TestCase):
             )
 
             path = os.path.join(
-                self.temp_dir, log_name + "_tr{}_err.log".format(i)
+                self.temp_dir.name, log_name + "_tr{}_err.log".format(i)
             )
             tr_pipe = open(path, "wb")
 
@@ -1616,7 +1604,7 @@ class TestDistBase(unittest.TestCase):
             )
 
             path = os.path.join(
-                self.temp_dir, log_name + "_tr{}_err.log".format(i)
+                self.temp_dir.name, log_name + "_tr{}_err.log".format(i)
             )
             tr_pipe = open(path, "wb")
 
@@ -1642,9 +1630,8 @@ class TestDistBase(unittest.TestCase):
             sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
 
         if check_error_log:
-            print_to_err(type(self).__name__, 'here')
-            print_to_err(type(self).__name__, "outs[0]:" + str(outs[0]))
-            print_to_err(type(self).__name__, "outs[1]:" + str(outs[1]))
+            print("outs[0]:", outs[0])
+            print("outs[1]:", outs[1])
 
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
@@ -1668,7 +1655,7 @@ class TestDistBase(unittest.TestCase):
             tr_env['FLAGS_cudnn_deterministic'] = '0'
             print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
 
-            path = os.path.join(self.temp_dir + "tr{}_err.log".format(i))
+            path = os.path.join(self.temp_dir.name + "tr{}_err.log".format(i))
             tr_pipe = open(path, "wb")
 
             print_to_err(
@@ -1714,15 +1701,13 @@ class TestDistBase(unittest.TestCase):
         }
 
         if check_error_log:
-            # required_envs["GLOG_vmodule"] = (
-            #     "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,"
-            #     "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10,"
-            #     "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10,"
-            #     "grpc_server=10,request_handler_impl=10,section_worker=10"
-            # )
+            required_envs["GLOG_vmodule"] = (
+                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,"
+                "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10,"
+                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,gen_nccl_id_op_help=10,nccl_helper=10,grpc_client=10,"
+                "grpc_server=10,request_handler_impl=10,section_worker=10"
+            )
             required_envs["GLOG_logtostderr"] = "1"
-            required_envs["GLOG_v"] = "10"
-            # ,*nccl*=10,*grpc*=10,interpre*=10,*pass*=10"
 
         if os.getenv('NVIDIA_TF32_OVERRIDE', '') is not None:
             required_envs['NVIDIA_TF32_OVERRIDE'] = os.getenv(

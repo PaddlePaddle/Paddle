@@ -44,7 +44,7 @@ else
     PYTHON_EXEC="python -u "
 fi
 
-timeout -s SIGKILL 120s ${PYTHON_EXEC} ${name}.py > ${name}_run.log 2>&1
+timeout -s SIGKILL ${run_time} ${PYTHON_EXEC} ${name}.py > ${name}_run.log 2>&1
 
 exit_code=$?
 if [[ $exit_code -eq 0 ]]; then
@@ -54,8 +54,8 @@ fi
 echo "${name} faild with ${exit_code}"
 
 echo "after run ${name}"
-# ps -aux
-# netstat -anlp
+ps -aux
+netstat -anlp
 
 # paddle log
 echo "${name} log"
@@ -65,41 +65,41 @@ do
     cat -n ${log}
 done
 
-# # check CUDA or ROCM env
-# GPU_SYS_INFO_CMD=nvidia-smi
+# check CUDA or ROCM env
+GPU_SYS_INFO_CMD=nvidia-smi
 
-# which ${GPU_SYS_INFO_CMD}
-# exit_code=$?
-# if [[ $exit_code -ne 0 ]]; then
-#     GPU_SYS_INFO_CMD=rocm-smi
-# fi
+which ${GPU_SYS_INFO_CMD}
+exit_code=$?
+if [[ $exit_code -ne 0 ]]; then
+    GPU_SYS_INFO_CMD=rocm-smi
+fi
 
-# which ${GPU_SYS_INFO_CMD}
-# exit_code=$?
-# if [[ $exit_code -ne 0 ]]; then
-#     echo "nvidia-smi or rocm-smi faild with ${exit_code}"
-#     exit ${exit_code}
-# fi
+which ${GPU_SYS_INFO_CMD}
+exit_code=$?
+if [[ $exit_code -ne 0 ]]; then
+    echo "nvidia-smi or rocm-smi faild with ${exit_code}"
+    exit ${exit_code}
+fi
 
 #display system context
-# for i in {1..2}; do 
-#     sleep 3
-#     ps -aux
-#     netstat -anlp
+for i in {1..2}; do 
+    sleep 3
+    ps -aux
+    netstat -anlp
 
-#     if hash "${GPU_SYS_INFO_CMD}" > /dev/null; then
-#         ${GPU_SYS_INFO_CMD}
-#     fi
-# done
+    if hash "${GPU_SYS_INFO_CMD}" > /dev/null; then
+        ${GPU_SYS_INFO_CMD}
+    fi
+done
 
 echo "dist space:"
-# df -h
+df -h
 
 #display /tmp/files
 echo "ls /tmp/paddle.*"
-# ls -l /tmp/paddle.*
+ls -l /tmp/paddle.*
 
-# echo "ls -l ./"
-# ls -l ./
+echo "ls -l ./"
+ls -l ./
 
 exit 1
