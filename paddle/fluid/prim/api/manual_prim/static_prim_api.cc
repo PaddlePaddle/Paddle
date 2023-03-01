@@ -125,7 +125,6 @@ template <>
 std::vector<Tensor> split<DescTensor>(const Tensor& x,
                                       const IntArray& sections,
                                       const Scalar& axis) {
-  // Grad infershape
   int elem_num = sections.size();
   std::vector<std::string> outs_name;
   std::vector<Tensor> outs;
