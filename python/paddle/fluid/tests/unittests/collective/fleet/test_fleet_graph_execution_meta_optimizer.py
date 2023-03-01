@@ -85,7 +85,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             )
             optimizer.minimize(avg_cost)
 
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
         proc_a = launch_func(node_func, node_a)
@@ -150,7 +150,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 optimizer, strategy=strategy
             )
             optimizer.minimize(avg_cost)
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
             import numpy as np
@@ -225,7 +225,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             )
             optimizer.minimize(avg_cost)
 
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
         proc_a = launch_func(node_func, node_a)
@@ -289,7 +289,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 optimizer, strategy=strategy
             )
             optimizer.minimize(avg_cost)
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
             import numpy as np
