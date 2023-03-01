@@ -21,13 +21,6 @@ import paddle
 import paddle.fluid.core as core
 
 
-def broadcast_wrapper(shape=[1, 10, 12, 1]):
-    def mul_wrapper(x, y, axis=-1):
-        return x * y.reshape(shape)
-
-    return mul_wrapper
-
-
 class ElementwiseMulOp(OpTest):
     def init_kernel_type(self):
         self.use_mkldnn = False
@@ -42,7 +35,7 @@ class ElementwiseMulOp(OpTest):
         self.init_input_output()
         self.init_kernel_type()
         self.init_axis()
-        self.skip_cinn()
+        self.if_skip_cinn()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -95,7 +88,7 @@ class ElementwiseMulOp(OpTest):
     def init_axis(self):
         pass
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         pass
 
 
@@ -105,7 +98,7 @@ class TestElementwiseMulOp_ZeroDim1(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 
@@ -115,7 +108,7 @@ class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 
@@ -125,7 +118,7 @@ class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 
@@ -152,7 +145,7 @@ class TestBF16ElementwiseMulOp(OpTest):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
-        self.skip_cinn()
+        self.if_skip_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -166,7 +159,7 @@ class TestBF16ElementwiseMulOp(OpTest):
     def test_check_grad_ingore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_prim=True)
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 
@@ -205,14 +198,50 @@ class ElementwiseMulOp_broadcast(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.prim_op_type = "prim"
         self.python_api = paddle.multiply
-        self.dtype = np.float64
-        self.axis = -1
         self.init_dtype()
-        self.init_input_output()
         self.init_kernel_type()
         self.init_axis()
+        self.init_input_attr_output()
+        self.if_check_prim()
+        self.if_check_dygraph()
 
+    def test_check_output(self):
+        self.check_output(
+            check_dygraph=self.check_dygraph, check_prim=self.check_prim
+        )
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_dygraph=self.check_dygraph,
+            check_prim=self.check_prim,
+        )
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_dygraph=self.check_dygraph,
+            check_prim=self.check_prim,
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_dygraph=self.check_dygraph,
+            check_prim=self.check_prim,
+        )
+
+    def init_input_attr_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17, 1]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [17, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
@@ -220,112 +249,97 @@ class ElementwiseMulOp_broadcast(OpTest):
         self.outputs = {'Out': self.out}
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
 
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
-
-    def init_input_output(self):
-        self.x = np.random.uniform(0.1, 1, [13, 17, 1]).astype(self.dtype)
-        self.y = np.random.uniform(0.1, 1, [17, 17]).astype(self.dtype)
-        self.out = np.multiply(self.x, self.y)
-
     def init_dtype(self):
-        pass
+        self.dtype = np.float64
 
     def init_axis(self):
-        pass
+        self.axis = -1
+
+    def if_check_prim(self):
+        self.check_prim = self.axis == -1
+
+    def if_check_dygraph(self):
+        self.check_dygraph = (not self.use_mkldnn) and (self.axis == -1)
 
 
 class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp_broadcast):
-    def init_input_output(self):
+    def init_input_attr_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
-        self.python_api = broadcast_wrapper(shape=[100, 1, 1])
         self.out = self.x * self.y.reshape(100, 1, 1)
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
 
     def init_axis(self):
         self.axis = 0
 
 
 class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp_broadcast):
-    def setUp(self):
-        self.op_type = "elementwise_mul"
-        self.python_api = broadcast_wrapper(shape=[1, 100, 1])
+    def init_input_attr_output(self):
         self.inputs = {
             'X': np.random.rand(2, 100, 3).astype(np.float64),
             'Y': np.random.rand(100).astype(np.float64),
         }
 
-        self.attrs = {'axis': 1}
+        self.attrs = {'axis': self.axis}
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 100, 1)
         }
-        self.init_kernel_type()
+
+    def init_axis(self):
+        self.axis = 1
 
 
 class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp_broadcast):
-    def setUp(self):
-        self.op_type = "elementwise_mul"
-        self.python_api = broadcast_wrapper(shape=[1, 1, 100])
+    def init_input_attr_output(self):
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
             'Y': np.random.rand(100).astype(np.float64),
         }
-
+        self.attrs = {'axis': self.axis}
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 1, 100)
         }
-        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp_broadcast):
-    def setUp(self):
-        self.op_type = "elementwise_mul"
-        self.python_api = broadcast_wrapper(shape=[1, 10, 12, 1])
+    def init_input_attr_output(self):
         self.inputs = {
             'X': np.random.rand(2, 10, 12, 3).astype(np.float64),
             'Y': np.random.rand(10, 12).astype(np.float64),
         }
 
-        self.attrs = {'axis': 1}
+        self.attrs = {'axis': self.axis}
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 10, 12, 1)
         }
-        self.init_kernel_type()
+
+    def init_axis(self):
+        self.axis = 1
 
 
-class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
-    def setUp(self):
-        self.op_type = "elementwise_mul"
-        self.prim_op_type = "prim"
-        self.python_api = paddle.multiply
+class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp_broadcast):
+    def init_input_attr_output(self):
         self.inputs = {
             'X': np.random.rand(10, 2, 11).astype(np.float64),
             'Y': np.random.rand(10, 1, 11).astype(np.float64),
         }
+        self.attrs = {'axis': self.axis}
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
-        self.init_kernel_type()
 
 
-class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
-    def setUp(self):
-        self.op_type = "elementwise_mul"
-        self.prim_op_type = "prim"
-        self.python_api = paddle.multiply
+class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp_broadcast):
+    def init_input_attr_output(self):
         self.inputs = {
             'X': np.random.rand(10, 4, 2, 3).astype(np.float64),
             'Y': np.random.rand(10, 4, 1, 3).astype(np.float64),
         }
+        self.attrs = {'axis': self.axis}
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
-        self.init_kernel_type()
 
 
 @unittest.skipIf(
@@ -335,7 +349,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
     def init_dtype(self):
         self.dtype = np.float16
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 

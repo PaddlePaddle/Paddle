@@ -37,8 +37,8 @@ class ElementwiseDivOp(OpTest):
         self.init_args()
         self.init_dtype()
         self.init_shape()
-        self.init_check_prim()
-        self.skip_cinn()
+        self.if_check_prim()
+        self.if_skip_cinn()
 
         x = self.gen_data(self.x_shape).astype(self.val_dtype)
         y = self.gen_data(self.y_shape).astype(self.val_dtype)
@@ -64,7 +64,7 @@ class ElementwiseDivOp(OpTest):
         self.grad_x = grad_x
         self.grad_y = grad_y
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
     def init_args(self):
@@ -79,7 +79,7 @@ class ElementwiseDivOp(OpTest):
         self.x_shape = [13, 17]
         self.y_shape = [13, 17]
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
     def gen_data(self, shape):
@@ -136,7 +136,7 @@ class TestElementwiseDivPrimOpFp32(ElementwiseDivOp):
         self.dtype = np.float32
         self.val_dtype = np.float32
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         pass
 
 
@@ -196,7 +196,7 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
         self.y_shape = [12, 13]
 
     # elementwise_pow does't support bfloat16
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = False
 
 
@@ -387,7 +387,7 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
         self.dtype = np.float16
         self.val_dtype = np.float16
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 

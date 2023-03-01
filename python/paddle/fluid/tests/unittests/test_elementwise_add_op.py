@@ -35,8 +35,8 @@ class TestElementwiseAddOp(OpTest):
         self.init_kernel_type()
         self.init_axis()
         self.only_prim()
-        self.init_check_prim()
-        self.skip_cinn()
+        self.if_check_prim()
+        self.if_skip_cinn()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -103,10 +103,10 @@ class TestElementwiseAddOp(OpTest):
     def only_prim(self):
         pass
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = self.axis == -1
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         pass
 
 
@@ -116,7 +116,7 @@ class TestElementwiseAddOp_ZeroDim1(TestElementwiseAddOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 
@@ -218,7 +218,7 @@ class TestBF16ElementwiseAddOp(OpTest):
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
-        self.skip_cinn()
+        self.if_skip_cinn()
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -240,7 +240,7 @@ class TestBF16ElementwiseAddOp(OpTest):
             place, ['X'], 'Out', no_grad_set=set('Y'), check_prim=True
         )
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 
@@ -311,7 +311,7 @@ class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
     def init_axis(self):
         self.axis = 0
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = False
 
 
@@ -330,7 +330,7 @@ class TestFP16ElementwiseAddOp_broadcast_0(TestFP16ElementwiseAddOp):
 
     # In paddle2.0 api we don't have axis parameter in add,
     # so we can't check prim when axis is not -1 by default.
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = self.axis == -1
 
     # Because the numerical method is not accurate enough on fp16,
@@ -355,7 +355,7 @@ class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
     def init_axis(self):
         self.axis = 1
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = False
 
 

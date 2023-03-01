@@ -31,8 +31,8 @@ class TestElementwiseOp(OpTest):
             'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.init_check_prim()
-        self.skip_cinn()
+        self.if_check_prim()
+        self.if_skip_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -58,10 +58,10 @@ class TestElementwiseOp(OpTest):
             check_prim=self.check_prim,
         )
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         pass
 
 
@@ -75,13 +75,13 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
             'Y': np.random.uniform(0.1, 1, []).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.init_check_prim()
-        self.skip_cinn()
+        self.if_check_prim()
+        self.if_skip_cinn()
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 
@@ -95,13 +95,13 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
             'Y': np.random.uniform(0.1, 1, []).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.init_check_prim()
-        self.skip_cinn()
+        self.if_check_prim()
+        self.if_skip_cinn()
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 
@@ -115,13 +115,13 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
             'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.init_check_prim()
-        self.skip_cinn()
+        self.if_check_prim()
+        self.if_skip_cinn()
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 
@@ -140,8 +140,8 @@ class TestBF16ElementwiseOp(OpTest):
             'Y': convert_float_to_uint16(y),
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
-        self.init_check_prim()
-        self.skip_cinn()
+        self.if_check_prim()
+        self.if_skip_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -159,10 +159,10 @@ class TestBF16ElementwiseOp(OpTest):
             ['X'], 'Out', no_grad_set=set('Y'), check_prim=self.check_prim
         )
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
 
@@ -179,7 +179,7 @@ class TestElementwiseSubOp_scalar(TestElementwiseOp):
             'Y': np.random.rand(1).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.init_check_prim()
+        self.if_check_prim()
 
 
 class TestElementwiseSubOp_Vector(TestElementwiseOp):
@@ -192,7 +192,7 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
             'Y': np.random.random((100,)).astype("float64"),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.init_check_prim()
+        self.if_check_prim()
 
 
 class TestElementwiseSubOp_broadcast_O(TestElementwiseOp):
@@ -262,9 +262,9 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
         self.outputs = {
             'Out': self.inputs['X'] - self.inputs['Y'].reshape(1, 1, 100)
         }
-        self.init_check_prim()
+        self.if_check_prim()
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
 
@@ -293,9 +293,9 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
             'Y': np.random.rand(2, 5, 1, 12).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.init_check_prim()
+        self.if_check_prim()
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
 
@@ -309,9 +309,9 @@ class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
             'Y': np.random.rand(1, 1, 100).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.init_check_prim()
+        self.if_check_prim()
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
 
@@ -325,9 +325,9 @@ class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
             'Y': np.random.rand(10, 1, 12, 1).astype(np.float64),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
-        self.init_check_prim()
+        self.if_check_prim()
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
 
@@ -345,9 +345,9 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
         self.outputs = {
             'Out': self.inputs['X'].reshape(1, 1, 10, 12) - self.inputs['Y']
         }
-        self.init_check_prim()
+        self.if_check_prim()
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
 
@@ -367,8 +367,8 @@ class TestComplexElementwiseSubOp(OpTest):
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
-        self.init_check_prim()
-        self.skip_cinn()
+        self.if_check_prim()
+        self.if_skip_cinn()
 
     def init_base_dtype(self):
         self.dtype = np.float64
@@ -421,10 +421,10 @@ class TestComplexElementwiseSubOp(OpTest):
             check_prim=self.check_prim,
         )
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = True
 
 
@@ -443,10 +443,10 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
         self.grad_x = np.real(self.grad_out)
         self.grad_y = -self.grad_out
 
-    def skip_cinn(self):
+    def if_skip_cinn(self):
         self.enable_cinn = False
 
-    def init_check_prim(self):
+    def if_check_prim(self):
         self.check_prim = False
 
 
