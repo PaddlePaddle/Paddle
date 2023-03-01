@@ -382,10 +382,10 @@ class TestSiluFP16(TestActivation):
         self.check_grad(['X'], 'Out', check_prim=True)
 
     def test_check_output(self):
-        check_eager = False
-        if hasattr(self, 'check_eager'):
-            check_eager = self.check_eager
-        self.check_output(check_eager=check_eager, check_prim=True)
+        check = False
+        if hasattr(self, 'check_dygraph'):
+            check_dygraph = self.check_dygraph
+        self.check_output(check_dygraph=check_dygraph, check_prim=True)
 
 
 class TestSiluAPI(unittest.TestCase):
@@ -1242,10 +1242,10 @@ class TestSqrtPrimFp32(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -1372,7 +1372,7 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestAbs_ZeroDim(TestAbs):

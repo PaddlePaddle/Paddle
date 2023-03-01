@@ -93,6 +93,7 @@ class TestAdadeltaOp2(OpTest):
     def setUp(self):
         self.op_type = "adadelta"
         self.python_api = adadelta_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The squared gradient is positive

@@ -61,9 +61,11 @@ class TestGroupNormOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_dtype)
 
 
-def group_norm_wrapper(input, weight, bias, epsilon, num_groups, data_format):
+def group_norm_wrapper(
+    X, Scale, Bias, epsilon=1e-5, num_groups=2, data_layout="NCHW"
+):
     return paddle._C_ops.group_norm(
-        input, weight, bias, epsilon, num_groups, data_format
+        X, Scale, Bias, epsilon, num_groups, data_layout
     )
 
 
