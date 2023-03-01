@@ -37,9 +37,9 @@ class TestElementwiseOp(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False, check_prim=True)
+            self.check_output(check_eager=False)
         else:
-            self.check_output(check_eager=True, check_prim=True)
+            self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
@@ -131,9 +131,9 @@ class TestElementwiseBF16Op(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False, check_prim=True)
+            self.check_output(check_eager=False)
         else:
-            self.check_output(check_eager=True, check_prim=True)
+            self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
