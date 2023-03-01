@@ -486,6 +486,10 @@ if(NOT WITH_GPU
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
 endif()
 
+if(NOT WITH_FLASHATTN)
+  list(REMOVE_ITEM TEST_OPS test_flash_attention)
+endif()
+
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
 set(TEST_OPS_WITH_GC

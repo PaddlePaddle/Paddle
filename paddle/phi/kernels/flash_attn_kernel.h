@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,21 +15,21 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void ArangeKernel(const Context& dev_ctx,
-                  const DenseTensor& start,
-                  const DenseTensor& end,
-                  const DenseTensor& step,
-                  DenseTensor* out);
-
-template <typename T, typename Context>
-void ArangeNullaryKernel(const Context& dev_ctx,
-                         const T start,
-                         const T end,
-                         const T step,
-                         DenseTensor* out);
+void FlashAttnKernel(const Context& ctx,
+                     const DenseTensor& q,
+                     const DenseTensor& k,
+                     const DenseTensor& v,
+                     float dropout,
+                     bool causal,
+                     bool return_softmax,
+                     DenseTensor* out,
+                     DenseTensor* softmax_lse,
+                     DenseTensor* softmax,
+                     DenseTensor* seed_offset);
 
 }  // namespace phi
