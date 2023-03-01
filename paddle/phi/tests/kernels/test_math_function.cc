@@ -193,8 +193,6 @@ TEST(math_function, gemm_trans_cblas) {
                                 1,
                                 input3_ptr + 1,
                                 4);
-  delete cpu_place;
-  cpu_place = NULL;
 
   EXPECT_EQ(input3_ptr[0], 0);
   EXPECT_EQ(input3_ptr[1], 24);
@@ -252,15 +250,14 @@ void GemvTest(int m, int n, bool trans) {
     data_b[i] = static_cast<T>(i);
   }
 
-  phi::CPUContext context(*cpu_place);
-  GetBlas<T>(context).GEMV(trans,
-                           static_cast<int>(m),
-                           static_cast<int>(n),
-                           1.,
-                           data_a,
-                           data_b,
-                           0.,
-                           data_c);
+  GetBlas<T>(*dev_ctx).GEMV(trans,
+                            static_cast<int>(m),
+                            static_cast<int>(n),
+                            1.,
+                            data_a,
+                            data_b,
+                            0.,
+                            data_c);
 
   if (!trans) {
     for (int i = 0; i < m; ++i) {
@@ -279,7 +276,6 @@ void GemvTest(int m, int n, bool trans) {
       ASSERT_FLOAT_EQ(data_c[i], sum);
     }
   }
-  delete cpu_place;
 }
 
 TEST(math_function, gemv) {
@@ -363,7 +359,6 @@ void GemmWarpTest(int m, int n, int k, T alpha, T beta) {
   for (int i = 0; i < mat_c_mkl.numel(); ++i) {
     EXPECT_FLOAT_EQ(CREF[i], CMKL[i]);
   }
-  delete cpu_place;
 }
 
 TEST(math_function, gemm_warp) {

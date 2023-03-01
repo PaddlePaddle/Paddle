@@ -37,7 +37,7 @@ paddle::experimental::Tensor CreateInputTensor() {
           phi::DataType::INT64, phi::make_ddim({3, 4}), phi::DataLayout::NCHW));
   auto* dev_ctx =
       phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
-  auto* dense_x_data = dev_ctx->template Alloc<int64_t>(dense_x);
+  auto* dense_x_data = dev_ctx->template Alloc<int64_t>(dense_x.get());
 
   for (int64_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i;

@@ -46,7 +46,7 @@ TEST(API, strings_empty) {
           phi::DataType::INT64, phi::make_ddim({2}), phi::DataLayout::NCHW));
   auto* dev_ctx =
       phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
-  auto* shape_data = dev_ctx->template Alloc<int64_t>(dense_shape);
+  auto* shape_data = dev_ctx->template Alloc<int64_t>(dense_shape.get());
 
   shape_data[0] = 2;
   shape_data[1] = 3;
