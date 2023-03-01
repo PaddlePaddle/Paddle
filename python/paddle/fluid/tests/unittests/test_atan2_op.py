@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -128,6 +128,23 @@ class TestAtan2API(unittest.TestCase):
 
         for place in self.place:
             run(place)
+
+
+class TestAtan2Bfloat16(unittest.TestCase):
+    def TestAtan2BF16(OpTest):
+        def setUp(self):
+            self.op_type = 'atan2'
+            self.dtype = np.uint16
+            x = np.random.rand(0.1, 1).astype(np.float32)
+            y = np.random.rand(-1, -0.1).astype(np.float32)
+            out = paddle.atan2(x, y)
+            out_ref = np.arctan2(x, y)
+            self.inputs = {
+                'X': convert_float_to_uint16(x),
+                'Y': convert_float_to_uint16(y),
+            }
+            self.outputs = {'Out': convert_float_to_uint16(out)}
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
 
 class TestAtan2Error(unittest.TestCase):

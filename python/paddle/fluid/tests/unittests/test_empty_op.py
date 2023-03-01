@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -33,7 +33,7 @@ class TestEmptyOp(OpTest):
 
     def verify_output(self, outs):
         data_type = outs[0].dtype
-        if data_type in ['float32', 'float64', 'int32', 'int64']:
+        if data_type in ['float16', 'float32', 'float64', 'int32', 'int64']:
             max_value = np.nanmax(outs[0])
             min_value = np.nanmin(outs[0])
 
@@ -103,6 +103,16 @@ class TestEmptyOp5(TestEmptyOp):
         self.outputs = {'Out': np.zeros(shape).astype(dtype)}
 
 
+class TestEmptyOp6(TestEmptyOp):
+    def init_config(self):
+        shape = [500, 3]
+        dtype = 'float16'
+        dtype_inner = convert_np_dtype_to_dtype_(dtype)
+        self.attrs = {'shape': shape, 'dtype': dtype_inner}
+        self.inputs = {}
+        self.outputs = {'Out': np.zeros(shape).astype(dtype)}
+
+
 # Situation 2: shape is a tensor
 class TestEmptyOp_ShapeTensor(OpTest):
     def setUp(self):
@@ -122,7 +132,7 @@ class TestEmptyOp_ShapeTensor(OpTest):
 
     def verify_output(self, outs):
         data_type = outs[0].dtype
-        if data_type in ['float32', 'float64', 'int32', 'int64']:
+        if data_type in ['float16', 'float32', 'float64', 'int32', 'int64']:
             max_value = np.nanmax(outs[0])
             min_value = np.nanmin(outs[0])
 
@@ -172,7 +182,7 @@ class TestEmptyOp_ShapeTensorList(OpTest):
 
     def verify_output(self, outs):
         data_type = outs[0].dtype
-        if data_type in ['float32', 'float64', 'int32', 'int64']:
+        if data_type in ['float16', 'float32', 'float64', 'int32', 'int64']:
             max_value = np.nanmax(outs[0])
             min_value = np.nanmin(outs[0])
 
@@ -277,6 +287,17 @@ class TestEmptyAPI(unittest.TestCase):
         self.__check_out__(res_4, dtype)
         self.__check_out__(res_5, dtype)
         self.__check_out__(res_6, dtype)
+
+
+class TestEmptyBfloat16(unittest.TestCase):
+    def TestEmptyBF16(OpTest):
+        def setUp(self):
+            self.op_type = 'empty'
+            self.dtype = np.uint16
+            x = np.random.rand(2, 2).astype(np.float32)
+            out = paddle.empty(x)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+            self.outputs = {'Out': convert_float_to_uint16(out)}
 
 
 class TestEmptyError(unittest.TestCase):
