@@ -2178,6 +2178,10 @@ class TestHardSwish(TestActivation):
 
 
 class TestHardSwish_ZeroDim(TestHardSwish):
+    def setUp(self):
+        super().setUp()
+        self.enable_cinn = False
+
     def init_shape(self):
         self.shape = []
 
@@ -2192,6 +2196,10 @@ class TestHardSwishFP16(TestHardSwish):
 
 
 class TestHardSwish_ZeroDim_FP16(TestHardSwishFP16):
+    def setUp(self):
+        super().setUp()
+        self.enable_cinn = False
+
     def init_shape(self):
         self.shape = []
 
