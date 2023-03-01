@@ -257,7 +257,7 @@ class Completer:
                                 tensor_desc.name(), compatible_dims_mapping
                             )
                             changed = True
-            # Find the most compatible implemenetations from the distributed operator
+            # Find the most compatible implementations from the distributed operator
             op_dist_impls = find_compatible_distributed_operator_impls(
                 dist_op, fwd=True
             )
@@ -329,7 +329,7 @@ class Completer:
                                 tensor_desc.name(), compatible_dims_mapping
                             )
                             changed = True
-            # Find the most compatible implemenetations from the distributed operator
+            # Find the most compatible implementations from the distributed operator
             op_dist_impls = find_compatible_distributed_operator_impls(
                 dist_op, fwd=False
             )
@@ -685,7 +685,7 @@ class Completer:
             cond_tensor_related_nodes.extend(
                 _find_nodes_related_to_cond(cond_tensor_node)
             )
-            # Step 2.3: Add the StepScops output of while_op
+            # Step 2.3: Add the StepScopes output of while_op
             stepscopes_tensor_name = while_op_node.op().output("StepScopes")[0]
             stepscopes_tensor_node = None
             for output_node in while_op_node.outputs:
@@ -1397,7 +1397,7 @@ class Completer:
                 )
                 forward_var = vars[forward_var_name]
 
-                # TODO complete other attribte for grad var
+                # TODO complete other attribute for grad var
                 tensor_dist_attr = TensorDistAttr()
                 process_mesh = (
                     self._dist_context.get_tensor_dist_attr_for_program(

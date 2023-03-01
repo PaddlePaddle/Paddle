@@ -85,7 +85,6 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
-std::once_flag npu_init_flag;
 std::once_flag memory_method_init_flag;
 
 bool InitGflags(std::vector<std::string> args) {
