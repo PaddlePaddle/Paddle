@@ -683,8 +683,8 @@ REGISTER_OP_CPU_KERNEL(bilinear_interp,
 REGISTER_OP_CPU_KERNEL(bilinear_interp_grad,
                        ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>,
-                       ops::InterpolateKernel<paddle::platform::bfloat16>,
-                       ops::InterpolateKernel<paddle::platform::float16>);
+                       ops::InterpolateGradKernel<paddle::platform::bfloat16>,
+                       ops::InterpolateGradKernel<paddle::platform::float16>);
 REGISTER_OP_CPU_KERNEL(nearest_interp,
                        ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
@@ -694,8 +694,8 @@ REGISTER_OP_CPU_KERNEL(nearest_interp,
 REGISTER_OP_CPU_KERNEL(nearest_interp_grad,
                        ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>,
-                       ops::InterpolateKernel<paddle::platform::bfloat16>,
-                       ops::InterpolateKernel<paddle::platform::float16>);
+                       ops::InterpolateGradKernel<paddle::platform::bfloat16>,
+                       ops::InterpolateGradKernel<paddle::platform::float16>);
 REGISTER_OP_CPU_KERNEL(trilinear_interp,
                        ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
@@ -705,8 +705,8 @@ REGISTER_OP_CPU_KERNEL(trilinear_interp,
 REGISTER_OP_CPU_KERNEL(trilinear_interp_grad,
                        ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>,
-                       ops::InterpolateKernel<paddle::platform::bfloat16>,
-                       ops::InterpolateKernel<paddle::platform::float16>);
+                       ops::InterpolateGradKernel<paddle::platform::bfloat16>,
+                       ops::InterpolateGradKernel<paddle::platform::float16>);
 REGISTER_OPERATOR(linear_interp,
                   ops::InterpolateOp,
                   ops::InterpolateOpMaker,
@@ -718,13 +718,21 @@ REGISTER_OPERATOR(linear_interp_grad,
 REGISTER_OP_CPU_KERNEL(linear_interp,
                        ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
-                       ops::InterpolateKernel<uint8_t>);
+                       ops::InterpolateKernel<uint8_t>,
+                       ops::InterpolateKernel<paddle::platform::bfloat16>,
+                       ops::InterpolateKernel<paddle::platform::float16>);
 REGISTER_OP_CPU_KERNEL(linear_interp_grad,
                        ops::InterpolateGradKernel<float>,
-                       ops::InterpolateGradKernel<double>);
+                       ops::InterpolateGradKernel<double>,
+                       ops::InterpolateGradKernel<paddle::platform::bfloat16>,
+                       ops::InterpolateGradKernel<paddle::platform::float16>);
 REGISTER_OP_CPU_KERNEL(bicubic_interp,
                        ops::InterpolateKernel<float>,
-                       ops::InterpolateKernel<double>);
+                       ops::InterpolateKernel<double>,
+                       ops::InterpolateKernel<paddle::platform::bfloat16>,
+                       ops::InterpolateKernel<paddle::platform::float16>);
 REGISTER_OP_CPU_KERNEL(bicubic_interp_grad,
                        ops::InterpolateGradKernel<float>,
-                       ops::InterpolateGradKernel<double>);
+                       ops::InterpolateGradKernel<double>,
+                       ops::InterpolateGradKernel<paddle::platform::bfloat16>,
+                       ops::InterpolateGradKernel<paddle::platform::float16>);

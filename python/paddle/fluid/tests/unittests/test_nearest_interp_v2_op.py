@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import convert_float_to_uint16
 from op_test import OpTest
 
 import paddle
@@ -411,6 +412,432 @@ class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
         self.out_w = 32
         self.scale = []
         self.out_size = np.array([66, 40]).astype("int32")
+        self.align_corners = True
+
+
+class TestNearestInterpOpFP16(OpTest):
+    def setUp(self):
+        self.python_api = nearest_interp_test
+        self.out_size = None
+        self.actual_shape = None
+        self.data_layout = 'NCHW'
+        self.init_test_case()
+        self.op_type = "nearest_interp_v2"
+        self.dtype = np.float16
+        input_np = np.random.random(self.input_shape).astype("float16")
+
+        if self.data_layout == "NCHW" and len(self.input_shape) == 4:
+            in_d = 1
+            in_h = self.input_shape[2]
+            in_w = self.input_shape[3]
+        else:
+            in_d = 1
+            in_h = self.input_shape[1]
+            in_w = self.input_shape[2]
+
+        if self.data_layout == "NCDHW" and len(self.input_shape) == 5:
+            in_d = self.input_shape[2]
+            in_h = self.input_shape[3]
+            in_w = self.input_shape[4]
+        else:
+            in_d = self.input_shape[1]
+            in_h = self.input_shape[2]
+            in_w = self.input_shape[3]
+        scale_d = 0
+        scale_h = 0
+        scale_w = 0
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if self.scale > 0:
+                    scale_d = scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_d = scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                if len(self.scale) == 5:
+                    scale_w = self.scale[2]
+                    scale_h = self.scale[1]
+                    scale_d = self.scale[0]
+                else:
+                    scale_w = self.scale[1]
+                    scale_h = self.scale[0]
+
+            out_h = int(in_h * scale_h)
+            out_w = int(in_w * scale_w)
+            out_d = int(in_d * scale_d)
+        else:
+            if len(self.input_shape) == 5:
+                out_d = self.out_d
+            out_h = self.out_h
+            out_w = self.out_w
+
+        if len(self.input_shape) == 4:
+            output_np = nearest_neighbor_interp_np(
+                input_np,
+                out_h,
+                out_w,
+                scale_h,
+                scale_w,
+                self.out_size,
+                self.actual_shape,
+                self.align_corners,
+                self.data_layout,
+            )
+        elif len(self.input_shape) == 5:
+            output_np = nearest_neighbor_interp3d_np(
+                input_np,
+                out_d,
+                out_h,
+                out_w,
+                scale_d,
+                scale_h,
+                scale_w,
+                self.out_size,
+                self.actual_shape,
+                self.align_corners,
+                self.data_layout,
+            )
+        self.inputs = {'X': input_np}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
+        if self.actual_shape is not None:
+            self.inputs['OutSize'] = self.actual_shape
+        if len(self.input_shape) == 5:
+            self.attrs = {
+                'out_d': self.out_d,
+                'out_h': self.out_h,
+                'out_w': self.out_w,
+                'interp_method': self.interp_method,
+                'align_corners': self.align_corners,
+                'data_layout': self.data_layout,
+            }
+        else:
+            self.attrs = {
+                'out_h': self.out_h,
+                'out_w': self.out_w,
+                'interp_method': self.interp_method,
+                'align_corners': self.align_corners,
+                'data_layout': self.data_layout,
+            }
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if self.scale > 0:
+                    self.scale = [self.scale]
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                self.scale = [self.scale[0], self.scale[0]]
+            self.attrs['scale'] = self.scale
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            in_place=True,
+            check_eager=True,
+            max_relative_error=1e-2,
+        )
+
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [2, 3, 4, 5]
+        self.out_h = 2
+        self.out_w = 2
+        self.scale = []
+        self.out_size = np.array([3, 3]).astype("int32")
+        self.align_corners = True
+
+
+class TestNearestNeighborInterpCase1FP16(TestNearestInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [4, 1, 1, 7, 8]
+        self.out_d = 1
+        self.out_h = 1
+        self.out_w = 1
+        self.scale = []
+        self.align_corners = True
+
+
+class TestNearestNeighborInterpCase2FP16(TestNearestInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = []
+        self.align_corners = True
+
+
+class TestNearestNeighborInterpCase3FP16(TestNearestInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = []
+        self.align_corners = True
+
+
+class TestNearestNeighborInterpCase4FP16(TestNearestInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 1
+        self.out_w = 1
+        self.scale = []
+        self.out_size = np.array([2, 2]).astype("int32")
+        self.align_corners = True
+
+
+class TestNearestNeighborInterpCase5FP16(TestNearestInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = []
+        self.out_size = np.array([11, 11]).astype("int32")
+        self.align_corners = True
+
+
+class TestNearestNeighborInterpCase6FP16(TestNearestInterpOpFP16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = []
+        self.out_size = np.array([65, 129]).astype("int32")
+        self.align_corners = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestNearestInterpOpBF16(OpTest):
+    def setUp(self):
+        self.python_api = nearest_interp_test
+        self.out_size = None
+        self.actual_shape = None
+        self.data_layout = 'NCHW'
+        self.init_test_case()
+        self.op_type = "nearest_interp_v2"
+        self.dtype = np.uint16
+        input_np = np.random.random(self.input_shape).astype("float32")
+
+        if self.data_layout == "NCHW" and len(self.input_shape) == 4:
+            in_d = 1
+            in_h = self.input_shape[2]
+            in_w = self.input_shape[3]
+        else:
+            in_d = 1
+            in_h = self.input_shape[1]
+            in_w = self.input_shape[2]
+
+        if self.data_layout == "NCDHW" and len(self.input_shape) == 5:
+            in_d = self.input_shape[2]
+            in_h = self.input_shape[3]
+            in_w = self.input_shape[4]
+        else:
+            in_d = self.input_shape[1]
+            in_h = self.input_shape[2]
+            in_w = self.input_shape[3]
+        scale_d = 0
+        scale_h = 0
+        scale_w = 0
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if self.scale > 0:
+                    scale_d = scale_h = scale_w = float(self.scale)
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                scale_d = scale_w = scale_h = self.scale[0]
+            elif isinstance(self.scale, list) and len(self.scale) > 1:
+                if len(self.scale) == 5:
+                    scale_w = self.scale[2]
+                    scale_h = self.scale[1]
+                    scale_d = self.scale[0]
+                else:
+                    scale_w = self.scale[1]
+                    scale_h = self.scale[0]
+
+            out_h = int(in_h * scale_h)
+            out_w = int(in_w * scale_w)
+            out_d = int(in_d * scale_d)
+        else:
+            if len(self.input_shape) == 5:
+                out_d = self.out_d
+            out_h = self.out_h
+            out_w = self.out_w
+
+        if len(self.input_shape) == 4:
+            output_np = nearest_neighbor_interp_np(
+                input_np,
+                out_h,
+                out_w,
+                scale_h,
+                scale_w,
+                self.out_size,
+                self.actual_shape,
+                self.align_corners,
+                self.data_layout,
+            )
+        elif len(self.input_shape) == 5:
+            output_np = nearest_neighbor_interp3d_np(
+                input_np,
+                out_d,
+                out_h,
+                out_w,
+                scale_d,
+                scale_h,
+                scale_w,
+                self.out_size,
+                self.actual_shape,
+                self.align_corners,
+                self.data_layout,
+            )
+        self.inputs = {'X': convert_float_to_uint16(input_np)}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
+        if self.actual_shape is not None:
+            self.inputs['OutSize'] = self.actual_shape
+        if len(self.input_shape) == 5:
+            self.attrs = {
+                'out_d': self.out_d,
+                'out_h': self.out_h,
+                'out_w': self.out_w,
+                'interp_method': self.interp_method,
+                'align_corners': self.align_corners,
+                'data_layout': self.data_layout,
+            }
+        else:
+            self.attrs = {
+                'out_h': self.out_h,
+                'out_w': self.out_w,
+                'interp_method': self.interp_method,
+                'align_corners': self.align_corners,
+                'data_layout': self.data_layout,
+            }
+        if self.scale:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                if self.scale > 0:
+                    self.scale = [self.scale]
+            if isinstance(self.scale, list) and len(self.scale) == 1:
+                self.scale = [self.scale[0], self.scale[0]]
+            self.attrs['scale'] = self.scale
+        self.outputs = {'Out': convert_float_to_uint16(output_np)}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, atol=1e-2)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            in_place=True,
+            check_eager=True,
+            max_relative_error=1e-2,
+        )
+
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [2, 3, 4, 5]
+        self.out_h = 2
+        self.out_w = 2
+        self.scale = []
+        self.out_size = np.array([3, 3]).astype("int32")
+        self.align_corners = True
+
+
+class TestNearestNeighborInterpCase1BF16(TestNearestInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [4, 1, 1, 7, 8]
+        self.out_d = 1
+        self.out_h = 1
+        self.out_w = 1
+        self.scale = []
+        self.align_corners = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestNearestNeighborInterpCase2BF16(TestNearestInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = []
+        self.align_corners = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestNearestNeighborInterpCase3BF16(TestNearestInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = []
+        self.align_corners = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestNearestNeighborInterpCase4BF16(TestNearestInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [4, 1, 7, 8]
+        self.out_h = 1
+        self.out_w = 1
+        self.scale = []
+        self.out_size = np.array([2, 2]).astype("int32")
+        self.align_corners = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestNearestNeighborInterpCase5BF16(TestNearestInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [3, 3, 9, 6]
+        self.out_h = 12
+        self.out_w = 12
+        self.scale = []
+        self.out_size = np.array([11, 11]).astype("int32")
+        self.align_corners = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestNearestNeighborInterpCase6BF16(TestNearestInterpOpBF16):
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [1, 1, 32, 64]
+        self.out_h = 64
+        self.out_w = 32
+        self.scale = []
+        self.out_size = np.array([65, 129]).astype("int32")
         self.align_corners = True
 
 

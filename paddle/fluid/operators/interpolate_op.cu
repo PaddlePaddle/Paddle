@@ -203,7 +203,7 @@ __global__ void KeLinearInterpBw(T* in,
                                  const size_t output_h,
                                  const size_t output_w,
                                  const size_t num_channels,
-                                 const T ratio_w,
+                                 const float ratio_w,
                                  const bool align_corners,
                                  const int align_mode,
                                  const DataLayout data_layout) {
@@ -227,17 +227,15 @@ __global__ void KeLinearInterpBw(T* in,
       channel_id = tid % num_channels;
     }
 
-    int in_img_idx = align_flag
-                         ? static_cast<MT>(ratio_w) * (out_img_idx + 0.5) - 0.5
-                         : static_cast<MT>(ratio_w) * out_img_idx;
+    int in_img_idx = align_flag ? ratio_w * (out_img_idx + 0.5) - 0.5
+                                : ratio_w * out_img_idx;
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;  // w
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;  // w_id
 
-    MT src_w = static_cast<MT>(ratio_w) * (out_img_idx + 0.5) - 0.5;
+    MT src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
     src_w = (src_w > 0) ? src_w : 0;
-    MT w1lambda = align_flag
-                      ? src_w - in_img_idx
-                      : static_cast<MT>(ratio_w) * out_img_idx - in_img_idx;
+    MT w1lambda =
+        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
     MT w2lambda = 1.f - w1lambda;
 
     T* in_pos;
@@ -367,8 +365,8 @@ __global__ void KeBilinearInterpBw(T* in,
                                    const size_t output_h,
                                    const size_t output_w,
                                    const size_t num_channels,
-                                   const T ratio_h,
-                                   const T ratio_w,
+                                   const float ratio_h,
+                                   const float ratio_w,
                                    const bool align_corners,
                                    const int align_mode,
                                    const DataLayout data_layout) {
@@ -394,28 +392,24 @@ __global__ void KeBilinearInterpBw(T* in,
       channel_id = tid % num_channels;
     }
 
-    int in_img_idy = align_flag
-                         ? static_cast<MT>(ratio_h) * (out_img_idy + 0.5) - 0.5
-                         : static_cast<MT>(ratio_h) * out_img_idy;
+    int in_img_idy = align_flag ? ratio_h * (out_img_idy + 0.5) - 0.5
+                                : ratio_h * out_img_idy;
     in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    MT src_h = static_cast<MT>(ratio_h) * (out_img_idy + 0.5) - 0.5;
+    MT src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
     src_h = (src_h > 0) ? src_h : 0;
-    MT h1lambda = align_flag
-                      ? src_h - in_img_idy
-                      : static_cast<MT>(ratio_h) * out_img_idy - in_img_idy;
+    MT h1lambda =
+        align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy;
     MT h2lambda = 1.f - h1lambda;
 
-    int in_img_idx = align_flag
-                         ? static_cast<MT>(ratio_w) * (out_img_idx + 0.5) - 0.5
-                         : static_cast<MT>(ratio_w) * out_img_idx;
+    int in_img_idx = align_flag ? ratio_w * (out_img_idx + 0.5) - 0.5
+                                : ratio_w * out_img_idx;
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    MT src_w = static_cast<MT>(ratio_w) * (out_img_idx + 0.5) - 0.5;
+    MT src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
     src_w = (src_w > 0) ? src_w : 0;
-    MT w1lambda = align_flag
-                      ? src_w - in_img_idx
-                      : static_cast<MT>(ratio_w) * out_img_idx - in_img_idx;
+    MT w1lambda =
+        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
     MT w2lambda = 1.f - w1lambda;
 
     T* in_pos;
@@ -611,9 +605,9 @@ __global__ void KeTrilinearInterpBw(T* in,
                                     const size_t output_h,
                                     const size_t output_w,
                                     const size_t num_channels,
-                                    const T ratio_d,
-                                    const T ratio_h,
-                                    const T ratio_w,
+                                    const float ratio_d,
+                                    const float ratio_h,
+                                    const float ratio_w,
                                     const bool align_corners,
                                     const int align_mode,
                                     const DataLayout data_layout) {
@@ -642,43 +636,37 @@ __global__ void KeTrilinearInterpBw(T* in,
       channel_id = tid % num_channels;
     }
 
-    int in_img_idt =
-        align_flag ? static_cast<int>(
-                         static_cast<MT>(ratio_d) * (out_img_idt + 0.5) - 0.5)
-                   : static_cast<int>(static_cast<MT>(ratio_d) * out_img_idt);
+    int in_img_idt = align_flag
+                         ? static_cast<int>(ratio_d * (out_img_idt + 0.5) - 0.5)
+                         : static_cast<int>(ratio_d * out_img_idt);
     in_img_idt = (in_img_idt > 0) ? in_img_idt : 0;
     int d_id = (in_img_idt < in_img_d - 1) ? 1 : 0;
-    MT src_d = static_cast<MT>(ratio_d) * (out_img_idt + 0.5) - 0.5;
+    MT src_d = ratio_d * (out_img_idt + 0.5) - 0.5;
     src_d = (src_d > 0) ? src_d : 0;
-    MT d1lambda = align_flag
-                      ? src_d - in_img_idt
-                      : static_cast<MT>(ratio_d) * out_img_idt - in_img_idt;
+    MT d1lambda =
+        align_flag ? src_d - in_img_idt : ratio_d * out_img_idt - in_img_idt;
     MT d2lambda = 1.f - d1lambda;
 
-    int in_img_idy =
-        align_flag ? static_cast<int>(
-                         static_cast<MT>(ratio_h) * (out_img_idy + 0.5) - 0.5)
-                   : static_cast<int>(static_cast<MT>(ratio_h) * out_img_idy);
+    int in_img_idy = align_flag
+                         ? static_cast<int>(ratio_h * (out_img_idy + 0.5) - 0.5)
+                         : static_cast<int>(ratio_h * out_img_idy);
     in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
     int h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    MT src_h = static_cast<MT>(ratio_h) * (out_img_idy + 0.5) - 0.5;
+    MT src_h = ratio_h * (out_img_idy + 0.5) - 0.5;
     src_h = (src_h > 0) ? src_h : 0;
-    MT h1lambda = align_flag
-                      ? src_h - in_img_idy
-                      : static_cast<MT>(ratio_h) * out_img_idy - in_img_idy;
+    MT h1lambda =
+        align_flag ? src_h - in_img_idy : ratio_h * out_img_idy - in_img_idy;
     MT h2lambda = 1.f - h1lambda;
 
-    int in_img_idx =
-        align_flag ? static_cast<int>(
-                         static_cast<MT>(ratio_w) * (out_img_idx + 0.5) - 0.5)
-                   : static_cast<int>(static_cast<MT>(ratio_w) * out_img_idx);
+    int in_img_idx = align_flag
+                         ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
+                         : static_cast<int>(ratio_w * out_img_idx);
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    MT src_w = static_cast<MT>(ratio_w) * (out_img_idx + 0.5) - 0.5;
+    MT src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
     src_w = (src_w > 0) ? src_w : 0;
-    MT w1lambda = align_flag
-                      ? src_w - in_img_idx
-                      : static_cast<MT>(ratio_w) * out_img_idx - in_img_idx;
+    MT w1lambda =
+        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
     MT w2lambda = 1.f - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
@@ -1780,8 +1768,8 @@ REGISTER_OP_CUDA_KERNEL(
     bilinear_interp_grad,
     ops::InterpolateGradOpCUDAKernel<float>,
     ops::InterpolateGradOpCUDAKernel<double>,
-    ops::InterpolateOpCUDAKernel<paddle::platform::bfloat16>,
-    ops::InterpolateOpCUDAKernel<paddle::platform::float16>);
+    ops::InterpolateGradOpCUDAKernel<paddle::platform::float16>,
+    ops::InterpolateGradOpCUDAKernel<paddle::platform::bfloat16>);
 REGISTER_OP_CUDA_KERNEL(
     nearest_interp,
     ops::InterpolateOpCUDAKernel<float>,
@@ -1793,8 +1781,8 @@ REGISTER_OP_CUDA_KERNEL(
     nearest_interp_grad,
     ops::InterpolateGradOpCUDAKernel<float>,
     ops::InterpolateGradOpCUDAKernel<double>,
-    ops::InterpolateOpCUDAKernel<paddle::platform::bfloat16>,
-    ops::InterpolateOpCUDAKernel<paddle::platform::float16>);
+    ops::InterpolateGradOpCUDAKernel<paddle::platform::float16>,
+    ops::InterpolateGradOpCUDAKernel<paddle::platform::bfloat16>);
 REGISTER_OP_CUDA_KERNEL(
     trilinear_interp,
     ops::InterpolateOpCUDAKernel<float>,
@@ -1806,8 +1794,8 @@ REGISTER_OP_CUDA_KERNEL(
     trilinear_interp_grad,
     ops::InterpolateGradOpCUDAKernel<float>,
     ops::InterpolateGradOpCUDAKernel<double>,
-    ops::InterpolateOpCUDAKernel<paddle::platform::bfloat16>,
-    ops::InterpolateOpCUDAKernel<paddle::platform::float16>);
+    ops::InterpolateGradOpCUDAKernel<paddle::platform::float16>,
+    ops::InterpolateGradOpCUDAKernel<paddle::platform::bfloat16>);
 REGISTER_OP_CUDA_KERNEL(
     linear_interp,
     ops::InterpolateOpCUDAKernel<float>,
@@ -1819,8 +1807,8 @@ REGISTER_OP_CUDA_KERNEL(
     linear_interp_grad,
     ops::InterpolateGradOpCUDAKernel<float>,
     ops::InterpolateGradOpCUDAKernel<double>,
-    ops::InterpolateOpCUDAKernel<paddle::platform::bfloat16>,
-    ops::InterpolateOpCUDAKernel<paddle::platform::float16>);
+    ops::InterpolateGradOpCUDAKernel<paddle::platform::float16>,
+    ops::InterpolateGradOpCUDAKernel<paddle::platform::bfloat16>);
 REGISTER_OP_CUDA_KERNEL(
     bicubic_interp,
     ops::InterpolateOpCUDAKernel<float>,
@@ -1832,5 +1820,5 @@ REGISTER_OP_CUDA_KERNEL(
     bicubic_interp_grad,
     ops::InterpolateGradOpCUDAKernel<float>,
     ops::InterpolateGradOpCUDAKernel<double>,
-    ops::InterpolateOpCUDAKernel<paddle::platform::bfloat16>,
-    ops::InterpolateOpCUDAKernel<paddle::platform::float16>);
+    ops::InterpolateGradOpCUDAKernel<paddle::platform::float16>,
+    ops::InterpolateGradOpCUDAKernel<paddle::platform::bfloat16>);
