@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/flash_attn_grad_kernel.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
@@ -83,7 +83,7 @@ void FlashAttnGradKernel(const Context& ctx,
   bool zero_tensors = false;
 
   std::vector<int64_t> seed_offset_vec;
-  paddle::framework::TensorToVector<int64_t>(seed_offset, &seed_offset_vec);
+  phi::TensorToVector<int64_t>(seed_offset, ctx, &seed_offset_vec);
   uint64_t seed = seed_offset_vec[0];
   uint64_t offset = seed_offset_vec[1];
 
@@ -124,7 +124,9 @@ void FlashAttnGradKernel(const Context& ctx,
       seed,
       offset);
 
-  if (!succ) PADDLE_THROW(phi::dynload::flash_attn_error());
+  if (!succ) {
+    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+  }
 
   DenseTensor workspace;
   if (workspace_size > 0) {
@@ -163,7 +165,9 @@ void FlashAttnGradKernel(const Context& ctx,
       seed,
       offset);
 
-  if (!succ) PADDLE_THROW(phi::dynload::flash_attn_error());
+  if (!succ) {
+    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+  }
 
 #endif
 }

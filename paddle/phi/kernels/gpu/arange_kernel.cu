@@ -72,6 +72,10 @@ void ArangeNullaryKernel(const Context& dev_ctx,
   Range<T><<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
 }
 
+template decltype(ArangeNullaryKernel<int64_t, phi::GPUContext>)
+    ArangeNullaryKernel;
+template decltype(ArangeNullaryKernel<int, phi::GPUContext>)
+    ArangeNullaryKernel;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
@@ -80,6 +84,3 @@ PD_REGISTER_KERNEL(
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
 }
-
-PD_REGISTER_KERNEL(
-    arange_nullary, GPU, ALL_LAYOUT, phi::ArangeNullaryKernel, int64_t, int) {}

@@ -267,23 +267,6 @@ void FlashAttnInferMeta(const MetaTensor& q,
   out->set_layout(q.layout());
 }
 
-void FlashAttnGradInferMeta(const MetaTensor& q,
-                            const MetaTensor& k,
-                            const MetaTensor& v,
-                            MetaTensor* dq,
-                            MetaTensor* dk,
-                            MetaTensor* dv) {
-  if (dq) {
-    dq->share_meta(q);
-  }
-  if (dk && k) {
-    dk->share_meta(k);
-  }
-  if (dv && v) {
-    dv->share_meta(v);
-  }
-}
-
 void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& end,
                      const MetaTensor& step,
