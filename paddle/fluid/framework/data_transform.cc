@@ -156,5 +156,24 @@ void SetTensorToVariable(const Variable &in_var,
   }
 }
 
+phi::InferVarKernelContext BuildInferVarKernelContext(
+    const phi::KernelKey &kernel_key,
+    const AttributeMap &fluid_attrs,
+    phi::AttributeMap *phi_attrs,
+    bool has_infer_varkernel_fn) {
+  if (has_infer_varkernel_fn) {
+    for (auto &attr : fluid_attrs) {
+      switch (attr.second.index()) {
+        case 3:  // string
+          (*phi_attrs)[attr.first] = paddle::get<3>(attr.second);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+  return phi::InferVarKernelContext(&kernel_key, &phi_attrs);
+}
+
 }  // namespace framework
 }  // namespace paddle
