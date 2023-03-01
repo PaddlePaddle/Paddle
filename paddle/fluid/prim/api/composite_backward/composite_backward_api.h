@@ -278,7 +278,8 @@ void divide_grad(const Tensor& x,
 template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto x_grad_tmp = out_grad * 0.5 / out;
+    // This calculation is important for resnet.
+    auto x_grad_tmp = (0.5 / out) * out_grad;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }
