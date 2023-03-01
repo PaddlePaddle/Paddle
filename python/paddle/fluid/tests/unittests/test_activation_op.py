@@ -2182,7 +2182,7 @@ class TestHardSwish_ZeroDim(TestHardSwish):
         self.shape = []
 
 
-class TesthardSwishFP16(TestHardSwish):
+class TestHardSwishFP16(TestHardSwish):
     def setUp(self):
         super().setUp()
         self.only_prim = True
@@ -2191,7 +2191,7 @@ class TesthardSwishFP16(TestHardSwish):
         self.dtype = np.float16
 
 
-class TestHardSwish_ZeroDim_FP16(TesthardSwishFP16):
+class TestHardSwish_ZeroDim_FP16(TestHardSwishFP16):
     def init_shape(self):
         self.shape = []
 
