@@ -1352,7 +1352,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is float16, float32, float64, int32 or int64.
         axis (int|list|tuple, optional): The dimensions along which the nansum is performed. If
             :attr:`None`, nansum all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
@@ -1395,7 +1395,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             out6 = paddle.nansum(y, axis=[0, 1]) # [9, 18]
     """
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'nansum'
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'nansum'
     )
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
 
@@ -2773,11 +2773,11 @@ def clip(x, min=None, max=None, name=None):
         Out = MIN(MAX(x, min), max)
 
     Args:
-        x (Tensor): An N-D Tensor with data type float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor with data type float16, float32, float64, int32 or int64.
         min (float|int|Tensor, optional): The lower bound with type ``float`` , ``int`` or a ``Tensor``
-            with shape [1] and type ``int32``, ``float32``, ``float64``.
+            with shape [1] and type ``int32``, ``float16``, ``float32``, ``float64``.
         max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``Tensor``
-            with shape [1] and type ``int32``, ``float32``, ``float64``.
+            with shape [1] and type ``int32``, ``float16``, ``float32``, ``float64``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2806,6 +2806,9 @@ def clip(x, min=None, max=None, name=None):
     elif x_dtype == 'paddle.int64':
         min_ = np.iinfo(np.int64).min
         max_ = np.iinfo(np.int64).max - 2**39
+    elif x_dtype == 'paddle.float16':
+        min_ = float(np.finfo(np.float16).min)
+        max_ = float(np.finfo(np.float16).max)
     else:
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
@@ -2825,7 +2828,7 @@ def clip(x, min=None, max=None, name=None):
                 check_dtype(
                     min.dtype,
                     'min',
-                    ['float32', 'float64', 'int32'],
+                    ['float16', 'float32', 'float64', 'int32'],
                     'clip',
                     '(When the type of min in clip is Variable.)',
                 )
@@ -2835,13 +2838,13 @@ def clip(x, min=None, max=None, name=None):
                 check_dtype(
                     max.dtype,
                     'max',
-                    ['float32', 'float64', 'int32'],
+                    ['float16', 'float32', 'float64', 'int32'],
                     'clip',
                     '(When the type of max in clip is Variable.)',
                 )
 
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'clip'
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'clip'
         )
 
         inputs = {'X': x}
@@ -3208,6 +3211,12 @@ def cumsum(x, axis=None, dtype=None, name=None):
             axis = -1
         return _C_ops.cumsum(x, axis, flatten, False, False)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'cumsum',
+        )
         check_type(x, 'x', (Variable), 'cumsum')
         locals_var = locals().copy()
         kwargs = dict()
@@ -3864,7 +3873,7 @@ def conj(x, name=None):
 
     Args:
         x (Tensor): The input Tensor which hold the complex numbers.
-            Optional data types are: complex64, complex128, float32, float64, int32 or int64.
+            Optional data types are:float16, complex64, complex128, float32, float64, int32 or int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3892,7 +3901,15 @@ def conj(x, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'complex64',
+                'complex128',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'conj',
         )
 
@@ -4435,15 +4452,19 @@ def gcd(x, y, name=None):
     y = paddle.broadcast_to(y, shape)
     x = paddle.abs(x)
     y = paddle.abs(y)
+    # TODO(zhouwei25): Support 0D for not_equal tensor with scalar
+    zero = paddle.full([], 0)
 
     def _gcd_cond_fn(x, y):
-        return paddle.any(y != 0)
+        # return paddle.any(y != 0)
+        return paddle.any(y != zero)
 
     def _gcd_body_fn(x, y):
         # paddle.mod will raise an error when any element of y is 0. To avoid
         # that, we change those zeros to ones. Their values don't matter because
         # they won't be used.
-        y_not_equal_0 = y != 0
+        # y_not_equal_0 = y != 0
+        y_not_equal_0 = y != zero
         y_safe = paddle.where(y_not_equal_0, y, paddle.ones(y.shape, y.dtype))
         x, y = (
             paddle.where(y_not_equal_0, y, x),
