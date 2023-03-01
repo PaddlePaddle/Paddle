@@ -1524,6 +1524,7 @@
   kernel :
     func : topk_grad
     data_type : out_grad
+  composite : topk_grad(x, indices, out_grad, k, axis, largest, sorted, x_grad)
 
 - backward_op : trace_grad
   forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)

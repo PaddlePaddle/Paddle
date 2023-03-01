@@ -767,5 +767,22 @@ void cumsum_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void topk_grad(const Tensor& x,
+               const Tensor& indices,
+               const Tensor& out_grad,
+               const Scalar& k,
+               const int& axis,
+               const bool& largest,
+               const bool& sorted,
+               Tensor* x_grad) {
+  if (x_grad) {
+    auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+    auto x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
+
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle
