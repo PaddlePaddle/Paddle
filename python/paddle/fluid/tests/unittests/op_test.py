@@ -1919,7 +1919,7 @@ class OpTest(unittest.TestCase):
                 else:
                     atol = 2
             else:
-                atol = 1e-1
+                atol = 1e-2
 
         if self.is_float16_op():
             atol = 1e-3
@@ -2382,7 +2382,7 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.04 else max_relative_error
                 )
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
@@ -2392,10 +2392,13 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.04 else max_relative_error
                 )
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
+
+        if self.dytpe == np.float16:
+            max_relative_error = 0.001
 
         self._assert_is_close(
             numeric_grads,
