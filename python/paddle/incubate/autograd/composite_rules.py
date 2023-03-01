@@ -281,11 +281,12 @@ def fill_any_like(x, fill_value, dtype, place=None):
     val = full(x.shape, fill_value, dtype)
     return val
 
+
 @REGISTER_COMPOSITE('sqrt')
 def sqrt_composite(x):
     """
     define composite rule of op sqrt
     res = pow(x, 0.5)
     """
-    res = pow(x,0.5)
+    res = pow(x, 0.5)
     return res

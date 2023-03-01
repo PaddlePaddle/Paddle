@@ -1267,6 +1267,7 @@ class TestSqrtBF16(OpTest):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
 
+
 class TestSqrtComp(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
@@ -1290,7 +1291,7 @@ class TestSqrtComp(TestActivation, TestParameter):
         self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_check_output(self):
-        self.check_output(check_eager=True,check_prim=True)
+        self.check_output(check_eager=True, check_prim=True)
 
 
 class TestSqrtCompFp32(TestActivation):
@@ -1323,7 +1324,7 @@ class TestSqrtCompFp32(TestActivation):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestSqrtBF16(OpTest):
+class TestSqrtCompBF16(OpTest):
     def setUp(self):
         self.op_type = "sqrt"
         self.prim_op_type = "comp"
