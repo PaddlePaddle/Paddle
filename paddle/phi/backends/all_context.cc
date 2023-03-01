@@ -81,7 +81,7 @@ phi::DeviceContext* DeviceContextPool::Get(const phi::Place& place) {
   return it->second.get().get();
 }
 
-size_t DeviceContextPool::size() const {
+size_t DeviceContextPool::Size() const {
   if (external_device_contexts_) {
     return external_device_contexts_->size();
   }

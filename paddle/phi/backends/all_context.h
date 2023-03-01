@@ -119,7 +119,7 @@ class DeviceContextPool {
         const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
   }
 
-  size_t size() const;
+  size_t Size() const;
 
   const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
   device_contexts() const;
