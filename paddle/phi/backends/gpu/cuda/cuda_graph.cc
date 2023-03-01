@@ -145,8 +145,11 @@ void CUDAGraph::BeginSegmentCapture() {
                           "you cannot begin segmented capturing in the thread "
                           "which is not the one that starts the capturing."));
   }
+  VLOG(4) << "yoki: capturing_graph_stream: " << capturing_graph_->stream_;
+  VLOG(4) << "yoki: capture_mode_: " << capturing_graph_->capture_mode_;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamBeginCapture(
       capturing_graph_->stream_, capturing_graph_->capture_mode_));
+  VLOG(4) << "yoki IsValidCapturing: " << IsValidCapturing();
   PADDLE_ENFORCE_EQ(
       IsValidCapturing(),
       true,

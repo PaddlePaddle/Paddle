@@ -55,8 +55,8 @@ class CUDAGraph:
         assert mode in ALL_MODES
         self._mode = ALL_MODES.index(mode)
 
-    def capture_begin(self):
-        CoreCUDAGraph.begin_capture(self._place, self._mode)
+    def capture_begin(self, use_multi_stream=False):
+        CoreCUDAGraph.begin_capture(self._place, self._mode, use_multi_stream)
 
     def capture_end(self):
         self._graph = CoreCUDAGraph.end_capture()

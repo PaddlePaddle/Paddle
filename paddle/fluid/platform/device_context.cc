@@ -150,6 +150,7 @@ template <typename DevCtx>
 typename std::enable_if<!std::is_same<DevCtx, phi::GPUContext>::value,
                         DevCtx*>::type
 ConstructDevCtx(const platform::Place& p, /*unused*/ int stream_priority = 0) {
+  VLOG(4) << "yoki ConstructDevCtx0";
   return new DevCtx(p);
 }
 
@@ -157,12 +158,14 @@ template <typename DevCtx>
 typename std::enable_if<std::is_same<DevCtx, phi::GPUContext>::value,
                         DevCtx*>::type
 ConstructDevCtx(const platform::Place& p, int stream_priority) {
+  VLOG(4) << "yoki ConstructDevCtx1";
   return new DevCtx(p, /*init=*/true, stream_priority);
 }
 #else
 template <typename DevCtx>
 DevCtx* ConstructDevCtx(const platform::Place& p,
                         /*unused*/ int stream_priority) {
+  VLOG(4) << "yoki ConstructDevCtx2";
   return new DevCtx(p);
 }
 #endif
@@ -170,8 +173,9 @@ DevCtx* ConstructDevCtx(const platform::Place& p,
 template <typename DevCtx>
 std::unique_ptr<DeviceContext> CreateDeviceContext(
     const platform::Place& p,
-    bool disable_setting_default_stream_for_allocator = false,
-    int stream_priority = 0) {
+    bool disable_setting_default_stream_for_allocator,
+    int stream_priority) {
+  VLOG(4) << "yoki: CreateDeviceContext";
   using PtrType = std::unique_ptr<DeviceContext>;
 
   DevCtx* dev_ctx = ConstructDevCtx<DevCtx>(p, stream_priority);
@@ -184,8 +188,10 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
         platform::errors::InvalidArgument(
             "Failed to dynamic_cast dev_ctx into phi::GPUContext."));
 
+    VLOG(4) << "yoki: instance";
     auto& instance = memory::allocation::AllocatorFacade::Instance();
     if (!disable_setting_default_stream_for_allocator) {
+      VLOG(4) << "yoki: SetDefaultStream";
       instance.SetDefaultStream(CUDAPlace(p.GetDeviceId()), cuda_ctx->stream());
     }
     dev_ctx->SetAllocator(instance.GetAllocator(p, cuda_ctx->stream()).get());
@@ -226,6 +232,7 @@ inline void EmplaceDeviceContext(
     platform::Place place,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority) {
+  VLOG(4) << "yoki: EmplaceDeviceContext";
   // lazy evaluation. i.e., only create device context at first `Get`
   place_to_device_context->emplace(
       place,
@@ -373,6 +380,7 @@ void EmplaceDeviceContexts(
 
 DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
+  VLOG(4) << "yoki: DeviceContextPool";
   EmplaceDeviceContexts(&device_contexts_,
                         places,
                         /*disable_setting_default_stream_for_allocator=*/false,

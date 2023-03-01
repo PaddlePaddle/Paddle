@@ -120,7 +120,7 @@ class CUDAGraphAllocator
                      underlying_allocation->size(),
                      underlying_allocation->place()),
           allocator_(allocator->shared_from_this()),
-          underlying_allocation_(std::move(underlying_allocation)) {}
+          underlying_allocation_(std::move(underlying_allocation)) { VLOG(4) << "yoki1: PrivateAllocation"; }
 
    private:
     std::shared_ptr<Allocator> allocator_;
@@ -128,13 +128,14 @@ class CUDAGraphAllocator
   };
 
   explicit CUDAGraphAllocator(const std::shared_ptr<Allocator>& allocator)
-      : underlying_allocator_(allocator) {}
+      : underlying_allocator_(allocator) { VLOG(4) << "yoki2: CUDAGraphAllocator"; }
 
  public:
   ~CUDAGraphAllocator() { VLOG(10) << "CUDAGraphAllocator destructed"; }
 
   static std::shared_ptr<Allocator> Create(
       const std::shared_ptr<Allocator>& allocator) {
+    VLOG(4) << "yoki3: CUDAGraphAllocator Create";
     return std::shared_ptr<Allocator>(new CUDAGraphAllocator(allocator));
   }
 
@@ -175,6 +176,7 @@ class AllocatorFacadePrivate {
 #endif
 
   explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true) {
+    VLOG(4) << "yoki4: AllocatorFacadePrivate";
     strategy_ = GetAllocatorStrategy();
     is_stream_safe_cuda_allocator_used_ = false;
 
@@ -332,8 +334,11 @@ class AllocatorFacadePrivate {
 
 #ifdef PADDLE_WITH_CUDA
     // No need to wrap CUDAGraphAllocator for StreamSafeCUDAAllocator
-    if (!is_stream_safe_cuda_allocator_used_ &&
-        UNLIKELY(IsCUDAGraphCapturing())) {
+    // if (!is_stream_safe_cuda_allocator_used_ &&
+    //     UNLIKELY(IsCUDAGraphCapturing())) {
+    //   WrapCUDAGraphAllocator();
+    // }
+    if (UNLIKELY(IsCUDAGraphCapturing())) {
       WrapCUDAGraphAllocator();
     }
 #endif
@@ -356,16 +361,19 @@ class AllocatorFacadePrivate {
   }
 
   void* GetBasePtr(const std::shared_ptr<phi::Allocation>& allocation) {
+    VLOG(4) << "yoki5: GetBasePtr";
     return static_cast<Allocation*>(allocation.get())->base_ptr();
   }
 
   bool IsStreamSafeCUDAAllocatorUsed() {
+    VLOG(4) << "yoki6: IsStreamSafeCUDAAllocatorUsed";
     return is_stream_safe_cuda_allocator_used_ &&
            LIKELY(FLAGS_use_system_allocator == false);
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   bool HasCUDAAllocator(const platform::CUDAPlace& place, gpuStream_t stream) {
+    VLOG(4) << "yoki7: HasCUDAAllocator";
     auto it = cuda_allocators_.find(place);
     if (it == cuda_allocators_.end()) {
       return false;
@@ -379,6 +387,7 @@ class AllocatorFacadePrivate {
       const platform::CUDAPlace& place,
       gpuStream_t stream,
       bool create_if_not_found = false) {
+    VLOG(4) << "yoki8: GetAllocator";
     if (LIKELY(!IsCUDAGraphCapturing())) {
       if (stream == GetDefaultStream(place)) {
         VLOG(7) << "Get Allocator by passing in a default stream";
@@ -412,6 +421,7 @@ class AllocatorFacadePrivate {
 
   const std::shared_ptr<StreamSafeCUDAAllocator>
   GetDefaultStreamSafeCUDAAllocator(const platform::CUDAPlace& place) const {
+    VLOG(4) << "yoki9: GetDefaultStreamSafeCUDAAllocator";
     const auto iter = default_stream_safe_cuda_allocators_.find(place);
     PADDLE_ENFORCE_NE(
         iter,
@@ -422,12 +432,14 @@ class AllocatorFacadePrivate {
   }
 
   gpuStream_t GetDefaultStream(const platform::CUDAPlace& place) const {
+    VLOG(4) << "yoki10: GetDefaultStream";
     const std::shared_ptr<StreamSafeCUDAAllocator>& allocator =
         GetDefaultStreamSafeCUDAAllocator(place);
     return allocator->GetDefaultStream();
   }
 
   void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream) {
+    VLOG(4) << "yoki11: SetDefaultStream";
     const std::shared_ptr<StreamSafeCUDAAllocator>& allocator =
         GetDefaultStreamSafeCUDAAllocator(place);
 
@@ -450,6 +462,7 @@ class AllocatorFacadePrivate {
 
   void RecordStream(std::shared_ptr<phi::Allocation> allocation,
                     gpuStream_t stream) {
+    VLOG(4) << "yoki12: RecordStream";
     std::shared_ptr<StreamSafeCUDAAllocation> stream_safe_cuda_allocation =
         std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(allocation);
     if (stream_safe_cuda_allocation != nullptr) {
@@ -461,6 +474,7 @@ class AllocatorFacadePrivate {
 
   gpuStream_t GetStream(
       const std::shared_ptr<phi::Allocation>& allocation) const {
+    VLOG(4) << "yoki13: GetStream";
     const std::shared_ptr<StreamSafeCUDAAllocation>
         stream_safe_cuda_allocation =
             std::dynamic_pointer_cast<StreamSafeCUDAAllocation>(allocation);
@@ -478,7 +492,7 @@ class AllocatorFacadePrivate {
  private:
   class ZeroSizeAllocator : public Allocator {
    public:
-    explicit ZeroSizeAllocator(platform::Place place) : place_(place) {}
+    explicit ZeroSizeAllocator(platform::Place place) : place_(place) { VLOG(4) << "yoki14: ZeroSizeAllocator"; }
     bool IsAllocThreadSafe() const override { return true; }
 
    protected:
@@ -491,25 +505,32 @@ class AllocatorFacadePrivate {
     platform::Place place_;
   };
 
-  const AllocatorMap& GetAllocatorMap() { return allocators_; }
+  const AllocatorMap& GetAllocatorMap() { 
+    VLOG(4) << "yoki15: GetAllocatorMap";
+    return allocators_; 
+  }
 
   void InitNaiveBestFitCPUAllocator() {
+    VLOG(4) << "yoki16: InitNaiveBestFitCPUAllocator";
     // It is more efficient to use CPUAllocator directly.
     allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void InitNaiveBestFitCUDAPinnedAllocator() {
+    VLOG(4) << "yoki17: InitNaiveBestFitCUDAPinnedAllocator";
     allocators_[platform::CUDAPinnedPlace()] =
         std::make_shared<NaiveBestFitAllocator>(platform::CUDAPinnedPlace());
   }
 
   void InitNaiveBestFitCUDAAllocator(platform::CUDAPlace p) {
+    VLOG(4) << "yoki18: InitNaiveBestFitCUDAAllocator";
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
 
   // Create a new CUDAAllocator or CUDAManagedAllocator for the given device
   std::shared_ptr<Allocator> CreateCUDAAllocator(platform::CUDAPlace p) {
+    VLOG(4) << "yoki19: CreateCUDAAllocator";
     if (FLAGS_use_cuda_managed_memory) {
       PADDLE_ENFORCE_EQ(
           strategy_,
@@ -538,6 +559,7 @@ class AllocatorFacadePrivate {
   }
 
   void InitStreamSafeCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
+    VLOG(4) << "yoki20: InitStreamSafeCUDAAllocator";
     PADDLE_ENFORCE_EQ(
         strategy_,
         AllocatorStrategy::kAutoGrowth,
@@ -556,6 +578,7 @@ class AllocatorFacadePrivate {
   }
 
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
+    VLOG(4) << "yoki21: InitAutoGrowthCUDAAllocator";
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
     cuda_allocators_[p][stream] = std::make_shared<AutoGrowthBestFitAllocator>(
@@ -636,6 +659,7 @@ class AllocatorFacadePrivate {
   // NOTE(Ruibiao): Old single-stream version, will be removed later
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p,
                                    bool allow_free_idle_chunk) {
+    VLOG(4) << "yoki22: InitAutoGrowthCUDAAllocator";
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
@@ -716,10 +740,12 @@ class AllocatorFacadePrivate {
   }
 
   void InitThreadLocalCUDAAllocator(platform::CUDAPlace p) {
+    VLOG(4) << "yoki23: InitThreadLocalCUDAAllocator";
     allocators_[p] = std::make_shared<ThreadLocalCUDAAllocator>(p);
   }
 
   void WrapStreamSafeCUDAAllocator(platform::CUDAPlace p, gpuStream_t stream) {
+    VLOG(4) << "yoki24: WrapStreamSafeCUDAAllocator";
     std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
     allocator = std::make_shared<StreamSafeCUDAAllocator>(
         allocator,
@@ -729,6 +755,7 @@ class AllocatorFacadePrivate {
   }
 
   void WrapStreamSafeCUDAAllocatorForDefault() {
+    VLOG(4) << "yoki25: WrapStreamSafeCUDAAllocatorForDefault";
     for (auto& pair : allocators_) {
       auto& place = pair.first;
       if (platform::is_gpu_place(place)) {
@@ -753,6 +780,7 @@ class AllocatorFacadePrivate {
   void WrapCUDARetryAllocator(platform::CUDAPlace p,
                               gpuStream_t stream,
                               size_t retry_time) {
+    VLOG(4) << "yoki26: WrapCUDARetryAllocator";
     PADDLE_ENFORCE_GT(
         retry_time,
         0,
@@ -763,12 +791,14 @@ class AllocatorFacadePrivate {
   }
 
   void WrapStatAllocator(platform::CUDAPlace p, gpuStream_t stream) {
+    VLOG(4) << "yoki27: WrapStatAllocator";
     std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
     allocator = std::make_shared<StatAllocator>(allocator);
   }
 
 #ifdef PADDLE_WITH_CUDA
   void WrapCUDAGraphAllocator() {
+    VLOG(4) << "yoki28: WrapCUDAGraphAllocator";
     for (auto& item : allocators_) {
       auto& allocator = item.second;
       allocator = CUDAGraphAllocator::Create(allocator);
@@ -777,6 +807,7 @@ class AllocatorFacadePrivate {
 #endif
 
   static void CheckCUDAAllocThreadSafe(const CUDAAllocatorMap& allocators) {
+    VLOG(4) << "yoki29: CheckCUDAAllocThreadSafe";
     for (auto& place_pair : allocators) {
       for (auto& stream_pair : place_pair.second) {
         PADDLE_ENFORCE_EQ(stream_pair.second->IsAllocThreadSafe(),
@@ -835,6 +866,7 @@ class AllocatorFacadePrivate {
 #endif
 
   void InitSystemAllocators() {
+    VLOG(4) << "yoki30: InitSystemAllocators";
     if (!system_allocators_.empty()) return;
     system_allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
 #ifdef PADDLE_WITH_XPU
@@ -881,6 +913,7 @@ class AllocatorFacadePrivate {
   }
 
   void InitZeroSizeAllocators() {
+    VLOG(4) << "yoki31: InitZeroSizeAllocators";
     if (!zero_size_allocators_.empty()) return;
     std::vector<platform::Place> places;
     places.emplace_back(platform::CPUPlace());
@@ -932,6 +965,7 @@ class AllocatorFacadePrivate {
   }
 
   static void CheckAllocThreadSafe(const AllocatorMap& allocators) {
+    VLOG(4) << "yoki32: CheckAllocThreadSafe";
     for (auto& pair : allocators) {
       PADDLE_ENFORCE_EQ(pair.second->IsAllocThreadSafe(),
                         true,
@@ -941,6 +975,7 @@ class AllocatorFacadePrivate {
   }
 
   void CheckAllocThreadSafe() const {
+    VLOG(4) << "yoki33: CheckAllocThreadSafe";
     CheckAllocThreadSafe(allocators_);
     CheckAllocThreadSafe(zero_size_allocators_);
     CheckAllocThreadSafe(system_allocators_);
@@ -952,6 +987,7 @@ class AllocatorFacadePrivate {
   }
 
   void WrapCUDARetryAllocator(size_t retry_time) {
+    VLOG(4) << "yoki34: WrapCUDARetryAllocator";
     PADDLE_ENFORCE_GT(
         retry_time,
         0,
@@ -965,6 +1001,7 @@ class AllocatorFacadePrivate {
   }
 
   void WrapStatAllocator() {
+    VLOG(4) << "yoki35: WrapStatAllocator";
     for (auto& pair : allocators_) {
       // Now memory stats is only supported for CPU and GPU
       const platform::Place& place = pair.first;
@@ -995,17 +1032,19 @@ AllocatorFacadePrivate::AllocatorMap
 AllocatorFacadePrivate::AllocatorMap AllocatorFacadePrivate::system_allocators_;
 
 // Pimpl. Make interface clean.
-AllocatorFacade::AllocatorFacade() : m_(new AllocatorFacadePrivate()) {}
+AllocatorFacade::AllocatorFacade() : m_(new AllocatorFacadePrivate()) { VLOG(4) << "yoki36: AllocatorFacade"; }
 // delete m_ may cause core dump when the destructor of python in conflict with
 // cpp.
-AllocatorFacade::~AllocatorFacade() {}
+AllocatorFacade::~AllocatorFacade() { VLOG(4) << "yoki37: ~AllocatorFacade"; }
 
 AllocatorFacade& AllocatorFacade::Instance() {
+  VLOG(4) << "yoki38: Instance";
   static AllocatorFacade* instance = new AllocatorFacade;
   return *instance;
 }
 
 AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
+  VLOG(4) << "yoki39: GetPrivate";
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(IsCUDAGraphCapturing())) {
     auto id = phi::backends::gpu::CUDAGraph::CapturingPoolID();
@@ -1024,12 +1063,14 @@ AllocatorFacadePrivate* AllocatorFacade::GetPrivate() const {
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const platform::Place& place) {
+  VLOG(4) << "yoki40: GetAllocator";
   return GetPrivate()->GetAllocator(
       place, /* A non-zero num to choose allocator_ */ 1);
 }
 
 void* AllocatorFacade::GetBasePtr(
     const std::shared_ptr<phi::Allocation>& allocation) {
+  VLOG(4) << "yoki41: GetBasePtr";
   PADDLE_ENFORCE_EQ(GetAllocatorStrategy(),
                     AllocatorStrategy::kAutoGrowth,
                     paddle::platform::errors::Unimplemented(
@@ -1047,20 +1088,24 @@ void* AllocatorFacade::GetBasePtr(
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetZeroAllocator(
     const platform::Place& place) {
+  VLOG(4) << "yoki42: GetZeroAllocator";
   return GetPrivate()->GetAllocator(place, /* zero size */ 0);
 }
 
 std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size) {
+  VLOG(4) << "yoki43: AllocShared";
   return std::shared_ptr<phi::Allocation>(Alloc(place, size));
 }
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
                                      size_t size) {
+  VLOG(4) << "yoki44: Alloc";
   return GetPrivate()->GetAllocator(place, size)->Allocate(size);
 }
 
 uint64_t AllocatorFacade::Release(const platform::Place& place) {
+  VLOG(4) << "yoki45: Release";
   return GetPrivate()
       ->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1)
       ->Release(place);
@@ -1068,12 +1113,14 @@ uint64_t AllocatorFacade::Release(const platform::Place& place) {
 
 std::shared_ptr<phi::Allocation> AllocatorFacade::AllocShared(
     const platform::Place& place, size_t size, const phi::Stream& stream) {
+  VLOG(4) << "yoki46: AllocShared";
   return std::shared_ptr<phi::Allocation>(Alloc(place, size, stream));
 }
 
 AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
                                      size_t size,
                                      const phi::Stream& stream) {
+  VLOG(4) << "yoki47: Alloc";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   AllocatorFacadePrivate* m = GetPrivate();
   if (!m->IsStreamSafeCUDAAllocatorUsed()) {
@@ -1100,6 +1147,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 bool AllocatorFacade::InSameStream(
     const std::shared_ptr<phi::Allocation>& allocation,
     const phi::Stream& stream) {
+  VLOG(4) << "yoki48: InSameStream";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
   return s == GetStream(allocation);
@@ -1109,12 +1157,14 @@ bool AllocatorFacade::InSameStream(
 }
 
 bool AllocatorFacade::IsStreamSafeCUDAAllocatorUsed() {
+  VLOG(4) << "yoki49: IsStreamSafeCUDAAllocatorUsed";
   return GetPrivate()->IsStreamSafeCUDAAllocatorUsed();
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
                                   gpuStream_t stream) {
+  VLOG(4) << "yoki50: Release";
   AllocatorFacadePrivate* m = GetPrivate();
   if (!m->IsStreamSafeCUDAAllocatorUsed()) {
     VLOG(6) << "Warning: StreamSafeCUDAAllocator is not used!";
@@ -1126,11 +1176,13 @@ uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
 
 void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
                                    gpuStream_t stream) {
+  VLOG(4) << "yoki51: RecordStream";
   GetPrivate()->RecordStream(allocation, stream);
 }
 
 const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
     const platform::Place& place, gpuStream_t stream) {
+  VLOG(4) << "yoki52: GetAllocator";
   AllocatorFacadePrivate* m = GetPrivate();
 
   if (!m->IsStreamSafeCUDAAllocatorUsed()) {
@@ -1148,11 +1200,13 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
 
 gpuStream_t AllocatorFacade::GetStream(
     const std::shared_ptr<phi::Allocation>& allocation) const {
+  VLOG(4) << "yoki53: GetStream";
   return GetPrivate()->GetStream(allocation);
 }
 
 void AllocatorFacade::SetDefaultStream(const platform::CUDAPlace& place,
                                        gpuStream_t stream) {
+  VLOG(4) << "yoki54: SetDefaultStream";
   if (m_->IsStreamSafeCUDAAllocatorUsed()) {
     m_->SetDefaultStream(place, stream);
   }
@@ -1160,6 +1214,7 @@ void AllocatorFacade::SetDefaultStream(const platform::CUDAPlace& place,
 
 #ifdef PADDLE_WITH_CUDA
 void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(int64_t id) {
+  VLOG(4) << "yoki55: PrepareMemoryPoolForCUDAGraph";
   PADDLE_ENFORCE_EQ(GetAllocatorStrategy(),
                     AllocatorStrategy::kAutoGrowth,
                     platform::errors::InvalidArgument(
@@ -1180,6 +1235,7 @@ void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(int64_t id) {
 }
 
 void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
+  VLOG(4) << "yoki56: RemoveMemoryPoolOfCUDAGraph";
   auto ref_cnt_iter = cuda_graph_ref_cnt_.find(id);
   PADDLE_ENFORCE_NE(ref_cnt_iter,
                     cuda_graph_ref_cnt_.end(),
