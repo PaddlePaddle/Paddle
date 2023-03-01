@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from test_activation_op import TestHardSwish as BaseTestHardSwish
+from test_activation_op import TestActivation as BaseTestHardSwish
 from test_activation_op import ref_hardswish
 
 import paddle
