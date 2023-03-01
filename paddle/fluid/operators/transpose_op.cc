@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 
 namespace paddle {
 namespace operators {
@@ -300,6 +302,25 @@ class Transpose2GradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class Transpose2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::experimental::Tensor xshape =
+        this->GetSingleForwardOutput("XShape");
+    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::experimental::Tensor dx = this->GetSingleInputGrad("X");
+    auto *dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    std::vector<int> axis =
+        static_cast<std::vector<int>>(this->Attr<std::vector<int>>("axis"));
+    VLOG(6) << "Runing transpose2_grad composite func";
+    prim::transpose_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
+    this->RecoverOutputName(dx, dx_name);
+  }
+};
+
 template <typename T>
 class Transpose2DoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -365,7 +386,8 @@ REGISTER_OPERATOR(transpose2,
                   ops::Transpose2Op,
                   ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
-                  ops::Transpose2GradMaker<paddle::imperative::OpBase>);
+                  ops::Transpose2GradMaker<paddle::imperative::OpBase>,
+                  ops::Transpose2CompositeGradOpMaker);
 REGISTER_OPERATOR(transpose2_grad,
                   ops::Transpose2OpGrad,
                   ops::TransposeGradInferVarType,
