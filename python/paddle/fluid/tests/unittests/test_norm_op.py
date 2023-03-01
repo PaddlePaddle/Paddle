@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -143,6 +144,41 @@ class TestNormTestOp(OpTest):
         }
         self.outputs = {'Out': y}
         self.python_out_sig = ["out"]
+
+    def test_check_output(self):
+        # dynamic graph just supports float tensor
+        self.check_output(check_dygraph=True)
+
+    def test_check_grad(self):
+        pass
+
+    def init_test_case(self):
+        self.shape = [2, 3, 4, 5]
+        self.axis = 1
+        self.epsilon = 1e-8
+
+
+class TestNormBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "norm"
+        self.python_api = norm_wrapper
+        self.init_test_case()
+        self.dtype = np.uint16
+        x = np.random.random(self.shape).astype(self.dtype)
+        y, norm = l2_norm(x, self.axis, self.epsilon)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {
+            'epsilon': self.epsilon,
+            'axis': int(self.axis),
+            'is_test': True,
+        }
+        self.outputs = {'Out': convert_float_to_uint16(y)}
+        self.python_out_sig = ["out"]
+        # self.attrs = {'scale': -2.3}
+        # x = np.random.random((10, 10)).astype(np.float32)
+        # out = x * np.float32(self.attrs['scale'])
+        # self.inputs = {'X': convert_float_to_uint16(x)}
+        # self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
         # dynamic graph just supports float tensor

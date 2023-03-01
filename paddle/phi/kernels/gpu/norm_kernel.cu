@@ -50,6 +50,10 @@ __global__ void Normalize(const T* x,
   typedef cub::BlockReduce<MT, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   int num = pre * post;
+  // printf("gridDim.x:%d\n",gridDim.x);
+  // printf("blockDim.x%d\n",blockDim.x);
+  // printf("blockIdx.x:%d\n",blockIdx.x);
+
   for (int i = blockIdx.x; i < num; i += gridDim.x) {
     int base = (i / post) * post * axis_n + (i % post);
 
@@ -115,8 +119,12 @@ void NormKernel(const Context& ctx,
   const int block = 512;
 #endif
   int max_threads = ctx.GetMaxPhysicalThreadCount();
+  // printf("max_threads:%d\n",max_threads);
   const int max_blocks = std::max(max_threads / block, 1);
   int grid = std::min(max_blocks, pre * post);
+  // printf("grid:%d\n",grid);
+  // printf("block:%d\n",block);
+  // printf("pre*post:%d\n",pre * post);
   Normalize<T, block>
       <<<grid, block, 0, ctx.stream()>>>(x_ptr, pre, n, post, eps, y, norm_ptr);
 }
