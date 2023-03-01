@@ -28,26 +28,29 @@ Steps to transpile pserver:
 5. add listen_and_serv op
 """
 
-import os
-import sys
-import math
-from functools import reduce
-
 import collections
 import logging
+import math
+import os
+import sys
+from functools import reduce
 
 import numpy as np
 
-from .ps_dispatcher import RoundRobin, PSDispatcher
-from .. import core, framework, unique_name
-from ..framework import (
-    Program,
+from paddle import framework
+from paddle.fluid.framework import grad_var_name
+from paddle.framework import Block, Program, core
+from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
+    PSDispatcher,
+    RoundRobin,
+)
+from paddle.nn.initializer import Constant
+from paddle.static import (
+    Parameter,
     default_main_program,
     default_startup_program,
-    Block,
-    Parameter,
-    grad_var_name,
 )
+from paddle.utils import unique_name
 
 LOOKUP_TABLE_TYPE = ["lookup_table", "lookup_table_v2"]
 LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_grad", "lookup_table_v2_grad"]
@@ -172,10 +175,10 @@ class DistributeTranspilerConfig:
     Examples:
         .. code-block:: python
 
-            from paddle.fluid.transpiler.ps_dispatcher import RoundRobin
-            import paddle.fluid as fluid
+            from paddle.distributed.transpiler.ps_dispatcher import RoundRobin
+            import paddle.distributed.transpiler as transpiler
 
-            config = fluid.DistributeTranspilerConfig()
+            config = transpiler.DistributeTranspilerConfig()
             config.slice_var_up = True
             config.split_method = RoundRobin
             config.min_block_size = 81920
@@ -281,11 +284,12 @@ class DistributeTranspiler:
 
             import paddle
             import paddle.fluid as fluid
+            import paddle.distributed.transpiler as transpiler
 
             paddle.enable_static()
 
-            x = fluid.data(name='x', shape=[1,13], dtype='float32')
-            y = fluid.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[1,13], dtype='float32')
+            y = paddle.static.data(name='y', shape=[1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
 
             cost =paddle.nn.functional.square_error_cost(input=y_predict, label=y)
@@ -301,7 +305,7 @@ class DistributeTranspiler:
             trainer_id = 0
             trainers = 4
             role = "PSERVER"
-            t = fluid.DistributeTranspiler()
+            t = transpiler.DistributeTranspiler()
             t.transpile(
                  trainer_id, pservers=pserver_endpoints, trainers=trainers)
             if role == "PSERVER":
@@ -314,12 +318,12 @@ class DistributeTranspiler:
             # for nccl2 mode
             trainer_num = 2
             trainer_id = 0
-            config = fluid.DistributeTranspilerConfig()
+            config = transpiler.DistributeTranspilerConfig()
             config.mode = "nccl2"
             trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
-            t = fluid.DistributeTranspiler(config=config)
+            t = transpiler.DistributeTranspiler(config=config)
             t.transpile(trainer_id=trainer_id, trainers=trainer_endpoints, current_endpoint="192.168.0.1:6174")
-            exe = fluid.ParallelExecutor(
+            exe = paddle.static.ParallelExecutor(
                 use_cuda=True,
                 loss_name=avg_loss.name,
                 num_trainers=trainer_num,
@@ -588,9 +592,9 @@ class DistributeTranspiler:
             trainer_id (int): id for current trainer worker, if you have
                 n workers, the id may range from 0 ~ n-1
             program (Program|None): program to transpile,
-                default is fluid.default_main_program().
+                default is paddle.static.default_main_program().
             startup_program (Program|None): startup_program to transpile,
-                default is fluid.default_startup_program().
+                default is paddle.static.default_startup_program().
             pservers (str): comma separated ip:port string for the pserver
                 list.
             trainers (int|str): in pserver mode this is the number of
@@ -598,7 +602,7 @@ class DistributeTranspiler:
                 endpoints.
             sync_mode (bool): Do sync training or not, default is True.
             startup_program (Program|None): startup_program to transpile,
-                default is fluid.default_main_program().
+                default is paddle.static.default_main_program().
             current_endpoint (str): need pass current endpoint when
                 transpile as nccl2 distributed mode. In pserver mode
                 this argument is not used.
@@ -606,7 +610,7 @@ class DistributeTranspiler:
         Examples:
             .. code-block:: python
 
-                transpiler = fluid.DistributeTranspiler()
+                transpiler = paddle.distributed.transpiler.DistributeTranspiler()
                 t.transpile(
                     trainer_id=0,
                     pservers="127.0.0.1:7000,127.0.0.1:7001",
@@ -1124,12 +1128,12 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle.distributed.transpiler as transpiler
               #this is an example, find available endpoints in your case
               pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
               trainer_id = 0
               trainers = 4
-              t = fluid.DistributeTranspiler()
+              t = transpiler.DistributeTranspiler()
               t.transpile(trainer_id, trainers=trainers, pservers=pserver_endpoints)
               trainer_program = t.get_trainer_program()
         """
@@ -1270,13 +1274,13 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle.distributed.transpiler as transpiler
               #this is an example, find available endpoints in your case
               pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
               current_endpoint = "192.168.0.1:6174"
               trainer_id = 0
               trainers = 4
-              t = fluid.DistributeTranspiler()
+              t = transpiler.DistributeTranspiler()
               t.transpile(
                    trainer_id, pservers=pserver_endpoints, trainers=trainers)
               pserver_program = t.get_pserver_program(current_endpoint)
@@ -1349,8 +1353,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 opt_op_on_pserver.append(op)
         # step 3.3
         # prepare if dc asgd is enabled
-        if self.config.enable_dc_asgd == True:
-            assert self.sync_mode == False
+        if self.config.enable_dc_asgd is True:
+            assert self.sync_mode is False
             self.param_bak_list = []
             # add param_bak for each trainer
             for p in self.param_grad_ep_mapping[endpoint]["params"]:
@@ -1579,13 +1583,13 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+              import paddle.distributed.transpiler as transpiler
               #this is an example, find available endpoints in your case
               pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
               current_endpoint = "192.168.0.1:6174"
               trainer_id = 0
               trainers = 4
-              t = fluid.DistributeTranspiler()
+              t = transpiler.DistributeTranspiler()
               t.transpile(
                    trainer_id, pservers=pserver_endpoints, trainers=trainers)
               pserver_program, pserver_startup_program = t.get_pserver_programs(current_endpoint)
@@ -1624,7 +1628,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 trainer_id = 0
                 trainers = 4
 
-                t = fluid.DistributeTranspiler()
+                t = paddle.distributed.transpiler.DistributeTranspiler()
                 t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
                 pserver_program = t.get_pserver_program(current_endpoint)
                 pserver_startup_program = t.get_startup_program(current_endpoint,
@@ -1851,7 +1855,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         param_grad_set = set()
         for p, g in self.params_grads:
             # skip parameter marked not trainable
-            if type(p) == Parameter and p.trainable == False:
+            if type(p) == Parameter and p.trainable is False:
                 continue
             if p.name not in param_grad_set:
                 param_list.append(p)
@@ -2834,7 +2838,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or role_id == int(
                 LR_SCHED_OP_ROLE_ATTR_VALUE
             ) | int(OPT_OP_ROLE_ATTR_VALUE):
-                if self.sync_mode == False and op.type == 'increment':
+                if self.sync_mode is False and op.type == 'increment':
                     inputs = self._get_input_map_from_op(
                         self.origin_program.global_block().vars, op
                     )
@@ -2879,7 +2883,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                             dtype=var.dtype,
                             shape=var.shape,
                             persistable=var.persistable,
-                            initializer=paddle.nn.initializer.Constant(1),
+                            initializer=Constant(1),
                         )
                     op_role_attr_name = (
                         core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -2978,7 +2982,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 if op.attr(OP_ROLE_VAR_ATTR_NAME):
                     param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
                     grad_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
-                    if not param_name in optimize_params:
+                    if param_name not in optimize_params:
                         optimize_params.add(param_name)
                         log("adding param_grad pair: ", param_name, grad_name)
                         params_grads.append(

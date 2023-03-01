@@ -614,7 +614,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     )
                     idx += 1
 
-        # check config in op defination and fleet config
+        # check config in op definition and fleet config
         if FLEET_GLOBAL_DICT["enable"]:
             one_slot = None
             strategy["device_worker"] = "Hogwild"

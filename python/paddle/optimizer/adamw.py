@@ -178,9 +178,12 @@ class AdamW(Optimizer):
             raise TypeError("weight_decay should be float or Tensor.")
         if lr_ratio is not None:
             assert isinstance(lr_ratio, Callable)
-            if not core.is_compiled_with_cuda():
+            if (
+                not core.is_compiled_with_cuda()
+                and not core.is_compiled_with_xpu()
+            ):
                 raise NotImplementedError(
-                    "'lr_ratio' is unimplemented in CPU, XPU and NPU"
+                    "'lr_ratio' is unimplemented in CPU, and NPU"
                 )
 
         if parameters is not None:

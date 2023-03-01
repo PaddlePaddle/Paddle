@@ -29,7 +29,7 @@ void GaussianKernel(const Context& ctx,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  std::normal_distribution<T> dist(mean, std);
+  std::normal_distribution<float> dist(mean, std);
   int64_t size = out->numel();
   ctx.template Alloc<T>(out);
   auto* data = out->data();
@@ -57,4 +57,9 @@ void GaussianKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(gaussian, XPU, ALL_LAYOUT, phi::GaussianKernel, float) {}
+PD_REGISTER_KERNEL(gaussian,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::GaussianKernel,
+                   float,
+                   phi::dtype::float16) {}
