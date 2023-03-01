@@ -27,6 +27,6 @@ from . import download  # noqa: F401
 from . import image_util  # noqa: F401
 from . import cpp_extension  # noqa: F401
 from . import dlpack
-from . import layers_util  # noqa: F401
+from . import layers_utils  # noqa: F401
 
 __all__ = ['deprecated', 'run_check', 'require_version', 'try_import']  # noqa
