@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
@@ -29,9 +30,9 @@ void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
 // 2. Weight data is in-place update.
 // 3. Generate weight max tensor
 template <typename T>
-void QuantWeight(phi::DenseTensor* weight,
-                 phi::DenseTensor* weight_max,
-                 bool transpose);
+void PrepareWeight(phi::DenseTensor* weight,
+                   phi::DenseTensor* weight_max,
+                   bool transpose);
 
 }  // namespace ir
 }  // namespace framework

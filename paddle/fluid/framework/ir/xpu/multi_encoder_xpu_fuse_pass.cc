@@ -716,7 +716,7 @@ void MultiEncoderXPUFusePass::PrepareQKVWeight(
   }
 
   // Quant to int16
-  QuantWeight<int16_t>(qkv_w, qkv_w_max, false);
+  PrepareWeight<int16_t>(qkv_w, qkv_w_max, false);
 }
 
 void MultiEncoderXPUFusePass::ConcatQKVBias(const phi::DenseTensor& q_bias,
@@ -880,24 +880,16 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
         scope->Var(qkv_w_max_name)->GetMutable<phi::DenseTensor>());
 
     // Prepare qkv_matmul_1_w, qkv_matmul_2_w, qkv_matmul_3_w
-#define PREPARE_QKV_MATMUL_W(idx_)                                            \
-  std::string qkv_matmul_##idx_##_w_name = qkv_matmul_##idx_##_w->Name();     \
-  std::string qkv_matmul_##idx_##_w_max_name =                                \
-      qkv_matmul_##idx_##_w_name + "_max";                                    \
-  VarDesc qkv_matmul_##idx_##_w_max_desc(qkv_matmul_##idx_##_w_max_name);     \
-  qkv_matmul_##idx_##_w_max_desc.SetPersistable(true);                        \
-  auto qkv_matmul_##idx_##_w_max =                                            \
-      graph->CreateVarNode(&qkv_matmul_##idx_##_w_max_desc);                  \
-  auto qkv_matmul_##idx_##_w_max_var =                                        \
-      block->Var(qkv_matmul_##idx_##_w_max_name);                             \
-  qkv_matmul_##idx_##_w_max_var->SetPersistable(true);                        \
-  auto qkv_matmul_##idx_##_w_max_tensor =                                     \
-      scope->Var(qkv_matmul_##idx_##_w_max_name)                              \
-          ->GetMutable<phi::DenseTensor>();                                   \
-  auto qkv_matmul_##idx_##_w_tensor =                                         \
-      scope->Var(qkv_matmul_##idx_##_w_name)->GetMutable<phi::DenseTensor>(); \
-  QuantWeight<int16_t>(                                                       \
-      qkv_matmul_##idx_##_w_tensor, qkv_matmul_##idx_##_w_max_tensor, true);
+#define PREPARE_QKV_MATMUL_W(idx_)                     \
+  Node* qkv_matmul_##idx_##_w_int16 = nullptr;         \
+  Node* qkv_matmul_##idx_##_w_max = nullptr;           \
+  PrepareWeight<int16_t>(graph,                        \
+                         scope,                        \
+                         block,                        \
+                         qkv_matmul_##idx_##_w,        \
+                         &qkv_matmul_##idx_##_w_int16, \
+                         &qkv_matmul_##idx_##_w_max,   \
+                         true);
     PREPARE_QKV_MATMUL_W(1);
     PREPARE_QKV_MATMUL_W(2);
     PREPARE_QKV_MATMUL_W(3);
@@ -946,14 +938,14 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     op_desc.SetInput("x", {ln_0_x->Name()});
     op_desc.SetInput("fc_weight",
                      {qkv_w_name,
-                      qkv_matmul_1_w_name,
-                      qkv_matmul_2_w_name,
-                      qkv_matmul_3_w_name});
+                      qkv_matmul_1_w->Name() + "_int16",
+                      qkv_matmul_2_w->Name() + "_int16",
+                      qkv_matmul_3_w->Name() + "_int16"});
     op_desc.SetInput("fc_weight_max",
                      {qkv_w_max_name,
-                      qkv_matmul_1_w_max_name,
-                      qkv_matmul_2_w_max_name,
-                      qkv_matmul_3_w_max_name});
+                      qkv_matmul_1_w->Name() + "_max",
+                      qkv_matmul_2_w->Name() + "_max",
+                      qkv_matmul_3_w->Name() + "_max"});
     op_desc.SetInput("fc_bias",
                      {qkv_add_bias_name,
                       qkv_add_0_bias_name,
@@ -990,30 +982,30 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     }
     auto* single_encoder_xpu = graph->CreateOpNode(&op_desc);
     // Link nodes
-    SAFE_IR_NODE_LINK_TO(ln_0_x, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_w, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_w_max, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_1_w, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_1_w_max, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_2_w, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_2_w_max, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_3_w, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_3_w_max, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_add_bias, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_add_0_bias, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_add_2_bias, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_add_3_bias, single_encoder_xpu);
+    IR_NODE_LINK_TO(ln_0_x, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_w, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_w_max, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_1_w_int16, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_1_w_max, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_2_w_int16, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_2_w_max, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_3_w_int16, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_3_w_max, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_add_bias, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_add_0_bias, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_add_2_bias, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_add_3_bias, single_encoder_xpu);
     SAFE_IR_NODE_LINK_TO(ln_0_scale, single_encoder_xpu);
     SAFE_IR_NODE_LINK_TO(ln_0_bias, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(ln_1_scale, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(ln_1_bias, single_encoder_xpu);
+    IR_NODE_LINK_TO(ln_1_scale, single_encoder_xpu);
+    IR_NODE_LINK_TO(ln_1_bias, single_encoder_xpu);
     SAFE_IR_NODE_LINK_TO(ln_2_scale, single_encoder_xpu);
     SAFE_IR_NODE_LINK_TO(ln_2_bias, single_encoder_xpu);
     SAFE_IR_NODE_LINK_TO(qk_add_mask, single_encoder_xpu);
     if (norm_before) {
-      SAFE_IR_NODE_LINK_TO(single_encoder_xpu, qkv_add_4_out);
+      IR_NODE_LINK_TO(single_encoder_xpu, qkv_add_4_out);
     } else {
-      SAFE_IR_NODE_LINK_TO(single_encoder_xpu, ln_2_out);
+      IR_NODE_LINK_TO(single_encoder_xpu, ln_2_out);
     }
 
     // Delete nodes
