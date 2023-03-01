@@ -27,7 +27,7 @@ TEST(InitDevices, CPU) {
     !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_MLU)
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  ASSERT_EQ(pool.size(), 1U);
+  ASSERT_EQ(pool.Size(), 1U);
 #endif
 }
 
@@ -51,7 +51,7 @@ TEST(InitDevices, XPU) {
   int count = paddle::platform::GetXPUDeviceCount();
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  ASSERT_EQ(pool.size(), 1U + static_cast<unsigned>(count));
+  ASSERT_EQ(pool.Size(), 1U + static_cast<unsigned>(count));
 #endif
 }
 
@@ -63,7 +63,7 @@ TEST(InitDevices, MLU) {
   int count = paddle::platform::GetMLUDeviceCount();
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  ASSERT_EQ(pool.size(), 1U + static_cast<unsigned>(count));
+  ASSERT_EQ(pool.Size(), 1U + static_cast<unsigned>(count));
 #endif
 }
 
