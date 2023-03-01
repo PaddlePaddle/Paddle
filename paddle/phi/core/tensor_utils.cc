@@ -912,4 +912,40 @@ template phi::dtype::complex<float> GetValue(const phi::DenseTensor* x);
 
 template phi::dtype::complex<double> GetValue(const phi::DenseTensor* x);
 
+template <typename T>
+std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x) {
+  std::vector<T> vec_new_data;
+  if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT32) {
+    auto* data = x->data<int>();
+    phi::DenseTensor cpu_attr_tensor;
+    if (x->place().GetType() != phi::AllocationType::CPU) {
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      auto dev_ctx = pool.Get(x->place());
+      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
+      data = cpu_attr_tensor.data<int>();
+    }
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else if (phi::TransToProtoVarType(x->dtype()) == ProtoDataType::INT64) {
+    auto* data = x->data<int64_t>();
+    phi::DenseTensor cpu_attr_tensor;
+    if (x->place().GetType() != phi::AllocationType::CPU) {
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      auto dev_ctx = pool.Get(x->place());
+      phi::Copy(*dev_ctx, *x, CPUPlace(), true, &cpu_attr_tensor);
+      data = cpu_attr_tensor.data<int64_t>();
+    }
+    // NOTE: Converting int64 to int32 may cause data overflow.
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The dtype of Tensor must be int32 or int64, but received: %s",
+        phi::TransToProtoVarType(x->dtype())));
+  }
+  return vec_new_data;
+}
+
+template std::vector<int32_t> GetVectorFromTensor(const phi::DenseTensor* x);
+
+template std::vector<int64_t> GetVectorFromTensor(const phi::DenseTensor* x);
+
 }  // namespace phi
