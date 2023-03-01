@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import collections
 from collections import defaultdict
 from collections.abc import Iterable
@@ -128,51 +127,50 @@ _cuda_graph_enable_standalone_executor_ = os.environ.get(
 )
 
 
-_enable_printing_extra_attrs_ = os.environ.get('FLAGS_print_extra_attrs', 0)
+# special_op_attrs, extra_op_attrs are prepared for printing warnings
+# when turning on FLAGS_print_extra_attrs
+special_op_attrs = {
+    "elementwise_add": [{"axis": -1}],
+    "elementwise_sub": [{"axis": -1}],
+    "elementwise_mul": [{"axis": -1}],
+    "elementwise_div": [{"axis": -1}],
+    "elementwise_min": [{"axis": -1}],
+    "elementwise_pow": [{"axis": -1}],
+    "elementwise_div": [{"axis": -1}],
+    "elementwise_mod": [{"axis": -1}],
+    "elementwise_floordiv": [{"axis": -1}],
+    "elementwise_max": [{"axis": -1}],
+    "elementwise_min": [{"axis": -1}],
+    "less_than": [{"axis": -1}],
+    "less_equal": [{"axis": -1}],
+    "greater_than": [{"axis": -1}],
+    "greater_equal": [{"axis": -1}],
+    "equal": [{"axis": -1}],
+    "not_equal": [{"axis": -1}],
+    "amax": [{"reduce_all": False}],
+    "amin": [{"reduce_all": False}],
+    "any": [{"reduce_all": False}],
+    "amax": [{"reduce_all": False}],
+    "frobenius_norm": [{"reduce_all": False}],
+    "logsumexp": [{"reduce_all": False}],
+    "reduce_max": [{"reduce_all": False}],
+    "reduce_max": [{"reduce_all": False}],
+    "reduce_mean": [{"reduce_all": False}],
+    "reduce_prod": [{"reduce_all": False}],
+    "reduce_sum": [{"reduce_all": False}],
+}
 
-if _enable_printing_extra_attrs_:
-    special_op_attrs = {
-        "elementwise_add": [{"axis": -1}],
-        "elementwise_sub": [{"axis": -1}],
-        "elementwise_mul": [{"axis": -1}],
-        "elementwise_div": [{"axis": -1}],
-        "elementwise_min": [{"axis": -1}],
-        "elementwise_pow": [{"axis": -1}],
-        "elementwise_div": [{"axis": -1}],
-        "elementwise_mod": [{"axis": -1}],
-        "elementwise_floordiv": [{"axis": -1}],
-        "elementwise_max": [{"axis": -1}],
-        "elementwise_min": [{"axis": -1}],
-        "less_than": [{"axis": -1}],
-        "less_equal": [{"axis": -1}],
-        "greater_than": [{"axis": -1}],
-        "greater_equal": [{"axis": -1}],
-        "equal": [{"axis": -1}],
-        "not_equal": [{"axis": -1}],
-        "amax": [{"reduce_all": False}],
-        "amin": [{"reduce_all": False}],
-        "any": [{"reduce_all": False}],
-        "amax": [{"reduce_all": False}],
-        "frobenius_norm": [{"reduce_all": False}],
-        "logsumexp": [{"reduce_all": False}],
-        "reduce_max": [{"reduce_all": False}],
-        "reduce_max": [{"reduce_all": False}],
-        "reduce_mean": [{"reduce_all": False}],
-        "reduce_prod": [{"reduce_all": False}],
-        "reduce_sum": [{"reduce_all": False}],
-    }
-
-    extra_op_attrs = {
-        "gather": ["overwrite"],
-        "graph_reindex": ["flag_buffer_hashtable"],
-        "graph_sample_neighbors": ["flag_perm_buffer"],
-        "relu6": ["threshold"],
-        "swish": ["beta"],
-        "hsigmoid_loss": ["remote_prefetch"],
-        "max_pool2d_with_index": ["global_pooling"],
-        "uniform": ["diag_num"],
-        "unique": ["is_sorted"],
-    }
+extra_op_attrs = {
+    "gather": ["overwrite"],
+    "graph_reindex": ["flag_buffer_hashtable"],
+    "graph_sample_neighbors": ["flag_perm_buffer"],
+    "relu6": ["threshold"],
+    "swish": ["beta"],
+    "hsigmoid_loss": ["remote_prefetch"],
+    "max_pool2d_with_index": ["global_pooling"],
+    "uniform": ["diag_num"],
+    "unique": ["is_sorted"],
+}
 
 
 # Some explanation of our execution system 2022.03
@@ -3112,7 +3110,7 @@ class Operator:
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
                 for attr_name in extra_attrs_map.keys():
-                    if _enable_printing_extra_attrs_:
+                    if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
                         warnings.warn(
                             "op %s use extra_attr: %s" % (type, attr_name)
                         )
@@ -3126,7 +3124,7 @@ class Operator:
                     else:
                         self._update_desc_attr(attr_name, op_attrs[attr_name])
 
-                if _enable_printing_extra_attrs_:
+                if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
                     if type in extra_op_attrs:
                         attrs = extra_op_attrs.get(type, [])
                         for attr in attrs:

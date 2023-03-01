@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 import warnings
 
@@ -2001,7 +2002,7 @@ class TestRelu6APIWarnings(unittest.TestCase):
                 name='data', shape=[None, 3, 32, 32], dtype='float32'
             )
             out = helper.create_variable_for_type_inference(dtype=data.dtype)
-
+            os.environ['FLAGS_print_extra_attrs'] = "1"
             helper.append_op(
                 type="relu6",
                 inputs={'X': data},
@@ -2011,6 +2012,7 @@ class TestRelu6APIWarnings(unittest.TestCase):
             self.assertTrue(
                 "op relu6 use extra_attr: threshold" in str(context[-1].message)
             )
+            os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):

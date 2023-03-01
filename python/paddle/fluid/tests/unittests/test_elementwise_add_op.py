@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 import warnings
 
@@ -777,7 +778,7 @@ class TestTensorAddAPIWarnings(unittest.TestCase):
                 name='data', shape=[None, 3, 32, 32], dtype='float32'
             )
             out = helper.create_variable_for_type_inference(dtype=data.dtype)
-
+            os.environ['FLAGS_print_extra_attrs'] = "1"
             helper.append_op(
                 type="elementwise_add",
                 inputs={'X': data, 'Y': data},
@@ -788,6 +789,7 @@ class TestTensorAddAPIWarnings(unittest.TestCase):
                 "op elementwise_add's attr axis = 1 is not the default value: -1"
                 in str(context[-1].message)
             )
+            os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
 if __name__ == '__main__':
