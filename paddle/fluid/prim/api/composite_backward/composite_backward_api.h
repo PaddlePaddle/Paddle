@@ -360,9 +360,7 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
-void abs_grad(const Tensor& x,
-              const Tensor& out_grad,
-              Tensor* x_grad) {
+void abs_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto abs_tmp = abs<T>(x);
     auto divide_tmp = divide<T>(x, abs_tmp);

@@ -97,19 +97,18 @@ class AbsGradMaker : public framework::SingleGradOpMaker<T> {
 
 class AbsCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
  public:
   void Apply() override {
     paddle::experimental::Tensor input = this->GetSingleForwardInput("Input");
     paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
     paddle::experimental::Tensor input_grad = this->GetSingleInputGrad("Input");
-    
+
     auto dx_ptr = this->GetOutputPtr(&input_grad);
     std::string dx_name = this->GetOutputName(input_grad);
 
     VLOG(6) << "Running abs_grad composite func";
-    prim::abs_grad<prim::DescTensor>(input,
-                                     out_grad,
-                                     dx_ptr);
+    prim::abs_grad<prim::DescTensor>(input, out_grad, dx_ptr);
     this->RecoverOutputName(input_grad, dx_name);
   }
 };
