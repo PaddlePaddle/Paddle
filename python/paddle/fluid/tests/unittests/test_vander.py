@@ -21,14 +21,16 @@ import paddle.fluid.core as core
 
 np.random.seed(10)
 
+
 def ref_vander(x, N=None, increasing=False):
     return np.vander(x, N, increasing)
+
 
 class TestVanderAPI(unittest.TestCase):
     # test paddle.tensor.math.vander
 
     def setUp(self):
-        self.shape = [5,]
+        self.shape = [5]
         self.x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
         self.place = (
             paddle.CUDAPlace(0)
@@ -56,7 +58,7 @@ class TestVanderAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_api(self):
-        self.api_case()        
+        self.api_case()
         N = [i for i in range(9)]
         for n in N:
             self.api_case(n)
@@ -66,10 +68,12 @@ class TestVanderAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.vander, 1)
-            x = paddle.fluid.data('X', [10, 12], 'int32')
+            x = paddle.fluid.data('X', [10, 12], 
+                                  'int32')
             self.assertRaises(ValueError, paddle.vander, x)
-            x1 = paddle.fluid.data('X1', [10,], 'int32')
+            x1 = paddle.fluid.data('X1', [10], 'int32')
             self.assertRaises(ValueError, paddle.vander, x1, N=-1)
+
 
 if __name__ == "__main__":
     unittest.main()
