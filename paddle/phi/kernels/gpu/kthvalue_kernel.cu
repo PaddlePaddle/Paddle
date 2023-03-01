@@ -15,12 +15,12 @@
 #include "paddle/phi/kernels/kthvalue_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
-
 namespace phi {
 inline int getBlockSize(int col) {
   if (col > 512)
@@ -263,4 +263,5 @@ PD_REGISTER_KERNEL(kthvalue,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16) {}
