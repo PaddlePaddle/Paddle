@@ -269,3 +269,28 @@ def silu_composite(x):
     sum_temp = 1 + exp(-x)
     res = x / sum_temp
     return res
+
+
+@REGISTER_COMPOSITE('meshgrid')
+def meshgrid_composite(inputs):
+    """
+    define composite rule of op meshgrid
+    If the input has N tensors of size S_0, ... S_n-1, then the output will also have N tensors, where
+    each tensor is of shape (S_0, ..., S_n-1)
+    """
+    size = len(inputs)
+    print("I am here")
+    shape = [1 for i in range(size)]
+    for i in range(size):
+        dim = inputs[i].dim()
+        assert dim == 0 or dim == 1
+        if dim == 0:
+            shape[i] = 1
+        else:
+            shape[i] = inputs[i].shape[0]
+    outputs = []
+    for i in range(size):
+        view_shape = [1 for i in range(size)]
+        view_shape[i] = shape[i]
+        outputs.append(inputs[i].reshape(view_shape).broadcast_to(shape))
+    return outputs
