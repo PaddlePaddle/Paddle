@@ -17,7 +17,7 @@
     param : [x]
   kernel :
     func : abs_grad
-  composite : abs_grad(x, out_grad)
+  composite : abs_grad(x, out_grad, x_grad)
   backward : abs_double_grad
 
 - backward_op : add_double_grad
