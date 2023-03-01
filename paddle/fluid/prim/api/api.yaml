@@ -25,3 +25,4 @@
 - tile
 - transpose
 - pad
+- cumsum
