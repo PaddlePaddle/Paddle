@@ -2729,6 +2729,7 @@ class TestLog1p_ZeroDim(TestLog1p):
 
 class TestLog1pAPI(unittest.TestCase):
     def _test_api(self, dtype='float64'):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input_x = np.random.uniform(0.1, 1, [11, 17]).astype(dtype)
             data_x = paddle.static.data(
@@ -2747,6 +2748,7 @@ class TestLog1pAPI(unittest.TestCase):
             )
         expected_res = np.log1p(input_x)
         np.testing.assert_allclose(res1, expected_res, rtol=1e-05)
+        paddle.disable_static()
 
         # dygraph
         with fluid.dygraph.guard():
