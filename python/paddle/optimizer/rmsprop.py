@@ -199,12 +199,9 @@ class RMSProp(Optimizer):
             parameters = parameters.get('params')
 
         for p in parameters:
-            if p.name in self._already_create_accumulater:
-                continue
             self._add_accumulator(self._momentum_acc_str, p)
             self._add_accumulator(self._mean_square_acc_str, p)
             self._add_accumulator(self._mean_grad_acc_str, p)
-            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         if not isinstance(block, framework.Block):

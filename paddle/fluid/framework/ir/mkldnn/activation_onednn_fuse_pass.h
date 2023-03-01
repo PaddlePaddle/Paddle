@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_desc.h"
 
 namespace paddle {
