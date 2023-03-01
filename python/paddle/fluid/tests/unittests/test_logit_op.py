@@ -43,9 +43,6 @@ class TestLogitOp(OpTest):
     def setUp(self):
         self.op_type = 'logit'
         self.python_api = paddle.logit
-        self.dtype = np.float64
-        self.shape = [120]
-        self.eps = 1e-8
         self.set_attrs()
         x = np.random.uniform(-1.0, 1.0, self.shape).astype(self.dtype)
         out = logit(x, self.eps)
@@ -55,7 +52,9 @@ class TestLogitOp(OpTest):
         self.attrs = {'eps': self.eps}
 
     def set_attrs(self):
-        pass
+        self.dtype = np.float64
+        self.shape = [120]
+        self.eps = 1e-8
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -66,13 +65,73 @@ class TestLogitOp(OpTest):
         )
 
 
+class TestLogitOpFp32(TestLogitOp):
+    def set_attrs(self):
+        self.dtype = np.float32
+        self.shape = [120]
+        self.eps = 1e-8
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
+        )
+
+
+class TestLogitOpFp16(TestLogitOp):
+    def set_attrs(self):
+        self.dtype = np.float16
+        self.shape = [120]
+        self.eps = 1e-8
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
+        )
+
+
+class TestLogitOpBf16(OpTest):
+    def setUp(self):
+        self.op_type = 'logit'
+        self.python_api = paddle.logit
+        self.set_attrs()
+        x = np.random.uniform(-1.0, 1.0, self.shape).astype(np.float32)
+        out = logit(x, self.eps)
+        self.x_grad = logit_grad(x, self.eps)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'eps': self.eps}
+
+    def set_attrs(self):
+        self.dtype = np.uint16
+        self.shape = [120]
+        self.eps = 1e-8
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, atol=1e-2)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
+        )
+
+
 class TestLogitShape(TestLogitOp):
     def set_attrs(self):
+        self.dtype = np.float64
         self.shape = [2, 60]
+        self.eps = 1e-8
 
 
 class TestLogitEps(TestLogitOp):
     def set_attrs(self):
+        self.dtype = np.float64
+        self.shape = [120]
         self.eps = 1e-8
 
 
