@@ -1300,7 +1300,6 @@ def get_setup_parameters():
         'paddle.fluid.contrib',
         'paddle.fluid.contrib.extend_optimizer',
         'paddle.fluid.contrib.layers',
-        'paddle.fluid.transpiler',
         'paddle.fluid.incubate',
         'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',
