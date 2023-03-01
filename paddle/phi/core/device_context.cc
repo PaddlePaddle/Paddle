@@ -22,6 +22,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/string_tensor.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 
 namespace phi {
 using DataType = paddle::experimental::DataType;
@@ -35,6 +36,7 @@ struct DeviceContext::Impl {
         allocator,
         phi::errors::InvalidArgument(
             "Required allocator shall not be nullptr, but received nullptr."));
+    VLOG(4) << "yoki SetAllocator: allocator: " << allocator;
     device_allocator_ = allocator;
   }
 
@@ -74,7 +76,7 @@ struct DeviceContext::Impl {
   void SetCUDAGraphAllocator(const Allocator* allocator) {
     // NOTE (Yuang): cuda graph allocator can be set to nullptr, so don't check
     // validation of the allocator here
-    VLOG(4) << "yoki allocator: " << allocator;
+    VLOG(4) << "yoki SetCUDAGraphAllocator: allocator: " << allocator;
     cuda_graph_allocator_ = allocator;
   }
 
@@ -136,7 +138,7 @@ struct DeviceContext::Impl {
               DataType dtype = DataType::UNDEFINED,
               size_t requested_size = 0,
               bool pinned = false,
-              bool fake_alloc = false) const {
+              bool fake_alloc = false) {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         phi::errors::InvalidArgument(
@@ -164,12 +166,24 @@ struct DeviceContext::Impl {
     if (must_cuda_graph_allocator &&
         place.GetType() == phi::AllocationType::GPU &&
         phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
-      VLOG(4) << "yoki: Required cuda_graph_allocator_ shall not be nullptr, but received nullptr.";
-      // PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
-      //                         phi::errors::InvalidArgument(
-      //                             "Required cuda_graph_allocator_ shall not be "
-      //                             "nullptr, but received nullptr."));
-      // allocator = cuda_graph_allocator_;
+      VLOG(4) << "yoki: Required cuda_graph_allocator_.";
+      if (cuda_graph_allocator_ == nullptr) {
+        VLOG(4) << "yoki: Required cuda_graph_allocator_ shall not be nullptr, but received nullptr.";
+        cuda_graph_allocator_ = paddle::memory::allocation::AllocatorFacade::Instance()
+                                     .GetAllocator(place)
+                                     .get();
+      }
+      if (cuda_graph_allocator_ == nullptr) {
+        VLOG(4) << "yoki: cuda_graph_allocator_ is nullptr again.";
+      } else {
+        VLOG(4) << "yoki: cuda_graph_allocator_ is set to " << cuda_graph_allocator_;
+        allocator = cuda_graph_allocator_;
+      }
+      /*PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
+                              phi::errors::InvalidArgument(
+                                  "Required cuda_graph_allocator_ shall not be "
+                                  "nullptr, but received nullptr."));
+      allocator = cuda_graph_allocator_;*/
     }
 #endif
     return tensor->AllocateFrom(
@@ -180,7 +194,7 @@ struct DeviceContext::Impl {
   T* Alloc(TensorBase* tensor,
            const Place& place,
            size_t requested_size = 0,
-           bool pinned = false) const {
+           bool pinned = false) {
     DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
     return static_cast<T*>(Alloc(tensor, place, dtype, requested_size, pinned));
   }

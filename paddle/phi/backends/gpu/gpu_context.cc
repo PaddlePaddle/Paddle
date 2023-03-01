@@ -245,6 +245,7 @@ struct GPUContext::Impl {
   explicit Impl(const GPUPlace& place) : place_(place) {}
 
   ~Impl() {
+    VLOG(4) << "yoki ~Impl";
     backends::gpu::GPUDeviceGuard guard(place_.device);
     if (owned_) {
       DestoryInternalWorkspace();
@@ -269,6 +270,7 @@ struct GPUContext::Impl {
       phi::DestroyBlasLtHandle(blaslt_handle_);
     }
     if (stream_owned_ && stream_) {
+      VLOG(4) << "yoki delte stream_";
       delete stream_;
     }
   }

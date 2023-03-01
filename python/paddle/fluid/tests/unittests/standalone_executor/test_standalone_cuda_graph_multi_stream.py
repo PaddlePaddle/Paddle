@@ -14,14 +14,16 @@
 
 import unittest
 
+import numpy as np
+
+import paddle
+from paddle.device.cuda.graphs import CUDAGraph
+
 # from test_standalone_executor import build_program
 
-import numpy as np
-import paddle
-from paddle.fluid import core
-from paddle.device.cuda.graphs import CUDAGraph, wrap_cuda_graph, cuda_graph_transform
 
 paddle.enable_static()
+
 
 def can_use_cuda_graph():
     return paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm()
@@ -117,7 +119,7 @@ class TestCustomStream(unittest.TestCase):
 
         if apply_custom_stream:
             self.set_custom_stream(main_program)
-        
+
         # if use_cuda_graph:
         #     section_programs = cuda_graph_transform(main_program)
 
@@ -139,11 +141,12 @@ class TestCustomStream(unittest.TestCase):
 
                 cuda_graph = None
                 outs = []
+                paddle.set_flags({"FLAGS_new_executor_use_cuda_graph": True})
                 for i in range(self.steps):
                     if i == 1 and use_cuda_graph:
-                        paddle.set_flags({"FLAGS_new_executor_use_cuda_graph": True})
+                        # paddle.set_flags({"FLAGS_new_executor_use_cuda_graph": True})
                         cuda_graph = CUDAGraph(place, mode="global")
-                        cuda_graph.capture_begin()
+                        cuda_graph.capture_begin(use_multi_stream=True)
                         exe.run(main_program)
                         cuda_graph.capture_end()
 
@@ -152,11 +155,9 @@ class TestCustomStream(unittest.TestCase):
                     else:
                         exe.run(main_program)
                     # exe.run(main_program)
-                
-                    
-                    outs.append(
-                        np.array(loss_t)
-                    )
+
+                    outs.append(np.array(loss_t))
+                    print("yoki: ", np.array(loss_t))
                 if cuda_graph:
                     cuda_graph.reset()
         return outs
