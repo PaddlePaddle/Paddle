@@ -279,7 +279,6 @@ def meshgrid_composite(inputs):
     each tensor is of shape (S_0, ..., S_n-1)
     """
     size = len(inputs)
-    print("I am here")
     shape = [1 for i in range(size)]
     for i in range(size):
         dim = inputs[i].dim()
