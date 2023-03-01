@@ -172,7 +172,7 @@ phi::InferVarKernelContext BuildInferVarKernelContext(
       }
     }
   }
-  return phi::InferVarKernelContext(&kernel_key, &phi_attrs);
+  return phi::InferVarKernelContext(&kernel_key, phi_attrs);
 }
 
 }  // namespace framework
