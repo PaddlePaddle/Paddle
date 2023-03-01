@@ -46,3 +46,8 @@ cc_test(
   test_strings_lower_upper_api
   SRCS test_strings_lower_upper_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
+
+cc_test(
+  test_from_blob
+  SRCS test_from_blob.cc
+  DEPS ${COMMON_API_TEST_DEPS})
