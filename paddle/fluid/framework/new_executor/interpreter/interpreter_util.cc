@@ -68,7 +68,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "complex",
     "conv3d_coo",
     "distribute_fpn_proposals",
-    "dropout",
     "edit_distance",
     "eig",
     "eig_grad",
@@ -129,7 +128,7 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
 
 // These Ops can use InferMeta to infer the output dtype
 static std::set<std::string> OpsWithAvailablePhiInferMeta = {
-    "abs", "adam", "adamw", "merged_adam"};
+    "abs", "adam", "adamw", "layer_norm", "layer_norm_grad", "merged_adam"};
 
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
