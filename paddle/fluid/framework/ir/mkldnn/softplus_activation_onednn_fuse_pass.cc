@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,6 +59,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     GET_IR_NODE_FROM_SUBGRAPH(
         activation, activation, softplus_activation_pattern);
 
+    ConvertToFusedOp(softplus->Op());
     SetActivationAttrs(softplus->Op(), activation->Op(), act_type);
     softplus->Op()->SetOutput("Out", {activation_out->Name()});
 
