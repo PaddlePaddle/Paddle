@@ -64,6 +64,12 @@ class RawProgramOptimizer(MetaOptimizerBase):
     def _can_apply(self):
         if not self.role_maker._is_collective:
             return False
+        if self.user_defined_strategy.tensor_parallel:
+            return False
+        if self.user_defined_strategy.sharding:
+            return False
+        if self.user_defined_strategy.amp:
+            return False
 
         if self.without_graph_optimization:
             return True
