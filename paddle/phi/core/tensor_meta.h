@@ -69,11 +69,7 @@ struct DenseTensorMeta {
 
   /// \brief Set strides
   void setStride(const DDim& newStrides);
-  DenseTensorMeta withStrides(const DDim& newStrides) {
-    auto new_meta = *this;
-    new_meta.strides = newStrides;
-    return new_meta;
-  }
+  DenseTensorMeta withStrides(const DDim& newStrides, size_t newOffset = 0);
 
   /// \brief Set strides according dims and layout
   void setStride(const DDim& dims, DataLayout layout);

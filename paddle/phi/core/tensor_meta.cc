@@ -95,6 +95,14 @@ void DenseTensorMeta::setStride(const DDim& newStrides) {
   strides = calc_strides(dims, DataLayout::NCHW);
 }
 
+DenseTensorMeta DenseTensorMeta::withStrides(const DDim& newStrides,
+                                             size_t newOffset) {
+  auto new_meta = *this;
+  strides = newStrides;
+  offset = newOffset;
+  return new_meta;
+}
+
 DDim DenseTensorMeta::calc_strides(const DDim& dims, DataLayout layout) {
   DDim new_strides(dims);
   if (layout == DataLayout::NHWC) {
