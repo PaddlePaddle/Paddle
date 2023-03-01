@@ -245,6 +245,12 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
       QuantWeight<int16_t>(mul_w_tensor, mul_w_max_tensor, !transpose_w);
     }
 
+    if (bias != nullptr) {
+      auto* bias_tensor =
+          scope->Var(bias->Name())->GetMutable<phi::DenseTensor>();
+      CastToFp32(bias_tensor);
+    }
+
     std::string fc_out_name;
     if (act_out) {
       fc_out_name = act_out->Name();
