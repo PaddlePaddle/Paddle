@@ -357,8 +357,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     .. math::
         \left| x - y \right| \leq atol + rtol \times \left| y \right|
 
-    elementwise, for all elements of :math:`x` and :math:`y`. The behaviour of this
-    operator is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
+    elementwise, for all elements of :math:`x` and :math:`y`. This is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
     two tensors are elementwise equal within a tolerance.
 
     Args:
