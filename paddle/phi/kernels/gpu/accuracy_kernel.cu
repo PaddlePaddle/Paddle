@@ -20,6 +20,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -136,6 +137,7 @@ PD_REGISTER_KERNEL(accuracy,
                    ALL_LAYOUT,
                    phi::AccuracyRawKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double) {
   kernel->InputAt(1).SetDataType(phi::DataType::INT64);
