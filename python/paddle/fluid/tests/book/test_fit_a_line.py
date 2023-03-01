@@ -29,7 +29,7 @@ import paddle.static.amp as amp
 paddle.enable_static()
 
 
-def convert_uint16_to_float(in_list):
+def convert_bfloat16_to_float(in_list):
     in_list = numpy.asarray(in_list)
     out = numpy.vectorize(
         lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
@@ -114,7 +114,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                     main_program, feed=feeder.feed(data), fetch_list=[avg_cost]
                 )
                 if avg_loss_value.dtype == numpy.uint16:
-                    avg_loss_value = convert_uint16_to_float(avg_loss_value)
+                    avg_loss_value = convert_bfloat16_to_float(avg_loss_value)
                 if avg_loss_value[0] < 10.0:
                     if save_dirname is not None:
                         paddle.static.save_inference_model(
@@ -203,7 +203,7 @@ def infer(use_cuda, save_dirname=None, use_bf16=False):
             fetch_list=fetch_targets,
         )
         if results[0].dtype == numpy.uint16:
-            results[0] = convert_uint16_to_float(results[0])
+            results[0] = convert_bfloat16_to_float(results[0])
         print("infer shape: ", results[0].shape)
         print("infer results: ", results[0])
         print("ground truth: ", test_label)

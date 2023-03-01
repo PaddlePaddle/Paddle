@@ -19,7 +19,10 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_bfloat16_to_float,
+)
 from paddle.tensor import random
 
 
@@ -92,7 +95,7 @@ class TestGaussianRandomBF16Op(OpTest):
         )
 
     def verify_output(self, outs):
-        outs = convert_uint16_to_float(outs)
+        outs = convert_bfloat16_to_float(outs)
         self.assertEqual(outs[0].shape, (123, 92))
         hist, _ = np.histogram(outs[0], range=(-3, 5))
         hist = hist.astype("float32")

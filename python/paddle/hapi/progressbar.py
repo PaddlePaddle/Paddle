@@ -71,7 +71,7 @@ class ProgressBar:
     def update(self, current_num, values={}):
         now = time.time()
 
-        def convert_uint16_to_float(in_list):
+        def convert_bfloat16_to_float(in_list):
             in_list = np.asarray(in_list)
             out = np.vectorize(
                 lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
@@ -87,7 +87,7 @@ class ProgressBar:
                     else [val]
                 )
                 if isinstance(val[0], np.uint16):
-                    values[i] = ("loss", list(convert_uint16_to_float(val)))
+                    values[i] = ("loss", list(convert_bfloat16_to_float(val)))
 
         if current_num:
             time_per_unit = (now - self._start) / current_num

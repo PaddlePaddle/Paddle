@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_uint16_to_float
+from op_test import OpTest, convert_bfloat16_to_float
 
 import paddle
 import paddle.fluid as fluid
@@ -48,7 +48,7 @@ class TestUniformRandomOpBF16(OpTest):
 
     def verify_output(self, outs):
         if np.array(outs[0]).dtype == np.uint16:
-            result = convert_uint16_to_float(np.array(outs[0]))
+            result = convert_bfloat16_to_float(np.array(outs[0]))
         else:
             result = np.array(outs[0])
 
@@ -131,7 +131,7 @@ class TestUniformRandomOpBF16SelectedRows(unittest.TestCase):
         )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
-        result = convert_uint16_to_float(np.array(out.get_tensor()))
+        result = convert_bfloat16_to_float(np.array(out.get_tensor()))
         hist, prob = output_hist(result)
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
@@ -157,7 +157,7 @@ class TestUniformRandomOpBF16SelectedRowsWithDiagInit(
         )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [500, 784])
-        result = convert_uint16_to_float(np.array(out.get_tensor()))
+        result = convert_bfloat16_to_float(np.array(out.get_tensor()))
         hist, prob = output_hist(result)
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
@@ -205,7 +205,7 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensor(unittest.TestCase):
         )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
-        result = convert_uint16_to_float(np.array(out.get_tensor()))
+        result = convert_bfloat16_to_float(np.array(out.get_tensor()))
         hist, prob = output_hist(result)
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
@@ -233,7 +233,7 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensorList(
         )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
-        result = convert_uint16_to_float(np.array(out.get_tensor()))
+        result = convert_bfloat16_to_float(np.array(out.get_tensor()))
         hist, prob = output_hist(result)
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 

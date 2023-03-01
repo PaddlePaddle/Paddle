@@ -21,8 +21,8 @@ import numpy as np
 from decorator_helper import prog_scope
 from eager_op_test import (
     OpTest,
+    convert_bfloat16_to_float,
     convert_float_to_bfloat16,
-    convert_uint16_to_float,
 )
 
 import paddle
@@ -220,9 +220,9 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         if has_data_w_num > 0:
             self.assertEqual(len(out.rows()), 7)
             out_bf16 = np.array(out.get_tensor())
-            out_fp32 = convert_uint16_to_float(out_bf16)
+            out_fp32 = convert_bfloat16_to_float(out_bf16)
             ref_fp32 = (
-                convert_uint16_to_float(
+                convert_bfloat16_to_float(
                     self._get_array(self.rows, self.row_numel)
                 )
                 * has_data_w_num

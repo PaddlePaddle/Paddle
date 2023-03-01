@@ -20,7 +20,7 @@ os.environ['FLAGS_new_einsum'] = "0"
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_bfloat16, convert_uint16_to_float
+from op_test import OpTest, convert_bfloat16_to_float, convert_float_to_bfloat16
 from test_sparse_attention_op import get_cuda_version
 
 import paddle
@@ -302,7 +302,7 @@ class TestFusedGateAttentionOp(OpTest):
     def check(self, ref, out, atol, rtol, check_equal, name):
         def _convert(value):
             if self.dtype == "bfloat16":
-                return convert_uint16_to_float(value)
+                return convert_bfloat16_to_float(value)
             return value
 
         if check_equal:

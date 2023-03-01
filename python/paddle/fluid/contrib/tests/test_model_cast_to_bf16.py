@@ -25,7 +25,7 @@ from paddle.fluid import core
 paddle.enable_static()
 
 
-def convert_uint16_to_float(in_list):
+def convert_bfloat16_to_float(in_list):
     if in_list.dtype == np.uint16:
         in_list = np.asarray(in_list)
         out = np.vectorize(
@@ -37,7 +37,7 @@ def convert_uint16_to_float(in_list):
         return in_list
 
 
-cutf = convert_uint16_to_float
+cutf = convert_bfloat16_to_float
 
 
 @unittest.skipIf(

@@ -19,8 +19,8 @@ import numpy as np
 from decorator_helper import prog_scope
 from eager_op_test import (
     OpTest,
+    convert_bfloat16_to_float,
     convert_float_to_bfloat16,
-    convert_uint16_to_float,
 )
 
 import paddle
@@ -115,7 +115,7 @@ class TestCastOpBf16ToFp32(OpTest):
     def setUp(self):
         ipt = np.array(np.random.randint(10, size=[10, 10])).astype('uint16')
         self.inputs = {'X': ipt}
-        self.outputs = {'Out': convert_uint16_to_float(ipt)}
+        self.outputs = {'Out': convert_bfloat16_to_float(ipt)}
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.BF16),
             'out_dtype': int(core.VarDesc.VarType.FP32),

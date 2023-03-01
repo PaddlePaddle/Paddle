@@ -180,7 +180,7 @@ def get_numeric_gradient(
             # store bfloat16 data, and need to be converted to float to check
             # the floating precision.
             if tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
-                output_numpy = convert_uint16_to_float(output_numpy)
+                output_numpy = convert_bfloat16_to_float(output_numpy)
             sum.append(output_numpy.astype(tensor_to_check_dtype).mean())
         return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
 
@@ -312,7 +312,7 @@ def convert_float_to_bfloat16(float_list, data_format="NCHW"):
     return new_output
 
 
-def convert_uint16_to_float(in_list):
+def convert_bfloat16_to_float(in_list):
     in_list = np.asarray(in_list)
     out = np.vectorize(
         lambda x: struct.unpack(
@@ -1578,7 +1578,7 @@ class OpTest(unittest.TestCase):
             def init(self):
                 pass
 
-            def convert_uint16_to_float(self, actual_np, expect_np):
+            def convert_bfloat16_to_float(self, actual_np, expect_np):
                 raise NotImplementedError("base class, not implement!")
 
             def calculate_output(self):
@@ -1631,7 +1631,7 @@ class OpTest(unittest.TestCase):
                     expect_np = (
                         expect[0] if isinstance(expect, tuple) else expect
                     )
-                actual_np, expect_np = self.convert_uint16_to_float_ifneed(
+                actual_np, expect_np = self.convert_bfloat16_to_float_ifneed(
                     actual_np, expect_np
                 )
                 # modify there for fp32 check
@@ -1705,7 +1705,7 @@ class OpTest(unittest.TestCase):
                 expect_t = np.array(expect)
                 return expect, expect_t
 
-            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
+            def convert_bfloat16_to_float_ifneed(self, actual_np, expect_np):
                 """
                 judge whether convert current output and expect to uint16.
                 return True | False
@@ -1714,7 +1714,7 @@ class OpTest(unittest.TestCase):
                     np.float32,
                     np.float64,
                 ]:
-                    actual_np = convert_uint16_to_float(actual_np)
+                    actual_np = convert_bfloat16_to_float(actual_np)
                     self.rtol = 1.0e-2
                 elif actual_np.dtype == np.float16:
                     self.rtol = 1.0e-3
@@ -1725,8 +1725,8 @@ class OpTest(unittest.TestCase):
                     and actual_np.dtype == np.uint16
                 ):
                     nonlocal atol
-                    expect_np = convert_uint16_to_float(expect_np)
-                    actual_np = convert_uint16_to_float(actual_np)
+                    expect_np = convert_bfloat16_to_float(expect_np)
+                    actual_np = convert_bfloat16_to_float(actual_np)
                     atol = max(atol, 0.03)
                 return actual_np, expect_np
 
@@ -1773,7 +1773,7 @@ class OpTest(unittest.TestCase):
                     )
                     return imperative_expect, imperative_expect_t
 
-            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
+            def convert_bfloat16_to_float_ifneed(self, actual_np, expect_np):
                 if actual_np.dtype == np.uint16 and expect_np.dtype in [
                     np.float32,
                     np.float64,
@@ -1785,9 +1785,9 @@ class OpTest(unittest.TestCase):
                     self.rtol = 1.0e-5
                 if self.op_test.is_bfloat16_op():
                     if actual_np.dtype == np.uint16:
-                        actual_np = convert_uint16_to_float(actual_np)
+                        actual_np = convert_bfloat16_to_float(actual_np)
                     if expect_np.dtype == np.uint16:
-                        expect_np = convert_uint16_to_float(expect_np)
+                        expect_np = convert_bfloat16_to_float(expect_np)
                 return actual_np, expect_np
 
             def _compare_list(self, name, actual, expect):
@@ -1870,9 +1870,9 @@ class OpTest(unittest.TestCase):
                 with _test_eager_guard():
                     super()._compare_numpy(name, actual_np, expect_np)
 
-            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
+            def convert_bfloat16_to_float_ifneed(self, actual_np, expect_np):
                 with _test_eager_guard():
-                    return super().convert_uint16_to_float_ifneed(
+                    return super().convert_bfloat16_to_float_ifneed(
                         actual_np, expect_np
                     )
 
@@ -2380,7 +2380,7 @@ class OpTest(unittest.TestCase):
         fp32_analytic_grads = []
         for grad in analytic_grads:
             if grad.dtype == np.uint16:
-                grad = convert_uint16_to_float(grad)
+                grad = convert_bfloat16_to_float(grad)
                 max_relative_error = (
                     0.04 if max_relative_error < 0.04 else max_relative_error
                 )
@@ -2390,7 +2390,7 @@ class OpTest(unittest.TestCase):
         fp32_numeric_grads = []
         for grad in numeric_grads:
             if grad.dtype == np.uint16:
-                grad = convert_uint16_to_float(grad)
+                grad = convert_bfloat16_to_float(grad)
                 max_relative_error = (
                     0.04 if max_relative_error < 0.04 else max_relative_error
                 )
@@ -2420,7 +2420,7 @@ class OpTest(unittest.TestCase):
             fp32_grads = []
             for grad in dygraph_grad:
                 if grad.dtype == np.uint16:
-                    grad = convert_uint16_to_float(grad)
+                    grad = convert_bfloat16_to_float(grad)
                     max_relative_error = (
                         0.03
                         if max_relative_error < 0.03
@@ -2452,7 +2452,7 @@ class OpTest(unittest.TestCase):
                     fp32_grads = []
                     for grad in eager_dygraph_grad:
                         if grad.dtype == np.uint16:
-                            grad = convert_uint16_to_float(grad)
+                            grad = convert_bfloat16_to_float(grad)
                             max_relative_error = (
                                 0.03
                                 if max_relative_error < 0.03

@@ -25,8 +25,8 @@ from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
+    convert_bfloat16_to_float,
     convert_float_to_bfloat16,
-    convert_uint16_to_float,
 )
 
 
@@ -79,7 +79,7 @@ class TestSparseSGDOpBF16(unittest.TestCase):
         return reference
 
     def check_output(self, actual_bf16, reference, atol=0, rtol=0.15e-2):
-        actual_fp32 = convert_uint16_to_float(actual_bf16)
+        actual_fp32 = convert_bfloat16_to_float(actual_bf16)
         np.testing.assert_allclose(actual_fp32, reference, atol=atol, rtol=rtol)
 
     def create_sparse_grad_var(self, scope, place, height, rows, row_numel):
@@ -309,7 +309,7 @@ class TestSGDOpBF16API(unittest.TestCase):
     def _check_output(
         self, actual, reference, bf16=False, atol=0, rtol=0.15e-2
     ):
-        output = actual if bf16 else convert_uint16_to_float(actual)
+        output = actual if bf16 else convert_bfloat16_to_float(actual)
         if bf16:
             np.testing.assert_allclose(output, reference, atol=atol, rtol=rtol)
         else:

@@ -43,7 +43,7 @@ def _as_list(x):
     return list(x) if isinstance(x, (list, tuple)) else [x]
 
 
-def convert_uint16_to_float(in_list):
+def convert_bfloat16_to_float(in_list):
     in_list = np.asarray(in_list)
     out = np.vectorize(
         lambda x: struct.unpack(
@@ -437,7 +437,7 @@ class PrimForwardChecker:
         ret = flatten(_as_list(self.python_api(*args)))
         ret = map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = map_structure(lambda x: convert_bfloat16_to_float(x), ret)
         return ret
 
     def get_eager_input_attr_and_inputdict(self):
@@ -577,7 +577,7 @@ class PrimForwardChecker:
         exe.run(startup_program)
         ret = exe.run(main_program, feed=feed, fetch_list=ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = map_structure(lambda x: convert_bfloat16_to_float(x), ret)
         # check static forward
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -642,7 +642,7 @@ class PrimForwardChecker:
         ret = flatten(_as_list(net(args)))
         ret = map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = map_structure(lambda x: convert_bfloat16_to_float(x), ret)
         # check jit comp forward
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -721,7 +721,7 @@ class PrimForwardChecker:
         ret = flatten(_as_list(net(args)))
         ret = map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = map_structure(lambda x: convert_bfloat16_to_float(x), ret)
         # check jit comp forward
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -893,7 +893,7 @@ class PrimGradChecker(PrimForwardChecker):
         )
         ret = map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = map_structure(lambda x: convert_bfloat16_to_float(x), ret)
         return ret
 
     def check_eager_comp(self):
@@ -997,7 +997,7 @@ class PrimGradChecker(PrimForwardChecker):
         actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
             actual_ret = map_structure(
-                lambda x: convert_uint16_to_float(x), actual_ret
+                lambda x: convert_bfloat16_to_float(x), actual_ret
             )
         # check static grad out
         if len(actual_ret) != len(self.eager_desire):
@@ -1095,7 +1095,7 @@ class PrimGradChecker(PrimForwardChecker):
         )
         ret = map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = map_structure(lambda x: convert_bfloat16_to_float(x), ret)
         # check jit comp grad out
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -1205,7 +1205,7 @@ class PrimGradChecker(PrimForwardChecker):
         )
         ret = map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = map_structure(lambda x: convert_bfloat16_to_float(x), ret)
         # check jit comp grad out
         if len(ret) != len(self.eager_desire):
             msg = (
