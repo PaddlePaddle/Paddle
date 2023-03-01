@@ -23,8 +23,13 @@ from test_conv2d_op import (
     TestConv2DOp,
     TestConv2DOp_v2,
     create_test_channel_last_class,
+    create_test_cudnn_bf16_class,
     create_test_cudnn_channel_last_class,
+    create_test_cudnn_channel_last_fp16_class,
+    create_test_cudnn_class,
+    create_test_cudnn_fp16_class,
     create_test_cudnn_padding_SAME_class,
+    create_test_cudnn_padding_VALID_class,
     create_test_padding_SAME_class,
     create_test_padding_VALID_class,
 )
@@ -171,6 +176,47 @@ class TestDepthwiseConvWithDilation2andFuse(TestConv2DOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+
+
+# #----------------DWConv2DCUDNN----------------
+
+create_test_cudnn_class(TestDepthwiseConv)
+create_test_cudnn_class(TestDepthwiseConv2)
+create_test_cudnn_class(TestDepthwiseConv3)
+create_test_cudnn_class(TestDepthwiseConvWithDilation)
+create_test_cudnn_class(TestDepthwiseConvWithDilation2)
+create_test_cudnn_class(TestDepthwiseConvandFuse)
+create_test_cudnn_class(TestDepthwiseConv2andFuse)
+create_test_cudnn_class(TestDepthwiseConv3andFuse)
+create_test_cudnn_class(TestDepthwiseConvWithDilationandFuse)
+create_test_cudnn_class(TestDepthwiseConvWithDilation2andFuse)
+
+# ----------------DWConv2DCUDNN fp16----------------
+
+create_test_cudnn_fp16_class(TestDepthwiseConv)
+create_test_cudnn_fp16_class(TestDepthwiseConv2)
+create_test_cudnn_fp16_class(TestDepthwiseConv3)
+create_test_cudnn_fp16_class(TestDepthwiseConvWithDilation)
+create_test_cudnn_fp16_class(TestDepthwiseConvWithDilation2)
+create_test_cudnn_fp16_class(TestDepthwiseConvandFuse)
+create_test_cudnn_fp16_class(TestDepthwiseConv2andFuse)
+create_test_cudnn_fp16_class(TestDepthwiseConv3andFuse)
+create_test_cudnn_fp16_class(TestDepthwiseConvWithDilationandFuse)
+create_test_cudnn_fp16_class(TestDepthwiseConvWithDilation2andFuse)
+
+# ----------------DWConv2DCUDNN bf16----------------
+
+
+create_test_cudnn_bf16_class(TestDepthwiseConv)
+create_test_cudnn_bf16_class(TestDepthwiseConv2)
+create_test_cudnn_bf16_class(TestDepthwiseConv3)
+create_test_cudnn_bf16_class(TestDepthwiseConvWithDilation)
+create_test_cudnn_bf16_class(TestDepthwiseConvWithDilation2)
+create_test_cudnn_bf16_class(TestDepthwiseConvandFuse)
+create_test_cudnn_bf16_class(TestDepthwiseConv2andFuse)
+create_test_cudnn_bf16_class(TestDepthwiseConv3andFuse)
+create_test_cudnn_bf16_class(TestDepthwiseConvWithDilationandFuse)
+create_test_cudnn_bf16_class(TestDepthwiseConvWithDilation2andFuse)
 
 
 class TestDepthwiseConv_AsyPadding(TestConv2DOp_v2):
@@ -351,6 +397,11 @@ class TestDepthwiseConvWithDilation2andFuse_AsyPadding(TestConv2DOp_v2):
 
 # depthwise conv2d
 
+create_test_cudnn_class(TestDepthwiseConv_AsyPadding)
+create_test_cudnn_class(TestDepthwiseConvWithDilation_AsyPadding)
+create_test_cudnn_class(TestDepthwiseConvandFuse_AsyPadding)
+create_test_cudnn_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
+
 create_test_padding_SAME_class(TestDepthwiseConv_AsyPadding)
 create_test_padding_SAME_class(TestDepthwiseConvWithDilation_AsyPadding)
 create_test_padding_SAME_class(TestDepthwiseConvandFuse_AsyPadding)
@@ -361,12 +412,43 @@ create_test_padding_VALID_class(TestDepthwiseConvWithDilation_AsyPadding)
 create_test_padding_VALID_class(TestDepthwiseConvandFuse_AsyPadding)
 create_test_padding_VALID_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
 
+create_test_cudnn_padding_SAME_class(TestDepthwiseConv_AsyPadding)
+create_test_cudnn_padding_SAME_class(TestDepthwiseConvWithDilation_AsyPadding)
+create_test_cudnn_padding_SAME_class(TestDepthwiseConvandFuse_AsyPadding)
+create_test_cudnn_padding_SAME_class(
+    TestDepthwiseConvWithDilationandFuse_AsyPadding
+)
+
+create_test_cudnn_padding_VALID_class(TestDepthwiseConv_AsyPadding)
+create_test_cudnn_padding_VALID_class(TestDepthwiseConvWithDilation_AsyPadding)
+create_test_cudnn_padding_VALID_class(TestDepthwiseConvandFuse_AsyPadding)
+create_test_cudnn_padding_VALID_class(
+    TestDepthwiseConvWithDilationandFuse_AsyPadding
+)
+
 # channel last
 
 create_test_channel_last_class(TestDepthwiseConv_AsyPadding)
 create_test_channel_last_class(TestDepthwiseConvWithDilation2_AsyPadding)
 create_test_channel_last_class(TestDepthwiseConvandFuse_AsyPadding)
 create_test_channel_last_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
+
+create_test_cudnn_channel_last_class(TestDepthwiseConv_AsyPadding)
+create_test_cudnn_channel_last_class(TestDepthwiseConvWithDilation2_AsyPadding)
+create_test_cudnn_channel_last_class(TestDepthwiseConvandFuse_AsyPadding)
+create_test_cudnn_channel_last_class(
+    TestDepthwiseConvWithDilationandFuse_AsyPadding
+)
+
+create_test_cudnn_channel_last_fp16_class(TestDepthwiseConv_AsyPadding)
+create_test_cudnn_channel_last_fp16_class(
+    TestDepthwiseConvWithDilation2_AsyPadding
+)
+create_test_cudnn_channel_last_fp16_class(TestDepthwiseConvandFuse_AsyPadding)
+create_test_cudnn_channel_last_fp16_class(
+    TestDepthwiseConvWithDilationandFuse_AsyPadding
+)
+
 
 # ------------ depthwise conv2d in MIOPEN ---------
 if core.is_compiled_with_rocm():
