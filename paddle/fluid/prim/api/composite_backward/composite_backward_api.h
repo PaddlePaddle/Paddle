@@ -676,7 +676,6 @@ void matmul_double_grad(const Tensor& x,
   }
   if (grad_out_grad) {
     set_output<T>(ddout, grad_out_grad);
->>>>>>> 1054b23e1d6c11f02e18bc43a4f055ec3bc8f79e
   }
 }
 
