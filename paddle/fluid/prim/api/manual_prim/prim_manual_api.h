@@ -43,5 +43,8 @@ std::vector<Tensor> split(const Tensor& x,
                           const IntArray& sections,
                           const Scalar& axis);
 
+template <typename T>
+Tensor cast(const Tensor& x, DataType dtype);
+
 }  // namespace prim
 }  // namespace paddle

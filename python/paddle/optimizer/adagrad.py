@@ -139,14 +139,11 @@ class Adagrad(Optimizer):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
-            if p.name in self._already_create_accumulater:
-                continue
             self._add_accumulator(
                 self._moment_acc_str,
                 p,
                 fill_value=self.initial_accumulator_value,
             )
-            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
