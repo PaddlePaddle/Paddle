@@ -192,6 +192,21 @@ interpreter::CostInfo InterpreterCore::DryRun(
 }
 
 void InterpreterCore::RunImpl() {
+  //auto* cuda_graph_dev_ctx = stream_analyzer_.CreateCUDAGraphDeviceContext();
+  if (platform::IsCUDAGraphCapturing()) {
+    auto dev_ctxs = stream_analyzer_.GetAllDeviceContexts();
+    auto* cuda_graph_dev_ctx = platform::CUDAGraph::CapturingDeviceContext();
+    std::shared_ptr<platform::DeviceEvent> cuda_graph_event =
+              std::make_shared<platform::DeviceEvent>(
+                  cuda_graph_dev_ctx->GetPlace(),
+                  platform::GenerateDeviceEventFlag());
+    cuda_graph_event->Record(cuda_graph_dev_ctx);
+    for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
+      auto* stream_dev_ctx = *iter;
+      cuda_graph_event->Wait(platform::kCUDA, stream_dev_ctx);
+      VLOG(4) << "CUDA Graph stream eventWait. stream: " << stream_dev_ctx << " wait for cuda graph stream: " << cuda_graph_dev_ctx;
+    }
+  }
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
@@ -208,6 +223,20 @@ void InterpreterCore::RunImpl() {
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
+  }
+  if (platform::IsCUDAGraphCapturing()) {
+    auto dev_ctxs = stream_analyzer_.GetAllDeviceContexts();
+    auto* cuda_graph_dev_ctx = platform::CUDAGraph::CapturingDeviceContext();
+    for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
+      auto* stream_dev_ctx = *iter;
+      std::shared_ptr<platform::DeviceEvent> stream_event =
+              std::make_shared<platform::DeviceEvent>(
+                  stream_dev_ctx->GetPlace(),
+                  platform::GenerateDeviceEventFlag());
+      stream_event->Record(stream_dev_ctx);
+      stream_event->Wait(platform::kCUDA, cuda_graph_dev_ctx);
+      VLOG(4) << "CUDA Graph stream eventWait. cuda graph stream: " << cuda_graph_dev_ctx << " wait for stream: " << stream_dev_ctx;
+    }
   }
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place_)) {
@@ -662,6 +691,15 @@ void InterpreterCore::Convert(
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
+    if (FLAGS_new_executor_use_cuda_graph) {
+      auto& op = op_func_node.operator_base_;
+      auto& op_type = op->Type();
+      if (op_type == interpreter::kMemcpyD2H || op_type == interpreter::kMemcpyH2D) {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "op_type can't be memcpy d2h or h2d while using cuda graph."));
+      }
+      stream_analyzer_.InsertDeviceContext(dev_ctx_);
+    }
   }
 
   BuildOperatorDependences();

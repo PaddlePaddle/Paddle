@@ -130,6 +130,7 @@ void CUDAGraph::Replay() {
 }
 
 void CUDAGraph::BeginSegmentCapture() {
+  VLOG(4) << "yoki6";
   ThrowErrorIfNotSupportCUDAGraph();
 #if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(IsCapturing(),
@@ -145,8 +146,10 @@ void CUDAGraph::BeginSegmentCapture() {
                           "you cannot begin segmented capturing in the thread "
                           "which is not the one that starts the capturing."));
   }
+  VLOG(4) << "yoki7";
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamBeginCapture(
       capturing_graph_->stream_, capturing_graph_->capture_mode_));
+  VLOG(4) << "yoki8";
   PADDLE_ENFORCE_EQ(
       IsValidCapturing(),
       true,
@@ -160,6 +163,7 @@ void CUDAGraph::BeginSegmentCapture() {
 void CUDAGraph::BeginCapture(phi::GPUPlace place,
                              cudaStream_t stream,
                              cudaStreamCaptureMode mode) {
+  VLOG(4) << "yoki0";
   ThrowErrorIfNotSupportCUDAGraph();
 #if CUDA_VERSION >= 10010
   PADDLE_ENFORCE_EQ(IsCapturing(),
@@ -170,16 +174,21 @@ void CUDAGraph::BeginCapture(phi::GPUPlace place,
       stream,
       phi::errors::PermissionDenied(
           "CUDA Graph cannot be captured in default CUDA stream 0."));
+  VLOG(4) << "yoki1";
   capturing_graph_.reset(new CUDAGraph());
+  VLOG(4) << "yoki2";
   capturing_graph_->place_ = place;
   capturing_graph_->stream_ = stream;
   capturing_graph_->capture_mode_ = mode;
+  VLOG(4) << "yoki3";
   if (mode == cudaStreamCaptureModeThreadLocal) {
     capturing_thread_id_ = std::this_thread::get_id();
     VLOG(10) << "Capturing CUDA Graph in thread local mode, thread id: "
              << capturing_thread_id_;
   }
+  VLOG(4) << "yoki4";
   BeginSegmentCapture();
+  VLOG(4) << "yoki5";
 #endif
 }
 

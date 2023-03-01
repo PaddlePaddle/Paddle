@@ -230,7 +230,7 @@ struct GPUContext::Impl {
                            &max_threads_per_mp_,
                            &max_threads_per_block_,
                            &max_grid_dim_size_);
-    stream_ = new CUDAStream(place_, stream_priority);
+    stream_ = new CUDAStream(place_, stream_priority, phi::CUDAStream::StreamFlag::kStreamNonBlocking);
   }
 
   void PartialInitWithAllocator() {

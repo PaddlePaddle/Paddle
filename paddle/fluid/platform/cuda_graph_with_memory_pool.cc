@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/backends/all_context.h"
+//#include "paddle/fluid/platform/device_context.cc"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
 DECLARE_bool(new_executor_use_cuda_graph);
@@ -26,23 +27,54 @@ namespace platform {
 #ifdef PADDLE_WITH_CUDA
 void BeginCUDAGraphCapture(phi::GPUPlace place,
                            cudaStreamCaptureMode mode,
-                           int64_t pool_id) {
-  auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
-  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+                           int64_t pool_id,
+                           bool use_multi_stream) {
+  phi::GPUContext* dev_ctx;
+  //if (use_multi_stream) {
+    VLOG(4) << "yoki0";
+    std::unique_ptr<phi::DeviceContext> dev_ctx_unique_ptr = CreateDeviceContext<phi::GPUContext>(place, true);
+    dev_ctx = reinterpret_cast<phi::GPUContext*>(dev_ctx_unique_ptr.get());
+    /*std::map<phi::Place, std::shared_future<std::unique_ptr<DeviceContext>>> ctxs;
+    platform::EmplaceDeviceContexts(
+          &ctxs,
+          {place},
+          true,
+          0);
+    dev_ctx = reinterpret_cast<phi::GPUContext*>(ctxs[place].get().get());
+    VLOG(4) << "yoki0.1 dev_ctx: " << dev_ctx;*/
+  /*} else{*/
+    VLOG(4) << "yoki1";
+    // auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+    // dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+  //}
+  VLOG(4) << "yoki2";
+  VLOG(4) << "print stream: " << dev_ctx->stream();
+  // CUDAGraph::SetCapturingDeviceContext(dev_ctx);
+  VLOG(4) << "yoki3";
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
+  VLOG(4) << "yoki3.1";
 
   // After PR(#43206), cudnn related initializations will change to lazy mode.
   // It will only be initialized when op calls them. But cuda graph not support
   // capture such kind of init, need to init all these handle before cuda graph.
   dev_ctx->cublas_handle();
+  VLOG(4) << "yoki3.2";
 #if CUDA_VERSION >= 11060
   dev_ctx->cublaslt_handle();
+  VLOG(4) << "yoki3.3";
 #endif
   dev_ctx->cudnn_handle();
+  VLOG(4) << "yoki3.4";
   dev_ctx->cusolver_dn_handle();
 
+  VLOG(4) << "yoki4";
   auto stream = dev_ctx->stream();
+  VLOG(4) << "yoki5";
   CUDAGraph::BeginCapture(place, stream, mode);
+  VLOG(4) << "yoki6";
+  
+  CUDAGraph::SetCapturingDeviceContext(std::move(dev_ctx_unique_ptr));
+  VLOG(4) << "yoki7";
 
   // When using cuda graph in new executor, fast GC must be used.
   // FLAGS_use_stream_safe_cuda_allocator should be true.
@@ -51,25 +83,32 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = false;
   }
+  VLOG(4) << "yoki8";
   pool_id = CUDAGraph::SetMemoryPoolID(pool_id);
+  VLOG(4) << "yoki9";
   memory::allocation::AllocatorFacade::Instance().PrepareMemoryPoolForCUDAGraph(
       pool_id);
+  VLOG(4) << "yoki10";
   dev_ctx->SetCUDAGraphAllocator(memory::allocation::AllocatorFacade::Instance()
                                      .GetAllocator(place)
                                      .get());
+  VLOG(4) << "yoki11";
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = true;
   }
+  VLOG(4) << "yoki12";
   AddResetCallbackIfCapturingCUDAGraph([pool_id] {
     memory::allocation::AllocatorFacade::Instance().RemoveMemoryPoolOfCUDAGraph(
         pool_id);
   });
+  VLOG(4) << "yoki13";
 }
 
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
-  auto place = CUDAGraph::CapturingPlace();
-  auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
-  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+  auto* dev_ctx = CUDAGraph::CapturingDeviceContext();
+  // auto place = CUDAGraph::CapturingPlace();
+  // auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+  // auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
   dev_ctx->SetCUDAGraphAllocator(nullptr);
   return CUDAGraph::EndCapture();

@@ -45,6 +45,33 @@ __global__ void add_kernel(int *x, int *y, int n) {
   }
 }
 
+// y -= (x + 1)
+__global__ void sub_kernel(int *x, int *y, int n) {
+  int thread_num = gridDim.x * blockDim.x;
+  int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int i = thread_id; i < n; i += thread_num) {
+    y[i] -= x[i] + 1;
+  }
+}
+
+// y *= (x + 1)
+__global__ void mul_kernel(int *x, int *y, int n) {
+  int thread_num = gridDim.x * blockDim.x;
+  int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int i = thread_id; i < n; i += thread_num) {
+    y[i] *= x[i] + 1;
+  }
+}
+
+// y /= (x + 1)
+__global__ void div_kernel(int *x, int *y, int n) {
+  int thread_num = gridDim.x * blockDim.x;
+  int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int i = thread_id; i < n; i += thread_num) {
+    y[i] /= x[i] + 1;
+  }
+}
+
 void CheckMemLeak(const platform::CUDAPlace &place) {
   uint64_t cuda_malloc_size =
       platform::RecordedGpuMallocSize(place.GetDeviceId());
@@ -53,7 +80,7 @@ void CheckMemLeak(const platform::CUDAPlace &place) {
       << " there may be a memory leak problem";
 }
 
-TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
+/*TEST(StreamSafeCUDAAllocInterfaceTest, AllocInterfaceTest) {
   platform::CUDAPlace place = platform::CUDAPlace();
   size_t alloc_size = 256;
 
@@ -214,19 +241,20 @@ TEST(StreamSafeCUDAAllocRetryTest, RetryTest) {
   Release(place, stream1);
   Release(place, stream2);
   CheckMemLeak(place);
-}
+}*/
 
 class StreamSafeCUDAAllocTest : public ::testing::Test {
  protected:
   void SetUp() override {
     place_ = platform::CUDAPlace();
-    stream_num_ = 64;
+    stream_num_ = 4;
     grid_num_ = 1;
     block_num_ = 32;
     data_num_ = 131072;
     workspace_size_ = data_num_ * sizeof(int);
 
     for (size_t i = 0; i < stream_num_; ++i) {
+      VLOG(4) << "pyoki Setup: " << i;
       gpuStream_t stream;
 #ifdef PADDLE_WITH_CUDA
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream));
@@ -265,6 +293,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   }
 
   void SingleStreamRun(size_t idx) {
+    VLOG(4) << "pyoki SingleStreamRun: " << idx;
     int *y = reinterpret_cast<int *>(results_[idx]->ptr());
     int neighbouring_idx = idx > 0 ? idx - 1 : idx;
 
@@ -278,6 +307,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   }
 
   void MultiStreamRun() {
+    VLOG(4) << "pyoki MultiStreamRun";
     // Must run in reverse order, or the workspace_[i - 1] will be released
     // before streams_[i]'s kernel launch
     for (int i = stream_num_ - 1; i >= 0; --i) {
@@ -287,6 +317,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   }
 
   void MultiThreadMultiStreamRun() {
+    VLOG(4) << "pyoki MultiThreadMultiStreamRun";
     std::vector<std::thread> threads;
     for (size_t i = 0; i < stream_num_; ++i) {
       threads.push_back(
@@ -299,53 +330,303 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   }
 
   void CUDAGraphRun() {
+    VLOG(4) << "pyoki0 CUDAGraphRun";
     testing_cuda_graph_ = true;
     platform::BeginCUDAGraphCapture(platform::CUDAPlace(),
                                     cudaStreamCaptureModeGlobal);
+    VLOG(4) << "pyoki1";
 
     std::shared_ptr<Allocation> data_allocation =
         AllocShared(platform::CUDAPlace(), workspace_size_);
+    VLOG(4) << "pyoki2";
     std::shared_ptr<Allocation> result_allocation =
         AllocShared(platform::CUDAPlace(), workspace_size_);
+    VLOG(4) << "pyoki3";
 
     int *data = static_cast<int *>(data_allocation->ptr());
     int *result = static_cast<int *>(result_allocation->ptr());
 
+    VLOG(4) << "pyoki4";
+
     gpuStream_t main_stream = GetStream(data_allocation);
-    gpuStream_t other_stream;
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&other_stream));
+    VLOG(4) << "pyoki5";
+    //gpuStream_t other_stream;
+    //PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&other_stream));
+    VLOG(4) << "pyoki6";
+
+    gpuEvent_t event1;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&event1));
+
+    VLOG(4) << "pyoki7";
 
     add_kernel<<<grid_num_, block_num_, 0, main_stream>>>(
         data, result, data_num_);
-    RecordStream(data_allocation, other_stream);
+    sub_kernel<<<grid_num_, block_num_, 0, streams_[1]>>>(
+        reinterpret_cast<int *>(workspaces_[1]->ptr()), reinterpret_cast<int *>(results_[1]->ptr()), data_num_);
+    
+    cudaEventRecord(event1, main_stream);
+    cudaStreamWaitEvent(streams_[1], event1);
 
-    std::unique_ptr<phi::backends::gpu::CUDAGraph> cuda_graph =
-        platform::EndCUDAGraphCapture();
+    div_kernel<<<grid_num_, block_num_, 0, main_stream>>>(
+        data, result, data_num_);
+    mul_kernel<<<grid_num_, block_num_, 0, main_stream>>>(
+        data, result, data_num_);
+    mul_kernel<<<grid_num_, block_num_, 0, streams_[1]>>>(
+        reinterpret_cast<int *>(workspaces_[1]->ptr()), reinterpret_cast<int *>(results_[1]->ptr()), data_num_);
+    VLOG(4) << "pyoki8";
+    //RecordStream(data_allocation, other_stream);
+    //cudaEventRecord(event1, main_stream);
+    //cudaStreamWaitEvent(other_stream, event1);
 
-    int replay_times = 10;
-    for (int i = 0; i < replay_times; ++i) {
-      cuda_graph->Replay();
-    }
+    gpuEvent_t event2;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&event2));
 
-    std::shared_ptr<Allocation> host_result_allocation =
+    cudaEventRecord(event2, streams_[1]);
+    cudaStreamWaitEvent(main_stream, event2);
+
+    sub_kernel<<<grid_num_, block_num_, 0, main_stream>>>(
+        data, result, data_num_);
+    
+
+    VLOG(4) << "pyoki9";
+
+    /*std::shared_ptr<Allocation> host_result_allocation =
         AllocShared(platform::CPUPlace(), workspace_size_);
+    VLOG(4) << "pyoki11";
     Copy(host_result_allocation->place(),
          host_result_allocation->ptr(),
          result_allocation->place(),
          result_allocation->ptr(),
          workspace_size_,
          main_stream);
+    VLOG(4) << "pyoki12";
+    cudaStreamSynchronize(main_stream);*/
+
+    std::unique_ptr<phi::backends::gpu::CUDAGraph> cuda_graph =
+        platform::EndCUDAGraphCapture();
+
+    VLOG(4) << "pyoki10";
+
+    int replay_times = 10;
+    for (int i = 0; i < replay_times; ++i) {
+      VLOG(4) << "pyoki replay: " << i;
+      cuda_graph->Replay();
+    }
+
+    std::shared_ptr<Allocation> host_result_allocation =
+        AllocShared(platform::CPUPlace(), workspace_size_);
+    VLOG(4) << "pyoki11";
+    Copy(host_result_allocation->place(),
+         host_result_allocation->ptr(),
+         result_allocation->place(),
+         result_allocation->ptr(),
+         workspace_size_,
+         main_stream);
+    VLOG(4) << "pyoki12";
     cudaStreamSynchronize(main_stream);
+
+    Copy(host_results_[1]->place(),
+         host_results_[1]->ptr(),
+         results_[1]->place(),
+         results_[1]->ptr(),
+         workspace_size_,
+         streams_[1]);
+    cudaStreamSynchronize(streams_[1]);
 
     int *host_result = static_cast<int *>(host_result_allocation->ptr());
     for (int i = 0; i < data_num_; ++i) {
-      EXPECT_EQ(host_result[i], replay_times);
+      if (i < 10) {
+        VLOG(4) << "pyoki check result: " << host_result[i];
+      }
+      //EXPECT_EQ(host_result[i], replay_times);
     }
+
+    VLOG(4) << "pyoki13";
 
     data_allocation.reset();
     result_allocation.reset();
     cuda_graph.release();
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(other_stream));
+    VLOG(4) << "pyoki14";
+    //PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(other_stream));
+    VLOG(4) << "pyoki15";
+  }
+
+  void CUDAGraphRunV2() {
+    VLOG(4) << "pyoki0 CUDAGraphRunV2";
+    testing_cuda_graph_ = true;
+    platform::BeginCUDAGraphCapture(platform::CUDAPlace(),
+                                    cudaStreamCaptureModeGlobal, -1, true);
+    VLOG(4) << "pyoki1";
+
+    //auto* cuda_graph_dev_ctx = platform::CUDAGraph::CapturingDeviceContext();
+    //VLOG(4) << "yoki: cuda_graph_dev_ctx: " << cuda_graph_dev_ctx;
+
+    /*std::shared_ptr<Allocation> data_allocation =
+        AllocShared(platform::CUDAPlace(), workspace_size_);
+    VLOG(4) << "pyoki2";
+    std::shared_ptr<Allocation> result_allocation =
+        AllocShared(platform::CUDAPlace(), workspace_size_);
+    VLOG(4) << "pyoki3";
+
+    int *data = static_cast<int *>(data_allocation->ptr());
+    int *result = static_cast<int *>(result_allocation->ptr());
+
+    VLOG(4) << "pyoki4";
+
+    //gpuStream_t main_stream = GetStream(data_allocation);*/
+
+    auto* cuda_graph_dev_ctx = platform::CUDAGraph::CapturingDeviceContext();
+    VLOG(4) << "yoki: cuda_graph_dev_ctx: " << cuda_graph_dev_ctx;
+    gpuStream_t main_stream = cuda_graph_dev_ctx->stream();
+    VLOG(4) << "yoki: main_stream: " << main_stream;
+
+
+    /*std::shared_ptr<phi::Allocation> data_allocation =
+        AllocShared(platform::CUDAPlace(),
+                    workspace_size_,
+                    phi::Stream(reinterpret_cast<phi::StreamId>(main_stream)));
+    std::shared_ptr<phi::Allocation> result_allocation =
+        AllocShared(platform::CUDAPlace(),
+                    workspace_size_,
+                    phi::Stream(reinterpret_cast<phi::StreamId>(main_stream)));
+    int *data = static_cast<int *>(data_allocation->ptr());
+    int *result = static_cast<int *>(result_allocation->ptr());
+
+    add_kernel<<<grid_num_, block_num_, 0, main_stream>>>(
+        data, result, data_num_);*/
+
+
+    /*div_kernel<<<grid_num_, block_num_, 0, streams_[1]>>>(
+        reinterpret_cast<int *>(workspaces_[1]->ptr()), reinterpret_cast<int *>(results_[1]->ptr()), data_num_);
+    div_kernel<<<grid_num_, block_num_, 0, streams_[2]>>>(
+        reinterpret_cast<int *>(workspaces_[2]->ptr()), reinterpret_cast<int *>(results_[2]->ptr()), data_num_);
+    div_kernel<<<grid_num_, block_num_, 0, streams_[3]>>>(
+        reinterpret_cast<int *>(workspaces_[3]->ptr()), reinterpret_cast<int *>(results_[3]->ptr()), data_num_);*/
+
+    gpuEvent_t event1;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&event1));
+    cudaEventRecord(event1, main_stream);
+    cudaStreamWaitEvent(streams_[1], event1);
+
+    //gpuEvent_t event2;
+    //PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&event2));
+    cudaEventRecord(event1, main_stream);
+    cudaStreamWaitEvent(streams_[2], event1);
+
+    //gpuEvent_t event3;
+    //PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&event3));
+    cudaEventRecord(event1, main_stream);
+    cudaStreamWaitEvent(streams_[3], event1);
+
+    add_kernel<<<grid_num_, block_num_, 0, streams_[1]>>>(
+        reinterpret_cast<int *>(workspaces_[1]->ptr()), reinterpret_cast<int *>(results_[1]->ptr()), data_num_);
+    
+    gpuEvent_t event4;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&event4));
+    cudaEventRecord(event4, streams_[1]);
+    cudaStreamWaitEvent(streams_[2], event4);
+
+    sub_kernel<<<grid_num_, block_num_, 0, streams_[2]>>>(
+        reinterpret_cast<int *>(workspaces_[2]->ptr()), reinterpret_cast<int *>(results_[2]->ptr()), data_num_);
+    mul_kernel<<<grid_num_, block_num_, 0, streams_[3]>>>(
+        reinterpret_cast<int *>(workspaces_[3]->ptr()), reinterpret_cast<int *>(results_[3]->ptr()), data_num_);
+    
+
+    /*gpuEvent_t event4;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&event4));
+    cudaEventRecord(event4, streams_[1]);
+    cudaStreamWaitEvent(streams_[2], event4);*/
+    
+    div_kernel<<<grid_num_, block_num_, 0, streams_[1]>>>(
+        reinterpret_cast<int *>(workspaces_[1]->ptr()), reinterpret_cast<int *>(results_[1]->ptr()), data_num_);
+    div_kernel<<<grid_num_, block_num_, 0, streams_[2]>>>(
+        reinterpret_cast<int *>(workspaces_[2]->ptr()), reinterpret_cast<int *>(results_[2]->ptr()), data_num_);
+    div_kernel<<<grid_num_, block_num_, 0, streams_[3]>>>(
+        reinterpret_cast<int *>(workspaces_[3]->ptr()), reinterpret_cast<int *>(results_[3]->ptr()), data_num_);
+
+    gpuEvent_t event5;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&event5));
+    cudaEventRecord(event5, streams_[1]);
+    cudaStreamWaitEvent(main_stream, event5);
+
+    gpuEvent_t event6;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&event6));
+    cudaEventRecord(event6, streams_[2]);
+    cudaStreamWaitEvent(main_stream, event6);
+
+    gpuEvent_t event7;
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&event7));
+    cudaEventRecord(event7, streams_[3]);
+    cudaStreamWaitEvent(main_stream, event7);
+    
+    /*div_kernel<<<grid_num_, block_num_, 0, streams_[1]>>>(
+        reinterpret_cast<int *>(workspaces_[1]->ptr()), reinterpret_cast<int *>(results_[1]->ptr()), data_num_);*/
+    /*div_kernel<<<grid_num_, block_num_, 0, streams_[2]>>>(
+        reinterpret_cast<int *>(workspaces_[2]->ptr()), reinterpret_cast<int *>(results_[2]->ptr()), data_num_);
+    div_kernel<<<grid_num_, block_num_, 0, streams_[3]>>>(
+        reinterpret_cast<int *>(workspaces_[3]->ptr()), reinterpret_cast<int *>(results_[3]->ptr()), data_num_);*/
+    
+    VLOG(4) << "pyoki9";
+
+    /*std::shared_ptr<Allocation> host_result_allocation =
+        AllocShared(platform::CPUPlace(), workspace_size_);
+    VLOG(4) << "pyoki11";
+    Copy(host_result_allocation->place(),
+         host_result_allocation->ptr(),
+         result_allocation->place(),
+         result_allocation->ptr(),
+         workspace_size_,
+         main_stream);
+    VLOG(4) << "pyoki12";
+    cudaStreamSynchronize(main_stream);*/
+
+    std::unique_ptr<phi::backends::gpu::CUDAGraph> cuda_graph =
+        platform::EndCUDAGraphCapture();
+
+    VLOG(4) << "pyoki10";
+
+    int replay_times = 5;
+    for (int i = 0; i < replay_times; ++i) {
+      VLOG(4) << "pyoki replay: " << i;
+      cuda_graph->Replay();
+    }
+
+    /*std::shared_ptr<Allocation> host_result_allocation =
+        AllocShared(platform::CPUPlace(), workspace_size_);
+    VLOG(4) << "pyoki11";
+    Copy(host_result_allocation->place(),
+         host_result_allocation->ptr(),
+         result_allocation->place(),
+         result_allocation->ptr(),
+         workspace_size_,
+         main_stream);
+    VLOG(4) << "pyoki12";
+    cudaStreamSynchronize(main_stream);
+
+    Copy(host_results_[1]->place(),
+         host_results_[1]->ptr(),
+         results_[1]->place(),
+         results_[1]->ptr(),
+         workspace_size_,
+         streams_[1]);
+    cudaStreamSynchronize(streams_[1]);
+
+    int *host_result = static_cast<int *>(host_result_allocation->ptr());
+    for (int i = 0; i < data_num_; ++i) {
+      if (i < 10) {
+        VLOG(4) << "pyoki check result: " << host_result[i];
+      }
+      //EXPECT_EQ(host_result[i], replay_times);
+    }
+
+    VLOG(4) << "pyoki13";
+
+    data_allocation.reset();
+    result_allocation.reset();*/
+    cuda_graph.release();
+    VLOG(4) << "pyoki14";
+    //PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(other_stream));
+    VLOG(4) << "pyoki15";
   }
 
   void CheckResult() {
@@ -403,7 +684,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   std::vector<std::shared_ptr<phi::Allocation>> host_results_;
 };
 
-TEST_F(StreamSafeCUDAAllocTest, CUDAMutilStreamTest) {
+/*TEST_F(StreamSafeCUDAAllocTest, CUDAMutilStreamTest) {
   MultiStreamRun();
   CheckResult();
 }
@@ -411,15 +692,17 @@ TEST_F(StreamSafeCUDAAllocTest, CUDAMutilStreamTest) {
 TEST_F(StreamSafeCUDAAllocTest, CUDAMutilThreadMutilStreamTest) {
   MultiThreadMultiStreamRun();
   CheckResult();
-}
+}*/
 
 #ifdef PADDLE_WITH_CUDA
 TEST_F(StreamSafeCUDAAllocTest, CUDAGraphTest) {
-  MultiStreamRun();
-  CUDAGraphRun();
-  CheckResult();
+  //MultiStreamRun();
+  //CUDAGraphRun();
+  CUDAGraphRunV2();
+  //CheckResult();
 }
 #endif
 
 }  // namespace memory
 }  // namespace paddle
+

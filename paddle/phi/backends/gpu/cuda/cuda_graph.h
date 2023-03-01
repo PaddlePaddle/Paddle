@@ -29,6 +29,7 @@
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/optional.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace phi {
 namespace backends {
@@ -143,6 +144,15 @@ class CUDAGraph {
 
   static phi::GPUPlace CapturingPlace() { return capturing_graph_->place_; }
 
+  static void SetCapturingDeviceContext(std::unique_ptr<phi::DeviceContext> dev_ctx) {
+    VLOG(4) << "yoki00: "; // << dev_ctx.get();
+    // capturing_graph_.reset(new CUDAGraph());
+    capturing_graph_->dev_ctx_ = std::move(dev_ctx);
+    VLOG(4) << "yoki01: "; // << (capturing_graph_->dev_ctx_).get();
+  }
+
+  static phi::GPUContext* CapturingDeviceContext() { return reinterpret_cast<phi::GPUContext*>((capturing_graph_->dev_ctx_).get()); }
+
   // This API can be used to debug which GPU operation is not
   // supported during capturing CUDA Graph.
   static bool IsValidCapturing();
@@ -185,6 +195,7 @@ class CUDAGraph {
 #endif
   cudaStream_t stream_{nullptr};
   phi::GPUPlace place_;
+  std::unique_ptr<phi::DeviceContext> dev_ctx_;
   CUDAGraphID id_;
   int64_t pool_id_{kInvalidPoolID};
   std::vector<std::function<void()>> callbacks_;
