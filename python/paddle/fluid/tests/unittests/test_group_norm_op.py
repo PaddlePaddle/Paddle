@@ -64,6 +64,9 @@ class TestGroupNormOpError(unittest.TestCase):
 def group_norm_wrapper(
     X, Scale, Bias, epsilon=1e-5, num_groups=2, data_layout="NCHW"
 ):
+    assert False, "{} {} {} {} {} {} ".format(
+        type(X), type(Scale), type(Bias), epsilon, num_groups, data_layout
+    )
     return paddle._C_ops.group_norm(
         X, Scale, Bias, epsilon, num_groups, data_layout
     )

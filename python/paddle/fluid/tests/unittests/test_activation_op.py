@@ -382,7 +382,7 @@ class TestSiluFP16(TestActivation):
         self.check_grad(['X'], 'Out', check_prim=True)
 
     def test_check_output(self):
-        check = False
+        check_dygraph = False
         if hasattr(self, 'check_dygraph'):
             check_dygraph = self.check_dygraph
         self.check_output(check_dygraph=check_dygraph, check_prim=True)
