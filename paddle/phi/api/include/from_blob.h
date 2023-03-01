@@ -25,7 +25,8 @@ Tensor from_blob(void* data, const phi::DDim& shape, DataType dtype, const Place
     PADDLE_ENFORCE_NOT_NULL(data, phi::errors::InvalidArgument("data can not be nullptr"));
 
     auto meta = phi::DenseTensorMeta(dtype, shape);
-    size_t size = SizeOf(dtype) * meta.is_scalar ? 1 : product(shape);
+    size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(shape));
+    
     auto alloc = std::make_shared<phi::Allocation>(data, size, place);
     return Tensor(std::make_shared<phi::DenseTensor>(alloc, meta));
 }

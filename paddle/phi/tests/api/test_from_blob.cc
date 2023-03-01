@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "glog/logging.h"
 #include <gtest/gtest.h>
 
 #include "paddle/phi/api/include/api.h"
@@ -51,7 +50,7 @@ TEST(from_blob, FLOAT32) {
 
   // 3.4 test other API
   auto test_tensor_pow = pow(test_tesnor, 2);
-  auto* test_tensor_pow_data = test_tesnor.template data<float>();
+  auto* test_tensor_pow_data = test_tensor_pow.template data<float>();
   for (int32_t i = 0; i < 6; i++) {
     ASSERT_EQ(test_tensor_pow_data[i], static_cast<float>(pow(i + 1, 2)));
   }
@@ -59,7 +58,7 @@ TEST(from_blob, FLOAT32) {
 
 TEST(from_blob, INT32) {
   // 1. create data
-  int data[] = {1, 2, 3, 4, 5, 6};
+  int32_t data[] = {1, 2, 3, 4, 5, 6};
 
   // 2. test API
   auto test_tesnor = experimental::from_blob(data, {2, 3}, phi::DataType::INT32, phi::CPUPlace());
@@ -77,7 +76,7 @@ TEST(from_blob, INT32) {
   ASSERT_EQ(test_tesnor.is_dense_tensor(), true);
 
   // 3.2 check tensor values
-  auto* test_tensor_data = test_tesnor.template data<int>();
+  auto* test_tensor_data = test_tesnor.template data<int32_t>();
   for (int32_t i = 0; i < 6; i++) {
     ASSERT_EQ(test_tensor_data[i], i + 1);
   }
@@ -87,7 +86,7 @@ TEST(from_blob, INT32) {
 
   // 3.4 test other API
   auto test_tensor_pow = pow(test_tesnor, 2);
-  auto* test_tensor_pow_data = test_tesnor.template data<float>();
+  auto* test_tensor_pow_data = test_tensor_pow.template data<int32_t>();
   for (int32_t i = 0; i < 6; i++) {
     ASSERT_EQ(test_tensor_pow_data[i], static_cast<int32_t>(pow(i + 1, 2)));
   }
