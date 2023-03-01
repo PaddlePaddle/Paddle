@@ -33,7 +33,7 @@ class TestConcatOp(OpTest):
         self.op_type = "concat"
         self.python_api = paddle.concat
         self.prim_op_type = "prim"
-        self.enable_check_jit_comp_with_cinn = False
+        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_test_data()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
@@ -136,7 +136,7 @@ class TestConcatOp6(TestConcatOp):
         self.dtype = self.get_dtype()
         self.python_api = paddle.concat
         self.prim_op_type = "prim"
-        self.enable_check_jit_comp_with_cinn = False
+        self.enable_cinn = False
         self.init_test_data()
         self.lod = [[20, 80]]
         self.out_lod = [[20, 80, 20, 80, 20, 80]]
@@ -180,7 +180,7 @@ def create_test_AxisTensor(parent):
             self.init_test_data()
 
             self.prim_op_type = "prim"
-            self.enable_check_jit_comp_with_cinn = False
+            self.enable_cinn = False
             self.inputs = {
                 'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)],
                 'AxisTensor': np.array([self.axis]).astype("int32"),
