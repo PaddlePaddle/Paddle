@@ -1364,10 +1364,16 @@ class TestCeil_ZeroDim(TestCeil):
 class TestFloor(TestActivation):
     def setUp(self):
         self.op_type = "floor"
+        self.prim_op_type = "prim"
+        self.only_prim = True
         self.check_eager = True
         self.python_api = paddle.floor
         self.init_dtype()
         self.init_shape()
+
+        if len(self.shape) == 0:
+            # for 0-D tensor, skip cinn testing
+            self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1379,11 +1385,8 @@ class TestFloor(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
-    # the gradient on floor, ceil, round is undefined.
-    # we return zero as gradient, but the numpy return nan
-    # The same reason with TestFloor
     def test_check_grad(self):
-        pass
+        self.check_grad(check_prim=True)
 
 
 class TestFloor_ZeroDim(TestFloor):
