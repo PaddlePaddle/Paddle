@@ -597,7 +597,7 @@
 
 - op : expand_as
   args : (Tensor x, Tensor y, int[] target_shape)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : ExpandAsInferMeta
   kernel :
@@ -810,7 +810,7 @@
 
 - op : hardswish
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
