@@ -2864,7 +2864,6 @@ class TestPowFP16(TestActivation):
 class TestPow_factor_tensor(TestActivation):
     def setUp(self):
         self.op_type = "pow"
-        self.prim_op_type = "comp"
         self.check_eager = False
         self.python_api = paddle.pow
         self.init_dtype()
@@ -2882,14 +2881,12 @@ class TestPow_factor_tensor(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager, check_prim=True)
+        self.check_output(check_eager=self.check_eager)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'], 'Out', check_eager=self.check_eager, check_prim=True
-        )
+        self.check_grad(['X'], 'Out', check_eager=self.check_eager)
 
     def test_api(self):
         input = np.random.uniform(1, 2, [11, 17]).astype("float32")

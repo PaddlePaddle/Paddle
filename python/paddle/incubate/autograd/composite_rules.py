@@ -289,6 +289,6 @@ def pow_composite(x, y):
     res = x^y
     """
     if isinstance(y, (int, float)):
-        y = full([1], y)
+        y = full([1], y, x.dtype)
     res = pow(x, y)
     return res
