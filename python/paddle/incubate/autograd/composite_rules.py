@@ -280,3 +280,15 @@ def fill_any_like(x, fill_value, dtype, place=None):
     dtype = dtypes.dtype(dtype)
     val = full(x.shape, fill_value, dtype)
     return val
+
+
+@REGISTER_COMPOSITE('pow')
+def pow_composite(x, y):
+    """
+    define composite rule of op pow
+    res = x^y
+    """
+    if isinstance(y, (int, float)):
+        y = full([1], y)
+    res = pow(x, y)
+    return res
