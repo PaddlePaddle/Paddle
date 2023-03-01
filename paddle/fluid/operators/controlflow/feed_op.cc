@@ -130,7 +130,13 @@ class FeedOp : public framework::OperatorWithKernel {
 
       if (feed_item.index() == 0) {  // DenseTensor
         auto& feed_tensor = PADDLE_GET_CONST(phi::DenseTensor, feed_item);
-        out_var->GetMutable<phi::DenseTensor>()->set_meta(feed_tensor.meta());
+        phi::DenseTensor* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensorMeta meta = out_tensor->meta();
+        meta.dims = feed_tensor.dims();
+        meta.dtype = feed_tensor.dtype();
+        meta.layout = feed_tensor.layout();
+        meta.lod = feed_tensor.lod();
+        out_tensor->set_meta(meta);
       } else if (feed_item.index() == 1) {  // Strings
         auto& feed_str = PADDLE_GET_CONST(framework::Strings, feed_item);
         out_var->GetMutable<framework::Strings>()->resize(feed_str.size());

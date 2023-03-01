@@ -97,10 +97,9 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "logical_xor",
     "lstsq",
     "lu",
-    "matmul",
-    "matmul_with_flatten",
     "matrix_nms",
     "matrix_rank_tol",
+    "merged_adam",
     "mode",
     "momentum",
     "multiclass_nms3",
@@ -130,8 +129,7 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
 
 // These Ops can use InferMeta to infer the output dtype
 static std::set<std::string> OpsWithAvailablePhiInferMeta = {
-    // TODO(Ruibiao): Add OP names here when needed.
-};
+    "abs", "adam", "adamw", "merged_adam"};
 
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
@@ -243,7 +241,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
          << ", need_move_to_phi = " << (item.second >> 1 & 1)
          << ", need_set_dtype = " << (item.second & 1) << "]\n";
     }
-    VLOG(4) << ss.str();
+    VLOG(0) << ss.str();
   }
 
   return invalid_ops.empty();
