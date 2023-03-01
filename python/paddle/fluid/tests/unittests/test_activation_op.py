@@ -2182,6 +2182,20 @@ class TestHardSwish_ZeroDim(TestHardSwish):
         self.shape = []
 
 
+class TesthardSwishFP16(TestHardSwish):
+    def setUp(self):
+        super().setUp()
+        self.only_prim = True
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestHardSwish_ZeroDim_FP16(TesthardSwishFP16):
+    def init_shape(self):
+        self.shape = []
+
+
 class TestHardswishAPI(unittest.TestCase):
     # test paddle.nn.Hardswish, paddle.nn.functional.hardswish
     def setUp(self):
