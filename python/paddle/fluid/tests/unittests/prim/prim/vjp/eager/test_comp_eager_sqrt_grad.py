@@ -37,12 +37,6 @@ class TestSqrtGradComp(unittest.TestCase):
         cls.primal = cls.primal.astype(cls.dtype)
         cls.cotangent = cls.cotangent.astype(cls.dtype)
 
-    def setUp(self):
-        paddle.enable_static()
-
-    def tearDown(self):
-        paddle.disable_static()
-
     def test_sqrt_grad_comp(self):
         def actual(primal, cotangent):
             paddle.disable_static()

@@ -39,7 +39,7 @@ def argsort(x, axis=-1, descending=False, name=None):
     Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float16, float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -101,7 +101,15 @@ def argsort(x, axis=-1, descending=False, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+            ],
             'argsort',
         )
 
@@ -127,7 +135,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
     element along the provided axis.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float16, float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
@@ -185,7 +193,15 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+            ],
             'paddle.argmax',
         )
         check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
@@ -208,7 +224,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     element along the provided axis.
 
     Args:
-        x(Tensor): An input N-D Tensor with type float32, float64, int16,
+        x(Tensor): An input N-D Tensor with type float16, float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
@@ -266,7 +282,15 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+            ],
             'paddle.argmin',
         )
         check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
@@ -574,8 +598,8 @@ def where(condition, x=None, y=None, name=None):
 
     Args:
         condition (Tensor): The condition to choose x or y. When True (nonzero), yield x, otherwise yield y.
-        x (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is True with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
-        y (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is False with data type of float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        x (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is True with data type of float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
+        y (Tensor|scalar, optional): A Tensor or scalar to choose when the condition is False with data type of float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -639,10 +663,10 @@ def where(condition, x=None, y=None, name=None):
     else:
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'where'
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'where'
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64', 'int32', 'int64'], 'where'
+            y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'where'
         )
         helper = LayerHelper("where", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
