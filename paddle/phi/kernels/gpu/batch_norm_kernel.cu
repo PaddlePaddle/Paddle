@@ -870,7 +870,7 @@ void BatchNormKernel(const Context &ctx,
       // skip the batch norm calculation, let y = x.
       phi::Copy(ctx, x, ctx.GetPlace(), false, y);
     } else {
-      double this_factor = 1. - momentum;
+      double this_factor = momentum;
 #ifdef PADDLE_WITH_HIP
       const int num = transformed_x.numel();
       const int block = 256;
@@ -945,7 +945,6 @@ void BatchNormKernel(const Context &ctx,
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
            (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_TRAIN));
       if (use_native_kernel) {
-        double this_factor = momentum;
         dim3 block;
         dim3 grid;
         const int block_size = 512;
