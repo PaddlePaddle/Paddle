@@ -261,6 +261,31 @@ def bernoulli(shape, dtype, p, seed=0):
     )
 
 
+@REGISTER_COMPOSITE('hard_swish')
+def hard_swish_composite(x):
+    """define composite rule of op hard_swish.
+    offset=3, threshold=6, scale=6
+    out = minimum(
+        maxmum(x + offset, 0), threshold
+    ) * x / scale
+    """
+    offset = 3.0
+    threshold = 6.0
+    scale = 6.0
+    res = (
+        minimum(
+            maximum(
+                x + full(x.shape, offset, dtype=x.dtype),
+                full(x.shape, 0.0, dtype=x.dtype),
+            ),
+            full(x.shape, threshold, dtype=x.dtype),
+        )
+        * x
+        / full(x.shape, scale, dtype=x.dtype)
+    )
+    return res
+
+
 @REGISTER_COMPOSITE('silu')
 def silu_composite(x):
     """
