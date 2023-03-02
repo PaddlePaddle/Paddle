@@ -1285,7 +1285,7 @@ class TestSqrtComp(TestActivation, TestParameter):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-        self.enable_cinn = False
+        self.enable_cinn = True
 
     # TODO(wanghao107) add prim test
     def test_check_grad(self):
@@ -1310,7 +1310,7 @@ class TestSqrtCompFp32(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-        self.enable_cinn = False
+        self.enable_cinn = True
 
     def test_check_grad(self):
         if self.dtype == np.float16:
