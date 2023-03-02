@@ -44,7 +44,6 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/backward.py"
            "paddle/fluid/operators/distributed/send_recv.proto.in"
            "paddle/fluid/framework/unused_var_check.cc"
-           "paddle/fluid/pybind/op_function_generator.cc"
            "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/compile_vs_runtime_white_list.py"
@@ -81,6 +80,10 @@ API_FILES=("CMakeLists.txt"
            "paddle/phi/core/kernel_factory.h"
            "paddle/phi/core/kernel_context.h"
            "paddle/phi/core/infermeta_utils.h"
+           "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+           "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
+           "python/paddle/incubate/autograd/composite_rules.py"
+	   "python/paddle/incubate/autograd/primitives.py"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -143,9 +146,6 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
           echo_line="You must have one RD (zhiqiu (Recommend) or chenwhql) approval for the changes of paddle/fluid/framework/unused_var_check.cc, which manages the allow list of operators that have unused input variables. Before change the allow list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
           check_approval 1 6888866 22561442
-      elif [ "${API_FILE}" == "paddle/fluid/pybind/op_function_generator.cc" ];then
-          echo_line="You must have one RD (zhiqiu (Recommend) , phlrain) approval for the changes of paddle/fluid/pybind/op_function_generator.cc, which manages the logic of automatic generating op functions for dygraph. \n"
-          check_approval 1 6888866 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py" ];then
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (hong19860320 (Recommend), luotao1, phlrain) approval for the changes of check_shape_white_list.py, which manages the white list of operators with limited input size. Inputs size of all cases in the op test must be greater than or equal to 100. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/OP-Test-Input-Shape-Requirements. \n"
           check_approval 1 9973393 6836917 43953930
@@ -183,20 +183,20 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="test_checkout_api_compatible.py will be executed for changed checkout_api_compatible.py.\n"
           run_tools_test test_checkout_api_compatible.py
       elif [ "${API_FILE}" == "python/paddle/distributed/fleet/__init__.py" ]; then
-	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
-	      check_approval 1 35824027 38231817
+          echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes.\n"
+          check_approval 1 35824027 38231817
       elif [ "${API_FILE}" == "python/paddle/distributed/__init__.py" ]; then
-	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
-	      check_approval 1 35824027 38231817
+          echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes.\n"
+          check_approval 1 35824027 38231817
       elif [ "${API_FILE}" == "python/paddle/distributed/fleet/launch.py" ]; then
-	      echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes"
-	      check_approval 1 35824027 38231817
+          echo_line="You must have (fuyinno4 (Recommend), raindrops2sea) approval for ${API_FILE} changes.\n"
+          check_approval 1 35824027 38231817
       elif [ "${API_FILE}" == "paddle/scripts/paddle_build.bat" ] || [ "${API_FILE}" == "tools/windows/run_unittests.sh" ]; then
-	      echo_line="You must have one RD (zhouwei25 (Recommend), wanghuancoder, luotao1) approval for ${API_FILE} changes, which manages the Paddle CI task on Windows.\n"
-	      check_approval 1 52485244 6836917 26922892
+          echo_line="You must have one RD (zhouwei25 (Recommend), wanghuancoder, luotao1) approval for ${API_FILE} changes, which manages the Paddle CI task on Windows.\n"
+          check_approval 1 52485244 6836917 26922892
       elif [ "${API_FILE}" == "tools/parallel_UT_rule.py" ]; then
-	      echo_line="You must have one RD (zhouwei25 (Recommend), wanghuancoder, luotao1) approval for ${API_FILE} changes, which manages the rule of running unittest with a same GPU. If the unittest failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, you can remove it from ${API_FILE}.\n"
-	      check_approval 1 52485244 6836917 26922892
+          echo_line="You must have one RD (zhouwei25 (Recommend), wanghuancoder, luotao1) approval for ${API_FILE} changes, which manages the rule of running unittest with a same GPU. If the unittest failed due to Insufficient GPU memory or CUBLAS_STATUS_ALLOC_FAILED, you can remove it from ${API_FILE}.\n"
+          check_approval 1 52485244 6836917 26922892
       elif [ "${API_FILE}" == "python/paddle/fluid/parallel_executor.py" ]; then
           echo_line="You must have one RD (Xreki,luotao1,zhhsplendid) approval for ${API_FILE}, which manages the underlying code for PaddlePaddle.\n"
           check_approval 1 12538138 6836917 7913861
@@ -206,6 +206,12 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "paddle/phi/api/include/tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_base.h" ] || [ "${API_FILE}" == "paddle/phi/core/dense_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/meta_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_meta.h" ] || [ "${API_FILE}" == "paddle/phi/core/attribute.h" ] || [ "${API_FILE}" == "paddle/phi/core/device_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_utils.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_registry.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_factory.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/infermeta_utils.h" ]; then
             echo_line="You must have one RD (chenwhql, phlrain, zyfncg, YuanRisheng) approval for changing ${API_FILE} , which manages the underlying code for PaddlePaddle PHI Library.\n"
             check_approval chenwhql phlrain zyfncg YuanRisheng
+      elif [ "${API_FILE}" == "paddle/fluid/prim/api/composite_backward/composite_backward_api.h" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/manual_prim/prim_manual_api.h" ]; then
+            echo_line="You must have one RD (JiabinYang, cxxly(chenxiaoxu) , xiaoguoguo626807(wangruting)) approval for changing ${API_FILE} , which manages the code for PaddlePaddle Composite Bacward Prim API.\n"
+            check_approval 1 JiabinYang cxxly xiaoguoguo626807
+      elif [ "${API_FILE}" == "python/paddle/incubate/autograd/primitives.py" ] || [ "${API_FILE}" == "python/paddle/incubate/autograd/composite_rules.py" ]; then
+            echo_line="You must have one RD (cyber-pioneer(chenzhuo), JiabinYang) approval for changing ${API_FILE} , which manages the composite rules.\n"
+            check_approval 1 cyber-pioneer JiabinYang
       else
           echo_line="You must have one RD (XiaoguangHu01,chenwhql,zhiqiu,Xreki,luotao1,qili93) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 46782768 12538138 6836917 22561442 6888866 16605440
@@ -298,7 +304,7 @@ fi
 
 HAS_MODIFIED_SETUP=`git diff --name-only upstream/$BRANCH | grep "${PADDLE_ROOT}/setup.py" || true`
 if [ "${HAS_MODIFIED_SETUP}" != "" ] || ([ "${HAS_MODIFIED_SETUP_IN}" != "" ] && [ "${HAS_MODIFIED_SETUP}" == "" ]); then
-    echo_line="You must have one RD (risemeup1, zhangbo9674) approval for setup.py and setup.py.in are not modified synchronously.\n"
+    echo_line="You must have one RD (risemeup1, zhangbo9674) approval for file changes in setup.py or setup.py and python/setup.py.in are not changed synchronously.\n"
     check_approval 1 risemeup1 zhangbo9674
 fi
 
@@ -457,7 +463,7 @@ if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
         echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain, qili93, QingshuChen) approval for the usage (either add or delete) of @skip_check_grad_ci. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. The corresponding lines are as follows:\n${ERROR_LINES}\n"
-        check_approval 1 26615455 6836917 43953930 16605440
+        check_approval 1 26615455 6836917 43953930 16605440 2002279
     fi
 fi
 
@@ -482,13 +488,13 @@ if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     for CMAKELISTS_FILE in ${RUNTYPE_FILE_CHANGED};
     do
         RUNTYPE_ADD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKELISTS_FILE} |grep "^+" |grep -E "SERIAL|RUN_TYPE=EXCLUSIVE|RUN_TYPE=DIST|RUN_TYPE=NIGHTLY|RUN_TYPE=EXCLUSIVE:NIGHTLY|RUN_TYPE=DIST:NIGHTLY|PROPERTIES[[:space:]]+TIMEOUT" || true`
-	if [[ ${RUNTYPE_ADD} != "" ]];then
-	    RUNTYPE_ADD_LINES="${RUNTYPE_ADD_LINES}\n${CMAKELISTS_FILE}\n${RUNTYPE_ADD}\n"
-	fi
+    if [[ ${RUNTYPE_ADD} != "" ]];then
+        RUNTYPE_ADD_LINES="${RUNTYPE_ADD_LINES}\n${CMAKELISTS_FILE}\n${RUNTYPE_ADD}\n"
+    fi
     done
     if [[ ${RUNTYPE_ADD_LINES} != "" ]];then
         echo_line="You must have one QA (XieYunshen(Recommend) or chalsliu) approval for setting parameter RUN_TYPE as EXCLUSIVE, DIST, NIGHTLY, EXCLUSIVE:NIGHTLY or DISTNIGHTLY, or setting parameter SERIAL, or setting TIMEOUT properties.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\nFor more information, please refer to:https://github.com/PaddlePaddle/Paddle/wiki/PaddlePaddle-Unit-test-specification"
-	check_approval 1 32428676 45041955
+    check_approval 1 32428676 45041955
     fi
 fi
 

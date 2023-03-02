@@ -61,9 +61,8 @@ TEST(SourceInterceptor, Source) {
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "");
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
-  TaskNode* source =
-      new TaskNode(0, SOURCE_ID, 0, 3, 0);         // role, rank, task_id
-  TaskNode* node_a = new TaskNode(0, 0, 0, 3, 0);  // role, rank, task_id
+  TaskNode* source = new TaskNode(0, SOURCE_ID, 0, 3);  // role, rank, task_id
+  TaskNode* node_a = new TaskNode(0, 0, 0, 3);          // role, rank, task_id
 
   source->AddDownstreamTask(0, 1);
   node_a->AddUpstreamTask(SOURCE_ID, 1);

@@ -270,11 +270,11 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(weight_grad_name, weight_dims);
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Hidden")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Hidden")),
+                          ctx.device_context().GetPlace());
   }
 };
 

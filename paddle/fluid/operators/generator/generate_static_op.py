@@ -19,6 +19,7 @@ from pathlib import Path
 import yaml
 from filters import (
     cartesian_prod_mapping,
+    to_composite_grad_opmaker_name,
     to_input_name,
     to_int_array_tensor_name,
     to_int_array_tensors_name,
@@ -27,12 +28,14 @@ from filters import (
     to_opmaker_name_cstr,
     to_pascal_case,
     to_scalar_tensor_name,
+    to_variable_names,
 )
-from generate_op import replace_compat_name
+from generate_op import add_compat_name, add_fluid_name
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict
 from tests import (
     is_base_op,
+    is_composite_op,
     is_initializer_list,
     is_scalar,
     is_vec,
@@ -58,7 +61,10 @@ env.filters["to_int_array_tensors_name"] = to_int_array_tensors_name
 env.filters["to_input_name"] = to_input_name
 env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
+env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
+env.filters["to_variable_names"] = to_variable_names
 env.tests["base_op"] = is_base_op
+env.tests["composite_op"] = is_composite_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
@@ -75,6 +81,7 @@ def restruct_io(op):
 
 def main(
     ops_yaml_path,
+    backward_yaml_path,
     op_compat_yaml_path,
     op_version_yaml_path,
     output_op_path,
@@ -84,6 +91,11 @@ def main(
         ops = yaml.safe_load(f)
         ops = [restruct_io(op) for op in ops]
     forward_op_dict = to_named_dict(ops)
+
+    with open(backward_yaml_path, "rt") as f:
+        backward_ops = yaml.safe_load(f)
+        backward_ops = [restruct_io(op) for op in backward_ops]
+    backward_op_dict = to_named_dict(backward_ops)
 
     with open(op_version_yaml_path, "rt") as f:
         op_versions = yaml.safe_load(f)
@@ -98,8 +110,11 @@ def main(
 
     for op in ops:
         op['op_name'] = op['name']
+        add_fluid_name(op["inputs"])
+        add_fluid_name(op["attrs"])
+        add_fluid_name(op["outputs"])
 
-    replace_compat_name(op_op_map, forward_op_dict, {})
+    add_compat_name(op_op_map, forward_op_dict, {})
 
     if len(ops) == 0:
         if os.path.isfile(output_op_path):
@@ -111,7 +126,9 @@ def main(
     op_template = env.get_template('op.c.j2')
     with open(output_op_path, "wt") as f:
         msg = op_template.render(
-            ops=ops, backward_ops=[], op_dict=forward_op_dict
+            ops=ops,
+            backward_ops=[],
+            op_dict=forward_op_dict,
         )
         f.write(msg)
 
@@ -127,6 +144,11 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--ops_yaml_path', type=str, help="parsed static ops yaml file."
+    )
+    parser.add_argument(
+        '--backward_yaml_path',
+        type=str,
+        help="parsed static backward ops yaml file.",
     )
     parser.add_argument(
         '--op_compat_yaml_path', type=str, help="ops args compat yaml file."
@@ -146,6 +168,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(
         args.ops_yaml_path,
+        args.backward_yaml_path,
         args.op_compat_yaml_path,
         args.op_version_yaml_path,
         args.output_op_path,

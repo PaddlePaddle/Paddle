@@ -25,8 +25,10 @@ class TestFlattenOp(OpTest):
         self.python_api = paddle.flatten
         self.python_out_sig = ["Out"]
         self.op_type = "flatten_contiguous_range"
+        self.prim_op_type = "comp"
         self.start_axis = 0
         self.stop_axis = -1
+        self.skip_cinn()
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.in_shape).astype("float64")}
         self.init_attrs()
@@ -35,11 +37,16 @@ class TestFlattenOp(OpTest):
             "XShape": np.random.random(self.in_shape).astype("float32"),
         }
 
+    def skip_cinn(self):
+        self.enable_cinn = True
+
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_eager=True)
+        self.check_output(
+            no_check_set=["XShape"], check_eager=True, check_prim=True
+        )
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out", check_eager=True, check_prim=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -124,6 +131,23 @@ class TestFlattenOp_5(TestFlattenOp):
         }
 
 
+class TestFlattenOp_6(TestFlattenOp):
+    def init_test_case(self):
+        self.in_shape = tuple()
+        self.start_axis = 0
+        self.stop_axis = -1
+        self.new_shape = (1,)
+
+    def skip_cinn(self):
+        self.enable_cinn = False
+
+    def init_attrs(self):
+        self.attrs = {
+            "start_axis": self.start_axis,
+            "stop_axis": self.stop_axis,
+        }
+
+
 class TestFlattenOpSixDims(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
@@ -156,7 +180,7 @@ class TestFlatten2OpError(unittest.TestCase):
             x_var = paddle.static.data(
                 name="x", shape=image_shape, dtype='float32'
             )
-            out = paddle.flatten(x_var, start_axis=2, stop_axis=1)
+            out = paddle.flatten(x_var, start_axis=3, stop_axis=1)
 
         self.assertRaises(ValueError, test_ValueError1)
 
@@ -176,24 +200,21 @@ class TestFlatten2OpError(unittest.TestCase):
 
         self.assertRaises(ValueError, test_ValueError3)
 
-        def test_type():
-            # dtype must be float32, float64, int8, int32, int64, uint8.
-            x2 = (
-                np.arange(
-                    image_shape[0]
-                    * image_shape[1]
-                    * image_shape[2]
-                    * image_shape[3]
-                ).reshape(image_shape)
-                / 100.0
+        def test_ValueError4():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
             )
-            x2 = x2.astype('float16')
-            x2_var = paddle.fluid.data(
-                name='x2', shape=[3, 2, 4, 5], dtype='float16'
-            )
-            paddle.flatten(x2_var)
+            paddle.flatten(x_var, start_axis=2.0, stop_axis=10)
 
-        self.assertRaises(TypeError, test_type)
+        self.assertRaises(ValueError, test_ValueError4)
+
+        def test_ValueError5():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
+            )
+            paddle.flatten(x_var, start_axis=2, stop_axis=10.0)
+
+        self.assertRaises(ValueError, test_ValueError5)
 
         def test_InputError():
             out = paddle.flatten(x)
@@ -293,6 +314,28 @@ class TestDygraphInplaceFlattenPython(unittest.TestCase):
         res_shape = test_Negative()
         self.assertTrue((2, 3, 16) == res_shape)
         paddle.enable_static()
+
+
+class TestFlatten0DTensorOpError(unittest.TestCase):
+    def test_errors(self):
+        image_shape = tuple()
+        x = np.random.uniform(-1.0, 1.0, []).astype('float32')
+
+        def test_ValueError1():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
+            )
+            out = paddle.flatten(x_var, start_axis=10, stop_axis=0)
+
+        self.assertRaises(ValueError, test_ValueError1)
+
+        def test_ValueError2():
+            x_var = paddle.static.data(
+                name="x", shape=image_shape, dtype='float32'
+            )
+            out = paddle.flatten(x_var, start_axis=0, stop_axis=10)
+
+        self.assertRaises(ValueError, test_ValueError2)
 
 
 if __name__ == "__main__":

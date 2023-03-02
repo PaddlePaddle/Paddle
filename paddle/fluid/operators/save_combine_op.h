@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/serialization.h"
 
 namespace paddle {
 namespace operators {
@@ -99,19 +98,21 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
             "The Tensor with Index (%d) to be saved is not initialized.", i));
     // Serialize tensors one by one
     // Check types to see if a fp16 transformation is required
-    auto in_dtype = framework::TransToProtoVarType(tensor.dtype());
-    auto out_dtype = save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
+    auto in_dtype = tensor.dtype();
+    auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
     if (in_dtype != out_dtype) {
       auto place = dev_ctx.GetPlace();
-      auto in_kernel_type = framework::OpKernelType(in_dtype, place);
-      auto out_kernel_type = framework::OpKernelType(out_dtype, place);
+      auto in_kernel_type =
+          phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, in_dtype);
+      auto out_kernel_type =
+          phi::KernelKey(place, phi::DataLayout::ALL_LAYOUT, out_dtype);
       phi::DenseTensor out;
       framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       // copy LoD info to the new tensor
       out.set_lod(tensor.lod());
-      phi::SerializeToStream(ss, out, dev_ctx);
+      framework::SerializeToStream(ss, out, dev_ctx);
     } else {
-      phi::SerializeToStream(ss, tensor, dev_ctx);
+      framework::SerializeToStream(ss, tensor, dev_ctx);
     }
   }
 
@@ -193,45 +194,52 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(place);
 
-    for (size_t i = 0; i < inp_var_names.size(); i++) {
-      PADDLE_ENFORCE_NOT_NULL(
-          inp_vars[i],
-          platform::errors::InvalidArgument("Cannot find variable %s to save.",
-                                            inp_var_names[i]));
-      PADDLE_ENFORCE_EQ(
-          inp_vars[i]->IsType<phi::DenseTensor>() ||
-              inp_vars[i]->IsType<framework::Vocab>(),
-          true,
-          platform::errors::InvalidArgument(
-              "SaveCombine operator only supports saving "
-              "phi::DenseTensor or Vocab variable, %s has wrong type.",
-              inp_var_names[i]));
-
-      if (inp_vars.size() > 0 && inp_vars[0]->IsType<phi::DenseTensor>()) {
-        std::vector<const phi::DenseTensor*> x(inp_vars.size());
-        for (auto inp_var : inp_vars) {
-          x.push_back(&(inp_var->Get<phi::DenseTensor>()));
-        }
-        SaveCombineTensorKernel<T>(dev_ctx,
-                                   x,
-                                   filename,
-                                   overwrite,
-                                   save_as_fp16,
-                                   save_to_memory,
-                                   output);
-      } else {
-        std::vector<const phi::ExtendedTensor*> x(inp_vars.size());
-        for (auto inp_var : inp_vars) {
-          x.push_back(&(inp_var->Get<framework::Vocab>()));
-        }
-        SaveCombineVocabKernel<T>(dev_ctx,
-                                  x,
-                                  filename,
-                                  overwrite,
-                                  save_as_fp16,
-                                  save_to_memory,
-                                  output);
+    if (inp_vars.size() > 0 && inp_vars[0]->IsType<phi::DenseTensor>()) {
+      std::vector<const phi::DenseTensor*> x(inp_vars.size());
+      for (size_t i = 0; i < inp_vars.size(); i++) {
+        PADDLE_ENFORCE_NOT_NULL(
+            inp_vars[i],
+            platform::errors::InvalidArgument(
+                "Cannot find variable %s to save.", inp_var_names[i]));
+        PADDLE_ENFORCE_EQ(
+            inp_vars[i]->IsType<phi::DenseTensor>(),
+            true,
+            platform::errors::InvalidArgument(
+                "SaveCombine operator only supports saving "
+                "phi::DenseTensor or Vocab variable, %s has wrong type.",
+                inp_var_names[i]));
+        x[i] = (&(inp_vars[i]->Get<phi::DenseTensor>()));
       }
+      SaveCombineTensorKernel<T>(dev_ctx,
+                                 x,
+                                 filename,
+                                 overwrite,
+                                 save_as_fp16,
+                                 save_to_memory,
+                                 output);
+    } else {
+      std::vector<const phi::ExtendedTensor*> x(inp_vars.size());
+      for (size_t i = 0; i < inp_vars.size(); i++) {
+        PADDLE_ENFORCE_NOT_NULL(
+            inp_vars[i],
+            platform::errors::InvalidArgument(
+                "Cannot find variable %s to save.", inp_var_names[i]));
+        PADDLE_ENFORCE_EQ(
+            inp_vars[i]->IsType<framework::Vocab>(),
+            true,
+            platform::errors::InvalidArgument(
+                "SaveCombine operator only supports saving "
+                "phi::DenseTensor or Vocab variable, %s has wrong type.",
+                inp_var_names[i]));
+        x[i] = (&(inp_vars[i]->Get<framework::Vocab>()));
+      }
+      SaveCombineVocabKernel<T>(dev_ctx,
+                                x,
+                                filename,
+                                overwrite,
+                                save_as_fp16,
+                                save_to_memory,
+                                output);
     }
   }
 };

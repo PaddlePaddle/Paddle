@@ -867,7 +867,7 @@ class InMemoryDataset(DatasetBase):
 
               # required: skiptest
               import paddle.fluid as fluid
-              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
@@ -929,7 +929,7 @@ class InMemoryDataset(DatasetBase):
 
               # required: skiptest
               import paddle.fluid as fluid
-              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
@@ -967,6 +967,9 @@ class InMemoryDataset(DatasetBase):
         """
         return self.dataset.get_pv_data_size()
 
+    def get_epoch_finish(self):
+        return self.dataset.get_epoch_finish()
+
     @deprecated(
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.get_memory_data_size",
@@ -990,7 +993,7 @@ class InMemoryDataset(DatasetBase):
 
               # required: skiptest
               import paddle.fluid as fluid
-              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
@@ -1034,7 +1037,7 @@ class InMemoryDataset(DatasetBase):
 
               # required: skiptest
               import paddle.fluid as fluid
-              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
@@ -1081,7 +1084,7 @@ class InMemoryDataset(DatasetBase):
 
               # required: skiptest
               import paddle.fluid as fluid
-              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               graph_config = {"walk_len": 24,
                     "walk_degree": 10,
@@ -1121,6 +1124,15 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.graph_config.infer_table_cap = config.get(
             "infer_table_cap", 800000
         )
+        self.proto_desc.graph_config.excluded_train_pair = config.get(
+            "excluded_train_pair", ""
+        )
+        self.proto_desc.graph_config.infer_node_type = config.get(
+            "infer_node_type", ""
+        )
+        self.proto_desc.graph_config.get_degree = config.get(
+            "get_degree", False
+        )
         self.dataset.set_gpu_graph_mode(True)
 
     def set_pass_id(self, pass_id):
@@ -1156,6 +1168,12 @@ class InMemoryDataset(DatasetBase):
               pass_id = dataset.get_pass_id()
         """
         return self.pass_id
+
+    def dump_walk_path(self, path, dump_rate=1000):
+        """
+        dump_walk_path
+        """
+        self.dataset.dump_walk_path(path, dump_rate)
 
 
 class QueueDataset(DatasetBase):
@@ -1233,9 +1251,9 @@ class QueueDataset(DatasetBase):
             .. code-block:: python
 
               import paddle.fluid as fluid
-              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              from paddle.incubate.distributed.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
-              dataset.global_shuffle(fleet)
+              #dataset.global_shuffle(fleet)
 
         Raises:
             NotImplementedError: QueueDataset does not support global shuffle

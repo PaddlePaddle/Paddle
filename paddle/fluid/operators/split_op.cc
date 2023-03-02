@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -61,7 +62,7 @@ class SplitOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
       Variable *var =
           PADDLE_GET_CONST(Variable *, ctx->GetInputVarPtrs("AxisTensor")[0]);
-      axis_final = std::move(experimental::MakePhiScalarFromVar(*var));
+      axis_final = std::move(framework::MakePhiScalarFromVar(*var));
     } else if (!ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
       axis_final = std::move(phi::Scalar(-1));
       axis_final.SetFromTensor(true);
@@ -108,7 +109,7 @@ class SplitOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -120,25 +121,27 @@ class SplitOp : public framework::OperatorWithKernel {
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
       const auto x_md = ctx.Input<phi::DenseTensor>("X")->mem_desc();
-      if (x_md.data.format_desc.blocking.inner_nblks == 0)
-        return framework::OpKernelType(input_data_type,
-                                       ctx.GetPlace(),
-                                       phi::DataLayout::ONEDNN,
-                                       framework::LibraryType::kMKLDNN);
+      if (x_md.data.format_desc.blocking.inner_nblks == 0) {
+        return phi::KernelKey(phi::Backend::ONEDNN,
+                              phi::DataLayout::ONEDNN,
+                              phi::TransToPhiDataType(input_data_type));
+      }
     }
 #endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "AxisTensor" || var_name == "SectionsTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 

@@ -46,6 +46,9 @@ namespace phi {
 namespace backends {
 namespace gpu {
 
+// Limitation of the setting in one dimension of cuda grid.
+constexpr int kMultiDimslimit = 65536;
+
 template <typename T = int64_t>
 inline T DivUp(T a, T b) {
   return (a + b - 1) / b;

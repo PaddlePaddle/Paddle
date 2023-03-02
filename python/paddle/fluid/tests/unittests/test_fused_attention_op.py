@@ -103,6 +103,7 @@ class TestFusedAttentionOp(OpTest):
             self.query_length,
             self.query_length,
         )
+        self.transpose_qkv_wb = False
 
     def generate_input_data(self):
         self.query = np.random.rand(
@@ -265,7 +266,8 @@ class TestFusedAttentionOp(OpTest):
             qkv_bias = np.concatenate(
                 (q_proj_bias.numpy(), k_proj_bias.numpy(), v_proj_bias.numpy())
             )
-            qkv_bias = qkv_bias.reshape((3, self.num_heads, self.head_dim))
+            if not self.transpose_qkv_wb:
+                qkv_bias = qkv_bias.reshape((3, self.num_heads, self.head_dim))
             qkv_bias_tensor = paddle.to_tensor(qkv_bias, stop_gradient=False)
             out_linear_bias = paddle.to_tensor(
                 self.out_proj.bias, stop_gradient=False
@@ -276,15 +278,23 @@ class TestFusedAttentionOp(OpTest):
         ln2_scale = paddle.to_tensor(self.norm2.weight, stop_gradient=False)
         ln2_bias = paddle.to_tensor(self.norm2.bias, stop_gradient=False)
 
-        q_proj_weight = q_proj_weight.numpy().transpose((1, 0))
-        k_proj_weight = k_proj_weight.numpy().transpose((1, 0))
-        v_proj_weight = v_proj_weight.numpy().transpose((1, 0))
+        if not self.transpose_qkv_wb:
+            q_proj_weight = q_proj_weight.numpy().transpose((1, 0))
+            k_proj_weight = k_proj_weight.numpy().transpose((1, 0))
+            v_proj_weight = v_proj_weight.numpy().transpose((1, 0))
+        else:
+            q_proj_weight = q_proj_weight.numpy()
+            k_proj_weight = k_proj_weight.numpy()
+            v_proj_weight = v_proj_weight.numpy()
+
+        concatenate_axis = 1 if self.transpose_qkv_wb else 0
         qkv_weight = np.concatenate(
-            (q_proj_weight, k_proj_weight, v_proj_weight)
+            (q_proj_weight, k_proj_weight, v_proj_weight), axis=concatenate_axis
         )
-        qkv_weight = qkv_weight.reshape(
-            (3, self.num_heads, self.head_dim, self.embed_dim)
-        )
+        if not self.transpose_qkv_wb:
+            qkv_weight = qkv_weight.reshape(
+                (3, self.num_heads, self.head_dim, self.embed_dim)
+            )
 
         x = paddle.to_tensor(self.query, stop_gradient=False)
         cache_kv = None
@@ -317,6 +327,8 @@ class TestFusedAttentionOp(OpTest):
             self.dropout_prob,
             self.attn_dropout_prob,
             ln2_epsilon,
+            num_heads=self.num_heads,
+            transpose_qkv_wb=self.transpose_qkv_wb,
         )
 
         if self.has_cache_kv:
@@ -341,6 +353,19 @@ class TestFusedAttentionOp(OpTest):
 class TestFusedAttentionOpBiasIsNone(TestFusedAttentionOp):
     def config(self):
         super().config()
+        self.bias_attr = False
+
+
+class TestFusedAttentionAPITransposeWAndB(TestFusedAttentionOp):
+    def config(self):
+        super().config()
+        self.transpose_qkv_wb = True
+
+
+class TestFusedAttentionAPITransposeWAndBWithoutBias(TestFusedAttentionOp):
+    def config(self):
+        super().config()
+        self.transpose_qkv_wb = True
         self.bias_attr = False
 
 

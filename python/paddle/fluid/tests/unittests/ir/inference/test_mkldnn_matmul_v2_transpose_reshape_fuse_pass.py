@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -90,12 +90,6 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
             attrs={
                 "trans_x": transpose_X,
                 "trans_y": transpose_Y,
-                "fused_reshape_X": [],
-                "fused_reshape_Y": [],
-                "fused_transpose_X": [],
-                "fused_transpose_Y": [],
-                "fused_reshape_Out": [],
-                "fused_transpose_Out": [],
             },
         )
 
@@ -136,7 +130,7 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(use_mkldnn=True)
-        yield config, ["matmul_v2"], (1e-5, 1e-5)
+        yield config, ['fused_matmul'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(

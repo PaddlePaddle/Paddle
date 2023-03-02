@@ -143,8 +143,8 @@ class TestAdadeltaV2(unittest.TestCase):
         place = fluid.CPUPlace()
         main = fluid.Program()
         with fluid.program_guard(main):
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             y_predict = paddle.static.nn.fc(x, size=1)
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y

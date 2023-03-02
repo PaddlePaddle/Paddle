@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/clip_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -67,7 +67,7 @@ void ClipKernel(const Context& dev_ctx,
     phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 #endif
   } else {
-    paddle::platform::Transform<Context> trans;
+    phi::Transform<Context> trans;
     trans(
         dev_ctx, x_data, x_data + numel, out_data, ClipFunctor<T>(min_, max_));
   }

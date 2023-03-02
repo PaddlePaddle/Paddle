@@ -36,16 +36,17 @@ static void PassTensorData(phi::DenseTensor *from, phi::DenseTensor *to) {
   *from = phi::DenseTensor();
 }
 
-void TransformData(const OpKernelType &expected_kernel_type,
-                   const OpKernelType &kernel_type_for_var,
+void TransformData(const phi::KernelKey &expected_kernel_type,
+                   const phi::KernelKey &kernel_type_for_var,
                    const phi::DenseTensor &input_tensor,
-                   phi::DenseTensor *output_tensor) {
+                   phi::DenseTensor *output_tensor,
+                   const phi::Place &place) {
   bool transformed = false;
   phi::DenseTensor in;
   in.ShareDataWith(input_tensor);
   phi::DenseTensor out;
-  const DataLayout lin = kernel_type_for_var.data_layout_;
-  const DataLayout lout = expected_kernel_type.data_layout_;
+  const DataLayout lin = kernel_type_for_var.layout();
+  const DataLayout lout = expected_kernel_type.layout();
   // do layout transform
   if (NeedTransformLayout(lout, lin)) {
 #ifdef PADDLE_WITH_MKLDNN
@@ -79,43 +80,42 @@ void TransformData(const OpKernelType &expected_kernel_type,
       } else {
         // Case2 - transfrom from ONEDNN OPKernel to Non-ONEDNN OPKernel
         // Do transform via ONEDNN lib
-        PADDLE_ENFORCE(
-            kernel_type_for_var.data_layout_ == DataLayout::ONEDNN &&
-                expected_kernel_type.data_layout_ != DataLayout::ONEDNN,
-            platform::errors::InvalidArgument(
-                "TransDataLayoutFromOneDNN only supports "
-                "transform from ONEDNN to non-ONEDNN"));
+        PADDLE_ENFORCE(lin == DataLayout::ONEDNN && lout != DataLayout::ONEDNN,
+                       platform::errors::InvalidArgument(
+                           "TransDataLayoutFromOneDNN only supports "
+                           "transform from ONEDNN to non-ONEDNN"));
 
         phi::funcs::TransDataLayoutFromOneDNN(
-            kernel_type_for_var.data_layout_,
+            lin,
             phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
             in,
             &out,
-            expected_kernel_type.place_);
+            place);
       }
     } else {
       // Case3 - transfrom between Non-ONEDNN OPKernels
-      TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+      TransDataLayout(
+          kernel_type_for_var, expected_kernel_type, in, &out, place);
     }
 #else
     // Case3 - transfrom between Non-ONEDNN OPKernels
-    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out, place);
 #endif
     transformed = true;
     PassTensorData(&out, &in);
   }
 
   // do data type transform
-  if (expected_kernel_type.data_type_ != kernel_type_for_var.data_type_) {
+  if (NeedTransformDataType(expected_kernel_type, kernel_type_for_var)) {
     TransDataType(kernel_type_for_var, expected_kernel_type, in, &out);
     transformed = true;
     PassTensorData(&out, &in);
   }
 
   // do device transform
-  if (!platform::is_same_place(kernel_type_for_var.place_,
-                               expected_kernel_type.place_)) {
-    TransDataDevice(in, expected_kernel_type.place_, &out);
+  if (kernel_type_for_var.backend() != phi::Backend::ALL_BACKEND &&
+      !platform::is_same_place(in.place(), place)) {
+    TransDataDevice(in, place, &out);
     transformed = true;
     PassTensorData(&out, &in);
   }

@@ -86,11 +86,11 @@ class DatasetLoaderTestBase(unittest.TestCase):
         main_prog = fluid.Program()
         startup_prog = fluid.Program()
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.layers.data(
-                name='image', shape=IMAGE_SHAPE, dtype='float32'
+            image = paddle.static.data(
+                name='image', shape=[-1] + IMAGE_SHAPE, dtype='float32'
             )
-            label = fluid.layers.data(
-                name='label', shape=LABEL_SHAPE, dtype='int64'
+            label = paddle.static.data(
+                name='label', shape=[-1] + LABEL_SHAPE, dtype='int64'
             )
 
             simple_fc_net_with_inputs(image, label)
@@ -106,13 +106,13 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataset._set_batch_size(BATCH_SIZE)
 
         if isinstance(place, fluid.CPUPlace):
-            file_num = 10
+            file_num = 1
             os.environ['CPU_NUM'] = str(file_num)
-            places = fluid.cpu_places()
+            places = [fluid.CPUPlace()]
             use_cuda = False
         else:
-            file_num = fluid.core.get_cuda_device_count()
-            places = fluid.cuda_places()
+            file_num = 1
+            places = [fluid.CUDAPlace(0)]
             use_cuda = True
 
         filelist = []
@@ -145,7 +145,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataloader = fluid.io.DataLoader.from_dataset(
             dataset=dataset, places=places, drop_last=self.drop_last
         )
-        prog = fluid.CompiledProgram(main_prog).with_data_parallel()
+        prog = fluid.CompiledProgram(main_prog)
         exe = fluid.Executor(place)
 
         exe.run(startup_prog)
@@ -153,7 +153,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
         for _ in range(EPOCH_NUM):
             has_complete_batch = False
             for batch_id, data in enumerate(dataloader):
-                self.assertEquals(len(places), len(data))
+                self.assertEqual(len(places), len(data))
                 for idx, data_on_each_device in enumerate(data):
                     image = data_on_each_device["image"]
                     label = data_on_each_device["label"]
@@ -166,7 +166,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
                         else:
                             batch_size = BATCH_SIZE
 
-                    self.assertEquals(image.shape()[1:], IMAGE_SHAPE)
+                    self.assertEqual(image.shape()[1:], IMAGE_SHAPE)
                     self.assertTrue(
                         image._place()._equals(places[idx]),
                         msg=get_place_string(image._place())
@@ -174,24 +174,24 @@ class DatasetLoaderTestBase(unittest.TestCase):
                         + get_place_string(places[idx]),
                     )
                     if self.drop_last:
-                        self.assertEquals(image.shape()[0], BATCH_SIZE)
+                        self.assertEqual(image.shape()[0], BATCH_SIZE)
                     else:
                         self.assertTrue(
                             image.shape()[0] == BATCH_SIZE
                             or image.shape()[0] == BATCH_SIZE / 2
                         )
 
-                    self.assertEquals(label.shape()[1:], LABEL_SHAPE)
+                    self.assertEqual(label.shape()[1:], LABEL_SHAPE)
                     self.assertTrue(label._place()._equals(places[idx]))
                     if self.drop_last:
-                        self.assertEquals(label.shape()[0], BATCH_SIZE)
+                        self.assertEqual(label.shape()[0], BATCH_SIZE)
                     else:
                         self.assertTrue(
                             label.shape()[0] == BATCH_SIZE
                             or label.shape()[0] == BATCH_SIZE / 2
                         )
 
-                    self.assertEquals(image.shape()[0], label.shape()[0])
+                    self.assertEqual(image.shape()[0], label.shape()[0])
 
                     if image.shape()[0] == BATCH_SIZE:
                         has_complete_batch = True

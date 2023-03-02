@@ -1125,6 +1125,37 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         self.assertRaises(ValueError, test_x_dim_imperative_lt_2)
 
+        def test_x_shape_lt_1():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            place = paddle.CPUPlace()
+            with paddle.static.program_guard(prog, startup_prog):
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(np.reshape(array, [1, 0]), dtype='float32')
+                label = paddle.to_tensor(
+                    np.reshape(array, [1, 0]), dtype='int64'
+                )
+                nll_loss = paddle.nn.loss.NLLLoss()
+                res = nll_loss(x, label)
+
+        self.assertRaises(ValueError, test_x_shape_lt_1)
+
+        def test_x_dim_and_label_dim():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            place = paddle.CPUPlace()
+            with paddle.static.program_guard(prog, startup_prog):
+                x_np = np.random.random(size=(5,)).astype(np.float64)
+                label_np = np.random.randint(0, 10, size=(5, 1)).astype(
+                    np.int64
+                )
+                x = paddle.to_tensor(x_np)
+                label = paddle.to_tensor(label_np)
+                nll_loss = paddle.nn.loss.NLLLoss()
+                res = nll_loss(x, label)
+
+        self.assertRaises(ValueError, test_x_dim_and_label_dim)
+
     def test_reduction_value_error(self):
         def test_NLLLoss_reduction_not_sum_mean_none():
             prog = paddle.static.Program()

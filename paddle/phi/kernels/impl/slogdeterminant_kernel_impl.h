@@ -18,8 +18,8 @@
 #include <cmath>
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/impl/determinant_kernel_impl.h"
 #include "paddle/phi/kernels/slogdeterminant_kernel.h"
 
@@ -41,7 +41,7 @@ struct SlogDeterminantFunctor {
     std::vector<T> sign_vec;
     std::vector<T> log_vec;
     std::vector<T> output_vec;
-    paddle::framework::TensorToVector(input, dev_ctx, &input_vec);
+    phi::TensorToVector(input, dev_ctx, &input_vec);
     for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
@@ -65,7 +65,7 @@ struct SlogDeterminantFunctor {
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
     output_vec.insert(output_vec.end(), log_vec.begin(), log_vec.end());
-    paddle::framework::TensorFromVector(output_vec, output);
+    phi::TensorFromVector(output_vec, dev_ctx, output);
   }
 };
 

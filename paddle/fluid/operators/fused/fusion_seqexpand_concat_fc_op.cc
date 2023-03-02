@@ -102,10 +102,10 @@ void FusionSeqExpandConcatFCOp::InferShape(
   ctx->ShareLoD("X", "Out", 0);
 }
 
-framework::OpKernelType FusionSeqExpandConcatFCOp::GetExpectedKernelType(
+phi::KernelKey FusionSeqExpandConcatFCOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 void FusionSeqExpandConcatFCOpMaker::Make() {

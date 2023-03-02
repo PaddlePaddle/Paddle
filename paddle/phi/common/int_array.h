@@ -14,8 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
+
 #include "paddle/phi/api/ext/exception.h"
-#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace experimental {
@@ -103,8 +105,8 @@ class IntArrayBase {
   bool is_from_tensor_{false};
 };
 
-using IntArray =
-    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+class Tensor;
+using IntArray = paddle::experimental::IntArrayBase<Tensor>;
 
 }  // namespace experimental
 }  // namespace paddle

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -47,6 +47,7 @@ class TestChannelShuffleOp(OpTest):
         self.op_type = "channel_shuffle"
         self.init_data_format()
         n, c, h, w = 2, 9, 4, 4
+        self.python_api = paddle.nn.functional.channel_shuffle
 
         if self.format == "NCHW":
             shape = [n, c, h, w]

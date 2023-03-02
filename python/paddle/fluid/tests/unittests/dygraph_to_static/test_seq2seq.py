@@ -23,13 +23,11 @@ from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.nn import ClipGradByGlobalNorm
 
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
-program_translator = ProgramTranslator()
 STEP_NUM = 10
 PRINT_STEP = 2
 
@@ -197,14 +195,14 @@ class TestSeq2seq(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def run_dygraph(self, mode="train", attn_model=False):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         if mode == "train":
             return train(self.args, attn_model)
         else:
             return infer(self.args, attn_model)
 
     def run_static(self, mode="train", attn_model=False):
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         if mode == "train":
             return train(self.args, attn_model)
         else:

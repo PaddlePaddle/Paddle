@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -354,7 +355,9 @@ void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
           FindOutputNameByVarName(any_op->Op(), dequant_in->Name());
 
       if (output_name.empty()) return;
-
+      if (any_op->Op()->Type() == "conv2d") {
+        ConvertToFusedOp(any_op->Op());
+      }
       any_op->Op()->SetAttr("force_fp32_output", true);
       any_op->Op()->SetOutput(output_name,
                               std::vector<std::string>({dequant_out->Name()}));

@@ -55,16 +55,19 @@ PADDLE_DEFINE_EXPORTED_int32(paddle_num_threads,
 /**
  * Low Precision Op related FLAG
  * Name: FLAGS_low_precision_op_list
- * Since Version: 0.13.0
- * Value Range: bool, default=false
+ * Since Version: 2.5.0
+ * Value Range: int32, default=0
  * Example:
  * Note: Used to debug. Get the low precision op list of current module.
+ * FLAGS_check_nan_inf is set.
+ * - 1, return the low precision op list of current module.
+ * - 2, return the op list of current module.
  */
-PADDLE_DEFINE_EXPORTED_bool(low_precision_op_list,
-                            false,
-                            "Checking whether get the low precision op list of "
-                            "current module. It will be "
-                            "rerun the low precision list after module.");
+PADDLE_DEFINE_EXPORTED_int32(low_precision_op_list,
+                             0,
+                             "Setting the level of low precision op"
+                             "list printing. It will be return the "
+                             "low precision op list of current module.");
 
 /**
  * Operator related FLAG
@@ -143,17 +146,17 @@ PADDLE_DEFINE_EXPORTED_bool(
  * CUDA related related FLAG
  * Name: FLAGS_gemm_use_half_precision_compute_type
  * Since Version: 2.4
- * Value Range: bool, default=true
+ * Value Range: bool, default=false
  * Example:
  * Note: whether to use fp16 compute type when the input and output is fp16,
  * faster but it may loss precision.
  */
 PADDLE_DEFINE_EXPORTED_bool(
     gemm_use_half_precision_compute_type,
-    true,
+    false,
     "Whether to use fp16 compute type when the input and output is fp16, "
     "faster but it may loss precision in most case. If true, the compute "
-    "type will be set to fp32. Default is true.");
+    "type will be set to fp16. Default is false.");
 
 /**
  * CUDA related FLAG
@@ -1007,6 +1010,18 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cinn_auto_tune,
 
 #endif
 
+/*
+ * CUDA Graph related FLAG
+ * Name: FLAGS_new_executor_use_cuda_graph
+ * Since Version: 2.4
+ * Value Range: bool, default=false
+ * Example: FLAGS_new_executor_use_cuda_graph=true would allow
+ * new executor to use CUDA Graph.
+ */
+PADDLE_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
+                            false,
+                            "Use CUDA Graph in new executor");
+
 DEFINE_int32(record_pool_max_size,
              2000000,
              "SlotRecordDataset slot record pool max size");
@@ -1165,3 +1180,45 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
  */
 PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 #endif  // PADDLE_WITH_CUDNN_FRONTEND
+
+/**
+ * CI related FLAG
+ * Name: trt_ibuilder_cache
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: This FLAG is only enabled when CI is running. If True, a persistent
+ * IBuilder is added to avoid TensorRT unload/reload kernels.
+ */
+PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
+                            false,
+                            "Add a persistent ibuilder.");
+
+/**
+ * mmap_allocator related FLAG
+ * Name: use_shm_cache
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: . If True, mmap_allocator will cache shm file to decrease munmap
+ * operation.
+ */
+PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
+                            false,
+                            "Use shm cache in mmap_allocator.");
+
+/**
+ * Tensor operants related FLAG
+ * Name: tensor_operants_mode
+ * Since Version: 2.5.0
+ * Value Range: string, {eager, phi, static}
+ * default=eager
+ * Example:
+ * Note: For switching tensor operants mode of PaddlePaddle.
+ *       - eager mode: tensor operants with dygraph autograd;
+ *       - phi mode: tensor operants with only phi forward API;
+ *       - static mode: tensor operants within static graph.
+ */
+PADDLE_DEFINE_EXPORTED_string(tensor_operants_mode,
+                              "eager",
+                              "Tensor operants mode");

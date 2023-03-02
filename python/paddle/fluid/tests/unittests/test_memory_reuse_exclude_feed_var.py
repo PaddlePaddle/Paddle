@@ -27,8 +27,8 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
         self.iteration = 10
 
     def main_impl(self, place):
-        image = fluid.layers.data(
-            name='image', shape=self.image_shape, dtype='float32'
+        image = paddle.static.data(
+            name='image', shape=[-1] + self.image_shape, dtype='float32'
         )
         relu_image = F.relu(image)
         loss = paddle.mean(relu_image)
@@ -41,8 +41,8 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         compiled_prog = fluid.CompiledProgram(
-            fluid.default_main_program()
-        ).with_data_parallel(loss_name=loss.name, build_strategy=build_strategy)
+            fluid.default_main_program(), build_strategy=build_strategy
+        )
 
         image_tensor = fluid.LoDTensor()
         np_image = np.random.uniform(

@@ -29,8 +29,9 @@ namespace cub = hipcub;
 #include <iterator>
 #include <random>
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
@@ -344,8 +345,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   std::vector<T> shard_dim_vec(nranks + 1, 0);
   shard_dim_vec[rank + 1] = num_classes;
   DenseTensor num_classes_per_device;
-  paddle::framework::TensorFromVector(
-      shard_dim_vec, dev_ctx, &num_classes_per_device);
+  phi::TensorFromVector(shard_dim_vec, dev_ctx, &num_classes_per_device);
   T* num_classes_per_device_ptr = num_classes_per_device.data<T>();
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -458,7 +458,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                      (NumBlocks(num_classes) * kNumCUDAThreads * vec_size) +
                  1) *
                 vec_size;
-  // auto gen_cuda = paddle::framework::DefaultCUDAGenerator(device_id);
+  // auto gen_cuda = phi::DefaultCUDAGenerator(device_id);
   auto gen_cuda = dev_ctx.GetGenerator();
   if (!fix_seed) {
     auto seed_offset = gen_cuda->IncrementOffset(offset);

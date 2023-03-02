@@ -1171,8 +1171,6 @@ class TheOnePSRuntime(RuntimeBase):
             gpus_env = os.getenv("FLAGS_selected_gpus")
             gpus_env = [int(s) for s in gpus_env.split(",")]
             main_program._fleet_opt["worker_places"] = gpus_env
-            PSGPU = core.PSGPU()
-            PSGPU.init_gpu_ps(gpus_env)
 
         def sync_strategy_envs():
             kwargs = {}

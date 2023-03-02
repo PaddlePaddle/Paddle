@@ -30,10 +30,10 @@ class SaveOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -88,3 +88,61 @@ REGISTER_OPERATOR(save,
                   ops::SaveOp,
                   ops::SaveOpProtoMaker,
                   ops::SaveOpVarTypeInference);
+
+PD_REGISTER_KERNEL(save,
+                   CPU,
+                   ALL_LAYOUT,
+                   ops::SaveKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(save_sr,
+                   CPU,
+                   ALL_LAYOUT,
+                   ops::SaveSelectedRowsKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(save,
+                   GPU,
+                   ALL_LAYOUT,
+                   ops::SaveKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(save_sr,
+                   GPU,
+                   ALL_LAYOUT,
+                   ops::SaveSelectedRowsKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+#endif

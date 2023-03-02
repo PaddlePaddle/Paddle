@@ -218,6 +218,13 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         for i in range(len(x_dims_mapping)):
             x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(
+                x_shape_name, x_shape_dims_mapping
+            )
+
         return changed
 
     @staticmethod
@@ -277,7 +284,8 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                     )
 
         # create op
-        new_op_desc = main_block.append_op(type='nop').desc
+        new_op = main_block.append_op(type='nop')
+        new_op_desc = new_op.desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -286,6 +294,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
+        # TODO: should we add a new dist attr for the new op here?
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -469,6 +478,13 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         for i in range(len(x_dims_mapping)):
             x_shape_dims_mapping[i + 1] = x_dims_mapping[i]
 
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(
+                x_shape_name, x_shape_dims_mapping
+            )
+
         return changed
 
     @staticmethod
@@ -528,7 +544,8 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
                     )
 
         # create op
-        new_op_desc = main_block.append_op(type='nop').desc
+        new_op = main_block.append_op(type='nop')
+        new_op_desc = new_op.desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -537,6 +554,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
+        # TODO: should we add a new dist attr for the new op here?
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -714,6 +732,13 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         for i in range(len(out_dims_mapping)):
             x_shape_dims_mapping[i + 1] = out_dims_mapping[i]
 
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
+            op_dist_attr.set_output_dims_mapping(
+                x_shape_name, x_shape_dims_mapping
+            )
+
         return changed
 
     @staticmethod
@@ -772,7 +797,8 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
                     )
 
         # create op
-        new_op_desc = main_block.append_op(type='nop').desc
+        new_op = main_block.append_op(type='nop')
+        new_op_desc = new_op.desc
         new_op_desc.copy_from(src_op.desc)
         set_dist_op_desc_original_id(new_op_desc, src_op.desc, ctx)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
@@ -781,6 +807,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         new_op_desc.set_output('XShape', [XShape_var.name])
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
+        # TODO: should we add a new dist attr for the new op here?
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

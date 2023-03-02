@@ -117,15 +117,15 @@ def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
             will be used. And an error will be raised if the current process mesh cannot be found.
             Default: None.
         in_shard_specs (list of list, optional): a list of list to describe the sharding specifications
-            for the inputs. Each item of `in_shard_specs` is a `shard_spec` between the correspoinding input
-            and `process_mesh`. If one item is None, the cooresponding input is replicated across all processes
-            If it is None, all inputs are replicated accross all processes. Note that the lenght of the
+            for the inputs. Each item of `in_shard_specs` is a `shard_spec` between the corresponding input
+            and `process_mesh`. If one item is None, the corresponding input is replicated across all processes
+            If it is None, all inputs are replicated across all processes. Note that the length of the
             `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
             Default: None.
         out_shard_specs (list of list, optional): a list of list to describe the sharding specifications
-            for the outputs. Each item of `out_shard_specs` is a `shard_spec` between the correspoinding output
-            and `process_mesh`. If one item is None, the cooresponding output is replicated across all processes
-            If it is None, all outputs are replicated accross all processes. Note that the lenght of the
+            for the outputs. Each item of `out_shard_specs` is a `shard_spec` between the corresponding output
+            and `process_mesh`. If one item is None, the corresponding output is replicated across all processes
+            If it is None, all outputs are replicated across all processes. Note that the length of the
             `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
             Default: None. Default: None.
 
@@ -207,7 +207,7 @@ def recompute(op):
             self._op = op
 
         def __call__(self, *args, **kwargs):
-            default_prog = paddle.fluid.default_main_program()
+            default_prog = paddle.static.default_main_program()
             cur_block = default_prog.current_block()
             op_size = len(cur_block.ops)
             output = self._op(*args, **kwargs)
@@ -256,7 +256,7 @@ def add_to_collection(collection_name, value, name=None):
 
 
 def fetch(tensor, name=None, logging=False):
-    if isinstance(tensor, paddle.fluid.framework.Variable):
+    if isinstance(tensor, paddle.static.Variable):
         tensor = tensor.name
     elif isinstance(tensor, str):
         tensor = tensor

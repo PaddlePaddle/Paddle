@@ -12,6 +12,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <string>
 #include <vector>
@@ -204,24 +208,6 @@ std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
         arg_pos + 1,
         (reinterpret_cast<PyTypeObject*>(obj->ob_type))->tp_name));
     return "";
-  }
-}
-
-bool IsEagerTensor(PyObject* obj) {
-  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
-}
-
-paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type)) ||
-      PyObject_IsInstance(obj,
-                          reinterpret_cast<PyObject*>(p_string_tensor_type))) {
-    return reinterpret_cast<TensorObject*>(obj)->tensor;
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument (position %d) must be "
-        "Tensor, but got %s",
-        arg_pos + 1,
-        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
 }
 
@@ -656,30 +642,6 @@ PyObject* ToPyObject(const char* value) { return PyUnicode_FromString(value); }
 
 PyObject* ToPyObject(const std::string& value) {
   return PyUnicode_FromString(value.c_str());
-}
-
-PyObject* ToPyObject(const paddle::experimental::Tensor& value,
-                     bool return_py_none_if_not_initialize) {
-  if (return_py_none_if_not_initialize && !value.initialized()) {
-    RETURN_PY_NONE
-  }
-  PyObject* obj = nullptr;
-  if (value.initialized() && value.is_string_tensor()) {
-    // In order to return the core.eager.StringTensor, there is need
-    // to use p_string_tensor_type to create a python obj.
-    obj = p_string_tensor_type->tp_alloc(p_string_tensor_type, 0);
-  } else {
-    obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
-  }
-  if (obj) {
-    auto v = reinterpret_cast<TensorObject*>(obj);
-    new (&(v->tensor)) paddle::experimental::Tensor();
-    v->tensor = value;
-  } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "tp_alloc return null, can not new a PyObject."));
-  }
-  return obj;
 }
 
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
@@ -1307,7 +1269,7 @@ std::vector<paddle::experimental::Tensor> GetTensorListFromPyObject(
 }
 
 paddle::experimental::Tensor& GetTensorFromPyObject(PyObject* obj) {
-  if (!IsEagerTensor(obj)) {
+  if (!PyCheckTensor(obj)) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument must be "
         "Tensor, but got %s",
@@ -1343,6 +1305,9 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   } else if (type_name == "numpy.float32") {
     float value = CastPyArg2Float(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
+  } else if (type_name == "numpy.float16") {
+    float16 value = CastPyArg2Float16(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
   } else if (type_name == "numpy.int64") {
     int64_t value = CastPyArg2Long(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
@@ -1352,7 +1317,7 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "numpy.float32/float64, numpy.int32/int64, but got %s",
+        "numpy.float16/float32/float64, numpy.int32/int64, but got %s",
         op_type,
         arg_pos + 1,
         type_name));  // NOLINT
@@ -1384,7 +1349,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   } else if (PyFloat_Check(obj)) {
     double value = CastPyArg2Double(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
-  } else if (IsEagerTensor(obj)) {
+  } else if (PyCheckTensor(obj)) {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::Scalar(value);
@@ -1715,7 +1680,7 @@ paddle::experimental::Tensor UnPackHook::operator()(
   Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
 
-  PADDLE_ENFORCE_EQ(paddle::pybind::IsEagerTensor(ret),
+  PADDLE_ENFORCE_EQ(paddle::pybind::PyCheckTensor(ret),
                     true,
                     paddle::platform::errors::InvalidArgument(
                         "paddle.autograd.saved_tensors_hooks only one pair "
@@ -1740,7 +1705,7 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
   Py_XDECREF(args);
   egr::Controller::Instance().SetHasGrad(grad_tmp);
 
-  PADDLE_ENFORCE_EQ(paddle::pybind::IsEagerTensor(ret),
+  PADDLE_ENFORCE_EQ(paddle::pybind::PyCheckTensor(ret),
                     true,
                     paddle::platform::errors::InvalidArgument(
                         "paddle.autograd.saved_tensors_hooks only one pair "

@@ -198,10 +198,10 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Cell");
 }
 
-framework::OpKernelType AttentionLSTMOp::GetExpectedKernelType(
+phi::KernelKey AttentionLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.device_context().GetPlace());
 }
 
 void AttentionLSTMOpMaker::Make() {

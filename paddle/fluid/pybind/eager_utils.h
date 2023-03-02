@@ -16,6 +16,10 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -30,6 +34,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/utils/pybind.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 namespace paddle {
@@ -40,13 +45,8 @@ class Scope;
 namespace pybind {
 
 namespace py = ::pybind11;
-#define RETURN_PY_NONE \
-  Py_INCREF(Py_None);  \
-  return Py_None;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype);
-
-bool IsEagerTensor(PyObject* obj);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
@@ -59,7 +59,6 @@ float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
 paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
                                                               ssize_t arg_pos);
-paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
 std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
                                                        ssize_t arg_pos);
 std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
@@ -90,8 +89,6 @@ PyObject* ToPyObject(float value);
 PyObject* ToPyObject(double value);
 PyObject* ToPyObject(const char* value);
 PyObject* ToPyObject(const std::string& value);
-PyObject* ToPyObject(const paddle::experimental::Tensor& value,
-                     bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      PyObject* args,
                      const std::map<ssize_t, ssize_t>& inplace_var_idx_map);

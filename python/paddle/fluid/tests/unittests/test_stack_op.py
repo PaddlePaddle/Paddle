@@ -167,7 +167,7 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
-            input = fluid.layers.assign(self.x)
+            input = paddle.assign(self.x)
             tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
@@ -205,7 +205,7 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
-            input = fluid.layers.assign(self.x)
+            input = paddle.assign(self.x)
             tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
@@ -226,9 +226,9 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
 class API_test(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data('data1', shape=[1, 2], dtype='float64')
-            data2 = fluid.layers.data('data2', shape=[1, 2], dtype='float64')
-            data3 = fluid.layers.data('data3', shape=[1, 2], dtype='float64')
+            data1 = paddle.static.data('data1', shape=[1, 2], dtype='float64')
+            data2 = paddle.static.data('data2', shape=[1, 2], dtype='float64')
+            data3 = paddle.static.data('data3', shape=[1, 2], dtype='float64')
             result_stack = paddle.stack([data1, data2, data3], axis=0)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -308,13 +308,13 @@ class TestStackOpWithNegativeShape(unittest.TestCase):
 class TestStackAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
         x1 = paddle.rand([])
         x2 = paddle.rand([])
         x1.stop_gradient = False
         x2.stop_gradient = False
         out = paddle.stack([x1, x2])
+        out.retain_grads()
         out.backward()
 
         self.assertEqual(out.shape, [2])

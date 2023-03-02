@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
-import paddle.fluid.contrib.mixed_precision.amp_nn as amp_nn
+import paddle.static.amp.amp_nn as amp_nn
 
 
 def check_finite_and_unscale_wrapper(x, scale):

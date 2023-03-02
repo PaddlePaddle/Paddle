@@ -55,7 +55,7 @@ from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
 
-if fluid.framework._in_eager_mode_:
+if fluid.framework.global_var._in_eager_mode_:
     Tensor = framework.core.eager.Tensor
 else:
     from .framework import VarBase as Tensor  # noqa: F401
@@ -340,6 +340,7 @@ from .framework import CustomPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
+from .autograd import enable_grad  # noqa:F401
 from .autograd import set_grad_enabled  # noqa: F401
 from .autograd import is_grad_enabled  # noqa: F401
 from .framework import save  # noqa: F401
@@ -368,6 +369,7 @@ from .device import is_compiled_with_mlu  # noqa: F401
 from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
+from .device import is_compiled_with_custom_device  # noqa: F401
 from .device import XPUPlace  # noqa: F401
 
 # high-level api
@@ -533,6 +535,7 @@ __all__ = [  # noqa
     'quantile',
     'nanquantile',
     'no_grad',
+    'enable_grad',
     'set_grad_enabled',
     'is_grad_enabled',
     'mod',

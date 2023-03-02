@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
-#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -61,6 +61,7 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
     int bin_cnt = std::pow(2, bit_length - 1) - 1;
     int quant_axis = context.Attr<int>("quant_axis");
     bool is_test = context.Attr<bool>("is_test");
+    bool only_observer = context.Attr<bool>("only_observer");
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
     if (quant_axis < 0) {
@@ -91,11 +92,19 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
                                                            out_state,
                                                            out_accum,
                                                            out_scale);
-        ClipAndFakeQuantFunctor<DeviceContext, T>()(
-            dev_ctx, *in, *out_scale, bin_cnt, round_type, out);
+        if (only_observer) {
+          framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
+        } else {
+          ClipAndFakeQuantFunctor<DeviceContext, T>()(
+              dev_ctx, *in, *out_scale, bin_cnt, round_type, out);
+        }
       } else {
-        ClipAndFakeQuantFunctor<DeviceContext, T>()(
-            dev_ctx, *in, *in_scale, bin_cnt, round_type, out);
+        if (only_observer) {
+          framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
+        } else {
+          ClipAndFakeQuantFunctor<DeviceContext, T>()(
+              dev_ctx, *in, *in_scale, bin_cnt, round_type, out);
+        }
       }
     } else {
       if (!is_test) {
@@ -103,11 +112,19 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
         T* out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
         FindChannelAbsMaxFunctor<DeviceContext, T>()(
             dev_ctx, *in, quant_axis, out_scale_data);
-        ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
-            dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
+        if (only_observer) {
+          framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
+        } else {
+          ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+              dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
+        }
       } else {
-        ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
-            dev_ctx, *in, *in_scale, bin_cnt, round_type, quant_axis, out);
+        if (only_observer) {
+          framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
+        } else {
+          ChannelClipAndFakeQuantFunctor<DeviceContext, T>()(
+              dev_ctx, *in, *in_scale, bin_cnt, round_type, quant_axis, out);
+        }
       }
     }
   }
@@ -132,6 +149,12 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
     int bit_length = context.Attr<int>("bit_length");
     auto quant_axis = context.Attr<int>("quant_axis");
     dev_ctx.template Alloc<D>(out, out->numel() * sizeof(D));
+    bool only_observer = context.Attr<bool>("only_observer");
+
+    if (only_observer) {
+      framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
+      return;
+    }
 
     if (quant_axis < 0) {
       float max_range = (std::pow(2, bit_length - 1) - 1);

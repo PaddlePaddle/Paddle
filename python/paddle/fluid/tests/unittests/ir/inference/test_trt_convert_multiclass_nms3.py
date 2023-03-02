@@ -104,6 +104,7 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
                                     "normalized": False,
                                     "nms_eta": nms_eta,
                                 },
+                                "outputs_dtype": {"nms_output_index": np.int32},
                             }
                         ]
                         ops = self.generate_op_config(ops_config)

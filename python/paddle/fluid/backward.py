@@ -385,12 +385,17 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
 
 
 def _create_loss_op_desc_(loss):
+    # 0D Tensor or 0-Size Tensor
+    if len(loss.shape) == 0 or 0 in loss.shape:
+        create_shape = loss.shape
+    else:
+        create_shape = [1]
     op_desc = _create_op_desc_(
         "fill_constant",
         {},
         {"Out": [_append_grad_suffix_(loss.name)]},
         {
-            "shape": [1],
+            "shape": create_shape,
             "value": 1.0,
             "dtype": loss.dtype,
             "force_cpu": False,
@@ -1336,6 +1341,18 @@ def _append_backward_ops_(
         rename_var_map = {}
     assert isinstance(rename_var_map, dict)
 
+    if core._is_bwd_prim_enabled():
+        composite_block = program.clone().current_block()
+        # Infer shape for operators whose output haven't been created.
+        for op in composite_block.ops:
+            if not all(
+                tuple(
+                    composite_block._find_var_recursive(arg)
+                    for arg in op.output_arg_names
+                )
+            ):
+                infershape_for_composite(composite_block, op.desc)
+
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
         grad_sub_block_list = []
@@ -1364,11 +1381,42 @@ def _append_backward_ops_(
 
             program._rollback()
             grad_sub_block_list.append(grad_sub_block.desc)
+        # In primitive mode, raw phi GradOp will be split into multiple small
+        # primitive operators, and the split rules are defined in c++ level,
+        # see detials: paddle/fluid/prim/api/manual/backward/composite_backward_api.h
+        # It means that the output's shape and dtype of previous operators which
+        # maybe used as the input of next operators must be known. Therefore,
+        # we infer shape and dtype in a sandbox block(named composite_block) for
+        # used in c++ level.
+        # For example:
+        #   forward:
+        #       z = multiply(x, y) //maybe broadcast in kernel
+        #   bcckward:
+        #       x_grad_unreduce = z_grad * y // maybe unreduce
+        #       reduced_axes = get_reduced_axes(x_grad.shape, x.shape) // need known shape
+        #       x_grad = reduce_sum(x_grad_unreduce)
+        grad_op_desc = []
+        op_grad_to_var = {}
+        if core._is_bwd_prim_enabled():
 
-        # Getting op's corresponding grad_op
-        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, no_grad_dict[block.idx], grad_sub_block_list
-        )
+            def find_op_index(block_desc, cur_op_desc):
+                for idx in range(block_desc.op_size()):
+                    if cur_op_desc == block_desc.op(idx):
+                        return idx
+                return -1
+
+            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+                composite_block.desc.op(find_op_index(block.desc, op.desc)),
+                no_grad_dict[composite_block.idx],
+                grad_sub_block_list,
+            )
+            for desc in grad_op_desc:
+                infershape_for_composite(composite_block, desc)
+        else:
+            # Getting op's corresponding grad_op
+            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+                op.desc, no_grad_dict[block.idx], grad_sub_block_list
+            )
 
         # record the mapping between fwd and bwd
         if grad_op_id_to_fwd_op is not None:
@@ -1491,11 +1539,16 @@ def _append_backward_ops_(
     )
 
     # remove some backward ops
-    not_need_ops = _find_not_need_ops(grad_op_descs, ops, input_grad_names_set)
-
-    grad_op_descs = [
-        op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
-    ]
+    # TODO(Jiabin): Support this in prime later, it will prune add_grad, fix this problem
+    if not core._is_bwd_prim_enabled():
+        not_need_ops = _find_not_need_ops(
+            grad_op_descs, ops, input_grad_names_set
+        )
+        grad_op_descs = [
+            op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
+        ]
+    else:
+        logging.debug("Runing backward composite and disable find_not_need_ops")
 
     # append op_desc in grad_op_descs to target_block
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -1623,6 +1676,18 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                         ops_to_remove.append(op_idx)
                         continue
 
+        # sum may create invalid variable, here to deal with it.
+        if op_desc.type() == 'sum':
+            new_inputs = []
+            for grad_var_name in op_desc.input_arg_names():
+                if block.desc.has_var_recursive(grad_var_name.encode()):
+                    # meet invalid sum variables, remove the invalid operand.
+                    new_inputs.append(grad_var_name)
+            assert (
+                len(new_inputs) > 0
+            ), "After remove invalid variables, sum op have no inputs."
+            op_desc.set_input("X", new_inputs)
+
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
@@ -1649,7 +1714,43 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         block.desc._remove_op(op_idx, op_idx + 1)
 
 
-def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
+def infershape_for_composite(block, grad_op_desc):
+    # pruning empty output
+    if len(grad_op_desc.output_arg_names()) == 0:
+        return
+
+    # append op to block
+    op_desc = block.desc.append_op()
+    op_desc.copy_from(grad_op_desc)
+    op_desc._set_attr(
+        core.op_proto_and_checker_maker.kOpRoleAttrName(),
+        core.op_proto_and_checker_maker.OpRole.Backward,
+    )
+
+    # create output var
+    new_vars = set()
+    # create new gradient variables
+    for grad_var_name in op_desc.output_arg_names():
+        if not (
+            block.desc.has_var_recursive(grad_var_name.encode())
+            or grad_var_name == core.empty_var_name()
+        ):
+            block.desc.var(grad_var_name.encode())
+            new_vars.add(grad_var_name)
+
+    # infer shape and infer dthype
+    op_desc.check_attrs()
+    op_desc.infer_var_type(block.desc)
+    op_desc.infer_shape(block.desc)
+
+    for arg in op_desc.output_arg_names():
+        if arg in new_vars:
+            _infer_var_data_type_shape_(arg, block)
+
+
+def _rename_grad_(
+    block, start_op_idx, grad_to_var, target_grad_map, skip_rename_var_list
+):
     var_map = copy.copy(target_grad_map)
     for op_idx in range(start_op_idx, block.desc.op_size()):
         op_desc = block.desc.op(op_idx)
@@ -1661,6 +1762,8 @@ def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
             if "@GRAD" not in name:
                 continue
             if block.desc.find_var(name.encode("ascii")):
+                if name in skip_rename_var_list:
+                    continue
                 new_name = unique_name.generate(name)
                 op_desc._rename_output(name, new_name)
                 var_map[name] = new_name
@@ -1987,7 +2090,7 @@ def append_backward(
     # Because append_backward may be called multiple times,
     # we need rename the internal gradient variables so that they have
     # different names.
-    _rename_grad_(target_grad_block, fwd_op_num, grad_to_var, {})
+    _rename_grad_(target_grad_block, fwd_op_num, grad_to_var, {}, [])
 
     _append_backward_vars_(
         target_grad_block, fwd_op_num, grad_to_var, grad_info_map
@@ -2291,33 +2394,24 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     target_grad_map = {}
     rename_var_map = {}
+    skip_rename_var_list = []
     for i, grad in enumerate(target_gradients):
         target = targets[i]
         grad_name = _append_grad_suffix_(target.name)
         if grad is None:
-            target_shape = target.name + '_shape'
-            block.desc.append_op().copy_from(
-                _create_op_desc_(
-                    "shape",
-                    {'Input': [target.name]},
-                    {"Out": [target_shape]},
-                    {},
-                )
-            )
-            input_grad_names_set.add(target_shape)
             op_desc = _create_op_desc_(
-                "fill_constant",
-                {"ShapeTensor": [target_shape]},
+                "fill_any_like",
+                {"X": [target.name]},
                 {"Out": [grad_name]},
                 {
-                    "shape": target.shape,
                     "value": 1.0,
                     "dtype": target.dtype,
                 },
             )
-
             block.desc.append_op().copy_from(op_desc)
+            block.program._sync_with_cpp()
             input_grad_names_set.add(grad_name)
+            skip_rename_var_list.append(grad_name)
         else:
             if target.block.idx != block_idx or target.block.program != prog:
                 raise ValueError("all targets must be in the same block")
@@ -2329,6 +2423,9 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
             input_grad_names_set.add(grad.name)
             rename_var_map[grad_name] = grad.name
+
+    if core._is_bwd_prim_enabled():
+        core._set_prim_target_grad_name(target_grad_map)
 
     # For double backward, input_grad_names is used for filter
     # some non-used gradients op. rename_var_map is used to
@@ -2372,7 +2469,9 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
     # different names.
-    _rename_grad_(block, fwd_op_num, grad_to_var, target_grad_map)
+    _rename_grad_(
+        block, fwd_op_num, grad_to_var, target_grad_map, skip_rename_var_list
+    )
 
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
     prog._sync_with_cpp()

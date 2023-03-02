@@ -16,9 +16,7 @@ from enum import IntEnum, unique
 
 import numpy as np
 
-from paddle.fluid import core
-from paddle.fluid.core import Device  # noqa: F401
-from paddle.fluid.core import Link  # noqa: F401
+from paddle.framework import core
 
 
 @unique
@@ -50,7 +48,7 @@ class DeviceMesh(core.DeviceMesh):
     The class `DeviceMesh` describes the topology of physical devices.
 
     Args:
-        mesh (list|numpy.array): an N-dimensional array describes the toplogy
+        mesh (list|numpy.array): an N-dimensional array describes the topology
             of logical processes.
         dim_names (list, optional): the i-th element of this list gives the name of the
             i-th dimension.

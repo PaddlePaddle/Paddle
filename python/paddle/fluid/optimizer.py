@@ -18,7 +18,8 @@ import logging
 from collections import defaultdict
 
 import paddle
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
+
+
 from paddle.fluid.framework import (
     Program,
     Variable,
@@ -39,7 +40,6 @@ from .backward import (
     _get_no_grad_set_name,
 )
 from .framework import program_guard
-from .initializer import Constant
 from .layer_helper import LayerHelper
 from .dygraph import base as imperative_base
 from .dygraph import no_grad
@@ -397,7 +397,8 @@ class Optimizer:
 
             lr_value = float(self._learning_rate())
             self.helper.set_variable_initializer(
-                lr_var, initializer=Constant(value=lr_value)
+                lr_var,
+                initializer=paddle.nn.initializer.Constant(value=lr_value),
             )
             return
 
@@ -713,7 +714,10 @@ class Optimizer:
             device = self._get_device_for_param(param.name)
         with device_guard(device):
             self.helper.set_variable_initializer(
-                var, initializer=Constant(value=float(fill_value))
+                var,
+                initializer=paddle.nn.initializer.Constant(
+                    value=float(fill_value)
+                ),
             )
 
         if in_dygraph_mode():
@@ -774,7 +778,10 @@ class Optimizer:
             device = 'cpu'
         with device_guard(device):
             self.helper.set_variable_initializer(
-                var, initializer=Constant(value=float(fill_value))
+                var,
+                initializer=paddle.nn.initializer.Constant(
+                    value=float(fill_value)
+                ),
             )
 
         if in_dygraph_mode():
@@ -931,6 +938,10 @@ class Optimizer:
         :param loss: the loss variable.
         :param startup_program: the startup program
         """
+        from paddle.distributed.distribute_lookup_table import (
+            find_distributed_lookup_table,
+        )
+
         program = framework.default_main_program()
         global_block = framework.default_main_program().global_block()
         table_name = find_distributed_lookup_table(program)
@@ -1218,10 +1229,12 @@ class Optimizer:
         # NOTE(zhiqiu): the initializer should be set after coalesce_tensor op,
         # so the shape of flatten_param and flatten_grad will be inferred.
         self.helper.set_variable_initializer(
-            flatten_param, initializer=Constant(0.0)
+            flatten_param,
+            initializer=paddle.nn.initializer.Constant(0.0),
         )
         self.helper.set_variable_initializer(
-            flatten_grad, initializer=Constant(0.0)
+            flatten_grad,
+            initializer=paddle.nn.initializer.Constant(0.0),
         )
 
         return [(flatten_param, flatten_grad)]
@@ -1431,8 +1444,8 @@ class SGDOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -1623,8 +1636,8 @@ class MomentumOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -1772,8 +1785,8 @@ class LarsMomentumOptimizer(Optimizer):
 
             paddle.enable_static()
             np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-            inp = fluid.layers.data(
-                name="inp", shape=[2, 2], append_batch_size=False)
+            inp = paddle.static.data(
+                name="inp", shape=[2, 2], dtype='float32')
             out = paddle.static.nn.fc(inp, size=3)
             out = paddle.sum(out)
             optimizer = fluid.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
@@ -2764,7 +2777,7 @@ class DpsgdOptimizer(Optimizer):
           train_program = fluid.Program()
           startup_program = fluid.Program()
           with fluid.program_guard(train_program, startup_program):
-              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              data = paddle.static.data(name='X', shape=[-1,1], dtype='float32')
               hidden = paddle.static.nn.fc(x=data, size=10)
               loss = paddle.mean(hidden)
               optimizer = fluid.optimizer.Dpsgd(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
@@ -3217,8 +3230,8 @@ class RMSPropOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -3274,12 +3287,84 @@ class RMSPropOptimizer(Optimizer):
         self._epsilon = epsilon
         self._momentum = momentum
         self._centered = centered
+        self._multi_precision = False
+        self._master_weights = {}
+
+    def _create_master_weight(self, param):
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
+
+            var_name = param.name + '_fp32_master'
+            var_name = unique_name.generate(var_name)
+            var = paddle.static.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True,
+            )
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            self._master_weights[param.name] = var
+        return var
+
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = (
+            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
+        target_name = target_param.name
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name
+                )
+            )
+        return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
 
         for p in parameters:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._momentum_acc_str, master_p)
+                self._add_accumulator(self._mean_square_acc_str, master_p)
+                self._add_accumulator(self._mean_grad_acc_str, master_p)
+                continue
+            if (
+                p.dtype == core.VarDesc.VarType.FP16
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Lars optimizer."
+                )
             self._add_accumulator(self._momentum_acc_str, p)
             self._add_accumulator(self._mean_square_acc_str, p)
             self._add_accumulator(self._mean_grad_acc_str, p)
@@ -3297,6 +3382,15 @@ class RMSPropOptimizer(Optimizer):
         mean_grad_acc = self._get_accumulator(
             self._mean_grad_acc_str, param_and_grad[0]
         )
+        find_master = (
+            self._multi_precision
+            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
         if in_dygraph_mode():
             _C_ops.rmsprop_(
                 param_and_grad[0],
@@ -3305,34 +3399,45 @@ class RMSPropOptimizer(Optimizer):
                 momentum_acc,
                 self._create_param_lr(param_and_grad),
                 mean_grad_acc,
+                master_weight,
                 self._epsilon,
                 self._rho,
                 self._momentum,
                 self._centered,
+                find_master,
             )
             return None
         else:
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": momentum_acc,
+                "MeanSquare": mean_square_acc,
+                "MeanGrad": mean_grad_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            }
+
+            outputs = {
+                "ParamOut": param_and_grad[0],
+                "MomentOut": momentum_acc,
+                "MeanSquareOut": mean_square_acc,
+                "MeanGradOut": mean_grad_acc,
+            }
+
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+
             rmsprop_op = block.append_op(
                 type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "Moment": momentum_acc,
-                    "MeanSquare": mean_square_acc,
-                    "MeanGrad": mean_grad_acc,
-                    "LearningRate": self._create_param_lr(param_and_grad),
-                },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "MomentOut": momentum_acc,
-                    "MeanSquareOut": mean_square_acc,
-                    "MeanGradOut": mean_grad_acc,
-                },
+                inputs=inputs,
+                outputs=outputs,
                 attrs={
                     "epsilon": self._epsilon,
                     "decay": self._rho,
                     "momentum": self._momentum,
                     "centered": self._centered,
+                    "multi_precision": find_master,
                 },
                 stop_gradient=True,
             )
@@ -3415,8 +3520,8 @@ class FtrlOptimizer(Optimizer):
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
-                x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+                x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+                y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
                 y_predict = paddle.static.nn.fc(x, size=1, activation=None)
                 cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
                 avg_cost = paddle.mean(cost)
@@ -3901,14 +4006,14 @@ class ModelAverage(Optimizer):
             self._get_accumulator('num_updates', param)
         )
         # backup param value to grad
-        layers.assign(input=param, output=grad)
+        paddle.assign(param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = paddle.add_n([num_accumulates, old_num_accumulates])
         sum = paddle.add_n([sum_1, sum_2, sum_3])
-        tmp = layers.cast(
+        tmp = paddle.cast(
             x=tmp, dtype='float32' if self._dtype is None else self._dtype
         )
-        sum = layers.cast(
+        sum = paddle.cast(
             x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
         paddle.assign(paddle.divide(sum, tmp), output=param)
@@ -3916,7 +4021,7 @@ class ModelAverage(Optimizer):
     def _add_average_restore_op(self, block, param_grad):
         param = block._clone_variable(param_grad[0])
         grad = block._clone_variable(param_grad[1])
-        layers.assign(input=grad, output=param)
+        paddle.assign(grad, output=param)
 
     def _append_average_accumulate_op(self, param):
         self.helper = LayerHelper("average_accumulate")
@@ -4210,15 +4315,13 @@ class ExponentialMovingAverage:
                 param = block._clone_variable(param)
                 tmp = block._clone_variable(tmp)
                 ema = block._clone_variable(self._ema_vars[param.name])
-                layers.assign(input=param, output=tmp)
+                paddle.assign(param, output=tmp)
                 # bias correction
                 with layers.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
-                        layers.assign(
-                            output=param, input=ema / (1.0 - decay_pow)
-                        )
+                        paddle.assign(ema / (1.0 - decay_pow), output=param)
                     with switch.default():
-                        layers.assign(output=param, input=ema)
+                        paddle.assign(ema, output=param)
 
         self.restore_program = Program()
         block = self.restore_program.global_block()
@@ -4226,7 +4329,7 @@ class ExponentialMovingAverage:
             for param, tmp in self._params_tmps:
                 tmp = block._clone_variable(tmp)
                 param = block._clone_variable(param)
-                layers.assign(input=tmp, output=param)
+                paddle.assign(tmp, output=param)
 
     def _get_ema_decay(self):
         with default_main_program()._lr_schedule_guard():
@@ -4242,9 +4345,9 @@ class ExponentialMovingAverage:
                 decay_t = (self._thres_steps + 1.0) / (self._thres_steps + 10.0)
                 with layers.control_flow.Switch() as switch:
                     with switch.case(decay_t < self._decay):
-                        layers.tensor.assign(decay_t, decay_var)
+                        paddle.assign(decay_t, decay_var)
                     with switch.default():
-                        layers.tensor.assign(
+                        paddle.assign(
                             np.array([self._decay], dtype=np.float32), decay_var
                         )
         return decay_var
@@ -4257,7 +4360,7 @@ class ExponentialMovingAverage:
             dtype='int64',
             persistable=True,
         )
-        global_step = layers.cast(global_step, "float32")
+        global_step = paddle.cast(global_step, "float32")
         decay_var = block._clone_variable(self._decay_var)
         decay_pow_acc = paddle.pow(decay_var, global_step)
         return decay_pow_acc, global_step
@@ -4294,7 +4397,7 @@ class ExponentialMovingAverage:
                     ema_t = param_ema * self._decay_var + param * (
                         1 - self._decay_var
                     )
-                    layers.assign(input=ema_t, output=param_ema)
+                    paddle.assign(ema_t, output=param_ema)
 
         # for fp16 params
         for param_ema, master_ema in param_master_emas:
@@ -4354,11 +4457,12 @@ class PipelineOptimizer:
             import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
+            import numpy as np
 
             paddle.enable_static()
             with fluid.device_guard("gpu:0"):
-                x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
-                y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
+                x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=0)
+                y = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=0)
                 data_loader = fluid.io.DataLoader.from_generator(
                     feed_list=[x, y],
                     capacity=64,
@@ -4404,7 +4508,7 @@ class PipelineOptimizer:
         valid_optimizers = (
             Optimizer,
             paddle.optimizer.Optimizer,
-            paddle.fluid.contrib.mixed_precision.decorator.OptimizerWithMixedPrecision,
+            paddle.static.amp.decorator.OptimizerWithMixedPrecision,
         )
         if not isinstance(optimizer, valid_optimizers):
             raise ValueError(
@@ -6332,8 +6436,8 @@ class RecomputeOptimizer(Optimizer):
                 )
                 sum_cost = paddle.mean(cost)
                 return sum_cost, fc_1, prediction
-            input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-            input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+            input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+            input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
             cost, fc_1, pred = mlp(input_x, input_y)
 
             sgd = fluid.optimizer.Adam(learning_rate=0.01)
@@ -6410,8 +6514,8 @@ class RecomputeOptimizer(Optimizer):
                     sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
-                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
@@ -6458,8 +6562,8 @@ class RecomputeOptimizer(Optimizer):
                     return sum_cost, fc_1, prediction
 
 
-                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
@@ -6952,8 +7056,8 @@ class RecomputeOptimizer(Optimizer):
                     return sum_cost, fc_1, prediction
 
 
-                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
@@ -7033,8 +7137,8 @@ class RecomputeOptimizer(Optimizer):
                     sum_cost = paddle.mean(cost)
                     return sum_cost, fc_1, prediction
 
-                input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+                input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
                 cost, fc_1, pred = mlp(input_x, input_y)
                 print("Finished FF")
 
@@ -7120,8 +7224,8 @@ class LookaheadOptimizer:
 
             paddle.enable_static()
 
-            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            x = paddle.static.data(name='x', shape=[-1,2], dtype='float32')
+            label = paddle.static.data(name="label", shape=[-1,1], dtype="int64")
             y = paddle.static.nn.fc(x=[x], size=2, activation="softmax")
             loss = paddle.nn.functional.cross_entropy(
                 input=y, label=label,
@@ -7252,7 +7356,7 @@ class LookaheadOptimizer:
                     for param_name in params:
                         fast_var = main_block.var(param_name)
                         slow_var = param_to_slow[param_name]
-                        layers.assign(input=fast_var, output=slow_var)
+                        paddle.assign(fast_var, output=slow_var)
                 with switch.case(mod == zero_var):
                     for param_name in params:
                         fast_var = main_block.var(param_name)
@@ -7263,8 +7367,8 @@ class LookaheadOptimizer:
                                 slow_var, paddle.subtract(one_var, alpha)
                             ),
                         )
-                        layers.assign(input=tmp_var, output=slow_var)
-                        layers.assign(input=tmp_var, output=fast_var)
+                        paddle.assign(tmp_var, output=slow_var)
+                        paddle.assign(tmp_var, output=fast_var)
                 with switch.default():
                     pass
         return mini_out
@@ -7311,8 +7415,8 @@ class GradientMergeOptimizer:
             sum_cost = paddle.mean(cost)
             return sum_cost, fc_1, prediction
 
-        input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
-        input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+        input_x = paddle.static.data(name="x", shape=[-1,32], dtype='float32')
+        input_y = paddle.static.data(name="y", shape=[-1,1], dtype='int64')
         cost, fc_1, pred = mlp(input_x, input_y)
         sgd = fluid.optimizer.Adam(learning_rate=0.01)
         sgd = fluid.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)

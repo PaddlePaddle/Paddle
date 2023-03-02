@@ -19,24 +19,31 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-import paddle.inference as paddle_infer
-from paddle import enable_static
-from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import (
+from eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
 
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.inference as paddle_infer
+from paddle import enable_static
+from paddle.fluid.op import Operator
+
+
+def sum_wrapper(X, use_mkldnn=False):
+    res = 0
+    for x in X:
+        res += x
+    return res
+
 
 class TestSumOp(OpTest):
     def setUp(self):
         self.op_type = "sum"
+        self.python_api = sum_wrapper
         self.init_kernel_type()
         self.use_mkldnn = False
         self.init_kernel_type()
@@ -342,10 +349,14 @@ class TestSumBF16Op(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        self.check_output()
+        # new dynamic graph mode does not support unit16 type
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', numeric_grad_delta=0.5)
+        # new dynamic graph mode does not support unit16 type
+        self.check_grad(
+            ['x0'], 'Out', numeric_grad_delta=0.5, check_dygraph=False
+        )
 
 
 class API_Test_Add_n(unittest.TestCase):
@@ -442,27 +453,28 @@ class TestRaiseSumError(unittest.TestCase):
 class TestRaiseSumsError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.sums([11, 22])
+            paddle.add_n([11, 22])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
             data2 = fluid.data(name="input2", shape=[10], dtype="int8")
-            fluid.layers.sums([data1, data2])
+            paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            fluid.layers.sums(data1)
+            paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 
         def test_out_type():
             data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
             data2 = fluid.data(name="input2", shape=[10], dtype="float32")
-            fluid.layers.sums([data1, data2], out=[10])
+            out = [10]
+            out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_type)
 
@@ -470,7 +482,7 @@ class TestRaiseSumsError(unittest.TestCase):
             data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
             data2 = fluid.data(name="input2", shape=[10], dtype="float32")
             out = fluid.data(name="out", shape=[10], dtype="int8")
-            fluid.layers.sums([data1, data2], out=out)
+            out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_dtype)
 
@@ -603,9 +615,9 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data1 = layers.data('data1', [3, 4, 5], False, dtype)
+        data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
-        data2 = layers.data('data2', [3, 4, 5], False, dtype)
+        data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
@@ -618,7 +630,6 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
             place=place,
             eps=eps,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.add_n_wrapper,
             [data1, data2],
@@ -646,9 +657,9 @@ class TestAddNTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data1 = layers.data('data1', [3, 4, 5], False, dtype)
+        data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
-        data2 = layers.data('data2', [3, 4, 5], False, dtype)
+        data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
@@ -661,7 +672,6 @@ class TestAddNTripleGradCheck(unittest.TestCase):
             place=place,
             eps=eps,
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.add_n_wrapper,
             [data1, data2],
@@ -689,7 +699,7 @@ class TestSumDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 4], False, dtype)
+        data = paddle.static.data('data', [2, 4], dtype)
         data.persistable = True
         out = paddle.sum(data, axis=1, keepdim=True)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -697,7 +707,6 @@ class TestSumDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.sum_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -721,7 +730,7 @@ class TestSumTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 4], False, dtype)
+        data = paddle.static.data('data', [2, 4], dtype)
         data.persistable = True
         out = paddle.sum(data, axis=1, keepdim=True)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -729,7 +738,6 @@ class TestSumTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.sum_wrapper, [data], out, x_init=[data_arr], place=place
         )

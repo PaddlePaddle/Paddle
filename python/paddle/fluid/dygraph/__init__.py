@@ -28,9 +28,6 @@ from .parallel import *
 from . import learning_rate_scheduler
 from .learning_rate_scheduler import *
 
-from . import amp
-from .amp import *
-
 from .math_op_patch import monkey_patch_math_varbase
 
 __all__ = []
@@ -38,4 +35,3 @@ __all__ += layers.__all__
 __all__ += base.__all__
 __all__ += parallel.__all__
 __all__ += learning_rate_scheduler.__all__
-__all__ += amp.__all__

@@ -35,12 +35,12 @@ class TestCloudRoleMaker2(unittest.TestCase):
     def test_pslib_2(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.base.role_maker import (
+        from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+            fleet,
+        )
+        from paddle.incubate.distributed.fleet.role_maker import (
             GeneralRoleMaker,
             RoleMakerBase,
-        )
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
-            fleet,
         )
 
         paddle.enable_static()
@@ -63,22 +63,14 @@ class TestCloudRoleMaker2(unittest.TestCase):
         startup_program = fluid.Program()
         scope = fluid.Scope()
         with fluid.program_guard(train_program, startup_program):
-            show = fluid.layers.data(
-                name="show",
-                shape=[-1, 1],
-                dtype="float32",
-                lod_level=1,
-                append_batch_size=False,
+            show = paddle.static.data(
+                name="show", shape=[-1, 1], dtype="float32", lod_level=1
             )
             fc = paddle.static.nn.fc(x=show, size=1, activation=None)
-            label = fluid.layers.data(
-                name="click",
-                shape=[-1, 1],
-                dtype="int64",
-                lod_level=1,
-                append_batch_size=False,
+            label = paddle.static.data(
+                name="click", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label_cast = fluid.layers.cast(label, dtype='float32')
+            label_cast = paddle.cast(label, dtype='float32')
             cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
@@ -212,7 +204,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
                 """
                 pass
 
-        from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+        from paddle.incubate.distributed.fleet.base import Fleet
 
         class TmpFleet(Fleet):
             """
@@ -277,14 +269,16 @@ class TestCloudRoleMaker2(unittest.TestCase):
         tmp._role_maker = TmpClass()
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
+        from paddle.incubate.distributed.fleet.role_maker import (
+            GeneralRoleMaker,
+        )
 
         tmp = RoleMakerBase()
         tmp.all_gather(1)
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
         tmp.barrier_all()
-        from paddle.fluid.incubate.fleet.base.role_maker import (
+        from paddle.incubate.distributed.fleet.role_maker import (
             MPISymetricRoleMaker,
         )
 

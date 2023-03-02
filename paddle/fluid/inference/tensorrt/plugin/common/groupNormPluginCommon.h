@@ -27,6 +27,8 @@ namespace plugin {
 struct GroupNormNHWCParams {
   // The output buffer. Layout NHWC.
   __half* dst;
+  // The output buffer. Layout NHWC.
+  __half* eleOut;
   // The input buffer. Layout NHWC.
   __half const* srcX;
   // The input buffer. Layout NHWC.
@@ -47,8 +49,8 @@ struct GroupNormNHWCParams {
   int32_t c;
   // The number of groups.
   int32_t groups;
-  // Do we apply the Swish activation function?
-  bool withSwish;
+  // Do we apply the Silu activation function?
+  bool withSilu;
 
   // Precomputed values and parameters to control the execution of the kernels.
 
@@ -67,6 +69,9 @@ struct GroupNormNHWCParams {
   int32_t groupsPerBlock;
   // epsilon, Constant for numerical stability
   float eps;
+  // for NCHW32 int8 use
+  float dqScaleIn;
+  float inv_qScale;
 };
 
 }  // namespace plugin

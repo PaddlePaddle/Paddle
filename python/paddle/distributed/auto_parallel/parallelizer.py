@@ -24,11 +24,10 @@ import sys
 import time
 
 import paddle
-import paddle.fluid.core as core
 from paddle.distributed.passes import PassContext, new_pass
 from paddle.distributed.utils.log_utils import get_logger
-from paddle.fluid import program_guard
-from paddle.fluid.backward import append_backward
+from paddle.framework import core
+from paddle.static import append_backward, program_guard
 
 from .cluster import Cluster
 from .completion import Completer
@@ -56,9 +55,9 @@ class AutoParallelizer:
     AutoParallelizer is the main controller class to do the auto parallel process.
     And the auto parallel process will be triggered in the wrapped parallelize function.
     To facilitate the auto parallelization, it will contain information about program, cluster and the
-    related context. In this basic version, the program information will be retrevied from
-    Fleet object, and the cluster information can be retrevied in the new created Cluster object,
-    and the context information can be retrevied in the new created DistributedContext.
+    related context. In this basic version, the program information will be retrieved from
+    Fleet object, and the cluster information can be retrieved in the new created Cluster object,
+    and the context information can be retrieved in the new created DistributedContext.
     """
 
     def __init__(self, fleet):

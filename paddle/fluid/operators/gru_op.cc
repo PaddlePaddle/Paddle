@@ -305,11 +305,11 @@ class GRUGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(weight_grad_name, weight_dims);
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Hidden")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Hidden")),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -372,7 +372,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
         const_cast<T*>(weight_data + 2 * frame_size * frame_size);
     phi::DenseTensor ordered_h0;
 
-    framework::Vector<size_t> order(batch_gate->lod()[2]);
+    phi::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (h0) {
       // Since the batch computing for GRU reorders the input sequences

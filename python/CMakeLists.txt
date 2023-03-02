@@ -53,6 +53,35 @@ set(FLUID_CORE_DEPS ${FLUID_CORE})
 
 add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
 
+# Standard op(phi op) description is defined in ops.yaml and legacy_ops.yaml.
+# When users define composite rules of some nonbasic op, as for definition of args,
+# they are supposed to refer to standard op description. However, there exists
+# some gap of description between current op and standard ones. So special dictionary
+# is needed to record such gap for execution of composite rules.
+# Todo: this custom_target will be moved to other place.
+
+set(ops_yaml_path "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/ops.yaml")
+
+set(ops_legacy_yaml_path
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_ops.yaml")
+
+set(ops_compat_yaml_path
+    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml")
+
+set(phi_ops_map_path
+    "${PADDLE_SOURCE_DIR}/python/paddle/incubate/autograd/phi_ops_map.py")
+
+add_custom_target(
+  op_map_codegen ALL
+  COMMAND
+    "${PYTHON_EXECUTABLE}"
+    "${PADDLE_SOURCE_DIR}/python/paddle/incubate/autograd/generate_op_map.py"
+    "--ops_yaml_path=${ops_yaml_path}"
+    "--ops_legacy_yaml_path=${ops_legacy_yaml_path}"
+    "--ops_compat_yaml_path=${ops_compat_yaml_path}"
+    "--phi_ops_map_path=${phi_ops_map_path}"
+  VERBATIM)
+
 # NOTE(zhiqiu): WHY?
 # In `setup.py.in`, some dynamic libraries (eg, libxpuapi.so) are modified using
 # patchelf. In rare cases, if the a linker is linking that dynamic library for

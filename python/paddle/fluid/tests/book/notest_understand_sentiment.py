@@ -68,10 +68,10 @@ def train(
     dict_dim = len(word_dict)
     class_dim = 2
 
-    data = fluid.layers.data(
-        name="words", shape=[1], dtype="int64", lod_level=1
+    data = paddle.static.data(
+        name="words", shape=[-1, 1], dtype="int64", lod_level=1
     )
-    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+    label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
 
     if not parallel:
         cost, acc_out, prediction = net_method(
@@ -129,7 +129,7 @@ def train(
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
         training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
-        t = fluid.DistributeTranspiler()
+        t = paddle.distributed.transpiler.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)

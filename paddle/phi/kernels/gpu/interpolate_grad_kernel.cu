@@ -211,7 +211,7 @@ __inline__ __device__ T PartialBlockMin(T val,
 
   if (threadIdx.x < threshold) {
     shared_last_idx = (threshold >> 5) - 1;
-    val = phi::funcs::warpReduceMin(val, mask);
+    val = phi::funcs::WarpReduceMin(val, mask);
     if (lane == 0) {
       shared[wid] = val;
     }
@@ -226,7 +226,7 @@ __inline__ __device__ T PartialBlockMin(T val,
   if (threadIdx.x < threshold) {
     val = (lane <= shared_last_idx) ? shared[lane]
                                     : std::numeric_limits<T>::max();
-    val = phi::funcs::warpReduceMin(val, mask);
+    val = phi::funcs::WarpReduceMin(val, mask);
     shared_last_val = val;
   }
   __syncthreads();
@@ -292,13 +292,13 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
     s_data[1][threadIdx.x] = static_cast<MT>(0);
     int remain = nthreads - (tid & (-blockDim.x));
     int in_top_max_index =
-        phi::funcs::blockReduceMax(top_right_index, FINAL_MASK);
+        phi::funcs::BlockReduceMax(top_right_index, FINAL_MASK);
     int in_bot_max_index =
-        phi::funcs::blockReduceMax(bot_right_index, FINAL_MASK);
+        phi::funcs::BlockReduceMax(bot_right_index, FINAL_MASK);
 
     if (remain > blockDim.x) {
-      in_top_min_index = phi::funcs::blockReduceMin(input_index, FINAL_MASK);
-      in_bot_min_index = phi::funcs::blockReduceMin(bot_left_index, FINAL_MASK);
+      in_top_min_index = phi::funcs::BlockReduceMin(input_index, FINAL_MASK);
+      in_bot_min_index = phi::funcs::BlockReduceMin(bot_left_index, FINAL_MASK);
     } else {
       in_top_min_index = PartialBlockMin(input_index, remain, FINAL_MASK);
       in_bot_min_index = PartialBlockMin(bot_left_index, remain, FINAL_MASK);
@@ -790,8 +790,8 @@ static void Interpolate1DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    paddle::framework::TensorCopySync(
-        *out_size, paddle::platform::CPUPlace(), &sizes);
+    phi::Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+
     auto size_data = sizes.data<int>();
     out_w = size_data[0];
   }
@@ -815,7 +815,7 @@ static void Interpolate1DCUDABwd(
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_w == out_w) {
-    paddle::framework::TensorCopy(output_grad, dev_ctx.GetPlace(), input_grad);
+    phi::Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
     return;
   }
 
@@ -928,8 +928,7 @@ static void Interpolate2DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    paddle::framework::TensorCopySync(
-        *out_size, paddle::platform::CPUPlace(), &sizes);
+    phi::Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
     auto size_data = sizes.data<int>();
     out_h = size_data[0];
     out_w = size_data[1];
@@ -954,7 +953,7 @@ static void Interpolate2DCUDABwd(
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
-    paddle::framework::TensorCopy(output_grad, dev_ctx.GetPlace(), input_grad);
+    phi::Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
     return;
   }
 
@@ -1210,8 +1209,7 @@ static void Interpolate3DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    paddle::framework::TensorCopySync(
-        *out_size, paddle::platform::CPUPlace(), &sizes);
+    phi::Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
     auto size_data = sizes.data<int>();
     out_d = size_data[0];
     out_h = size_data[1];
@@ -1238,7 +1236,7 @@ static void Interpolate3DCUDABwd(
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
-    paddle::framework::TensorCopy(output_grad, dev_ctx.GetPlace(), input_grad);
+    phi::Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
     return;
   }
 

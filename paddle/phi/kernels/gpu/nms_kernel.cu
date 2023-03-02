@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/nms_kernel.h"
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -59,11 +59,23 @@ void NMSKernel(const Context& dev_ctx,
                const DenseTensor& boxes,
                float threshold,
                DenseTensor* output) {
+  PADDLE_ENFORCE_EQ(
+      boxes.dims().size(),
+      2,
+      phi::errors::InvalidArgument("The shape [%s] of boxes must be (N, 4).",
+                                   boxes.dims()));
+
+  PADDLE_ENFORCE_EQ(
+      boxes.dims()[1],
+      4,
+      phi::errors::InvalidArgument("The shape [%s] of boxes must be (N, 4).",
+                                   boxes.dims()));
+
   const int64_t num_boxes = boxes.dims()[0];
   const auto blocks_per_line = CeilDivide(num_boxes, threadsPerBlock);
   dim3 block(threadsPerBlock);
   dim3 grid(blocks_per_line, blocks_per_line);
-  auto mask_data = paddle::memory::Alloc(
+  auto mask_data = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       num_boxes * blocks_per_line * sizeof(uint64_t),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

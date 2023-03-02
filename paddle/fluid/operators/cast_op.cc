@@ -22,6 +22,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #endif
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -63,6 +66,24 @@ class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class CastCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+ public:
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+  void Apply() override {
+    paddle::experimental::Tensor out_grad = paddle::experimental::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleOutputGrad("Out")));
+    paddle::experimental::Tensor x_grad = paddle::experimental::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleInputGrad("X")));
+    auto dx_ptr = this->GetOutputPtr(&x_grad);
+    std::string dx_name = this->GetOutputName(x_grad);
+    auto dtype = static_cast<paddle::experimental::DataType>(
+        this->Attr<int>("in_dtype"));
+    prim::cast_grad<prim::DescTensor>(out_grad, dtype, dx_ptr);
+    this->RecoverOutputName(x_grad, dx_name);
+  }
+};
+
 class CastOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -75,7 +96,7 @@ class CastOp : public framework::OperatorWithKernel {
     context->ShareLoD("X", "Out");
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     // CastOp kernel's device type is decided by input tensor place
     auto *tensor = ctx.Input<phi::DenseTensor>("X");
@@ -86,9 +107,8 @@ class CastOp : public framework::OperatorWithKernel {
     auto &tensor_place = tensor->place();
     // NOTE: cuda pinned tensor need to copy its data to target place
     if (platform::is_cuda_pinned_place(tensor_place)) {
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor->dtype()),
-          ctx.device_context());
+      return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
+                            ctx.device_context().GetPlace());
     }
 
     // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
@@ -108,20 +128,19 @@ class CastOp : public framework::OperatorWithKernel {
     auto src_type = static_cast<VT::Type>(ctx.Attr<int>("in_dtype"));
     auto dst_type = static_cast<VT::Type>(ctx.Attr<int>("out_dtype"));
     if (src_type == dst_type || MLUSupportsCast(src_type, dst_type)) {
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor->dtype()), tensor_place);
+      return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
+                            tensor_place);
     } else {
       VLOG(3) << "MLU not support cast type: "
               << framework::DataTypeToString(src_type)
               << " to type: " << framework::DataTypeToString(dst_type)
               << ", fallbacking to CPU one!";
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor->dtype()),
-          platform::CPUPlace());
+      return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
+                            platform::CPUPlace());
     }
 #endif
-    return framework::OpKernelType(
-        framework::TransToProtoVarType(tensor->dtype()), tensor_place);
+    return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
+                          tensor_place);
   }
 };
 
@@ -136,6 +155,7 @@ REGISTER_OPERATOR(cast,
                   ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
+                  ops::CastCompositeGradOpMaker,
                   ops::CastOpProtoMaker);
 
 // [ why register transfer_dtype_op alias with cast_op? ]

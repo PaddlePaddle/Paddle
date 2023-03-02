@@ -270,6 +270,16 @@ void ScanKernel(const Context& dev_ctx,
                 bool reverse,
                 Op op,
                 DenseTensor* out) {
+  T* out_data = dev_ctx.template Alloc<T>(out);
+
+  // For 0D Tensor
+  if (out->numel() == 1) {
+    auto raw_dims = out->dims();
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    out->Resize(raw_dims);
+    return;
+  }
+
   auto out_dims = out->dims();
   auto size = x.numel();
 
@@ -286,7 +296,6 @@ void ScanKernel(const Context& dev_ctx,
     axis += out_dims.size();
   }
 
-  T* out_data = dev_ctx.template Alloc<T>(out);
   const T* in_data = x.data<T>();
 
   // Use thrust for parallel acceleration when the input size is equal to the

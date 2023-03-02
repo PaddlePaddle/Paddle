@@ -16,7 +16,7 @@ set(eager_deps
     custom_operator_node)
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
-  set(eager_deps ${eager_deps} accumulation_node)
+  set(eager_deps ${eager_deps} accumulation_node prim_utils)
 endif()
 
 set(fluid_deps
@@ -77,6 +77,6 @@ cc_library(
        op_registry
        variable_helper
        memcpy
-       scale_op
+       generated_op
        autograd_meta
        hook_utils)

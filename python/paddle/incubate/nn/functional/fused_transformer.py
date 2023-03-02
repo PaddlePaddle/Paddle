@@ -482,6 +482,8 @@ def fused_multi_head_attention(
     mode='upscale_in_train',
     ring_id=-1,
     add_residual=True,
+    num_heads=-1,
+    transpose_qkv_wb=False,
     name=None,
 ):
     r"""
@@ -524,7 +526,7 @@ def fused_multi_head_attention(
     Parameters:
         x (Tensor): The input tensor of fused_multi_head_attention. The shape is
             `[batch\_size, sequence\_len, embed\_dim]`.
-        qkv_weight (Tensor): The qkv weight tensor. The shape is `[3, num_head, dim_head, dim_embed]`.
+        qkv_weight (Tensor): The qkv weight tensor. If `transpose_qkv_wb` is False, the shape is `[3, num_head, dim_head, dim_embed]`. Otherwise, the shape is `[dim_embed, 3 * dim_embed]`.
         linear_weight (Tensor): The linear weight tensor. The shape is `[embed_dim, embed_dim]`.
         pre_layer_norm (bool, optional): whether it is pre_layer_norm (True) or post_layer_norm architecture
                                         (False). Default False.
@@ -534,7 +536,7 @@ def fused_multi_head_attention(
         ln_bias (Tensor, optional): The bias tensor of layernorm. Default None.
         pre_ln_epsilon (float, optional): Small float value added to denominator of the pre layer_norm
             to avoid dividing by zero. Default is 1e-5.
-        qkv_bias (Tensor, optional): The bias of qkv computation. The shape is `[3, num_head, dim_head]`.
+        qkv_bias (Tensor, optional): The bias of qkv computation. If `transpose_qkv_wb` is False, the shape is `[3, num_head, dim_head]`. Otherwise, the shape is `[3 * dim_embed]`.
             Default None.
         linear_bias (Tensor, optional): The bias of linear. The shape is `[embed_dim]`. Default None.
         cache_kv (Tensor, optional): For generation model, cache structure. The shape is `[2, bsz, num_head, seq_len, head_dim]`. Default None.
@@ -567,7 +569,9 @@ def fused_multi_head_attention(
                                   - inference: out = input * (1.0 - p)
         ring_id (int, optional): For distributed forward in mp, only support NCCL and forward. Default is -1, means not using mp
         add_residual (bool, optional): Whether add residual at the end. Default is True.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        num_heads (int, optional): If enable transpose_qkv_wb, should provide the num_heads. Default is -1, means not transpose qkv wb.
+        transpose_qkv_wb (bool, optional): Whether transpose the qkv_weight and qkv_bias in the op. Only support GPU for now. Default is false, means not transpose qkv wb.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: The output Tensor, the data type and shape is same as `x`.
@@ -611,27 +615,59 @@ def fused_multi_head_attention(
         'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
     )  # semantic transfer
 
+    if x.ndim != 3:
+        raise ValueError(
+            f"The rank of the x should be 3, but received {x.ndim}."
+        )
+
     if _non_static_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out,
         # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out,
         # linear_out, dropout_mask_out, ln_mean_out, ln_var_out, bias_dropout_residual_out, final_out
-        assert (
-            len(qkv_weight.shape) == 4
-        ), "The dims of the shape of qkv_weight should be 4."
-        assert (
-            qkv_weight.shape[0] == 3
-        ), "The shape of qkv_weight should be [3, num_head, head_dim, embed_dim]."
-        assert (
-            qkv_weight.shape[3] == x.shape[2]
-        ), "The 3rd dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
-        if ring_id == -1:
-            # under mp, the num head will be split, this equation will not hold
+        if not transpose_qkv_wb:
             assert (
-                qkv_weight.shape[1] * qkv_weight.shape[2] == qkv_weight.shape[3]
-            ), "embed_dim must be divisible by num_heads."
-
+                len(qkv_weight.shape) == 4
+            ), "The dims of the shape of qkv_weight should be 4."
+            assert (
+                qkv_weight.shape[0] == 3
+            ), "The shape of qkv_weight should be [3, num_head, head_dim, embed_dim]."
+            assert (
+                qkv_weight.shape[3] == x.shape[2]
+            ), "The 3rd dim of qkv_weight and 2nd dim of x should be the same, i.e., embed_dim."
+            if ring_id == -1:
+                # under mp, the num head will be split, this equation will not hold
+                assert (
+                    qkv_weight.shape[1] * qkv_weight.shape[2]
+                    == qkv_weight.shape[3]
+                ), "embed_dim must be divisible by num_heads."
+        else:
+            assert (
+                num_heads > 0
+            ), "When enable transpose_qkv_wb, the num_heads should be provided and greater than 0."
+            assert len(qkv_weight.shape) == 2, (
+                "When enable transpose_qkv_wb, the dims of the shape of qkv_weight "
+                "should be 2 when enable transpose_qkv_wb."
+            )
+            if ring_id == -1:
+                # under mp, the num head will be split, this equation will not hold
+                assert qkv_weight.shape[1] == 3 * qkv_weight.shape[0], (
+                    "When enable transpose_qkv_wb, the shape of qkv_weight should be "
+                    "[embed_dim, 3 * embed_dim] when enable transpose_qkv_wb."
+                )
+            assert qkv_weight.shape[0] == x.shape[2], (
+                "When enable transpose_qkv_wb, the 1st dim of qkv_weight and 2nd dim of x "
+                "should be the same, i.e., embed_dim."
+            )
+            if qkv_bias is not None:
+                assert (
+                    len(qkv_bias.shape) == 1
+                ), "When enable transpose_qkv_wb, the dims of the shape of qkv_bias should be 1."
+                assert qkv_bias.shape[0] == qkv_weight.shape[1], (
+                    "When enable transpose_qkv_wb, the 1st dim of qkv_bias and 2nd dim of "
+                    "qkv_weight should be the same, i.e., embed_dim."
+                )
         (
             _,
             _,
@@ -665,6 +701,10 @@ def fused_multi_head_attention(
             linear_bias,
             ln_scale,
             ln_bias,
+            'num_heads',
+            num_heads,
+            'transpose_qkv_wb',
+            transpose_qkv_wb,
             'pre_layer_norm',
             pre_layer_norm,
             'epsilon',
@@ -754,6 +794,8 @@ def fused_multi_head_attention(
             'dropout_implementation': mode,
             'add_residual': add_residual,
             'ring_id': ring_id,
+            'num_heads': num_heads,
+            'transpose_qkv_wb': transpose_qkv_wb,
         }
 
         # set outputs
@@ -845,6 +887,7 @@ def fused_multi_transformer(
     epsilon=1e-05,
     cache_kvs=None,
     pre_caches=None,
+    seq_lens=None,
     rotary_embs=None,
     time_step=None,
     attn_mask=None,
@@ -914,6 +957,7 @@ def fused_multi_transformer(
         epsilon (float, optional): Small float value added to denominator of the layer_norm to avoid dividing by zero. Default is 1e-5.
         cache_kvs (list(Tensor)|tuple(Tensor), optional): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`. Default None.
         pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
+        seq_lens (Tensor optional): The sequence lengths of this batch. The shape is `[bsz]`. Default None.
         rotary_embs (Tensor optional): The RoPE embs for rotary computation. The shape is `[2, bsz, 1, seq\_len, head\_dim]`. Default None.
         time_step (Tensor, optional): The time step tensor for the generation model. Which used in decode stage, to represent the time step, that is, the real seq_len of CacheKV. The shape is `[1]`, must be in CPUPlace. Default None.
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
@@ -1013,6 +1057,7 @@ def fused_multi_transformer(
             pre_caches,
             rotary_embs,
             time_step,
+            seq_lens,
             attn_mask,
             linear_weights,
             linear_biases,
@@ -1073,6 +1118,7 @@ def fused_multi_transformer(
             inputs['PreCaches'] = pre_caches
         if rotary_emb_dims > 0:
             inputs['RotaryPosEmb'] = rotary_embs
+        inputs['SeqLengths'] = seq_lens
         inputs['SrcMask'] = attn_mask
         inputs['OutLinearW'] = linear_weights
         if linear_biases is not None:

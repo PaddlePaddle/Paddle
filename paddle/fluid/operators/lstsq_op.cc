@@ -26,7 +26,7 @@ class LstsqOp : public framework::OperatorWithKernel {
 
  protected:
   // The output of lstsq is always complex-valued even for real-valued inputs
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     if (dtype != framework::proto::VarType::FP32 &&
@@ -34,7 +34,7 @@ class LstsqOp : public framework::OperatorWithKernel {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "unsupported data type: %s!", dtype));
     }
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return phi::KernelKey(dtype, ctx.GetPlace());
   }
 };
 

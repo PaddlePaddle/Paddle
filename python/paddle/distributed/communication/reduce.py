@@ -14,8 +14,7 @@
 
 import paddle
 import paddle.distributed.communication.stream as stream
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+import paddle.framework as framework
 
 
 class ReduceOp:
@@ -59,13 +58,13 @@ class ReduceOp:
 def _get_reduce_op(reduce_op, func_name):
     if framework.in_dygraph_mode():
         if reduce_op == ReduceOp.SUM:
-            return core.ReduceOp.SUM
+            return framework.core.ReduceOp.SUM
         elif reduce_op == ReduceOp.MAX:
-            return core.ReduceOp.MAX
+            return framework.core.ReduceOp.MAX
         elif reduce_op == ReduceOp.MIN:
-            return core.ReduceOp.MIN
+            return framework.core.ReduceOp.MIN
         elif reduce_op == ReduceOp.PROD:
-            return core.ReduceOp.PRODUCT
+            return framework.core.ReduceOp.PRODUCT
     else:
         if reduce_op == ReduceOp.SUM:
             return 'c_{}_sum'.format(func_name)

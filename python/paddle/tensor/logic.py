@@ -16,12 +16,12 @@
 
 import paddle
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import _in_eager_mode_
-from ..static import Variable
+from ..fluid.framework import global_var
 from .layer_function_generator import templatedoc
 
-if _in_eager_mode_:
+if global_var._in_eager_mode_:
     Tensor = paddle.fluid.framework.core.eager.Tensor
 else:
     from ..framework import VarBase as Tensor
@@ -351,12 +351,19 @@ def equal_all(x, y, name=None):
 
 @templatedoc()
 def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
-    """
-    ${comment}
+    r"""
+    Check if all :math:`x` and :math:`y` satisfy the condition:
+
+    .. math::
+        \left| x - y \right| \leq atol + rtol \times \left| y \right|
+
+    elementwise, for all elements of :math:`x` and :math:`y`. The behaviour of this
+    operator is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
+    two tensors are elementwise equal within a tolerance.
 
     Args:
-        x(Tensor): ${input_comment}.
-        y(Tensor): ${other_comment}.
+        x(Tensor): The input tensor, it's data type should be float32, float64..
+        y(Tensor): The input tensor, it's data type should be float32, float64..
         rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
         atol(atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
         equal_nan(equalnantype, optional): ${equal_nan_comment}.
@@ -364,7 +371,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
             refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
-        Tensor: ${out_comment}.
+        Tensor: The output tensor, it's data type is bool.
 
     Examples:
         .. code-block:: python
@@ -424,8 +431,8 @@ def equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
-        y(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
+        x(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
+        y(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -450,7 +457,7 @@ def equal(x, y, name=None):
             )
         )
     if not isinstance(y, Variable):
-        y = full(shape=[1], dtype=x.dtype, fill_value=y)
+        y = full(shape=[], dtype=x.dtype, fill_value=y)
 
     if in_dygraph_mode():
         return _C_ops.equal(x, y)
@@ -458,13 +465,13 @@ def equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "equal",
         )
         helper = LayerHelper("equal", **locals())
@@ -772,7 +779,10 @@ def is_tensor(x):
             print(check)  #False
 
     """
-    return isinstance(x, (Tensor, paddle.fluid.core.eager.Tensor))
+    if in_dygraph_mode():
+        return isinstance(x, (Tensor, paddle.fluid.core.eager.Tensor))
+    else:
+        return isinstance(x, Variable)
 
 
 def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
@@ -818,18 +828,26 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
         return out
 
 
-@templatedoc()
 def bitwise_and(x, y, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_and`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X \& Y
+
+    .. note::
+        ``paddle.bitwise_and`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python
@@ -847,18 +865,26 @@ def bitwise_and(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def bitwise_or(x, y, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_or`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X | Y
+
+    .. note::
+        ``paddle.bitwise_or`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python
@@ -877,18 +903,26 @@ def bitwise_or(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def bitwise_xor(x, y, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_xor`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X ^\wedge Y
+
+    .. note::
+        ``paddle.bitwise_xor`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python
@@ -906,17 +940,25 @@ def bitwise_xor(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def bitwise_not(x, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_not`` on Tensor ``X``.
+
+    .. math::
+        Out = \sim X
+
+    .. note::
+        ``paddle.bitwise_not`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x(Tensor):  ${x_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_not`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python
@@ -937,7 +979,7 @@ def bitwise_not(x, out=None, name=None):
 @templatedoc()
 def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     r"""
-    Checks if all :math:`x` and :math:`y` satisfy the condition:
+    Check if all :math:`x` and :math:`y` satisfy the condition:
 
     .. math::
 

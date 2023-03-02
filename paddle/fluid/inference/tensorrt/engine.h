@@ -42,6 +42,8 @@ limitations under the License. */
 #include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
+DECLARE_bool(trt_ibuilder_cache);
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -67,10 +69,14 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
 #if IS_TRT_VERSION_GE(8400)
     case FluidDT::VarType_Type_BOOL:
       return TRT_DT::kBOOL;
+
 #endif
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "unknown fluid datatype in TRT op converter"));
+          "unsupported datatype in TRT op converter, type: %s. "
+          "Boolean type is supported as TRT input/output "
+          "using TensorRT v8.4+.",
+          VarType_Type_Name(type)));
   }
   return TRT_DT::kINT32;
 }
@@ -290,6 +296,9 @@ class TensorRTEngine {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+  // Set the itensor_map_[name] as the network's output, and set its name and
+  // data type.
+  void DeclareOutput(const std::string& name, nvinfer1::DataType dtype);
   void ClearTensorMap() { itensor_map_.clear(); }
 
   void DeleteITensor(const std::string& name, nvinfer1::ITensor* tensor);
@@ -353,7 +362,15 @@ class TensorRTEngine {
   bool WithFp16() {
     bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
     bool support_fp16 = infer_builder_->platformHasFastFp16();
-    return enable_fp16 && support_fp16;
+    // below is consistent with setFlag in engine.cc
+    bool fall_back_fp16 = WithInt8() && !use_dla_;
+    return (enable_fp16 || fall_back_fp16) && support_fp16;
+  }
+
+  bool WithInt8() {
+    bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
+    bool support_int8 = infer_builder_->platformHasFastInt8();
+    return enable_int8 && support_int8;
   }
 
   int GetDeviceId() { return device_id_; }
@@ -679,16 +696,6 @@ class TensorRTEngine {
   std::vector<std::unique_ptr<nvinfer1::IPluginV2IOExt>> owned_plugin_v2ioext_;
 
   // TensorRT related internal members
-  template <typename T>
-  struct Destroyer {
-    void operator()(T* x) {
-      if (x) {
-        x->destroy();
-      }
-    }
-  };
-  template <typename T>
-  using infer_ptr = std::unique_ptr<T, Destroyer<T>>;
   infer_ptr<nvinfer1::IBuilder> infer_builder_;
   infer_ptr<nvinfer1::INetworkDefinition> infer_network_;
   infer_ptr<nvinfer1::ICudaEngine> infer_engine_;
@@ -733,6 +740,15 @@ class TRTEngineManager {
   using AllocationPtr = phi::Allocator::AllocationPtr;
 
  public:
+  TRTEngineManager() {
+    // createInferBuilder loads trt kernels and take a few second
+    // But as long as one IBuilder lives, trt kernel will not be unloaded
+    // Hence, a persistent IBuilder to avoid TensorRT unload/reload kernels
+    if (FLAGS_trt_ibuilder_cache) {
+      holder_.reset(createInferBuilder(&NaiveLogger::Global()));
+    }
+  }
+
   bool Empty() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return engines_.size() == 0;
@@ -802,8 +818,9 @@ class TRTEngineManager {
   }
 
   void updateContextMemorySize(size_t mem_size, PredictorID predictor_id) {
-    VLOG(3) << "TensorRT engine context memory size is " << mem_size
-            << " in predictor id " << predictor_id;
+    VLOG(3) << "TensorRT engine context memory size is "
+            << mem_size / 1024.0 / 1024.0 << "MiB in predictor id "
+            << predictor_id;
     bool size_updated{false};
 
     {
@@ -854,15 +871,7 @@ class TRTEngineManager {
   size_t max_ctx_mem_size_{0};
   std::unordered_map<PredictorID, AllocationPtr> context_memorys_;
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
-  // createInferBuilder loads trt kernels and take a few second
-  // But as long as one IBuilder lives, trt kernel will not be unloaded
-  // Hence, a persistent IBuilder to avoid TensorRT unload/reload kernels
-  std::unique_ptr<nvinfer1::IBuilder, std::function<void(nvinfer1::IBuilder*)>>
-      holder{createInferBuilder(&NaiveLogger::Global()), [](auto* ptr) {
-               if (ptr) {
-                 ptr->destroy();
-               }
-             }};
+  infer_ptr<nvinfer1::IBuilder> holder_;
 };
 
 }  // namespace tensorrt

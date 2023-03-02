@@ -66,8 +66,6 @@ class TestTensorRegisterHook(unittest.TestCase):
             self.devices.append("gpu")
 
     def test_hook_for_interior_var(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-
         def run_double_hook_for_interior_var(double_hook, removed=False):
             for device in self.devices:
                 paddle.set_device(device)
@@ -79,6 +77,7 @@ class TestTensorRegisterHook(unittest.TestCase):
 
                 w = x + y
                 w.stop_gradient = False
+                w.retain_grads()
                 helper = w.register_hook(double_hook)
 
                 z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
@@ -115,6 +114,7 @@ class TestTensorRegisterHook(unittest.TestCase):
 
                 w = x + y
                 w.stop_gradient = False
+                w.retain_grads()
                 helper = w.register_hook(print_hook)
 
                 z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
@@ -156,11 +156,8 @@ class TestTensorRegisterHook(unittest.TestCase):
         run_print_hook_for_interior_var(print_hook)
         # register hook and removed
         run_print_hook_for_interior_var(print_hook, removed=True)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_hook_for_leaf_var(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-
         def run_double_hook_for_leaf_var(double_hook, removed=False):
             for device in self.devices:
                 paddle.set_device(device)
@@ -173,6 +170,7 @@ class TestTensorRegisterHook(unittest.TestCase):
 
                 w = x + y
                 w.stop_gradient = False
+                w.retain_grads()
 
                 z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
                 z.stop_gradient = False
@@ -198,11 +196,8 @@ class TestTensorRegisterHook(unittest.TestCase):
         run_double_hook_for_leaf_var(lambda grad: grad * 2)
         # register hook and removed
         run_double_hook_for_leaf_var(lambda grad: grad * 2, removed=True)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_hook_for_accumulated_grad_interior_var(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-
         def run_double_hook_for_accumulated_grad_interior_var(
             double_hook, removed=False
         ):
@@ -213,11 +208,14 @@ class TestTensorRegisterHook(unittest.TestCase):
                 b = paddle.to_tensor([0.0, 0.0, 1.0, 2.0])
                 a.stop_gradient = False
                 b.stop_gradient = False
+                a.retain_grads()
+                b.retain_grads()
 
                 helper1 = a.register_hook(double_hook)
 
                 x = a + b
                 x.stop_gradient = False
+                x.retain_grads()
 
                 helper2 = x.register_hook(double_hook)
 
@@ -258,11 +256,8 @@ class TestTensorRegisterHook(unittest.TestCase):
         run_double_hook_for_accumulated_grad_interior_var(
             lambda grad: grad * 2, removed=True
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_hook_for_accumulated_grad_leaf_var(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-
         def run_double_hook_for_accumulated_grad_leaf_var(
             double_hook, removed=False
         ):
@@ -304,11 +299,8 @@ class TestTensorRegisterHook(unittest.TestCase):
         run_double_hook_for_accumulated_grad_leaf_var(
             lambda grad: grad * 2, removed=True
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_hook_in_model(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-
         def run_double_hook_in_model(
             data, label, hook=None, register=False, remove=False
         ):
@@ -321,8 +313,10 @@ class TestTensorRegisterHook(unittest.TestCase):
 
                 data = paddle.to_tensor(data)
                 label = paddle.to_tensor(label)
+                data.retain_grads()
 
                 ret1, out = net(data, hook, register, remove)
+                ret1.retain_grads()
                 loss = loss_fn(out, label)
                 loss.backward()
 
@@ -357,7 +351,7 @@ class TestTensorRegisterHook(unittest.TestCase):
         )
 
         # compare original value and with hook
-        np.testing.assert_array_equal(ret1_grad, ret1_grad_hook)
+        np.testing.assert_array_equal(ret1_grad * 2, ret1_grad_hook)
         np.testing.assert_array_equal(linear1_w_grad * 2, linear1_w_grad_hook)
         np.testing.assert_array_equal(linear1_b_grad * 2, linear1_b_grad_hook)
 
@@ -365,11 +359,8 @@ class TestTensorRegisterHook(unittest.TestCase):
         np.testing.assert_array_equal(ret1_grad, ret1_grad_rm)
         np.testing.assert_array_equal(linear1_w_grad, linear1_w_grad_rm)
         np.testing.assert_array_equal(linear1_b_grad, linear1_b_grad_rm)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_multiple_hooks_for_interior_var(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-
         def run_multiple_hooks_for_interior_var(
             device, hooks, remove1=False, remove2=False, remove3=False
         ):
@@ -380,7 +371,11 @@ class TestTensorRegisterHook(unittest.TestCase):
             x.stop_gradient = False
             y.stop_gradient = False
 
+            x.retain_grads()
+            y.retain_grads()
+
             w = x + y
+            w.retain_grads()
             w.stop_gradient = False
 
             helpers = []
@@ -449,7 +444,6 @@ class TestTensorRegisterHook(unittest.TestCase):
             np.testing.assert_array_equal(w_grad, z)
             np.testing.assert_array_equal(x_grad, z)
             np.testing.assert_array_equal(y_grad, z)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_hook_in_double_grad(self):
         def double_print_hook(grad):
