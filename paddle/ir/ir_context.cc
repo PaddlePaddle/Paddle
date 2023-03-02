@@ -85,7 +85,6 @@ class IrContextImpl {
 
   // Cached AbstractType instances.
   std::unordered_map<TypeId, AbstractType *> registed_abstract_types_;
-
   ir::SpinLock registed_abstract_types_lock_;
 
   // TypeStorage uniquer and cache instances.
@@ -93,12 +92,15 @@ class IrContextImpl {
 
   // The dialcet registered in the context.
   std::unordered_map<std::string, Dialect *> registed_dialect_;
-
   ir::SpinLock registed_dialect_lock_;
 
-  // Some built-in types.
+  // Cache some built-in type objects.
+  Float16Type fp16_type;
   Float32Type fp32_type;
+  Float64Type fp64_type;
+  Int16Type int16_type;
   Int32Type int32_type;
+  Int64Type int64_type;
 
   ir::SpinLock destructor_lock_;
 };
@@ -113,8 +115,12 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   GetOrRegisterDialect<BuiltinDialect>();
   VLOG(4) << "==============================================";
 
+  impl_->fp16_type = TypeManager::get<Float16Type>(this);
   impl_->fp32_type = TypeManager::get<Float32Type>(this);
+  impl_->fp64_type = TypeManager::get<Float64Type>(this);
+  impl_->int16_type = TypeManager::get<Int16Type>(this);
   impl_->int32_type = TypeManager::get<Int32Type>(this);
+  impl_->int64_type = TypeManager::get<Int64Type>(this);
 }
 
 void IrContext::RegisterAbstractType(ir::TypeId type_id,
@@ -173,8 +179,16 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
   }
 }
 
+Float16Type Float16Type::get(IrContext *ctx) { return ctx->impl().fp16_type; }
+
 Float32Type Float32Type::get(IrContext *ctx) { return ctx->impl().fp32_type; }
 
+Float64Type Float64Type::get(IrContext *ctx) { return ctx->impl().fp64_type; }
+
+Int16Type Int16Type::get(IrContext *ctx) { return ctx->impl().int16_type; }
+
 Int32Type Int32Type::get(IrContext *ctx) { return ctx->impl().int32_type; }
+
+Int64Type Int64Type::get(IrContext *ctx) { return ctx->impl().int64_type; }
 
 }  // namespace ir

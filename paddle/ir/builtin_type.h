@@ -14,13 +14,16 @@
 
 #pragma once
 
+#include "paddle/ir/builtin_type_storage.h"
 #include "paddle/ir/type.h"
 
 namespace ir {
 ///
 /// \brief This macro is used to get a list of all built-in types in this file.
 ///
-#define GET_BUILT_IN_TYPE_LIST ir::Float32Type, ir::Int32Type
+#define GET_BUILT_IN_TYPE_LIST                                      \
+  ir::Float16Type, ir::Float32Type, ir::Float64Type, ir::Int16Type, \
+      ir::Int32Type, ir::Int64Type, ir::DenseTensorType
 
 ///
 /// \brief Definitions of built-in type classes. The built-in type object get
@@ -30,6 +33,15 @@ namespace ir {
 ///   Type fp32 = Float32Type::get(ctx);
 /// \endcode
 ///
+class Float16Type : public ir::Type {
+ public:
+  using Type::Type;
+
+  DECLARE_TYPE_UTILITY_FUNCTOR(Float16Type, ir::TypeStorage);
+
+  static Float16Type get(ir::IrContext *context);
+};
+
 class Float32Type : public ir::Type {
  public:
   using Type::Type;
@@ -39,6 +51,24 @@ class Float32Type : public ir::Type {
   static Float32Type get(ir::IrContext *context);
 };
 
+class Float64Type : public ir::Type {
+ public:
+  using Type::Type;
+
+  DECLARE_TYPE_UTILITY_FUNCTOR(Float64Type, ir::TypeStorage);
+
+  static Float64Type get(ir::IrContext *context);
+};
+
+class Int16Type : public ir::Type {
+ public:
+  using Type::Type;
+
+  DECLARE_TYPE_UTILITY_FUNCTOR(Int16Type, ir::TypeStorage);
+
+  static Int16Type get(ir::IrContext *context);
+};
+
 class Int32Type : public ir::Type {
  public:
   using Type::Type;
@@ -46,6 +76,22 @@ class Int32Type : public ir::Type {
   DECLARE_TYPE_UTILITY_FUNCTOR(Int32Type, ir::TypeStorage);
 
   static Int32Type get(ir::IrContext *context);
+};
+
+class Int64Type : public ir::Type {
+ public:
+  using Type::Type;
+
+  DECLARE_TYPE_UTILITY_FUNCTOR(Int64Type, ir::TypeStorage);
+
+  static Int64Type get(ir::IrContext *context);
+};
+
+class DenseTensorType : public ir::Type {
+ public:
+  using Type::Type;
+
+  DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
 };
 
 }  // namespace ir

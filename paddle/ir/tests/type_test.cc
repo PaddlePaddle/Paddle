@@ -70,12 +70,22 @@ TEST(type_test, type_base) {
 }
 
 TEST(type_test, built_in_type) {
-  // Test 1: Test the built-in type of IrContext.
+  // Test the interfaces of class Type: judgment, type_id, abstract_type,
+  // classof.
   ir::IrContext *ctx = ir::IrContext::Instance();
-  ir::Type fp32_1 = ir::Float32Type::get(ctx);
 
-  // Test 2: Test the interfaces of class Type: judgment, type_id,
-  // abstract_type, classof.
+  // Test 1: Test the parameterless built-in type of IrContext.
+  ir::Type fp16_1 = ir::Float16Type::get(ctx);
+  ir::Type fp16_2 = ir::Float16Type::get(ctx);
+  EXPECT_EQ(fp16_1 == fp16_2, 1);
+  EXPECT_EQ(fp16_1 != fp16_2, 0);
+  EXPECT_EQ(fp16_1.type_id() == fp16_2.type_id(), 1);
+  EXPECT_EQ(&fp16_1.abstract_type() ==
+                &ir::AbstractType::lookup(fp16_1.type_id(), ctx),
+            1);
+  EXPECT_EQ(ir::Float16Type::classof(fp16_1), 1);
+
+  ir::Type fp32_1 = ir::Float32Type::get(ctx);
   ir::Type fp32_2 = ir::Float32Type::get(ctx);
   EXPECT_EQ(fp32_1 == fp32_2, 1);
   EXPECT_EQ(fp32_1 != fp32_2, 0);
@@ -85,6 +95,25 @@ TEST(type_test, built_in_type) {
             1);
   EXPECT_EQ(ir::Float32Type::classof(fp32_1), 1);
 
+  ir::Type fp64_1 = ir::Float64Type::get(ctx);
+  ir::Type fp64_2 = ir::Float64Type::get(ctx);
+  EXPECT_EQ(fp64_1 == fp64_2, 1);
+  EXPECT_EQ(fp64_1 != fp64_2, 0);
+  EXPECT_EQ(fp64_1.type_id() == fp64_2.type_id(), 1);
+  EXPECT_EQ(&fp64_1.abstract_type() ==
+                &ir::AbstractType::lookup(fp64_1.type_id(), ctx),
+            1);
+  EXPECT_EQ(ir::Float64Type::classof(fp64_1), 1);
+
+  ir::Type int16_1 = ir::Int16Type::get(ctx);
+  ir::Type int16_2 = ir::Int16Type::get(ctx);
+  EXPECT_EQ(int16_1 == int16_2, 1);
+  EXPECT_EQ(int16_1.type_id() == int16_2.type_id(), 1);
+  EXPECT_EQ(&int16_1.abstract_type() ==
+                &ir::AbstractType::lookup(int16_1.type_id(), ctx),
+            1);
+  EXPECT_EQ(ir::Int16Type::classof(int16_1), 1);
+
   ir::Type int32_1 = ir::Int32Type::get(ctx);
   ir::Type int32_2 = ir::Int32Type::get(ctx);
   EXPECT_EQ(int32_1 == int32_2, 1);
@@ -93,6 +122,33 @@ TEST(type_test, built_in_type) {
                 &ir::AbstractType::lookup(int32_1.type_id(), ctx),
             1);
   EXPECT_EQ(ir::Int32Type::classof(int32_1), 1);
+
+  ir::Type int64_1 = ir::Int64Type::get(ctx);
+  ir::Type int64_2 = ir::Int64Type::get(ctx);
+  EXPECT_EQ(int64_1 == int64_2, 1);
+  EXPECT_EQ(int64_1.type_id() == int64_2.type_id(), 1);
+  EXPECT_EQ(&int64_1.abstract_type() ==
+                &ir::AbstractType::lookup(int64_1.type_id(), ctx),
+            1);
+  EXPECT_EQ(ir::Int64Type::classof(int64_1), 1);
+
+  // Test 2: Test the parameteric built-in type of IrContext.
+  ir::DenseTensorTypeStorage::Dim dims = {1, 2, 3};
+  ir::DataLayout data_layout = ir::DataLayout::NCHW;
+  ir::DenseTensorTypeStorage::LoD lod = {{1, 2, 3}, {4, 5, 6}};
+  size_t offset = 0;
+
+  ir::Type lod_tensor_1 =
+      ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, offset);
+  ir::Type lod_tensor_2 =
+      ir::DenseTensorType::get(ctx, fp32_2, dims, data_layout, lod, offset);
+  ir::Type lod_tensor_3 =
+      ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, 2);
+
+  EXPECT_EQ(lod_tensor_1 == lod_tensor_2, 1);
+  EXPECT_EQ(lod_tensor_1 != lod_tensor_3, 1);
+  EXPECT_EQ(lod_tensor_1.type_id() == lod_tensor_2.type_id(), 1);
+  EXPECT_EQ(ir::DenseTensorType::classof(lod_tensor_1), 1);
 }
 
 // Customize a parameterized TypeStorage IntegerTypeStorage.
