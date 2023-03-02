@@ -37,15 +37,19 @@ class Type {
   Type &operator=(const Type &other) = default;
 
   ///
-  /// \brief Comparison operations.
+  /// \brief Some operators are overloaded.
   ///
   bool operator==(Type other) const { return storage_ == other.storage_; }
+
   bool operator!=(Type other) const { return storage_ != other.storage_; }
 
   explicit operator bool() const { return storage_; }
 
   bool operator!() const { return storage_ == nullptr; }
 
+  ///
+  /// \brief Some type attribute acquisition interfaces.
+  ///
   TypeId type_id() { return storage_->abstract_type().type_id(); }
 
   const AbstractType &abstract_type() { return storage_->abstract_type(); }
@@ -55,6 +59,11 @@ class Type {
   const Dialect &dialect() const { return storage_->abstract_type().dialect(); }
 
   IrContext *ir_context() const;
+
+  ///
+  /// \brief Methods for type judgment and query.
+  ///
+  static bool classof(Type) { return true; }
 
   ///
   /// \brief Enable hashing Type.
