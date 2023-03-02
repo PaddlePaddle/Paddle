@@ -60,70 +60,53 @@ class TestAccuracyOpFp32(TestAccuracyOp):
         self.check_output()
 
 
-def create_test_fp16_class(parent):
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
-    class TestAccuracyOpFp16(parent):
-        def init_dtype(self):
-            self.dtype = np.float16
+class TestAccuracyOpFp16(TestAccuracyOp):
+    def init_dtype(self):
+        self.dtype = np.float16
 
-        def test_check_output(self):
-            self.check_output(atol=1e-3)
-
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
-    TestAccuracyOpFp16.__name__ = cls_name
-    globals()[cls_name] = TestAccuracyOpFp16
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
 
 
-def create_test_bf16_class(parent):
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-        "core is not compiled with CUDA and not support the bfloat16",
-    )
-    class TestAccuracyOpBf16(parent):
-        def setUp(self):
-            self.op_type = "accuracy"
-            self.init_dtype()
-            n = 8192
-            infer = np.random.random((n, 1)).astype(np.float32)
-            indices = np.random.randint(0, 2, (n, 1)).astype('int64')
-            label = np.random.randint(0, 2, (n, 1)).astype('int64')
-            self.inputs = {
-                'Out': convert_float_to_uint16(infer),
-                'Indices': indices,
-                "Label": label,
-            }
-            num_correct = 0
-            for rowid in range(n):
-                for ele in indices[rowid]:
-                    if ele == label[rowid]:
-                        num_correct += 1
-                        break
-            self.outputs = {
-                'Accuracy': convert_float_to_uint16(
-                    np.array([num_correct / float(n)]).astype(np.float32)
-                ),
-                'Correct': np.array([num_correct]).astype("int32"),
-                'Total': np.array([n]).astype("int32"),
-            }
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestAccuracyOpBf16(OpTest):
+    def setUp(self):
+        self.op_type = "accuracy"
+        self.init_dtype()
+        n = 8192
+        infer = np.random.random((n, 1)).astype(np.float32)
+        indices = np.random.randint(0, 2, (n, 1)).astype('int64')
+        label = np.random.randint(0, 2, (n, 1)).astype('int64')
+        self.inputs = {
+            'Out': convert_float_to_uint16(infer),
+            'Indices': indices,
+            "Label": label,
+        }
+        num_correct = 0
+        for rowid in range(n):
+            for ele in indices[rowid]:
+                if ele == label[rowid]:
+                    num_correct += 1
+                    break
+        self.outputs = {
+            'Accuracy': convert_float_to_uint16(
+                np.array([num_correct / float(n)]).astype(np.float32)
+            ),
+            'Correct': np.array([num_correct]).astype("int32"),
+            'Total': np.array([n]).astype("int32"),
+        }
 
-        def init_dtype(self):
-            self.dtype = np.uint16
+    def init_dtype(self):
+        self.dtype = np.uint16
 
-        def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
-                self.check_output_with_place(place, atol=1e-2)
-
-    cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
-    TestAccuracyOpBf16.__name__ = cls_name
-    globals()[cls_name] = TestAccuracyOpBf16
-
-
-create_test_bf16_class(OpTest)
-create_test_fp16_class(TestAccuracyOp)
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2)
 
 
 class TestAccuracyOpError(unittest.TestCase):
