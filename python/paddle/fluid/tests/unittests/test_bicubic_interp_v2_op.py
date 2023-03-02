@@ -331,7 +331,7 @@ class TestBicubicInterpCase6(TestBicubicInterpOp):
         self.align_corners = False
 
 
-class TestNearestInterpOpFP16(OpTest):
+class TestBicubicInterpOpFP16(OpTest):
     def setUp(self):
         self.python_api = bicubic_interp_test
         self.out_size = None
@@ -425,7 +425,7 @@ class TestNearestInterpOpFP16(OpTest):
         self.align_corners = True
 
 
-class TestBicubicInterpCase1FP16(TestNearestInterpOpFP16):
+class TestBicubicInterpCase1FP16(TestBicubicInterpOpFP16):
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [4, 1, 7, 8]
@@ -436,7 +436,7 @@ class TestBicubicInterpCase1FP16(TestNearestInterpOpFP16):
 
 
 # this case will cause accuracy loss （backward:0.008773442)
-# class TestBicubicInterpCase2FP16(TestNearestInterpOpFP16):
+# class TestBicubicInterpCase2FP16(TestBicubicInterpOpFP16):
 #     def init_test_case(self):
 #         self.interp_method = 'bicubic'
 #         self.input_shape = [3, 3, 9, 6]
@@ -446,7 +446,7 @@ class TestBicubicInterpCase1FP16(TestNearestInterpOpFP16):
 #         self.align_corners = True
 
 
-class TestBicubicInterpCase3FP16(TestNearestInterpOpFP16):
+class TestBicubicInterpCase3FP16(TestBicubicInterpOpFP16):
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [1, 1, 32, 64]
@@ -456,7 +456,7 @@ class TestBicubicInterpCase3FP16(TestNearestInterpOpFP16):
         self.align_corners = False
 
 
-class TestBicubicInterpCase4FP16(TestNearestInterpOpFP16):
+class TestBicubicInterpCase4FP16(TestBicubicInterpOpFP16):
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [4, 1, 7, 8]
@@ -467,7 +467,7 @@ class TestBicubicInterpCase4FP16(TestNearestInterpOpFP16):
         self.align_corners = True
 
 
-class TestBicubicInterpCase5FP16(TestNearestInterpOpFP16):
+class TestBicubicInterpCase5FP16(TestBicubicInterpOpFP16):
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [3, 3, 9, 6]
@@ -478,7 +478,7 @@ class TestBicubicInterpCase5FP16(TestNearestInterpOpFP16):
         self.align_corners = False
 
 
-class TestBicubicInterpCase6FP16(TestNearestInterpOpFP16):
+class TestBicubicInterpCase6FP16(TestBicubicInterpOpFP16):
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [1, 1, 32, 64]
@@ -494,7 +494,7 @@ class TestBicubicInterpCase6FP16(TestNearestInterpOpFP16):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestNearestInterpOpBF16(OpTest):
+class TestBicubicInterpOpBF16(OpTest):
     def setUp(self):
         self.python_api = bicubic_interp_test
         self.out_size = None
@@ -593,7 +593,7 @@ class TestNearestInterpOpBF16(OpTest):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestBicubicInterpCase1BF16(TestNearestInterpOpBF16):
+class TestBicubicInterpCase1BF16(TestBicubicInterpOpBF16):
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [4, 1, 7, 8]
@@ -608,7 +608,7 @@ class TestBicubicInterpCase1BF16(TestNearestInterpOpBF16):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestBicubicInterpCase2BF16(TestNearestInterpOpBF16):
+class TestBicubicInterpCase2BF16(TestBicubicInterpOpBF16):
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [3, 3, 9, 6]
@@ -623,7 +623,7 @@ class TestBicubicInterpCase2BF16(TestNearestInterpOpBF16):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestBicubicInterpCase3BF16(TestNearestInterpOpBF16):
+class TestBicubicInterpCase3BF16(TestBicubicInterpOpBF16):
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [1, 1, 32, 64]
@@ -638,7 +638,7 @@ class TestBicubicInterpCase3BF16(TestNearestInterpOpBF16):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestBicubicInterpCase4BF16(TestNearestInterpOpBF16):
+class TestBicubicInterpCase4BF16(TestBicubicInterpOpBF16):
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [4, 1, 7, 8]
@@ -654,7 +654,7 @@ class TestBicubicInterpCase4BF16(TestNearestInterpOpBF16):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestBicubicInterpCase5BF16(TestNearestInterpOpBF16):
+class TestBicubicInterpCase5BF16(TestBicubicInterpOpBF16):
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [3, 3, 9, 6]
@@ -670,7 +670,7 @@ class TestBicubicInterpCase5BF16(TestNearestInterpOpBF16):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestBicubicInterpCase6BF16(TestNearestInterpOpBF16):
+class TestBicubicInterpCase6BF16(TestBicubicInterpOpBF16):
     def init_test_case(self):
         self.interp_method = 'bicubic'
         self.input_shape = [1, 1, 32, 64]
