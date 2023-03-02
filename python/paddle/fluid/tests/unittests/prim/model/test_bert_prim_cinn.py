@@ -58,7 +58,7 @@ def train(to_static, enable_prim, enable_cinn):
         worker_init=None,
     )
 
-    bert = Bert()
+    bert = Bert(to_static)
     criterion = BertPretrainingCriterion()
     if to_static:
         # input_sepc = [
@@ -72,9 +72,6 @@ def train(to_static, enable_prim, enable_cinn):
         build_strategy = paddle.static.BuildStrategy()
         if enable_cinn:
             build_strategy.build_cinn_pass = True
-        bert = paddle.jit.to_static(
-            bert, input_sepc, build_strategy=build_strategy
-        )
 
     optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
 

@@ -187,7 +187,7 @@ def avg_pool1d(
     Args:
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. where `N` is batch size, `C` is the number of channels,
-                          `L` is the length of the feature. The data type is float32 or float64.
+                          `L` is the length of the feature. The data type is float16, float32 or float64.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain an integer.
         stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
@@ -223,7 +223,9 @@ def avg_pool1d(
     """NCL to NCHW"""
     data_format = "NCHW"
     if not in_dynamic_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool1d')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'avg_pool1d'
+        )
     _check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = utils.convert_to_list(kernel_size, 1, 'kernel_size')
@@ -511,7 +513,9 @@ def avg_pool3d(
     else:
         op_type = "pool3d"
         helper = LayerHelper(op_type, **locals())
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'avg_pool3d'
+        )
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Out": pool_out}

@@ -52,6 +52,30 @@ void ArangeKernel(const Context& dev_ctx,
   Range<T><<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
 }
 
+template <typename T, typename Context>
+void ArangeNullaryKernel(const Context& dev_ctx,
+                         const T start_value,
+                         const T end_value,
+                         const T step_value,
+                         DenseTensor* out) {
+  int64_t size = 0;
+  phi::funcs::GetSize(start_value, end_value, step_value, &size);
+  out->Resize(phi::make_ddim({size}));
+  T* out_data = dev_ctx.template Alloc<T>(out);
+
+  auto stream = dev_ctx.stream();
+  int64_t block = std::min(size, static_cast<int64_t>(256));
+  if (block == 0) {
+    return;
+  }
+  int64_t grid = (size + block - 1) / block;
+  Range<T><<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
+}
+
+template decltype(ArangeNullaryKernel<int64_t, phi::GPUContext>)
+    ArangeNullaryKernel;
+template decltype(ArangeNullaryKernel<int, phi::GPUContext>)
+    ArangeNullaryKernel;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(

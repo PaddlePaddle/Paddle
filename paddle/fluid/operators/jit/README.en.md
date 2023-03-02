@@ -34,7 +34,7 @@ PaddlePaddle/Paddle/paddle/fluid/
             └── ...
 ```
 
-All basical definations of jit kernels are addressed in `paddle/fluid/operators/jit` including these three key folders `refer`, `gen`, `more`. There is only one unique name for each kernel while may have seraval implementations with same functionality.
+All basical definitions of jit kernels are addressed in `paddle/fluid/operators/jit` including these three key folders `refer`, `gen`, `more`. There is only one unique name for each kernel while may have seraval implementations with same functionality.
 
 - `refer`: Each kernel must have one reference implementation on CPU, and it should only focus on the correctness and should not depends on any third-party libraries.
 - `gen`: The code generated should be kept here. They should be designed focusing on the best performance, which depends on Xbyak.
