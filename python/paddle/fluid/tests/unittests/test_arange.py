@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,6 +67,19 @@ class TestFloa16ArangeOp(TestArangeOp):
         self.check_output()
 
 class TestBFloat16ArangeOp(TestArangeOp):
+    def setUp(self):
+        self.op_type = "range"
+        self.init_config()
+        self.inputs = {
+            'Start': convert_float_to_uint16(np.array([self.case[0]]).astype(np.float32)),
+            'End': convert_float_to_uint16(np.array([self.case[1]]).astype(np.float32)),
+            'Step': convert_float_to_uint16(np.array([self.case[2]]).astype(np.float32)),
+        }
+
+        self.outputs = {
+            'Out': convert_float_to_uint16(np.arange(self.case[0], self.case[1], self.case[2]))
+        }
+
     def init_config(self):
         self.dtype = np.uint16
         self.python_api = arange_wrapper
@@ -78,16 +91,7 @@ class TestBFloat16ArangeOp(TestArangeOp):
         "core is not compiled with CUDA and not support the bfloat16",
     )
     def test_check_output(self):
-        self.inputs = {
-            'Start': convert_float_to_uint16(np.array([self.case[0]]).astype(np.float32)),
-            'End': convert_float_to_uint16(np.array([self.case[1]]).astype(np.float32)),
-            'Step': convert_float_to_uint16(np.array([self.case[2]]).astype(np.float32)),
-        }
-
-        self.outputs = {
-            'Out': convert_float_to_uint16(np.arange(self.case[0], self.case[1], self.case[2]))
-        }
-        self.check_output(atol=1e-2)
+        self.check_output()
 
 class TestInt32ArangeOp(TestArangeOp):
     def init_config(self):
@@ -165,3 +169,4 @@ class TestArangeImperative(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

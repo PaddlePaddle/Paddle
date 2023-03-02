@@ -28,10 +28,7 @@ namespace phi {
 
 template <typename T>
 __global__ void Range(T start, T step, int64_t size, T* out) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType mptype_start = static_cast<MPType>(start);
-  MPType mptype_step = static_cast<MPType>(step);
-  CUDA_KERNEL_LOOP(index, size) { out[index] = static_cast<T>(mptype_start + mptype_step * index); }
+  CUDA_KERNEL_LOOP(index, size) { out[index] = start + step * index; }
 }
 
 template <typename T, typename Context>
@@ -40,15 +37,16 @@ void ArangeKernel(const Context& dev_ctx,
                   const DenseTensor& end,
                   const DenseTensor& step,
                   DenseTensor* out) {
-  T start_value = GetValue<T, Context>(dev_ctx, start);
-  T end_value = GetValue<T, Context>(dev_ctx, end);
-  T step_value = GetValue<T, Context>(dev_ctx, step);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType start_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
+  MPType end_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, end));
+  MPType step_value = static_cast<MPType>(GetValue<T, Context>(dev_ctx, step));
 
   int64_t size = 0;
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  phi::funcs::GetSize(static_cast<MPType>(start_value), static_cast<MPType>(end_value), static_cast<MPType>(step_value), &size);
+  
+  phi::funcs::GetSize(start_value, end_value, step_value, &size);
   out->Resize(phi::make_ddim({size}));
-  T* out_data = dev_ctx.template Alloc<T>(out);
+  MPType* out_data = dev_ctx.template Alloc<MPType>(out);
 
   auto stream = dev_ctx.stream();
   int64_t block = std::min(size, static_cast<int64_t>(256));
@@ -56,7 +54,7 @@ void ArangeKernel(const Context& dev_ctx,
     return;
   }
   int64_t grid = (size + block - 1) / block;
-  Range<T><<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
+  Range<MPType><<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
 }
 
 }  // namespace phi

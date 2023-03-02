@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -225,6 +225,20 @@ class TestTileOpInt64_t(OpTest):
     def test_check_output(self):
         self.check_output()
 
+class TestTileOpFloat16(OpTest):
+    def setUp(self):
+        self.op_type = "tile"
+        self.dtype = np.float16
+        self.python_api = paddle.tile
+        self.inputs = {
+            'X': np.random.uniform(10, size=(2, 4, 5)).astype(self.dtype)
+        }
+        self.attrs = {'repeat_times': [2, 1, 4]}
+        output = np.tile(self.inputs['X'], (2, 1, 4))
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output()
 
 class TestTileError(unittest.TestCase):
     def test_errors(self):
@@ -383,3 +397,4 @@ class Testfp16TileOp(unittest.TestCase):
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
+
