@@ -145,7 +145,6 @@ class Adamax(Optimizer):
         parameters=None,
         weight_decay=None,
         grad_clip=None,
-        multi_precision=False,
         name=None,
     ):
         assert learning_rate is not None
@@ -169,7 +168,7 @@ class Adamax(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
-        self._multi_precision = multi_precision
+        self._multi_precision = False
         self._master_weights = {}
 
         self._default_dict = {
@@ -191,7 +190,6 @@ class Adamax(Optimizer):
             fill_value=self._beta1,
             shape=[1],
         )
-        self._already_create_accumulater.add(p.name)
 
     def _create_master_weight(self, param):
         if param.name in self._master_weights:

@@ -216,12 +216,9 @@ class TestAdamaxOpMultiPrecison(unittest.TestCase):
 
         model = paddle.nn.Linear(5, 5)
         optimizer = paddle.optimizer.Adamax(
-            0.1,
-            beta1=0.1,
-            parameters=model.parameters(),
-            multi_precision=use_amp,
+            0.1, beta1=0.1, parameters=model.parameters()
         )
-
+        optimizer._multi_precision = use_amp
         for idx in range(2):
             if place == 'gpu' and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
@@ -265,9 +262,8 @@ class TestAdamaxMultiPrecision2_0(unittest.TestCase):
         paddle.set_device('gpu')
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
-        optimizer = paddle.optimizer.Adamax(
-            0.5, parameters=model.parameters(), multi_precision=mp
-        )
+        optimizer = paddle.optimizer.Adamax(0.5, parameters=model.parameters())
+        optimizer._multi_precision = mp
         if use_amp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -297,8 +293,8 @@ class TestAdamaxMultiPrecision2_0(unittest.TestCase):
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.optimizer.Adamax(0.1, multi_precision=mp)
-
+        optimizer = paddle.optimizer.Adamax(0.1)
+        optimizer._multi_precision = mp
         if use_amp:
             optimizer = paddle.static.amp.decorate(
                 optimizer,
@@ -373,10 +369,9 @@ class TestAdamaxMultiPrecision1_0(unittest.TestCase):
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.fluid.optimizer.Adamax(
-            learning_rate=0.001,
-            parameter_list=model.parameters(),
-            multi_precision=mp,
+            learning_rate=0.001, parameter_list=model.parameters()
         )
+        optimizer._multi_precision = mp
         if use_amp:
             model = paddle.amp.decorate(models=model, level='O2')
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -405,10 +400,8 @@ class TestAdamaxMultiPrecision1_0(unittest.TestCase):
         exe = paddle.static.Executor('gpu')
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
-        optimizer = paddle.fluid.optimizer.Adamax(
-            learning_rate=0.001, multi_precision=mp
-        )
-
+        optimizer = paddle.fluid.optimizer.Adamax(learning_rate=0.001)
+        optimizer._multi_precision = mp
         if use_amp:
             optimizer = paddle.static.amp.decorate(
                 optimizer,

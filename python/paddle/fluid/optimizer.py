@@ -2603,7 +2603,6 @@ class AdamaxOptimizer(Optimizer):
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
-        multi_precision (bool, optional): Whether to use multi-precision during weight updating.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -2653,7 +2652,6 @@ class AdamaxOptimizer(Optimizer):
         parameter_list=None,
         regularization=None,
         grad_clip=None,
-        multi_precision=False,
         name=None,
     ):
         assert learning_rate is not None
@@ -2671,7 +2669,7 @@ class AdamaxOptimizer(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
-        self._multi_precision = multi_precision
+        self._multi_precision = False
         self._master_weights = {}
 
     def _create_master_weight(self, param):
