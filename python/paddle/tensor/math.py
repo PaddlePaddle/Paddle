@@ -5100,7 +5100,7 @@ def vander(x, N=None, increasing=False, name=None):
         x,
         'x',
         ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
-        'vander'
+        'vander',
     )
     if x.dim() != 1:
         raise ValueError(
