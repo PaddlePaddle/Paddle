@@ -179,5 +179,3 @@ PD_REGISTER_KERNEL(dist,
                    phi::DistKernel,
                    float,
                    double， phi::dtype::float16) {}
-
-aaa
