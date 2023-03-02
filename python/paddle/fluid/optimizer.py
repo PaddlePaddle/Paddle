@@ -2030,7 +2030,6 @@ class AdagradOptimizer(Optimizer):
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
-        multi_precision (bool, optional): Whether to use multi-precision during weight updating.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -2067,7 +2066,6 @@ class AdagradOptimizer(Optimizer):
         parameter_list=None,
         regularization=None,
         grad_clip=None,
-        multi_precision=False,
         name=None,
         initial_accumulator_value=0.0,
     ):
@@ -2081,7 +2079,7 @@ class AdagradOptimizer(Optimizer):
             name=name,
         )
         self.type = "adagrad"
-        self._multi_precision = multi_precision
+        self._multi_precision = False
         self._epsilon = epsilon
         self.initial_accumulator_value = initial_accumulator_value
         self._master_weights = {}
