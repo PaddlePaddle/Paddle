@@ -5097,20 +5097,23 @@ def vander(x, N=None, increasing=False, name=None):
             #  [1., 3., 9.]]
     """
     check_variable_and_dtype(
-            x, 'x', ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'vander'
+            x,
+            'x',
+            ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+            'vander'
         )
     if x.dim() != 1:
         raise ValueError(
-                "The input of x is expected to be a 1-D Tensor."
-                "But now the dims of Input(X) is %d."
-                % x.dim())
-    
+            "The input of x is expected to be a 1-D Tensor."
+            "But now the dims of Input(X) is %d."% x.dim()
+        )
+
     if N is None:
         N = x.shape[0]
 
     if N < 0:
         raise ValueError("N must be non-negative.")
-    
+
     res = paddle.empty([x.shape[0], N], dtype=x.dtype)
 
     if N > 0:
