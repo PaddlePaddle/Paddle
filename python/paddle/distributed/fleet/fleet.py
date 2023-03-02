@@ -17,7 +17,6 @@ import os
 
 import paddle
 from paddle.fluid import compiler
-from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.ir import apply_build_strategy
 from paddle.fluid.wrapped_decorator import wrap_decorator
@@ -236,6 +235,7 @@ class Fleet:
                 fleet.init(log_level = "DEBUG")
 
         """
+        from paddle.distributed import parallel_helper
 
         set_log_level(log_level)
 

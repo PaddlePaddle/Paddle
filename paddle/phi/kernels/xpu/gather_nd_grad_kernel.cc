@@ -57,8 +57,6 @@ void GatherNdGradKernel(const Context &ctx,
                                    phi::DataType::INT32,
                                    phi::DataType::INT64));
 
-  int index_size =
-      static_cast<int>(index.dims().size() == 0 ? 1 : index.dims()[0]);
   auto x_shape = phi::vectorize<int64_t>(x_grad->dims());
   auto index_shape = phi::vectorize<int64_t>(index.dims());
   if (index_shape.size() == 1) {
@@ -70,6 +68,7 @@ void GatherNdGradKernel(const Context &ctx,
   DenseTensor index_cpu(index.type());
   phi::Copy(ctx, index, phi::CPUPlace(), false, &index_cpu);
 
+  int index_size = static_cast<int>(index.numel());
   if (index_type == phi::DataType::INT32) {
     auto index_data = const_cast<int *>(index.data<int>());
     xpu::VectorParam<int> index_vec{

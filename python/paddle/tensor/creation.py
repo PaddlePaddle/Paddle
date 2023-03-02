@@ -827,6 +827,7 @@ def full_like(x, fill_value, dtype=None, name=None):
                 'int16',
                 'int32',
                 'int64',
+                'uint16',
             ],
             'full_like',
         )
@@ -841,6 +842,7 @@ def full_like(x, fill_value, dtype=None, name=None):
                 'int16',
                 'int32',
                 'int64',
+                'uint16',
             ],
             'full_like/zeros_like/ones_like',
         )
@@ -1498,7 +1500,7 @@ def diagflat(x, offset=0, name=None):
     If ``offset`` < 0, it is subdiagonal.
 
     Args:
-        x (Tensor): The input tensor. It can be any shape. Its data type should be float32, float64, int32, int64.
+        x (Tensor): The input tensor. It can be any shape. Its data type should be float16, float32, float64, int32, int64.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal. Default: 0 (main diagonal).
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -1577,7 +1579,10 @@ def diagflat(x, offset=0, name=None):
         padding_value = 0
         check_type(x, 'x', (Variable), 'diagflat')
         check_dtype(
-            x.dtype, 'x', ['float32', 'float64', 'int32', 'int64'], 'diagflat'
+            x.dtype,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'diagflat',
         )
         check_type(offset, 'offset', (int), 'diagflat')
 
@@ -1627,7 +1632,7 @@ def diag(x, offset=0, padding_value=0, name=None):
     If ``offset`` < 0, it is subdiagonal.
 
     Args:
-        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float32, float64, int32, int64.
+        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal.
         padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. The default value is 0.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1694,7 +1699,7 @@ def diag(x, offset=0, padding_value=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
             'diag_v2',
         )
         check_type(offset, 'offset', (int), 'diag_v2')

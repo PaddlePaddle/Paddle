@@ -293,12 +293,12 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 
 write_cuda_env_config_py(filename='@PADDLE_BINARY_DIR@/python/paddle/cuda_env.py')
 
-def write_distributed_training_mode_py(filename='paddle/incubate/fleet/parameter_server/version.py'):
+def write_distributed_training_mode_py(filename='paddle/incubate/distributed/fleet/parameter_server/version.py'):
     cnt = '''
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 
-from paddle.fluid.incubate.fleet.base.mode import Mode
+from paddle.incubate.distributed.fleet.base import Mode
 
 BUILD_MODE=Mode.%(mode)s
 
@@ -320,7 +320,7 @@ def is_transpiler():
             'mode': 'PSLIB' if '${WITH_PSLIB}' == 'ON' else 'TRANSPILER'
         })
 
-write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/incubate/fleet/parameter_server/version.py')
+write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/incubate/distributed/fleet/parameter_server/version.py')
 
 
 packages=['paddle',
@@ -400,14 +400,9 @@ packages=['paddle',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.contrib.layers',
-          'paddle.fluid.transpiler',
           'paddle.fluid.incubate',
-          'paddle.fluid.incubate.fleet',
+          'paddle.incubate.distributed.fleet',
           'paddle.fluid.incubate.checkpoint',
-          'paddle.fluid.incubate.fleet.base',
-          'paddle.fluid.incubate.fleet.collective',
-          'paddle.fluid.incubate.fleet.utils',
-          'paddle.fluid.incubate.fleet.parameter_server',
           'paddle.amp',
           'paddle.cost_model',
           'paddle.hapi',
@@ -435,10 +430,10 @@ packages=['paddle',
           'paddle.incubate.distributed.models',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
-          'paddle.incubate.fleet.parameter_server',
-          'paddle.incubate.fleet.parameter_server.distribute_transpiler',
-          'paddle.incubate.fleet.parameter_server.pslib',
-          'paddle.incubate.fleet.parameter_server.ir',
+          'paddle.incubate.distributed.fleet.parameter_server',
+          'paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler',
+          'paddle.incubate.distributed.fleet.parameter_server.pslib',
+          'paddle.incubate.distributed.fleet.parameter_server.ir',
           'paddle.quantization',
           'paddle.quantization.quanters',
           'paddle.quantization.observers',
@@ -550,6 +545,10 @@ if not sys.platform.startswith("linux"):
     package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]
     shutil.copy('${GNU_RT_LIB_2}', libs_path)
 
+if len('${FLASHATTN_LIBRARIES}') > 1:
+    package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_LIBRARIES}')]
+    shutil.copy('${FLASHATTN_LIBRARIES}', libs_path)
+
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
     shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
@@ -595,7 +594,7 @@ if '${WITH_CINN}' == 'ON':
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
     if os.path.exists('${PSLIB_VERSION_PY}'):
-        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/incubate/fleet/parameter_server/pslib/')
+        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/incubate/distributed/fleet/parameter_server/pslib/')
     package_data['paddle.libs'] += ['libps' + ext_name]
 
 if '${WITH_MKLDNN}' == 'ON':

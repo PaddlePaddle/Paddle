@@ -43,10 +43,17 @@ else:
         python_version = platform.python_version()
         os.environ["PY_VERSION"] = python_version
     else:
-        if os.getenv("PY_VERSION") != platform.python_version()[:3]:
+        if os.getenv("PY_VERSION") != str(sys.version_info.major) + '.' + str(
+            sys.version_info.minor
+        ):
             raise RuntimeError(
                 "You set PY_VERSION=%s, but your current python environment is %s, you should keep them consistent!"
-                % (os.getenv("PY_VERSION"), platform.python_version()[:3])
+                % (
+                    os.getenv("PY_VERSION"),
+                    str(sys.version_info.major)
+                    + '.'
+                    + str(sys.version_info.minor),
+                )
             )
 
 # check cmake
@@ -572,13 +579,13 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 
 
 def write_parameter_server_version_py(
-    filename='paddle/incubate/fleet/parameter_server/version.py',
+    filename='paddle/incubate/distributed/fleet/parameter_server/version.py',
 ):
     cnt = '''
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 
-from paddle.fluid.incubate.fleet.base.mode import Mode
+from paddle.incubate.distributed.fleet.base import Mode
 
 BUILD_MODE=Mode.%(mode)s
 
@@ -911,6 +918,11 @@ def get_package_data_and_package_dir():
                 shutil.copy(env_dict.get("OPENBLAS_LIB") + '.0', libs_path)
                 package_data['paddle.libs'] += ['libopenblas.so.0']
 
+    if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
+        package_data['paddle.libs'] += [
+            os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
+        ]
+        shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
     if env_dict.get("WITH_LITE") == 'ON':
         shutil.copy(env_dict.get("LITE_SHARED_LIB"), libs_path)
         package_data['paddle.libs'] += [
@@ -966,7 +978,7 @@ def get_package_data_and_package_dir():
             shutil.copy(
                 env_dict.get("PSLIB_VERSION_PY"),
                 paddle_binary_dir
-                + '/python/paddle/incubate/fleet/parameter_server/pslib/',
+                + '/python/paddle/incubate/distributed/fleet/parameter_server/pslib/',
             )
         package_data['paddle.libs'] += ['libps' + ext_suffix]
     if env_dict.get("WITH_MKLDNN") == 'ON':
@@ -1293,14 +1305,9 @@ def get_setup_parameters():
         'paddle.fluid.contrib',
         'paddle.fluid.contrib.extend_optimizer',
         'paddle.fluid.contrib.layers',
-        'paddle.fluid.transpiler',
         'paddle.fluid.incubate',
-        'paddle.fluid.incubate.fleet',
+        'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',
-        'paddle.fluid.incubate.fleet.base',
-        'paddle.fluid.incubate.fleet.collective',
-        'paddle.fluid.incubate.fleet.utils',
-        'paddle.fluid.incubate.fleet.parameter_server',
         'paddle.amp',
         'paddle.cost_model',
         'paddle.hapi',
@@ -1328,10 +1335,10 @@ def get_setup_parameters():
         'paddle.incubate.distributed.models',
         'paddle.incubate.distributed.models.moe',
         'paddle.incubate.distributed.models.moe.gate',
-        'paddle.incubate.fleet.parameter_server',
-        'paddle.incubate.fleet.parameter_server.distribute_transpiler',
-        'paddle.incubate.fleet.parameter_server.ir',
-        'paddle.incubate.fleet.parameter_server.pslib',
+        'paddle.incubate.distributed.fleet.parameter_server',
+        'paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler',
+        'paddle.incubate.distributed.fleet.parameter_server.ir',
+        'paddle.incubate.distributed.fleet.parameter_server.pslib',
         'paddle.quantization',
         'paddle.quantization.quanters',
         'paddle.quantization.observers',
@@ -1457,7 +1464,7 @@ def main():
         filename='{}/python/paddle/cuda_env.py'.format(paddle_binary_dir)
     )
     write_parameter_server_version_py(
-        filename='{}/python/paddle/incubate/fleet/parameter_server/version.py'.format(
+        filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
             paddle_binary_dir
         )
     )

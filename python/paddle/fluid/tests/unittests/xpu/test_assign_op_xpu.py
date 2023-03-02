@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,72 +13,76 @@
 # limitations under the License.
 
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
-import unittest
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 import paddle
 
-'''
-class TestAssignOp(op_test.OpTest):
-    def setUp(self):
-        self.op_type = "assign"
-        x = np.random.random(size=(100, 10)).astype('float32')
-        self.inputs = {'X': x}
-        self.outputs = {'Out': x}
-
-    def test_forward(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_output_with_place(place)
-
-    def test_backward(self):
-        if paddle.is_compiled_with_xpu():
-            place = paddle.XPUPlace(0)
-            self.check_grad_with_place(place, ['X'], 'Out')
+paddle.enable_static()
 
 
-class TestAssignOpWithLoDTensorArray(unittest.TestCase):
-    def test_assign_LoDTensorArray(self):
-        main_program = Program()
-        startup_program = Program()
-        with program_guard(main_program):
-            x = fluid.data(name='x', shape=[100, 10], dtype='float32')
-            x.stop_gradient = False
-            y = fluid.layers.fill_constant(
-                shape=[100, 10], dtype='float32', value=1)
-            z = paddle.add(x=x, y=y)
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-            init_array = paddle.tensor.array_write(x=z, i=i)
-            array = fluid.layers.assign(init_array)
-            sums = paddle.tensor.array_read(array=init_array, i=i)
-            mean = paddle.mean(sums)
-            append_backward(mean)
+class XPUTestAssignOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'assign'
+        self.use_dynamic_create_class = False
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        feed_x = np.random.random(size=(100, 10)).astype('float32')
-        ones = np.ones((100, 10)).astype('float32')
-        feed_add = feed_x + ones
-        res = exe.run(main_program,
-                      feed={'x': feed_x},
-                      fetch_list=[sums.name, x.grad_name])
-        np.testing.assert_allclose(res[0], feed_add)
-        np.testing.assert_allclose(res[1], ones / 1000.0)
+    class TestAssignOPBase(XPUOpTest):
+        def setUp(self):
+            self.place = paddle.XPUPlace(0)
+            self.init_dtype()
+            self.set_case()
+
+        def set_case(self):
+            self.op_type = 'assign'
+            self.init_config()
+
+            x = np.random.random(size=self.input_shape).astype(self.dtype)
+            self.inputs = {'X': x}
+            self.attrs = {}
+            self.outputs = {'Out': x}
+
+        def init_dtype(self):
+            self.dtype = self.in_type
+
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
+
+        def init_config(self):
+            self.input_shape = (2, 5)
+
+    class XPUTestAssign1(TestAssignOPBase):
+        def init_config(self):
+            self.input_shape = [2, 768]
+
+    class XPUTestAssign2(TestAssignOPBase):
+        def init_config(self):
+            self.input_shape = [3, 8, 4096]
+
+    class XPUTestAssign3(TestAssignOPBase):
+        def init_config(self):
+            self.input_shape = [1024]
+
+    class XPUTestAssign4(TestAssignOPBase):
+        def init_config(self):
+            self.input_shape = [2, 2, 255]
 
 
-class TestAssignOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The type of input must be Variable or numpy.ndarray.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.XPUPlace(0))
-            self.assertRaises(TypeError, fluid.layers.assign, x1)
-            x2 = np.array([[2.5, 2.5]], dtype='uint8')
-            self.assertRaises(TypeError, fluid.layers.assign, x2)
-'''
+support_types = get_xpu_op_support_types('assign')
+for stype in support_types:
+    create_test_class(globals(), XPUTestAssignOP, stype)
 
-if __name__ == '__main__':
-    paddle.enable_static()
+if __name__ == "__main__":
     unittest.main()

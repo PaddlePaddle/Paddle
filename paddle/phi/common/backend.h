@@ -210,6 +210,8 @@ inline std::string BackendToString(const Backend& backend) {
       return "KPS";
     case Backend::IPU:
       return "IPU";
+    case Backend::CUSTOM:
+      return "CUSTOM";
     default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);

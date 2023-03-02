@@ -27,10 +27,12 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.dygraph as dygraph
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle.incubate.distributed.fleet.role_maker as role_maker
 from paddle.fluid import compiler
-from paddle.fluid.incubate.fleet.collective import DistributedStrategy, fleet
+from paddle.incubate.distributed.fleet.collective import (
+    DistributedStrategy,
+    fleet,
+)
 
 RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
@@ -77,7 +79,7 @@ class TestDistRunnerBase:
         hogwild_mode=False,
     ):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
         config.sync_mode = sync_mode
         config.runtime_split_send_recv = hogwild_mode
@@ -85,7 +87,7 @@ class TestDistRunnerBase:
         if nccl_comm_num > 1:
             config.nccl_comm_num = nccl_comm_num
         # config.runtime_split_send_recv = True
-        t = fluid.DistributeTranspiler(config=config)
+        t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id=trainer_id,
             program=main_program,
@@ -451,7 +453,7 @@ class TestDistRunnerBase:
             or args.update_method == "nccl2_reduce_layer"
         ):
             # transpile for nccl2
-            config = fluid.DistributeTranspilerConfig()
+            config = paddle.distributed.transpiler.DistributeTranspilerConfig()
             config.mode = "nccl2"
             config.nccl_comm_num = args.nccl_comm_num
             if args.use_hallreduce:
@@ -463,7 +465,9 @@ class TestDistRunnerBase:
                 type(self).__name__,
                 "begin to run transpile on trainer with nccl2 mode",
             )
-            nccl2_t = fluid.DistributeTranspiler(config=config)
+            nccl2_t = paddle.distributed.transpiler.DistributeTranspiler(
+                config=config
+            )
             nccl2_t.transpile(
                 args.trainer_id,
                 program=fluid.default_main_program(),
@@ -666,7 +670,7 @@ class TestParallelDyGraphRunnerBase:
                 or args.update_method == "hccl"
                 or args.update_method == "cncl"
             ):
-                strategy = dygraph.parallel.ParallelStrategy()
+                strategy = paddle.distributed.parallel.ParallelStrategy()
                 strategy.nranks = nranks
                 strategy.local_rank = args.trainer_id
                 strategy.trainer_endpoints = args.endpoints.split(",")
@@ -677,11 +681,11 @@ class TestParallelDyGraphRunnerBase:
                     "begin to prepare context in dygraph with nccl2",
                 )
                 if not args.find_unused_parameters:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, strategy, find_unused_parameters=False
                     )
                 else:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, strategy, find_unused_parameters=True
                     )
                 print_to_err(type(self).__name__, "model built in dygraph")
@@ -689,11 +693,11 @@ class TestParallelDyGraphRunnerBase:
             elif args.update_method == "gloo":
                 paddle.distributed.init_parallel_env()
                 if not args.find_unused_parameters:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, find_unused_parameters=False
                     )
                 else:
-                    model = dygraph.parallel.DataParallel(
+                    model = paddle.DataParallel(
                         model, find_unused_parameters=True
                     )
 

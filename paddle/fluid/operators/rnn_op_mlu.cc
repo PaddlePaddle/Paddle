@@ -11,10 +11,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -97,7 +97,7 @@ class RNNMLUKernel : public framework::OpKernel<T> {
     std::vector<int> seq_len_vec(batch_size, seq_len);
     if (has_seq_length) {  // set seq_len if no padding, otherwise seq_len for
                            // each element.
-      seq_len_vec = operators::GetDataFromTensor(sequence_length);
+      seq_len_vec = phi::GetVectorFromTensor(sequence_length);
     }
     cnnlDirectionMode_t direction =
         is_bidirec ? CNNL_RNN_BIDIRECTIONAL : CNNL_RNN_UNIDIRECTIONAL;
@@ -480,7 +480,7 @@ class RNNMLUGradKernel : public framework::OpKernel<T> {
 
     std::vector<int> seq_len_vec(batch_size, seq_len);
     if (has_seq_length) {
-      seq_len_vec = operators::GetDataFromTensor(sequence_length);
+      seq_len_vec = phi::GetVectorFromTensor(sequence_length);
     }
     cnnlDirectionMode_t direction =
         is_bidirec ? CNNL_RNN_BIDIRECTIONAL : CNNL_RNN_UNIDIRECTIONAL;
