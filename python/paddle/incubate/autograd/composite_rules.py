@@ -128,6 +128,13 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     out = (x - mean(x)) / sqrt(var + epsilon))
     var = mean((x-mean(x))^2)
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        print("Running layer_norm in amp")
+        is_amp = True
+        x = cast(x, "float32")
 
     axis = tuple(range(begin_norm_axis, len(x.shape)))
     mean_ = mean(x, axis=axis, keepdim=True)
@@ -147,6 +154,9 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
 
     mean_ = reshape(mean_, [-1])
     variance = reshape(variance, [-1])
+    if is_amp:
+        y = cast(y, "float16")
+
     return out, mean_, variance
 
 
