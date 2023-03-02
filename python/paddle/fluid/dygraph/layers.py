@@ -13,21 +13,17 @@
 # limitations under the License.
 
 import collections
-import contextlib
-import sys
 import numpy as np
 import re
 import copy
 import weakref
 import warnings
-from copy import deepcopy
 import inspect
 
 import paddle
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
 
-from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
@@ -38,18 +34,16 @@ from .layer_hooks import (
 )
 from .base import (
     program_desc_tracing_guard,
-    param_guard,
     in_declarative_mode,
     _convert_into_variable,
 )
 from paddle.fluid import framework
-from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import (
     convert_np_dtype_to_dtype_,
     in_dygraph_mode,
 )
-from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.framework import Program
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
@@ -968,6 +962,8 @@ class Layer:
         pass
 
     def _dygraph_call_func(self, *inputs, **kwargs):
+        from paddle.distributed import parallel_helper
+
         for forward_pre_hook in self._forward_pre_hooks.values():
             hook_result = forward_pre_hook(self, inputs)
             if hook_result is not None:
