@@ -47,7 +47,6 @@ __global__ void set_zero_cuda_kernel(const int64_t N,
   *(out + offset) = 0;
 }
 
-// TODO(LiuYang): Here when ix is negative, we need extra error handling code
 template <typename T, size_t Rank>
 __global__ void index_put_grad_cuda_kernel(const int64_t N,
                                            const T* out_grad,
@@ -97,7 +96,6 @@ void LaunchIndexPutGradCudaKernel(
       shape_a[idx] = x_grad_dims[idx];
     }
 
-    // NOTE(LiuYang): Here I can't make it const int64_t**
     auto pd_indices =
         GetDevicePointerArray<int64_t, Context>(dev_ctx, indices_v);
     set_zero_cuda_kernel<T, Rank><<<config.block_per_grid,
@@ -130,7 +128,6 @@ void LaunchIndexPutGradCudaKernel(
         shape_a[idx] = out_grad_dims[idx];
       }
 
-      // NOTE(LiuYang): Here I can't make it const int64_t**
       auto pd_indices =
           GetDevicePointerArray<int64_t, Context>(dev_ctx, indices_v);
       index_put_grad_cuda_kernel<T, Rank><<<config.block_per_grid,
@@ -145,8 +142,6 @@ void LaunchIndexPutGradCudaKernel(
   }
 }
 
-// Note(LiuYang): Here I don't take it in consideration that whether we support
-// value_tensor can be broadcast to X[indice] when calls like X[indice] = value
 template <typename T, typename Context>
 void IndexPutGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,

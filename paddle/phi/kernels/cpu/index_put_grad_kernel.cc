@@ -35,7 +35,7 @@ void set_zero_kernel(const int64_t N,
   for (int64_t idx = 0; idx < N; ++idx) {
     int64_t cur_ix = 0;
     int64_t offset = 0;
-    // here why can't use unroll
+
     for (size_t i = 0; i < Rank; ++i) {
       cur_ix = (int64_t(*(indices[i] + idx)));
       if (cur_ix < 0) {
@@ -47,7 +47,6 @@ void set_zero_kernel(const int64_t N,
   }
 }
 
-// TODO(LiuYang): Here when ix is negative, we need extra error handling code
 template <typename T, size_t Rank>
 void index_put_grad_kernel(const int64_t N,
                            const T* out_grad,
@@ -138,8 +137,6 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
   }
 }
 
-// Note(LiuYang): Here I don't take it in consideration that whether we support
-// value_tensor can be broadcast to X[indice] when calls like X[indice] = value
 template <typename T, typename Context>
 void IndexPutGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,

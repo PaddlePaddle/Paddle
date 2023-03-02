@@ -35,7 +35,7 @@ void index_put_kernel(const int64_t N,
   for (int64_t idx = 0; idx < N; ++idx) {
     int64_t cur_ix = 0;
     int64_t offset = 0;
-    // #pragma unroll Rank
+
     for (size_t i = 0; i < Rank; ++i) {
       cur_ix = (int64_t(*(indices[i] + idx)));
       if (cur_ix < 0) {
@@ -54,11 +54,14 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
                           const std::vector<const DenseTensor*>& indices_v,
                           const DenseTensor& value,
                           DenseTensor* out) {
-  // auto* x_data = const_cast<T*>(x.data<T>());
   auto* x_data = x.data<T>();
   auto* val_data = value.data<T>();
+  bool isInitialized = out->initialized();
   T* out_data = dev_ctx.template Alloc<T>(out);
-  // T* out_data = out->data<T>();
+
+  if (!isInitialized) {
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  }
 
   auto x_dims = x.dims();
   const int64_t numel = indices_v[0]->numel();
@@ -72,11 +75,8 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
     shape_a[idx] = x_dims[idx];
   }
 
-  // phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-
   int64_t isSingleValTensor = (value.numel() == 1) ? 0 : INT64_MAX;
 
-  // get cpu pointer array
   const int64_t* pd_indices[Rank];
   for (size_t i = 0; i < Rank; ++i) {
     pd_indices[i] = indices_v[i]->data<int64_t>();

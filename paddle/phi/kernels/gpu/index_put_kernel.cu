@@ -21,7 +21,6 @@
 
 namespace phi {
 
-// TODO(LiuYang): Here when ix is negative, we need extra error handling code
 template <typename T, size_t Rank>
 __global__ void index_put_cuda_kernel(const int64_t N,
                                       const T* x,
@@ -77,12 +76,8 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
     shape_a[idx] = x_dims[idx];
   }
 
-  // Note(LiuYang):Here should we make it inplace or not?
-  // phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-
   int64_t isSingleValTensor = (value.numel() == 1) ? 0 : INT64_MAX;
 
-  // NOTE(LiuYang): Here I can't make it const int64_t**
   auto pd_indices = GetDevicePointerArray<int64_t, Context>(dev_ctx, indices_v);
   index_put_cuda_kernel<T, Rank>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
@@ -96,8 +91,6 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
           out_data);
 }
 
-// Note(LiuYang): Here I don't take it in consideration that whether we support
-// value_tensor can be broadcast to X[indice] when calls like X[indice] = value
 template <typename T, typename Context>
 void IndexPutKernel(const Context& dev_ctx,
                     const DenseTensor& x,

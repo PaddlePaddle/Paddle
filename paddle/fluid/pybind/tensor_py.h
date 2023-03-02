@@ -559,7 +559,6 @@ void SetTensorFromPyArray(phi::DenseTensor *self,
   }
 }
 
-// NOTE(LiuYang): pybind11 doesn't support fp16
 static paddle::experimental::Tensor PyArrayToTensor(
     const paddle::experimental::DataType &dtype,
     const phi::Place &place,
@@ -605,8 +604,6 @@ static paddle::experimental::Tensor PyArrayToTensor(
                        place,
                        false);
 
-  // NOTE(LiuYang): I don't think this usage is a good idea, may later we should
-  // add fp16 type support in CastNumpyArray
   if (dtype == paddle::experimental::DataType::FLOAT16) {
     return rt_tensor.cast(paddle::experimental::DataType::FLOAT16);
   }

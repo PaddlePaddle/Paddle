@@ -1061,7 +1061,6 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-// NOTE(LiuYang): Add None type support
 static PyObject* tensor_method__advanced_index(TensorObject* self,
                                                PyObject* args,
                                                PyObject* kwargs) {
@@ -1106,7 +1105,6 @@ static PyObject* tensor_method__advanced_index(TensorObject* self,
   bool isAdvanceIndex = true;
   bool isBoolIndex = false;
 
-  // 增加Tensor数据类型检查，这样吧，统一cast成int64数据类型的Tensor往下传递，用Tensor.cast方法
   const int size = PyTuple_GET_SIZE(index_ptr);
   for (int dim = 0; dim < size; ++dim) {
     PyObject* slice_item = PyTuple_GetItem(index_ptr, dim);
@@ -1172,7 +1170,7 @@ static PyObject* tensor_method__advanced_index(TensorObject* self,
         if (non_zero_ix.numel() == 0) {
           return ToPyObject(true);
         }
-        // swap 是否性能更好
+
         indices_tensor =
             split_with_num_ad_func(non_zero_ix, non_zero_ix.shape().back(), 1);
         isBoolIndex = true;
@@ -1200,7 +1198,7 @@ static PyObject* tensor_method__advanced_index(TensorObject* self,
         if (non_zero_ix.numel() == 0) {
           return ToPyObject(true);
         }
-        // swap 是否性能更好
+
         indices_tensor =
             split_with_num_ad_func(non_zero_ix, non_zero_ix.shape().back(), 1);
         isBoolIndex = true;
