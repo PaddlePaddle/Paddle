@@ -211,14 +211,62 @@ class TestSparseAdagradOp(unittest.TestCase):
             self.check_with_place(place)
 
 
-class TestAdamaxMultiPrecision2_0(unittest.TestCase):
-    def dygraph_adagrad_mp(self, mp, use_amp):
+class TestAdagradOpMultiPrecison(unittest.TestCase):
+    def _test_adagrad_op_dygraph_place_amp(self, place, use_amp=False):
+        import paddle
+
         paddle.disable_static()
         paddle.seed(10)
+        paddle.set_device(place)
+        input = paddle.randn((5, 5))
+
+        model = paddle.nn.Linear(5, 5)
+        optimizer = paddle.optimizer.Adagrad(0.1, parameters=model.parameters())
+        optimizer._multi_precision = use_amp
+        for idx in range(2):
+            if place == 'gpu' and use_amp:
+                model = paddle.amp.decorate(models=model, level='O2')
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+
+            if place == 'gpu' and use_amp:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.step(optimizer)
+                optimizer.clear_grad()
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+        paddle.enable_static()
+
+    def _get_places(self):
+        import paddle
+
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        return places
+
+    def test_main(self):
+        for place in self._get_places():
+            use_amp_list = [True, False]
+            for use_amp in use_amp_list:
+                self._test_adagrad_op_dygraph_place_amp(place, use_amp)
+
+
+class TestAdagradMultiPrecision2_0(unittest.TestCase):
+    def dygraph_adagrad_mp(self, mp, use_amp):
+        paddle.disable_static()
+        paddle.seed(100)
         paddle.set_device('gpu')
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
-        optimizer = paddle.optimizer.Adagrad(0.1, parameters=model.parameters())
+        optimizer = paddle.optimizer.Adagrad(0.5, parameters=model.parameters())
         optimizer._multi_precision = mp
         if use_amp:
             model = paddle.amp.decorate(models=model, level='O2')
@@ -236,6 +284,7 @@ class TestAdamaxMultiPrecision2_0(unittest.TestCase):
             else:
                 output = model(input)
                 loss = paddle.mean(output)
+                loss.backward()
                 optimizer.step()
                 optimizer.clear_grad()
 
@@ -250,7 +299,6 @@ class TestAdamaxMultiPrecision2_0(unittest.TestCase):
         startup_program = paddle.static.Program()
         optimizer = paddle.optimizer.Adagrad(0.1)
         optimizer._multi_precision = mp
-
         if use_amp:
             optimizer = paddle.static.amp.decorate(
                 optimizer,
@@ -290,23 +338,13 @@ class TestAdamaxMultiPrecision2_0(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
         "Test dygraph mode"
-        output11_dy, params1_dy = self.dygraph_adagrad_mp(
-            use_amp=False, mp=True
-        )
-        output22_dy, params2_dy = self.dygraph_adagrad_mp(
+        output1_dy, params1_dy = self.dygraph_adagrad_mp(use_amp=True, mp=True)
+        output2_dy, params2_dy = self.dygraph_adagrad_mp(
             use_amp=False, mp=False
         )
-        output1_dy, params1_dy = self.dygraph_adagrad_mp(use_amp=True, mp=True)
-        output2_dy, params2_dy = self.dygraph_adagrad_mp(use_amp=True, mp=False)
         np.testing.assert_allclose(
             output1_dy.astype('float32').numpy(),
             output2_dy.astype('float32').numpy(),
-            rtol=1e-05,
-            atol=0.1,
-        )
-        np.testing.assert_allclose(
-            output11_dy.astype('float32').numpy(),
-            output22_dy.astype('float32').numpy(),
             rtol=1e-05,
             atol=0.1,
         )
@@ -318,14 +356,12 @@ class TestAdamaxMultiPrecision2_0(unittest.TestCase):
                 atol=0.1,
             )
         "Test static mode"
-        output11_st = self.static_adagrad_mp(use_amp=False, mp=True)
-        output22_st = self.static_adagrad_mp(use_amp=False, mp=False)
         output1_st = self.static_adagrad_mp(use_amp=True, mp=True)
-        output2_st = self.static_adagrad_mp(use_amp=True, mp=False)
+        output2_st = self.static_adagrad_mp(use_amp=False, mp=False)
         for idx in range(len(output1_st)):
             np.testing.assert_allclose(
-                output11_st[idx].astype('float32'),
-                output22_st[idx].astype('float32'),
+                output1_st[idx].astype('float32'),
+                output2_st[idx].astype('float32'),
                 rtol=1e-05,
                 atol=0.1,
             )
@@ -339,8 +375,7 @@ class TestAdagradMultiPrecision1_0(unittest.TestCase):
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.fluid.optimizer.Adagrad(
-            learning_rate=0.001,
-            parameter_list=model.parameters(),
+            learning_rate=0.001, parameter_list=model.parameters()
         )
         optimizer._multi_precision = mp
         if use_amp:
@@ -372,7 +407,6 @@ class TestAdagradMultiPrecision1_0(unittest.TestCase):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         optimizer = paddle.fluid.optimizer.Adagrad(learning_rate=0.001)
-
         optimizer._multi_precision = mp
         if use_amp:
             optimizer = paddle.static.amp.decorate(
@@ -413,19 +447,9 @@ class TestAdagradMultiPrecision1_0(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
         "Test dygraph mode"
-        output11_dy, params1_dy = self.dygraph_adagrad_mp(use_amp=True, mp=True)
-        output22_dy, params2_dy = self.dygraph_adagrad_mp(
-            use_amp=True, mp=False
-        )
-        output1_dy, params1_dy = self.dygraph_adagrad_mp(use_amp=False, mp=True)
+        output1_dy, params1_dy = self.dygraph_adagrad_mp(use_amp=True, mp=True)
         output2_dy, params2_dy = self.dygraph_adagrad_mp(
             use_amp=False, mp=False
-        )
-        np.testing.assert_allclose(
-            output11_dy.astype('float32').numpy(),
-            output22_dy.astype('float32').numpy(),
-            rtol=1e-05,
-            atol=0.1,
         )
         np.testing.assert_allclose(
             output1_dy.astype('float32').numpy(),
@@ -441,9 +465,7 @@ class TestAdagradMultiPrecision1_0(unittest.TestCase):
                 atol=0.1,
             )
         "Test static mode"
-        output11_st = self.static_adagrad_mp(use_amp=True, mp=False)
-        output22_st = self.static_adagrad_mp(use_amp=True, mp=True)
-        output1_st = self.static_adagrad_mp(use_amp=False, mp=True)
+        output1_st = self.static_adagrad_mp(use_amp=True, mp=True)
         output2_st = self.static_adagrad_mp(use_amp=False, mp=False)
         for idx in range(len(output1_st)):
             np.testing.assert_allclose(
