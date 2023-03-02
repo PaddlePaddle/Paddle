@@ -318,20 +318,30 @@ __global__ void get_actual_size_and_neighbor_count(GpuPsNodeInfo* node_info_list
   }
 }
 
-__global__ void sample_all_kernel(GpuPsCommGraph graph,
-                                  GpuPsNodeInfo* node_info_list,
-                                  uint64_t* res,
-                                  int n,
-                                  int sample_len,
-                                  int default_value) {
-  int i = blockIdx.x;
+template <bool NeedNeighbor = false>
+__global__ void get_actual_size_and_neighbor_count_all_edge_type(
+    GpuPsNodeInfo* node_info_base, int* actual_size_base,
+    int* neighbor_count_base, int sample_len,
+    int n, int default_value, int shard_len) {
+  int i = threadIdx.x + blockIdx.x * blockDim.x;
   if (i >= n) return;
-  int neighbor_len = node_info_list[i].neighbor_size;
-  uint32_t data_offset = node_info_list[i].neighbor_offset;
-  int offset = i * sample_len;
-  uint64_t* data = graph.neighbor_list;
-  for (int j = threadIdx.x; j < neighbor_len; j += blockDim.x) {
-    res[offset + j] = data[data_offset + j];
+  int edge_idx = i / shard_len, node_i = i % shard_len;
+  GpuPsNodeInfo* node_info_list = node_info_base + edge_idx * shard_len;
+  int* neighbor_count = neighbor_count_base + edge_idx * (shard_len + 1);
+  int* actual_size_array = actual_size_base + edge_idx * shard_len;
+  
+  int neighbor_len = node_info_list[node_i].neighbor_size;
+  int k = neighbor_len;
+  if (sample_len > 0) {
+    k = min(neighbor_len, sample_len);
+  }
+  if (k == 0) {
+    actual_size_array[node_i] = default_value;
+  } else {
+    actual_size_array[node_i] = k;
+  }
+  if (NeedNeighbor) {
+    neighbor_count[node_i] = (neighbor_len <= sample_len) ? 0 : neighbor_len; 
   }
 }
 
@@ -1428,6 +1438,9 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
       }
 
       paddle::memory::ThrustAllocator<cudaStream_t> allocator(place, cur_stream);
+      PADDLE_ENFORCE_GT(sample_size,
+                        0,
+                        platform::errors::InvalidArgument("sample_size should be greater than 0."));
       if (sample_size > sample_count_thredshold) {
         // To be optimized.
         thrust::exclusive_scan(thrust::cuda::par(allocator).on(cur_stream),
@@ -1454,9 +1467,6 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
         weight_sample_large_kernel<BLOCK_SIZE><<<shard_len, BLOCK_SIZE, 0, cur_stream>>>(
             graph, node_info_list, sample_array, neighbor_offset,
             target_weights_key_buf_ptr, shard_len, sample_size, random_seed);
-      } else if (sample_size <= 0) {
-        sample_all_kernel<<<shard_len, 64, 0, cur_stream>>>(
-            graph, node_info_list, sample_array, shard_len, sample_size, default_value);
       } else {
         using WeightedSampleFuncType = void (*)(GpuPsCommGraph, GpuPsNodeInfo *,
                                                 uint64_t *, int, int, unsigned long long);
