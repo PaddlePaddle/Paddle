@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 # TODO: define loss functions of neural network
 import paddle
 from paddle import _C_ops, _legacy_C_ops, fluid, in_dynamic_mode
@@ -1467,6 +1469,113 @@ def nll_loss(
             out = reshape(out, shape=out_shape)
 
         return out
+
+
+def poisson_nll_loss(
+    input,
+    label,
+    log_input=True,
+    full=False,
+    epsilon=1e-8,
+    reduction="mean",
+    name: str = None,
+):
+    r"""Poisson negative log likelihood loss.
+    See more detail in :ref:`PoissonNLLLoss <api_paddle_nn_PoissonNLLLoss>` .
+    Parameters::
+
+         input (Tensor):
+            Input tensor, expectation of underlying Poisson distribution.
+            The shape of input tensor should be `(N, *)` or `(*)` where `(*)` denotes any number of extra dimensions.
+            It's data type should be float32, float64.
+         label (Tensor):
+            Label tensor, random sampled from Poisson distribution :math:`target \sim \text{Poisson}(input)`.
+            The shape of input tensor should be `(N, *)` or `(*)`, same shape as the input tensor.
+            It's data type should be float32, float64.
+         log_input (bool, optional):
+            Whether to the treat input tensor as log input.
+            If ``True`` the loss is computed as,:math:`\exp(\text{input}) - \text{target} * \text{input}`.
+            If ``False`` then loss is :math:`\text{input} - \text{target} * \log(\text{input}+\text{epsilon})`.
+            Default: ``True``.
+         full (bool, optional):
+            Whether to compute full loss.
+            If ``True``, the Stirling approximation term is added.
+            If ``False``, the Stirling approximation is dropped.
+            Default: ``False``.
+         epsilon (float, optional):
+            A small value to avoid evaluation of :math:`\log(0)` when `log_input`\ =\ ``False``. ``epsilon > 0``.
+            Default: 1e-8.
+         reduction (str, optional):
+            Indicate how to reduce the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If `reduction` is ``'mean'``, the reduced mean loss is returned;
+            if `reduction` is ``'sum'``, the reduced sum loss is returned;
+            if `reduction` is ``'none'``, no reduction will be apllied.
+            Default is ``'mean'``.
+         name (str, optional):
+            Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Examples::
+        .. code-block:: python
+            import paddle
+            import paddle.nn.functional as F
+            input = paddle.randn([5, 2], dtype=paddle.float32)
+            target = paddle.randn([5, 2], dtype=paddle.float32)
+            loss = F.poisson_nll_loss(input, target, log_input=True, reduction='None')
+            print(loss)
+            loss = F.poisson_nll_loss(input, target, reduction='mean')
+            print(loss)
+    """
+    # check parameter values
+    if epsilon <= 0:
+        raise ValueError(
+            "The value of `epsilon` in poisson_nll_loss should be positve, but received %f, which is not allowed"
+            % epsilon
+        )
+
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in poisson_nll_loss should be 'sum', 'mean' or 'none', but "
+            "received %s, which is not allowed." % reduction
+        )
+    # check input dtype and dimension
+    check_variable_and_dtype(
+        input,
+        'input',
+        ['float32', 'float64'],
+        'poisson_nll_loss',
+    )
+    check_variable_and_dtype(
+        label,
+        'label',
+        ['float32', 'float64'],
+        'poisson_nll_loss',
+    )
+
+    if not (input.shape == label.shape):
+        raise ValueError("input's shape must equal to label's shape")
+
+    label = paddle.cast(label, input.dtype)
+    loss_out = 0
+    if log_input:
+        loss_out = paddle.exp(input) - label * input
+    else:
+        loss_out = input - label * paddle.log(input + epsilon)
+    if full:
+        stirling_approx = (
+            label * paddle.log(label)
+            - label
+            + 0.5 * paddle.log(2 * math.pi * label)
+        )
+        loss_out += paddle.where(
+            stirling_approx <= 1,
+            paddle.zeros_like(stirling_approx),
+            stirling_approx,
+        )
+    if reduction == 'mean':
+        loss_out = paddle.mean(loss_out)
+    elif reduction == 'sum':
+        loss_out = paddle.sum(loss_out)
+    return loss_out
 
 
 def kl_div(input, label, reduction='mean', name=None):

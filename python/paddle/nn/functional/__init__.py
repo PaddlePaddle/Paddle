@@ -83,6 +83,7 @@ from .loss import log_loss  # noqa: F401
 from .loss import margin_ranking_loss  # noqa: F401
 from .loss import mse_loss  # noqa: F401
 from .loss import nll_loss  # noqa: F401
+from .loss import poisson_nll_loss  # noqa: F401
 from .loss import npair_loss  # noqa: F401
 from .loss import sigmoid_focal_loss  # noqa: F401
 from .loss import smooth_l1_loss  # noqa: F401
