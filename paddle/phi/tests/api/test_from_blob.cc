@@ -52,23 +52,24 @@ TEST(from_blob, FLOAT32) {
   auto test_tensor_pow = pow(test_tesnor, 2);
   auto* test_tensor_pow_data = test_tensor_pow.template data<float>();
   for (int32_t i = 0; i < 6; i++) {
-    ASSERT_EQ(test_tensor_pow_data[i], static_cast<float>(pow(i + 1, 2)));
+    ASSERT_EQ(test_tensor_pow_data[i], static_cast<float>(std::pow(i + 1, 2)));
   }
 }
 
 TEST(from_blob, INT32) {
   // 1. create data
-  int32_t data[] = {1, 2, 3, 4, 5, 6};
+  int32_t data[] = {4, 3, 2, 1};
 
   // 2. test API
-  auto test_tesnor = experimental::from_blob(data, {2, 3}, phi::DataType::INT32, phi::CPUPlace());
+  auto test_tesnor = experimental::from_blob(data, {1, 2, 2}, phi::DataType::INT32, phi::CPUPlace());
 
   // 3. check result
   // 3.1 check tensor attributes
-  ASSERT_EQ(test_tesnor.dims().size(), 2);
-  ASSERT_EQ(test_tesnor.dims()[0], 2);
-  ASSERT_EQ(test_tesnor.dims()[1], 3);
-  ASSERT_EQ(test_tesnor.numel(), 6);
+  ASSERT_EQ(test_tesnor.dims().size(), 3);
+  ASSERT_EQ(test_tesnor.dims()[0], 1);
+  ASSERT_EQ(test_tesnor.dims()[1], 2);
+  ASSERT_EQ(test_tesnor.dims()[2], 2);
+  ASSERT_EQ(test_tesnor.numel(), 4);
   ASSERT_EQ(test_tesnor.is_cpu(), true);
   ASSERT_EQ(test_tesnor.dtype(), phi::DataType::INT32);
   ASSERT_EQ(test_tesnor.layout(), phi::DataLayout::NCHW);
@@ -77,8 +78,8 @@ TEST(from_blob, INT32) {
 
   // 3.2 check tensor values
   auto* test_tensor_data = test_tesnor.template data<int32_t>();
-  for (int32_t i = 0; i < 6; i++) {
-    ASSERT_EQ(test_tensor_data[i], i + 1);
+  for (int32_t i = 0; i < 4; i++) {
+    ASSERT_EQ(test_tensor_data[i], 4 - i);
   }
 
   // 3.3 check whether memory is shared
@@ -87,8 +88,8 @@ TEST(from_blob, INT32) {
   // 3.4 test other API
   auto test_tensor_pow = pow(test_tesnor, 2);
   auto* test_tensor_pow_data = test_tensor_pow.template data<int32_t>();
-  for (int32_t i = 0; i < 6; i++) {
-    ASSERT_EQ(test_tensor_pow_data[i], static_cast<int32_t>(pow(i + 1, 2)));
+  for (int32_t i = 0; i < 4; i++) {
+    ASSERT_EQ(test_tensor_pow_data[i], static_cast<int32_t>(std::pow(4 - i, 2)));
   }
 }
 
