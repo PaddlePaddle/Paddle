@@ -1,4 +1,4 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -225,6 +225,7 @@ class TestTileOpInt64_t(OpTest):
     def test_check_output(self):
         self.check_output()
 
+
 class TestTileError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
@@ -382,4 +383,3 @@ class Testfp16TileOp(unittest.TestCase):
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
-

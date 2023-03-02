@@ -69,6 +69,7 @@ class TestFloa16ArangeOp(TestArangeOp):
 class TestBFloat16ArangeOp(OpTest):
     def setUp(self):
         self.op_type = "range"
+        self.__class__.op_type = self.op_type
         self.init_config()
         self.inputs = {
             'Start': convert_float_to_uint16(np.array([self.case[0]]).astype(np.float32)),
@@ -169,4 +170,3 @@ class TestArangeImperative(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
