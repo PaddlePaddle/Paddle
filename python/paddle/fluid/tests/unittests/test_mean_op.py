@@ -398,7 +398,7 @@ class TestReduceMeanOpReduceAllTrueFP16(TestReduceMeanOp):
         self.dtype = 'float16'
 
 
-class TestReduceMeanOpReduceAllTrue2BF16(TestReduceMeanBF16Op):
+class TestReduceMeanOpReduceAllTrueBF16(TestReduceMeanBF16Op):
     def set_attrs(self):
         self.reduce_all = True
 
