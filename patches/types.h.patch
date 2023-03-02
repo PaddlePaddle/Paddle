@@ -1,6 +1,8 @@
---- types.h	2023-03-02 07:44:35.881584720 +0000
-+++ types_modify.h	2023-03-02 07:44:26.002664616 +0000
-@@ -319,8 +319,8 @@ inline float cpu_half2float(float16 h) {
+diff --git a/gloo/types.h b/gloo/types.h
+index 31e193b..3a8ed74 100755
+--- a/gloo/types.h
++++ b/gloo/types.h
+@@ -319,8 +319,7 @@ inline float cpu_half2float(float16 h) {
  
    unsigned temp = ((sign << 31) | (exponent << 23) | mantissa);
  
@@ -10,4 +12,3 @@
  }
  
  } // namespace gloo
-+
