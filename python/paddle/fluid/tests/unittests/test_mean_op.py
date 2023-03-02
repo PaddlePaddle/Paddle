@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest
+from op_test import OpTest, OpTestTool, convert_float_to_uint16
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
@@ -119,16 +119,18 @@ class TestFP16MeanOp(TestMeanOp):
                 np.testing.assert_array_equal(dx, dx_expected)
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestBF16MeanOp(TestMeanOp):
     def init_dtype_type(self):
         self.dtype = np.uint16
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output_with_place(core.CPUPlace(), check_eager=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        place = core.CPUPlace()
+        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
 
 
 def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
@@ -205,6 +207,48 @@ class TestReduceMeanOp(OpTest):
                     self.attrs['reduce_all'],
                 )
                 np.testing.assert_array_equal(dx, dx_expected)
+
+
+class TestReduceMeanBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = 'reduce_mean'
+        self.python_api = reduce_mean_wrapper
+        self.dtype = np.uint16
+        self.shape = [2, 3, 4, 5]
+        self.axis = [0]
+        self.keepdim = False
+        self.set_attrs()
+
+        np.random.seed(10)
+        x_np = np.random.uniform(-1, 1, self.shape).astype(np.float32)
+        if not hasattr(self, "reduce_all"):
+            self.reduce_all = (not self.axis) or len(self.axis) == len(x_np)
+
+        out_np = ref_reduce_mean(x_np, self.axis, self.keepdim, self.reduce_all)
+        self.inputs = {'X': convert_float_to_uint16(x_np)}
+        self.outputs = {'Out': convert_float_to_uint16(out_np)}
+        self.attrs = {
+            'dim': self.axis,
+            'keep_dim': self.keepdim,
+            'reduce_all': self.reduce_all,
+        }
+
+    def set_attrs(self):
+        pass
+
+    def test_check_output(self):
+        if not core.is_compiled_with_cuda():
+            return
+        place = paddle.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        if not core.is_compiled_with_cuda():
+            return
+        place = paddle.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], ['Out'], numeric_grad_delta=0.05
+        )
 
 
 class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
