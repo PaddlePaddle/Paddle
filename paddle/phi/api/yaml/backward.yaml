@@ -508,6 +508,16 @@
     func : fill_diagonal_tensor_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : flash_attn_grad
+  forward : flash_attn (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false) -> Tensor(out), Tensor(softmax_lse), Tensor(softmax), Tensor(seed_offset)
+  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor out_grad, float dropout = 0.0, bool causal = false)
+  output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
+  infer_meta :
+    func : FlashAttnGradInferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_grad
+
 - backward_op : flip_grad
   forward : flip (Tensor x, int[] axis) -> Tensor(out)
   args : (Tensor out_grad, int[] axis)
@@ -1524,6 +1534,7 @@
   kernel :
     func : topk_grad
     data_type : out_grad
+  composite : topk_grad(x, indices, out_grad, k, axis, largest, sorted, x_grad)
 
 - backward_op : trace_grad
   forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)

@@ -3208,6 +3208,12 @@ def cumsum(x, axis=None, dtype=None, name=None):
             axis = -1
         return _C_ops.cumsum(x, axis, flatten, False, False)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'cumsum',
+        )
         check_type(x, 'x', (Variable), 'cumsum')
         locals_var = locals().copy()
         kwargs = dict()
@@ -4443,15 +4449,19 @@ def gcd(x, y, name=None):
     y = paddle.broadcast_to(y, shape)
     x = paddle.abs(x)
     y = paddle.abs(y)
+    # TODO(zhouwei25): Support 0D for not_equal tensor with scalar
+    zero = paddle.full([], 0)
 
     def _gcd_cond_fn(x, y):
-        return paddle.any(y != 0)
+        # return paddle.any(y != 0)
+        return paddle.any(y != zero)
 
     def _gcd_body_fn(x, y):
         # paddle.mod will raise an error when any element of y is 0. To avoid
         # that, we change those zeros to ones. Their values don't matter because
         # they won't be used.
-        y_not_equal_0 = y != 0
+        # y_not_equal_0 = y != 0
+        y_not_equal_0 = y != zero
         y_safe = paddle.where(y_not_equal_0, y, paddle.ones(y.shape, y.dtype))
         x, y = (
             paddle.where(y_not_equal_0, y, x),

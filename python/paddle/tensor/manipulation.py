@@ -1136,6 +1136,7 @@ def concat(x, axis=0, name=None):
                         'int64',
                         'int8',
                         'unit8',
+                        'uint16',
                     ],
                     'concat',
                 )
@@ -3084,7 +3085,7 @@ def tile(x, repeat_times, name=None):
     Both the number of dimensions of ``x`` and the number of elements in ``repeat_times`` should be less than or equal to 6.
 
     Args:
-        x (Tensor): The input tensor, its data type should be bool, float32, float64, int32 or int64.
+        x (Tensor): The input tensor, its data type should be bool, float16, float32, float64, int32 or int64.
         repeat_times (list|tuple|Tensor): The number of repeating times. If repeat_times is a list or tuple, all its elements
             should be integers or 1-D Tensors with the data type int32. If repeat_times is a Tensor, it should be an 1-D Tensor with the data type int32.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -3145,7 +3146,10 @@ def tile(x, repeat_times, name=None):
                     ), 'Elements in repeat_times must be 1-D Tensors or integers.'
 
         check_variable_and_dtype(
-            x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'tile'
+            x,
+            'x',
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'tile',
         )
         if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
             raise ValueError(
@@ -3937,7 +3941,7 @@ def tensordot(x, y, axes=2, name=None):
     This function computes a contraction, which sum the product of elements from two tensors along the given axes.
 
     Args:
-        x (Tensor): The left tensor for contraction with data type ``float32`` or ``float64``.
+        x (Tensor): The left tensor for contraction with data type ``float16`` or ``float32`` or ``float64``.
         y (Tensor): The right tensor for contraction with the same data type as ``x``.
         axes (int|tuple|list|Tensor, optional):  The axes to contract for ``x`` and ``y``, defaulted to integer ``2``.
 
@@ -4045,7 +4049,7 @@ def tensordot(x, y, axes=2, name=None):
             #      [28312230., 30496530., 32680830., 34865130.]]
     """
     op_type = 'tensordot'
-    input_dtype = ['float32', 'float64']
+    input_dtype = ['float16', 'float32', 'float64']
 
     check_variable_and_dtype(x, 'x', input_dtype, op_type)
     check_variable_and_dtype(y, 'y', input_dtype, op_type)

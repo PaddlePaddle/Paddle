@@ -42,7 +42,10 @@ set(PYBIND_DEPS
     auto_parallel
     jit_layer
     jit_property
-    prim_utils)
+    prim_utils
+    operants_manager
+    phi_tensor_operants
+    static_tensor_operants)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -498,10 +501,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
     list(APPEND PYBIND_DEPS tensor_api)
-    list(APPEND PYBIND_DEPS operants_manager)
     list(APPEND PYBIND_DEPS eager_tensor_operants)
-    list(APPEND PYBIND_DEPS static_tensor_operants)
-    list(APPEND PYBIND_DEPS phi_tensor_operants)
     list(APPEND PYBIND_DEPS pybind_util)
   endif()
 

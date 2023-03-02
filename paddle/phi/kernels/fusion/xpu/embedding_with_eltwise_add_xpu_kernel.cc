@@ -53,8 +53,19 @@ void EmbeddingWithEltwiseAddXpuKernel(
                                         std::vector<int>(idx_len, 0));
   std::vector<xpu::VectorParam<int>> arg_ids;
   for (int i = 0; i < emb_layer_num; i++) {
+    PADDLE_ENFORCE_EQ(
+        ids[i]->dtype() == phi::DataType::INT64 ||
+            ids[i]->dtype() == phi::DataType::INT32,
+        true,
+        errors::InvalidArgument(
+            "The data type of ids should be int64 or int32, but got %s.",
+            ids[i]->dtype()));
     for (int j = 0; j < idx_len; j++) {
-      int_idx[i][j] = static_cast<int>(ids[i]->data<int64_t>()[j]);
+      if (ids[i]->dtype() == phi::DataType::INT64) {
+        int_idx[i][j] = static_cast<int>(ids[i]->data<int64_t>()[j]);
+      } else if (ids[i]->dtype() == phi::DataType::INT32) {
+        int_idx[i][j] = ids[i]->data<int>()[j];
+      }
     }
     arg_ids.push_back(
         xpu::VectorParam<int>{int_idx[i].data(), idx_len, nullptr});
