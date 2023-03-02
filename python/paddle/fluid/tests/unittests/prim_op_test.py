@@ -941,6 +941,7 @@ class PrimGradChecker(PrimForwardChecker):
                     )
                 )
                 raise RuntimeError(msg)
+        core.set_prim_eager_enabled(False)
 
     def check_static_comp(self):
         paddle.enable_static()
