@@ -27,11 +27,6 @@ import numpy
 
 from paddle.fluid.dygraph.layers import Layer
 from paddle.jit.dy2static.logging_utils import TranslatorLogger
-from paddle.jit.dy2static.program_translator import (
-    StaticFunction,
-    convert_to_static,
-    unwrap_decorators,
-)
 from paddle.jit.dy2static.utils import is_paddle_func, unwrap
 from paddle.nn import Sequential
 
@@ -203,6 +198,12 @@ def convert_call(func):
 
     """
     # NOTE(Aurelius84): Fix it after all files migrating into jit.
+    from paddle.jit.dy2static.program_translator import (
+        StaticFunction,
+        convert_to_static,
+        unwrap_decorators,
+    )
+
     translator_logger.log(
         1, "Convert callable object: convert {}.".format(func)
     )
