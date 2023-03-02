@@ -30,6 +30,7 @@ import astor
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
