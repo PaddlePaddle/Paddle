@@ -149,6 +149,9 @@ def ref_reduce_mean_grad(x, axis, dtype, reduce_all):
     return (1.0 / np.prod(shape) * np.ones(shape)).astype(dtype)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestReduceMeanOp(OpTest):
     def setUp(self):
         self.op_type = 'reduce_mean'
@@ -290,6 +293,11 @@ class TestReduceMeanOpShape6D(TestReduceMeanOp):
         self.shape = [2, 3, 4, 5, 6, 7]
 
 
+class TestReduceMeanOpShape6DBF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.shape = [2, 3, 4, 5, 6, 7]
+
+
 class TestReduceMeanOpShape6DFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.shape = [2, 3, 4, 5, 6, 7]
@@ -307,6 +315,11 @@ class TestReduceMeanOpAxisAllFP16(TestReduceMeanOp):
         self.dtype = 'float16'
 
 
+class TestReduceMeanOpAxisAllBF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+
+
 class TestReduceMeanOpAxisTuple(TestReduceMeanOp):
     def set_attrs(self):
         self.axis = (0, 1, 2)
@@ -316,6 +329,11 @@ class TestReduceMeanOpAxisTupleFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.axis = (0, 1, 2)
         self.dtype = 'float16'
+
+
+class TestReduceMeanOpAxisTupleBF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.axis = (0, 1, 2)
 
 
 class TestReduceMeanOpAxisNegative(TestReduceMeanOp):
@@ -329,6 +347,11 @@ class TestReduceMeanOpAxisNegativeFP16(TestReduceMeanOp):
         self.dtype = 'float16'
 
 
+class TestReduceMeanOpAxisNegativeBF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.axis = [-2, -1]
+
+
 class TestReduceMeanOpKeepdimTrue1(TestReduceMeanOp):
     def set_attrs(self):
         self.keepdim = True
@@ -338,6 +361,11 @@ class TestReduceMeanOpKeepdimTrue1FP16(TestReduceMeanOp):
     def set_attrs(self):
         self.keepdim = True
         self.dtype = 'float16'
+
+
+class TestReduceMeanOpKeepdimTrue1BF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.keepdim = True
 
 
 class TestReduceMeanOpKeepdimTrue2(TestReduceMeanOp):
@@ -353,6 +381,12 @@ class TestReduceMeanOpKeepdimTrue2FP16(TestReduceMeanOp):
         self.dtype = 'float16'
 
 
+class TestReduceMeanOpKeepdimTrue2BF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.axis = [0, 1, 2, 3]
+        self.keepdim = True
+
+
 class TestReduceMeanOpReduceAllTrue(TestReduceMeanOp):
     def set_attrs(self):
         self.reduce_all = True
@@ -362,6 +396,11 @@ class TestReduceMeanOpReduceAllTrueFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.reduce_all = True
         self.dtype = 'float16'
+
+
+class TestReduceMeanOpReduceAllTrue2BF16(TestReduceMeanBF16Op):
+    def set_attrs(self):
+        self.reduce_all = True
 
 
 class TestMeanAPI(unittest.TestCase):
