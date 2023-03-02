@@ -704,6 +704,7 @@ void slice_grad(const Tensor& input,
   if (input_grad) {
     size_t rank = input.dims().size();
     auto out_dims = out_grad.dims();
+    std::vector<int64_t> origin_out_shape;
     auto in_dims = input.dims();
 
     auto decrease_size = decrease_axis.size();
@@ -712,7 +713,7 @@ void slice_grad(const Tensor& input,
         // all dims decrease
         out_dims = phi::make_ddim(std::vector<int>(decrease_size, 1));
       } else {
-        std::vector<int> origin_out_shape(out_dims.size() + decrease_size, -1);
+        origin_out_shape.resize(out_dims.size() + decrease_size, -1);
         for (size_t i = 0; i < decrease_size; ++i) {
           origin_out_shape[decrease_axis[i]] = 1;
         }
@@ -734,7 +735,6 @@ void slice_grad(const Tensor& input,
       offsets[i] = 0;
       extents[i] = out_dims[i];
     }
-
     for (size_t i = 0; i < axes.size(); ++i) {
       int axis = axes[i];
       int64_t start = starts[i] < 0 ? (starts[i] + in_dims[axis]) : starts[i];
@@ -747,9 +747,15 @@ void slice_grad(const Tensor& input,
       paddings.push_back(offsets[i]);
       paddings.push_back((in_dims[i] - out_dims[i]) - offsets[i]);
     }
-
-    auto out_tmp = pad<T>(out_grad, paddings, 0.0);
-    set_output<T>(out_tmp, input_grad);
+    if (decrease_size > 0 &&
+        (decrease_size != static_cast<size_t>(in_dims.size()))) {
+      auto out_tmp =
+          pad<T>(reshape<T>(out_grad, origin_out_shape), paddings, 0.0);
+      set_output<T>(out_tmp, input_grad);
+    } else {
+      auto out_tmp = pad<T>(out_grad, paddings, 0.0);
+      set_output<T>(out_tmp, input_grad);
+    }
   }
 }
 
