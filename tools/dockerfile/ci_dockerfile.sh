@@ -73,7 +73,7 @@ function make_ubuntu_trt7_dockerfile(){
     RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ \\
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
   sed -i "s#bash /build_scripts/install_nccl2.sh#wget -q --no-proxy https://nccl2-deb.gz.bcebos.com/nccl-local-repo-ubuntu1604-2.8.4-cuda10.2_1.0-1_amd64.deb \\
-    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y libsndfile1 libnccl2=2.8.4-1+cuda10.2 libnccl-dev=2.8.4-1+cuda10.2 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
+    RUN apt remove -y libnccl* --allow-change-held-packages \&\&  apt-get install -y --allow-unauthenticated libsndfile1 libnccl2=2.8.4-1+cuda10.2 libnccl-dev=2.8.4-1+cuda10.2 zstd pigz --allow-change-held-packages #g" ${dockerfile_name}
 }
 
 function make_centos_dockerfile(){
