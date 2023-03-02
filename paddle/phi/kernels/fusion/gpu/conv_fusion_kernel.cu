@@ -22,6 +22,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/common/backend.h"
