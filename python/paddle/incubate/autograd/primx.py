@@ -550,7 +550,7 @@ def _lower(block, reverse, blacklist):
     block._sync_with_cpp()
 
 
-def _lower_composite(block, blacklist=[]):
+def _lower_composite(block, blacklist=frozenset()):
     # Some functions which are only used in _lower.
     def bind(args, to_bind, value_table):
         for i in range(len(args)):
@@ -645,30 +645,9 @@ def _lower_composite(block, blacklist=[]):
                     else:
                         none_vars_to_remove.add(orig_out.name)
             else:
-                inputs = {}
-                for i in range(len(op.input_names)):
-                    inputs[op.input_names[i]] = bind_name(
-                        op.input(op.input_names[i]), to_bind
-                    )
-
-                outputs = {}
-                for i in range(len(op.output_names)):
-                    outputs[op.output_names[i]] = op.output(op.output_names[i])
-
-                from paddle.fluid.dygraph.base import param_guard
-
-                new_op_desc = block.desc.append_op()
-                new_op_desc.copy_from(op.desc)
-                with param_guard(inputs), param_guard(outputs):
-                    op = Operator(
-                        block=block,
-                        desc=new_op_desc,
-                        type=op.type,
-                        inputs=inputs,
-                        outputs=outputs,
-                        attrs=None,
-                    )
-                block.ops.append(op)
+                op_desc = block.desc.append_op()
+                op_desc.copy_from(op.desc)
+                block._sync_with_cpp()
 
         # Step3: Do some post-processing work
         for op_idx in reversed(ops_to_remove):
