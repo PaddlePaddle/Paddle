@@ -1458,9 +1458,10 @@ struct SimpleOpTypeSetTeller : public Teller {
           op_type == "elementwise_mod") {
         if (x_var_desc->GetDataType() ==
             paddle::framework::proto::VarType_Type::VarType_Type_BOOL) {
-          VLOG(3) << "These operations "
-                     "(elementwise_add/mul/sub/div/pow/min/max/floordiv/mod) do "
-                     "not support boolean datatype.";
+          VLOG(3)
+              << "These operations "
+                 "(elementwise_add/mul/sub/div/pow/min/max/floordiv/mod) do "
+                 "not support boolean datatype.";
           return false;
         }
       }

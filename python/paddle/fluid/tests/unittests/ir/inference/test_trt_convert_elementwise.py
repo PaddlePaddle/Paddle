@@ -171,7 +171,9 @@ class TrtConvertElementwiseTestOneInputSpecialCase1(TrtLayerAutoScanTest):
                     low=1, high=10000, size=shape, dtype=np.int32
                 )
             if op_type == "elementwise_mod":
-                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(np.float32)
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
+                )
             else:
                 return np.random.random(shape).astype(np.float32)
 
