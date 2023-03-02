@@ -24,7 +24,7 @@ os.environ["FLAGS_gemm_use_half_precision_compute_type"] = "0"
 
 import paddle
 from paddle.fluid.framework import default_main_program
-from paddle.incubate.nn.functional import cutlass_fused_multi_head_attention
+from paddle.incubate.nn.functional import cutlass_fused_multihead_attention
 
 default_main_program().random_seed = 42
 
@@ -34,6 +34,10 @@ class TestCutlassFMHAOp(OpTest):
         self.config()
         self.rtol = 1e-3
         self.atol = 1e-4
+
+        self.paddle_dtype = paddle.float32
+        if self.x_type == np.float16:
+            self.paddle_dtype = paddle.float16
 
         paddle.set_default_dtype(self.x_type)
         self.__class__.op_type = "cutlass_fused_multihead_attention"
@@ -51,7 +55,7 @@ class TestCutlassFMHAOp(OpTest):
                     self.head_size,
                 ],
             ),
-            dtype=paddle.float16,
+            dtype=self.paddle_dtype,
         )
         self.key = paddle.to_tensor(
             np.random.uniform(
@@ -64,7 +68,7 @@ class TestCutlassFMHAOp(OpTest):
                     self.head_size,
                 ],
             ),
-            dtype=paddle.float16,
+            dtype=self.paddle_dtype,
         )
         self.value = paddle.to_tensor(
             np.random.uniform(
@@ -77,17 +81,34 @@ class TestCutlassFMHAOp(OpTest):
                     self.head_size,
                 ],
             ),
-            dtype=paddle.float16,
+            dtype=self.paddle_dtype,
         )
         self.mask = paddle.to_tensor(
             np.random.uniform(low=-0.01, high=0.01, size=self.mask_shape),
-            dtype=paddle.float16,
+            dtype=self.paddle_dtype,
+        )
+
+        self.causal_mask = (
+            paddle.triu(
+                paddle.to_tensor(
+                    np.ones(
+                        [
+                            self.batch,
+                            self.num_head,
+                            self.query_seq_len,
+                            self.kv_seq_len,
+                        ]
+                    ),
+                    dtype=self.paddle_dtype,
+                ),
+                1,
+            )
+            * -10000
         )
 
         self.query.stop_gradient = True
         self.key.stop_gradient = True
         self.value.stop_gradient = True
-        paddle.set_default_dtype("float16")
 
     def config(self):
         self.x_type = np.float16
@@ -104,6 +125,7 @@ class TestCutlassFMHAOp(OpTest):
             self.query_seq_len,
             self.kv_seq_len,
         ]
+        self.causal = False
 
     def GetBaselineOut(self):
         paddle.disable_static()
@@ -116,6 +138,8 @@ class TestCutlassFMHAOp(OpTest):
         attention = qk_res * self.scale
         if self.add_mask:
             attention = attention + self.mask
+        if self.causal:
+            attention += self.causal_mask
 
         softmax_result = paddle.nn.functional.softmax(attention, -1)
         result = paddle.matmul(softmax_result, value)
@@ -124,12 +148,13 @@ class TestCutlassFMHAOp(OpTest):
 
     def GetFusedMultiheadAttentionOut(self):
         paddle.disable_static()
-        fused_out = cutlass_fused_multi_head_attention(
+        fused_out = cutlass_fused_multihead_attention(
             self.query,
             self.key,
             self.value,
             self.mask if self.add_mask else None,
             self.scale,
+            self.causal,
         )
 
         return fused_out
@@ -176,23 +201,19 @@ class TestCutlassFMHAMaskOpFp16(TestCutlassFMHAOp):
         self.mask_shape = [1, 1, 1, self.kv_seq_len]
 
 
-class TestCutlassFMHAOpFp32(TestCutlassFMHAOp):
+class TestCutlassFMHACausalOpFp16(TestCutlassFMHAOp):
     def config(self):
         super().config()
         self.x_type = np.float16
-        self.batch = 8
+        self.batch = 1
         self.num_head = 8
-        self.query_seq_len = 128
-        self.kv_seq_len = 128
+        self.query_seq_len = 900
+        self.kv_seq_len = 6000
         self.head_size = 32
         self.scale = float(1.0 / math.sqrt(self.head_size))
-        self.add_mask = True
-        self.mask_shape = [
-            self.batch,
-            self.num_head,
-            self.query_seq_len,
-            self.kv_seq_len,
-        ]
+        self.add_mask = False
+        self.causal = True
+        self.mask_shape = [1, 1, 1, self.kv_seq_len]
 
 
 if __name__ == "__main__":

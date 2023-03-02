@@ -18,8 +18,8 @@ from .fused_transformer import fused_multi_transformer
 from .fused_matmul_bias import fused_matmul_bias, fused_linear
 from .fused_transformer import fused_bias_dropout_residual_layer_norm
 from .fused_ec_moe import fused_ec_moe
-from .cutlass_fused_multi_head_attention import (
-    cutlass_fused_multi_head_attention,
+from .cutlass_fused_multihead_attention import (
+    cutlass_fused_multihead_attention,
 )
 
 

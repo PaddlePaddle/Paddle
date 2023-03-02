@@ -19,7 +19,7 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 
-def cutlass_fused_multi_head_attention(
+def cutlass_fused_multihead_attention(
     query, key, value, mask=None, scale=None, causal=False
 ):
     """
