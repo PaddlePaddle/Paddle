@@ -44,18 +44,30 @@ class Pad3dOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
     std::vector<int> paddings;
-    if(op_desc.Input("Paddings").size() >= 1) {
-        auto* paddings_v = scope.FindVar(op_desc.Input("Paddings")[0]);
-        auto* padding_t = paddings_v->GetMutable<phi::DenseTensor>();
-        phi::DenseTensor paddings_tensor;
-        paddings_tensor.Resize(padding_t->dims());
-        platform::CPUPlace cpu_place;
-        paddle::framework::TensorCopySync((*padding_t), cpu_place, &paddings_tensor);
-        auto* paddings_data = paddings_tensor.mutable_data<int>(platform::CPUPlace());
-        paddings = std::vector<int>(paddings_data, paddings_data + paddings_tensor.numel());
+    if (op_desc.Input("Paddings").size() >= 1) {
+      auto* paddings_v = scope.FindVar(op_desc.Input("Paddings")[0]);
+      auto* padding_t = paddings_v->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor paddings_tensor;
+      paddings_tensor.Resize(padding_t->dims());
+      platform::CPUPlace cpu_place;
+      paddle::framework::TensorCopySync(
+          (*padding_t), cpu_place, &paddings_tensor);
+      auto* paddings_data =
+          paddings_tensor.mutable_data<int>(platform::CPUPlace());
+      paddings = std::vector<int>(paddings_data,
+                                  paddings_data + paddings_tensor.numel());
     } else {
-        paddings = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+      paddings =
+          PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
     }
+
+    int inputDim = input->getDimensions().nbDims;
+    int pad_size = static_cast<int>(paddings.size());
+    PADDLE_ENFORCE_EQ(
+        inputDim * 2,
+        pad_size,
+        phi::errors::InvalidArgument(
+            "The size of paddings must be equal to twice of input dimensions"));
 
     nvinfer1::Dims pre_pad, post_pad;
 
