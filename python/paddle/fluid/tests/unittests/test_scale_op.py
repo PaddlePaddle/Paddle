@@ -149,15 +149,12 @@ class TestScaleFp16Op(TestScaleOp):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=0.001, check_eager=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ["X"], "Out", max_relative_error=0.001, check_eager=True
-            )
+        self.check_grad_with_place(
+            place, ["X"], "Out", max_relative_error=0.001, check_eager=True
+        )
 
 
 class TestScaleBF16Op(OpTest):

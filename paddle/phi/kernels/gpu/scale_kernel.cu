@@ -21,44 +21,22 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename InT>
+template <typename DataT, typename ParamT>
 struct ScaleFunctor {
-  InT bias;
-  InT scale;
+  ParamT bias;
+  ParamT scale;
   bool bias_after_scale;
 
-  ScaleFunctor(InT scale_data, InT bias_data, bool is_bias_after_sacle)
+  ScaleFunctor(ParamT scale_data, ParamT bias_data, bool is_bias_after_sacle)
       : bias(bias_data),
         scale(scale_data),
         bias_after_scale(is_bias_after_sacle) {}
 
-  __device__ __forceinline__ InT operator()(const InT x) const {
+  __device__ __forceinline__ DataT operator()(const DataT x) const {
     if (bias_after_scale) {
-      return scale * x + bias;
+      return static_cast<DataT>(scale * static_cast<ParamT>(x) + bias);
     } else {
-      return scale * (x + bias);
-    }
-  }
-};
-
-struct ScaleFunctorFp16 {
-  float bias;
-  float scale;
-  bool bias_after_scale;
-
-  ScaleFunctorFp16(float scale_data, float bias_data, bool is_bias_after_sacle)
-      : bias(bias_data),
-        scale(scale_data),
-        bias_after_scale(is_bias_after_sacle) {}
-
-  __device__ __forceinline__ phi::dtype::float16 operator()(
-      const phi::dtype::float16 x) const {
-    if (bias_after_scale) {
-      return static_cast<phi::dtype::float16>(scale * static_cast<float>(x) +
-                                              bias);
-    } else {
-      return static_cast<phi::dtype::float16>(scale *
-                                              (static_cast<float>(x) + bias));
+      return static_cast<DataT>(scale * (static_cast<ParamT>(x) + bias));
     }
   }
 };
@@ -70,6 +48,7 @@ void ScaleKernel(const Context& dev_ctx,
                  float bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   std::vector<const DenseTensor*> inputs;
   std::vector<DenseTensor*> outputs;
   inputs.emplace_back(&x);
@@ -78,20 +57,12 @@ void ScaleKernel(const Context& dev_ctx,
   if (x.numel() <= 0 || (!x.IsInitialized())) {
     return;
   }
-  if (x.dtype() == DataType::FLOAT16) {
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx,
-        inputs,
-        &outputs,
-        ScaleFunctorFp16(
-            scale.to<float>(), static_cast<float>(bias), bias_after_scale));
-  } else {
-    phi::funcs::ElementwiseKernel<T>(
-        dev_ctx,
-        inputs,
-        &outputs,
-        ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
-  }
+  phi::funcs::ElementwiseKernel<T>(
+      dev_ctx,
+      inputs,
+      &outputs,
+      ScaleFunctor<T, MT>(
+          scale.to<MT>(), static_cast<MT>(bias), bias_after_scale));
 }
 
 }  // namespace phi
