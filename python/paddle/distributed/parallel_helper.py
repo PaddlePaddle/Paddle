@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from ..layers import collective
+
 from ..framework import Parameter
 
 __parallel_ctx__clz__ = None
@@ -48,11 +48,12 @@ def _init_parallel_ctx():
 
 
 def _broadcast_parameters(parameters):
+    from ..distributed import broadcast
+
     for param in parameters:
         # In model parallel, some parameters are split into multiple devices,
         # so we could not broadcast these parameters.
         if param.is_distributed:
             continue
-
         if isinstance(param, Parameter) and param.trainable:
-            collective._broadcast(param, 0, sync_mode=True)
+            broadcast(param, 0, sync_op=True)

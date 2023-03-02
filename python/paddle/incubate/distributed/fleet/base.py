@@ -21,7 +21,7 @@ from paddle.fluid.optimizer import SGD
 from paddle.optimizer import SGD as SGD_v2
 from paddle.static.amp.decorator import OptimizerWithMixedPrecision
 
-__all__ = ['Mode', 'Fleet', 'DistributedOptimizer']
+__all__ = []
 
 
 class Mode:
