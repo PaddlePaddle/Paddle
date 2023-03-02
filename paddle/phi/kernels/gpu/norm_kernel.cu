@@ -62,7 +62,7 @@ __global__ void Normalize(const T* x,
     MT reduce_result = BlockReduce(temp_storage).Sum(sum);
 
     if (threadIdx.x == 0) {
-      norm = square_root(reduce_result + eps);
+      norm = square_root(reduce_result + static_cast<MT>(eps));
       out_norm[i] = static_cast<T>(norm);
     }
     __syncthreads();
@@ -86,7 +86,6 @@ void NormKernel(const Context& ctx,
 
   auto xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
-  float eps = epsilon;
 
   DenseTensor* out_norm;
   DenseTensor out_norm_tmp;
@@ -117,8 +116,8 @@ void NormKernel(const Context& ctx,
   int max_threads = ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_threads / block, 1);
   int grid = std::min(max_blocks, pre * post);
-  Normalize<T, block>
-      <<<grid, block, 0, ctx.stream()>>>(x_ptr, pre, n, post, eps, y, norm_ptr);
+  Normalize<T, block><<<grid, block, 0, ctx.stream()>>>(
+      x_ptr, pre, n, post, epsilon, y, norm_ptr);
 }
 
 }  // namespace phi
