@@ -30,7 +30,9 @@ namespace ir {
 ///
 /// \brief Define built-in parameterless types. Please add the necessary
 /// interface functions for built-in types through the macro
-/// DECLARE_TYPE_UTILITY_FUNCTOR. NOTE(zhangbo9674): If you need to directly
+/// DECLARE_TYPE_UTILITY_FUNCTOR.
+///
+/// NOTE(zhangbo9674): If you need to directly
 /// cache the object of this built-in type in IrContext, please overload the get
 /// method, and construct and cache the object in IrContext. For the specific
 /// implementation method, please refer to Float16Type.

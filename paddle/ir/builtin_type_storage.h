@@ -90,6 +90,7 @@ enum class DataLayout {
 
 ///
 /// \brief Define Parameteric TypeStorage for DenseTensorType.
+///
 /// NOTE(zhangbo9674): The derived TypeStorage class needs to implement the
 /// following methods: (1)declare ParamKey, (2)define Construction method,
 /// (3)define HashValue method, (4)overload operator==.
