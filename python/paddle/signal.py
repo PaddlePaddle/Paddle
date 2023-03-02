@@ -62,6 +62,7 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
         #  [1, 3, 5],
         #  [2, 4, 6],
         #  [3, 5, 7]]
+        #  yes
 
         y1 = frame(x, frame_length=4, hop_length=2, axis=0)   # [3, 4]
         # [[0, 1, 2, 3],
