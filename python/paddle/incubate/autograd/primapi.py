@@ -226,7 +226,7 @@ def to_prim(blocks, exclude=frozenset()):
     if not core._is_fwd_prim_enabled():
         return
     if isinstance(blocks, paddle.fluid.framework.Block):
-        logging.debug("Atomize composite op to primitive ops begin.")
+        logging.info("Atomize composite op to primitive ops begin.")
         main_program = blocks.program
     elif isinstance(blocks, typing.Sequence):
         for item in blocks:
@@ -245,9 +245,9 @@ def to_prim(blocks, exclude=frozenset()):
         )
 
     with framework.program_guard(main_program):
-        logging.debug("Lowering composite forward ops begin...")
+        print("Lowering composite forward ops begin...")
         primx._lower_composite(
             blocks, prim_config["forward_blacklist"] | exclude
         )
         replace_ops = prim_config["composite_ops_record"]
-        logging.debug(f"Lowering composite forward ops finish: {replace_ops}")
+        print(f"Lowering composite forward ops finish: {replace_ops}")

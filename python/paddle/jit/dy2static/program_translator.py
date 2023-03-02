@@ -1219,7 +1219,11 @@ class ProgramCache:
                 return infer_program
 
         partial_program = partial_program_from(concrete_program)
-        if not _in_amp_guard() and not _in_pure_fp16_guard():
+        if (
+            core._is_fwd_prim_enabled()
+            and not _in_amp_guard()
+            and not _in_pure_fp16_guard()
+        ):
             partial_program.set_hooker(PrimHooker())
         return concrete_program, partial_program
 
