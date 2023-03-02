@@ -156,7 +156,7 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     mean_ = reshape(mean_, [-1])
     variance = reshape(variance, [-1])
     if is_amp:
-        y = cast(y, "float16")
+        out = cast(out, "float16")
 
     return out, mean_, variance
 
