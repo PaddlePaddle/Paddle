@@ -120,6 +120,33 @@ Tensor full<DescTensor>(const IntArray& shape,
   op->InferShape(*block);
   return out;
 }
+
+template <>
+std::vector<Tensor> split<DescTensor>(const Tensor& x,
+                                      const IntArray& sections,
+                                      const Scalar& axis) {
+  int elem_num = sections.size();
+  std::vector<std::string> outs_name;
+  std::vector<Tensor> outs;
+  for (int i = 0; i < elem_num; ++i) {
+    Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
+    std::string out_name =
+        std::static_pointer_cast<prim::DescTensor>(out.impl())->Name();
+    outs_name.push_back(std::move(out_name));
+    outs.push_back(out);
+  }
+  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
+  framework::OpDesc* op = block->AppendOp();
+  op->SetType("split");
+  op->SetAttr("sections", sections.GetData());
+  op->SetAttr("axis", axis.to<int>());
+  op->SetOutput("Out", outs_name);
+  op->CheckAttrs();
+  op->InferVarType(block);
+  op->InferShape(*block);
+  return outs;
+}
+
 template <>
 Tensor cast<DescTensor>(const Tensor& x, DataType dtype) {
   Tensor out = empty<DescTensor>({}, DataType::FLOAT32, paddle::Place());
