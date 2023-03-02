@@ -1226,7 +1226,6 @@ class ProgramCache:
             partial_program.set_hooker(PrimHooker())
         return concrete_program, partial_program
 
-
     def __getitem__(self, item):
         if not isinstance(item, CacheKey):
             raise ValueError(

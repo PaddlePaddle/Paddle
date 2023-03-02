@@ -83,6 +83,7 @@ class TestPrimForward(unittest.TestCase):
             net = apply_to_static(net, use_prim)
 
         res = []
+        self.x = data
         for _ in range(10):
             out = net(data)
             loss = paddle.mean(out, axis, keep_dim)
@@ -99,7 +100,12 @@ class TestPrimForward(unittest.TestCase):
     def check_prim(self, net, use_prim):
         if not use_prim:
             return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+        fwd_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(self.x)[1]
+            .train_program.block(0)
+            .ops
+        ]
         # Ensure that reduce_mean is splitted into small ops
         self.assertTrue('reduce_mean' not in fwd_ops)
 
@@ -150,6 +156,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
             net = apply_to_static(net, use_prim)
 
         res = []
+        self.x = data
         for _ in range(10):
             out = net(data)
             loss = paddle.mean(out, axis, keep_dim)
@@ -166,7 +173,12 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def check_prim(self, net, use_prim):
         if not use_prim:
             return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+        fwd_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(self.x)[1]
+            .train_program.block(0)
+            .ops
+        ]
         # Ensure that reduce_mean is splitted into small ops
         self.assertTrue('reduce_mean' not in fwd_ops)
 
