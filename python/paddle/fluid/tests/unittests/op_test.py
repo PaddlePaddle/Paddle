@@ -1509,7 +1509,6 @@ class OpTest(unittest.TestCase):
             if prim_checker.is_only_check_prim():
                 self.only_prim = True
                 return
-        self.__class__.op_type = self.op_type
 
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -2115,7 +2114,6 @@ class OpTest(unittest.TestCase):
             checker(outs)
 
     def check_output_with_place_customized(self, checker, place):
-        self.__class__.op_type = self.op_type
         outs = self.calc_output(place)
         outs = [np.array(out) for out in outs]
         outs.sort(key=len)
