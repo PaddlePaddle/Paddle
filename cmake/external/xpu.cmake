@@ -142,8 +142,7 @@ if(WITH_XPU_XFT)
   message(STATUS "Compile with XPU XFT!")
   add_definitions(-DPADDLE_WITH_XPU_XFT)
 
-  set(XPU_XFT_LIB_DIR "${XPU_INSTALL_DIR}/lib")
-  set(XPU_XFT_LIB "${XPU_XFT_LIB_DIR}/${XPU_XFT_LIB_NAME}")
+  set(XPU_XFT_LIB "${XPU_LIB_DIR}/${XPU_XFT_LIB_NAME}")
 endif()
 
 if(WITH_XPU_BKCL AND WITH_XPU_XFT)
