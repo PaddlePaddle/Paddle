@@ -41,7 +41,20 @@ if(WITH_GPU)
                            ${native_dst})
   endif()
 endif()
-
+if(CMAKE_COMPILER_IS_GNUCC)
+  execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
+                  OUTPUT_VARIABLE GCC_VERSION)
+  string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
+  list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
+  list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
+  set(GCC_VERSION "${GCC_MAJOR}.${GCC_MINOR}")
+  if(GCC_VERSION GREATER_EQUAL "12.0")
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/device.cc.patch
+         native_dst)
+    set(GLOO_PATCH_COMMAND patch -d ${GLOO_SOURCE_DIR}/gloo/transport/tcp <
+                           ${native_dst})
+  endif()
+endif()
 include_directories(${GLOO_INCLUDE_DIR})
 
 if(WITH_ASCEND OR WITH_ASCEND_CL)

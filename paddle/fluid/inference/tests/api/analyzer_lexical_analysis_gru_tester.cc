@@ -261,7 +261,7 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
     SetAnalysisConfig(&analysis_cfg, FLAGS_cpu_num_threads);
     if (FLAGS_enable_bf16) {
       analysis_cfg.EnableMkldnnBfloat16();
-    } else if (FLAGS_enable_int8) {
+    } else if (FLAGS_enable_int8_ptq) {
       if (FLAGS_fuse_multi_gru) {
         analysis_cfg.pass_builder()->AppendPass("multi_gru_fuse_pass");
       }
@@ -271,6 +271,8 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
       analysis_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
       analysis_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(
           FLAGS_batch_size);
+    } else if (FLAGS_enable_int8_qat) {
+      analysis_cfg.EnableMkldnnInt8();
     } else {
       // if fp32 => disable mkldnn fc passes
       // when passes are enabled dnnl error occurs for iterations==0
