@@ -2155,6 +2155,7 @@ class TestHardSwish(TestActivation):
         self.op_type = 'hard_swish'
         self.init_dtype()
         self.init_shape()
+        self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.hardswish
 
         np.random.seed(1024)
@@ -2170,18 +2171,42 @@ class TestHardSwish(TestActivation):
         self.inputs = {'X': x}
         self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
         self.outputs = {'Out': out}
+        self.enable_cinn = False
 
     def init_shape(self):
         self.shape = [10, 12]
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_prim=True)
 
 
 class TestHardSwish_ZeroDim(TestHardSwish):
+    def setUp(self):
+        super().setUp()
+        self.enable_cinn = False
+
+    def init_shape(self):
+        self.shape = []
+
+
+class TestHardSwishFP16(TestHardSwish):
+    def setUp(self):
+        super().setUp()
+        self.only_prim = True
+        self.enable_cinn = False
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestHardSwish_ZeroDim_FP16(TestHardSwishFP16):
+    def setUp(self):
+        super().setUp()
+        self.enable_cinn = False
+
     def init_shape(self):
         self.shape = []
 
