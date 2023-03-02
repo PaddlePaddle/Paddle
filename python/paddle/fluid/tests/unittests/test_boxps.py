@@ -25,10 +25,10 @@ class TestTranspile(unittest.TestCase):
     """TestCases for BoxPS Preload"""
 
     def get_transpile(self, mode, trainers="127.0.0.1:6174"):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.mode = 'collective'
         config.collective_mode = mode
-        t = fluid.DistributeTranspiler(config=config)
+        t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
         return t
 
     def test_transpile(self):

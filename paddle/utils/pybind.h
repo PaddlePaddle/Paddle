@@ -40,11 +40,15 @@ typedef struct {
 bool PyCheckTensor(PyObject* obj);
 
 // Internal use only, to expose the Tensor type to Python.
-paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj, ssize_t arg_pos);
+paddle::experimental::Tensor CastPyArg2Tensor(PyObject* obj,
+                                              Py_ssize_t arg_pos);
 
 // Internal use only, to expose the Tensor type to Python.
 PyObject* ToPyObject(const paddle::experimental::Tensor& value,
                      bool return_py_none_if_not_initialize = false);
+
+// Internal use only, switch tensor_operants_mode to phi
+void EnableTensorOperantsToPhiMode();
 
 }  // namespace pybind
 }  // namespace paddle
@@ -59,6 +63,7 @@ struct type_caster<paddle::experimental::Tensor> {
                        _("paddle::experimental::Tensor"));
 
   bool load(handle src, bool) {
+    paddle::pybind::EnableTensorOperantsToPhiMode();
     PyObject* obj = src.ptr();
     if (paddle::pybind::PyCheckTensor(obj)) {
       value = paddle::pybind::CastPyArg2Tensor(obj, 0);

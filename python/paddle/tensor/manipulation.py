@@ -1137,6 +1137,7 @@ def concat(x, axis=0, name=None):
                         'int64',
                         'int8',
                         'unit8',
+                        'uint16',
                     ],
                     'concat',
                 )

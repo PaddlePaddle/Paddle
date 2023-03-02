@@ -145,6 +145,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 'int64',
                 'complex64',
                 'complex128',
+                'uint16',
             ],
             'fill_constant',
         )
