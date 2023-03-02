@@ -286,7 +286,7 @@ def get_buffers(layer_instance, include_sublayer=True):
 
 def _replace_value_with_input_spec(args):
     args_with_spec = []
-    for idx, input_var in enumerate(flatten(args)):
+    for idx, input_var in enumerate(paddle.utils.layers_utils.flatten(args)):
         if isinstance(input_var, np.ndarray):
             input_var = paddle.static.InputSpec.from_numpy(input_var)
             input_var.stop_gradient = True
@@ -302,7 +302,9 @@ def _replace_value_with_input_spec(args):
             input_var.stop_gradient = stop_gradient
 
         args_with_spec.append(input_var)
-    args_with_spec = pack_sequence_as(args, args_with_spec)
+    args_with_spec = paddle.utils.layers_utils.pack_sequence_as(
+        args, args_with_spec
+    )
     return args_with_spec
 
 
