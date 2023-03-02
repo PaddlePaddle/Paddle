@@ -12,7 +12,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/ir/fuse_adamw_op_pass.h"
 #include <string>
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
@@ -177,7 +176,7 @@ bool InitAndCheckAttrs(const size_t &found_adamw_count,
   bool lazy_mode = false;
   int64_t min_row_size_to_use_multithread = 1000;
 
-  // Get skip_update and coeff, these wiil be used to cheak whether we can
+  // Get skip_update and coeff, these wiil be used to check whether we can
   // use fuse_adamw.
   for (auto &node : adamw_op->inputs) {
     auto in_name = adamw_op_desc->Input("SkipUpdate");

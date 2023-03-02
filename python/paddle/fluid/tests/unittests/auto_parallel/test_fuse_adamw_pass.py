@@ -84,7 +84,8 @@ class TestFuseAdamWPass(unittest.TestCase):
             loss = paddle.mean(out)
             optimizer.minimize(loss)
 
-        apply_passes(train_program, startup_program)
+        if use_apply_passes:
+            apply_passes(train_program, startup_program)
 
         exe.run(startup_program)
         if use_amp:
