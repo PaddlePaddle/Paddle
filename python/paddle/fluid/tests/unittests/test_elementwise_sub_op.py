@@ -64,8 +64,8 @@ class TestElementwiseOpFp16(TestElementwiseOp):
         self.python_api = sub_wrapper()
         self.dtype = np.float16
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype),
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
