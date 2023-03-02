@@ -60,10 +60,13 @@ size_t GenKey(Args&&... args) {
   return seed;
 }
 
+enum MatmulImplType { kMatmul = 1, kMatmulWithBias = 2 };
+
 struct MatmulCacheKey {
  public:
   MatmulCacheKey() {}
-  MatmulCacheKey(const std::vector<int64_t>& x_dims,
+  MatmulCacheKey(const MatmulImplType impl_type,
+                 const std::vector<int64_t>& x_dims,
                  const std::vector<int64_t>& y_dims,
                  const bool trans_x,
                  const bool trans_y,
@@ -74,11 +77,14 @@ struct MatmulCacheKey {
                  static_cast<int64_t>(trans_y),
                  static_cast<int64_t>(dtype));
   }
+
   size_t GetKey() const { return key; }
   size_t GenSubKey(int64_t idx) const { return GenKey(key, idx); }
+  MatmulImplType GetImplType() const { return type; }
 
  private:
   size_t key;
+  MatmulImplType type;
 };
 
 struct ConvCacheKey {
