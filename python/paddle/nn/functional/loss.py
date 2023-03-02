@@ -375,6 +375,8 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     """
     if anchor.size == 0:
         raise ValueError("The dims of anchor should be greater than 0.")
+    if positive.size == 0:
+        raise ValueError("The dims of positive should be greater than 0.")
     check_variable_and_dtype(
         anchor, 'anchor', ['float32', 'float64'], 'npair_loss'
     )

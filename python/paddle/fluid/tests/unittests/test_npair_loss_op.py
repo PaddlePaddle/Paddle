@@ -200,7 +200,7 @@ class TestNpairLossZeroError(unittest.TestCase):
     def test_errors(self):
         with paddle.fluid.dygraph.guard():
 
-            def test_0_size():
+            def test_anchor_0_size():
                 array = np.array([], dtype=np.float32)
                 anchor = paddle.to_tensor(
                     np.reshape(array, [0, 0, 0]), dtype='float32'
@@ -214,7 +214,23 @@ class TestNpairLossZeroError(unittest.TestCase):
                 )
                 paddle.nn.functional.npair_loss(anchor, positive, labels)
 
-            self.assertRaises(ValueError, test_0_size)
+            self.assertRaises(ValueError, test_anchor_0_size)
+
+            def test_positive_0_size():
+                array = np.array([], dtype=np.float32)
+                anchor = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1]), dtype='float32'
+                )
+                positive = paddle.to_tensor(
+                    np.reshape(array, [0]), dtype='float32'
+                )
+                array = np.array([1, 2, 3, 4], dtype=np.float32)
+                labels = paddle.to_tensor(
+                    np.reshape(array, [4]), dtype='float32'
+                )
+                paddle.nn.functional.npair_loss(anchor, positive, labels)
+
+            self.assertRaises(ValueError, test_positive_0_size)
 
 
 if __name__ == '__main__':
