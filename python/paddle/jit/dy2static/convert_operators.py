@@ -16,7 +16,10 @@ import re
 
 import paddle
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.dygraph.base import _convert_into_variable
+from paddle.fluid.dygraph.base import (
+    _convert_into_variable,
+    in_declarative_mode,
+)
 from paddle.fluid.framework import Variable, core
 from paddle.fluid.layers import Print, control_flow, fill_constant
 from paddle.fluid.layers.control_flow import while_loop
@@ -26,6 +29,7 @@ from paddle.jit.dy2static.utils import (
     GetterSetterHelper,
     UndefinedVar,
 )
+from paddle.static.nn.control_flow import Assert
 
 from .return_transformer import RETURN_NO_VALUE_VAR_NAME
 from .variable_trans_func import to_static_variable
@@ -41,8 +45,6 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
-    from paddle.fluid.dygraph.base import in_declarative_mode
-
     if in_declarative_mode() and isinstance(x, paddle.fluid.core.eager.Tensor):
         """
         TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
@@ -729,8 +731,6 @@ def convert_assert(cond, message=""):
     if isinstance(cond, Variable):
         cond = paddle.cast(cond, "bool")
         # NOTE: message is not used because Paddle Assert has no corresponding parameter to use.
-        from paddle.static.nn.control_flow import Assert
-
         return Assert(cond)
     else:
         assert cond, message
