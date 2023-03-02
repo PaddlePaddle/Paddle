@@ -138,17 +138,17 @@ TEST(type_test, built_in_type) {
   ir::DenseTensorTypeStorage::LoD lod = {{1, 2, 3}, {4, 5, 6}};
   size_t offset = 0;
 
-  ir::Type lod_tensor_1 =
+  ir::Type dense_tensor_1 =
       ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, offset);
-  ir::Type lod_tensor_2 =
+  ir::Type dense_tensor_2 =
       ir::DenseTensorType::get(ctx, fp32_2, dims, data_layout, lod, offset);
-  ir::Type lod_tensor_3 =
+  ir::Type dense_tensor_3 =
       ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, 2);
 
-  EXPECT_EQ(lod_tensor_1 == lod_tensor_2, 1);
-  EXPECT_EQ(lod_tensor_1 != lod_tensor_3, 1);
-  EXPECT_EQ(lod_tensor_1.type_id() == lod_tensor_2.type_id(), 1);
-  EXPECT_EQ(ir::DenseTensorType::classof(lod_tensor_1), 1);
+  EXPECT_EQ(dense_tensor_1 == dense_tensor_2, 1);
+  EXPECT_EQ(dense_tensor_1 != dense_tensor_3, 1);
+  EXPECT_EQ(dense_tensor_1.type_id() == dense_tensor_2.type_id(), 1);
+  EXPECT_EQ(ir::DenseTensorType::classof(dense_tensor_1), 1);
 }
 
 // Customize a parameterized TypeStorage IntegerTypeStorage.
