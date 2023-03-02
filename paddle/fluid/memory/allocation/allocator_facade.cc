@@ -494,7 +494,7 @@ class AllocatorFacadePrivate {
   const AllocatorMap& GetAllocatorMap() { return allocators_; }
 
   void InitNaiveBestFitCPUAllocator() {
-#if defined(__APPLE__) && defined(PADDLE_ARM)
+#if defined(__APPLE__) && defined(__arm64__)
     // NOTE(wuweilong): It is more efficient to use CPUAllocator directly,
     // but it wll cause some problem in Mac OS m1 chip, so we use
     // NaiveBestFitAllocator instead.
