@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include "paddle/ir/type.h"
 
 namespace std {
@@ -50,45 +52,6 @@ struct hash<std::vector<std::vector<T>>> {
 
 namespace ir {
 ///
-/// \brief It is consistent with the DataLayout defined by Phi operator library.
-/// See the file for details: paddle/phi/common/layout.h.
-///
-enum class DataLayout {
-  UNDEFINED = 0,
-  // TODO(chenweihang): keep ANY for compatibility, remove it later
-  ANY = UNDEFINED,
-  NHWC,
-  NCHW,
-  NCDHW,
-  NDHWC,
-  ONEDNN,
-  SPARSE_COO,
-  SPARSE_CSR,
-  PSTRING_UNION,
-
-  NUM_DATA_LAYOUTS,
-
-  // See Note [ Why we need ALL in basic kernel key member? ]
-  ALL_LAYOUT = UNDEFINED,
-
-  // Note: Unify phi DataLayout and fluid::framework::DataLayout,
-  // for compatible with fluid DataLayout, here need prefix `k`
-
-  // Note: The original `kAnyLayout (enum value 2)` is a strange design.
-  // `kAnyLayout` originally cannot represent any kind of Layout,
-  // at the same time, it can also represent any Layout.
-  // Strictly, it means "default" or "undefined" layout,
-  // and should not be mixed with other meaningful layouts
-
-  kAnyLayout = ANY,
-  kNHWC = NHWC,
-  kNCHW = NCHW,
-  kMKLDNN = ONEDNN,  // all layouts supported by ONEDNN internally
-  kNDHWC = NDHWC,
-  kNCDHW = NCDHW,
-};
-
-///
 /// \brief Define Parameteric TypeStorage for DenseTensorType.
 ///
 /// NOTE(zhangbo9674): The derived TypeStorage class needs to implement the
@@ -96,6 +59,45 @@ enum class DataLayout {
 /// (3)define HashValue method, (4)overload operator==.
 ///
 struct DenseTensorTypeStorage : public ir::TypeStorage {
+  ///
+  /// \brief It is consistent with the DataLayout defined by Phi operator
+  /// library. See the file for details: paddle/phi/common/layout.h.
+  ///
+  enum class DataLayout : unsigned int {
+    UNDEFINED = 0,
+    // TODO(chenweihang): keep ANY for compatibility, remove it later
+    ANY = UNDEFINED,
+    NHWC,
+    NCHW,
+    NCDHW,
+    NDHWC,
+    ONEDNN,
+    SPARSE_COO,
+    SPARSE_CSR,
+    PSTRING_UNION,
+
+    NUM_DATA_LAYOUTS,
+
+    // See Note [ Why we need ALL in basic kernel key member? ]
+    ALL_LAYOUT = UNDEFINED,
+
+    // Note: Unify phi DataLayout and fluid::framework::DataLayout,
+    // for compatible with fluid DataLayout, here need prefix `k`
+
+    // Note: The original `kAnyLayout (enum value 2)` is a strange design.
+    // `kAnyLayout` originally cannot represent any kind of Layout,
+    // at the same time, it can also represent any Layout.
+    // Strictly, it means "default" or "undefined" layout,
+    // and should not be mixed with other meaningful layouts
+
+    kAnyLayout = ANY,
+    kNHWC = NHWC,
+    kNCHW = NCHW,
+    kMKLDNN = ONEDNN,  // all layouts supported by ONEDNN internally
+    kNDHWC = NDHWC,
+    kNCDHW = NCDHW,
+  };
+
   using Dim = std::vector<int64_t>;
 
   using LoD = std::vector<std::vector<size_t>>;
@@ -137,7 +139,10 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
     hash_value = hash_combine(hash_value, std::hash<Dim>()(std::get<1>(key)));
     // hash layout
     hash_value =
-        hash_combine(hash_value, std::hash<DataLayout>()(std::get<2>(key)));
+        hash_combine(hash_value,
+                     std::hash<std::underlying_type<DataLayout>::type>()(
+                         static_cast<std::underlying_type<DataLayout>::type>(
+                             std::get<2>(key))));
     // hash lod
     hash_value = hash_combine(hash_value, std::hash<LoD>()(std::get<3>(key)));
     // hash offset

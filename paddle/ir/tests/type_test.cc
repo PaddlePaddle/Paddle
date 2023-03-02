@@ -134,7 +134,8 @@ TEST(type_test, built_in_type) {
 
   // Test 2: Test the parameteric built-in type of IrContext.
   ir::DenseTensorTypeStorage::Dim dims = {1, 2, 3};
-  ir::DataLayout data_layout = ir::DataLayout::NCHW;
+  ir::DenseTensorTypeStorage::DataLayout data_layout =
+      ir::DenseTensorTypeStorage::DataLayout::NCHW;
   ir::DenseTensorTypeStorage::LoD lod = {{1, 2, 3}, {4, 5, 6}};
   size_t offset = 0;
 
@@ -149,6 +150,11 @@ TEST(type_test, built_in_type) {
   EXPECT_EQ(dense_tensor_1 != dense_tensor_3, 1);
   EXPECT_EQ(dense_tensor_1.type_id() == dense_tensor_2.type_id(), 1);
   EXPECT_EQ(ir::DenseTensorType::classof(dense_tensor_1), 1);
+
+  ir::DenseTensorType dense_tensor_4 =
+      ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, 2);
+  EXPECT_EQ(dense_tensor_4.offset() == 2, 1);
+  EXPECT_EQ(dense_tensor_4.data_layout() == data_layout, 1);
 }
 
 // Customize a parameterized TypeStorage IntegerTypeStorage.

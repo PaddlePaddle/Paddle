@@ -105,6 +105,16 @@ class DenseTensorType : public ir::Type {
   using Type::Type;
 
   DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
+
+  ir::Type dtype();
+
+  ir::DenseTensorTypeStorage::Dim dim();
+
+  ir::DenseTensorTypeStorage::DataLayout data_layout();
+
+  ir::DenseTensorTypeStorage::LoD lod();
+
+  size_t offset();
 };
 
 }  // namespace ir

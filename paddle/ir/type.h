@@ -61,9 +61,14 @@ class Type {
   IrContext *ir_context() const;
 
   ///
-  /// \brief Methods for type judgment and query.
+  /// \brief Methods for type judgment and cast.
   ///
   static bool classof(Type) { return true; }
+
+  template <typename T>
+  bool isa() {
+    return type_id() == TypeId::get<T>();
+  }
 
   ///
   /// \brief Enable hashing Type.
