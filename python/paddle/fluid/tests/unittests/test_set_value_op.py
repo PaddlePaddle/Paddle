@@ -1519,5 +1519,30 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestSetValueBf16(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        self.set_dtype()
+        self.set_value()
+        self.set_shape()
+        self.data = np.ones(self.shape).astype(self.dtype)
+        self.program = paddle.static.Program()
+
+    def set_shape(self):
+        self.shape = [2, 3, 4]
+
+    def set_value(self):
+        self.value = 6
+
+    def set_dtype(self):
+        self.dtype = "bfloat16"
+
+    def _call_setitem(self, x):
+        x[0, 0] = self.value
+
+    def _get_answer(self):
+        self.data[0, 0] = self.value
+
+
 if __name__ == '__main__':
     unittest.main()
