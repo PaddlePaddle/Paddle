@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
@@ -57,6 +57,37 @@ class TestFloatArangeOp(TestArangeOp):
         self.python_api = paddle.arange
         self.case = (0, 5, 1)
 
+class TestFloa16ArangeOp(TestArangeOp):
+    def init_config(self):
+        self.dtype = np.float16
+        self.python_api = paddle.arange
+        self.case = (0, 5, 1)
+
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
+
+class TestBFloat16ArangeOp(TestArangeOp):
+    def init_config(self):
+        self.dtype = np.float32
+        self.python_api = arange_wrapper
+        self.case = (0, 1, 0.2)
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() 
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and not support the bfloat16",
+    )
+    def test_check_output(self):
+        self.inputs = {
+            'Start': convert_float_to_uint16(np.array([self.case[0]]).astype(np.float32)),
+            'End': convert_float_to_uint16(np.array([self.case[1]]).astype(np.float32)),
+            'Step': convert_float_to_uint16(np.array([self.case[2]]).astype(np.float32)),
+        }
+
+        self.outputs = {
+            'Out': convert_float_to_uint16(np.arange(self.case[0], self.case[1], self.case[2]))
+        }
+        self.check_output(atol=1e-2)
 
 class TestInt32ArangeOp(TestArangeOp):
     def init_config(self):

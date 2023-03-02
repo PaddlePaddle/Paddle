@@ -20,12 +20,16 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/range_function.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 namespace phi {
 
 template <typename T>
 __global__ void Range(T start, T step, int64_t size, T* out) {
-  CUDA_KERNEL_LOOP(index, size) { out[index] = start + step * index; }
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  CUDA_KERNEL_LOOP(index, size) { out[index] = static_cast<T>(static_cast<MPType>(start) + static_cast<MPType>(step) * index); }
 }
 
 template <typename T, typename Context>
@@ -39,7 +43,8 @@ void ArangeKernel(const Context& dev_ctx,
   T step_value = GetValue<T, Context>(dev_ctx, step);
 
   int64_t size = 0;
-  phi::funcs::GetSize(start_value, end_value, step_value, &size);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  phi::funcs::GetSize(static_cast<MPType>(start_value), static_cast<MPType>(end_value), static_cast<MPType>(step_value), &size);
   out->Resize(phi::make_ddim({size}));
   T* out_data = dev_ctx.template Alloc<T>(out);
 
@@ -55,7 +60,7 @@ void ArangeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    arange, GPU, ALL_LAYOUT, phi::ArangeKernel, float, double, int64_t, int) {
+    arange, GPU, ALL_LAYOUT, phi::ArangeKernel, float, double, int64_t, int, phi::dtype::float16, phi::dtype::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
