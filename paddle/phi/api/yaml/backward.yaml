@@ -547,6 +547,15 @@
   kernel :
     func : frame_grad
 
+- backward_op : cutlass_fused_multihead_attention_grad
+  forward : cutlass_fused_multihead_attention (Tensor query, Tensor key, Tensor value, Tensor mask, float scale, bool causal, float dropout_p) -> Tensor(out), Tensor(seed_and_offset)
+  args : (Tensor query, Tensor key, Tensor value, Tensor seed_and_offset, Tensor out, Tensor out_grad, float scale, bool causal, float dropout_p)
+  output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad)
+  infer_meta :
+    func : FusedMultiHeadAttentionGradInferMeta
+  kernel :
+    func : fused_multihead_attention_grad
+
 - backward_op : gather_nd_grad
   forward : gather_nd (Tensor x, Tensor index) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad)

@@ -19,17 +19,18 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiHeadAttentionForwardKernel(const Context& ctx,
+void MultiHeadAttentionBackwardKernel(const Context& ctx,
                                      const DenseTensor& query,
                                      const DenseTensor& key,
                                      const DenseTensor& value,
-                                     const paddle::optional<DenseTensor>& mask,
-                                     const float scale,
+                                     const DenseTensor& seed_and_offset,
+                                     const DenseTensor& out,
+                                     const DenseTensor& out_grad,
                                      const bool causal,
+                                     const float scale,
                                      const float dropout_p,
-                                     // TODO(zhangdanyang) : currently we don't use
-                                     // const bool logsumexp_p,
-                                     DenseTensor* output,
-                                     DenseTensor* seed_and_offset);
+                                     DenseTensor* g_query,
+                                     DenseTensor* g_key,
+                                     DenseTensor* g_value);
 
 }  // namespace phi

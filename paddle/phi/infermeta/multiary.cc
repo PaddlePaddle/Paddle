@@ -3001,7 +3001,9 @@ void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
                                       const MetaTensor& mask,
                                       float scale,
                                       bool causal,
-                                      MetaTensor* out) {
+                                      const float dropout_p,
+                                      MetaTensor* out,
+                                      MetaTensor* seed_and_offset) {
   PADDLE_ENFORCE_EQ(
       query.dims().size(),
       4,
@@ -3092,12 +3094,43 @@ void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
   std::vector<int64_t> out_dims(
       {query_batch_size, query_seq_length, query_num_head, value_head_size});
 
+
   out->set_dims(phi::make_ddim(out_dims));
   out->share_lod(query);
   out->set_dtype(query.dtype());
   out->set_layout(query.layout());
+
 }
+
+void FusedMultiHeadAttentionGradInferMeta(
+                                      const MetaTensor& query,
+                                      const MetaTensor& key,
+                                      const MetaTensor& value,
+                                      const MetaTensor& seed_and_offset,
+                                      const MetaTensor& out,
+                                      const MetaTensor& out_grad,
+                                      const float scale,
+                                      const bool causal,
+                                      const float dropout_p,
+                                      MetaTensor* query_grad,
+                                      MetaTensor* key_grad,
+                                      MetaTensor* value_grad) {
+
+  PADDLE_ENFORCE_EQ(
+      out_grad.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Key should be a 4-D tensor"
+                                   "But received Key dimension(%s)",
+                                   out_grad.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      out.dims().size(),
+      4,
+      phi::errors::InvalidArgument("Key should be a 4-D tensor"
+                                   "But received Key dimension(%s)",
+                                   out_grad.dims().size()));
+
 
 }  // namespace phi
 
+}
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

@@ -1,0 +1,18 @@
+grep: warning: GREP_OPTIONS is deprecated; please use an alias or script
+[2023-02-23 12:09:24,422] [    INFO] distributed_strategy.py:147 - distributed strategy initialized
+server not ready, wait 3 sec to retry...
+not ready endpoints:['10.127.4.142:40416']
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+No stack trace in paddle, may be caused by external reasons.
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: `Termination signal` is detected by the operating system.
+  [TimeInfo: *** Aborted at 1677154164 (unix time) try "date -d @1677154164" if you are using GNU date ***]
+  [SignalInfo: *** SIGTERM (@0x5900) received by PID 22837 (TID 0x7f60d4b6e740) from PID 22784 ***]
+

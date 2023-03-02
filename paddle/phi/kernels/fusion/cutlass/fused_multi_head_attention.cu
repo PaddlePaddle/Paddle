@@ -75,6 +75,13 @@ struct LaunchParams {
   int32_t mask_strideM;
   int64_t mask_strideH;  // stride for num_heads
   int64_t mask_strideB;  // stride for num_batches
+
+  // dropout
+  bool use_dropout;
+  unsigned long long dropout_batch_head_rng_offset;
+  float dropout_prob;
+
+  uint64_t* seed_and_offset;
 };
 
 template <typename T,
@@ -84,7 +91,8 @@ template <typename T,
           int KeysPerBlock,
           bool SingleValueIteration,
           bool AddMask,
-          bool MaskBroadcastRow>
+          bool MaskBroadcastRow,
+          bool kSupportsDropout_>
 void LaunchMultiHeadAttentionKernel(LaunchParams params,
                                     const phi::GPUContext& ctx) {
   using Attention = AttentionKernel<T,
@@ -94,7 +102,8 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params,
                                     KeysPerBlock,
                                     SingleValueIteration,
                                     AddMask,
-                                    MaskBroadcastRow>;
+                                    MaskBroadcastRow,
+                                    kSupportsDropout_>;
 
   typename Attention::Params p;
   {  // set parameters
@@ -105,7 +114,7 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params,
 
     // TODO(zhengzekang): Currently we only support inference, so here we set
     // `logsumexp_ptr` as nullptr, which is used for backward.
-    p.logsumexp_ptr = nullptr;
+    p.logsumexp_ptr = nullptr;;
 
     p.output_accum_ptr = nullptr;
     if (Attention::kNeedsOutputAccumulatorBuffer) {
@@ -139,6 +148,13 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params,
     p.scale = params.scale;
     p.causal = params.causal;
     p.mask_broadcast_row = params.mask_broadcast_row;
+
+    p.seed_and_offset = params.seed_and_offset;
+
+    // dropout
+    p.use_dropout = params.use_dropout;
+    p.dropout_batch_head_rng_offset = params.dropout_batch_head_rng_offset;
+    p.dropout_prob = params.dropout_prob;
 
     // TODO(zhengzekang): This might overflow for big tensors
     p.q_strideH = params.query_strideH;
@@ -182,10 +198,11 @@ template <typename T,
           int QueriesPerBlock,
           int KeysPerBlock,
           bool SingleValueIteration,
-          bool AddMask>
-void DispatchFMHAMaskBroadcastRow(LaunchParams params,
+          bool AddMask,
+          bool MaskBroadcastRow>
+void DispatchFMHADropout(LaunchParams params,
                                   const phi::GPUContext& ctx) {
-  if (params.mask_broadcast_row) {
+  if (params.use_dropout) {
     LaunchMultiHeadAttentionKernel<T,
                                    ArchTag,
                                    IsAligned,
@@ -193,6 +210,7 @@ void DispatchFMHAMaskBroadcastRow(LaunchParams params,
                                    KeysPerBlock,
                                    SingleValueIteration,
                                    AddMask,
+                                   MaskBroadcastRow,
                                    true>(params, ctx);
   } else {
     LaunchMultiHeadAttentionKernel<T,
@@ -202,7 +220,38 @@ void DispatchFMHAMaskBroadcastRow(LaunchParams params,
                                    KeysPerBlock,
                                    SingleValueIteration,
                                    AddMask,
+                                   MaskBroadcastRow,
                                    false>(params, ctx);
+  }
+}
+
+template <typename T,
+          typename ArchTag,
+          bool IsAligned,
+          int QueriesPerBlock,
+          int KeysPerBlock,
+          bool SingleValueIteration,
+          bool AddMask>
+void DispatchFMHAMaskBroadcastRow(LaunchParams params,
+                                  const phi::GPUContext& ctx) {
+  if (params.mask_broadcast_row) {
+    DispatchFMHADropout<T,
+                        ArchTag,
+                        IsAligned,
+                        QueriesPerBlock,
+                        KeysPerBlock,
+                        SingleValueIteration,
+                        AddMask,
+                        true>(params, ctx);
+  } else {
+    DispatchFMHADropout<T,
+                        ArchTag,
+                        IsAligned,
+                        QueriesPerBlock,
+                        KeysPerBlock,
+                        SingleValueIteration,
+                        AddMask,
+                        false>(params, ctx);
   }
 }
 
@@ -330,8 +379,13 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
                                      const paddle::optional<DenseTensor>& mask,
                                      const float scale,
                                      const bool causal,
-                                     DenseTensor* output) {
+                                     const float dropout_p,
+                                     // TODO(zhangdanyang) : currently we don't use
+                                     // const bool logsumexp_p,
+                                     DenseTensor* output,
+                                     DenseTensor* seed_and_offset) {
   ctx.template Alloc<T>(output);
+  ctx.template Alloc<T>(seed_and_offset);
   LaunchParams params{};
 
   params.datatype = query.dtype();
@@ -340,6 +394,17 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
 
   params.value_ptr = value.data();
   params.output_ptr = output->data();
+
+  params.seed_and_offset = const_cast<uint64_t*>(reinterpret_cast<const uint64_t*>(seed_and_offset->data()));
+
+  auto gen = ctx.GetGenerator();
+  uint64_t inc = query.dims()[0] * query.dims()[2] * 32;
+  auto seed_offset_pair = gen->IncrementOffset(inc);
+  auto seed = seed_offset_pair.first;
+  auto seed_offset = seed_offset_pair.second;
+  params.seed_and_offset[0] = seed;
+  params.seed_and_offset[1] = seed_offset;
+
   params.output_accum_ptr = nullptr;
 
   // TODO(zhengzekang): currently we only used in inference. Maybe add a bool
@@ -360,6 +425,11 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
   params.key_strideH = key.dims()[3];
   params.value_strideH = value.dims()[3];
 
+  // dropout
+  params.use_dropout = dropout_p==NULL? false : true;
+  params.dropout_batch_head_rng_offset=NULL;
+  params.dropout_prob = dropout_p;
+
   if (mask) {
     auto mask_tensor = mask.get();
     params.mask_ptr = mask_tensor.data();
@@ -377,6 +447,7 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
     if (params.mask_strideM == 0) {
       params.mask_broadcast_row = true;
     }
+
   }
 
   DispatchFusedMultiheadAttentionKernel(params, ctx);
@@ -386,9 +457,23 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
+// PD_REGISTER_KERNEL(
+//     fused_multihead_attention,
+//     GPU,
+//     ALL_LAYOUT,
+//     phi::fusion::cutlass_internal::MultiHeadAttentionForwardKernel,
+//     phi::dtype::float16) {}
+
+// PD_REGISTER_KERNEL(
+//     fused_multihead_attention,
+//     GPU,
+//     ALL_LAYOUT,
+//     phi::fusion::cutlass_internal::MultiHeadAttentionForwardKernel,
+//     phi::dtype::bfloat16) {}
+
 PD_REGISTER_KERNEL(
     fused_multihead_attention,
     GPU,
     ALL_LAYOUT,
     phi::fusion::cutlass_internal::MultiHeadAttentionForwardKernel,
-    phi::dtype::float16) {}
+    float) {}

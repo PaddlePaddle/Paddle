@@ -547,6 +547,22 @@ void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
                                       const MetaTensor& mask,
                                       float scale,
                                       bool causal,
-                                      MetaTensor* out);
+                                      const float dropout_p,
+                                      MetaTensor* out,
+                                      MetaTensor* seed_and_offset);
+
+void FusedMultiHeadAttentionGradInferMeta(
+                                      const MetaTensor& query,
+                                      const MetaTensor& key,
+                                      const MetaTensor& value,
+                                      const MetaTensor& seed_and_offset,
+                                      const MetaTensor& out,
+                                      const MetaTensor& out_grad,
+                                      const float scale,
+                                      const bool causal,
+                                      const float dropout_p,
+                                      MetaTensor* query_grad,
+                                      MetaTensor* key_grad,
+                                      MetaTensor* value_grad);
 
 }  // namespace phi

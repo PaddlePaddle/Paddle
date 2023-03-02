@@ -87,10 +87,12 @@ def cutlass_fused_multi_head_attention(
 
     helper = LayerHelper('cutlass_fused_multihead_attention', **locals())
     out = helper.create_variable_for_type_inference(dtype=query.dtype)
+    seed_and_offset = helper.create_variable_for_type_inference(dtype='uint64')
     helper.append_op(
         type='cutlass_fused_multihead_attention',
         inputs={'Query': query, 'Key': key, 'Value': value, 'Mask': mask},
-        attrs={"Scale": scale, "Causal": causal},
-        outputs={'Out': out},
+        attrs={"Scale": scale, "Causal": causal}, 
+        outputs={'Out': out, "Seed_and_Offset": seed_and_offset}, 
     )
-    return out
+
+    return out, seed_and_offset

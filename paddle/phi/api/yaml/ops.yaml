@@ -252,13 +252,14 @@
   backward : cross_grad
 
 - op : cutlass_fused_multihead_attention
-  args : (Tensor query, Tensor key, Tensor value, Tensor mask, float scale, bool causal)
-  output : Tensor
+  args : (Tensor query, Tensor key, Tensor value, Tensor mask, float scale, bool causal, float dropout_p)
+  output : Tensor(out), Tensor(seed_and_offset)
   infer_meta :
     func : FusedMultiHeadAttentionInferMeta
   kernel :
     func : fused_multihead_attention
   optional : mask
+  backward : cutlass_fused_multihead_attention_grad
 
 - op : det
   args : (Tensor x)

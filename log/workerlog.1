@@ -1,0 +1,22 @@
+grep: warning: GREP_OPTIONS is deprecated; please use an alias or script
+[2023-02-23 12:09:24,354] [    INFO] distributed_strategy.py:147 - distributed strategy initialized
+Traceback (most recent call last):
+  File "../test_custom_allreduce.py", line 17, in <module>
+    optimizer.minimize(loss)
+  File "/usr/local/lib/python3.7/dist-packages/paddle/distributed/fleet/fleet.py", line 1254, in minimize
+    loss, startup_program, parameter_list, no_grad_set
+  File "/usr/local/lib/python3.7/dist-packages/paddle/distributed/fleet/fleet.py", line 1483, in _minimize_impl
+    loss, startup_program, parameter_list, no_grad_set=no_grad_set
+  File "/usr/local/lib/python3.7/dist-packages/paddle/distributed/fleet/meta_optimizers/graph_execution_optimizer.py", line 270, in minimize
+    startup_program, loss.block.program, loss
+  File "/usr/local/lib/python3.7/dist-packages/paddle/distributed/fleet/meta_optimizers/graph_execution_optimizer.py", line 235, in _try_to_compile
+    startup_program, main_program, local_build_strategy
+  File "/usr/local/lib/python3.7/dist-packages/paddle/distributed/fleet/meta_optimizers/graph_execution_optimizer.py", line 108, in _setup_nccl_op
+    "hierarchical_allreduce_inter_ranks": build_strategy.hierarchical_allreduce_inter_nranks,
+  File "/usr/local/lib/python3.7/dist-packages/paddle/fluid/framework.py", line 4046, in append_op
+    attrs=kwargs.get("attrs", None),
+  File "/usr/local/lib/python3.7/dist-packages/paddle/fluid/framework.py", line 2891, in __init__
+    proto = OpProtoHolder.instance().get_op_proto(type)
+  File "/usr/local/lib/python3.7/dist-packages/paddle/fluid/framework.py", line 2714, in get_op_proto
+    raise ValueError("Operator \"%s\" has not been registered." % type)
+ValueError: Operator "gen_nccl_id" has not been registered.

@@ -1,6 +1,8 @@
 #include <cmath>
 #include <vector>
 
+#include <curand_kernel.h>
+
 #include "cutlass/bfloat16.h"
 #include "cutlass/fast_math.h"
 #include "cutlass/gemm/gemm.h"
@@ -31,6 +33,7 @@
 #include "gemm/mma_from_smem.h"
 #include "gemm_kernel_utils.h"
 #include "transform/tile_smem_loader.h"
+#include "paddle/phi/kernels/randperm_kernel.h"
 
 #include <inttypes.h>
 
@@ -63,9 +66,12 @@ template <
     int kQueriesPerBlock,
     int kKeysPerBlock,
     bool kSingleValueIteration, // = `value.shape[-1] <= kKeysPerBlock`
+    // This is quite slower on V100 for some reason
     bool kAddMask, 
     // This is quite faster when mask need broadcast at row axis
-    bool kMaskBroadcastRow = true>
+    bool kMaskBroadcastRow = true,
+    // Set to false if you know at compile-time you will never need dropout
+    bool kSupportsDropout_ = true>
 struct AttentionKernel {
   using scalar_t = scalar_t_;
   using accum_t = float;
@@ -75,6 +81,7 @@ struct AttentionKernel {
   // Using `accum_t` improves perf on f16 at the cost of
   // numerical errors
   using output_accum_t = accum_t;
+  static constexpr bool kSupportsDropout = kSupportsDropout_;
   static constexpr bool kIsAligned = isAligned_;
   static constexpr int32_t kAlignLSE = 32; // block size of backward
   static constexpr bool kPreloadV = ArchTag::kMinComputeCapability >= 80 &&
@@ -141,6 +148,13 @@ struct AttentionKernel {
     int32_t num_batches;
     int32_t num_heads;
 
+    // dropout
+    bool use_dropout;
+    unsigned long long dropout_batch_head_rng_offset;
+    float dropout_prob;
+
+    uint64_t* seed_and_offset;
+
     CUTLASS_HOST_DEVICE int32_t o_strideM() const {
       return head_dim_value * num_heads;
     }
@@ -152,6 +166,12 @@ struct AttentionKernel {
       auto query_start = blockIdx.x * kQueriesPerBlock;
 
       auto lse_dim = ceil_div((int32_t)num_queries, kAlignLSE) * kAlignLSE;
+
+      if (kSupportsDropout) {
+        dropout_batch_head_rng_offset =
+            batch_id * num_heads * num_queries * num_keys +
+            head_id * num_queries * num_keys;
+      }
 
       int64_t q_start, k_start;
       // Advance to current batch - in case of different sequence lengths
@@ -527,6 +547,46 @@ struct AttentionKernel {
               {0, col});
         };
 
+#ifdef HAS_PYTORCH
+    curandStatePhilox4_32_10_t curand_state_init;
+    if (kSupportsDropout && p.use_dropout) {
+      const auto seeds = at::cuda::philox::unpack(p.rng_engine_inputs);
+
+      // each element of the attention matrix P with shape
+      // (batch_sz, n_heads, n_queries, n_keys) is associated with a single
+      // offset in RNG sequence. we initialize the RNG state with offset that
+      // starts at the beginning of a (n_queries, n_keys) matrix for this
+      // block's batch_id and head_id
+      // initializing rng state is very expensive, so we run once per kernel,
+      // rather than once per iteration. each iteration takes a copy of the
+      // initialized RNG state and offsets it as needed.
+      curand_init(
+          std::get<0>(seeds),
+          0,
+          std::get<1>(seeds) + p.dropout_batch_head_rng_offset,
+          &curand_state_init);
+    }
+#else
+    curandStatePhilox4_32_10_t curand_state_init;
+    if (kSupportsDropout && p.use_dropout) {
+
+      // each element of the attention matrix P with shape
+      // (batch_sz, n_heads, n_queries, n_keys) is associated with a single
+      // offset in RNG sequence. we initialize the RNG state with offset that
+      // starts at the beginning of a (n_queries, n_keys) matrix for this
+      // block's batch_id and head_id
+      // initializing rng state is very expensive, so we run once per kernel,
+      // rather than once per iteration. each iteration takes a copy of the
+      // initialized RNG state and offsets it as needed.
+      curand_init(
+          p.seed_and_offset[0],
+          0,
+          p.seed_and_offset[1] + p.dropout_batch_head_rng_offset,
+          &curand_state_init);
+    }
+
+#endif
+
     // Iterate through keys
     for (int32_t iter_key_start = 0; iter_key_start < p.num_keys;
          iter_key_start += kKeysPerBlock) {
@@ -719,6 +779,130 @@ struct AttentionKernel {
           shared_storage.after_mm0.si, accum, my_lane_id, output_tile_coords);
 
       __syncthreads();
+
+#ifdef HAS_PYTORCH
+      // apply dropout (if applicable) after we've written Pij to smem.
+      // dropout is applied by multiplying each element of Pij by:
+      // - 0 with probability dropout_p
+      // - 1 / (1 - dropout_p) with probability 1 - dropout_p
+      //
+      // for backward purposes we want to be able to map each element of the
+      // attention matrix to the same random uniform number as the one we used
+      // in forward, without needing to use the same iteration order or having
+      // to store the dropout matrix. its possible to do this in registers but
+      // it ends up being very slow because each thread having noncontiguous
+      // strips of the Pij tile means we have to skip around a lot, and also
+      // have to generate a single random number at a time
+      if (kSupportsDropout && p.use_dropout) {
+        auto si = shared_storage.after_mm0.si.accum_ref();
+        // each thread handles a contiguous sequence of elements from Sij, all
+        // coming from the same row. the reason they have to come from the same
+        // row is that the sampling random numbers from a contiguous random
+        // number sequence is much more efficient than jumping around, and the
+        // linear offset of each element of S (the global matrix) maps to an
+        // offset in a random number sequence. for S, the end of a row and the
+        // beginning of the next have adjacent offsets, but for Sij, this is not
+        // necessarily the case.
+        const int num_threads = blockDim.x * blockDim.y * blockDim.z;
+        const int threads_per_row =
+            cutlass::fast_min(num_threads / problem_size_0_m, problem_size_0_n);
+        const int elts_per_thread = cutlass::round_nearest(
+            cutlass::ceil_div(problem_size_0_n, threads_per_row), 4);
+
+        const int thread_i = thread_id() / threads_per_row;
+        const int thread_start_j =
+            (thread_id() % threads_per_row) * elts_per_thread;
+
+        if (thread_i < problem_size_0_m && thread_start_j < problem_size_0_n) {
+          curandStatePhilox4_32_10_t curand_state = curand_state_init;
+          skipahead(
+              static_cast<unsigned long long>(
+                  (query_start + thread_i) * p.num_keys +
+                  (iter_key_start + thread_start_j)),
+              &curand_state);
+          const float dropout_scale = 1.0 / (1.0 - p.dropout_prob);
+
+          // apply dropout scaling to elements this thread is responsible for,
+          // in chunks of 4
+          for (int sij_start_col_idx = thread_start_j; sij_start_col_idx <
+               cutlass::fast_min(thread_start_j + elts_per_thread,
+                                 problem_size_0_n);
+               sij_start_col_idx += 4) {
+            const float4 rand_uniform_quad = curand_uniform4(&curand_state);
+
+            CUTLASS_PRAGMA_UNROLL
+            for (int quad_idx = 0; quad_idx < 4; ++quad_idx) {
+              si.at({thread_i, sij_start_col_idx + quad_idx}) *=
+                  static_cast<scalar_t>(
+                      dropout_scale *
+                      ((&rand_uniform_quad.x)[quad_idx] > p.dropout_prob));
+            }
+          }
+        }
+        __syncthreads(); // p.use_dropout should have same value kernel-wide
+      }
+#else
+      // apply dropout (if applicable) after we've written Pij to smem.
+      // dropout is applied by multiplying each element of Pij by:
+      // - 0 with probability dropout_p
+      // - 1 / (1 - dropout_p) with probability 1 - dropout_p
+      //
+      // for backward purposes we want to be able to map each element of the
+      // attention matrix to the same random uniform number as the one we used
+      // in forward, without needing to use the same iteration order or having
+      // to store the dropout matrix. its possible to do this in registers but
+      // it ends up being very slow because each thread having noncontiguous
+      // strips of the Pij tile means we have to skip around a lot, and also
+      // have to generate a single random number at a time
+      if (kSupportsDropout && p.use_dropout) {
+        auto si = shared_storage.after_mm0.si.accum_ref();
+        // each thread handles a contiguous sequence of elements from Sij, all
+        // coming from the same row. the reason they have to come from the same
+        // row is that the sampling random numbers from a contiguous random
+        // number sequence is much more efficient than jumping around, and the
+        // linear offset of each element of S (the global matrix) maps to an
+        // offset in a random number sequence. for S, the end of a row and the
+        // beginning of the next have adjacent offsets, but for Sij, this is not
+        // necessarily the case.
+        const int num_threads = blockDim.x * blockDim.y * blockDim.z;
+        const int threads_per_row =
+            cutlass::fast_min(num_threads / problem_size_0_m, problem_size_0_n);
+        const int elts_per_thread = cutlass::round_nearest(
+            cutlass::ceil_div(problem_size_0_n, threads_per_row), 4);
+
+        const int thread_i = thread_id() / threads_per_row;
+        const int thread_start_j =
+            (thread_id() % threads_per_row) * elts_per_thread;
+
+        if (thread_i < problem_size_0_m && thread_start_j < problem_size_0_n) {
+          curandStatePhilox4_32_10_t curand_state = curand_state_init;
+          skipahead(
+              static_cast<unsigned long long>(
+                  (query_start + thread_i) * p.num_keys +
+                  (iter_key_start + thread_start_j)),
+              &curand_state);
+          const float dropout_scale = 1.0 / (1.0 - p.dropout_prob);
+
+          // apply dropout scaling to elements this thread is responsible for,
+          // in chunks of 4
+          for (int sij_start_col_idx = thread_start_j; sij_start_col_idx <
+               cutlass::fast_min(thread_start_j + elts_per_thread,
+                                 problem_size_0_n);
+               sij_start_col_idx += 4) {
+            const float4 rand_uniform_quad = curand_uniform4(&curand_state);
+
+            CUTLASS_PRAGMA_UNROLL
+            for (int quad_idx = 0; quad_idx < 4; ++quad_idx) {
+              si.at({thread_i, sij_start_col_idx + quad_idx}) *=
+                  static_cast<scalar_t>(
+                      dropout_scale *
+                      ((&rand_uniform_quad.x)[quad_idx] > p.dropout_prob));
+            }
+          }
+        }
+        __syncthreads(); // p.use_dropout should have same value kernel-wide
+      }
+#endif
 
       //
       // MATMUL: Attn . V

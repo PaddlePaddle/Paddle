@@ -1,0 +1,1 @@
+[{'name': 'xtokrn', 'rank': -1, 'replicas': 2, 'dtype': 'gpu', 'candidate': '10.127.4.142:40414', 'endpoints': '10.127.4.142:40415,10.127.4.142:40416'}]
