@@ -76,25 +76,11 @@ class TestUnStackFP16Op(TestUnStackOpBase):
     def initParameters(self):
         self.dtype = np.float16
 
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            self.get_y_names(),
-            user_defined_grads=unstack_grad_fp16(self.x),
-        )
-
 
 class TestStackFP16Op3(TestUnStackOpBase):
     def initParameters(self):
         self.dtype = np.float16
         self.axis = -1
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            self.get_y_names(),
-            user_defined_grads=unstack_grad_fp16(self.x),
-        )
 
 
 class TestStackFP16Op4(TestUnStackOpBase):
@@ -102,38 +88,17 @@ class TestStackFP16Op4(TestUnStackOpBase):
         self.dtype = np.float16
         self.axis = -3
 
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            self.get_y_names(),
-            user_defined_grads=unstack_grad_fp16(self.x),
-        )
-
 
 class TestStackFP16Op5(TestUnStackOpBase):
     def initParameters(self):
         self.dtype = np.float16
         self.axis = 1
 
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            self.get_y_names(),
-            user_defined_grads=unstack_grad_fp16(self.x),
-        )
-
 
 class TestStackFP16Op6(TestUnStackOpBase):
     def initParameters(self):
         self.dtype = np.float16
         self.axis = 2
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            self.get_y_names(),
-            user_defined_grads=unstack_grad_fp16(self.x),
-        )
 
 
 class TestStackOp3(TestUnStackOpBase):
@@ -203,7 +168,7 @@ class TestUnStackBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output()
+        self.check_output_with_place(place, check_eager=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
