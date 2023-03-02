@@ -29,7 +29,9 @@ namespace phi {
 template <typename T>
 __global__ void Range(T start, T step, int64_t size, T* out) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  CUDA_KERNEL_LOOP(index, size) { out[index] = static_cast<T>(static_cast<MPType>(start) + static_cast<MPType>(step) * index); }
+  MPType mptype_start = static_cast<MPType>(start);
+  MPType mptype_step = static_cast<MPType>(step);
+  CUDA_KERNEL_LOOP(index, size) { out[index] = static_cast<T>(mptype_start + mptype_step * index); }
 }
 
 template <typename T, typename Context>

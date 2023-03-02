@@ -64,7 +64,7 @@ class TestFloa16ArangeOp(TestArangeOp):
         self.case = (0, 5, 1)
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
 class TestBFloat16ArangeOp(TestArangeOp):
     def init_config(self):
