@@ -29,6 +29,9 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
 import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle.distributed.fleet.meta_optimizers import (
+    RawProgramOptimizer as RawProgram,
+)
 from paddle.fluid import compiler
 from paddle.incubate.distributed.fleet.collective import (
     DistributedStrategy,
@@ -52,6 +55,33 @@ def print_to_err(class_name, log_str):
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
+
+def _insert_comm_op(opt, loss, build_strategy=None):
+    opt = RawProgram(opt)
+    role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+    strategy = paddle.distributed.fleet.DistributedStrategy()
+    if build_strategy is not None:
+        strategy.build_strategy = build_strategy
+    opt._set_basic_info(loss, role, opt, strategy)
+
+    # following code is a copy of RawProgramOptimizer.minimize except init_comm_group
+    opt.endpoints = opt.role_maker._get_trainer_endpoints()
+    opt.current_endpoint = opt.endpoints[opt.role_maker._worker_index()]
+    opt.rank = opt.role_maker._worker_index()
+    opt.nranks = opt.role_maker._worker_num()
+    startup_program = paddle.static.default_startup_program()
+    opt.startup_program = startup_program
+
+    block = loss.block
+    program = block.program
+    opt.main_program = program
+
+    optimize_ops, params_grads = opt.inner_opt.minimize(loss, startup_program)
+
+    opt.main_program = program
+    if opt.nranks > 1:
+        opt._transpile_main_program(loss)
 
 
 class TestDistRunnerBase:
