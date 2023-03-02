@@ -163,6 +163,8 @@ class ConcatCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   void Apply() override {
     std::vector<paddle::experimental::Tensor> input =
         this->GetMultiForwardInput("X");
+    paddle::optional<paddle::experimental::Tensor> tensor_axis =
+        this->GetOptionalSingleForwardInput("AxisTensor");
     paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
     std::vector<paddle::experimental::Tensor> input_grad =
         this->GetMultiForwardInput("X");
@@ -178,7 +180,13 @@ class ConcatCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     std::vector<std::string> dx_name = this->GetOutputName(input_grad);
 
     VLOG(6) << "Runing concat_grad composite func";
-    prim::concat_grad<prim::DescTensor>(input, out_grad, axis, dx_ptr);
+    if (tensor_axis.is_initialized()) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support dynamic index from tensor for concat composite "
+          "grad for now. "));
+    } else {
+      prim::concat_grad<prim::DescTensor>(input, out_grad, axis, dx_ptr);
+    }
     this->RecoverOutputName(input_grad, dx_name);
   }
 };
