@@ -2243,11 +2243,7 @@ class TestHardSwish(TestActivation):
         self.shape = [10, 12]
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            check_prim=True
-        )
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def test_check_output(self):
         self.check_output(check_prim=True)
