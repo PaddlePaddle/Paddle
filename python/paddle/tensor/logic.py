@@ -512,6 +512,15 @@ def greater_equal(x, y, name=None):
             result1 = paddle.greater_equal(x, y)
             print(result1)  # result1 = [True False True]
     """
+    if not isinstance(y, (int, bool, float, Variable)):
+        raise TypeError(
+            "Type of input args must be float, bool, int or Tensor, but received type {}".format(
+                type(y)
+            )
+        )
+    if not isinstance(y, Variable):
+        y = full(shape=[], dtype=x.dtype, fill_value=y)
+
     if in_dygraph_mode():
         return _C_ops.greater_equal(x, y)
     else:
