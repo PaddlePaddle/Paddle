@@ -94,7 +94,7 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
                             ),
                             "input_padding": TensorConfig(
                                 data_gen=partial(generate_paddings, paddings)
-                            )
+                            ),
                         }
                     for i in range(10):
                         program_config = ProgramConfig(
@@ -107,7 +107,7 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
                         yield program_config
 
     def sample_predictor_configs(
-            self, program_config
+        self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
