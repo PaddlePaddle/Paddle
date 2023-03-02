@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 from paddle.framework import _non_static_mode
 from paddle.static import Executor, Program, program_guard
 
@@ -134,6 +133,8 @@ def test(unit_test, use_gpu=False, test_error=False):
             META_DATA = dict(TEST_META_WRONG_SHAPE_DATA)
         for shape_data in META_DATA.values():
             for data_type in SUPPORTED_DTYPES:
+                if not use_gpu and data_type == np.float16:
+                    continue
                 meta_data['x_np'] = np_data_generator(
                     shape_data['x_shape'], dtype=data_type
                 )
@@ -186,6 +187,11 @@ def test_type_error(unit_test, use_gpu, type_str_map):
     if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     for op_data in TEST_META_OP_DATA:
+        if use_gpu and (
+            type_str_map['x'] == np.float16 or type_str_map['y'] == np.float16
+        ):
+            continue
+
         meta_data = dict(op_data)
         binary_op = meta_data['binary_op']
 
@@ -215,7 +221,6 @@ def type_map_factory():
     ]
 
 
-@unittest.skipIf(core.is_compiled_with_cuda(), "core is compiled with CUDA")
 class TestCPU(unittest.TestCase):
     def test(self):
         test(self)
