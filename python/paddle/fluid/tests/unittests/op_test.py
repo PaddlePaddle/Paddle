@@ -1856,7 +1856,7 @@ class OpTest(unittest.TestCase):
                         ref_eager_dygraph_outs = (
                             self.op_test._calc_python_api_output(place)
                         )
-                        if eager_dygraph_outs is None:
+                        if ref_eager_dygraph_outs is None:
                             self.is_python_api_test = False
                             ref_eager_dygraph_outs = (
                                 self.op_test._calc_dygraph_output(
@@ -2164,7 +2164,10 @@ class OpTest(unittest.TestCase):
                 else:
                     abs_a = 1 if abs_a < 1e-3 else abs_a
 
-            diff_mat = np.abs(a - b) / abs_a
+            if self.dtype == np.bool:
+                diff_mat = np.abs(a ^ b) / abs_a
+            else:
+                diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
 
             def err_msg():

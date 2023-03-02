@@ -278,7 +278,8 @@ void divide_grad(const Tensor& x,
 template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto x_grad_tmp = out_grad * 0.5 / out;
+    // This calculation is important for resnet.
+    auto x_grad_tmp = (0.5 / out) * out_grad;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }
@@ -741,6 +742,23 @@ void cumsum_grad(const Tensor& x,
     auto grad = cumsum<T>(out_grad, axis, flatten, exclusive, !reverse);
     grad = reshape<T>(grad, x.shape());
     set_output<T>(grad, x_grad);
+  }
+}
+
+template <typename T>
+void topk_grad(const Tensor& x,
+               const Tensor& indices,
+               const Tensor& out_grad,
+               const Scalar& k,
+               const int& axis,
+               const bool& largest,
+               const bool& sorted,
+               Tensor* x_grad) {
+  if (x_grad) {
+    auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+    auto x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
+
+    set_output<T>(x_grad_tmp, x_grad);
   }
 }
 
