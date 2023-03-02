@@ -653,7 +653,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_parallel_executor_pg',
     'test_rank_attention_op',
     'test_fleet_base',
-    'test_fleet_graph_executor',
     'test_fleet_meta_optimizer_base',
     'test_ir_memory_optimize_transformer',
     'test_trt_fc_fuse_pass',
