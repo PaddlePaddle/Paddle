@@ -1,0 +1,13 @@
+--- types.h	2023-03-02 07:44:35.881584720 +0000
++++ types_modify.h	2023-03-02 07:44:26.002664616 +0000
+@@ -319,8 +319,8 @@ inline float cpu_half2float(float16 h) {
+ 
+   unsigned temp = ((sign << 31) | (exponent << 23) | mantissa);
+ 
+-  void* rp = &temp;
+-  return *(float*)rp;
++  return (float)temp;
+ }
+ 
+ } // namespace gloo
++
