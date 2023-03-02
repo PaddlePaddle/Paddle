@@ -64,9 +64,15 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
             self.input_np = np.random.random(self.shape).astype(dtype)
             self.target_np = np.random.random(self.shape).astype(dtype)
             self.var_np = np.ones(self.shape).astype(dtype)
-        elif type == 'broadcast':
+        elif type == 'broadcast1':
             self.shape = [10, 2, 3]
             self.broadcast_shape = [10, 2]
+            self.input_np = np.random.random(self.shape).astype(np.float32)
+            self.target_np = np.random.random(self.shape).astype(np.float32)
+            self.var_np = np.ones(self.broadcast_shape).astype(np.float32)
+        elif type == 'broadcast2':
+            self.shape = [10, 2, 3]
+            self.broadcast_shape = [10, 2, 1]
             self.input_np = np.random.random(self.shape).astype(np.float32)
             self.target_np = np.random.random(self.shape).astype(np.float32)
             self.var_np = np.ones(self.broadcast_shape).astype(np.float32)
@@ -98,7 +104,6 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
                 input=input_x,
                 target=target,
                 var=var,
-                reduction="unsupport reduction",
             )
         else:
             out_ref = ref_gaussian_nll_loss(
@@ -128,7 +133,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
                 input_x = paddle.static.data('Input_x', self.shape, type)
                 target = paddle.static.data('Target', self.shape, type)
                 var = paddle.static.data('Var', self.shape, type)
-            elif type == 'broadcast':
+            elif type in ['broadcast1', 'broadcast2']:
                 input_x = paddle.static.data('Input_x', self.shape)
                 target = paddle.static.data('Target', self.shape)
                 var = paddle.static.data('Var', self.broadcast_shape)
@@ -177,13 +182,16 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
 
     def test_api(self):
         self.test_dynamic_case('float64')
-        self.test_dynamic_case('broadcast')
+        self.test_dynamic_case('broadcast1')
+        self.test_dynamic_case('broadcast2')
         self.test_dynamic_case()
         self.test_dynamic_case('test_err')
         self.test_dynamic_case(full=True, reduction='mean')
+        self.test_dynamic_case(full=True, reduction='sum')
         self.test_static_case(full=True, reduction='mean')
         self.test_static_case()
-        self.test_static_case('broadcast')
+        self.test_static_case('broadcast1')
+        self.test_static_case('broadcast2')
         self.test_static_case('test_err')
 
 
