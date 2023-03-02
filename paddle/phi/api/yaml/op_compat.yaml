@@ -209,6 +209,12 @@
     out : Out
   drop_empty_grad : [input_grad]
 
+- op : cast
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : ceil
   backward : ceil_grad
   inputs :
