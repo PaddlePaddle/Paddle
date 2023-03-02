@@ -177,6 +177,7 @@ REGISTER_OPERATOR(abs,
 
 REGISTER_OPERATOR(abs_grad,
                   ops::AbsGradOp,
+                  ops::AbsCompositeGradOpMaker,
                   ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
 
