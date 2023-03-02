@@ -32,5 +32,11 @@ void ExponentialKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    exponential, GPU, ALL_LAYOUT, phi::ExponentialKernel, float, double) {}
+PD_REGISTER_KERNEL(exponential,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ExponentialKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
