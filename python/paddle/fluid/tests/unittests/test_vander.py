@@ -68,8 +68,7 @@ class TestVanderAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.vander, 1)
-            x = paddle.fluid.data('X', [10, 12], 
-                                  'int32')
+            x = paddle.fluid.data('X', [10, 12], 'int32')
             self.assertRaises(ValueError, paddle.vander, x)
             x1 = paddle.fluid.data('X1', [10], 'int32')
             self.assertRaises(ValueError, paddle.vander, x1, N=-1)
