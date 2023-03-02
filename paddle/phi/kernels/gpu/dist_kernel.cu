@@ -15,10 +15,12 @@
 #include "paddle/phi/kernels/dist_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/p_norm_kernel.h"
+
 
 namespace phi {
 
@@ -36,7 +38,11 @@ template <typename T>
 struct OtherOrderFunctor {
   explicit OtherOrderFunctor(const T& p_order) : p_order_(p_order) {}
   __device__ T operator()(const T& x, const T& y) const {
-    return static_cast<T>(pow(abs(x - y), p_order_));
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    MPType p_order_mp = static_cast<MPType>(p_order_);
+    MPType x_mp = static_cast<MPType>(x);
+    MPType y_mp = static_cast<MPType>(y);
+    return static_cast<T>(pow(abs(x_mp - y_mp), p_order_mp));
   }
 
  private:
@@ -47,7 +53,10 @@ template <typename T>
 struct PowFunctor {
   explicit PowFunctor(const T& p_order) : p_order_(p_order) {}
   HOSTDEVICE inline T operator()(const T x) const {
-    return static_cast<T>(pow(x, p_order_));
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    MPType p_order_mp = static_cast<MPType>(p_order_);
+    MPType x_mp = static_cast<MPType>(x);
+    return static_cast<T>(pow(x_mp, p_order_mp));
   }
   T p_order_;
 };
@@ -55,7 +64,8 @@ struct PowFunctor {
 template <typename T, typename Functor>
 __global__ void ReduceSumWithSubtract(
     const T* x, const T* y, T* out, int64_t N, Functor func) {
-  T sum_val = 0;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType sum_val = static_cast<MPType>(0);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     sum_val += func(x[i], y[i]);
@@ -73,7 +83,8 @@ __global__ void ReduceMaxWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T max_val = -1e10f;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType max_val = static_cast<MPType>(-1e10f);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     max_val = max(max_val, abs(x[i] - y[i]));
@@ -91,7 +102,8 @@ __global__ void ReduceMinWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T min_val = 1e10f;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType min_val = static_cast<MPType>(1e10f);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     min_val = min(min_val, abs(x[i] - y[i]));
@@ -173,4 +185,5 @@ void DistKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(dist, GPU, ALL_LAYOUT, phi::DistKernel, float, double) {}
+PD_REGISTER_KERNEL(dist, GPU, ALL_LAYOUT, phi::DistKernel, float, double,phi::dtype::float16 ) {}
+

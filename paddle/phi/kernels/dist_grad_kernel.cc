@@ -18,6 +18,7 @@
 #include <vector>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/p_norm_grad_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -85,7 +86,7 @@ void DistGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    dist_grad, CPU, ALL_LAYOUT, phi::DistGradKernel, float, double) {}
+    dist_grad, CPU, ALL_LAYOUT, phi::DistGradKernel, float, double, phi::dtype::float16) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(
