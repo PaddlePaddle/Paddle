@@ -68,7 +68,7 @@ class TestFloa16ArangeOp(TestArangeOp):
 
 class TestBFloat16ArangeOp(TestArangeOp):
     def init_config(self):
-        self.dtype = np.float32
+        self.dtype = np.uint16
         self.python_api = arange_wrapper
         self.case = (0, 1, 0.2)
 
