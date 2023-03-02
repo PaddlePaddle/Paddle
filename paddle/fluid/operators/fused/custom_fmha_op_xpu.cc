@@ -43,6 +43,8 @@ class CustomFMHAXPUKernel : public framework::OpKernel<T> {
     phi::DenseTensor* s_out = ctx.Output<phi::DenseTensor>("SOut");
     phi::DenseTensor* dropout_mask =
         ctx.Output<phi::DenseTensor>("DropoutMask");
+    phi::DenseTensor* dropout_out =
+        ctx.Output<phi::DenseTensor>("DropoutOut");
     phi::DenseTensor* ctx_out = ctx.Output<phi::DenseTensor>("CtxOut");
 
     auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
@@ -67,6 +69,8 @@ class CustomFMHAXPUKernel : public framework::OpKernel<T> {
         reinterpret_cast<XPUType*>(s_out->mutable_data<T>(ctx.GetPlace()));
     XPUType* dropout_mask_ptr = reinterpret_cast<XPUType*>(
         dropout_mask->mutable_data<T>(ctx.GetPlace()));
+    XPUType* dropout_out_ptr = reinterpret_cast<XPUType*>(
+        dropout_out->mutable_data<T>(ctx.GetPlace()));
     XPUType* ctx_out_ptr =
         reinterpret_cast<XPUType*>(ctx_out->mutable_data<T>(ctx.GetPlace()));
 
@@ -93,6 +97,7 @@ class CustomFMHAXPUKernel : public framework::OpKernel<T> {
                                               qkv_ptr,
                                               s_out_ptr,
                                               dropout_mask_ptr,
+                                              dropout_out_ptr,
                                               ctx_out_ptr,
                                               batch_size,
                                               num_heads,
@@ -127,6 +132,8 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* s_out = ctx.Input<phi::DenseTensor>("SOut");
     const phi::DenseTensor* dropout_mask =
         ctx.Input<phi::DenseTensor>("DropoutMask");
+    const phi::DenseTensor* dropout_out =
+        ctx.Input<phi::DenseTensor>("DropoutOut");
     const phi::DenseTensor* d_ctx_out = ctx.Input<phi::DenseTensor>("DCtxOut");
     // output
     phi::DenseTensor* d_qkv = ctx.Output<phi::DenseTensor>("DQKV");
@@ -143,6 +150,8 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
         reinterpret_cast<const XPUType*>(s_out->data<T>());
     const XPUType* dropout_mask_ptr =
         reinterpret_cast<const XPUType*>(dropout_mask->data<T>());
+    const XPUType* dropout_out_ptr =
+        reinterpret_cast<const XPUType*>(dropout_out->data<T>());
     const XPUType* d_ctx_out_ptr =
         reinterpret_cast<const XPUType*>(d_ctx_out->data<T>());
 
@@ -178,13 +187,13 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
     bool is_test = ctx.Attr<bool>("is_test");
 
     int qkv_size = total_tokens * num_heads * head_size;
-    XPUType* d_q_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size);
+    XPUType* d_q_ptr = RAII_GUARD.alloc<XPUType>(qkv_size);
     PADDLE_ENFORCE_NOT_NULL(
         d_q_ptr, paddle::platform::errors::Fatal("XPU memory is not enough"));
-    XPUType* d_k_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size);
+    XPUType* d_k_ptr = RAII_GUARD.alloc<XPUType>(qkv_size);
     PADDLE_ENFORCE_NOT_NULL(
         d_k_ptr, paddle::platform::errors::Fatal("XPU memory is not enough"));
-    XPUType* d_v_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(qkv_size);
+    XPUType* d_v_ptr = RAII_GUARD.alloc<XPUType>(qkv_size);
     PADDLE_ENFORCE_NOT_NULL(
         d_v_ptr, paddle::platform::errors::Fatal("XPU memory is not enough"));
     int r = xpu::mha_fusion_grad<XPUType, int16_t>(
@@ -192,6 +201,7 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
         qkv_ptr,
         s_out_ptr,
         dropout_mask_ptr,
+        dropout_out_ptr,
         const_cast<XPUType*>(d_ctx_out_ptr),
         d_q_ptr,
         d_k_ptr,
