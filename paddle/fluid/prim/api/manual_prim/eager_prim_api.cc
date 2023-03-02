@@ -35,11 +35,24 @@ Tensor full<Tensor>(const IntArray& shape,
 }
 
 template <>
+std::vector<Tensor> split<Tensor>(const Tensor& x,
+                                  const IntArray& sections,
+                                  const Scalar& axis) {
+  VLOG(4) << "Eager Prim API split_ad_func call";
+  return ::split_ad_func(x, sections, axis);
+}
+
+template <>
 std::vector<Tensor> split_with_num<Tensor>(const Tensor& x,
                                            const int& num,
                                            const Scalar& axis) {
   VLOG(4) << "Eager Prim API split_with_num_ad_func call";
   return ::split_with_num_ad_func(x, num, axis);
+}
+
+template <>
+Tensor cast<Tensor>(const Tensor& x, DataType dtype) {
+  return ::cast_ad_func(x, dtype);
 }
 }  // namespace prim
 }  // namespace paddle
