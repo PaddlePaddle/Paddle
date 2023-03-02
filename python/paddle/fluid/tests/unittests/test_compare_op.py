@@ -479,7 +479,7 @@ class API_TestElementwise_Equal(unittest.TestCase):
                 (res,) = exe.run(fetch_list=[out])
                 self.assertEqual((res == np.array([True, False])).all(), True)
 
-class API_Test_Less_Than(unittest.TestCase):
+class API_TestElementwise_Less_Than(unittest.TestCase):
     def test_api_fp16(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program(), fluid.Program()):
