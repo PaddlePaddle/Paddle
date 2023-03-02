@@ -703,8 +703,6 @@ class TrtLayerAutoScanTest(AutoScanTest):
             np.testing.assert_allclose(baseline[key], arr, rtol=rtol, atol=atol)
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
-        print('trt_engine_num: ', trt_engine_num)
-        print('paddle_op_num: ', paddle_op_num)
         last_passed_program = os.path.join(
             self.cache_dir, 'transpose_flatten_concat_fuse_pass.pdmodel'
         )
