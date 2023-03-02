@@ -35,8 +35,8 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
     // dev_ctx = reinterpret_cast<phi::GPUContext*>(
     //     CreateDeviceContext<phi::GPUContext>(place, true).get());
 
-    //std::unique_ptr<phi::DeviceContext> dev_ctx_unique_ptr = CreateDeviceContext<phi::GPUContext>(place, true);
-    //dev_ctx = reinterpret_cast<phi::GPUContext*>(dev_ctx_unique_ptr.get());
+    std::unique_ptr<phi::DeviceContext> dev_ctx_unique_ptr = CreateDeviceContext<phi::GPUContext>(place, true);
+    dev_ctx = reinterpret_cast<phi::GPUContext*>(dev_ctx_unique_ptr.get());
 
     /*phi::DeviceContext* dev_ctx_unique_ptr = CreateDeviceContext<phi::GPUContext>(place, true).get();
     VLOG(4) << "yoki1";
@@ -52,8 +52,8 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
           0);
     dev_ctx = reinterpret_cast<phi::GPUContext*>(ctxs[place].get().get());*/
   /*} else {*/
-    auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
-    dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+    /*auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+    dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);*/
     //std::unique_ptr<phi::DeviceContext> dev_ctx_unique_ptr(mutable_dev_ctx);
 
     dev_ctx->cudnn_workspace_handle().ResetWorkspace();
@@ -78,7 +78,7 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   CUDAGraph::BeginCapture(place, stream, mode);
   VLOG(4) << "yoki8";
   // CUDAGraph::SetCapturingDeviceContext(dev_ctx);
-  //CUDAGraph::SetCapturingDeviceContext(std::move(dev_ctx_unique_ptr));
+  CUDAGraph::SetCapturingDeviceContext(std::move(dev_ctx_unique_ptr));
   VLOG(4) << "yoki9";
 
   // When using cuda graph in new executor, fast GC must be used.
@@ -110,10 +110,10 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
 }
 
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
-  //auto* dev_ctx = CUDAGraph::CapturingDeviceContext();
-  auto place = CUDAGraph::CapturingPlace();
+  auto* dev_ctx = CUDAGraph::CapturingDeviceContext();
+  /*auto place = CUDAGraph::CapturingPlace();
   auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
-  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);*/
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
   dev_ctx->SetCUDAGraphAllocator(nullptr);
   return CUDAGraph::EndCapture();
