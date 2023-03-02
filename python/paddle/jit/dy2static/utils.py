@@ -1519,7 +1519,7 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
         min(fwd_end_op_index + out_size, program_desc.block(0).op_size()),
     ):
         op = program_desc.block(0).op(i)
-        if op.type() == 'fill_any_like':
+        if op.type() in ['fill_any_like', "fill_constant"]:
             var_name = op.output('Out')[0]
             names.append(var_name)
     return names
