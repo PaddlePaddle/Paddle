@@ -315,9 +315,7 @@ class PartialProgramLayer:
     def _create_forward_backward_train_program(self):
         whole_program = self._train_program
         # _, forward_end_op_index = self._infer_info('fp32', self._create_program)
-        forward_end_op_index = self._forward_end_index_map[
-            _hash_with_id(whole_program, self)
-        ]
+        forward_end_op_index = self.get_forward_end_op_idx(whole_program)
         assert forward_end_op_index >= 0
 
         return self._get_forward_backward_program_form(
@@ -438,11 +436,14 @@ class PartialProgramLayer:
     def _param_grad_names(self):
         return _param_grad_names(self._train_program.desc, self._params)
 
+    def get_forward_end_op_idx(self, program):
+        return self._forward_end_index_map[_hash_with_id(program, self)]
+
     @LazyInitialized
     def _out_grad_names(self):
         return _out_grad_names(
             self._train_program.desc,
-            self._create_program(is_infer_mode=True).desc.block(0).op_size(),
+            self.get_forward_end_op_idx(self._train_program),
             len(self._outputs.var_ids),
         )
 
@@ -642,6 +643,7 @@ class PartialProgramLayer:
             if isinstance(out, framework.Variable):
                 targets.append(program.global_block().var(out.name))
 
+        start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
         if targets:
             # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
             core.check_and_set_prim_all_enabled()
@@ -652,12 +654,11 @@ class PartialProgramLayer:
                 program, start_idx = self._hooker.after_append_backward(
                     self, program, start_idx
                 )
-            self._forward_end_index_map[
-                _hash_with_id(program, self)
-            ] = start_idx - len(self._outputs.tolist())
-            # TODO: prim make this complicate
             self.prepare_gradient_aggregation(start_idx, main_program, program)
 
+        self._forward_end_index_map[
+            _hash_with_id(program, self)
+        ] = start_idx - len(self._outputs.tolist())
         return program
 
     def _prune_unused_params(self, program):
@@ -1155,5 +1156,8 @@ def add_build_strategy_for(
         if hasattr(compiled_program._program, 'lr_sheduler'):
             builded_program.lr_sheduler = compiled_program._program.lr_sheduler
     else:
+        # can't just create a new program, we need copy the vardesc.
         builded_program = paddle.static.Program()
+        for var in program.block(0).vars.values():
+            builded_program.block(0)._clone_variable(var, False)
     return builded_program
