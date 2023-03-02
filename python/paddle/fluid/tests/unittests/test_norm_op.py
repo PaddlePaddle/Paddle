@@ -180,11 +180,6 @@ class TestNormBF16Op(OpTest):
         }
         self.outputs = {'Out': convert_float_to_uint16(y)}
         self.python_out_sig = ["out"]
-        # self.attrs = {'scale': -2.3}
-        # x = np.random.random((10, 10)).astype(np.float32)
-        # out = x * np.float32(self.attrs['scale'])
-        # self.inputs = {'X': convert_float_to_uint16(x)}
-        # self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
         # dynamic graph just supports float tensor
