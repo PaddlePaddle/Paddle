@@ -47,7 +47,7 @@ class TestGatherNdOpWithIndex1(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         xnp = np.random.random((5, 20)).astype("float64")
-        self.inputs = {'X': xnp, 'Index': np.array([[1]]).astype("int32")}
+        self.inputs = {'X': xnp, 'Index': np.array([1]).astype("int32")}
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
     def test_check_output(self):
@@ -89,7 +89,7 @@ class TestGatherNdOpIndex1(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
-        index = np.array([[1, 2]]).astype("int32")
+        index = np.array([1, 2]).astype("int32")
 
         self.inputs = {'X': xnp, 'Index': index}
 

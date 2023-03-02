@@ -278,8 +278,32 @@ void divide_grad(const Tensor& x,
 template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto x_grad_tmp = out_grad * 0.5 / out;
+    // This calculation is important for resnet.
+    auto x_grad_tmp = (0.5 / out) * out_grad;
     set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
+void concat_grad(const std::vector<Tensor>& x,
+                 const Tensor& out_grad,
+                 const Scalar& axis,
+                 std::vector<Tensor*> x_grad) {
+  int axis_value = axis.to<int>();
+  int rank = x[0].dims().size();
+  if (axis_value < 0) {
+    axis_value = axis_value + rank;
+  }
+  axis_value = axis_value > 0 ? axis_value : 0;
+  std::vector<int> sections;
+  int x_num = x.size();
+  for (int i = 0; i < x_num; ++i) {
+    sections.push_back(x[i].dims()[axis_value]);
+  }
+  std::vector<Tensor> x_grad_tmp =
+      split<T>(out_grad, phi::IntArray(sections), axis);
+  for (int i = 0; i < x_num; ++i) {
+    set_output<T>(x_grad_tmp.at(i), x_grad.at(i));
   }
 }
 

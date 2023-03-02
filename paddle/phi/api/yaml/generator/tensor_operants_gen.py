@@ -29,6 +29,7 @@ inplace_optional_out_type_map = {
 
 indent = "  "
 
+# E.g.: Prim uses `elementwise_pow + fill_constant` to replace `pow`, so that we use this map to generate the `pow` signature when iterating over `elementwise_pow` API.
 specific_ops_map = {"elementwise_pow": "pow"}
 
 
@@ -147,6 +148,22 @@ Tensor Tensor::subtract(const Scalar& y) const {
 
 Tensor Tensor::operator-() const {
   return scale(-1.0, 0.0, true);
+}
+
+Tensor Tensor::operator~() const {
+  return bitwise_not();
+}
+
+Tensor Tensor::operator&(const Tensor &other) const {
+  return bitwise_and(other);
+}
+
+Tensor Tensor::operator|(const Tensor &other) const {
+  return bitwise_or(other);
+}
+
+Tensor Tensor::operator^(const Tensor &other) const {
+  return bitwise_xor(other);
 }
 
 Tensor Tensor::pow(const Tensor& y) const {
