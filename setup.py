@@ -918,6 +918,11 @@ def get_package_data_and_package_dir():
                 shutil.copy(env_dict.get("OPENBLAS_LIB") + '.0', libs_path)
                 package_data['paddle.libs'] += ['libopenblas.so.0']
 
+    if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
+        package_data['paddle.libs'] += [
+            os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
+        ]
+        shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
     if env_dict.get("WITH_LITE") == 'ON':
         shutil.copy(env_dict.get("LITE_SHARED_LIB"), libs_path)
         package_data['paddle.libs'] += [

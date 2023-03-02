@@ -18,8 +18,17 @@
 
 namespace ir {
 ///
+/// \brief This macro is used to get a list of all built-in types in this file.
+///
+#define GET_BUILT_IN_TYPE_LIST ir::Float32Type, ir::Int32Type
+
+///
 /// \brief Definitions of built-in type classes. The built-in type object get
-/// method is as follows: Type fp32 = Float32Type::get(ctx);
+/// method is as follows:
+/// \code{cpp}
+///   ir::IrContext *ctx = ir::IrContext::Instance();
+///   Type fp32 = Float32Type::get(ctx);
+/// \endcode
 ///
 class Float32Type : public ir::Type {
  public:

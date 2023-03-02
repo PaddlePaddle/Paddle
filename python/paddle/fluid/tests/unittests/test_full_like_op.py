@@ -145,7 +145,7 @@ class TestFullLikeOp2(TestFullLikeOp1):
         self.dtype = np.float64
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 class TestFullLikeOp3(TestFullLikeOp1):
@@ -155,7 +155,7 @@ class TestFullLikeOp3(TestFullLikeOp1):
         self.dtype = np.int64
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 @unittest.skipIf(
