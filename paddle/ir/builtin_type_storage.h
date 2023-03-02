@@ -89,9 +89,10 @@ enum class DataLayout {
 };
 
 ///
-/// \brief Define Parameteric TypeStorage for DenseTensorType. Derived
-/// TypeStorage need to declare ParamKey, define Construction method, define
-/// HashValue method, and overload operator==.
+/// \brief Define Parameteric TypeStorage for DenseTensorType.
+/// NOTE(zhangbo9674): The derived TypeStorage class needs to implement the
+/// following methods: (1)declare ParamKey, (2)define Construction method,
+/// (3)define HashValue method, (4)overload operator==.
 ///
 struct DenseTensorTypeStorage : public ir::TypeStorage {
   using Dim = std::vector<int64_t>;
