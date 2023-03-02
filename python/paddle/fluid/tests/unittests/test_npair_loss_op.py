@@ -214,15 +214,14 @@ class TestNpairLossZeroError(unittest.TestCase):
                 )
                 paddle.nn.functional.npair_loss(anchor, positive, labels)
 
-            self.assertRaises(ValueError, test_anchor_0_size)
-
             def test_positive_0_size():
-                array = np.array([], dtype=np.float32)
+                array = np.array([1], dtype=np.float32)
+                array1 = np.array([], dtype=np.float32)
                 anchor = paddle.to_tensor(
                     np.reshape(array, [1, 1, 1]), dtype='float32'
                 )
                 positive = paddle.to_tensor(
-                    np.reshape(array, [0]), dtype='float32'
+                    np.reshape(array1, [0]), dtype='float32'
                 )
                 array = np.array([1, 2, 3, 4], dtype=np.float32)
                 labels = paddle.to_tensor(
@@ -230,6 +229,7 @@ class TestNpairLossZeroError(unittest.TestCase):
                 )
                 paddle.nn.functional.npair_loss(anchor, positive, labels)
 
+            self.assertRaises(ValueError, test_anchor_0_size)
             self.assertRaises(ValueError, test_positive_0_size)
 
 
