@@ -179,24 +179,23 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
                                      const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (int k = 0; k < out_h; k++) {  // loop for images
-    T y_n = align_corners ? static_cast<T>(ratio_h * k)
-                          : static_cast<T>(ratio_h * (k + 0.5) - 0.5);
+    MT y_n = align_corners ? ratio_h * k : ratio_h * (k + 0.5) - 0.5;
     int input_y = floorf(y_n);
-    T y_t = y_n - static_cast<T>(input_y);
+    MT y_t = y_n - input_y;
 
     for (int l = 0; l < out_w; l++) {
-      T x_n = align_corners ? static_cast<T>(ratio_w * l)
-                            : static_cast<T>(ratio_w * (l + 0.5) - 0.5);
+      MT x_n = align_corners ? ratio_w * l : ratio_w * (l + 0.5) - 0.5;
       int input_x = floorf(x_n);
-      T x_t = x_n - static_cast<T>(input_x);
+      MT x_t = x_n - input_x;
 
-      T x_coeffs[4];
-      T y_coeffs[4];
+      MT x_coeffs[4];
+      MT y_coeffs[4];
 
-      funcs::get_cubic_upsample_coefficients<T>(x_coeffs, x_t);
-      funcs::get_cubic_upsample_coefficients<T>(y_coeffs, y_t);
+      funcs::get_cubic_upsample_coefficients<MT>(x_coeffs, x_t);
+      funcs::get_cubic_upsample_coefficients<MT>(y_coeffs, y_t);
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
@@ -208,13 +207,13 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
               int access_y = std::max(std::min(input_y - 1 + jj, in_h - 1),
                                       static_cast<int>(0));
               if (data_layout == DataLayout::kNCHW) {
-                T grad = output_grad_t(i, j, k, l);
+                MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
                 input_grad_t(i, j, access_y, access_x) +=
-                    grad * y_coeffs[jj] * x_coeffs[ii];
+                    static_cast<T>(grad * y_coeffs[jj] * x_coeffs[ii]);
               } else {
-                T grad = output_grad_t(i, k, l, j);
+                MT grad = static_cast<MT>(output_grad_t(i, k, l, j));
                 input_grad_t(i, access_y, access_x, j) +=
-                    grad * y_coeffs[jj] * x_coeffs[ii];
+                    static_cast<T>(grad * y_coeffs[jj] * x_coeffs[ii]);
               }
             }
           }
