@@ -36,6 +36,10 @@ class TrtConvertElementwiseTestOneInputSpecialCase0(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
+                )
             else:
                 return np.random.random(shape).astype(np.float32)
 
@@ -44,6 +48,10 @@ class TrtConvertElementwiseTestOneInputSpecialCase0(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=[1, 32, 1, 1], dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(
+                    low=0.1, high=1.0, size=[1, 32, 1, 1]
+                ).astype(np.float32)
             else:
                 return np.random.randn(1, 32, 1, 1).astype(np.float32)
 
@@ -183,6 +191,10 @@ class TrtConvertElementwiseTestOneInputSpecialCase1(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=[1], dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=[1]).astype(
+                    np.float32
+                )
             else:
                 return np.random.randn(1).astype(np.float32)
 
@@ -296,6 +308,10 @@ class TrtConvertElementwiseTestOneInput(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
+                )
             else:
                 return np.random.random(shape).astype(np.float32)
 
@@ -304,6 +320,10 @@ class TrtConvertElementwiseTestOneInput(TrtLayerAutoScanTest):
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=[32], dtype=np.int32
+                )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=[32]).astype(
+                    np.float32
                 )
             else:
                 return np.random.randn(32).astype(np.float32)
@@ -448,6 +468,10 @@ class TrtConvertElementwiseTestTwoInputWithoutBroadcast(TrtLayerAutoScanTest):
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
+                )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
                 )
             else:
                 return np.random.random(shape).astype(np.float32)
@@ -613,6 +637,10 @@ class TrtConvertElementwiseTestTwoInputWithBroadcast(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
+                )
             else:
                 return np.random.random(shape).astype(np.float32)
 
@@ -772,6 +800,10 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
+                )
             else:
                 return np.random.random(shape).astype(np.float32)
 
@@ -780,6 +812,10 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=[32], dtype=np.int32
+                )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=[32]).astype(
+                    np.float32
                 )
             else:
                 return np.random.rand(32).astype(np.float32)
