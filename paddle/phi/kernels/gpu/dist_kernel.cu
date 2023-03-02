@@ -185,5 +185,5 @@ void DistKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(dist, GPU, ALL_LAYOUT, phi::DistKernel, float, double,phi::dtype::float16 ) {}
+PD_REGISTER_KERNEL(dist, GPU, ALL_LAYOUT, phi::DistKernel, phi::dtype::float16,float, double ) {}
 

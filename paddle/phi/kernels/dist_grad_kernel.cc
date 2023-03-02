@@ -86,7 +86,7 @@ void DistGradKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    dist_grad, CPU, ALL_LAYOUT, phi::DistGradKernel, float, double, phi::dtype::float16) {}
+    dist_grad, CPU, ALL_LAYOUT, phi::DistGradKernel, phi::dtype::float16, float, double) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(
