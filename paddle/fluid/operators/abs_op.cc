@@ -100,9 +100,9 @@ class AbsCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
  public:
   void Apply() override {
-    paddle::experimental::Tensor input = this->GetSingleForwardInput("Input");
+    paddle::experimental::Tensor input = this->GetSingleForwardInput("X");
     paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    paddle::experimental::Tensor input_grad = this->GetSingleInputGrad("Input");
+    paddle::experimental::Tensor input_grad = this->GetSingleInputGrad("X");
 
     auto dx_ptr = this->GetOutputPtr(&input_grad);
     std::string dx_name = this->GetOutputName(input_grad);
@@ -171,13 +171,13 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(abs,
                   ops::AbsOp,
                   ops::AbsOpMaker,
+                  ops::AbsCompositeGradOpMaker,
                   ops::AbsGradMaker<paddle::framework::OpDesc>,
                   ops::AbsGradMaker<paddle::imperative::OpBase>,
                   AbsInferShapeFunctor);
 
 REGISTER_OPERATOR(abs_grad,
                   ops::AbsGradOp,
-                  ops::AbsCompositeGradOpMaker,
                   ops::AbsDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::AbsDoubleGradMaker<paddle::imperative::OpBase>);
 
