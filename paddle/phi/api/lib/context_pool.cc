@@ -18,6 +18,10 @@ limitations under the License. */
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/core/cuda_stream.h"
+#endif
+
 #include "paddle/fluid/platform/init.h"
 
 namespace paddle {
@@ -52,12 +56,27 @@ phi::DeviceContext* DeviceContextPool::GetMutable(const Place& place) {
 }  // namespace experimental
 }  // namespace paddle
 
-namespace phi {
+namespace paddle {
 
-PADDLE_API Allocator* GetAllocator(const Place& place) {
-  const DeviceContext* dev_ctx =
+PADDLE_API phi::Allocator* GetAllocator(const phi::Place& place) {
+  const phi::DeviceContext* dev_ctx =
       paddle::experimental::DeviceContextPool::Instance().Get(place);
   return const_cast<phi::Allocator*>(&dev_ctx->GetAllocator());
 }
 
-}  // namespace phi
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PADDLE_API phi::CUDAStream* GetCurrentCUDAStream(const phi::Place& place) {
+  PADDLE_ENFORCE(place.GetType() == phi::AllocationType::GPU,
+                 phi::errors::InvalidArgument(
+                     "GetCurrentCUDAStream only supports GPUPlace input. "
+                     "However, your input is place=%s",
+                     place));
+
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
+  const phi::GPUContext* dev_ctx =
+      static_cast<const phi::GPUContext*>(pool.Get(place));
+  return dev_ctx->cuda_stream();
+}
+#endif
+
+}  // namespace paddle
