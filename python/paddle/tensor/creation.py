@@ -2381,7 +2381,7 @@ def polar(abs, angle, name=None):
         Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``abs`` and ``angle``.
 
     Note:
-        ``paddle.complex`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+        ``paddle.polar`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
@@ -2404,16 +2404,6 @@ def polar(abs, angle, name=None):
         angle, 'angle', ['float32', 'float64'], 'paddle.polar'
     )
 
-    if abs.dim() != angle.dim():
-        raise ValueError(
-            f"abs and angle tensor must be the same dimension, but got abs dim {abs.dim()} and angle dim {angle.dim()}."
-        )
-
-    if abs.shape != angle.shape:
-        raise ValueError(
-            f"abs and angle tensor must be the same shape, but got abs shape {abs.shape} and angle dim {angle.shape}."
-        )
-
-    real = paddle.multiply(abs, paddle.cos(angle))
-    imag = paddle.multiply(abs, paddle.sin(angle))
-    return complex(real, imag)
+    return paddle.multiply(
+        abs, paddle.complex(paddle.cos(angle), paddle.cos(angle))
+    )

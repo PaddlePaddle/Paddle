@@ -90,14 +90,6 @@ class TestPolarAPI(unittest.TestCase):
         out = paddle.polar(abs, angle)
         self.assertTrue(out.type, 'complex128')
 
-    def test_polar_dims_error(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-            abs = paddle.static.data('abs', shape=[2, 2], dtype="float64")
-            angle = paddle.static.data('angle', shape=[2, 1], dtype="float64")
-            self.assertRaises(ValueError, paddle.polar, abs, angle)
-        paddle.disable_static()
-
     def test_empty_input_error(self):
         for place in self.place:
             paddle.disable_static(place)
