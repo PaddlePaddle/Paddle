@@ -89,6 +89,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
     def setUp(self):
         self.epsilon = 1e-5
         self.init_test_case()
+        self.prim_op_type = "comp"
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
