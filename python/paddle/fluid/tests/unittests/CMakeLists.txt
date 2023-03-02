@@ -1214,6 +1214,7 @@ set(TEST_CINN_OPS
     test_activation_op
     test_full_like_op
     test_fill_any_like_op
+    test_concat_op
     test_top_k_v2_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
