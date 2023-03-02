@@ -791,6 +791,7 @@ void topk_grad(const Tensor& x,
   }
 }
 
+template <typename T>
 void dropout_grad(const Tensor& mask,
                   const Tensor& out_grad,
                   const Scalar& p,
