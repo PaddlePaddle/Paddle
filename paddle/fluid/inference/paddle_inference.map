@@ -66,12 +66,14 @@
 			/* *paddle::framework*; */
 			*paddle::framework::InterpreterCore*;
 			*paddle::framework::Executor*;
+			*paddle::framework::proto*;
 		};
 
 		/* The following symbols need to reconsider. */
 		*Pass*;
 		*profile*;
 		*phi*;
+		PD_*;
 		*cinn*;
 	local:
 		*;

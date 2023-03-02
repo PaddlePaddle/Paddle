@@ -596,7 +596,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
             raise ValueError(
-                "just suport axis type int or list (length of list <=1) if p = 0, found {}".format(
+                "just support axis type int or list (length of list <=1) if p = 0, found {}".format(
                     axis
                 )
             )

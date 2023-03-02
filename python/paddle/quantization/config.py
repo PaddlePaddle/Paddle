@@ -24,6 +24,7 @@ from .wrapper import ObserveWrapper
 
 # TODO: Implement quanted layer and fill the mapping dict
 DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {
+    nn.quant.Stub: nn.quant.stub.QuanterStub,
     nn.Linear: nn.quant.qat.QuantedLinear,
     nn.Conv2D: nn.quant.qat.QuantedConv2D,
 }

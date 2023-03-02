@@ -1972,6 +1972,7 @@ void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
                        const MetaTensor& base,
+                       DataType dtype,
                        MetaTensor* out) {
   auto s_dims = start.dims();
   PADDLE_ENFORCE_EQ(
@@ -2002,7 +2003,7 @@ void LogspaceInferMeta(const MetaTensor& start,
                                    "but received input shape is [%s].",
                                    b_dims));
   out->set_dims(phi::make_ddim({-1}));
-  out->set_dtype(start.dtype());
+  out->set_dtype(dtype);
 }
 
 void MergedAdamInferMeta(
@@ -2312,14 +2313,17 @@ void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& moment,
                       const MetaTensor& learning_rate,
                       const MetaTensor& mean_grad,
+                      const MetaTensor& master_param,
                       float epsilon,
                       float decay,
                       float momentum,
                       bool centered,
+                      bool multi_precision,
                       MetaTensor* param_out,
                       MetaTensor* moment_out,
                       MetaTensor* mean_square_out,
-                      MetaTensor* mean_grad_out) {
+                      MetaTensor* mean_grad_out,
+                      MetaTensor* master_param_outs) {
   if (centered) {
     PADDLE_ENFORCE_NOT_NULL(
         mean_grad_out,
@@ -2981,7 +2985,7 @@ void YoloLossInferMeta(const MetaTensor& x,
   gt_match_mask->set_dtype(x.dtype());
 }
 
-void MultiTensorAdamInferMeta(
+void FusedAdamInferMeta(
     const std::vector<const MetaTensor*>& params,
     const std::vector<const MetaTensor*>& grads,
     const MetaTensor& learning_rate,

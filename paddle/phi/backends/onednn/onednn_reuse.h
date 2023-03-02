@@ -21,7 +21,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/data_type.h"
@@ -49,6 +48,24 @@ bool constexpr is_int8() {
 template <typename T>
 constexpr bool is_bfloat16() {
   return std::is_same<T, dtype::bfloat16>::value;
+}
+
+static std::unordered_map<std::string, dnnl::algorithm> OneDNNActivationMap() {
+  return {{"abs", dnnl::algorithm::eltwise_abs},
+          {"clip", dnnl::algorithm::eltwise_clip},
+          {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+          {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
+          {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+          {"hard_sigmoid", dnnl::algorithm::eltwise_hardsigmoid},
+          {"hard_swish", dnnl::algorithm::eltwise_hardswish},
+          {"leaky_relu", dnnl::algorithm::eltwise_relu},
+          {"mish", dnnl::algorithm::eltwise_mish},
+          {"relu", dnnl::algorithm::eltwise_relu},
+          {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+          {"sigmoid", dnnl::algorithm::eltwise_logistic},
+          {"sqrt", dnnl::algorithm::eltwise_sqrt},
+          {"swish", dnnl::algorithm::eltwise_swish},
+          {"tanh", dnnl::algorithm::eltwise_tanh}};
 }
 
 static void AppendActivation(const OneDNNContext& dev_ctx,
@@ -79,42 +96,18 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
                     : 0.0f;
   }
 
-  if (fuse_activation == "hard_sigmoid") {
-    post_ops.append_eltwise(activation_scale,
-                            dnnl::algorithm::eltwise_linear,
-                            fuse_alpha,
-                            fuse_beta);
-    post_ops.append_eltwise(
-        activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
-  } else {
-    const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
-        {"abs", dnnl::algorithm::eltwise_abs},
-        {"clip", dnnl::algorithm::eltwise_clip},
-        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
-        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
-        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
-        {"leaky_relu", dnnl::algorithm::eltwise_relu},
-        {"mish", dnnl::algorithm::eltwise_mish},
-        {"relu", dnnl::algorithm::eltwise_relu},
-        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
-        {"sigmoid", dnnl::algorithm::eltwise_logistic},
-        {"sqrt", dnnl::algorithm::eltwise_sqrt},
-        {"swish", dnnl::algorithm::eltwise_swish},
-        {"tanh", dnnl::algorithm::eltwise_tanh}};
+  const auto activation_map = OneDNNActivationMap();
 
-    const auto& activation_type = activation_map.find(fuse_activation);
+  const auto& activation_type = activation_map.find(fuse_activation);
 
-    PADDLE_ENFORCE_NE(
-        activation_type,
-        activation_map.end(),
-        errors::InvalidArgument(
-            "Activation '%s' not found in oneDNN algorithms mapper",
-            fuse_activation));
+  PADDLE_ENFORCE_NE(activation_type,
+                    activation_map.end(),
+                    errors::InvalidArgument(
+                        "Activation '%s' not found in oneDNN algorithms mapper",
+                        fuse_activation));
 
-    post_ops.append_eltwise(
-        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
-  }
+  post_ops.append_eltwise(
+      activation_scale, activation_type->second, fuse_alpha, fuse_beta);
 }
 
 template <typename T,
@@ -393,11 +386,6 @@ class OneDNNHandlerT {
 
     auto& astream = OneDNNContext::tls().get_stream();
 
-    paddle::platform::RecordEvent record_reorder(
-        "int_reorder",
-        paddle::platform::TracerEventType::UserDefined,
-        1,
-        paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
         {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -446,11 +434,6 @@ class OneDNNHandlerT {
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
 
         auto& astream = OneDNNContext::tls().get_stream();
-        paddle::platform::RecordEvent record_reorder(
-            "int_reorder",
-            paddle::platform::TracerEventType::UserDefined,
-            1,
-            paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
             {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -472,11 +455,6 @@ class OneDNNHandlerT {
       auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
-        paddle::platform::RecordEvent record_reorder(
-            "int_reorder",
-            paddle::platform::TracerEventType::UserDefined,
-            1,
-            paddle::platform::EventRole::kUniqueOp);
         reorder_p->execute(
             astream,
             {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -660,11 +638,6 @@ class OneDNNHandlerNoCachingT {
 
     auto& astream = OneDNNContext::tls().get_stream();
 
-    paddle::platform::RecordEvent record_reorder(
-        "int_reorder",
-        paddle::platform::TracerEventType::UserDefined,
-        1,
-        paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(
         astream,
         {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});
@@ -691,11 +664,6 @@ class OneDNNHandlerNoCachingT {
           std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
 
       auto& astream = OneDNNContext::tls().get_stream();
-      paddle::platform::RecordEvent record_reorder(
-          "int_reorder",
-          paddle::platform::TracerEventType::UserDefined,
-          1,
-          paddle::platform::EventRole::kUniqueOp);
       reorder_p->execute(
           astream,
           {{DNNL_ARG_FROM, *user_memory_p}, {DNNL_ARG_TO, *target_memory_p}});

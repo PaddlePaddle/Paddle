@@ -341,6 +341,7 @@ void LogspaceInferMeta(const MetaTensor& start,
                        const MetaTensor& stop,
                        const MetaTensor& number,
                        const MetaTensor& base,
+                       DataType dtype,
                        MetaTensor* out);
 
 void MergedAdamInferMeta(
@@ -420,14 +421,17 @@ void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& moment,
                       const MetaTensor& learning_rate,
                       const MetaTensor& mean_grad,
+                      const MetaTensor& master_param,
                       float epsilon,
                       float decay,
                       float momentum,
                       bool centered,
+                      bool multi_precision,
                       MetaTensor* param_out,
                       MetaTensor* moment_out,
                       MetaTensor* mean_square_out,
-                      MetaTensor* mean_grad_out);
+                      MetaTensor* mean_grad_out,
+                      MetaTensor* master_param_outs);
 
 void RnnInferMeta(const MetaTensor& x,
                   const std::vector<const MetaTensor*>& pre_state,
@@ -532,7 +536,7 @@ void YoloLossInferMeta(const MetaTensor& x,
                        MetaTensor* objectness_mask,
                        MetaTensor* gt_match_mask);
 
-void MultiTensorAdamInferMeta(
+void FusedAdamInferMeta(
     const std::vector<const MetaTensor*>& params,
     const std::vector<const MetaTensor*>& grads,
     const MetaTensor& learning_rate,

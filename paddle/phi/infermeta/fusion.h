@@ -22,7 +22,13 @@ namespace phi {
 // Common InferMeta Functions for fusion operators.
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
+void EmbeddingWithEltwiseAddXPUInferMeta(
+    const std::vector<const MetaTensor*>& ids,
+    const std::vector<const MetaTensor*>& tables,
+    MetaTensor* out);
+
 void FcXPUInferMeta(const MetaTensor& x,
+                    const MetaTensor& x_max,
                     const MetaTensor& w,
                     const MetaTensor& w_max,
                     const MetaTensor& bias,
@@ -32,6 +38,32 @@ void FcXPUInferMeta(const MetaTensor& x,
                     float beta,
                     int act_type,
                     float act_alpha,
-                    MetaTensor* out);
+                    MetaTensor* out,
+                    MetaTensor* out_max);
+
+void GenerateSequenceXPUInferMeta(const MetaTensor& x,
+                                  DataType dtype,
+                                  MetaTensor* out);
+
+void MultiEncoderXPUInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& fc_weight,
+    const std::vector<const MetaTensor*>& fc_weight_max,
+    const std::vector<const MetaTensor*>& fc_bias,
+    const std::vector<const MetaTensor*>& ln_scale,
+    const std::vector<const MetaTensor*>& ln_bias,
+    const MetaTensor& mask,
+    int layer_num,
+    bool norm_before,
+    int hidden_dim,
+    int head_num,
+    int size_per_head,
+    int ffn_hidden_dim_scale,
+    int act_type,
+    int relative_type,
+    int slice_idx,
+    MetaTensor* out,
+    MetaTensor* x_fp16,
+    MetaTensor* out_fp16);
 
 }  // namespace phi

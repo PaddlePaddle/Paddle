@@ -49,7 +49,8 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         pool = paddle.static.nn.sequence_lod.sequence_pool(
             input=emb, pool_type="sum"
         )
-        z = fluid.layers.concat(input=[x, pool], axis=1)
+        z = paddle.concat([x, pool], axis=1)
+
         y_predict = paddle.static.nn.fc(x=z, size=1)
         y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
@@ -138,8 +139,8 @@ import paddle
 import paddle.fluid as fluid
 
 from paddle.distributed.communicator import Communicator
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
+import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle.incubate.distributed.fleet.parameter_server.mode import DistributedMode
 import paddle.distributed.fleet as fleet
 
 from test_communicator_geo import TestCommunicatorGeoEnd2End
