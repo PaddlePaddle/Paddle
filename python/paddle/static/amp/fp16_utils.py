@@ -430,6 +430,14 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
 
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()
+    amp_lists.unsupported_list -= {
+        "conditional_block_grad",
+        "conditional_block",
+        "conditional_block_infer",
+        "select_input",
+        "while",
+        "while_grad",
+    }
     global_block = program.global_block()
     keep_fp32_ops = set()
     to_fp16_var_names = set()
