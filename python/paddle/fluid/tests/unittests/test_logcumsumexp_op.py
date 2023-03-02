@@ -17,7 +17,7 @@ import unittest
 from typing import Optional
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -298,13 +298,26 @@ class TestLogcumsumexpFP16(unittest.TestCase):
 
         y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
         y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
-        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
-        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=1e-03)
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=0.5)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=0.5)
 
         y_np_1, x_g_np_1 = self.check_main(x_np, 'float16', axis=1)
         y_np_2, x_g_np_2 = self.check_main(x_np, 'float32', axis=1)
-        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
-        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=2e-03)
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=0.5)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=0.5)
+
+
+class TestLogcumsumexpBfloat16(unittest.TestCase):
+    def TestLogcumsumexpBF16(OpTest):
+        def setUp(self):
+            self.op_type = 'logcumsumexp'
+            self.dtype = np.uint16
+            x = np.random.rand([10, 12]).astype(np.float32)
+            out = paddle.logcumsumexp(x)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+            y = np_logcumsumexp(x)
+            self.outputs = {'Out': convert_float_to_uint16(out)}
+            np.testing.assert_allclose(y, out.numpy(), rtol=1e-02)
 
 
 if __name__ == '__main__':

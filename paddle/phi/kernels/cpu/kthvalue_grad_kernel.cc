@@ -173,5 +173,4 @@ PD_REGISTER_KERNEL(kthvalue_grad,
                    float,
                    double,
                    int,
-                   int64_t,
-                   phi::dtype::bfloat16) {}
+                   int64_t) {}

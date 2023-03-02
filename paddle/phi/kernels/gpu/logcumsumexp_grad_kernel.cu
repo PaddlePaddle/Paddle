@@ -33,6 +33,7 @@ PD_REGISTER_KERNEL(logcumsumexp_grad,
                    ALL_LAYOUT,
                    phi::LogcumsumexpGradKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double) {}
 #endif

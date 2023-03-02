@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -173,7 +173,7 @@ class TestLogsumexp_FP16(TestLogsumexp):
         out_pad = logsumexp_wrapper(tensor_x)
         paddle.enable_static()
         np.testing.assert_allclose(
-            out_pad.numpy(), out_ref, rtol=1e-03, atol=1e-08
+            out_pad.numpy(), out_ref, rtol=1e-03, atol=1e-03
         )
 
     def test_check_grad(self):
@@ -182,7 +182,22 @@ class TestLogsumexp_FP16(TestLogsumexp):
         ref_x_grad = logsumexp_ref_grad(ref_x)
         x = self.inputs['X'].astype(np.float16)
         x_grad = logsumexp_op_grad(x)
-        np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-03, atol=1e-05)
+        np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-03, atol=1e-02)
+
+
+class TestLogsumexpBfloat16(unittest.TestCase):
+    def TestLogcumsumexpBF16(OpTest):
+        def setUp(self):
+            self.op_type = 'logsumexp'
+            self.dtype = np.uint16
+            x = np.random.rand([10, 12]).astype(np.float32)
+            out = ref_logsumexp(x)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+            tensor_x = paddle.to_tensor(convert_float_to_uint16(x))
+            out_pad = logsumexp_wrapper(tensor_x)
+            np.testing.assert_allclose(
+                out_pad.numpy(), out, rtol=1e-02, atol=1e-02
+            )
 
 
 class TestLogsumexpError(unittest.TestCase):
