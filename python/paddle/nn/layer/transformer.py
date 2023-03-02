@@ -165,7 +165,7 @@ class MultiHeadAttention(Layer):
         need_weights=False,
         weight_attr=None,
         bias_attr=None,
-        sparse=False,
+        sparse=None,
     ):
         super().__init__()
 
@@ -476,7 +476,7 @@ class MultiHeadAttention(Layer):
             q, k, v, cache = self._prepare_qkv(query, key, value, cache)
 
         # if self.sparse is False or q.shape[2] <= 128:
-        if self.sparse is False:
+        if self.sparse is None:
             # scale dot product attention
             product = paddle.matmul(
                 x=q * (self.head_dim**-0.5), y=k, transpose_y=True
@@ -503,36 +503,17 @@ class MultiHeadAttention(Layer):
                 or self.sparse_mask.shape[0] != q.shape[0] * q.shape[1]
                 or self.sparse_mask.shape[1] != q.shape[2]
             ):
-                # glb = 128
-                # wnd = 64
-                # seq_len = q.shape[-2]
-                # mask = self.ernie_sparse_mask(seq_len, glb, wnd)
-                # mask = np.repeat(
-                #    mask[None, :, :], [q.shape[0] * self.num_heads], axis=0
-                # )
-                # self.sparse_mask = (
-                #    paddle.to_tensor(mask).astype('float32').to_sparse_csr()
-                # )
-                mask = self.bert_sparse_mask(q.shape[2], 1)
-                mask = paddle.repeat_interleave(
-                    mask, q.shape[0] * self.num_heads, 0
-                )
+                mask = self.sparse.forward(q.shape[0], q.shape[2])
                 self.sparse_mask = mask.astype('float32').to_sparse_csr()
 
-            attn_mask = _convert_attention_mask(attn_mask, q.dtype)
-            attn_mask = attn_mask.squeeze()
-            if len(attn_mask.shape) == 1:
-                attn_mask = attn_mask.reshape((1, attn_mask.shape[0]))
+            if attn_mask is not None:
+                attn_mask = _convert_attention_mask(attn_mask, q.dtype)
+                attn_mask = attn_mask.squeeze()
+                if len(attn_mask.shape) == 1:
+                    attn_mask = attn_mask.reshape((1, attn_mask.shape[0]))
             out = paddle.sparse.nn.functional.attention(
                 q, k, v, self.sparse_mask, attn_mask=attn_mask
             )
-            # if self.dropout:
-            #    out = F.dropout(
-            #        out,
-            #        self.dropout,
-            #        training=self.training,
-            #        mode="upscale_in_train",
-            #    )
 
         # combine heads
         out = tensor.transpose(out, perm=[0, 2, 1, 3])

@@ -291,8 +291,7 @@ void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream) {
 #if defined(PADDLE_WITH_CUDA)
 // The generic APIs is supported from CUDA10.1
 #if CUDA_VERSION >= 11000
-  // PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseCreate(handle));
-  cusparseStatus_t err = dynload::cusparseCreate(handle);
+  PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseCreate(handle));
   PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseSetStream(*handle, stream));
 #endif
 #endif
