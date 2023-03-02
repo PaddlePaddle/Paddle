@@ -25,7 +25,7 @@ __all__ = [
 import os
 
 import paddle.fluid as fluid
-from paddle.fluid.transpiler.distribute_transpiler import (
+from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,
 )

@@ -120,7 +120,7 @@ class TestExpPrimFp32(OpTest):
         self.shape = [12, 17]
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
     def set_only_prim(self):
         pass
@@ -145,7 +145,7 @@ class TestExpPrimFp16(TestExpPrimFp32):
         self.check_grad(['X'], 'Out', check_prim=True)
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 class TestExpPrim_ZeroDim(TestExpPrimFp32):
@@ -325,7 +325,7 @@ class TestSilu(TestActivation):
     def setUp(self):
         self.op_type = "silu"
         self.prim_op_type = "comp"
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.python_api = paddle.nn.functional.silu
         self.init_dtype()
         self.init_shape()
@@ -349,13 +349,14 @@ class TestSilu(TestActivation):
 class TestSilu_ZeroDim(TestSilu):
     def init_shape(self):
         self.shape = []
+        self.enable_cinn = False
 
 
 class TestSiluFP16(TestActivation):
     def setUp(self):
         self.op_type = "silu"
         self.prim_op_type = "comp"
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.only_prim = True
         self.python_api = paddle.nn.functional.silu
         self.init_dtype()
@@ -1199,7 +1200,7 @@ class TestSqrtPrimFp32(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-        self.enable_cinn = False
+        self.enable_cinn = True
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -1216,11 +1217,13 @@ class TestSqrtPrimFp32(TestActivation):
 class TestSqrt_ZeroDim(TestSqrt):
     def init_shape(self):
         self.shape = []
+        self.enable_cinn = False
 
 
 class TestSqrtPrim_ZeroDim(TestSqrt):
     def init_shape(self):
         self.shape = []
+        self.enable_cinn = False
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -1527,6 +1530,8 @@ class TestSin(TestActivation, TestParameter):
         self.op_type = "sin"
         self.init_dtype()
         self.init_shape()
+        # prim not support now
+        self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
