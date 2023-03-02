@@ -25,7 +25,8 @@ TEST(from_blob, FLOAT32) {
   float data[] = {1, 2, 3, 4, 5, 6};
 
   // 2. test API
-  auto test_tesnor = experimental::from_blob(data, {2, 3}, phi::DataType::FLOAT32, phi::CPUPlace());
+  auto test_tesnor = experimental::from_blob(
+      data, {2, 3}, phi::DataType::FLOAT32, phi::CPUPlace());
 
   // 3. check result
   // 3.1 check tensor attributes
@@ -61,7 +62,8 @@ TEST(from_blob, INT32) {
   int32_t data[] = {4, 3, 2, 1};
 
   // 2. test API
-  auto test_tesnor = experimental::from_blob(data, {1, 2, 2}, phi::DataType::INT32, phi::CPUPlace());
+  auto test_tesnor = experimental::from_blob(
+      data, {1, 2, 2}, phi::DataType::INT32, phi::CPUPlace());
 
   // 3. check result
   // 3.1 check tensor attributes
@@ -89,7 +91,8 @@ TEST(from_blob, INT32) {
   auto test_tensor_pow = pow(test_tesnor, 2);
   auto* test_tensor_pow_data = test_tensor_pow.template data<int32_t>();
   for (int32_t i = 0; i < 4; i++) {
-    ASSERT_EQ(test_tensor_pow_data[i], static_cast<int32_t>(std::pow(4 - i, 2)));
+    ASSERT_EQ(test_tensor_pow_data[i],
+              static_cast<int32_t>(std::pow(4 - i, 2)));
   }
 }
 
