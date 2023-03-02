@@ -15,10 +15,13 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
@@ -310,12 +313,24 @@ class LayerNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(layer_norm,
+                            LayerNormInferShapeFunctor,
+                            PD_INFER_META(phi::LayerNormInferMeta));
+
 REGISTER_OPERATOR(layer_norm,
                   ops::LayerNormOp,
                   ops::LayerNormOpMaker,
                   ops::LayerNormGradOpMaker<paddle::framework::OpDesc>,
                   ops::LayerNormGradOpMaker<paddle::imperative::OpBase>,
-                  ops::LayerNormCompositeGradOpMaker);
+                  ops::LayerNormCompositeGradOpMaker,
+                  LayerNormInferShapeFunctor);
+
+DECLARE_INFER_SHAPE_FUNCTOR(layer_norm_grad,
+                            LayerNormGradInferShapeFunctor,
+                            PD_INFER_META(phi::LayerNormGradInferMeta));
+
 REGISTER_OPERATOR(layer_norm_grad,
                   ops::LayerNormGradOp,
-                  ops::LayerNormGradNoNeedBufferVarInferer);
+                  ops::LayerNormGradNoNeedBufferVarInferer,
+                  LayerNormGradInferShapeFunctor);
