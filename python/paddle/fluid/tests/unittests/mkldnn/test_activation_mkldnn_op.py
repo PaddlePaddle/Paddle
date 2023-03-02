@@ -18,7 +18,9 @@ import numpy as np
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 from scipy.special import expit
 
+import paddle
 import paddle.fluid.core as core
+import paddle.nn.functional as F
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle.fluid.tests.unittests.test_activation_op import (
     TestAbs,
@@ -67,6 +69,7 @@ class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
 class TestMKLDNNGeluDim2(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
+        self.python_api = F.gelu
         self.dtype = np.float32
 
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
@@ -80,6 +83,7 @@ class TestMKLDNNGeluDim2(TestActivation):
 class TestMKLDNNGeluDim2Approx(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
+        self.python_api = F.gelu
         self.dtype = np.float32
 
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
@@ -179,6 +183,7 @@ class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
 class TestMKLDNNGeluDim4(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
+        self.python_api = F.gelu
         self.dtype = np.float32
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(self.dtype)
@@ -192,6 +197,7 @@ class TestMKLDNNGeluDim4(TestActivation):
 class TestMKLDNNGeluDim4Approx(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
+        self.python_api = F.gelu
         self.dtype = np.float32
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(self.dtype)
@@ -208,6 +214,7 @@ class TestMKLDNNGeluDim4Approx(TestActivation):
 class TestMKLDNNGeluBf16Dim4(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
+        self.python_api = F.gelu
         self.dtype = np.uint16
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(np.float32)
@@ -230,6 +237,7 @@ class TestMKLDNNGeluBf16Dim4(TestActivation):
 class TestMKLDNNGeluBf16Dim4Approx(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
+        self.python_api = F.gelu
         self.dtype = np.uint16
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(np.float32)
@@ -334,6 +342,7 @@ class TestMKLDNNHardSwishDim4(TestHardSwish):
 class TestMKLDNNMish(TestActivation):
     def setUp(self):
         self.op_type = "mish"
+        self.python_api = F.mish
         self.dtype = np.float32
 
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(self.dtype)
@@ -347,7 +356,7 @@ class TestMKLDNNMish(TestActivation):
 class TestMKLDNNRound(TestActivation):
     def setUp(self):
         self.op_type = "round"
-
+        self.python_api = paddle.round
         x = np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype(np.float32)
         out = np.round(x)
 
@@ -370,6 +379,7 @@ class TestMKLDNNSigmoidDim4(TestSigmoid):
 class TestMKLDNNEluDefaultAlpha(TestActivation):
     def setUp(self):
         self.op_type = "elu"
+        self.python_api = F.elu
         self.set_alpha()
 
         x = np.random.random((5, 5, 4)).astype("float32")
@@ -393,6 +403,7 @@ class TestMKLDNNEluCustomAlpha(TestMKLDNNEluDefaultAlpha):
 class TestMKLDNNExpOp(TestActivation):
     def setUp(self):
         self.op_type = "exp"
+        self.python_api = paddle.exp
         x = np.random.random((5, 5, 4)).astype("float32")
 
         self.inputs = {'X': x}
@@ -407,6 +418,7 @@ class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
 
         np.random.seed(123)
         self.op_type = 'abs'
+        self.python_api = paddle.abs
         self.x = np.random.uniform(-1, 1, [2, 2]).astype(np.float32)
         self.out = np.abs(self.x)
         self.out_grad = np.random.random_sample(self.x.shape).astype(np.float32)
