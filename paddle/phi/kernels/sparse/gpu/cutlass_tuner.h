@@ -29,6 +29,7 @@
 namespace phi {
 namespace sparse {
 
+#if 0
 template <typename T, typename ReturnType, typename... Args>
 class CutlassAutoTuner
     : public autotune::
@@ -56,6 +57,7 @@ static autotune::AutoTuneBase<T,
 MakeCutlassTuner(ReturnType (*func)(Args...)) {
   return CutlassAutoTuner<T, ReturnType, Args...>::Instance(func);
 }
+#endif
 
 }  // namespace sparse
 }  // namespace phi

@@ -41,7 +41,6 @@ def CreateGatherGemmScatterOperator(
     layouts,
     tile_descriptions,
     data_type,
-    alignment_constraints,
     complex_transforms=None,
     epilogue_functor=EpilogueFunctor.LinearCombination,
     swizzling_functor=SwizzlingFunctor.Identity8,
@@ -55,42 +54,44 @@ def CreateGatherGemmScatterOperator(
 
     element_a, element_b, element_c, element_epilogue = data_type
 
-    operations = []
+    alignment = 0
+    if 'f16' == element_a.name or 'bf16' == element_a.name:
+        alignment = 8
+    elif 'f32' == element_a.name or 'tf32' == element_a.name:
+        alignment = 4
+    elif 'f64' == element_a.name:
+        alignment = 1
 
-    # by default, only generate the largest tile and largest alignment
-    # if manifest.kernel_filter == '':
-    #  tile_descriptions = [tile_descriptions[0],]
-    #  alignment_constraints = [alignment_constraints[0],]
+    operations = []
 
     for layout in layouts:
         for tile_description in tile_descriptions:
-            for alignment in alignment_constraints:
-                for complex_transform in complex_transforms:
+            for complex_transform in complex_transforms:
 
-                    alignment_c = min(8, alignment)
+                alignment_c = min(8, alignment)
 
-                    A = TensorDescription(
-                        element_a, layout[0], alignment, complex_transform[0]
-                    )
-                    B = TensorDescription(
-                        element_b, layout[1], alignment, complex_transform[1]
-                    )
-                    C = TensorDescription(element_c, layout[2], alignment_c)
+                A = TensorDescription(
+                    element_a, layout[0], alignment, complex_transform[0]
+                )
+                B = TensorDescription(
+                    element_b, layout[1], alignment, complex_transform[1]
+                )
+                C = TensorDescription(element_c, layout[2], alignment_c)
 
-                    new_operation = GatherGemmScatterOperation(
-                        GemmKind.Universal,
-                        tile_description.minimum_compute_capability,
-                        tile_description,
-                        A,
-                        B,
-                        C,
-                        element_epilogue,
-                        epilogue_functor,
-                        swizzling_functor,
-                    )
+                new_operation = GatherGemmScatterOperation(
+                    GemmKind.Universal,
+                    tile_description.minimum_compute_capability,
+                    tile_description,
+                    A,
+                    B,
+                    C,
+                    element_epilogue,
+                    epilogue_functor,
+                    swizzling_functor,
+                )
 
-                    manifest.append(new_operation)
-                    operations.append(new_operation)
+                manifest.append(new_operation)
+                operations.append(new_operation)
 
     return operations
 
@@ -170,7 +171,6 @@ def GenerateSM70_TensorOp_884(manifest, cuda_version):
             layouts,
             tile_descriptions,
             data_type,
-            alignment_constraints,
         )
 
         # Avoid emitting two kernels if the accumulator type does not differ from the input type (e.g. F16 accumulation)
@@ -188,12 +188,410 @@ def GenerateSM70_TensorOp_884(manifest, cuda_version):
                 layouts,
                 tile_descriptions,
                 data_type_mixed,
-                alignment_constraints,
             )
 
 
 def GenerateSM70(manifest, cuda_version):
     GenerateSM70_TensorOp_884(manifest, cuda_version)
+
+
+def GenerateSM80_TensorOp_16816(manifest, cuda_version):
+
+    if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
+        return
+
+    layouts = [
+        (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+    ]
+
+    math_instructions = [
+        MathInstruction(
+            [16, 8, 16],
+            DataType.f16,
+            DataType.f16,
+            DataType.f16,
+            OpcodeClass.TensorOp,
+            MathOperation.multiply_add,
+        ),
+    ]
+
+    min_cc = 80
+    max_cc = 1024
+
+    alignment_constraints = [8]
+
+    for math_inst in math_instructions:
+        tile_descriptions = [
+            TileDescription(
+                [256, 128, 32], 3, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 256, 32], 3, [2, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 64, 32], 3, [4, 1, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 64, 32], 4, [4, 1, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 256, 32], 4, [1, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 32], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 32], 4, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 32], 5, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 64, 32], 6, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 128, 32], 6, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 64, 32], 10, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 128, 64], 3, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 256, 64], 3, [2, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 64, 64], 4, [4, 1, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 256, 64], 4, [1, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 64], 4, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 64, 64], 3, [4, 1, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 256, 64], 3, [1, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 64], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 64, 64], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 128, 64], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 64, 64], 5, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+        ]
+
+        data_type = [
+            math_inst.element_a,
+            math_inst.element_b,
+            math_inst.element_accumulator,
+            math_inst.element_accumulator,
+        ]
+
+        CreateGatherGemmScatterOperator(
+            manifest, layouts, tile_descriptions, data_type
+        )
+
+        # Avoid emitting two kernels if the accumulator type does not differ from the input type (e.g. F16 accumulation)
+        if math_inst.element_a != math_inst.element_accumulator:
+
+            data_type_mixed = [
+                math_inst.element_a,
+                math_inst.element_b,
+                math_inst.element_a,
+                math_inst.element_accumulator,
+            ]
+
+            CreateGatherGemmScatterOperator(
+                manifest, layouts, tile_descriptions, data_type_mixed
+            )
+
+
+def GenerateSM80_TensorOp_1688(manifest, cuda_version):
+
+    if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
+        return
+
+    layouts = [
+        (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+    ]
+
+    math_instructions = [
+        MathInstruction(
+            [16, 8, 8],
+            DataType.tf32,
+            DataType.tf32,
+            DataType.f32,
+            OpcodeClass.TensorOp,
+            MathOperation.multiply_add,
+        )
+    ]
+
+    min_cc = 80
+    max_cc = 1024
+
+    for math_inst in math_instructions:
+        tile_descriptions = [
+            TileDescription(
+                [256, 128, 16], 3, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 256, 16], 3, [2, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 64, 16], 4, [4, 1, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 256, 16], 4, [1, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 16], 5, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 16], 4, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 16], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 64, 16], 6, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 128, 16], 6, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 64, 16], 10, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 128, 32], 3, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 256, 32], 3, [2, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 64, 32], 4, [4, 1, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 256, 32], 4, [1, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 32], 4, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 32], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 64, 32], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 128, 32], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 64, 32], 5, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+        ]
+
+        data_type = [
+            math_inst.element_a,
+            math_inst.element_b,
+            math_inst.element_accumulator,
+            math_inst.element_accumulator,
+        ]
+
+        data_type_mixed = [
+            math_inst.element_a,
+            math_inst.element_b,
+            math_inst.element_a,
+            math_inst.element_accumulator,
+        ]
+
+        CreateGatherGemmScatterOperator(
+            manifest, layouts, tile_descriptions, data_type
+        )
+
+        CreateGatherGemmScatterOperator(
+            manifest, layouts, tile_descriptions, data_type_mixed
+        )
+
+
+def GenerateSM80_TensorOp_1688_fast_math(manifest, cuda_version):
+
+    if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
+        return
+
+    layouts = [
+        (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+    ]
+
+    math_instructions = [
+        MathInstruction(
+            [16, 8, 8],
+            DataType.tf32,
+            DataType.tf32,
+            DataType.f32,
+            OpcodeClass.TensorOp,
+            MathOperation.multiply_add,
+        ),
+    ]
+
+    min_cc = 80
+    max_cc = 1024
+
+    for math_inst in math_instructions:
+        tile_descriptions = [
+            TileDescription(
+                [256, 128, 16], 3, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 256, 16], 3, [2, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 64, 16], 4, [4, 1, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 256, 16], 4, [1, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 16], 5, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 16], 4, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 16], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 64, 16], 6, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 128, 16], 6, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 64, 16], 10, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 128, 32], 3, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 256, 32], 3, [2, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 64, 32], 4, [4, 1, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 256, 32], 4, [1, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 32], 4, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 32], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 64, 32], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 128, 32], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 64, 32], 5, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+        ]
+
+        data_type = [DataType.f32, DataType.f32, DataType.f32, DataType.f32]
+
+        CreateGatherGemmScatterOperator(
+            manifest, layouts, tile_descriptions, data_type
+        )
+
+
+def GenerateSM80_TensorOp_1688_fast_fp32_math(manifest, cuda_version):
+
+    if not CudaToolkitVersionSatisfies(cuda_version, 11, 0):
+        return
+
+    layouts = [
+        (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+    ]
+
+    math_instructions = [
+        MathInstruction(
+            [16, 8, 8],
+            DataType.f32,
+            DataType.f32,
+            DataType.f32,
+            OpcodeClass.TensorOp,
+            MathOperation.multiply_add_fast_f32,
+        ),
+    ]
+
+    min_cc = 80
+    max_cc = 1024
+
+    for math_inst in math_instructions:
+        tile_descriptions = [
+            TileDescription(
+                [128, 128, 16], 4, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 16], 3, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 64, 16], 3, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 256, 16], 3, [2, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 64, 16], 4, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 128, 16], 4, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 64, 16], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 128, 32], 3, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [256, 64, 32], 3, [4, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 256, 32], 3, [2, 4, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [128, 64, 32], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 128, 32], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+            TileDescription(
+                [64, 64, 32], 3, [2, 2, 1], math_inst, min_cc, max_cc
+            ),
+        ]
+
+        data_type = [DataType.f32, DataType.f32, DataType.f32, DataType.f32]
+
+        CreateGatherGemmScatterOperator(
+            manifest, layouts, tile_descriptions, data_type
+        )
+
+
+def GenerateSM80(manifest, cuda_version):
+    GenerateSM80_TensorOp_16816(manifest, cuda_version)
+    GenerateSM80_TensorOp_1688(manifest, cuda_version)
+    GenerateSM80_TensorOp_1688_fast_math(manifest, cuda_version)
+    GenerateSM80_TensorOp_1688_fast_fp32_math(manifest, cuda_version)
 
 
 class KernelCfg:
@@ -231,7 +629,7 @@ class KernelCfg:
 if __name__ == "__main__":
 
     args = KernelCfg(
-        architectures='70',
+        architectures='80',
         build_dir=sys.argv[2],
         cuda_version=sys.argv[3],
         curr_build_dir=sys.argv[2],
@@ -247,6 +645,6 @@ if __name__ == "__main__":
     )
     manifest = GatherGemmScatterManifest(args)
 
-    GenerateSM70(manifest, args.cuda_version)
+    GenerateSM80(manifest, args.cuda_version)
 
     manifest.emit(GeneratorTarget.Library)

@@ -45,14 +45,15 @@ enum class AlgorithmType {
   kConvBackwardFilter = 3,
   kTranspose = 4,
   kMatmul = 5,
-  kCutlass = 6,
+  kGatherGemmScatterFP16NN = 6,
+  kGatherGemmScatterFP32NN = 7,
 #if !defined(PADDLE_WITH_CUDNN_FRONTEND)
-  kAlgorithmCount = 7
+  kAlgorithmCount = 8
 #else
-  kConvForwardV8 = 7,
-  kConvBackwardDataV8 = 8,
-  kConvBackwardFilterV8 = 9,
-  kAlgorithmCount = 10
+  kConvForwardV8 = 8,
+  kConvBackwardDataV8 = 9,
+  kConvBackwardFilterV8 = 10,
+  kAlgorithmCount = 11
 #endif
 };
 

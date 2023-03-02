@@ -24,9 +24,9 @@
 #include "examples/common/helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/kernels/autotune/auto_tune_base.h"
 #include "paddle/phi/kernels/sparse/gpu/common.h"
 #include "paddle/phi/kernels/sparse/gpu/cutlass/build/generated/gemm/all_gemm_operations.h"
-#include "paddle/phi/kernels/sparse/gpu/cutlass_tuner.h"
 
 namespace phi {
 namespace sparse {
@@ -43,39 +43,77 @@ fp64_gather_gemm_scatter getBestFp64Kernel(const int M,
                                            const int N);
 
 template <typename T>
-void GatherGemmScatter(const phi::GPUContext& ctx,
-                       const T* const a,
-                       const T* const b,
-                       const T* const c,
-                       T* const d,
-                       const int& m,
-                       const int& n,
-                       const int& k,
-                       const int32_t* a_indices,
-                       const int32_t* b_indices,
-                       const int32_t* c_d_indices,
-                       T alpha,
-                       T beta) {
-  auto* tuner = MakeCutlassTuner<T>(fp16_kernels[0]);
+typename std::enable_if<std::is_same<T, phi::dtype::float16>::value, void>::type
+GatherGemmScatter(const phi::GPUContext& ctx,
+                  const T* const a,
+                  const T* const b,
+                  const T* const c,
+                  T* const d,
+                  const int& m,
+                  const int& n,
+                  const int& k,
+                  const int32_t* a_indices,
+                  const int32_t* b_indices,
+                  const int32_t* c_d_indices,
+                  T alpha,
+                  T beta) {
+  auto* tuner = autotune::MakeGatherGemmScatterTuner<T>(fp16_kernels[0]);
   for (auto i = 1; i < fp16_kernels.size(); i++)
     tuner->AddCallBack(fp16_kernels[i]);
 
   size_t key = autotune::GenKey(m, n, k);
 
-  tuner->CutlassRun(ctx,
-                    key,
-                    a,
-                    b,
-                    c,
-                    d,
-                    m,
-                    n,
-                    k,
-                    a_indices,
-                    b_indices,
-                    c_d_indices,
-                    alpha,
-                    beta);
+  tuner->GatherGemmScatterRun(ctx,
+                              key,
+                              a,
+                              b,
+                              c,
+                              d,
+                              m,
+                              n,
+                              k,
+                              a_indices,
+                              b_indices,
+                              c_d_indices,
+                              alpha,
+                              beta);
+}
+
+template <typename T>
+typename std::enable_if<std::is_same<T, float>::value, void>::type
+GatherGemmScatter(const phi::GPUContext& ctx,
+                  const T* const a,
+                  const T* const b,
+                  const T* const c,
+                  T* const d,
+                  const int& m,
+                  const int& n,
+                  const int& k,
+                  const int32_t* a_indices,
+                  const int32_t* b_indices,
+                  const int32_t* c_d_indices,
+                  T alpha,
+                  T beta) {
+  auto* tuner = autotune::MakeGatherGemmScatterTuner<T>(fp32_kernels[0]);
+  for (auto i = 1; i < fp32_kernels.size(); i++)
+    tuner->AddCallBack(fp32_kernels[i]);
+
+  size_t key = autotune::GenKey(m, n, k);
+
+  tuner->GatherGemmScatterRun(ctx,
+                              key,
+                              a,
+                              b,
+                              c,
+                              d,
+                              m,
+                              n,
+                              k,
+                              a_indices,
+                              b_indices,
+                              c_d_indices,
+                              alpha,
+                              beta);
 }
 
 static void dispatchKernel(const GPUContext& dev_ctx,
@@ -110,20 +148,23 @@ static void dispatchKernel(const GPUContext& dev_ctx,
                       static_cast<phi::dtype::float16>(1),
                       static_cast<phi::dtype::float16>(1));
   } else if (type == phi::DataType::FLOAT32) {
+#if 0
     fp32_gather_gemm_scatter gather_gemm_scatter =
         getBestFp32Kernel(m, n, k, dev_ctx.GetComputeCapability());
-    gather_gemm_scatter(dev_ctx,
-                        static_cast<const float*>(a),
-                        static_cast<const float*>(b),
-                        static_cast<const float*>(c),
-                        static_cast<float*>(d),
-                        m,
-                        n,
-                        k,
-                        static_cast<const int32_t*>(a_indices),
-                        static_cast<const int32_t*>(c_d_indices),
-                        static_cast<float>(1),
-                        static_cast<float>(1));
+#endif
+    GatherGemmScatter(dev_ctx,
+                      static_cast<const float*>(a),
+                      static_cast<const float*>(b),
+                      static_cast<const float*>(c),
+                      static_cast<float*>(d),
+                      m,
+                      n,
+                      k,
+                      static_cast<const int32_t*>(a_indices),
+                      nullptr,
+                      static_cast<const int32_t*>(c_d_indices),
+                      static_cast<float>(1),
+                      static_cast<float>(1));
   } else if (type == phi::DataType::FLOAT64) {
     fp64_gather_gemm_scatter gather_gemm_scatter = getBestFp64Kernel(m, n, k);
     gather_gemm_scatter(dev_ctx,
@@ -286,6 +327,7 @@ struct cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8 {
       false,
       true>;
 };
+#if 0
 struct cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
@@ -315,6 +357,7 @@ struct cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8 {
       false,
       true>;
 };
+#endif
 struct cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
@@ -395,6 +438,7 @@ struct cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4 {
       false,
       true>;
 };
+#if 0
 struct cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
@@ -551,6 +595,7 @@ struct cutlass_tensorop_d884gemm_16x32_16x5_nn_align1 {
       false,
       true>;
 };
+#endif
 struct cutlass_tensorop_d884gemm_32x16_16x5_nn_align1 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       double,

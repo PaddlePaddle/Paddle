@@ -37,13 +37,15 @@ namespace phi {
 namespace sparse {
 """
         self.epilogue_template = """
-};
 }  // namespace sparse
 }  // namespace phi
 #endif
 """
-        self.kernels_list = (
+        self.fp16_kernels_list = (
             "static std::vector<fp16_gather_gemm_scatter> fp16_kernels = {\n"
+        )
+        self.fp32_kernels_list = (
+            "static std::vector<fp32_gather_gemm_scatter> fp32_kernels = {\n"
         )
 
     def __enter__(self):
@@ -76,12 +78,20 @@ namespace sparse {
             self.source_files.append(configuration_emitter.configuration_path)
 
         self.configurations.append(configuration_name)
-        self.kernels_list += (
-            """
+        if 'h' == operations[0].short_math_name():
+            self.fp16_kernels_list += (
+                """
 launchKernel<phi::dtype::float16,"""
-            + configuration_name
-            + "::Gemm>,"
-        )
+                + configuration_name
+                + "::Gemm>,"
+            )
+        if 's' == operations[0].short_math_name():
+            self.fp32_kernels_list += (
+                """
+launchKernel<float,"""
+                + configuration_name
+                + "::Gemm>,"
+            )
 
         self.top_level_file.write(
             '#include "'
@@ -107,8 +117,11 @@ launchKernel<phi::dtype::float16,"""
                 )
             )
 
+        self.fp16_kernels_list += "\n};\n"
+        self.fp32_kernels_list += "\n};\n"
         self.top_level_file.write(self.namespace_template)
-        self.top_level_file.write(self.kernels_list)
+        self.top_level_file.write(self.fp16_kernels_list)
+        self.top_level_file.write(self.fp32_kernels_list)
         self.top_level_file.write(self.epilogue_template)
         self.top_level_file.close()
 

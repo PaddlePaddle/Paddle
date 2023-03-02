@@ -16,6 +16,7 @@
 #include "paddle/phi/kernels/sparse/gpu/gather_gemm_scatter.h"
 namespace phi {
 namespace sparse {
+#if 0
 fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
                                            const int N,
                                            const int K) {
@@ -155,9 +156,11 @@ fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
       float,
       cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4::Gemm>;
 }
+#endif
 fp64_gather_gemm_scatter getBestFp64Kernel(const int M,
                                            const int N,
                                            const int K) {
+#if 0
   if (K == 4 && N == 16) {
     return launchKernel<double,
                         cutlass_tensorop_d884gemm_16x32_16x5_nn_align1::Gemm>;
@@ -177,6 +180,7 @@ fp64_gather_gemm_scatter getBestFp64Kernel(const int M,
     return launchKernel<double,
                         cutlass_tensorop_d884gemm_16x32_16x5_nn_align1::Gemm>;
   }
+#endif
   if (K == 32 && N == 64) {
     return launchKernel<double,
                         cutlass_tensorop_d884gemm_32x16_16x5_nn_align1::Gemm>;

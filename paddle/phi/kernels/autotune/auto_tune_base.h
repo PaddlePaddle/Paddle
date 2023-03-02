@@ -22,6 +22,22 @@
 namespace phi {
 namespace autotune {
 
+template <typename T>
+typename std::enable_if<std::is_same<T, float>::value,
+                        AlgorithmsCacheMap&>::type
+GatherGemmScatterGetCache() {
+  return autotune::AutoTuneCache::Instance().Get(
+      AlgorithmType::kGatherGemmScatterFP32NN);
+}
+
+template <typename T>
+typename std::enable_if<std::is_same<T, phi::dtype::float16>::value,
+                        AlgorithmsCacheMap&>::type
+GatherGemmScatterGetCache() {
+  return autotune::AutoTuneCache::Instance().Get(
+      AlgorithmType::kGatherGemmScatterFP16NN);
+}
+
 template <typename T, typename ReturnType, typename... Args>
 class KernelCallback {
  public:
@@ -87,28 +103,24 @@ class AutoTuneBase {
   }
 
   template <typename Context>
-  void CutlassRun(const Context& ctx,
-                  const size_t key,
-                  const T* const a,
-                  const T* const b,
-                  const T* const c,
-                  T* const d,
-                  const int& m,
-                  const int& n,
-                  const int& k,
-                  const int32_t* a_indices,
-                  const int32_t* b_indices,
-                  const int32_t* c_d_indices,
-                  T alpha,
-                  T beta) {
-    PADDLE_ENFORCE_GT(
-        kernels_.size(),
-        0,
-        phi::errors::InvalidArgument(
-            "kernel num must be greater than 0, now is %d", kernels_.size()));
+  void GatherGemmScatterRun(const Context& ctx,
+                            const size_t key,
+                            const T* const a,
+                            const T* const b,
+                            const T* const c,
+                            T* const d,
+                            const int& m,
+                            const int& n,
+                            const int& k,
+                            const int32_t* a_indices,
+                            const int32_t* b_indices,
+                            const int32_t* c_d_indices,
+                            T alpha,
+                            T beta) {
     is_init_ = true;
-    auto& cache =
-        autotune::AutoTuneCache::Instance().Get(AlgorithmType::kCutlass);
+    CheckKernelSize();
+    auto& cache = GatherGemmScatterGetCache<T>();
+
     if (cache.Find(key)) {
       auto best_idx = cache.Get(key);
       kernels_[best_idx].Run(
@@ -128,8 +140,8 @@ class AutoTuneBase {
                                      k,
                                      a_indices,
                                      c_d_indices,
-                                     static_cast<phi::dtype::float16>(0),
-                                     static_cast<phi::dtype::float16>(1));
+                                     static_cast<T>(0),
+                                     static_cast<T>(1));
       cache.Set(key, best_idx);
       kernels_[best_idx].Run(
           ctx, a, b, c, d, m, n, k, a_indices, c_d_indices, alpha, beta);
@@ -260,6 +272,7 @@ class MatmulAutoTuner
   DEFINE_AUTOTUNER_FN(name)
 
 DEFINE_AUTOTUNER(Transpose)
+DEFINE_AUTOTUNER(GatherGemmScatter)
 DEFINE_AUTOTUNER_FN(Matmul)
 
 #undef DEFINE_AUTOTUNER_COMMON_OBJECT
