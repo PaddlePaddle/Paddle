@@ -128,6 +128,7 @@ class _HPRecomputeFunction(PyLayer):
             raise ValueError(
                 "unsupported amp level: {}".format(tracer._amp_level)
             )
+        ctx.amp_dtype = tracer._amp_dtype
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
@@ -208,6 +209,7 @@ class _HPRecomputeFunction(PyLayer):
                     custom_white_list=ctx.amp_white_list,
                     custom_black_list=ctx.amp_black_list,
                     level=ctx.amp_level,
+                    dtype=ctx.amp_dtype,
                 ):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
