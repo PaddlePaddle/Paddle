@@ -22,8 +22,20 @@ limitations under the License. */
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/device_context.h"
 
+using paddle::memory::Copy;
+
+template <typename T>
+class Scale {
+ public:
+  explicit Scale(const T& scale) : scale_(scale) {}
+  HOSTDEVICE T operator()(const T& a) const { return a * scale_; }
+
+ private:
+  T scale_;
+};
+
 TEST(Allocator, CPU) {
-  phi::Allocator* allocator = phi::GetAllocator(phi::CPUPlace());
+  phi::Allocator* allocator = paddle::GetAllocator(phi::CPUPlace());
   auto cpu_allocation = allocator->Allocate(sizeof(float) * 4);
   float* cpu_buf = static_cast<float*>(cpu_allocation->ptr());
   ASSERT_NE(cpu_buf, nullptr);
@@ -39,23 +51,10 @@ TEST(Allocator, CPU) {
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-using paddle::memory::Copy;
-
-template <typename T>
-class Scale {
- public:
-  explicit Scale(const T& scale) : scale_(scale) {}
-  HOSTDEVICE T operator()(const T& a) const { return a * scale_; }
-
- private:
-  T scale_;
-};
-
 TEST(Allocator, GPU) {
   phi::GPUPlace gpu0(0);
   float cpu_buf[4] = {0.1, 0.2, 0.3, 0.4};
-  phi::Allocator* allocator = phi::GetAllocator(gpu0);
+  phi::Allocator* allocator = paddle::GetAllocator(gpu0);
   auto gpu_allocation = allocator->Allocate(sizeof(cpu_buf));
   float* gpu_buf = static_cast<float*>(gpu_allocation->ptr());
 
@@ -70,4 +69,3 @@ TEST(Allocator, GPU) {
     ASSERT_NEAR(cpu_buf[i], static_cast<float>(i + 1), 1e-5);
   }
 }
-#endif
