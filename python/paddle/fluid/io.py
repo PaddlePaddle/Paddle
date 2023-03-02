@@ -70,6 +70,7 @@ __all__ = [
     'load_inference_model',
 ] + reader.__all__
 
+
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )

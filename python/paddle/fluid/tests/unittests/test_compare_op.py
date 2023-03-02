@@ -467,6 +467,18 @@ class API_TestElementwise_Equal(unittest.TestCase):
             (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([True, True])).all(), True)
 
+    def test_api_fp16(self):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            label = paddle.to_tensor([3, 3], dtype="float16")
+            limit = paddle.to_tensor([3, 2], dtype="float16")
+            out = paddle.equal(x=label, y=limit)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = fluid.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
+                self.assertEqual((res == np.array([True, False])).all(), True)
+
 
 class TestCompareOpPlace(unittest.TestCase):
     def test_place_1(self):
