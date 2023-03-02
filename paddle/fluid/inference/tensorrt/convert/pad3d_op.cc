@@ -39,11 +39,23 @@ class Pad3dOpConverter : public OpConverter {
     VLOG(3) << "convert a fluid transpose op to tensorrt tranpose layer";
 
     framework::OpDesc op_desc(op, nullptr);
+
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
-    const std::vector<int> paddings =
-        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+    std::vector<int> paddings;
+    if(op_desc.Input("Paddings").size() >= 1) {
+        auto* paddings_v = scope.FindVar(op_desc.Input("Paddings")[0]);
+        auto* padding_t = paddings_v->GetMutable<phi::DenseTensor>();
+        phi::DenseTensor paddings_tensor;
+        paddings_tensor.Resize(padding_t->dims());
+        platform::CPUPlace cpu_place;
+        paddle::framework::TensorCopySync((*padding_t), cpu_place, &paddings_tensor);
+        auto* paddings_data = paddings_tensor.mutable_data<int>(platform::CPUPlace());
+        paddings = std::vector<int>(paddings_data, paddings_data + paddings_tensor.numel());
+    } else {
+        paddings = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+    }
 
     nvinfer1::Dims pre_pad, post_pad;
 
@@ -62,10 +74,10 @@ class Pad3dOpConverter : public OpConverter {
                                        *const_cast<nvinfer1::ITensor*>(input),
                                        pre_pad,
                                        post_pad);
-
     PADDLE_ENFORCE_NOT_NULL(layer,
                             platform::errors::External(
                                 "add padding layer to tensorrt engine error"));
+
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "pad3d", {output_name}, test_mode);
   }

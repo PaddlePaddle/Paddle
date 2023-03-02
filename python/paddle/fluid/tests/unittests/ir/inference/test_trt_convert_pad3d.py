@@ -31,6 +31,9 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
         def generate_input1():
             return np.ones([1, 1, 3, 64, 64]).astype(np.float32)
 
+        def generate_paddings(p):
+            return np.array(p).astype(np.int32)
+
         for value in [True, False]:
             for paddings in [
                 [0, 0, 0, 0, 1, 1],
@@ -38,44 +41,58 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
                 [1, 1, 1, 1, 1, 1],
                 [0, 0, -1, -1, 1, 1],
             ]:
-                dics = [{"value": value, "paddings": paddings}, {}]
+                for mode in ['tensor', 'list']:
+                    if mode == 'list':
+                        dics = [{"value": value, "paddings": paddings, "data_format": "NCDHW"}, {}]
+                        ops_config = [
+                            {
+                                "op_type": "pad3d",
+                                "op_inputs": {"X": ["input_data"]},
+                                "op_outputs": {"Out": ["output_data"]},
+                                "op_attrs": dics[0],
+                            }
+                        ]
+                    else:
+                        dics = [{"value": value, "data_format": "NCDHW", "mode": "constant", "paddings": []}, {}]
+                        ops_config = [
+                            {
+                                "op_type": "pad3d",
+                                "op_inputs": {"X": ["input_data"],
+                                              "Paddings": ["input_padding"]},
+                                "op_outputs": {"Out": ["output_data"]},
+                                "op_attrs": dics[0],
+                            }
+                        ]
 
-                ops_config = [
-                    {
-                        "op_type": "pad3d",
-                        "op_inputs": {"X": ["input_data"]},
-                        "op_outputs": {"Out": ["output_data"]},
-                        "op_attrs": dics[0],
-                    }
-                ]
+                    ops = self.generate_op_config(ops_config)
+                    inputs = {"input_data": TensorConfig(data_gen=partial(generate_input1))}
+                    if mode == 'tensor':
+                        inputs["input_padding"] = TensorConfig(data_gen=partial(generate_paddings, paddings))
+                    for i in range(10):
+                        program_config = ProgramConfig(
+                            ops=ops,
+                            weights={},
+                            inputs=inputs,
+                            outputs=["output_data"],
+                        )
 
-                ops = self.generate_op_config(ops_config)
-                for i in range(10):
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data": TensorConfig(
-                                data_gen=partial(generate_input1)
-                            ),
-                        },
-                        outputs=["output_data"],
-                    )
-
-                yield program_config
+                        yield program_config
 
     def sample_predictor_configs(
-        self, program_config
+            self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 1, 3, 64, 64]
+                "input_data": [1, 1, 3, 64, 64],
+                "input_padding": [6],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [1, 1, 3, 64, 64]
+                "input_data": [1, 1, 3, 64, 64],
+                "input_padding": [6],
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data": [1, 1, 3, 64, 64]
+                "input_data": [1, 1, 3, 64, 64],
+                "input_padding": [6],
             }
 
         def clear_dynamic_shape():
@@ -90,16 +107,16 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (0, 3), 1e-5
+        yield self.create_inference_config(), (1, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (0, 3), 1e-3
+        yield self.create_inference_config(), (1, 3), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), (1, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-3
+        yield self.create_inference_config(), (1, 3), 1e-3
 
     def test(self):
         self.run_test()

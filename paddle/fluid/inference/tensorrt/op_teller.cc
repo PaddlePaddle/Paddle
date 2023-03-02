@@ -1685,7 +1685,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "pad" || op_type == "pad3d") {
+    if (op_type == "pad") {
       if (!desc.HasAttr("pad_value") || !desc.HasAttr("paddings")) return false;
       const float pad_value =
           PADDLE_GET_CONST(float, desc.GetAttr("pad_value"));
@@ -1724,6 +1724,59 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "pad3d") {
+          if (!desc.HasAttr("paddings") and !desc.Input("Paddings").size()) {
+              return false;
+          }
+          if (!desc.HasAttr("pad_value")){
+              return false;
+          }
+          if (desc.HasAttr("mode")) {
+              std::string mode = PADDLE_GET_CONST(std::string, desc.GetAttr("mode"));
+              if (mode != "constant"){
+                  VLOG(3) << "The pad3d layer of TRT only support constant mode.";
+                  return false;
+              }
+          }
+          if (desc.HasAttr("data_format")) {
+              std::string data_format = PADDLE_GET_CONST(std::string, desc.GetAttr("data_format"));
+              if (data_format != "NCDHW"){
+                  VLOG(3) << "The pad3d layer of TRT only support NCDHW data format.";
+                  return false;
+              }
+          }
+          std::vector<int64_t> shape;
+          auto* block = desc.Block();
+          if (block == nullptr) {
+              VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                         "Developers need to check whether block_desc is passed in "
+                         "the pass.";
+              return false;
+          }
+
+          for (auto& param_name : desc.Inputs()) {
+              for (auto& var_name : param_name.second) {
+                  auto* var_desc = block->FindVar(var_name);
+                  shape = var_desc->GetShape();
+              }
+          }
+
+          int nbDims = shape.size();
+          std::vector<int> paddings =
+                  PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+          int pad_size = paddings.size();
+          if (nbDims < 2) {
+              return false;
+          }
+          if (nbDims * 2 != pad_size) {
+              return false;
+          }
+          for (int i = 0; i < pad_size - 4; i++) {
+              if (paddings[i] != 0) {
+                  return false;
+              }
+          }
+      }
     if (op_type == "swish") {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -2872,14 +2925,6 @@ struct GenericPluginTeller : public Teller {
     if (op_type == "yolo_box") {
       if (!desc.HasAttr("iou_aware") && !desc.HasAttr("iou_aware_factor"))
         return false;
-    }
-    if (op_type == "pad3d") {
-      auto pad3d_inputs = desc.Inputs();
-      if (pad3d_inputs.find("Paddings") != pad3d_inputs.end()) {
-        if (desc.Input("Paddings").size() >= 1) {
-          return false;
-        }
-      }
     }
     if (use_no_calib_int8) {
       return false;
