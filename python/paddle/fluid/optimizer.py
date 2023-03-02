@@ -4317,7 +4317,7 @@ class ExponentialMovingAverage:
                 ema = block._clone_variable(self._ema_vars[param.name])
                 paddle.assign(param, output=tmp)
                 # bias correction
-                with layers.control_flow.Switch() as switch:
+                with paddle.incubate.nn.Switch() as switch:
                     with switch.case(global_step > 0):
                         paddle.assign(ema / (1.0 - decay_pow), output=param)
                     with switch.default():
@@ -4343,7 +4343,7 @@ class ExponentialMovingAverage:
 
             if self._thres_steps is not None:
                 decay_t = (self._thres_steps + 1.0) / (self._thres_steps + 10.0)
-                with layers.control_flow.Switch() as switch:
+                with paddle.incubate.nn.Switch() as switch:
                     with switch.case(decay_t < self._decay):
                         paddle.assign(decay_t, decay_var)
                     with switch.default():
@@ -4381,7 +4381,7 @@ class ExponentialMovingAverage:
         Update Exponential Moving Average. Should only call this method in
         train program.
         """
-        global_step = layers.autoincreased_step_counter(
+        global_step = paddle.incubate.nn.functional.autoincreased_step_counter(
             counter_name=self._step_counter_name
         )
         param_master_emas = []
@@ -7351,7 +7351,7 @@ class LookaheadOptimizer:
             )
 
             mod = paddle.remainder(step, k)
-            with layers.control_flow.Switch() as switch:
+            with paddle.incubate.nn.Switch() as switch:
                 with switch.case(step == one_var):
                     for param_name in params:
                         fast_var = main_block.var(param_name)

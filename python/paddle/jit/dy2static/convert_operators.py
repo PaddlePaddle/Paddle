@@ -18,9 +18,10 @@ import paddle
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.dygraph.base import _convert_into_variable
 from paddle.fluid.framework import Variable, core
-from paddle.fluid.layers import Print, control_flow, fill_constant
+from paddle.fluid.layers import control_flow, fill_constant
 from paddle.fluid.layers.control_flow import while_loop
 from paddle.fluid.layers.utils import copy_mutable_vars
+from paddle.incubate.nn import Print
 from paddle.jit.dy2static.utils import (
     Dygraph2StaticException,
     GetterSetterHelper,

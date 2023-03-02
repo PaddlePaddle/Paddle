@@ -21,6 +21,7 @@ from .layer.fused_transformer import (
     FusedBiasDropoutResidualLayerNorm,
 )  # noqa: F401
 from .layer.fused_ec_moe import FusedEcMoe  # noqa: F401
+from .layer.control_flow import Switch, Print
 
 __all__ = [  # noqa
     'FusedMultiHeadAttention',
