@@ -8,9 +8,9 @@
 ## 目录结构
 
 ```txt
-PaddlePaddle/Paddle/paddle/phi/
+PaddlePaddle/Paddle/paddle/phi/kernels/
 ├── ...
-└── kernels/
+└── funcs/
     ├── .../
     └── jit/
         ├── ...
@@ -53,7 +53,7 @@ PaddlePaddle/Paddle/paddle/phi/
 ```cpp
     using T = float;
     jit::seq_pool_attr_t attr(width, jit::SeqPoolType::kSum);
-    auto seqpool_func = jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache().At(attr);
+    auto seqpool_func = jit::KernelFuncs<jit::SeqPoolTuple<T>, phi::CPUPlace>::Cache().At(attr);
     seqpool_func(src_data, dst_data, &attr);
 ```
 
@@ -62,7 +62,7 @@ PaddlePaddle/Paddle/paddle/phi/
 ```cpp
     using T = float;
     jit::seq_pool_attr_t attr(width, jit::SeqPoolType::kSum);
-    auto funcs = jit::GetAllCandidateFuncsWithTypes<jit::SeqPoolTuple<T>, platform::CPUPlace>(attr);
+    auto funcs = jit::GetAllCandidateFuncsWithTypes<jit::SeqPoolTuple<T>, phi::CPUPlace>(attr);
     for (auto f : funcs) {
         LOG(INFO) << "Kernel implementation type: " << f.first;
         f.second(src_data, dst_data, &attr);

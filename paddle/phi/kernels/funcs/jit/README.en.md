@@ -10,9 +10,9 @@ Currently it's only supported on CPU yet.
 ## Contents
 
 ```txt
-PaddlePaddle/Paddle/paddle/fluid/
+PaddlePaddle/Paddle/paddle/phi/kernels/
 ├── ...
-└── operators/
+└── funcs/
     ├── .../
     └── jit/
         ├── ...
@@ -34,7 +34,7 @@ PaddlePaddle/Paddle/paddle/fluid/
             └── ...
 ```
 
-All basical definitions of jit kernels are addressed in `paddle/fluid/operators/jit` including these three key folders `refer`, `gen`, `more`. There is only one unique name for each kernel while may have seraval implementations with same functionality.
+All basical definitions of jit kernels are addressed in `paddle/phi/kernels/funcs/jit` including these three key folders `refer`, `gen`, `more`. There is only one unique name for each kernel while may have seraval implementations with same functionality.
 
 - `refer`: Each kernel must have one reference implementation on CPU, and it should only focus on the correctness and should not depends on any third-party libraries.
 - `gen`: The code generated should be kept here. They should be designed focusing on the best performance, which depends on Xbyak.
@@ -55,7 +55,7 @@ Get from cache:
 ```cpp
     using T = float;
     jit::seq_pool_attr_t attr(width, jit::SeqPoolType::kSum);
-    auto seqpool_func = jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache().At(attr);
+    auto seqpool_func = jit::KernelFuncs<jit::SeqPoolTuple<T>, phi::CPUPlace>::Cache().At(attr);
     seqpool_func(src_data, dst_data, &attr);
 ```
 
@@ -64,14 +64,14 @@ Get all implementations and run once:
 ```cpp
     using T = float;
     jit::seq_pool_attr_t attr(width, jit::SeqPoolType::kSum);
-    auto funcs = jit::GetAllCandidateFuncsWithTypes<jit::SeqPoolTuple<T>, platform::CPUPlace>(attr);
+    auto funcs = jit::GetAllCandidateFuncsWithTypes<jit::SeqPoolTuple<T>, phi::CPUPlace>(attr);
     for (auto f : funcs) {
         LOG(INFO) << "Kernel implementation type: " << f.first;
         f.second(src_data, dst_data, &attr);
     }
 ```
 
-All kernels are inlcuded in `paddle/fluid/operators/jit/kernels.h`, which is automatically generated in compile time, you can only include this one header to get all the registered kernels.
+All kernels are inlcuded in `paddle/phi/kernels/funcs/jit/kernels.h`, which is automatically generated in compile time, you can only include this one header to get all the registered kernels.
 
 ## Solid Test
 
