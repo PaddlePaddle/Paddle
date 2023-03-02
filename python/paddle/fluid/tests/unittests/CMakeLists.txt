@@ -486,6 +486,10 @@ if(NOT WITH_GPU
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
 endif()
 
+if(NOT WITH_FLASHATTN)
+  list(REMOVE_ITEM TEST_OPS test_flash_attention)
+endif()
+
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
 set(TEST_OPS_WITH_GC
@@ -1202,8 +1206,16 @@ if($ENV{USE_STANDALONE_EXECUTOR})
                        PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
 endif()
 
-set(TEST_CINN_OPS test_softmax_op test_expand_v2_op test_reduce_op
-                  test_slice_op test_activation_op)
+set(TEST_CINN_OPS
+    test_softmax_op
+    test_expand_v2_op
+    test_reduce_op
+    test_slice_op
+    test_activation_op
+    test_full_like_op
+    test_fill_any_like_op
+    test_concat_op
+    test_top_k_v2_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)

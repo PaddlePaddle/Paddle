@@ -14,12 +14,12 @@
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.common_ops_import import dygraph_utils
 from paddle.distributed import collective
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.framework import LayerHelper, _varbase_creator, in_dygraph_mode
 from paddle.nn import Layer
+from paddle.nn.utils import dygraph_utils
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
 

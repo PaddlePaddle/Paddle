@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defination of Role Makers."""
+"""Definition of Role Makers."""
 
 import os
 import time
@@ -19,15 +19,7 @@ from multiprocessing import Manager, Process
 
 import paddle.fluid as fluid
 
-__all__ = [
-    'Role',
-    'RoleMakerBase',
-    'MPISymetricRoleMaker',
-    'UserDefinedRoleMaker',
-    'UserDefinedCollectiveRoleMaker',
-    'PaddleCloudRoleMaker',
-    'GeneralRoleMaker',
-]
+__all__ = []
 
 
 class Role:

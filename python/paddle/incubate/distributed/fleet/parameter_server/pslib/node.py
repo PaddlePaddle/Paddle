@@ -10,7 +10,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-"""Defination of Server and Worker."""
+"""Definition of Server and Worker."""
 
 # NOTE: reduce removed in fuctools in python3
 from functools import reduce
