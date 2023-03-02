@@ -29,7 +29,6 @@ from paddle.jit.dy2static.utils import (
     GetterSetterHelper,
     UndefinedVar,
 )
-from paddle.static.nn.control_flow import Assert
 
 from .return_transformer import RETURN_NO_VALUE_VAR_NAME
 from .variable_trans_func import to_static_variable
@@ -731,6 +730,8 @@ def convert_assert(cond, message=""):
     if isinstance(cond, Variable):
         cond = paddle.cast(cond, "bool")
         # NOTE: message is not used because Paddle Assert has no corresponding parameter to use.
+        from paddle.static.nn.control_flow import Assert
+
         return Assert(cond)
     else:
         assert cond, message
