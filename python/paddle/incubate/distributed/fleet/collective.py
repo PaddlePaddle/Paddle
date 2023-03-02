@@ -18,6 +18,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
+from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program
@@ -475,6 +476,14 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._compiled_program = CompiledProgram(
             main_program, build_strategy=self._strategy
         )
+        comm_opt = RawProgramOptimizer(None)
+        comm_opt.endpoints = self._strategy.trainers_endpoints
+        comm_opt.current_endpoint = comm_opt.endpoints[fleet.worker_index()]
+        comm_opt.rank = fleet.worker_index()
+        comm_opt.nranks = fleet.worker_num()
+        if comm_opt.nranks > 1:
+            comm_opt.main_program = self._compiled_program
+            comm_opt._transpile_main_program(self._loss)
 
         return self._compiled_program
 
