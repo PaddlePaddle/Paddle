@@ -324,11 +324,11 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
-void split_with_num_grad(const std::vector<const Tensor*>& out_grad,
+void split_with_num_grad(const std::vector<Tensor>& out_grad,
                          const Scalar& axis,
                          Tensor* x_grad) {
   if (x_grad) {
-    set_output<T>(reshape<T>(out_grad, axis), x_grad);
+    set_output<T>(concat<T>(out_grad, axis), x_grad);
   }
 }
 

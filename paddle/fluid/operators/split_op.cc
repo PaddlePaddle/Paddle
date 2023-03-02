@@ -18,6 +18,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -201,6 +204,25 @@ Example:
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
         .InEnum({"float32", "bfloat16", "int8", "uint8"});
+  }
+};
+
+class SplitWithNumCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    std::vector<paddle::experimental::Tensor> out_grad =
+        this->GetMultiOutputGrad("Out");
+    paddle::experimental::Tensor input_grad = this->GetSingleForwardInput("X");
+    auto *dx_ptr = this->GetOutputPtr(&input_grad);
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+
+    std::string dx_name = this->GetOutputName(input_grad);
+
+    VLOG(6) << "Runing split_with_num_grad composite func";
+    prim::split_with_num_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
+    this->RecoverOutputName(input_grad, dx_name);
   }
 };
 

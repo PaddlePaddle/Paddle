@@ -33,5 +33,13 @@ Tensor full<Tensor>(const IntArray& shape,
   VLOG(4) << "Eager Prim API full_ad_func call";
   return ::full_ad_func(shape, value, dtype, place);
 }
+
+template <>
+std::vector<Tensor> split_with_num<Tensor>(const Tensor& x,
+                                           const int& num,
+                                           const Scalar& axis) {
+  VLOG(4) << "Eager Prim API split_with_num_ad_func call";
+  return ::split_with_num_ad_func(x, num, axis);
+}
 }  // namespace prim
 }  // namespace paddle

@@ -1585,19 +1585,6 @@
   outputs :
     out : Out
 
-- op : split_with_num
-  backward : split_with_num_grad
-  inputs:
-    x: X
-  outputs:
-    out: Out
-  attrs:
-    { num : num, axis: axis}
-  scalar :
-    axis :
-      data_type : int
-      tensor_name : AxisTensor
-
 - op : sqrt
   backward : sqrt_grad, sqrt_double_grad (sqrt_grad_grad)
   inputs :

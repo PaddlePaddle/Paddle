@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <vector>
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
@@ -36,5 +37,10 @@ Tensor full(const IntArray& shape,
             const Scalar& value,
             DataType dtype = DataType::FLOAT32,
             const Place& place = CPUPlace());
+
+template <typename T>
+std::vector<Tensor> split_with_num(const Tensor& x,
+                                   const int& num,
+                                   const Scalar& axis);
 }  // namespace prim
 }  // namespace paddle
