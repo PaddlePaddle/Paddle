@@ -21,8 +21,8 @@ import numpy as np
 from decorator_helper import prog_scope
 from eager_op_test import (
     OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
+    convert_bfloat16_to_float,
+    convert_float_to_bfloat16,
 )
 
 import paddle
@@ -183,7 +183,7 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
 
     def _get_array(self, rows, row_numel):
         if len(rows) > 0:
-            return convert_float_to_uint16(self.data)
+            return convert_float_to_bfloat16(self.data)
         else:
             return np.ndarray((0, row_numel), dtype=self.dtype)
 
@@ -220,9 +220,9 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         if has_data_w_num > 0:
             self.assertEqual(len(out.rows()), 7)
             out_bf16 = np.array(out.get_tensor())
-            out_fp32 = convert_uint16_to_float(out_bf16)
+            out_fp32 = convert_bfloat16_to_float(out_bf16)
             ref_fp32 = (
-                convert_uint16_to_float(
+                convert_bfloat16_to_float(
                     self._get_array(self.rows, self.row_numel)
                 )
                 * has_data_w_num
@@ -338,12 +338,12 @@ class TestSumBF16Op(OpTest):
         y = x0 + x1 + x2
         self.inputs = {
             "X": [
-                ("x0", convert_float_to_uint16(x0)),
-                ("x1", convert_float_to_uint16(x1)),
-                ("x2", convert_float_to_uint16(x2)),
+                ("x0", convert_float_to_bfloat16(x0)),
+                ("x1", convert_float_to_bfloat16(x1)),
+                ("x2", convert_float_to_bfloat16(x2)),
             ]
         }
-        self.outputs = {'Out': convert_float_to_uint16(y)}
+        self.outputs = {'Out': convert_float_to_bfloat16(y)}
 
     def init_kernel_type(self):
         self.dtype = np.uint16

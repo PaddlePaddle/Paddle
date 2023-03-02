@@ -19,7 +19,7 @@ import numpy as np
 
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
     skip_check_grad_ci,
 )
 
@@ -97,7 +97,7 @@ class TestBilinearInterpOneDNNOp(OpTest):
 
         input_np = np.random.random(self.input_shape).astype(self.dtype)
         if self.dtype == np.uint16:
-            input_np = convert_float_to_uint16(input_np)
+            input_np = convert_float_to_bfloat16(input_np)
 
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]

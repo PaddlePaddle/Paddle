@@ -20,7 +20,7 @@ from .amp_utils import (
     rewrite_program_bf16,
     cast_model_to_bf16,
     cast_parameters_to_bf16,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 from . import decorator
 from .decorator import decorate_bf16

@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid as fluid
@@ -168,8 +168,8 @@ class TestScaleBF16Op(OpTest):
         self.attrs = {'scale': -2.3}
         x = np.random.random((10, 10)).astype(np.float32)
         out = x * np.float32(self.attrs['scale'])
-        self.inputs = {'X': convert_float_to_uint16(x)}
-        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.inputs = {'X': convert_float_to_bfloat16(x)}
+        self.outputs = {'Out': convert_float_to_bfloat16(out)}
 
     def test_check_output(self):
         self.check_output(check_eager=True)

@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 from paddle.fluid.tests.unittests.test_reshape_op import TestReshapeOp
 
@@ -173,7 +173,7 @@ def create_reshape_bf16_test_classes(parent):
         def setUp(self):
             super().setUp()
             self.dtype = np.uint16
-            self.inputs = {"X": convert_float_to_uint16(self.x)}
+            self.inputs = {"X": convert_float_to_bfloat16(self.x)}
             self.attrs['use_mkldnn'] = True
 
         def calculate_grads(self):
@@ -217,7 +217,9 @@ def create_reshape_bf16_test_classes(parent):
                 ["X"],
                 "Out",
                 user_defined_grads=[self.dx],
-                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+                user_defined_grad_outputs=[
+                    convert_float_to_bfloat16(self.dout)
+                ],
             )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Reshape_BF16")

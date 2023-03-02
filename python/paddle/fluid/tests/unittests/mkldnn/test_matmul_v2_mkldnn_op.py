@@ -34,7 +34,7 @@ from paddle.fluid.tests.unittests.mkldnn.test_matmul_mkldnn_op import (
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 
 
@@ -320,8 +320,8 @@ def create_bf16_test_class(parent):
     class TestMatMulV2Bf16OneDNNOp(parent):
         def set_inputs(self, x, y):
             self.inputs = {
-                'X': convert_float_to_uint16(x),
-                'Y': convert_float_to_uint16(y),
+                'X': convert_float_to_bfloat16(x),
+                'Y': convert_float_to_bfloat16(y),
             }
             self.x_fp32 = x
             self.y_fp32 = y
@@ -339,7 +339,9 @@ def create_bf16_test_class(parent):
                 ["X", "Y"],
                 "Out",
                 user_defined_grads=[self.dx, self.dy],
-                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+                user_defined_grad_outputs=[
+                    convert_float_to_bfloat16(self.dout)
+                ],
             )
 
         def matmul_grad(self, x, transpose_x, y, transpose_y):

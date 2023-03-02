@@ -18,7 +18,10 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 
 
 @unittest.skipIf(
@@ -51,11 +54,11 @@ class TestMatmulBf16MklDNNOp(OpTest):
         self.set_attributes()
 
         if not self.force_fp32_output:
-            self.out = convert_float_to_uint16(self.out)
+            self.out = convert_float_to_bfloat16(self.out)
         self.outputs = {'Out': self.out}
 
-        self.x_bf16 = convert_float_to_uint16(self.x_fp32)
-        self.y_bf16 = convert_float_to_uint16(self.y_fp32)
+        self.x_bf16 = convert_float_to_bfloat16(self.x_fp32)
+        self.y_bf16 = convert_float_to_bfloat16(self.y_fp32)
         self.inputs = {'X': self.x_bf16, 'Y': self.y_bf16}
 
     def test_check_output(self):
@@ -69,7 +72,7 @@ class TestMatmulBf16MklDNNOp(OpTest):
             "Out",
             check_dygraph=False,
             user_defined_grads=[self.dx, self.dy],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+            user_defined_grad_outputs=[convert_float_to_bfloat16(self.dout)],
         )
 
     def matmul_grad(self, x, transpose_x, y, transpose_y):

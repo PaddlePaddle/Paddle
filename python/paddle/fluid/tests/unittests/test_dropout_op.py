@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_bfloat16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -243,10 +243,10 @@ class TestBF16DropoutOp(OpTest):
         self.dtype = np.uint16
 
         x = np.random.random((32, 64)).astype("float32")
-        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.inputs = {'X': convert_float_to_bfloat16(x)}
         self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
-            'Out': convert_float_to_uint16(
+            'Out': convert_float_to_bfloat16(
                 np.zeros((32, 64)).astype('float32')
             ),
             'Mask': np.zeros((32, 64)).astype('uint8'),

@@ -21,7 +21,7 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 
 
@@ -121,8 +121,8 @@ def create_bf16_test_class(parent):
             self,
         ):
             self.inputs = {
-                'X': convert_float_to_uint16(self.x),
-                'Alpha': convert_float_to_uint16(self.alpha),
+                'X': convert_float_to_bfloat16(self.x),
+                'Alpha': convert_float_to_bfloat16(self.alpha),
             }
 
         def set_dtype_attr(self):
@@ -167,7 +167,9 @@ def create_bf16_test_class(parent):
                 ["X", "Alpha"],
                 "Out",
                 user_defined_grads=[self.dx, self.dalpha],
-                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+                user_defined_grad_outputs=[
+                    convert_float_to_bfloat16(self.dout)
+                ],
             )
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")

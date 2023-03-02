@@ -21,7 +21,7 @@ from paddle.fluid import core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 from paddle.fluid.tests.unittests.test_log_softmax import ref_log_softmax
 
@@ -38,7 +38,7 @@ class TestLogSoftmaxOneDNNOp(OpTest):
         out = np.apply_along_axis(ref_log_softmax, self.axis, x)
 
         if self.dtype == np.uint16:
-            x = convert_float_to_uint16(x)
+            x = convert_float_to_bfloat16(x)
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}

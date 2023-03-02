@@ -24,7 +24,7 @@ from paddle.fluid.tests.unittests.npu.test_pool2d_op_npu import (
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 from paddle.fluid.tests.unittests.test_pool2d_op import (
     TestPool2D_Op_Mixin,
@@ -57,8 +57,8 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
             "float32",
         ).astype(np.float32)
 
-        self.inputs = {'X': convert_float_to_uint16(self.x_fp32)}
-        self.outputs = {'Out': convert_float_to_uint16(output)}
+        self.inputs = {'X': convert_float_to_bfloat16(self.x_fp32)}
+        self.outputs = {'Out': convert_float_to_bfloat16(output)}
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
@@ -107,8 +107,8 @@ class TestPoolBf16MklDNNOp(TestPool2D_Op_Mixin, OpTest):
             )
         ).astype(np.float32)
 
-        self.inputs = {'X': convert_float_to_uint16(input)}
-        self.outputs = {'Out': convert_float_to_uint16(output)}
+        self.inputs = {'X': convert_float_to_bfloat16(input)}
+        self.outputs = {'Out': convert_float_to_bfloat16(output)}
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())

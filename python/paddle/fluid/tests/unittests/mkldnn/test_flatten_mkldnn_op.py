@@ -21,7 +21,7 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 
 
@@ -142,7 +142,9 @@ def create_flatten_bf16_test_classes(parent):
                 ["X"],
                 "Out",
                 user_defined_grads=[self.dx],
-                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+                user_defined_grad_outputs=[
+                    convert_float_to_bfloat16(self.dout)
+                ],
             )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Flatten_BF16")

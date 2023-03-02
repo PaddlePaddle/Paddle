@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from eager_op_test import OpTest, convert_float_to_bfloat16, skip_check_grad_ci
 
 import paddle
 from paddle import fluid
@@ -48,12 +48,12 @@ class ElementwiseDivOp(OpTest):
 
         # Convert np.float32 data to np.uint16 for bfloat16 Paddle OP
         if self.dtype == np.uint16:
-            x = convert_float_to_uint16(x)
-            y = convert_float_to_uint16(y)
-            out = convert_float_to_uint16(out)
-            grad_out = convert_float_to_uint16(grad_out)
-            grad_x = convert_float_to_uint16(grad_x)
-            grad_y = convert_float_to_uint16(grad_y)
+            x = convert_float_to_bfloat16(x)
+            y = convert_float_to_bfloat16(y)
+            out = convert_float_to_bfloat16(out)
+            grad_out = convert_float_to_bfloat16(grad_out)
+            grad_x = convert_float_to_bfloat16(grad_x)
+            grad_y = convert_float_to_bfloat16(grad_y)
 
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': out}

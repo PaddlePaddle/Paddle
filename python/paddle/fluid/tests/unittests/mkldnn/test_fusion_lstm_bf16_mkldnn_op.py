@@ -17,7 +17,10 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 from paddle.fluid.tests.unittests.test_fusion_lstm_op import (
     ACTIVATION,
     fusion_lstm,
@@ -63,7 +66,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         # corressponding bf16 data as input to LSTM oneDNN bf16 kernel
         x = np.random.normal(size=(T, self.M)).astype('float32')
 
-        x_bf16 = convert_float_to_uint16(x)
+        x_bf16 = convert_float_to_bfloat16(x)
 
         if self.has_initial_state:
             h0 = np.random.normal(size=(bs, self.D)).astype('float32')
@@ -74,7 +77,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
 
         wh = np.random.normal(size=(self.D, 4 * self.D)).astype('float32')
 
-        h0_bf16 = convert_float_to_uint16(h0)
+        h0_bf16 = convert_float_to_bfloat16(h0)
 
         if self.use_peepholes:
             b = np.random.normal(size=(1, 7 * self.D)).astype('float32')
@@ -85,8 +88,8 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
 
         wx = np.random.normal(size=(self.M, 4 * self.D)).astype('float32')
 
-        wx_bf16 = convert_float_to_uint16(wx)
-        wh_bf16 = convert_float_to_uint16(wh)
+        wx_bf16 = convert_float_to_bfloat16(wx)
+        wh_bf16 = convert_float_to_bfloat16(wh)
 
         bx = np.random.normal(size=(1, 4 * self.D)).astype('float32')
         b[0, 0 : 4 * self.D] += bx[0, :]
@@ -108,7 +111,7 @@ class TestFusionLSTMBF16ONEDNNOp(OpTest):
         )
 
         hidden = hidden.astype('float32')
-        hidden_bf16 = convert_float_to_uint16(hidden)
+        hidden_bf16 = convert_float_to_bfloat16(hidden)
 
         if self.weights_dtype == 'bf16':
             self.inputs = {

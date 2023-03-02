@@ -28,7 +28,7 @@ from paddle.fluid.tests.unittests.mkldnn.test_layer_norm_mkldnn_op import (
 )
 from paddle.fluid.tests.unittests.op_test import (
     _set_use_system_allocator,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 
 np.random.random(123)
@@ -56,7 +56,7 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
 
         np.random.seed(123)
         x = np.random.random_sample(x_shape).astype(np.float32)
-        x_bf16 = convert_float_to_uint16(x)
+        x_bf16 = convert_float_to_bfloat16(x)
 
         if with_scale_bias:
             scale = np.random.random_sample(scale_shape).astype(np.float32)
@@ -70,7 +70,7 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
             x, scale, bias, epsilon, begin_norm_axis
         )
 
-        y_bf16 = convert_float_to_uint16(y)
+        y_bf16 = convert_float_to_bfloat16(y)
 
         var_dict = locals()
         var_names = ['x_bf16', 'mean', 'variance', 'y_bf16']

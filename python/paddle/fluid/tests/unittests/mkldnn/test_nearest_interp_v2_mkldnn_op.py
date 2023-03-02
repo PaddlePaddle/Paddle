@@ -19,7 +19,7 @@ import numpy as np
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
     skip_check_grad_ci,
 )
 
@@ -134,7 +134,7 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
             self.scale = [self.scale]
 
         if self.dtype == np.uint16:
-            input_np = convert_float_to_uint16(input_np)
+            input_np = convert_float_to_bfloat16(input_np)
 
         self.inputs = {'X': input_np}
         if self.out_size is not None:

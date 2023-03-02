@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid as fluid
@@ -32,10 +32,10 @@ class TestSplitOp(OpTest):
         if self.dtype == np.uint16:
             x = np.random.random((4, 5, 6)).astype(np.float32)
             out = np.split(x, [2, 3], axis)
-            self.inputs = {'X': convert_float_to_uint16(x)}
+            self.inputs = {'X': convert_float_to_bfloat16(x)}
             self.outputs = {
                 'Out': [
-                    ('out%d' % i, convert_float_to_uint16(out[i]))
+                    ('out%d' % i, convert_float_to_bfloat16(out[i]))
                     for i in range(len(out))
                 ]
             }

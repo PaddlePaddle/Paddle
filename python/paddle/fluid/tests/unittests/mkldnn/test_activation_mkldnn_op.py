@@ -19,7 +19,10 @@ from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 from scipy.special import expit
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+)
 from paddle.fluid.tests.unittests.test_activation_op import (
     TestAbs,
     TestActivation,
@@ -211,9 +214,9 @@ class TestMKLDNNGeluBf16Dim4(TestActivation):
         self.dtype = np.uint16
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(np.float32)
-        out = convert_float_to_uint16(gelu(x, False))
+        out = convert_float_to_bfloat16(gelu(x, False))
 
-        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.inputs = {'X': convert_float_to_bfloat16(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 
@@ -233,9 +236,9 @@ class TestMKLDNNGeluBf16Dim4Approx(TestActivation):
         self.dtype = np.uint16
 
         x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype(np.float32)
-        out = convert_float_to_uint16(gelu(x, True))
+        out = convert_float_to_bfloat16(gelu(x, True))
 
-        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.inputs = {'X': convert_float_to_bfloat16(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "approximate": True}
 

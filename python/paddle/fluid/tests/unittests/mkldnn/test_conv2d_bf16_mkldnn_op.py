@@ -20,7 +20,7 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 from paddle.fluid.tests.unittests.test_conv2d_op import (
     TestConv2DOp,
@@ -81,20 +81,20 @@ class TestConv2DBF16Op(TestConv2DOp):
             self.conv_output_float = conv2d_residual_naive(
                 self.conv_output_float, self.input_residual
             )
-            self.conv_output = convert_float_to_uint16(self.conv_output_float)
+            self.conv_output = convert_float_to_bfloat16(self.conv_output_float)
             self.outputs = {'Output': self.conv_output}
         elif self.force_fp32_output:
             self.outputs = {'Output': self.conv_output_float.astype(np.float32)}
         else:
             self.outputs = {
-                'Output': convert_float_to_uint16(self.conv_output_float)
+                'Output': convert_float_to_bfloat16(self.conv_output_float)
             }
 
         if self.input_type is not np.float32:
-            self.input = convert_float_to_uint16(self.input)
+            self.input = convert_float_to_bfloat16(self.input)
 
         if self.weight_type is not np.float32:
-            self.filter = convert_float_to_uint16(self.filter)
+            self.filter = convert_float_to_bfloat16(self.filter)
 
         self.inputs = {
             'Input': self.input,
@@ -106,7 +106,7 @@ class TestConv2DBF16Op(TestConv2DOp):
         if self.fuse_residual:
             self.op_type = "fused_conv2d"
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
-                convert_float_to_uint16(self.input_residual)
+                convert_float_to_bfloat16(self.input_residual)
             )
 
         self.attrs = {
@@ -192,7 +192,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             ["Input", "Filter"],
             "Output",
             user_defined_grads=[dx, dweights],
-            user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+            user_defined_grad_outputs=[convert_float_to_bfloat16(dout)],
         )
 
     def test_check_grad_no_filter(self):
@@ -208,7 +208,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             "Output",
             set(['Filter']),
             user_defined_grads=[dx],
-            user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+            user_defined_grad_outputs=[convert_float_to_bfloat16(dout)],
         )
 
     def test_check_grad_no_input(self):
@@ -224,7 +224,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
             "Output",
             set(['Input']),
             user_defined_grads=[dweights],
-            user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+            user_defined_grad_outputs=[convert_float_to_bfloat16(dout)],
         )
 
 

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_bfloat16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid.core as core
@@ -107,10 +107,10 @@ class TestElementwiseBF16Op(OpTest):
         sgn = np.random.choice([-1, 1], [13, 17]).astype(np.float32)
         y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
         self.inputs = {
-            'X': convert_float_to_uint16(x),
-            'Y': convert_float_to_uint16(y),
+            'X': convert_float_to_bfloat16(x),
+            'Y': convert_float_to_bfloat16(y),
         }
-        self.outputs = {'Out': convert_float_to_uint16(np.maximum(x, y))}
+        self.outputs = {'Out': convert_float_to_bfloat16(np.maximum(x, y))}
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):

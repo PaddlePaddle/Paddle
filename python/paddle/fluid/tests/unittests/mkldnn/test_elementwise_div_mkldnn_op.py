@@ -22,7 +22,7 @@ from paddle.fluid.framework import _current_expected_place
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 
 
@@ -122,11 +122,11 @@ class TestBf16(TestMKLDNNElementwiseDivOp):
         self.init_kernel_type()
         self.init_axis()
 
-        self.x_bf16 = convert_float_to_uint16(self.x)
-        self.y_bf16 = convert_float_to_uint16(self.y)
+        self.x_bf16 = convert_float_to_bfloat16(self.x)
+        self.y_bf16 = convert_float_to_bfloat16(self.y)
         self.inputs = {'X': self.x_bf16, 'Y': self.y_bf16}
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
-        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.outputs = {'Out': convert_float_to_bfloat16(self.out)}
 
     def init_dtype(self):
         self.dtype = np.float32

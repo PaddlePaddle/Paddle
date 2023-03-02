@@ -25,7 +25,7 @@ from paddle.fluid import core
 paddle.enable_static()
 
 
-def convert_uint16_to_float(in_list):
+def convert_bfloat16_to_float(in_list):
     if in_list.dtype == np.uint16:
         in_list = np.asarray(in_list)
         out = np.vectorize(
@@ -37,7 +37,7 @@ def convert_uint16_to_float(in_list):
         return in_list
 
 
-cutf = convert_uint16_to_float
+cutf = convert_bfloat16_to_float
 
 
 @unittest.skipIf(
@@ -92,8 +92,8 @@ class TestModelCastBF16(unittest.TestCase):
         n = np.ones([size, size], dtype='float32') * 3.2
         nn = np.ones([size, size], dtype='float32') * -2.7
 
-        n_bf16 = amp.bf16.convert_float_to_uint16(n)
-        nn_bf16 = amp.bf16.convert_float_to_uint16(nn)
+        n_bf16 = amp.bf16.convert_float_to_bfloat16(n)
+        nn_bf16 = amp.bf16.convert_float_to_bfloat16(nn)
 
         with self.static_graph():
             t_bf16 = paddle.static.data(

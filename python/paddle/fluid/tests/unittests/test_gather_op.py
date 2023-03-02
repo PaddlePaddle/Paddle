@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid as fluid
@@ -128,7 +128,7 @@ class TestGatherBF16Op(OpTest):
         axis_np = np.array(self.axis).astype(self.axis_type)
         index_np = np.array(self.index).astype(self.index_type)
         self.inputs = {
-            'X': convert_float_to_uint16(xnp),
+            'X': convert_float_to_bfloat16(xnp),
             'Index': index_np,
             'Axis': axis_np,
         }

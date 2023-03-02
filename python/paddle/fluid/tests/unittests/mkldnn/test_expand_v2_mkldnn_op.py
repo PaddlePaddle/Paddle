@@ -21,7 +21,7 @@ from paddle.fluid import core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 
 
@@ -125,7 +125,7 @@ def create_expand_v2_bf16_test_class(parent):
     class TestExpandV2BF16OneDNNOp(parent):
         def set_inputs(self):
             self.attrs['mkldnn_data_type'] = 'bfloat16'
-            self.inputs = {"X": convert_float_to_uint16(self.x)}
+            self.inputs = {"X": convert_float_to_bfloat16(self.x)}
 
         def calculate_grads(self):
             self.dout = self.outputs['Out']
@@ -141,7 +141,7 @@ def create_expand_v2_bf16_test_class(parent):
                 core.CPUPlace(),
                 ["X"],
                 "Out",
-                user_defined_grads=[convert_float_to_uint16(self.dx)],
+                user_defined_grads=[convert_float_to_bfloat16(self.dx)],
                 user_defined_grad_outputs=[self.dout],
             )
 

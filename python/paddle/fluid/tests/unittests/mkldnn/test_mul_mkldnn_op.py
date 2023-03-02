@@ -21,7 +21,7 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
-    convert_float_to_uint16,
+    convert_float_to_bfloat16,
 )
 
 
@@ -115,8 +115,8 @@ class TestMulYAndXNumColDims2OneDNNOp(TestMulOneDNNOp):
 
 class TestMulBF16OneDNNOp(TestMulOneDNNOp):
     def init_inputs_dtype(self):
-        self.x = convert_float_to_uint16(self.x)
-        self.y = convert_float_to_uint16(self.y)
+        self.x = convert_float_to_bfloat16(self.x)
+        self.y = convert_float_to_bfloat16(self.y)
 
     def calculate_grads(self):
         x_np = np.reshape(self.x_fp32, self.np_x_shape)
@@ -138,7 +138,7 @@ class TestMulBF16OneDNNOp(TestMulOneDNNOp):
             ['X', 'Y'],
             'Out',
             user_defined_grads=[self.dx, self.dy],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+            user_defined_grad_outputs=[convert_float_to_bfloat16(self.dout)],
         )
 
     def test_check_grad_ingore_x(self):
@@ -149,7 +149,7 @@ class TestMulBF16OneDNNOp(TestMulOneDNNOp):
             'Out',
             set('X'),
             user_defined_grads=[self.dy],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+            user_defined_grad_outputs=[convert_float_to_bfloat16(self.dout)],
         )
 
     def test_check_grad_ingore_y(self):
@@ -160,7 +160,7 @@ class TestMulBF16OneDNNOp(TestMulOneDNNOp):
             'Out',
             set('Y'),
             user_defined_grads=[self.dx],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+            user_defined_grad_outputs=[convert_float_to_bfloat16(self.dout)],
         )
 
 

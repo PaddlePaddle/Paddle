@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import convert_float_to_bfloat16
 from paddle.fluid.tests.unittests.test_softmax_op import (
     TestSoftmaxOp,
     TestSoftmaxOp2,
@@ -55,11 +55,11 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         self.axis = self.get_axis()
 
         x = np.random.uniform(0.1, 1, self.shape).astype(np.float64)
-        out = convert_float_to_uint16(
+        out = convert_float_to_bfloat16(
             np.apply_along_axis(stable_softmax, self.axis, x)
         )
 
-        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.inputs = {'X': convert_float_to_bfloat16(x)}
         self.outputs = {'Out': out}
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
 

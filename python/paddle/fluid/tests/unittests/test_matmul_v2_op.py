@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from eager_op_test import (
+    OpTest,
+    convert_float_to_bfloat16,
+    get_numeric_gradient,
+)
 from testsuite import create_op
 
 import paddle
@@ -86,8 +90,8 @@ class TestMatMulV2Op(OpTest):
         if self.is_bfloat16_op():
             result = result.astype(np.float32)
             self.inputs = {
-                'X': convert_float_to_uint16(x),
-                'Y': convert_float_to_uint16(y),
+                'X': convert_float_to_bfloat16(x),
+                'Y': convert_float_to_bfloat16(y),
             }
             self.inputs_fp32 = {
                 'X': x,

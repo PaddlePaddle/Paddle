@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_bfloat16
 
 import paddle
 import paddle.fluid as fluid
@@ -209,11 +209,11 @@ class TestUnbindBF16Op(OpTest):
         self.num = 3
         x = np.arange(12).reshape(3, 2, 2).astype(self.dtype)
         self.out = np.split(x, self.num, self.axis)
-        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.inputs = {'X': convert_float_to_bfloat16(x)}
         self.attrs = {'axis': self.axis}
         self.outputs = {
             'Out': [
-                ('out%d' % i, convert_float_to_uint16(self.out[i]))
+                ('out%d' % i, convert_float_to_bfloat16(self.out[i]))
                 for i in range(len(self.out))
             ]
         }

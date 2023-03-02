@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import convert_float_to_bfloat16
 from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
 
 
@@ -37,14 +37,14 @@ class TestSumBF16MKLDNN(TestSumOp):
         x2 = np.random.random((25, 8)).astype('float32')
 
         # actual input (bf16) to bf16 sum op
-        x0_bf16 = convert_float_to_uint16(x0)
-        x1_bf16 = convert_float_to_uint16(x1)
-        x2_bf16 = convert_float_to_uint16(x2)
+        x0_bf16 = convert_float_to_bfloat16(x0)
+        x1_bf16 = convert_float_to_bfloat16(x1)
+        x2_bf16 = convert_float_to_bfloat16(x2)
 
         self.inputs = {"X": [("x0", x0_bf16), ("x1", x1_bf16), ("x2", x2_bf16)]}
 
         y = x0 + x1 + x2
-        self.outputs = {'Out': convert_float_to_uint16(y)}
+        self.outputs = {'Out': convert_float_to_bfloat16(y)}
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):

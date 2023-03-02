@@ -23,8 +23,8 @@ from paddle import enable_static
 from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
+    convert_bfloat16_to_float,
+    convert_float_to_bfloat16,
     skip_check_grad_ci,
 )
 
@@ -72,7 +72,7 @@ class TestLookupTableBF16Op(OpTest):
         self.ids = np.random.randint(0, 17, self.ids_shape).astype("int64")
         self.flat_ids = self.ids.flatten()
 
-        self.w_bf16 = convert_float_to_uint16(table)
+        self.w_bf16 = convert_float_to_bfloat16(table)
         self.out_bf16 = _lookup(
             self.w_bf16, self.ids, self.flat_ids, self.op_type
         )
@@ -124,7 +124,7 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
         ).astype("int64")
         self.flat_ids = self.ids.flatten()
         self.w_fp32 = np.random.random((15, 32)).astype("float32")
-        self.w_bf16 = convert_float_to_uint16(self.w_fp32)
+        self.w_bf16 = convert_float_to_bfloat16(self.w_fp32)
         self.scope = core.Scope()
         self.place = core.CPUPlace()
 
@@ -143,7 +143,7 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
         ids_tensor.set(self.ids, self.place)
 
     def _check_output(self, reference, result_array):
-        result_array_fp32 = convert_uint16_to_float(result_array)
+        result_array_fp32 = convert_bfloat16_to_float(result_array)
         np.testing.assert_allclose(result_array_fp32, reference, rtol=1.5e-2)
 
     def test_check_output(self):
@@ -253,11 +253,11 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         )
 
     def test_embedding_weights(self):
-        result = convert_uint16_to_float(self.result[0])
+        result = convert_bfloat16_to_float(self.result[0])
         np.testing.assert_array_equal(self.w_fp32, result)
 
     def test_lookup_results(self):
-        lookup_result = convert_uint16_to_float(self.result[1])
+        lookup_result = convert_bfloat16_to_float(self.result[1])
         lookup_ref = _lookup(self.w_fp32, self.ids, self.flat_ids)
         np.testing.assert_array_equal(lookup_result, lookup_ref)
 
