@@ -70,9 +70,7 @@ class TestMovingAverageAbsMaxScaleOp(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup_program)
 
-        binary = paddle.static.CompiledProgram(main_program).with_data_parallel(
-            loss_name=loss.name
-        )
+        binary = paddle.static.CompiledProgram(main_program)
 
         img, label = init_data()
         feed_dict = {"image": img, "label": label}

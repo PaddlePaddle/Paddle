@@ -90,6 +90,72 @@ class TestActivation_ZeroDim(TestActivation):
         self.shape = []
 
 
+class TestExpPrimFp32(OpTest):
+    def setUp(self):
+        self.op_type = "exp"
+        self.prim_op_type = "prim"
+        self.init_dtype()
+        self.init_shape()
+        self.python_api = paddle.exp
+
+        np.random.seed(2049)
+        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        out = np.exp(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.skip_cinn()
+        self.set_only_prim()
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_shape(self):
+        self.shape = [12, 17]
+
+    def skip_cinn(self):
+        self.enable_cinn = True
+
+    def set_only_prim(self):
+        pass
+
+
+class TestExpPrimFp64(TestExpPrimFp32):
+    def init_dtype(self):
+        self.dtype = np.float64
+
+
+class TestExpPrimFp16(TestExpPrimFp32):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def set_only_prim(self):
+        self.only_prim = True
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+    def skip_cinn(self):
+        self.enable_cinn = True
+
+
+class TestExpPrim_ZeroDim(TestExpPrimFp32):
+    def init_shape(self):
+        self.shape = []
+
+    def skip_cinn(self):
+        self.enable_cinn = False
+
+
 class TestExpm1(TestActivation):
     def setUp(self):
         self.op_type = "expm1"
@@ -167,6 +233,8 @@ class TestExpm1API(unittest.TestCase):
 class TestParameter:
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
+            if paddle.fluid.framework.in_dygraph_mode():
+                paddle.enable_static()
             np_x = np.array([0.1]).astype('float32').reshape((-1, 1))
             data = paddle.static.data(name="X", shape=[-1, 1], dtype="float32")
             out = eval("paddle.%s(data, name='Y')" % self.op_type)
@@ -256,6 +324,9 @@ class TestSigmoidBF16_ZeroDim(TestSigmoidBF16):
 class TestSilu(TestActivation):
     def setUp(self):
         self.op_type = "silu"
+        self.prim_op_type = "comp"
+        self.enable_cinn = True
+        self.python_api = paddle.nn.functional.silu
         self.init_dtype()
         self.init_shape()
 
@@ -272,12 +343,43 @@ class TestSilu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSilu_ZeroDim(TestSilu):
     def init_shape(self):
         self.shape = []
+        self.enable_cinn = False
+
+
+class TestSiluFP16(TestActivation):
+    def setUp(self):
+        self.op_type = "silu"
+        self.prim_op_type = "comp"
+        self.enable_cinn = True
+        self.only_prim = True
+        self.python_api = paddle.nn.functional.silu
+        self.init_dtype()
+        self.init_shape()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out = x / (np.exp(-x) + 1)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+    def test_check_output(self):
+        check_eager = False
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_output(check_eager=check_eager, check_prim=True)
 
 
 class TestSiluAPI(unittest.TestCase):
@@ -1062,6 +1164,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
 class TestSqrt(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.init_dtype()
         self.init_shape()
@@ -1072,7 +1175,9 @@ class TestSqrt(TestActivation, TestParameter):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
+        self.enable_cinn = False
 
+    # TODO(wanghao107) add prim test
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
@@ -1082,9 +1187,51 @@ class TestSqrt(TestActivation, TestParameter):
         self.check_output(check_eager=True)
 
 
+class TestSqrtPrimFp32(TestActivation):
+    def setUp(self):
+        self.op_type = "sqrt"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.sqrt
+        self.init_dtype()
+        self.init_shape()
+        np.random.seed(1023)
+        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        out = np.sqrt(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.enable_cinn = True
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
 class TestSqrt_ZeroDim(TestSqrt):
     def init_shape(self):
         self.shape = []
+        self.enable_cinn = False
+
+
+class TestSqrtPrim_ZeroDim(TestSqrt):
+    def init_shape(self):
+        self.shape = []
+        self.enable_cinn = False
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 @unittest.skipIf(
@@ -1093,6 +1240,7 @@ class TestSqrt_ZeroDim(TestSqrt):
 class TestSqrtBF16(OpTest):
     def setUp(self):
         self.op_type = "sqrt"
+        self.prim_op_type = "prim"
         self.python_api = paddle.sqrt
         self.init_dtype()
         self.init_shape()
@@ -1105,6 +1253,8 @@ class TestSqrtBF16(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
+        # TODO(wanghao107): add prim test
+        self.enable_cinn = False
 
     def init_dtype(self):
         self.dtype = np.uint16
@@ -1380,6 +1530,8 @@ class TestSin(TestActivation, TestParameter):
         self.op_type = "sin"
         self.init_dtype()
         self.init_shape()
+        # prim not support now
+        self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -3530,6 +3682,7 @@ create_test_act_fp16_class(TestActivation)
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid)
 create_test_act_fp16_class(TestSilu)
+create_test_act_fp16_class(TestSiluFP16)
 create_test_act_fp16_class(TestLogSigmoid)
 create_test_act_fp16_class(TestTanh)
 create_test_act_fp16_class(TestTanhshrink)
