@@ -77,8 +77,7 @@ class CastCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
         std::make_shared<prim::DescTensor>(this->SingleInputGrad("X")));
     auto dx_ptr = this->GetOutputPtr(&x_grad);
     std::string dx_name = this->GetOutputName(x_grad);
-    auto dtype = static_cast<paddle::experimental::DataType>(
-        this->Attr<int>("in_dtype"));
+    auto dtype = phi::TransToPhiDataType(this->Attr<int>("in_dtype"));
     prim::cast_grad<prim::DescTensor>(out_grad, dtype, dx_ptr);
     this->RecoverOutputName(x_grad, dx_name);
   }
