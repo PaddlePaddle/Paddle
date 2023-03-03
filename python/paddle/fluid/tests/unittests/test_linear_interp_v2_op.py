@@ -16,6 +16,7 @@ import platform
 import unittest
 
 import numpy as np
+from eager_op_test import convert_float_to_uint16
 from op_test import OpTest
 
 import paddle
@@ -332,6 +333,184 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             )
 
             np.testing.assert_allclose(interp.numpy(), expect, rtol=1e-05)
+
+
+class TestLinearInterpOpFP16(OpTest):
+    def setUp(self):
+        self.python_api = linear_interp_test
+        self.out_size = None
+        self.actual_shape = None
+        self.data_layout = 'NCHW'
+        self.init_test_case()
+        self.op_type = "linear_interp_v2"
+        self.dtype = np.float16
+        input_np = np.random.random(self.input_shape).astype("float16")
+
+        scale_w = 0
+        if self.data_layout == "NCHW":
+            in_w = self.input_shape[2]
+        else:
+            in_w = self.input_shape[1]
+
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = float(self.scale)
+            if isinstance(self.scale, list):
+                self.scale = float(self.scale[0])
+            out_w = int(in_w * self.scale)
+        else:
+            out_w = self.out_w
+
+        output_np = linear_interp_np(
+            input_np,
+            out_w,
+            self.scale,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+            self.align_mode,
+            self.data_layout,
+        )
+        self.inputs = {'X': input_np}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
+        if self.actual_shape is not None:
+            self.inputs['OutSize'] = self.actual_shape
+
+        self.attrs = {
+            'out_w': self.out_w,
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners,
+            'align_mode': self.align_mode,
+            'data_layout': self.data_layout,
+        }
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = [float(self.scale)]
+            self.attrs['scale'] = self.scale
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        if platform.system() == "Linux":
+            self.check_output(atol=1e-3, check_eager=True)
+        else:
+            self.check_output(atol=1e-3, check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            in_place=True,
+            check_eager=True,
+            max_relative_error=1e-2,
+        )
+
+    def init_test_case(self):
+        self.interp_method = 'linear'
+        self.input_shape = [1, 3, 100]
+        self.out_w = 50
+        self.scale = 0.5
+        self.out_size = np.array(
+            [
+                50,
+            ]
+        ).astype("int32")
+        self.align_corners = False
+        self.align_mode = 1
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestLinearInterpOpBF16(OpTest):
+    def setUp(self):
+        self.python_api = linear_interp_test
+        self.out_size = None
+        self.actual_shape = None
+        self.data_layout = 'NCHW'
+        self.init_test_case()
+        self.op_type = "linear_interp_v2"
+        self.dtype = np.uint16
+        input_np = np.random.random(self.input_shape).astype("float32")
+
+        scale_w = 0
+        if self.data_layout == "NCHW":
+            in_w = self.input_shape[2]
+        else:
+            in_w = self.input_shape[1]
+
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = float(self.scale)
+            if isinstance(self.scale, list):
+                self.scale = float(self.scale[0])
+            out_w = int(in_w * self.scale)
+        else:
+            out_w = self.out_w
+
+        output_np = linear_interp_np(
+            input_np,
+            out_w,
+            self.scale,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+            self.align_mode,
+            self.data_layout,
+        )
+        self.inputs = {'X': convert_float_to_uint16(input_np)}
+        if self.out_size is not None:
+            self.inputs['OutSize'] = self.out_size
+        if self.actual_shape is not None:
+            self.inputs['OutSize'] = self.actual_shape
+
+        self.attrs = {
+            'out_w': self.out_w,
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners,
+            'align_mode': self.align_mode,
+            'data_layout': self.data_layout,
+        }
+        if self.scale > 0:
+            if isinstance(self.scale, float) or isinstance(self.scale, int):
+                self.scale = [float(self.scale)]
+            self.attrs['scale'] = self.scale
+        self.outputs = {'Out': convert_float_to_uint16(output_np)}
+
+    def test_check_output(self):
+        if platform.system() == "Linux":
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=True)
+
+        else:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=True)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            in_place=True,
+            check_eager=True,
+            max_relative_error=1e-2,
+        )
+
+    def init_test_case(self):
+        self.interp_method = 'linear'
+        self.input_shape = [1, 3, 100]
+        self.out_w = 50
+        self.scale = 0.5
+        self.out_size = np.array(
+            [
+                50,
+            ]
+        ).astype("int32")
+        self.align_corners = False
+        self.align_mode = 1
 
 
 class TestResizeLinearOpUint8(OpTest):
