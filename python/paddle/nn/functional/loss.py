@@ -4005,7 +4005,7 @@ def gaussian_nll_loss(
             'gaussian_nll_loss',
         )
         condition = paddle.all(var > 0)
-        Assert(condition)
+        Assert(condition, [var], 6)
     else:
         if paddle.any(var < 0):
             raise ValueError("var has negative entry/entries")
