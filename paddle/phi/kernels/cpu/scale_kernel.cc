@@ -18,20 +18,23 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+
 namespace phi {
 
 template <typename T, typename Context>
-void ScaleKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 const Scalar& scale,
-                 float bias,
-                 bool bias_after_scale,
-                 DenseTensor* out) {
+void ScaleImpl(const Context& dev_ctx,
+               const DenseTensor& x,
+               const Scalar& scale,
+               float bias,
+               bool bias_after_scale,
+               DenseTensor* out) {
   // calc
   dev_ctx.template Alloc<T>(out);
   auto eigen_out = phi::EigenVector<T>::Flatten(*out);
@@ -50,6 +53,56 @@ void ScaleKernel(const Context& dev_ctx,
       scale.to<T>(),
       static_cast<T>(bias),
       bias_after_scale);
+}
+
+template <typename T, typename Context>
+typename std::enable_if<!std::is_integral<T>::value>::type ScaleKernelImpl(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const Scalar& scale,
+    float bias,
+    bool bias_after_scale,
+    DenseTensor* out) {
+  ScaleImpl<T, Context>(dev_ctx, x, scale, bias, bias_after_scale, out);
+}
+
+template <typename T, typename Context>
+typename std::enable_if<std::is_integral<T>::value>::type ScaleKernelImpl(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const Scalar& scale,
+    float bias,
+    bool bias_after_scale,
+    DenseTensor* out) {
+  float float_scale = scale.to<float>();
+  if (ceilf(float_scale) == float_scale) {
+    // If `T` is an integer type and `scale` is an integer
+    ScaleImpl<T, Context>(dev_ctx, x, scale, bias, bias_after_scale, out);
+  } else {
+    // If `T` is an integer type and `scale` is a float number
+    // XXX: Current implementation includes two extra tensor casting operations
+    // (with memory allocation) and is thus less efficient. T to float
+    phi::DenseTensor float_x =
+        phi::Cast<T, Context>(dev_ctx, x, DataType::FLOAT32);
+    // Create temporary tensor
+    phi::DenseTensor float_out =
+        phi::EmptyLike<float, Context>(dev_ctx, float_x);
+    // Calculate results of floating type
+    ScaleImpl<float, Context>(
+        dev_ctx, float_x, scale, bias, bias_after_scale, &float_out);
+    // float to T
+    phi::CastKernel<float, Context>(dev_ctx, float_out, out->dtype(), out);
+  }
+}
+
+template <typename T, typename Context>
+void ScaleKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const Scalar& scale,
+                 float bias,
+                 bool bias_after_scale,
+                 DenseTensor* out) {
+  ScaleKernelImpl<T, Context>(dev_ctx, x, scale, bias, bias_after_scale, out);
 }
 
 }  // namespace phi

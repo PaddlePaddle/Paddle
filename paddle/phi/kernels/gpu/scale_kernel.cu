@@ -21,22 +21,22 @@ limitations under the License. */
 
 namespace phi {
 
-template <typename InT>
+template <typename InT, typename AuxT>
 struct ScaleFunctor {
-  InT bias;
-  InT scale;
+  AuxT bias;
+  AuxT scale;
   bool bias_after_scale;
 
-  ScaleFunctor(InT scale_data, InT bias_data, bool is_bias_after_sacle)
+  ScaleFunctor(AuxT scale_data, AuxT bias_data, bool is_bias_after_sacle)
       : bias(bias_data),
         scale(scale_data),
         bias_after_scale(is_bias_after_sacle) {}
 
   __device__ __forceinline__ InT operator()(const InT x) const {
     if (bias_after_scale) {
-      return scale * x + bias;
+      return static_cast<InT>(scale * static_cast<AuxT>(x) + bias);
     } else {
-      return scale * (x + bias);
+      return static_cast<InT>(scale * (static_cast<AuxT>(x) + bias));
     }
   }
 };
@@ -56,11 +56,14 @@ void ScaleKernel(const Context& dev_ctx,
   if (x.numel() <= 0 || (!x.IsInitialized())) {
     return;
   }
+  using AuxT =
+      typename std::conditional<std::is_integral<T>::value, float, T>::type;
   phi::funcs::ElementwiseKernel<T>(
       dev_ctx,
       inputs,
       &outputs,
-      ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
+      ScaleFunctor<T, AuxT>(
+          scale.to<AuxT>(), static_cast<AuxT>(bias), bias_after_scale));
 }
 
 }  // namespace phi
