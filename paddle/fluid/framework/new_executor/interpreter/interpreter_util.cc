@@ -56,7 +56,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "all_close",
     "all_raw",
     "angle",
-    "any_raw",
     "arg_sort",
     "argmax",
     "argmin",
@@ -1095,7 +1094,6 @@ void FakeInitializeOutputsForFunctionKernel(
   size_t start_idx = 0;
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto it = ctx.outputs.find(output_names[i]);
-
     // Deal with the case that some outputs are not found or be NULL when run
     // the kernel. For example : the outputs of matmul_grad are dx and dy,
     // sometimes dx or dy may be NULL.
@@ -1109,7 +1107,7 @@ void FakeInitializeOutputsForFunctionKernel(
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       phi::TensorBase* out_tensor = GetTensorFormVar(outs_vector[offset]);
       if (out_tensor && !out_tensor->initialized()) {
-        phi::TensorArgDef& tensor_arg_def = output_defs[start_idx + offset];
+        phi::TensorArgDef& tensor_arg_def = output_defs[i];
         phi::DataType dtype = tensor_arg_def.dtype;
         phi::Place place = phi::TransToPhiPlace(tensor_arg_def.backend);
 

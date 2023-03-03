@@ -574,14 +574,23 @@ void LayerNormInferMeta(const MetaTensor& x,
             right));
   }
 
+  phi::DataType x_dtype = x.dtype();
   out->set_dims(x_dim);
+  out->set_dtype(x_dtype);
+  out->share_lod(x);
+
+  phi::DataType param_type =
+      (x_dtype == phi::DataType::BFLOAT16 || x_dtype == phi::DataType::FLOAT16)
+          ? phi::DataType::FLOAT32
+          : x_dtype;
   if (mean) {
     mean->set_dims({left});
+    mean->set_dtype(param_type);
   }
   if (variance) {
     variance->set_dims({left});
+    variance->set_dtype(param_type);
   }
-  out->share_lod(x);
 }
 
 void LayerNormGradInferMeta(const MetaTensor& x,
