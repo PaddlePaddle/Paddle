@@ -59,7 +59,9 @@ def eprint(*args, **kwargs):
 
 def _insert_comm_op(opt, loss, build_strategy=None):
     opt = RawProgram(opt)
-    role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+    role = paddle.distributed.fleet.base.role_maker.PaddleCloudRoleMaker(
+        is_collective=True
+    )
     strategy = paddle.distributed.fleet.DistributedStrategy()
     if build_strategy is not None:
         strategy.build_strategy = build_strategy
