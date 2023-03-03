@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/ir/cast_utils.h"
 #include "paddle/ir/type_base.h"
 
 namespace ir {
@@ -66,8 +67,13 @@ class Type {
   static bool classof(Type) { return true; }
 
   template <typename T>
-  bool isa() {
-    return type_id() == TypeId::get<T>();
+  bool isa() const {
+    return ir::isa<T>(*this);
+  }
+
+  template <typename U>
+  U dyn_cast() const {
+    return ir::dyn_cast<U>(*this);
   }
 
   ///

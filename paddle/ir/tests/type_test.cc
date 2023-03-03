@@ -155,6 +155,21 @@ TEST(type_test, built_in_type) {
       ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, 2);
   EXPECT_EQ(dense_tensor_4.offset() == 2, 1);
   EXPECT_EQ(dense_tensor_4.data_layout() == data_layout, 1);
+
+  // Test 3: Test isa and dyn_cast.
+  EXPECT_EQ(fp16_1.isa<ir::Float16Type>() == true, 1);
+  EXPECT_EQ(fp16_1.isa<ir::Float32Type>() == true, 0);
+  EXPECT_EQ(fp16_1.isa<ir::DenseTensorType>() == true, 0);
+  EXPECT_EQ(fp16_1.isa<ir::Type>() == true, 1);
+  EXPECT_EQ(dense_tensor_1.isa<ir::DenseTensorType>() == true, 1);
+
+  ir::DenseTensorType dense_tensor_cast_1 =
+      dense_tensor_1.dyn_cast<ir::DenseTensorType>();
+  EXPECT_EQ(dense_tensor_cast_1.isa<ir::DenseTensorType>() == true, 1);
+  EXPECT_EQ(dense_tensor_cast_1.offset() == 0, 1);
+
+  auto int64_cast_1 = ir::dyn_cast<ir::Int64Type>(int64_1);
+  EXPECT_EQ(int64_cast_1.isa<ir::Int64Type>() == true, 1);
 }
 
 // Customize a parameterized TypeStorage IntegerTypeStorage.
