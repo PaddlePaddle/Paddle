@@ -917,18 +917,6 @@ class Completer:
 
         self._has_prepared = True
 
-        for (parent_node, child_node) in self._node_pairs_between_graphs:
-            print(
-                "pair node: ",
-                _node_id(parent_node),
-                _node_id(child_node),
-                parent_node.var().name(),
-                child_node.var().name(),
-                parent_node.var().id(),
-                child_node.var().id(),
-                flush=True,
-            )
-
     def complete_forward_annotation(self, serial_main_program=None):
         """Complete annotation for the partial annotated serial_main_program.
         Arguments:
