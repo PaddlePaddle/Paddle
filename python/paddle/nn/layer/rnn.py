@@ -609,12 +609,12 @@ class RNNCellBase(Layer):
 
         # nested structure of shapes
         states_shapes = self.state_shape if shape is None else shape
-        is_sequence_ori = paddle.utils.is_sequence
-        paddle.utils.is_sequence = _is_shape_sequence
+        is_sequence_ori = paddle.utils.layers_utils.is_sequence
+        paddle.utils.layers_utils.is_sequence = _is_shape_sequence
         states_shapes = paddle.utils.map_structure(
             lambda shape: Shape(shape), states_shapes
         )
-        paddle.utils.is_sequence = is_sequence_ori
+        paddle.utils.layers_utils.is_sequence = is_sequence_ori
 
         # nested structure of dtypes
         try:
