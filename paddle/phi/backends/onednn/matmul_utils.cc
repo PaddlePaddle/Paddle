@@ -91,19 +91,5 @@ std::vector<int64_t> GetInputStrides(const std::string input_name,
   return strides;
 }
 
-bool IsOutputFused(const OneDNNContext& dev_ctx) {
-  const auto shape =
-      dev_ctx.HasDnnAttr("fused_reshape_Out")
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_reshape_Out"))
-          : std::vector<int>();
-  const auto axis =
-      dev_ctx.HasDnnAttr("fused_transpose_Out")
-          ? PADDLE_GET_CONST(std::vector<int>,
-                             dev_ctx.GetDnnAttr("fused_transpose_Out"))
-          : std::vector<int>();
-  return !shape.empty() && !axis.empty();
-}
-
 }  // namespace funcs
 }  // namespace phi
