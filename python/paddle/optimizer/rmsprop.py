@@ -269,6 +269,7 @@ class RMSProp(Optimizer):
                 self._add_accumulator(self._momentum_acc_str, master_p)
                 self._add_accumulator(self._mean_square_acc_str, master_p)
                 self._add_accumulator(self._mean_grad_acc_str, master_p)
+                self._already_create_accumulater.add(p.name)
                 continue
             if (
                 p.dtype == core.VarDesc.VarType.FP16
