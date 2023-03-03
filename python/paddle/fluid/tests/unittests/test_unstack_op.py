@@ -66,12 +66,6 @@ class TestUnStackOpBase(OpTest):
         self.check_grad(['X'], self.get_y_names(), check_eager=True)
 
 
-def unstack_grad_fp16(dout):
-    out_grad = np.ones(dout.shape, dout.dtype)
-    out_grad = out_grad / np.sum(out_grad)
-    return [out_grad]
-
-
 class TestUnStackFP16Op(TestUnStackOpBase):
     def initParameters(self):
         self.dtype = np.float16
@@ -122,7 +116,9 @@ class TestStackOp6(TestUnStackOpBase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestUnStackBF16Op(OpTest):
     def initDefaultParameters(self):
@@ -167,11 +163,9 @@ class TestUnStackBF16Op(OpTest):
         self.attrs = {'axis': self.axis, 'num': self.input_dim[self.axis]}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
+        self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
         with fluid.dygraph.guard():
             x = paddle.to_tensor(self.inputs['X'])
             x.stop_gradient = False
