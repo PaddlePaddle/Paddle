@@ -358,7 +358,9 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::BOOL);
+}
 
 PD_REGISTER_KERNEL(update_loss_scaling,
                    GPU,
