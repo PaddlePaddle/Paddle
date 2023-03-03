@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import builtins
+import types
+
 from paddle.jit.dy2static.static_analysis import AstNodeWrapper
 from paddle.jit.dy2static.utils import ast_to_source_code, is_paddle_api
 from paddle.utils import gast
@@ -21,6 +24,22 @@ from .base_transformer import BaseTransformer
 PDB_SET = "pdb.set_trace"
 
 __all__ = []
+
+
+def _is_builtin(func, name=None):
+    """predict whether a function is a builtin function with name={name}.
+    if name == None, then any builtin function will return True
+    """
+
+    def name_judge():
+        return name is None or func.__name__ == name
+
+    if isinstance(func, types.BuiltinFunctionType) and name_judge():
+        return True
+    elif func in builtins.__dict__.values() and name_judge():
+        return True
+    else:
+        return False
 
 
 class CallTransformer(BaseTransformer):
@@ -48,8 +67,6 @@ class CallTransformer(BaseTransformer):
 
         func_str = ast_to_source_code(node.func).strip()
         try:
-            from paddle.jit.dy2static.convert_call_func import is_builtin
-
             need_convert_builtin_func_list = {
                 'len',
                 'zip',
@@ -57,7 +74,7 @@ class CallTransformer(BaseTransformer):
                 'enumerate',
                 'print',
             }
-            is_builtin = eval("is_builtin({})".format(func_str))  # noqa: F811
+            is_builtin = eval("_is_builtin({})".format(func_str))  # noqa: F811
             need_convert = func_str in need_convert_builtin_func_list
             return is_builtin and not need_convert
         except Exception:
