@@ -225,11 +225,11 @@ class TestRnnUtil(unittest.TestCase):
     def test_case(self):
         inputs = {"key1": 1, "key2": 2}
         func = lambda x: x + 1
-        outputs = paddle.utils.layers_utils.map_structure(func, inputs)
-        paddle.utils.layers_utils.assert_same_structure(inputs, outputs)
+        outputs = paddle.utils.map_structure(func, inputs)
+        paddle.utils.assert_same_structure(inputs, outputs)
         try:
             inputs["key3"] = 3
-            paddle.utils.layers_utils.assert_same_structure(inputs, outputs)
+            paddle.utils.assert_same_structure(inputs, outputs)
         except ValueError as identifier:
             pass
 

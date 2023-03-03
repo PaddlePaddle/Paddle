@@ -23,7 +23,7 @@ from ...device import (
     is_compiled_with_cuda,
     is_compiled_with_rocm,
 )
-from ...utils.layers_utils import convert_to_list
+from ...utils import convert_to_list
 from .. import Layer
 from .. import functional as F
 from ..functional.conv import _update_padding_nd

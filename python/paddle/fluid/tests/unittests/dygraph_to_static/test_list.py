@@ -230,9 +230,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
 
     def varbase_to_numpy(self, res):
         if isinstance(res, (list, tuple)):
-            res = paddle.utils.layers_utils.map_structure(
-                lambda x: x.numpy(), res
-            )
+            res = paddle.utils.map_structure(lambda x: x.numpy(), res)
         else:
             res = [res.numpy()]
         return res

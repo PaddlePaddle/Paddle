@@ -14,7 +14,7 @@
 
 from paddle import _C_ops, in_dynamic_mode
 from paddle.nn.functional.pooling import _update_padding_nd
-from paddle.utils.layers_utils import convert_to_list
+from paddle.utils import convert_to_list
 
 __all__ = []
 

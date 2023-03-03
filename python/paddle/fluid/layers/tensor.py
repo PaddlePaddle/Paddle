@@ -97,7 +97,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):
-            shape = paddle.utils.layers_utils.convert_shape_to_list(shape)
+            shape = paddle.utils.convert_shape_to_list(shape)
 
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -130,7 +130,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 value = paddle.cast(value, dtype)
             inputs['ValueTensor'] = value
 
-        paddle.utils.layers_utils.check_shape(shape)
+        paddle.utils.check_shape(shape)
         check_dtype(
             dtype,
             'dtype',
@@ -157,7 +157,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             )
 
         helper = LayerHelper("fill_constant", **locals())
-        paddle.utils.layers_utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
         )
 

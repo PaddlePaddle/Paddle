@@ -434,9 +434,9 @@ class PrimForwardChecker:
             args, len(inputs_sig)
         )
         ret = flatten(_as_list(self.python_api(*args)))
-        ret = paddle.utils.layers_utils.map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.layers_utils.map_structure(
+            ret = paddle.utils.map_structure(
                 lambda x: convert_uint16_to_float(x), ret
             )
         return ret
@@ -578,7 +578,7 @@ class PrimForwardChecker:
         exe.run(startup_program)
         ret = exe.run(main_program, feed=feed, fetch_list=ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.layers_utils.map_structure(
+            ret = paddle.utils.map_structure(
                 lambda x: convert_uint16_to_float(x), ret
             )
         # check static forward
@@ -643,9 +643,9 @@ class PrimForwardChecker:
         net = PrimNet(self.python_api)
         net = apply_to_static(net, False)
         ret = flatten(_as_list(net(args)))
-        ret = paddle.utils.layers_utils.map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.layers_utils.map_structure(
+            ret = paddle.utils.map_structure(
                 lambda x: convert_uint16_to_float(x), ret
             )
         # check jit comp forward
@@ -724,9 +724,9 @@ class PrimForwardChecker:
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
         ret = flatten(_as_list(net(args)))
-        ret = paddle.utils.layers_utils.map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.layers_utils.map_structure(
+            ret = paddle.utils.map_structure(
                 lambda x: convert_uint16_to_float(x), ret
             )
         # check jit comp forward
@@ -898,9 +898,9 @@ class PrimGradChecker(PrimForwardChecker):
         ret = paddle.grad(
             ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
         )
-        ret = paddle.utils.layers_utils.map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.layers_utils.map_structure(
+            ret = paddle.utils.map_structure(
                 lambda x: convert_uint16_to_float(x), ret
             )
         return ret
@@ -1006,7 +1006,7 @@ class PrimGradChecker(PrimForwardChecker):
         exe.run(startup_program)
         actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            actual_ret = paddle.utils.layers_utils.map_structure(
+            actual_ret = paddle.utils.map_structure(
                 lambda x: convert_uint16_to_float(x), actual_ret
             )
         # check static grad out
@@ -1103,9 +1103,9 @@ class PrimGradChecker(PrimForwardChecker):
         ret = paddle.grad(
             ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
         )
-        ret = paddle.utils.layers_utils.map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.layers_utils.map_structure(
+            ret = paddle.utils.map_structure(
                 lambda x: convert_uint16_to_float(x), ret
             )
         # check jit comp grad out
@@ -1215,9 +1215,9 @@ class PrimGradChecker(PrimForwardChecker):
         ret = paddle.grad(
             ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
         )
-        ret = paddle.utils.layers_utils.map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = paddle.utils.layers_utils.map_structure(
+            ret = paddle.utils.map_structure(
                 lambda x: convert_uint16_to_float(x), ret
             )
         # check jit comp grad out

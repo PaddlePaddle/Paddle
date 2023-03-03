@@ -394,9 +394,7 @@ def replace_cuda_graph_section(
         stop_gradient=True,
     )
 
-    program_id = paddle.utils.layers_utils._hash_with_id(
-        section_program, ins_and_outs
-    )
+    program_id = paddle.utils._hash_with_id(section_program, ins_and_outs)
 
     # insert the run_program_op into the block
     origin_block._insert_op(

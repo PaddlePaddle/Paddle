@@ -509,7 +509,7 @@ class TrainingHelper:
         self.inputs = inputs
         self.sequence_length = sequence_length
         self.time_major = time_major
-        self.inputs_ = paddle.utils.layers_utils.map_structure(
+        self.inputs_ = paddle.utils.map_structure(
             lambda x: paddle.nn.functional.pad(
                 x,
                 pad=([0, 1] + [0, 0] * (len(x.shape) - 1))
@@ -526,7 +526,7 @@ class TrainingHelper:
                 shape=[1], dtype=self.sequence_length.dtype, fill_value=0
             ),
         )
-        init_inputs = paddle.utils.layers_utils.map_structure(
+        init_inputs = paddle.utils.map_structure(
             lambda x: x[0] if self.time_major else x[:, 0], self.inputs
         )
         return init_inputs, init_finished
@@ -555,9 +555,7 @@ class TrainingHelper:
                 axis=axes,
             )
 
-        next_inputs = paddle.utils.layers_utils.map_structure(
-            _slice, self.inputs_
-        )
+        next_inputs = paddle.utils.map_structure(_slice, self.inputs_)
         return finished, next_inputs, states
 
 

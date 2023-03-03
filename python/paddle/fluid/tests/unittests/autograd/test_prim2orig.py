@@ -65,7 +65,7 @@ class TestAddPPrim2Orig(unittest.TestCase):
             orig_out = _prim2orig(op, *self.prim2orig_args)
             all_ops = [op.type for op in self.main_program.block(0).ops]
             self.assertEqual(sorted(all_ops), sorted(self.all_ops))
-            orig_out = paddle.utils.layers_utils.flatten(orig_out)
+            orig_out = paddle.utils.flatten(orig_out)
             for k, v in self.out_map.items():
                 self.assertEqual(k.shape, orig_out[v].shape)
 

@@ -133,7 +133,7 @@ class TestRunProgram(unittest.TestCase):
             'is_test',
             False,
             'program_id',
-            paddle.utils.layers_utils._hash_with_id(program),
+            paddle.utils._hash_with_id(program),
             'param_grad_names',
             ['Fake_var@GRAD'],
             'out_grad_names',

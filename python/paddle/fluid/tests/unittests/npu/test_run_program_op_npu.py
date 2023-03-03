@@ -102,7 +102,7 @@ class RunProgramNPUOpTest(unittest.TestCase):
             'end_op_index',
             self.fwd_op_num,
             'program_id',
-            paddle.utils.layers_utils._hash_with_id(self.program_desc, self),
+            paddle.utils._hash_with_id(self.program_desc, self),
         )
 
     def get_param_grad_names(self):

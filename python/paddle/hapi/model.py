@@ -2294,7 +2294,7 @@ class Model:
             # 4. custumed iterator yield separated inputs and labels:
             #   ([input1, input2, ...], [label1, lable2, ...])
             # To handle all of these, flatten (nested) list to list.
-            data = paddle.utils.layers_utils.flatten(data)
+            data = paddle.utils.flatten(data)
             # LoDTensor.shape is callable, where LoDTensor comes from
             # DataLoader in static graph
 

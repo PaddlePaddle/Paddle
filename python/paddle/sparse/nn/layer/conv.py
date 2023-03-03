@@ -17,7 +17,7 @@ import numpy as np
 from paddle.nn import Layer
 from paddle.nn.functional.conv import _update_padding_nd
 from paddle.nn.initializer import Normal
-from paddle.utils.layers_utils import convert_to_list
+from paddle.utils import convert_to_list
 
 from .. import functional as F
 

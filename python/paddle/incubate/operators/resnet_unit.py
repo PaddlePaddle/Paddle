@@ -184,7 +184,7 @@ class ResNetUnit(Layer):
         self._stride = stride
         self._stride_z = stride_z
         self._dilation = 1
-        self._kernel_size = paddle.utils.layers_utils.convert_to_list(
+        self._kernel_size = paddle.utils.convert_to_list(
             filter_size, 2, 'kernel_size'
         )
         self._padding = (filter_size - 1) // 2

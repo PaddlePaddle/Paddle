@@ -1024,7 +1024,7 @@ def _run_dygraph(instance, input, program_holder):
         'is_test',
         instance._is_test,
         'program_id',
-        paddle.utils.layers_utils._hash_with_id(trace_program, instance),
+        paddle.utils._hash_with_id(trace_program, instance),
     ]
     if not instance._is_test:
         attrs.extend(

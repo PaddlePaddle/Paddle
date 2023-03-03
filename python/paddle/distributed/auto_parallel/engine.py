@@ -601,7 +601,7 @@ class Engine:
         feed_vars = {"inputs": self._inputs, "labels": self._labels}
 
         fetch_vars = {
-            "outputs": paddle.utils.layers_utils.flatten(outputs),
+            "outputs": paddle.utils.flatten(outputs),
             "loss": self._losses,
             "metrics": metrics,
         }

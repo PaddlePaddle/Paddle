@@ -47,16 +47,14 @@ class NestSequence:
         """
         Flattens the nested sequences into single list.
         """
-        return paddle.utils.layers_utils.flatten(self.__raw_input)
+        return paddle.utils.flatten(self.__raw_input)
 
     def restore(self, value_list):
         """
         Restores the nested sequence from value list.
         """
         assert len(self.__input_list) == len(value_list)
-        return paddle.utils.layers_utils.pack_sequence_as(
-            self.__raw_input, value_list
-        )
+        return paddle.utils.pack_sequence_as(self.__raw_input, value_list)
 
     def _get_var_ids(self):
         var_ids = []
@@ -375,9 +373,7 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _train_program_id(self):
-        program_id = paddle.utils.layers_utils._hash_with_id(
-            self._train_program, self
-        )
+        program_id = paddle.utils._hash_with_id(self._train_program, self)
         core._set_cached_executor_build_strategy(
             program_id, self._build_strategy
         )
@@ -385,15 +381,11 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_program_id(self):
-        return paddle.utils.layers_utils._hash_with_id(
-            self._infer_program, self
-        )
+        return paddle.utils._hash_with_id(self._infer_program, self)
 
     @LazyInitialized
     def _train_amp_program_id(self):
-        program_id = paddle.utils.layers_utils._hash_with_id(
-            self._train_amp_program, self
-        )
+        program_id = paddle.utils._hash_with_id(self._train_amp_program, self)
         core._set_cached_executor_build_strategy(
             program_id, self._build_strategy
         )
@@ -401,13 +393,11 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_amp_program_id(self):
-        return paddle.utils.layers_utils._hash_with_id(
-            self._infer_amp_program, self
-        )
+        return paddle.utils._hash_with_id(self._infer_amp_program, self)
 
     @LazyInitialized
     def _train_pure_fp16_program_id(self):
-        program_id = paddle.utils.layers_utils._hash_with_id(
+        program_id = paddle.utils._hash_with_id(
             self._train_pure_fp16_program, self
         )
         core._set_cached_executor_build_strategy(
@@ -417,9 +407,7 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_pure_fp16_program_id(self):
-        return paddle.utils.layers_utils._hash_with_id(
-            self._infer_pure_fp16_program, self
-        )
+        return paddle.utils._hash_with_id(self._infer_pure_fp16_program, self)
 
     @LazyInitialized
     def _param_grad_names(self):
@@ -867,7 +855,7 @@ class PartialProgramLayer:
         """
         assert isinstance(inputs, (tuple, list))
         # Flatten inputs with nested structure into single list.
-        flatten_inputs = paddle.utils.layers_utils.flatten(inputs)
+        flatten_inputs = paddle.utils.flatten(inputs)
         # Convert variable into VarBase and feed in training data.
         input_vars = []
         expected_place = framework._current_expected_place()

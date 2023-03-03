@@ -14,8 +14,7 @@
 
 import paddle
 from paddle.fluid.framework import Variable
-from paddle.utils import gast
-from paddle.utils.layers_utils import is_sequence
+from paddle.utils import gast, is_sequence
 
 from .utils import UndefinedVar, create_undefined_variable
 
@@ -63,7 +62,7 @@ def to_static_variable(x):
         """
         return create_undefined_variable()
     if is_sequence(x):
-        return paddle.utils.layers_utils.map_structure(to_static_variable, x)
+        return paddle.utils.map_structure(to_static_variable, x)
     return x
 
 

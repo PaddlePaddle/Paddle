@@ -16,7 +16,7 @@ import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.tensor.math import _add_with_axis
-from paddle.utils.layers_utils import convert_to_list
+from paddle.utils import convert_to_list
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import Variable, in_dygraph_mode

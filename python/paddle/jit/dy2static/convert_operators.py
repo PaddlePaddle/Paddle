@@ -372,7 +372,7 @@ def _run_paddle_cond(
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
         helper.set(
             return_name_ids,
-            paddle.utils.layers_utils.copy_mutable_vars(init_args),
+            paddle.utils.copy_mutable_vars(init_args),
         )
         ret = true_fn()
         # IfExpr will return a non-None return value, so we just return ret.
@@ -386,7 +386,7 @@ def _run_paddle_cond(
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
         helper.set(
             return_name_ids,
-            paddle.utils.layers_utils.copy_mutable_vars(init_args),
+            paddle.utils.copy_mutable_vars(init_args),
         )
         ret = false_fn()
         if ret is None:

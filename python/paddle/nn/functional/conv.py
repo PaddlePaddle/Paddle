@@ -28,7 +28,7 @@ from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
 from ...framework import no_grad
 from ...tensor.manipulation import squeeze, unsqueeze
-from ...utils.layers_utils import (
+from ...utils import (
     _contain_var,
     _convert_to_tensor_list,
     _is_symmetric_padding,

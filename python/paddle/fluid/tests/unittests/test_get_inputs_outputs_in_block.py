@@ -51,7 +51,7 @@ class TestGetInputsOutputsInBlock(unittest.TestCase):
         (
             inner_inputs,
             inner_outputs,
-        ) = paddle.utils.layers_utils.get_inputs_outputs_in_block(sub_block)
+        ) = paddle.utils.get_inputs_outputs_in_block(sub_block)
         # 'assign_0.tmp_0', 'assign_1.tmp_0' are name of i and ten in program
         self.assertTrue(inner_inputs == {'assign_0.tmp_0', 'assign_1.tmp_0'})
         # 'tmp_0', 'assign_0.tmp_0' are name of i < ten and i in program
@@ -70,7 +70,7 @@ class TestGetInputsOutputsInBlock(unittest.TestCase):
         (
             inner_inputs,
             inner_outputs,
-        ) = paddle.utils.layers_utils.get_inputs_outputs_in_block(sub_block)
+        ) = paddle.utils.get_inputs_outputs_in_block(sub_block)
         # 'fill_constant_1.tmp_0', 'tmp_3' are names of a, c
         self.assertTrue(inner_inputs == {'fill_constant_1.tmp_0', 'tmp_3'})
         # '_generated_var_1', is name of a + c
