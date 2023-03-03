@@ -245,10 +245,14 @@ def create_test_bf16(parent):
             return np.uint16
 
         def test_check_output(self):
-            self.check_output(check_eager=True, atol=1e-2)
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, check_eager=True, atol=1e-2)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', max_relative_error=1e-2)
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X'], 'Out', max_relative_error=1e-2
+            )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
     TestPad3dBf16.__name__ = cls_name
