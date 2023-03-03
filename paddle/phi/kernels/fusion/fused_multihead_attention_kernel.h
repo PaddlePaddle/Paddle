@@ -18,6 +18,8 @@
 
 namespace phi {
 
+namespace fusion {
+
 template <typename T, typename Context>
 void MultiHeadAttentionForwardKernel(const Context& ctx,
                                      const DenseTensor& query,
@@ -26,5 +28,6 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
                                      const paddle::optional<DenseTensor>& mask,
                                      const float scale,
                                      DenseTensor* output);
+}  // namespace fusion
 
 }  // namespace phi
