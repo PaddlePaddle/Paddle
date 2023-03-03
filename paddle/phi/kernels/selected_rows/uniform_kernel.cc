@@ -78,12 +78,23 @@ PD_REGISTER_KERNEL(uniform_sr,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-PD_REGISTER_KERNEL(
-    uniform_raw_sr, GPU, ALL_LAYOUT, phi::sr::UniformRawKernel, float, double) {
-}
+PD_REGISTER_KERNEL(uniform_raw_sr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sr::UniformRawKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    uniform_sr, GPU, ALL_LAYOUT, phi::sr::UniformKernel, float, double) {}
+PD_REGISTER_KERNEL(uniform_sr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sr::UniformKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)

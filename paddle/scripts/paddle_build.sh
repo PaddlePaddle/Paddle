@@ -3456,9 +3456,9 @@ function build_pr_and_develop() {
             mkdir ${PADDLE_ROOT}/build/python/dist/
         fi
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
-        generate_api_spec "$1" "DEV"
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
+    generate_api_spec "$1" "DEV"
 
 }
 
@@ -3989,6 +3989,7 @@ function main() {
         ;;
       build_pr_dev)
         build_pr_and_develop
+        check_sequence_op_unittest
         ;;
       build_dev_test)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
