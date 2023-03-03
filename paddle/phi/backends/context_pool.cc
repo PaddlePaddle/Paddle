@@ -102,7 +102,7 @@ void DeviceContextPool::SetDeviceContexts(
   external_device_contexts_ = dev_ctxs;
 }
 
-inline void EmplaceGeneralContext(
+inline void EmplaceNativeContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
     const phi::Place& place,
@@ -182,10 +182,10 @@ void EmplaceDeviceContexts(
   }
 
   for (auto& p : set) {
-    EmplaceGeneralContext(place_to_device_context,
-                          p,
-                          disable_setting_default_stream_for_allocator,
-                          stream_priority);
+    EmplaceNativeContext(place_to_device_context,
+                         p,
+                         disable_setting_default_stream_for_allocator,
+                         stream_priority);
     if (emplace_external_context_func != nullptr) {
       (*emplace_external_context_func)(
           place_to_device_context,

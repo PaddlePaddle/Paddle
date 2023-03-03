@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <vector>
 
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 
 #ifdef __NVCC__
