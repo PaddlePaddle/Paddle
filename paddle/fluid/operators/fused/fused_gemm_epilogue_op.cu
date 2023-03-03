@@ -27,35 +27,35 @@ namespace operators {
 
 template <typename T>
 cublasLtEpilogue_t GetFwdFusedEpilogueType(const phi::GPUContext& ctx,
-                                        const std::string& activation,
-                                        phi::DenseTensor* reserve_space) {
-    cublasLtEpilogue_t fuse_type = CUBLASLT_EPILOGUE_BIAS;
-    if (activation != "none") {
-        if (activation == "relu") {
-            if (!reserve_space) {
-                fuse_type = CUBLASLT_EPILOGUE_RELU_BIAS;
-            } else {
-                fuse_type = CUBLASLT_EPILOGUE_RELU_AUX_BIAS;
-                int64_t reserve_size = SizeOf(phi::DataType::BOOL) *
-                        phi::product(reserve_space->dims());
-                ctx.Alloc(reserve_space, phi::DataType::BOOL, reserve_size);
-            }
-        } else if (activation == "gelu") {
-            if (!reserve_space) {
-                fuse_type = CUBLASLT_EPILOGUE_GELU_BIAS;
-            } else {
-                fuse_type = CUBLASLT_EPILOGUE_GELU_AUX_BIAS;
-                int64_t reserve_size = sizeof(T) * 
-                        phi::product(reserve_space->dims());
-                ctx.Alloc<T>(reserve_space, reserve_size);
-            }
-        } else {
-            PADDLE_THROW(platform::errors::InvalidArgument(
-                "Fued linear epilogue type should be one of {none, relu, gelu}."
-                "But received activation is %s, please check", activation));
-        }
+                                           const std::string& activation,
+                                           phi::DenseTensor* reserve_space) {
+  cublasLtEpilogue_t fuse_type = CUBLASLT_EPILOGUE_BIAS;
+  if (activation != "none") {
+    if (activation == "relu") {
+      if (!reserve_space) {
+        fuse_type = CUBLASLT_EPILOGUE_RELU_BIAS;
+      } else {
+        fuse_type = CUBLASLT_EPILOGUE_RELU_AUX_BIAS;
+        int64_t reserve_size =
+            SizeOf(phi::DataType::BOOL) * phi::product(reserve_space->dims());
+        ctx.Alloc(reserve_space, phi::DataType::BOOL, reserve_size);
+      }
+    } else if (activation == "gelu") {
+      if (!reserve_space) {
+        fuse_type = CUBLASLT_EPILOGUE_GELU_BIAS;
+      } else {
+        fuse_type = CUBLASLT_EPILOGUE_GELU_AUX_BIAS;
+        int64_t reserve_size = sizeof(T) * phi::product(reserve_space->dims());
+        ctx.Alloc<T>(reserve_space, reserve_size);
+      }
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Fued linear epilogue type should be one of {none, relu, gelu}."
+          "But received activation is %s, please check",
+          activation));
     }
-    return fuse_type;
+  }
+  return fuse_type;
 }
 
 template <typename DeviceContext, typename T>
@@ -68,7 +68,8 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* y = ctx.Input<phi::DenseTensor>("Y");
     const phi::DenseTensor* bias = ctx.Input<phi::DenseTensor>("Bias");
     phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
-    phi::DenseTensor* reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
+    phi::DenseTensor* reserve_space =
+        ctx.Output<phi::DenseTensor>("ReserveSpace");
 
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
@@ -77,31 +78,33 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
 
     // (M * K) * (K * N)
-    auto x_mat_dims = phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
+    auto x_mat_dims =
+        phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
     int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
     int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
 
     VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
-    << "}, out.shape={" << out->dims() << "}, M=" << M << ", N=" << N
-    << ", K=" << K << ", trans_x=" << trans_x << ", trans_y=" << trans_y
-    << ", activation=" << activation << ", reserve_space=" << reserve_space;
+            << "}, out.shape={" << out->dims() << "}, M=" << M << ", N=" << N
+            << ", K=" << K << ", trans_x=" << trans_x << ", trans_y=" << trans_y
+            << ", activation=" << activation
+            << ", reserve_space=" << reserve_space;
 
-    cublasLtEpilogue_t fuse_type = GetFwdFusedEpilogueType<T>(dev_ctx,
-                                                      activation,
-                                                      reserve_space);
-    
+    cublasLtEpilogue_t fuse_type =
+        GetFwdFusedEpilogueType<T>(dev_ctx, activation, reserve_space);
+
     void* reserve_data = reserve_space ? reserve_space->data() : nullptr;
-    auto fued_impl = phi::autotune::MatmulPlanner(vectorize(x->dims()),
-                                                     vectorize(y->dims()),
-                                                     trans_x,
-                                                     trans_y,
-                                                     paddle::experimental::CppTypeToDataType<T>::Type(),
-                                                     static_cast<int>(fuse_type),
-                                                     static_cast<const void*>(bias->data<T>()),
-                                                     reserve_data);
+    auto fued_impl = phi::autotune::MatmulPlanner(
+        vectorize(x->dims()),
+        vectorize(y->dims()),
+        trans_x,
+        trans_y,
+        paddle::experimental::CppTypeToDataType<T>::Type(),
+        static_cast<int>(fuse_type),
+        static_cast<const void*>(bias->data<T>()),
+        reserve_data);
 
-    phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx, 
+    phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx,
                                            x->data<T>(),
                                            y->data<T>(),
                                            out->data<T>(),
