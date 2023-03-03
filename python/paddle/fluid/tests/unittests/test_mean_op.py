@@ -214,6 +214,11 @@ class TestReduceMeanOp(OpTest):
                 np.testing.assert_array_equal(dx, dx_expected)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
 class TestReduceMeanBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'reduce_mean'
