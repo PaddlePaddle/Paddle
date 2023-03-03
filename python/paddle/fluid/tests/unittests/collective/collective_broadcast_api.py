@@ -49,7 +49,6 @@ def broadcast_new(tensor, src, group=None, sync_op=True):
         outputs={'Out': [tensor]},
         attrs={
             'root': src,
-            'use_calc_stream': sync_op,
             'ring_id': ring_id,
         },
     )
@@ -68,10 +67,10 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
             paddle.distributed.broadcast(tindata, src=1)
             return [tindata]
 
-    def get_model_new(self, main_prog, startup_program, rank):
+    def get_model_new(self, main_prog, startup_program, rank, dtype=None):
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
-                name="tindata", shape=[-1, 10, 1000], dtype='float32'
+                name="tindata", shape=[-1, 10, 1000], dtype=dtype
             )
             tindata.desc.set_need_check_feed(False)
             broadcast_new(tindata, src=1)

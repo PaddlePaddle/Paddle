@@ -33,12 +33,26 @@ class TestCollectiveBroadcastAPI(TestDistBase):
         )
 
     def test_broadcast_nccl_with_comm_context(self):
-        self.check_with_place(
-            "collective_broadcast_api.py",
-            "broadcast",
-            "nccl",
-            need_envs={"USE_COMM_CONTEXT": "1"},
-        )
+        dtypes_to_test = [
+            "float16",
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+            "int8",
+            "uint8",
+            "bool",
+        ]
+        if self._nccl_version >= 2100:
+            dtypes_to_test.append("bfloat16")
+        for dtype in dtypes_to_test:
+            self.check_with_place(
+                "collective_broadcast_api.py",
+                "broadcast",
+                "nccl",
+                dtype=dtype,
+                need_envs={"USE_COMM_CONTEXT": "1"},
+            )
 
     def test_broadcast_gloo(self):
         self.check_with_place(
@@ -48,12 +62,25 @@ class TestCollectiveBroadcastAPI(TestDistBase):
         )
 
     def test_broadcast_gloo_with_comm_context(self):
-        self.check_with_place(
-            "collective_broadcast_api.py",
-            "broadcast",
-            "gloo",
-            need_envs={"USE_COMM_CONTEXT": "1"},
-        )
+        dtypes_to_test = [
+            "float16",
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+            "int8",
+            "uint8",
+            "bool",
+            "bfloat16",
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place(
+                "collective_broadcast_api.py",
+                "broadcast",
+                "gloo",
+                dtype=dtype,
+                need_envs={"USE_COMM_CONTEXT": "1"},
+            )
 
     def test_broadcast_nccl_dygraph(self):
         dtypes_to_test = [
