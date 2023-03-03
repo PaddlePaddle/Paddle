@@ -252,6 +252,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
       AssignLocalGradientToParentScope(
           dev_place, cur_scope, scope, inside_grads, outside_grads, inputs);
+      // Release the cur_scope, otherwise memory leakage occurs.
+      scope.DeleteScope(&cur_scope);
       return;
     }
 

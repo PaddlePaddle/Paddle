@@ -207,6 +207,7 @@
     param : [x]
   kernel :
     func : concat_grad
+  composite : concat_grad(x, out_grad, axis, x_grad)
   no_need_buffer : x
   backward : concat_double_grad
 
