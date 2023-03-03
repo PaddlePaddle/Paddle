@@ -49,11 +49,10 @@ world_process_group = get_world_process_group()
 class AMPState:
     def __init__(self, block):
         self._block = block
-        self._op_fp16_dict = (
-            {}
-        )  # op_id --> True/False. 'True' means that the current op is in fp16 mode.
-        self._var_name_dict = {}  # fwd_op_id --> {old_name: cast_name}
-        self.is_train = False
+        # op_id --> True/False. 'True' means that the current op is in fp16 mode.
+        self._op_fp16_dict = {}
+        # fwd_op_id --> {old_name: cast_name}
+        self._var_name_dict = {}
 
     def _is_fp16_op(self, op_id):
         return self._op_fp16_dict.get(op_id, None)
@@ -61,12 +60,13 @@ class AMPState:
     def _build_state(self, amp_lists, dist_context):
         ops = self._block.ops
         dist_op_context = dist_context.dist_op_context
+        training = False
         for op in ops:
             if int(op.attr('op_role')) == 257:
-                self.is_train = True
+                training = True
 
             if int(op.attr('op_role')) == int(OpRole.Forward):
-                self._mark_black_white_ops(amp_lists)
+                self._mark_black_white_ops(amp_lists, op, ops)
             elif int(op.attr('op_role')) == int(OpRole.Backward):
                 if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
                     fwd_op_id = dist_op_context.grad_op_id_to_op_id[
@@ -78,72 +78,59 @@ class AMPState:
                         self._op_fp16_dict[op.desc.original_id()] = False
             elif int(op.attr('op_role')) == int(OpRole.Optimize):
                 break
+        return training
 
-        return self.is_train
-
-    def _mark_black_white_ops(self, amp_lists):
-        """
-        this function is modified from paddle.static.amp
-        """
-        self._block._sync_with_cpp()
-        ops = self._block.ops
-
-        for op in ops:
-            if int(op.attr('op_role')) == int(OpRole.Backward):
-                break
-            if op.type == 'create_py_reader' or op.type == 'read':
-                continue
-            if amp_lists.black_varnames is not None and _is_in_black_varnames(
-                op, amp_lists
-            ):
-                self._op_fp16_dict[op.desc.original_id()] = False
-                continue
-            if op.type in amp_lists.black_list:
-                self._op_fp16_dict[op.desc.original_id()] = False
-            elif op.type in amp_lists.white_list:
-                self._op_fp16_dict[op.desc.original_id()] = True
-            elif op.type in amp_lists.gray_list:
-                is_black_op = False
-                is_white_op = False
-                for in_name in op.input_names:
-                    # if this op has inputs
-                    if in_name:
-                        for in_var_name in op.input(in_name):
-                            in_var = self._block.var(in_var_name)
-                            # this in_var isn't the output of other op
-                            if in_var.op is None:
+    def _mark_black_white_ops(self, amp_lists, op, ops):
+        if op.type == 'create_py_reader' or op.type == 'read':
+            return
+        if amp_lists.black_varnames is not None and _is_in_black_varnames(
+            op, amp_lists
+        ):
+            self._op_fp16_dict[op.desc.original_id()] = False
+            return
+        if op.type in amp_lists.black_list:
+            self._op_fp16_dict[op.desc.original_id()] = False
+        elif op.type in amp_lists.white_list:
+            self._op_fp16_dict[op.desc.original_id()] = True
+        elif op.type in amp_lists.gray_list:
+            is_black_op = False
+            is_white_op = False
+            for in_name in op.input_names:
+                # if this op has inputs
+                if in_name:
+                    for in_var_name in op.input(in_name):
+                        in_var = self._block.var(in_var_name)
+                        # this in_var isn't the output of other op
+                        if in_var.op is None:
+                            continue
+                        elif in_var.op is op:
+                            prev_op = find_true_prev_op(ops, op, in_var_name)
+                            if prev_op is None:
                                 continue
-                            elif in_var.op is op:
-                                prev_op = find_true_prev_op(
-                                    ops, op, in_var_name
-                                )
-                                if prev_op is None:
-                                    continue
-                            else:
-                                prev_op = in_var.op
-                            # if it's one of inputs
-                            if (
-                                self._is_fp16_op(prev_op.desc.original_id())
-                                is False
-                                or prev_op.type in amp_lists.black_list
-                            ):
-                                is_black_op = True
-                            elif (
-                                self._is_fp16_op(prev_op.desc.original_id())
-                                is True
-                                or prev_op.type in amp_lists.white_list
-                            ):
-                                is_white_op = True
-                if is_black_op:
-                    self._op_fp16_dict[op.desc.original_id()] = False
-                elif is_white_op:
-                    self._op_fp16_dict[op.desc.original_id()] = True
-                else:
-                    pass
-            else:
-                # For numerical safe, we apply fp32 computation on ops that
-                # are not determined which list they should stay.
+                        else:
+                            prev_op = in_var.op
+                        # if it's one of inputs
+                        if (
+                            self._is_fp16_op(prev_op.desc.original_id())
+                            is False
+                            or prev_op.type in amp_lists.black_list
+                        ):
+                            is_black_op = True
+                        elif (
+                            self._is_fp16_op(prev_op.desc.original_id()) is True
+                            or prev_op.type in amp_lists.white_list
+                        ):
+                            is_white_op = True
+            if is_black_op:
                 self._op_fp16_dict[op.desc.original_id()] = False
+            elif is_white_op:
+                self._op_fp16_dict[op.desc.original_id()] = True
+            else:
+                pass
+        else:
+            # For numerical safe, we apply fp32 computation on ops that
+            # are not determined which list they should stay.
+            self._op_fp16_dict[op.desc.original_id()] = False
 
     def cast_forward_program(self, dist_context):
         ops = self._block.ops
@@ -279,6 +266,7 @@ class AMPState:
         self._block._sync_with_cpp()
         ops = self._block.ops
 
+        dist_op_context = dist_context.dist_op_context
         loss_op = get_loss_op(self._block)
         loss_op_index = find_op_index(self._block.desc, loss_op.desc)
 
@@ -298,7 +286,6 @@ class AMPState:
                     appended_grad_times += 1
 
             grad_op_orig_id = grad_op.desc.original_id()
-            dist_op_context = dist_context.dist_op_context
             if grad_op_orig_id in dist_op_context.grad_op_id_to_op_id:
                 if self._is_fp16_op(grad_op_orig_id) is False:  # fp32
                     num_cast_ops = self._insert_cast_op_backward(
@@ -636,7 +623,6 @@ class AMPPass(PassBase):
         self._loss_scaling = None
         self._num_good_steps = None
         self._num_bad_steps = None
-        self._loss = None
 
     def _check_self(self):
         if self.get_attr("init_loss_scaling") < 0:

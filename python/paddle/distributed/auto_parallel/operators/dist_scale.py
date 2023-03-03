@@ -28,6 +28,9 @@ class DistributedScale(DistributedOperatorImplContainer):
 
 
 register_distributed_operator_impl_container(DistributedScale("scale"))
+register_distributed_operator_impl_container(DistributedScale("fill_any_like"))
+register_distributed_operator_impl_container(DistributedScale("where"))
+register_distributed_operator_impl_container(DistributedScale("tanh"))
 
 
 class DistributedScaleImpl(DistributedOperatorImpl):
@@ -50,13 +53,17 @@ class DistributedScaleImpl(DistributedOperatorImpl):
 
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
-        x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
-        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
         out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
 
-        if x_dims_mapping != out_dims_mapping:
-            return False
+        in_dims_mappings = []
+        for in_name in op_desc.input_arg_names():
+            in_dims_mapping = op_dist_attr.get_input_dims_mapping(in_name)
+            in_dims_mappings.append(in_dims_mapping)
+
+        for x_dims_mapping in in_dims_mappings:
+            if x_dims_mapping != out_dims_mapping:
+                return False
 
         return True
 
@@ -78,10 +85,6 @@ class DistributedScaleImpl(DistributedOperatorImpl):
                 op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
                 changed = True
 
-        if changed:
-            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
-            op_dist_attr.set_output_dims_mapping(out_name, out_dims_mapping)
-
         return changed
 
     @staticmethod
@@ -94,3 +97,8 @@ class DistributedScaleImpl(DistributedOperatorImpl):
 
 
 register_distributed_operator_impl("scale", DistributedScaleImpl("scale"))
+register_distributed_operator_impl(
+    "fill_any_like", DistributedScaleImpl("fill_any_like")
+)
+register_distributed_operator_impl("where", DistributedScaleImpl("where"))
+register_distributed_operator_impl("tanh", DistributedScaleImpl("tanh"))
