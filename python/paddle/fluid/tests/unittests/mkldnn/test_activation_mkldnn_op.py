@@ -65,6 +65,14 @@ class TestMKLDNNLeakyReluDim2(TestLeakyRelu):
     def init_dtype(self):
         self.dtype = np.float32
 
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_dygraph=False)
+
 
 class TestMKLDNNGeluDim2(TestActivation):
     def setUp(self):
@@ -178,6 +186,14 @@ class TestMKLDNNLeakyReluDim4(TestLeakyRelu):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestMKLDNNGeluDim4(TestActivation):
@@ -302,10 +318,17 @@ class TestMKLDNNSwishDim4(TestSwish):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True, "beta": beta}
-        self.check_eager = False
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_dygrap=False)
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
