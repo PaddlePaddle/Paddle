@@ -383,7 +383,7 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     else:
         helper = LayerHelper("pixel_shuffle", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'pixel_shuffle'
+            x, 'x', ['float16','float32', 'float64'], 'pixel_shuffle'
         )
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
