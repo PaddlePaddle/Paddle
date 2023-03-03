@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+import warnings
 
 import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.layer_helper import LayerHelper
 
 
 class TestElementwiseOp(OpTest):
@@ -613,6 +616,32 @@ class TestFloatElementwiseSubop1(unittest.TestCase):
         )
 
         paddle.enable_static()
+
+
+class TestTensorSubAPIWarnings(unittest.TestCase):
+    def test_warnings(self):
+
+        with warnings.catch_warnings(record=True) as context:
+            warnings.simplefilter("always")
+
+            paddle.enable_static()
+            helper = LayerHelper("elementwise_sub")
+            data = paddle.static.data(
+                name='data', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            os.environ['FLAGS_print_extra_attrs'] = "1"
+            helper.append_op(
+                type="elementwise_sub",
+                inputs={'X': data, 'Y': data},
+                outputs={'Out': out},
+                attrs={'axis': 1, 'use_mkldnn': False},
+            )
+            self.assertTrue(
+                "op elementwise_sub's attr axis = 1 is not the default value: -1"
+                in str(context[-1].message)
+            )
+            os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
 if __name__ == '__main__':
