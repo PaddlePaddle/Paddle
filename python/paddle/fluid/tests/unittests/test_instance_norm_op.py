@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -83,6 +84,38 @@ def _cal_mean_variance(x, epsilon, mean_shape):
     mean = np.reshape(np.mean(x, axis=(2, 3)), mean_shape)
     var = np.reshape(np.var(x, axis=(2, 3)), mean_shape)
     return mean, var
+
+
+class TestInstanceNormOp(OpTest):
+    def setUp(self):
+        self.op_type = "instance_norm"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.nn.functional.instance_norm
+        self.init_test_case()
+        self.init_dtype()
+        x = np.random.random(self.shape).astype(self.dtype)
+        mean, var = _cal_mean_variance(x, self.epsilon, self.shape)
+        y, _mean, _var = _reference_instance_norm_naive(
+            x, self.scale, self.bias, self.epsilon, mean, var
+        )
+        self.inputs = {'X': x, 'scale': self.scale, 'bias': self.bias}
+        self.attrs = {'epsilon': self.epsilon}
+        self.outputs = {'Out': y, 'saved_mean': _mean, 'saved_variance': _var}
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X', 'scale', 'bias'], 'Out', check_prim=True)
+
+    def init_test_case(self):
+        self.shape = [2, 3, 4, 5]
+        self.scale = 0.5
+        self.bias = 0.5
+        self.epsilon = 1e-8
+
+    def init_dtype(self):
+        self.dtype = "float64"
 
 
 class TestInstanceNormOpTraining(unittest.TestCase):
