@@ -131,6 +131,9 @@ class AmpScaler:
             self._use_dynamic_loss_scaling = use_dynamic_loss_scaling
 
             self._found_inf = to_variable(np.array([0]).astype(np.bool_))
+            self._temp_found_inf_value_false = to_variable(
+                np.array([0]).astype(np.bool_)
+            )
             self._temp_found_inf_fp16 = to_variable(
                 np.array([0]).astype(np.bool_)
             )
@@ -323,6 +326,7 @@ class AmpScaler:
                     for param in param_grads
                     if param.dtype == core.VarDesc.VarType.FP32
                 ]
+        self._found_inf = self._temp_found_inf_value_false
         if core.is_compiled_with_npu():
             float_status = _legacy_C_ops.alloc_float_status()
             _legacy_C_ops.clear_float_status(float_status, float_status)
