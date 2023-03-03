@@ -13,24 +13,16 @@
 // limitations under the License.
 
 #include <memory>
-#include "IR/PatternMatch.h"
-#include "Pass/Pass.h"
-#include "Pass/PassManager.h"
-#include "Transforms/GreedyPatternRewriteDriver.h"
-#include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/Tosa/IR/TosaOps.h"
-#include "mlir/IR/BuiltinAttributeInterfaces.h"
-#include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/BuiltinTypeInterfaces.h"
-#include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Operation.h"
-
+#include "mlir/Pass/Pass.h"
+#include "mlir/Pass/PassManager.h"
 #include "mlir/Support/LogicalResult.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "test/helper.h"
 
 static llvm::cl::opt<std::string> inputFilename(
@@ -39,49 +31,66 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::init("-"),
     llvm::cl::value_desc("filename"));
 
-static llvm::cl::opt<int> opt_level("opt",
-                                    llvm::cl::init(2),
-                                    llvm::cl::desc("opt_level"));
+//==----------------------------------------------==//
+// Just test for AnalysisManager
+//==----------------------------------------------==//
+struct TestAnalysis {
+  explicit TestAnalysis(mlir::Operation* op) {}
+  int num = 0;
+};
 
-class TestPass : public infra::Pass {
+class MLIRPass : public mlir::PassWrapper<MLIRPass, mlir::OperationPass<>> {
  public:
-  TestPass() : infra::Pass("TestPass", 1) {}
-  void Run(mlir::Operation* op) override {
-    llvm::outs() << "In TestPass: " << op->getName() << "\n";
+  llvm::StringRef getName() const override { return "MLIRPass"; }
 
-    for (auto& region : op->getRegions()) {
-      for (auto& block : region.getBlocks()) {
-        for (auto& iop : block.getOperations()) {
-          llvm::outs() << "  visit " << iop.getName() << "\n";
-        }
-      }
+ protected:
+  void runOnOperation() override {
+    llvm::outs() << "MLIRPass visit "
+                 << getOperation()->getName().getStringRef() << "\n";
+    auto& a = getAnalysis<TestAnalysis>();
+    llvm::outs() << "num is " << a.num << "\n";
+    a.num++;
+
+    markAnalysesPreserved<TestAnalysis>();
+  }
+};
+
+class MLIRPass2 : public mlir::PassWrapper<MLIRPass2, mlir::OperationPass<>> {
+ public:
+  llvm::StringRef getName() const override { return "MLIRPass2"; }
+
+ protected:
+  void runOnOperation() override {
+    llvm::outs() << "MLIRPass2 visit "
+                 << getOperation()->getName().getStringRef() << "\n";
+    auto a = getCachedAnalysis<TestAnalysis>();
+    if (a) {
+      llvm::outs() << "get Cache, num is " << a->get().num << "\n";
+    } else {
+      llvm::outs() << "MLIRPass2 getCachedAnalysis failed\n";
     }
-  }
 
-  bool CanScheduleOn(mlir::Operation* op) const override {
-    return op->getNumRegions() > 0 &&
-           op->getName().getStringRef() != "builtin.module";
+    auto& b = getAnalysis<TestAnalysis>();
+    llvm::outs() << "b num is " << b.num << "\n";
   }
 };
 
-class TestPattern : public infra::RewritePattern {
+//==----------------------------------------------==//
+// Just test for Recursive Pattern
+//==----------------------------------------------==//
+class AddPattern : public mlir::OpRewritePattern<mlir::tosa::AddOp> {
  public:
-  explicit TestPattern(mlir::MLIRContext* ctx)
-      : infra::RewritePattern("testPattern", 1U, ctx) {}
-  // void Initialize() override {}
-  mlir::LogicalResult MatchAndRewrite(
-      mlir::Operation* op, infra::PatternRewriter& rewriter) const override {
-    return mlir::success();
+  using mlir::OpRewritePattern<mlir::tosa::AddOp>::OpRewritePattern;
+
+  void initialize() {
+    /// Signal that this pattern safely handles recursive application.
+    /// It is only used in DialectConversion.
+    setHasBoundedRewriteRecursion();
   }
-};
 
-class AddPattern : public infra::OpRewritePattern<mlir::tosa::AddOp> {
- public:
-  using infra::OpRewritePattern<mlir::tosa::AddOp>::OpRewritePattern;
-
-  mlir::LogicalResult MatchAndRewrite(
+  mlir::LogicalResult matchAndRewrite(
       mlir::tosa::AddOp op,
-      infra::PatternRewriter& rewriter) const final {  // NOLINT
+      mlir::PatternRewriter& rewriter) const final {  // NOLINT
     auto add_op = llvm::dyn_cast_or_null<mlir::tosa::AddOp>(
         op->getOperand(0).getDefiningOp());
     if (!add_op) return mlir::failure();
@@ -101,7 +110,6 @@ class AddPattern : public infra::OpRewritePattern<mlir::tosa::AddOp> {
 
     if (c1.getNumElements() != 1) return mlir::failure();
     if (c2.getNumElements() != 1) return mlir::failure();
-    c1.getType();
 
     auto v1 = *c1.getValues<float>().begin();
     auto v2 = *c2.getValues<float>().begin();
@@ -120,28 +128,25 @@ class AddPattern : public infra::OpRewritePattern<mlir::tosa::AddOp> {
                                            in,
                                            new_cst_op->getResult(0));
 
-    rewriter.ReplaceOp(op, new_add_op->getResults());
+    rewriter.replaceOp(op, new_add_op->getResults());
     return mlir::success();
   }
 };
 
-class TestPatternDriver : public infra::Pass {
+class FusionPass
+    : public mlir::PassWrapper<FusionPass,
+                               mlir::OperationPass<mlir::func::FuncOp>> {
  public:
-  TestPatternDriver() : infra::Pass("TestPatternDriver", 1) {}
+ protected:
+  void runOnOperation() override {
+    mlir::RewritePatternSet patterns(getOperation()->getContext());
+    patterns.add<AddPattern>(&getContext());
 
-  void Run(mlir::Operation* op) override {
-    infra::RewritePatternSet patterns(op->getContext());
-    patterns.Add<TestPattern, AddPattern>(op->getContext());
+    mlir::GreedyRewriteConfig config;
+    config.useTopDownTraversal = true;
 
-    infra::GreedyRewriteConfig config;
-    config.use_top_down_traversal = true;
-
-    (void)infra::ApplyPatternsGreedily(op, std::move(patterns), config);
-  }
-
-  bool CanScheduleOn(mlir::Operation* op) const override {
-    return op->getNumRegions() > 0 &&
-           op->getName().getStringRef() != "builtin.module";
+    (void)mlir::applyPatternsAndFoldGreedily(
+        getOperation(), std::move(patterns), config);
   }
 };
 
@@ -156,16 +161,14 @@ int main(int argc, char** argv) {
   llvm::outs() << "src mod\n";
   module->dump();
 
-  infra::PassManager pm(&context, opt_level);
-  auto pass = std::make_unique<TestPass>();
-  pm.addPass(std::move(pass));
+  mlir::PassManager pm(&context);
+  auto& opm = pm.nest<mlir::func::FuncOp>();
+  opm.addPass(std::make_unique<FusionPass>());
 
-  auto pass2 = std::make_unique<TestPatternDriver>();
-  pm.addPass(std::move(pass2));
-
-  (void)pm.Run(module.get());
+  (void)pm.run(module.get());
 
   llvm::outs() << "\ndst mod\n";
   module->dump();
+
   return 0;
 }

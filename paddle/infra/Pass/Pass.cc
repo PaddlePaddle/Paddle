@@ -44,6 +44,9 @@ mlir::LogicalResult AdaptorPass::RunPipeline(PassManager& pm,
                                              int opt_level,
                                              bool verify) {
   for (Pass& pass : pm.GetPasses()) {
+    // llvm::outs() << "run Pass: " << pass.info_.name << " on " <<
+    // op->getName().getStringRef() << ", can schedule on: " <<
+    // pass.CanScheduleOn(op) <<"\n";
     if (pass.CanScheduleOn(op)) {
       if (mlir::failed(RunAPass(&pass, op, opt_level, verify)))
         return mlir::failure();
