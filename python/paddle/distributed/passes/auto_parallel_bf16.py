@@ -691,9 +691,9 @@ class BF16Pass(PassBase):
         main_block._sync_with_cpp()
 
     def get_loss(self):
-        # the amp / fp16 might change the effective loss variable for network and
+        # the bf16 might change the effective loss variable for network and
         # therefore would affect the subsequent passes that rely on the loss.
-        # return the effective loss after amp / fp16 pass.
+        # return the effective loss after bf16 pass.
 
         if self._loss:
             return self._loss
