@@ -136,58 +136,43 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                                                    input_scale_tensor.dtype()));
     }
 
-    int nums_any_ops = dequantize_linear_op_out->outputs.size();
-    for (int i = 0; i < nums_any_ops; ++i) {
-      auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
-      // if (any_op_desc->Type() == "batch_norm" || any_op_desc->Type() ==
-      // "relu"  || any_op_desc->Type() == "hard_swish" || any_op_desc->Type()
-      // == "elementwise_add"    || any_op_desc->Type() == "elementwise_mul" ||
-      // any_op_desc->Type() == "pool2d")
-      if (quantize_linear_op_x->Var()->Name() != "batch_norm_0.tmp_2" &&
-          quantize_linear_op_x->Var()->Name() != "conv2d_73.tmp_1" &&
-          quantize_linear_op_x->Var()->Name() != "relu_7.tmp_0" &&
-          quantize_linear_op_x->Var()->Name() != "hard_sigmoid_0.tmp_0" &&
-          quantize_linear_op_x->Var()->Name() != "batch_norm_6.tmp_2" &&
-          quantize_linear_op_x->Var()->Name() != "hard_swish_0.tmp_0" &&
-          any_op_desc->Type() != "conv2d" &&
-          any_op_desc->Type() != "depthwise_conv2d" &&
-          any_op_desc->Type() != "conv2d_transpose" &&
-          any_op_desc->Type() != "conv2d_fusion" &&
-          any_op_desc->Type() != "depthwise_conv2d_transpose") {
-        std::cout << "remove q dq with  :" << any_op_desc->Type() << std::endl;
-        std::cout << "var name   :" << quantize_linear_op_x->Var()->Name()
-                  << std::endl;
+    const std::vector<std::string> retain_op_type{"conv2d",
+                                                  "depthwise_conv2d",
+                                                  "conv2d_transpose",
+                                                  "conv2d_fusion",
+                                                  "depthwise_conv2d_transpose"};
+    // for example, modify according to your needs
+    const std::vector<std::string> retain_op_name{"hard_swish_0.tmp_0",
+                                                  "hard_sigmoid_0.tmp_0"};
 
-        any_op_desc->SetAttr(
-            "Input_scale_" + quantize_linear_op_x->Var()->Name(), input_scale);
+    // Conclusion: qdq befor bn or relu must be delete, vector(retain_op_type)
+    // have done. const std::vector<std::string> delete_op_type {"batch_norm",
+    // "relu"};
 
-        // link x to any_op2
-        any_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
-                                 quantize_linear_op_x->Var()->Name());
-        any_op_desc->Flush();
-        IR_NODE_LINK_TO(quantize_linear_op_x,
-                        dequantize_linear_op_out->outputs[i]);
-      }
-    }
+    auto quantize_x_name = quantize_linear_op_x->Var()->Name();
+    auto* quantize_out_op_desc = dequantize_linear_op_out->outputs[0]->Op();
 
-    // Forbid removing weight tensor when weight is shared between ops
-    // if (dequantize_linear_op_out->outputs[0]->Op()->Type() == "batch_norm" ||
-    // dequantize_linear_op_out->outputs[0]->Op()->Type() == "relu" ||
-    // dequantize_linear_op_out->outputs[0]->Op()->Type() == "hard_swish"  ||
-    // dequantize_linear_op_out->outputs[0]->Op()->Type() ==  "elementwise_add"
-    // || dequantize_linear_op_out->outputs[0]->Op()->Type() ==
-    // "elementwise_mul" || dequantize_linear_op_out->outputs[0]->Op()->Type()
-    // =="pool2d")
-    auto type_test = dequantize_linear_op_out->outputs[0]->Op()->Type();
-    if (quantize_linear_op_x->Var()->Name() != "batch_norm_0.tmp_2" &&
-        quantize_linear_op_x->Var()->Name() != "conv2d_73.tmp_1" &&
-        quantize_linear_op_x->Var()->Name() != "relu_7.tmp_0" &&
-        quantize_linear_op_x->Var()->Name() != "hard_sigmoid_0.tmp_0" &&
-        quantize_linear_op_x->Var()->Name() != "batch_norm_6.tmp_2" &&
-        quantize_linear_op_x->Var()->Name() != "hard_swish_0.tmp_0" &&
-        type_test != "conv2d" && type_test != "depthwise_conv2d" &&
-        type_test != "conv2d_transpose" && type_test != "conv2d_fusion" &&
-        type_test != "depthwise_conv2d_transpose") {
+    bool is_retain_op_name = std::find(retain_op_name.begin(),
+                                       retain_op_name.end(),
+                                       quantize_x_name) != retain_op_name.end();
+    bool is_retain_op_type =
+        std::find(retain_op_type.begin(),
+                  retain_op_type.end(),
+                  quantize_out_op_desc->Type()) != retain_op_type.end();
+
+    if (!is_retain_op_type && !is_retain_op_name) {
+      quantize_out_op_desc->SetAttr(
+          "Input_scale_" + quantize_linear_op_x->Var()->Name(), input_scale);
+
+      // link x to any_op2
+      quantize_out_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
+                                        quantize_linear_op_x->Var()->Name());
+      quantize_out_op_desc->Flush();
+
+      IR_NODE_LINK_TO(quantize_linear_op_x,
+                      dequantize_linear_op_out->outputs[0]);
+
+      // Forbid removing weight tensor when weight is shared between ops
       if (quantize_linear_op_scale->outputs.size() <= 1UL)
         nodes2rm.insert(quantize_linear_op_scale);
       nodes2rm.insert(quantize_linear_op);
