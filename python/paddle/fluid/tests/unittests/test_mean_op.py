@@ -92,7 +92,9 @@ class TestMeanOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestFP16MeanOp(TestMeanOp):
     def init_dtype_type(self):
