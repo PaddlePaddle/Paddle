@@ -415,7 +415,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"decayed_adagrad", {"ParamOut", "MomentOut"}},
     {"lars_momentum", {"ParamOut", "VelocityOut"}},
     {"coalesce_tensor", {"Output", "FusedOutput"}},
-    {"adagrad", {"ParamOut", "MomentOut"}},
+    {"adagrad", {"ParamOut", "MomentOut", "MasterParamOut"}},
     {"adamax", {"ParamOut", "MomentOut", "InfNormOut", "MasterParamOut"}},
     {"adam",
      {"ParamOut",
