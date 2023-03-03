@@ -483,12 +483,11 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   phi::AttributeMap infer_attrs{};
   auto fluid_attrs =
       static_cast<const framework::OperatorWithKernel*>(op_base)->Attrs();
+  auto phi_kernelkey =
+      framework::TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
   phi::InferVarKernelContext infer_varkernel_context =
       BuildInferVarKernelContext(
-          framework::TransOpKernelTypeToPhiKernelKey(expected_kernel_key),
-          fluid_attrs,
-          &infer_attrs,
-          has_infer_varkernel_fn);
+          phi_kernelkey, fluid_attrs, &infer_attrs, has_infer_varkernel_fn);
   auto apply_data_transform_for_one_parameter =
       [&](const std::string& parameter_name,
           const std::vector<std::string>& argument_names,
@@ -565,10 +564,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
             auto kernel_key_for_var =
                 static_cast<const framework::OperatorWithKernel*>(op_base)
                     ->GetKernelTypeForVar(
-                        parameter_name,
-                        *tensor_in,
-                        framework::TransOpKernelTypeToPhiKernelKey(
-                            expected_kernel_key));
+                        parameter_name, *tensor_in, phi_kernelkey);
             if (has_infer_varkernel_fn) {
               infer_varkernel_context.SetVarName(
                   const_cast<std::string*>(&parameter_name));
