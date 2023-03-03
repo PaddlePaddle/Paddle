@@ -14,7 +14,6 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -201,7 +200,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
     cpu_buf[rank + i] = out_stride[i];
     cpu_buf[2 * rank + i] = axis[i];
   }
-  paddle::memory::Copy(
+  memory_utils::Copy(
       cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
   REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
   REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
@@ -244,7 +243,7 @@ struct TransposeNormal<phi::GPUContext, T> {
       cpu_buf[rank + i] = out_stride[i];
       cpu_buf[2 * rank + i] = axis[i];
     }
-    paddle::memory::Copy(
+    memory_utils::Copy(
         cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
     REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
     REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
