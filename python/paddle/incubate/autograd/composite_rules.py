@@ -313,5 +313,6 @@ def sqrt_composite(x):
     define composite rule of op sqrt
     res = pow(x, 0.5)
     """
+    y = paddle.full([], 0.5)
     res = pow(x, 0.5)
     return res
