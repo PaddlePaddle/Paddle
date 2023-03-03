@@ -1217,7 +1217,12 @@ set(TEST_CINN_OPS
     test_concat_op
     test_top_k_v2_op
     test_transpose_op
-    test_reshape_op)
+    test_reshape_op
+    test_elementwise_add_op
+    test_elementwise_sub_op
+    test_elementwise_div_op
+    test_elementwise_mul_op
+    test_gather_nd_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)

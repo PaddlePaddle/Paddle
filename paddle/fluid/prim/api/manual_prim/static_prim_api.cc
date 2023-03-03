@@ -70,6 +70,9 @@ Tensor full<DescTensor>(const IntArray& shape,
     case phi::DataType::FLOAT16:
       op->SetAttr("str_value", std::to_string(value.to<float>()));
       break;
+    case phi::DataType::BFLOAT16:
+      op->SetAttr("str_value", std::to_string(value.to<float>()));
+      break;
     case phi::DataType::FLOAT32:
       op->SetAttr("value", value.to<float>());
       break;
@@ -106,7 +109,8 @@ Tensor full<DescTensor>(const IntArray& shape,
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "We support "
-          "bool/float16/float32/float64/int8/int16/int32/int64/uint8/uint16/"
+          "bool/float16/bfloat16/float32/float64/int8/int16/int32/int64/uint8/"
+          "uint16/"
           "uint32/uint64 for full, but we got data type: %s",
           phi::DataTypeToString(dtype)));
   }

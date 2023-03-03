@@ -2213,14 +2213,8 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
       }
 
+#if IS_TRT_VERSION_LT(7000)
       auto dtype = x_var_desc->GetDataType();
-#if IS_TRT_VERSION_GE(7000)
-      if (dtype != framework::proto::VarType::INT32 &&
-          dtype != framework::proto::VarType::FP32) {
-        VLOG(3) << "reduce op input data type must be int32 or float32";
-        return false;
-      }
-#else
       if (dtype != framework::proto::VarType::FP32) {
         VLOG(3) << "reduce op input data type must be float32 using TensorRT "
                    "< 7.0";
@@ -2232,18 +2226,19 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "tile") {
       // Paddle-TRT does not support the input tensors.
       auto tile_inputs = desc.Inputs();
-      if (tile_inputs.find("repeat_times_tensor") != tile_inputs.end()) {
-        if (desc.Input("repeat_times_tensor").size() >= 1) {
-          return false;
+      if (!with_dynamic_shape) {
+        if (tile_inputs.find("repeat_times_tensor") != tile_inputs.end()) {
+          if (desc.Input("repeat_times_tensor").size() >= 1) {
+            return false;
+          }
         }
-      }
-      if (tile_inputs.find("RepeatTimes") != tile_inputs.end()) {
-        if (desc.Input("RepeatTimes").size() >= 1) {
-          return false;
+        if (tile_inputs.find("RepeatTimes") != tile_inputs.end()) {
+          if (desc.Input("RepeatTimes").size() >= 1) {
+            return false;
+          }
         }
+        if (!desc.HasAttr("repeat_times")) return false;
       }
-      if (with_dynamic_shape) return false;
-      if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
     }
 #endif
 

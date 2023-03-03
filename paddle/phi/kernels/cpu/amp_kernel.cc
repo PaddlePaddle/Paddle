@@ -111,7 +111,9 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    ALL_LAYOUT,
                    phi::CheckFiniteAndUnscaleKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::BOOL);
+}
 
 PD_REGISTER_KERNEL(update_loss_scaling,
                    CPU,
