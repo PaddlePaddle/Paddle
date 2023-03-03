@@ -68,11 +68,6 @@ class TestFloa16ArangeOp(TestArangeOp):
         self.check_output()
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and not support the bfloat16",
-)
 class TestBFloat16ArangeOp(OpTest):
     def setUp(self):
         self.op_type = "range"
@@ -102,7 +97,8 @@ class TestBFloat16ArangeOp(OpTest):
         self.case = (0, 1, 0.2)
 
     def test_check_output(self):
-        self.check_output()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
 
 class TestInt32ArangeOp(TestArangeOp):
