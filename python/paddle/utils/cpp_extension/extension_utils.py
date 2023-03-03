@@ -190,7 +190,6 @@ def custom_write_stub(resource, pyfile):
                     assert isinstance(spec.loader, importlib.abc.Loader)
                     spec.loader.exec_module(mod)
                 except ImportError:
-                    print('using custom operator only')
                     mod = types.ModuleType(__name__)
 
             # load custom op shared library with abs path
