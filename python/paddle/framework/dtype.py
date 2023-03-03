@@ -75,25 +75,25 @@ def iinfo(dtype):
 def finfo(dtype):
     """
 
-    paddle.finfo is a function that returns an object that represents the numerical properties of a floating point
-    paddle.dtype.
+    ``paddle.finfo`` is a function that returns an object that represents the numerical properties of a floating point
+    ``paddle.dtype``.
     This is similar to `numpy.finfo <https://numpy.org/doc/stable/reference/generated/numpy.finfo.html#numpy-finfo>`_.
 
     Args:
-        dtype(paddle.dtype):  One of paddle.float16, paddle.float32, paddle.float64, paddle.bfloat16,
-            paddle.complex64, and paddle.complex128.
+        dtype(paddle.dtype):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
+            ``paddle.complex64``, and ``paddle.complex128``.
 
     Returns:
-        An finfo object, which has the following 8 attributes:
+        An ``finfo`` object, which has the following 8 attributes:
 
-            - min: double, The smallest representable number (typically -max).
-            - max: double, The largest representable number.
-            - eps: double, The smallest representable number such that 1.0 + eps != 1.0.
-            - resolution: The approximate decimal resolution of this type, i.e., 10**-precision.
-            - smallest_normal: The smallest positive normal number.
-            - tiny: The smallest positive normal number. Equivalent to smallest_normal.
-            - bits: int, The number of bits occupied by the type.
-            - dtype: str, The string name of the argument dtype.
+            - min(double): The smallest representable number (typically `-max`).
+            - max(double): The largest representable number.
+            - eps(double): The smallest representable number such that `1.0 + eps != 1.0`.
+            - resolution(double): The approximate decimal resolution of this type, i.e., `10**-precision`.
+            - smallest_normal(double): The smallest positive normal number.
+            - tiny(double): The smallest positive normal number. Equivalent to smallest_normal.
+            - bits(int): The number of bits occupied by the type.
+            - dtype(str): The string name of the argument dtype.
 
     Examples:
         .. code-block:: python
