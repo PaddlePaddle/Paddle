@@ -173,7 +173,7 @@ TEST(Scalar, ConstructFromTensor) {
   auto* dense_x_data = dev_ctx->Alloc<float>(dense_x.get());
   FillTensor<<<1, 1, 0, dev_ctx->stream()>>>(dense_x_data);
   dev_ctx->Wait();
-  paddle::experimental::Tensor x(dense_x);
+  paddle::Tensor x(dense_x);
   paddle::experimental::Scalar scalar_test(x);
   ASSERT_NEAR(1, scalar_test.to<float>(), 1e-6);
 }
