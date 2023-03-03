@@ -577,9 +577,8 @@ class RNNCellBase(Layer):
                 dimension of the of `batch_ref` represents batch. Defaults to 0.
 
         Returns:
-            init_states (Tensor|tuple|list): tensor of the provided shape and
-                dtype, or list of tensors that each satisfies the requirements,
-                packed in the same structure as `shape` and `type` does.
+            - **init_states** (Tensor|tuple|list): tensor of the provided shape and dtype, or list of tensors that each
+        satisfies the requirements, packed in the same structure as `shape` and `type` does.
         """
         # TODO: use inputs and batch_size
         batch_ref = flatten(batch_ref)[0]
