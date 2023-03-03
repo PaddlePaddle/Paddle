@@ -165,6 +165,10 @@ class DenseTensor : public TensorBase,
 
   void* data();
 
+  std::shared_ptr<std::set<std::shared_ptr<bool>>> can_not_uses =
+      std::make_shared<std::set<std::shared_ptr<bool>>>(
+          std::set<std::shared_ptr<bool>>({}));
+
   /// \brief Get whether the storage_properties is inited.
   /// \return The init status of storage_properties.
   bool storage_properties_initialized() const;

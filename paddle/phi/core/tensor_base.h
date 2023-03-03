@@ -28,6 +28,8 @@ class TensorBase {
  public:
   using DDim = phi::DDim;
 
+  std::shared_ptr<bool> canNotUse;
+
   virtual ~TensorBase() = default;
 
   /// \brief Returns the number of elements contained in tensor.

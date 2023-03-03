@@ -485,6 +485,10 @@ class PADDLE_API Tensor final {
    * @return false
    */
   bool defined() const;
+  
+  bool can_not_use();
+
+  void set_can_not_use(std::string op_name = "op_name");
 
   /**
    * @brief Determine whether Tensor is initialized.

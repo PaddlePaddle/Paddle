@@ -41,20 +41,30 @@ limitations under the License. */
 namespace phi {
 
 DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
-    : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
+    : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {
+      canNotUse = std::make_shared<bool>(false);
+
+    }
 
 DenseTensor::DenseTensor(Allocator* a, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
+    : meta_(std::move(meta)), holder_(a->Allocate(SizeOf(dtype()) * numel())) {
+        canNotUse = std::make_shared<bool>(false);
+
+    }
 
 DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
                          const DenseTensorMeta& meta)
-    : meta_(meta), holder_(holder) {}
+    : meta_(meta), holder_(holder) {
+        canNotUse = std::make_shared<bool>(false);
+    }
 
 DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
   holder_ = other.holder_;
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
+  canNotUse = std::make_shared<bool>(false);
+
 
 #ifdef PADDLE_WITH_MKLDNN
   mem_desc_ = other.mem_desc_;
@@ -67,6 +77,8 @@ DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
+  canNotUse = std::make_shared<bool>(false);
+
 #ifdef PADDLE_WITH_MKLDNN
   mem_desc_ = other.mem_desc_;
 #endif
@@ -78,6 +90,8 @@ DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   std::swap(holder_, other.holder_);
   storage_properties_ = std::move(other.storage_properties_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
+  canNotUse = std::make_shared<bool>(false);
+
 #ifdef PADDLE_WITH_MKLDNN
   mem_desc_ = other.mem_desc_;
 #endif
