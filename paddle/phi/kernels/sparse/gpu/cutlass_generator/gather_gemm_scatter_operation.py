@@ -244,16 +244,7 @@ namespace sparse {
         self.configuration_file.write(self.header_template)
         self.configuration_file.write(self.separator)
 
-        self.includes = collections.OrderedDict(
-            [
-                #        ("cutlass/cutlass.h", None),
-                #        ("cutlass/library/library.h", None),
-                #        ("cutlass/library/manifest.h", None),
-                #        ("library_internal.h", None),
-                #        ("gemm_operation.h", None),
-                #        ("cutlass/arch/wmma.h", None),
-            ]
-        )
+        self.includes = collections.OrderedDict([])
         self.instance_definitions = []
         self.instance_wrappers = []
 
