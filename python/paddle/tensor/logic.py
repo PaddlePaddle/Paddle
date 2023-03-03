@@ -512,7 +512,6 @@ def greater_equal(x, y, name=None):
             result1 = paddle.greater_equal(x, y)
             print(result1)  # result1 = [True False True]
     """
-    
     if in_dygraph_mode():
         return _C_ops.greater_equal(x, y)
     else:
