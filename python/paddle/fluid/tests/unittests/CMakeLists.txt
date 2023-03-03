@@ -1216,7 +1216,8 @@ set(TEST_CINN_OPS
     test_fill_any_like_op
     test_concat_op
     test_top_k_v2_op
-    test_transpose_op)
+    test_transpose_op
+    test_reshape_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
