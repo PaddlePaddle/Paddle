@@ -58,11 +58,6 @@ class TestWhereOpFloat16(TestWhereOp):
         self.cond = np.ones((60, 2)).astype('bool')
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and not support the bfloat16",
-)
 class TestWhereOpBFloat16(OpTest):
     def setUp(self):
         self.op_type = 'where'
@@ -75,17 +70,19 @@ class TestWhereOpBFloat16(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_eager=False)
 
     def init_config(self):
         self.x = convert_float_to_uint16(
-            np.random.uniform((-3), 5, 100).astype(self.dtype)
+            np.random.uniform((-3), 5, 100).astype(np.float32)
         )
         self.y = convert_float_to_uint16(
-            np.random.uniform((-3), 5, 100).astype(self.dtype)
+            np.random.uniform((-3), 5, 100).astype(np.float32)
         )
         self.cond = np.zeros(100).astype('bool')
 
