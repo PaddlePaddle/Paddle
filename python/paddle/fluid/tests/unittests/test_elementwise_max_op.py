@@ -57,6 +57,17 @@ class TestElementwiseOp(OpTest):
         )
 
 
+class TestElementwiseFp16Op(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float16)
+        sgn = np.random.choice([-1, 1], [13, 17]).astype(np.float16)
+        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype(np.float16)
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
 class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
@@ -67,12 +78,32 @@ class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
 
+class TestElementwiseMaxFp16Op_ZeroDim1(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        x = np.random.uniform(0.1, 1, []).astype("float16")
+        y = np.random.uniform(0.1, 1, []).astype("float16")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
 class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
         x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         y = np.random.uniform(0.1, 1, []).astype("float64")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseMaxFp16Op_ZeroDim2(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        x = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
+        y = np.random.uniform(0.1, 1, []).astype("float16")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
