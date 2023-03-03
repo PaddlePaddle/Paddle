@@ -289,17 +289,14 @@ def _rnn_static_graph(
     with while_op.block():
 
         step_in = inputs[start_i]
-        # step_in = paddle.fluid.layers.Print( step_in, message="step in")
         pre_state = map_structure(
             lambda x: paddle.tensor.array_read(x, start_i), init_array
         )
-        # pre_state = paddle.fluid.layers.Print( pre_state, message="pre")
         outputs, new_states = cell(step_in, pre_state, **kwargs)
         assert isinstance(outputs, paddle.fluid.framework.Variable)
         utils.assert_same_structure(new_states, pre_state)
         if sequence_length:
             step_mask = paddle.unsqueeze(mask[start_i], 1)
-            # paddle.fluid.layers.Print( step_mask, message="mask")
             # new_states = map_structure(
             #     partial(_maybe_copy, step_mask=step_mask),
             #     pre_state, new_states
