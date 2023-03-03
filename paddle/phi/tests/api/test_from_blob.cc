@@ -14,50 +14,20 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 
-#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/from_blob.h"
+
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/core/kernel_registry.h"
+
+PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace tests {
 
-TEST(from_blob, FLOAT32) {
-  // 1. create data
-  float data[] = {1, 2, 3, 4, 5, 6};
-
-  // 2. test API
-  auto test_tesnor = experimental::from_blob(
-      data, {2, 3}, phi::DataType::FLOAT32, phi::CPUPlace());
-
-  // 3. check result
-  // 3.1 check tensor attributes
-  ASSERT_EQ(test_tesnor.dims().size(), 2);
-  ASSERT_EQ(test_tesnor.dims()[0], 2);
-  ASSERT_EQ(test_tesnor.dims()[1], 3);
-  ASSERT_EQ(test_tesnor.numel(), 6);
-  ASSERT_EQ(test_tesnor.is_cpu(), true);
-  ASSERT_EQ(test_tesnor.dtype(), phi::DataType::FLOAT32);
-  ASSERT_EQ(test_tesnor.layout(), phi::DataLayout::NCHW);
-  ASSERT_EQ(test_tesnor.initialized(), true);
-  ASSERT_EQ(test_tesnor.is_dense_tensor(), true);
-
-  // 3.2 check tensor values
-  auto* test_tensor_data = test_tesnor.template data<float>();
-  for (int32_t i = 0; i < 6; i++) {
-    ASSERT_EQ(test_tensor_data[i], static_cast<float>(i + 1));
-  }
-
-  // 3.3 check whether memory is shared
-  ASSERT_EQ(data, test_tensor_data);
-
-  // 3.4 test other API
-  auto test_tensor_pow = pow(test_tesnor, 2);
-  auto* test_tensor_pow_data = test_tensor_pow.template data<float>();
-  for (int32_t i = 0; i < 6; i++) {
-    ASSERT_EQ(test_tensor_pow_data[i], static_cast<float>(std::pow(i + 1, 2)));
-  }
-}
-
-TEST(from_blob, INT32) {
+TEST(from_blob, CPU) {
   // 1. create data
   int32_t data[] = {4, 3, 2, 1};
 
@@ -93,6 +63,71 @@ TEST(from_blob, INT32) {
   for (int32_t i = 0; i < 4; i++) {
     ASSERT_EQ(test_tensor_pow_data[i],
               static_cast<int32_t>(std::pow(4 - i, 2)));
+  }
+}
+
+using paddle::memory::Copy;
+
+TEST(from_blob, GPU) {
+  // 1. create data
+  float cpu_data[6] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f};
+  phi::GPUPlace gpu0(0);
+  phi::Allocator* allocator = paddle::GetAllocator(gpu0);
+  auto gpu_allocation = allocator->Allocate(sizeof(cpu_data));
+  float* gpu_data = static_cast<float*>(gpu_allocation->ptr());
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(gpu0));
+  Copy(gpu0,
+       gpu_data,
+       phi::CPUPlace(),
+       cpu_data,
+       sizeof(cpu_data),
+       ctx->stream());
+
+  // 2. test API
+  auto gpu_tesnor = experimental::from_blob(
+      gpu_data, {2, 3}, phi::DataType::FLOAT32, phi::GPUPlace());
+
+  // 3. check result
+  // 3.1 check tensor attributes
+  ASSERT_EQ(gpu_tesnor.dims().size(), 2);
+  ASSERT_EQ(gpu_tesnor.dims()[0], 2);
+  ASSERT_EQ(gpu_tesnor.dims()[1], 3);
+  ASSERT_EQ(gpu_tesnor.numel(), 6);
+  ASSERT_EQ(gpu_tesnor.is_gpu(), true);
+  ASSERT_EQ(gpu_tesnor.dtype(), phi::DataType::FLOAT32);
+
+  // 3.2 check tensor values
+  auto* gpu_tesnor_data = gpu_tesnor.template data<float>();
+  float gpu_tesnor_data_cpu[6];
+  Copy(phi::CPUPlace(),
+       gpu_tesnor_data_cpu,
+       gpu0,
+       gpu_tesnor_data,
+       sizeof(cpu_data),
+       ctx->stream());
+  for (int32_t i = 0; i < 6; i++) {
+    ASSERT_NEAR(
+        gpu_tesnor_data_cpu[i], static_cast<float>((i + 1) * 0.1f), 1e-5);
+  }
+
+  // 3.3 check whether memory is shared
+  ASSERT_EQ(gpu_data, gpu_tesnor_data);
+
+  // 3.4 test other API
+  auto gpu_tesnor_pow = pow(gpu_tesnor, 2);
+  auto* gpu_tesnor_pow_data = gpu_tesnor_pow.template data<float>();
+  float gpu_tesnor_pow_data_cpu[6];
+  Copy(phi::CPUPlace(),
+       gpu_tesnor_pow_data_cpu,
+       gpu0,
+       gpu_tesnor_pow_data,
+       sizeof(cpu_data),
+       ctx->stream());
+  for (int32_t i = 0; i < 6; i++) {
+    ASSERT_NEAR(gpu_tesnor_pow_data_cpu[i],
+                static_cast<float>(std::pow(i + 1, 2) * 0.01f),
+                1e-5);
   }
 }
 

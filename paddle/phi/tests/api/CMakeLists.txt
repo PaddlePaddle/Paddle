@@ -13,6 +13,10 @@ if(WITH_GPU)
     test_cuda_stream
     SRCS test_cuda_stream.cu
     DEPS context_pool)
+  nv_test(
+    test_from_blob
+    SRCS test_from_blob.cc
+    DEPS memory ${COMMON_API_TEST_DEPS})
 elseif(WITH_ROCM)
   hip_test(
     test_phi_tensor
@@ -26,11 +30,19 @@ elseif(WITH_ROCM)
     test_cuda_stream
     SRCS test_cuda_stream.cu
     DEPS context_pool)
+  hip_test(
+    test_from_blob
+    SRCS test_from_blob.cc
+    DEPS memory ${COMMON_API_TEST_DEPS})
 else()
   cc_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
     DEPS glog selected_rows ${COMMON_API_TEST_DEPS})
+  cc_test(
+    test_from_blob
+    SRCS test_from_blob.cc
+    DEPS memory ${COMMON_API_TEST_DEPS})
 endif()
 
 cc_test(
@@ -61,9 +73,4 @@ cc_test(
 cc_test(
   test_strings_lower_upper_api
   SRCS test_strings_lower_upper_api.cc
-  DEPS ${COMMON_API_TEST_DEPS})
-
-cc_test(
-  test_from_blob
-  SRCS test_from_blob.cc
   DEPS ${COMMON_API_TEST_DEPS})
