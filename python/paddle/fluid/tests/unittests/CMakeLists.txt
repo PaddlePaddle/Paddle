@@ -503,7 +503,8 @@ set(TEST_OPS_WITH_GC
     test_scatter_op
     test_slice_op
     test_space_to_depth_op
-    test_squared_l2_distance_op)
+    test_squared_l2_distance_op
+    test_unsqueeze2_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
