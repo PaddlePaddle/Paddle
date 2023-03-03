@@ -208,6 +208,7 @@ class Adagrad(Optimizer):
             if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._moment_acc_str, master_p)
+                self._already_create_accumulater.add(p.name)
                 continue
             if (
                 p.dtype == core.VarDesc.VarType.FP16
