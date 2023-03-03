@@ -92,8 +92,7 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   // FIXME(typhoonzero): find a better way to disable groups
   // rather than setting it to 1.
   PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cudnnSetConvolutionGroupCount(
-          args.cdesc.desc(), groups));
+      phi::dynload::cudnnSetConvolutionGroupCount(args.cdesc.desc(), groups));
   groups = 1;
 #endif
 #ifdef PADDLE_WITH_HIP
@@ -179,20 +178,19 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   workspace_handle.RunFunc(
       [&](void* workspace_ptr) {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::miopenConvolutionForward(
-                handle,
-                &alpha,
-                args.idesc.desc(),
-                input_data,
-                args.wdesc.desc(),
-                filter_data,
-                args.cdesc.desc(),
-                fwd_result.algo,
-                &beta,
-                args.odesc.desc(),
-                output_data,
-                workspace_ptr,
-                workspace_size));
+            phi::dynload::miopenConvolutionForward(handle,
+                                                   &alpha,
+                                                   args.idesc.desc(),
+                                                   input_data,
+                                                   args.wdesc.desc(),
+                                                   filter_data,
+                                                   args.cdesc.desc(),
+                                                   fwd_result.algo,
+                                                   &beta,
+                                                   args.odesc.desc(),
+                                                   output_data,
+                                                   workspace_ptr,
+                                                   workspace_size));
       },
       workspace_size);
 #else

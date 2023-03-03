@@ -92,7 +92,7 @@ void GetClassInterval(const gpuStream_t& stream,
         static_cast<GPUContext*>(phi::DeviceContextPool::Instance().Get(place))
             ->stream();
 
-    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         num_classes_per_device_ptr,
         num_classes_per_device_ptr,
         num_classes_per_device.numel(),
