@@ -119,11 +119,11 @@ struct TensorSetConstantXPU {
     int numel = tensor_->numel();
     std::unique_ptr<T[]> data_cpu(new T[numel]);
     std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
-    paddle::memory::Copy(place_,
-                         begin,
-                         phi::CPUPlace(),
-                         static_cast<void*>(data_cpu.get()),
-                         numel * sizeof(T));
+    memory_utils::Copy(place_,
+                       begin,
+                       phi::CPUPlace(),
+                       static_cast<void*>(data_cpu.get()),
+                       numel * sizeof(T));
   }
   phi::DenseTensor* tensor_;
   U value_;

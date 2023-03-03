@@ -9,6 +9,10 @@ if(WITH_GPU)
     test_allocator
     SRCS test_allocator.cu
     DEPS memory place device_context context_pool)
+  nv_test(
+    test_cuda_stream
+    SRCS test_cuda_stream.cu
+    DEPS context_pool)
 elseif(WITH_ROCM)
   hip_test(
     test_phi_tensor
@@ -18,6 +22,10 @@ elseif(WITH_ROCM)
     test_allocator
     SRCS test_allocator.cu
     DEPS memory place device_context context_pool)
+  hip_test(
+    test_cuda_stream
+    SRCS test_cuda_stream.cu
+    DEPS context_pool)
 else()
   cc_test(
     test_phi_tensor

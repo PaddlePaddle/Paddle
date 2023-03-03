@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,17 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include <gtest/gtest.h>
 
-namespace phi {
+#include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/core/cuda_stream.h"
 
-KernelSignature CastOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("cast", {"X"}, {"out_dtype"}, {"Out"});
+TEST(CUDAStream, GPU) {
+  phi::GPUPlace gpu0(0);
+  phi::CUDAStream* stream = paddle::GetCurrentCUDAStream(gpu0);
+  EXPECT_TRUE(stream != nullptr);
+  gpuStream_t raw_stream = stream->raw_stream();
+  EXPECT_TRUE(raw_stream != nullptr);
 }
-
-}  // namespace phi
-
-PD_REGISTER_BASE_KERNEL_NAME(transfer_dtype, cast);
-
-PD_REGISTER_ARG_MAPPING_FN(cast, phi::CastOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(transfer_dtype, phi::CastOpArgumentMapping);
