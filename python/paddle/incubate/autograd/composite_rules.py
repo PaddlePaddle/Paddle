@@ -305,3 +305,33 @@ def fill_any_like(x, fill_value, dtype, place=None):
     dtype = dtypes.dtype(dtype)
     val = full(x.shape, fill_value, dtype)
     return val
+
+@REGISTER_COMPOSITE('squeeze2')
+def squeeze2_composite(x, axis):
+    """define composite rule of squeeze"""
+    def canonicalize_dim(rank, idx):
+        assert rank > 0
+        if idx >= 0 and idx < rank:
+            return idx
+        if idx < 0:
+            _idx = idx + rank
+        else:
+            _idx = idx
+        assert _idx >= 0 and _idx < rank
+    
+    def canonicalize_dims(rank, idx):
+        if isinstance(indices, int):
+            return canonicalize_dim(rank, indices)
+        return tuple(canonicalize_dim(rank, idx) for idx in indices)
+    
+    if len(axis) == 0:
+        dims = range(len(x.shape))
+    else:
+        dim = canonicalize_dims(len(x.shape), axis)
+        dims = set((dim, ) if not isinstance(dim, tuple) else dim)
+    new_shape = []
+    for d, s in enumerate(x.shape):
+        if not (s == 1 and (d in dims)):
+            new_shape.append(s)
+    out = reshape(x, new_shape)
+    return out, None
