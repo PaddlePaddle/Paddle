@@ -41,6 +41,7 @@ if(WITH_GPU)
                            ${native_dst})
   endif()
 endif()
+
 if(CMAKE_COMPILER_IS_GNUCC)
   execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
                   OUTPUT_VARIABLE GCC_VERSION)
@@ -53,6 +54,9 @@ if(CMAKE_COMPILER_IS_GNUCC)
          native_dst)
     set(GLOO_PATCH_COMMAND patch -d ${GLOO_SOURCE_DIR}/gloo/transport/tcp <
                            ${native_dst})
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/types.h.patch
+         types_header)
+    set(GLOO_PATCH_COMMAND patch -d ${GLOO_SOURCE_DIR}/gloo/ < ${types_header})
   endif()
 endif()
 include_directories(${GLOO_INCLUDE_DIR})
