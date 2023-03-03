@@ -25,6 +25,34 @@ using IntArray =
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
+void softmax_grad(const Tensor& out,
+                  const Tensor& out_grad,
+                  int axis,
+                  Tensor* x_grad) {
+  if (x_grad) {
+    if (out_grad.dims().size() > 0) {
+      auto new_out_grad = out_grad * out;
+      if (axis > 0) {
+        auto tmp_x_grad = new_out_grad -
+                          out * sum<T>(new_out_grad, {axis}, out.dtype(), true);
+        set_output<T>(tmp_x_grad, x_grad);
+      } else {
+        auto tmp_x_grad =
+            new_out_grad - out * sum<T>(new_out_grad,
+                                        phi::vectorize(out_grad.dims()),
+                                        out.dtype(),
+                                        true);
+        set_output<T>(tmp_x_grad, x_grad);
+      }
+    } else {
+      set_output<T>(
+          full<T>(phi::vectorize(out_grad.dims()), 0.0, out_grad.dtype()),
+          x_grad);
+    }
+  }
+}
+
+template <typename T>
 void gather_grad(const Tensor& x,
                  const Tensor& index,
                  const Tensor& out_grad,

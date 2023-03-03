@@ -21,13 +21,14 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 
 namespace paddle {
 namespace prim {
 // We put some api like utils here
 template <typename T>
 paddle::experimental::Tensor empty(const paddle::experimental::IntArray& shape,
-                                   paddle::experimental::DataType dype,
+                                   paddle::experimental::DataType dtype,
                                    const paddle::Place& place);
 
 template <typename T>
