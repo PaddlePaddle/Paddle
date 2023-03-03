@@ -22,10 +22,15 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
+#endif
 
 namespace paddle {
 namespace tests {
+
+using paddle::memory::Copy;
 
 TEST(from_blob, CPU) {
   // 1. create data
@@ -66,8 +71,7 @@ TEST(from_blob, CPU) {
   }
 }
 
-using paddle::memory::Copy;
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(from_blob, GPU) {
   // 1. create data
   float cpu_data[6] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f};
@@ -130,6 +134,7 @@ TEST(from_blob, GPU) {
                 1e-5);
   }
 }
+#endif
 
 }  // namespace tests
 }  // namespace paddle
