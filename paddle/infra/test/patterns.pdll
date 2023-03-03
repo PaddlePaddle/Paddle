@@ -1,0 +1,17 @@
+
+#include "mlir/Dialect/Tosa/IR/TosaOps.td"
+
+Pattern AddPDLLPattern with benefit(1) {
+  let val : Value;
+
+  let const1 = op<tosa.const>() -> (ConstResultType: Type);
+  let const2 = op<tosa.const>() -> (ConstResultType);
+  let add1 = op<tosa.add>(val, const1.output) -> (ValueType: Type);
+  let add2 = op<tosa.add>(add1.output, const2.output) -> (ValueType);
+
+  rewrite add2 with {
+    let const_add = op<tosa.add>(const1.output, const2.output) -> (ConstResultType);
+    let new_add = op<tosa.add>(val, const_add.output) -> (ValueType);
+    replace add2 with new_add;
+  };
+}

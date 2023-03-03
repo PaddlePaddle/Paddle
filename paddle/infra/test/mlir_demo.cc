@@ -16,20 +16,51 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Tosa/IR/TosaOps.h"
+#include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/Location.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Operation.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/Value.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "test/helper.h"
 
+// pdll inc
+#include "test/patterns.h.pdll.inc"
+
+// td inc
+static mlir::Value UpdateAddOp(mlir::OpBuilder builder,
+                               mlir::Location loc,
+                               mlir::Value x,
+                               mlir::Value c1,
+                               mlir::Value c2) {
+  auto add_const_op =
+      builder.create<mlir::tosa::AddOp>(loc, c1.getType(), c1, c2);
+  auto add_op = builder.create<mlir::tosa::AddOp>(
+      loc, x.getType(), x, add_const_op.getOutput());
+  return add_op.getOutput();
+}
+#include "test/patterns.h.td.inc"
+
 static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::Positional,
     llvm::cl::desc("<input file>"),
     llvm::cl::init("-"),
     llvm::cl::value_desc("filename"));
+
+enum GenType { PDLL, TD, CPP };
+static llvm::cl::opt<enum GenType> genType(
+    "gen",
+    llvm::cl::init(PDLL),
+    llvm::cl::desc("td or pdll or c++"),
+    llvm::cl::values(clEnumValN(PDLL, "pdll", "pdll gen")),
+    llvm::cl::values(clEnumValN(TD, "td", "td gen")),
+    llvm::cl::values(clEnumValN(CPP, "cpp", "c++")));
 
 //==----------------------------------------------==//
 // Just test for AnalysisManager
@@ -140,7 +171,17 @@ class FusionPass
  protected:
   void runOnOperation() override {
     mlir::RewritePatternSet patterns(getOperation()->getContext());
-    patterns.add<AddPattern>(&getContext());
+
+    if (genType == CPP) {
+      // C++ naive impl.
+      patterns.add<AddPattern>(&getContext());
+    } else if (genType == PDLL) {
+      // PDLL impl.
+      populateGeneratedPDLLPatterns(patterns);
+    } else {
+      // TD impl.
+      populateWithGenerated(patterns);
+    }
 
     mlir::GreedyRewriteConfig config;
     config.useTopDownTraversal = true;
@@ -155,6 +196,10 @@ int main(int argc, char** argv) {
 
   mlir::MLIRContext context;
   mlir::registerAllDialects(context);
+
+  // TODO(wilber): Why must load dialect to use pdll?
+  context.loadAllAvailableDialects();
+
   context.allowsUnregisteredDialects();
 
   mlir::OwningOpRef<mlir::ModuleOp> module = LoadMLIR(context, inputFilename);

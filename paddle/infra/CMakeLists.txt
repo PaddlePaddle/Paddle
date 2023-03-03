@@ -36,9 +36,20 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/)
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
-# add_subdirectory(IR)
-
-add_library(pass_infra Pass/Pass.cc IR/PatternMatch.cc)
+add_library(
+  pass_infra
+  Pass/Pass.cc IR/PatternMatch.cc Rewrite/FrozenRewritePatternSet.cc
+  Rewrite/PatternApplicator.cc Transforms/GreedyPatternRewriteDriver.cc)
 
 add_executable(demo test/demo.cc)
 target_link_libraries(demo ${mlir_libs} pass_infra)
+
+add_mlir_pdll_library(MLIRPDLLPatternsIncGen test/patterns.pdll
+                      test/patterns.h.pdll.inc)
+set(LLVM_TARGET_DEFINITIONS test/patterns.td)
+mlir_tablegen(test/patterns.h.td.inc -gen-rewriters)
+add_public_tablegen_target(MLIRTDPatternsIncGen)
+
+add_executable(mlir_demo test/mlir_demo.cc)
+target_link_libraries(mlir_demo ${mlir_libs})
+add_dependencies(mlir_demo MLIRPDLLPatternsIncGen MLIRTDPatternsIncGen)
