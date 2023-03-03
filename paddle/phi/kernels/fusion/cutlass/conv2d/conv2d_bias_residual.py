@@ -205,4 +205,6 @@ if __name__ == "__main__":
         sm_versions, EpiResBlocks, UnderScoreName, CamelName
     )
     all_code += CommonTail
-    print(all_code)
+    with open("conv2d_bias_residual.cu", "w") as f:
+        f.write(all_code)
+        f.close()
