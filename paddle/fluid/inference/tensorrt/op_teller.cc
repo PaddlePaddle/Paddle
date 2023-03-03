@@ -1725,7 +1725,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "pad3d") {
-      if (!desc.HasAttr("paddings") and !desc.Input("Paddings").size()) {
+      if (!desc.HasAttr("paddings") && !desc.Input("Paddings").size()) {
         return false;
       }
       if (!desc.HasAttr("pad_value")) {
@@ -1771,7 +1771,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
-
     if (op_type == "prelu") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "Invalid input X's size of prelu TRT converter. "
