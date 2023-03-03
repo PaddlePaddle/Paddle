@@ -23,8 +23,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
@@ -1544,19 +1542,19 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
   int *out_dims_array_gpu =
       reinterpret_cast<int *>(y_strides_array_gpu + max_dim);
 
-  paddle::memory::Copy(gplace,
-                       x_strides_array_gpu,
-                       cplace,
-                       x_strides_array.data(),
-                       bytes,
-                       ctx.stream());
-  paddle::memory::Copy(gplace,
-                       y_strides_array_gpu,
-                       cplace,
-                       y_strides_array.data(),
-                       bytes,
-                       ctx.stream());
-  paddle::memory::Copy(
+  memory_utils::Copy(gplace,
+                     x_strides_array_gpu,
+                     cplace,
+                     x_strides_array.data(),
+                     bytes,
+                     ctx.stream());
+  memory_utils::Copy(gplace,
+                     y_strides_array_gpu,
+                     cplace,
+                     y_strides_array.data(),
+                     bytes,
+                     ctx.stream());
+  memory_utils::Copy(
       gplace, out_dims_array_gpu, cplace, out_dims_array, bytes, ctx.stream());
 
   const int out_size = std::accumulate(
@@ -1573,18 +1571,18 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     int *x_dims_order_gpu =
         reinterpret_cast<int *>(x_strides_order_gpu + max_dim);
 
-    paddle::memory::Copy(gplace,
-                         x_strides_order_gpu,
-                         cplace,
-                         x_strides_order.data(),
-                         bytes,
-                         ctx.stream());
-    paddle::memory::Copy(gplace,
-                         x_dims_order_gpu,
-                         cplace,
-                         x_dims_order.data(),
-                         bytes,
-                         ctx.stream());
+    memory_utils::Copy(gplace,
+                       x_strides_order_gpu,
+                       cplace,
+                       x_strides_order.data(),
+                       bytes,
+                       ctx.stream());
+    memory_utils::Copy(gplace,
+                       x_dims_order_gpu,
+                       cplace,
+                       x_dims_order.data(),
+                       bytes,
+                       ctx.stream());
     CommonGradBroadcastCUDAKernel<T, DX_OP, Tout>
         <<<x_blocks, x_block_size, 0, ctx.stream()>>>(x_strides_array_gpu,
                                                       y_strides_array_gpu,
@@ -1612,18 +1610,18 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     int *y_dims_order_gpu =
         reinterpret_cast<int *>(y_strides_order_gpu + max_dim);
 
-    paddle::memory::Copy(gplace,
-                         y_strides_order_gpu,
-                         cplace,
-                         y_strides_order.data(),
-                         bytes,
-                         ctx.stream());
-    paddle::memory::Copy(gplace,
-                         y_dims_order_gpu,
-                         cplace,
-                         y_dims_order.data(),
-                         bytes,
-                         ctx.stream());
+    memory_utils::Copy(gplace,
+                       y_strides_order_gpu,
+                       cplace,
+                       y_strides_order.data(),
+                       bytes,
+                       ctx.stream());
+    memory_utils::Copy(gplace,
+                       y_dims_order_gpu,
+                       cplace,
+                       y_dims_order.data(),
+                       bytes,
+                       ctx.stream());
     CommonGradBroadcastCUDAKernel<T, DY_OP, Tout>
         <<<y_blocks, y_block_size, 0, ctx.stream()>>>(x_strides_array_gpu,
                                                       y_strides_array_gpu,

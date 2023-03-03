@@ -13,14 +13,10 @@
 # limitations under the License.
 
 from dist_mnist import cnn_model
-from test_dist_base import TestDistRunnerBase, runtime_main
+from test_dist_base import TestDistRunnerBase, _insert_comm_op, runtime_main
 
 import paddle
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
-from paddle.distributed.fleet.meta_optimizers import (
-    RawProgramOptimizer as RawProgram,
-)
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
@@ -62,30 +58,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         else:
             opt._learning_rate = 0.001
             opt._learning_rate_map = {}
-            opt = RawProgram(opt)
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-            strategy = paddle.distributed.fleet.DistributedStrategy()
-            opt._set_basic_info(avg_cost, role, opt, strategy)
-
-            # following code is a copy of RawProgramOptimizer.minimize except init_comm_group
-            opt.endpoints = opt.role_maker._get_trainer_endpoints()
-            opt.current_endpoint = opt.endpoints[opt.role_maker._worker_index()]
-            opt.rank = opt.role_maker._worker_index()
-            opt.nranks = opt.role_maker._worker_num()
-            startup_program = paddle.static.default_startup_program()
-            opt.startup_program = startup_program
-
-            block = avg_cost.block
-            program = block.program
-            opt.main_program = program
-
-            optimize_ops, params_grads = opt.inner_opt.minimize(
-                avg_cost, startup_program
-            )
-
-            opt.main_program = program
-            if opt.nranks > 1:
-                opt._transpile_main_program(avg_cost)
+            _insert_comm_op(opt, avg_cost)
         # Reader
         train_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size

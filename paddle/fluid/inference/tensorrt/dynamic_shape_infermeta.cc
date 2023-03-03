@@ -377,7 +377,7 @@ nvinfer1::DimsExprs GridSamplerInferMeta(
     output.d[2] = grid_dims.d[1];
     output.d[3] = grid_dims.d[2];
   } else {
-    output.nbDims = 4;
+    output.nbDims = 5;
     output.d[0] = x_dims.d[0];
     output.d[1] = x_dims.d[1];
     output.d[2] = grid_dims.d[1];

@@ -14,14 +14,10 @@
 
 from functools import reduce
 
-from test_dist_base import TestDistRunnerBase, runtime_main
+from test_dist_base import TestDistRunnerBase, _insert_comm_op, runtime_main
 
 import paddle
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
-from paddle.distributed.fleet.meta_optimizers import (
-    RawProgramOptimizer as RawProgram,
-)
 
 paddle.enable_static()
 
@@ -106,32 +102,11 @@ class TestDistMnistDGC(TestDistRunnerBase):
                 if build_strategy
                 else None,
             )
-        if build_strategy:
-            opt = RawProgram(opt)
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-            strategy = paddle.distributed.fleet.DistributedStrategy()
-            strategy.build_strategy = build_strategy
-            opt._set_basic_info(avg_cost, role, opt, strategy)
-
-            # following code is a copy of RawProgramOptimizer.minimize except init_comm_group
-            opt.endpoints = opt.role_maker._get_trainer_endpoints()
-            opt.current_endpoint = opt.endpoints[opt.role_maker._worker_index()]
-            opt.rank = opt.role_maker._worker_index()
-            opt.nranks = opt.role_maker._worker_num()
-            startup_program = paddle.static.default_startup_program()
-            opt.startup_program = startup_program
-
-            block = avg_cost.block
-            program = block.program
-            opt.main_program = program
-
-            optimize_ops, params_grads = opt.inner_opt.minimize(
-                avg_cost, startup_program
-            )
-
-            opt.main_program = program
-            if opt.nranks > 1:
-                opt._transpile_main_program(avg_cost)
+        if use_dgc:
+            assert (
+                build_strategy is not None
+            ), "build_strategy can be None with dgc"
+            _insert_comm_op(opt, avg_cost, build_strategy)
         else:
             opt.minimize(avg_cost)
 
