@@ -128,7 +128,14 @@ class _HPRecomputeFunction(PyLayer):
             raise ValueError(
                 "unsupported amp level: {}".format(tracer._amp_level)
             )
-        ctx.amp_dtype = tracer._amp_dtype
+        if tracer._amp_dtype == 'float16':
+            ctx.amp_dtype = 'float16'
+        elif tracer._amp_dtype in ('bfloat16', 'float32'):
+            ctx.amp_dtype = 'bfloat16'
+        else:
+            raise ValueError(
+                "unsupported amp dtype: {}".format(tracer._amp_dtype)
+            )
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
