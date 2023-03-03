@@ -3914,28 +3914,20 @@ def gaussian_nll_loss(
         target(Tensor): target tensor, sample from the Gaussian distribution, available dtype is float32, float64.
         var(Tensor): tensor of positive variance(s), one for each of the expectations
             in the input (heteroscedastic), or a single one (homoscedastic), available dtype is float32, float64.
-        full (bool, optional): include the constant term in the loss
+        full(bool, optional): include the constant term in the loss
             calculation. Default: ``False``.
-        eps (float, optional): value used to clamp ``var`` (see note below), for
+        eps(float, optional): value used to clamp ``var`` (see note below), for
             stability. Default: 1e-6.
-        reduction (str, optional): specifies the reduction to apply to the
+        reduction(str, optional): specifies the reduction to apply to the
             output:``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction
             will be applied, ``'mean'``: the output is the average of all batch
             member losses, ``'sum'``: the output is the sum of all batch member
             losses. Default: ``'mean'``.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-    Shape:
-        - Input: :math:`(N, *)` or :math:`(*)` where :math:`*` means any number of additional
-          dimensions
-        - Target: :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
-          but with one dimension equal to 1 (to allow for broadcasting)
-        - Var: :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
-          with one dimension equal to 1, or same shape as the input but with one fewer
-          dimension (to allow for broadcasting)
-        - Output: scalar if :attr:`reduction` is ``'mean'`` (default) or
-          ``'sum'``. If :attr:`reduction` is ``'none'``, then :math:`(N, *)`, same
-          shape as the input
+    Returns:
+
+        Output (Tensor): If ``reduction`` is ``'none'``, the shape of output is same as ``input`` , else the shape of output is [1].
 
     Examples::
         .. code-block:: python
@@ -3946,12 +3938,11 @@ def gaussian_nll_loss(
             target = paddle.randn([5, 2], dtype=paddle.float32)
             var = paddle.ones([5, 2], dtype=paddle.float32)
 
-            loss = F.multi_label_soft_margin_loss(input, target, var, reduction='none')
+            loss = F.gaussian_nll_loss(input, target, var, reduction='none')
             print(loss)
 
-            loss = F.multi_label_soft_margin_loss(input, target, var, reduction='mean')
+            loss = F.gaussian_nll_loss(input, target, var, reduction='mean')
             print(loss)
-
 
     Note:
         The clamping of ``var`` is ignored with respect to autograd, and so the

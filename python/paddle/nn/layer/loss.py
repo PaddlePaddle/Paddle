@@ -1976,10 +1976,6 @@ class GaussianNLLLoss(Layer):
     of 1 or have one fewer dimension (with all other sizes being the same) for correct broadcasting.
 
     Args:
-        input(Tensor): input tensor, expectation of the Gaussian distribution, available dtype is float32, float64.
-        target(Tensor): target tensor, sample from the Gaussian distribution, available dtype is float32, float64.
-        var(Tensor): tensor of positive variance(s), one for each of the expectations
-            in the input (heteroscedastic), or a single one (homoscedastic), available dtype is float32, float64.
         full (bool, optional): include the constant term in the loss
             calculation. Default: ``False``.
         eps (float, optional): value used to clamp ``var`` (see note below), for
@@ -1992,32 +1988,32 @@ class GaussianNLLLoss(Layer):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - Input: :math:`(N, *)` or :math:`(*)` where :math:`*` means any number of additional
+        - Input(Tensor): :math:`(N, *)` or :math:`(*)` where :math:`*` means any number of additional
           dimensions
-        - Target: :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
+        - Target(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
           but with one dimension equal to 1 (to allow for broadcasting)
-        - Var: :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
+        - Var(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
           with one dimension equal to 1, or same shape as the input but with one fewer
           dimension (to allow for broadcasting)
         - Output: scalar if :attr:`reduction` is ``'mean'`` (default) or
           ``'sum'``. If :attr:`reduction` is ``'none'``, then :math:`(N, *)`, same
           shape as the input
 
+    Returns:
+        A callable object of GaussianNLLLoss.
+
     Examples::
         .. code-block:: python
             import paddle
-            import paddle.nn.functional as F
+            import paddle.nn as nn
 
             input = paddle.randn([5, 2], dtype=paddle.float32)
             target = paddle.randn([5, 2], dtype=paddle.float32)
             var = paddle.ones([5, 2], dtype=paddle.float32)
 
-            loss = F.multi_label_soft_margin_loss(input, target, var, reduction='none')
+            gs_nll_loss = nn.GaussianNLLLoss(full=False, eps=1e-6, reduction='none')
+            loss = gs_nll_loss(input, target, var)
             print(loss)
-
-            loss = F.multi_label_soft_margin_loss(input, target, var, reduction='mean')
-            print(loss)
-
 
     Note:
         The clamping of ``var`` is ignored with respect to autograd, and so the
