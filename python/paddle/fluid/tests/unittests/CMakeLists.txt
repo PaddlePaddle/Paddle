@@ -503,8 +503,7 @@ set(TEST_OPS_WITH_GC
     test_scatter_op
     test_slice_op
     test_space_to_depth_op
-    test_squared_l2_distance_op
-    test_unsqueeze2_op)
+    test_squared_l2_distance_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -1217,7 +1216,8 @@ set(TEST_CINN_OPS
     test_elementwise_sub_op
     test_elementwise_div_op
     test_elementwise_mul_op
-    test_gather_nd_op)
+    test_gather_nd_op
+    test_unsqueeze2_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
