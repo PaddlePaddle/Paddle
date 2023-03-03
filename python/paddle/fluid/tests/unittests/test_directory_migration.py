@@ -78,7 +78,7 @@ class TestDirectory(unittest.TestCase):
             'paddle.static.Program',
             'paddle.static.name_scope',
             'paddle.static.program_guard',
-            'paddle.static.Print',
+            'paddle.incubate.nn.Print',
             'paddle.static.py_func',
             'paddle.static.ParallelExecutor',
             'paddle.static.WeightNormParamAttr',

@@ -51,7 +51,7 @@ class TestNoamDecay(unittest.TestCase):
         predict = paddle.static.nn.fc(fc3, size=2, activation="softmax")
         label = paddle.cast(label, dtype="int64")
         cost = paddle.nn.functional.cross_entropy(input=predict, label=label)
-        paddle.static.Print(cost, message="heter_cost")
+        paddle.incubate.nn.Print(cost, message="heter_cost")
         return cost
 
     def test(self):

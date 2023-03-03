@@ -1988,7 +1988,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                 outputs={'Out': cond_var},
                 attrs={OP_ROLE_KEY: OpRole.Optimize},
             )
-        # paddle.static.Print(current_step_var, message="in FWBW last conditional")
         return cond_var
 
     def _true_apply_gradient(self):
@@ -2102,9 +2101,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
             )
-
-        # lr_var = main_block.var("gradient_merge_current_step")
-        # paddle.static.Print(lr_var, message="in OPTIMIZE last conditional")
 
     def _sharding_gradient_merge(self):
         """

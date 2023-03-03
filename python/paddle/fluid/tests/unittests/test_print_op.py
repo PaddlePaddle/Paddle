@@ -37,7 +37,7 @@ class TestPrintOpCPU(unittest.TestCase):
     def build_network(self, only_forward, **kargs):
         x = paddle.static.data('x', shape=[-1, 3], dtype='float32', lod_level=1)
         x.stop_gradient = False
-        paddle.static.Print(input=x, **kargs)
+        paddle.incubate.nn.Print(input=x, **kargs)
         loss = paddle.mean(x)
         paddle.static.append_backward(loss=loss)
         return loss
@@ -66,7 +66,7 @@ class TestPrintOpCPU(unittest.TestCase):
             for print_tensor_type in [True, False]:
                 for print_tensor_shape in [True, False]:
                     for print_tensor_lod in [True, False]:
-                        paddle.static.Print(
+                        paddle.incubate.nn.Print(
                             input=x,
                             print_tensor_name=print_tensor_name,
                             print_tensor_type=print_tensor_type,
@@ -96,10 +96,10 @@ class TestPrintOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], paddle.CPUPlace()
             )
-            self.assertRaises(TypeError, paddle.static.Print, x1)
+            self.assertRaises(TypeError, paddle.incubate.nn.Print, x1)
             # The input dtype of Print_op must be float32, float64, int32_t, int64_t or bool.
             x2 = paddle.static.data(name='x2', shape=[4], dtype="float16")
-            self.assertRaises(TypeError, paddle.static.Print, x2)
+            self.assertRaises(TypeError, paddle.incubate.nn.Print, x2)
 
 
 @unittest.skipIf(
@@ -121,7 +121,7 @@ class TestPrintOpBackward(unittest.TestCase):
 
         with program_guard(main, startup):
             loss = simple_fc_net()
-            loss = paddle.static.Print(loss)
+            loss = paddle.incubate.nn.Print(loss)
             paddle.optimizer.Adam().minimize(loss)
 
         print_ops = [op for op in main.blocks[0].ops if op.type == 'print']

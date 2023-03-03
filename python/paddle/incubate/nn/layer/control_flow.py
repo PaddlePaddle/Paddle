@@ -84,7 +84,7 @@ def Print(
            paddle.enable_static()
 
            x = paddle.full(shape=[2, 3], fill_value=3, dtype='int64')
-           out = paddle.static.Print(x, message="The content of input layer:")
+           out = paddle.incubate.nn.Print(x, message="The content of input layer:")
 
            main_program = paddle.static.default_main_program()
            exe = paddle.static.Executor(place=paddle.CPUPlace())

@@ -60,7 +60,6 @@ from ..fluid.framework import Operator  # noqa: F401
 from ..fluid.framework import Parameter  # noqa: F401
 from ..fluid.framework import ipu_shard_guard  # noqa: F401
 from ..fluid.framework import set_ipu_shard  # noqa: F401
-from ..incubate.nn import Print  # noqa: F401
 from ..fluid.parallel_executor import ParallelExecutor  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
 from ..fluid.optimizer import Optimizer  # noqa: F401
@@ -92,7 +91,6 @@ __all__ = [  # noqa
     'ipu_shard_guard',
     'IpuCompiledProgram',
     'IpuStrategy',
-    'Print',
     'py_func',
     'ExecutionStrategy',
     'name_scope',
