@@ -681,6 +681,10 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
   m.def("__set_all_prim_enabled",
         &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
+  m.def("_is_eager_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsEagerPrimEnabled);
+  m.def("__set_eager_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetEagerPrimEnabled);
   m.def("_set_prim_target_grad_name",
         &paddle::prim::PrimCommonUtils::SetTargetGradName);
   m.def("set_num_threads", &platform::SetNumThreads);

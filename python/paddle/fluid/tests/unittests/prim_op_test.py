@@ -906,7 +906,7 @@ class PrimGradChecker(PrimForwardChecker):
             paddle.device.set_device("gpu:0")
         atol = self.rev_comp_atol
         rtol = self.rev_comp_rtol
-        core._set_prim_backward_enabled(self.enable_rev_comp)
+        core.set_prim_eager_enabled(self.enable_rev_comp)
         actual_ret = self.get_eager_desire()
         # check static forward
         if len(actual_ret) != len(self.eager_desire):
@@ -941,6 +941,7 @@ class PrimGradChecker(PrimForwardChecker):
                     )
                 )
                 raise RuntimeError(msg)
+        core.set_prim_eager_enabled(False)
 
     def check_static_comp(self):
         paddle.enable_static()
