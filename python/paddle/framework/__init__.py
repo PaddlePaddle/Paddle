@@ -45,7 +45,6 @@ from .io_utils import _pickle_loads_mac
 from .io_utils import _pack_loaded_dict
 from .io_utils import _unpack_saved_dict
 from .io_utils import _load_program_scope
-from ..fluid.dygraph.parallel import DataParallel  # noqa: F401
 
 from ..fluid import monkey_patch_variable
 from ..fluid.dygraph import monkey_patch_math_varbase
