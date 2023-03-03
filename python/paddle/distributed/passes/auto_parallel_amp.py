@@ -22,7 +22,7 @@ from paddle.distributed.auto_parallel.utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
 )
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.framework import core
 from paddle.static.amp.fp16_utils import (
@@ -640,7 +640,6 @@ class AMPPass(PassBase):
         return True
 
     def _check_conflict(self, other_pass):
-
         return True
 
     # NOTE: why AMPBackwardPass can override apply_single_impl instead of
@@ -727,7 +726,6 @@ class AMPPass(PassBase):
 
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
-        OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
         loss = self.get_attr("loss")
         assert loss is not None
@@ -760,13 +758,11 @@ class AMPPass(PassBase):
                 attrs={
                     "in_dtype": loss.dtype,
                     "out_dtype": core.VarDesc.VarType.FP32,
-                    'op_role': loss_op.all_attrs()[OP_ROLE_KEY],
+                    "op_role": loss_op.all_attrs()[OP_ROLE_KEY],
                 },
             )
 
-            loss_op._set_attr(
-                OP_ROLE_KEY, core.op_proto_and_checker_maker.OpRole.Forward
-            )
+            loss_op._set_attr(OP_ROLE_KEY, OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 cast_op, ref_mesh, [-1], self.dist_context
             )
@@ -798,7 +794,7 @@ class AMPPass(PassBase):
                 attrs={
                     "in_dtype": core.VarDesc.VarType.FP32,
                     "out_dtype": core.VarDesc.VarType.FP16,
-                    'op_role': core.op_proto_and_checker_maker.OpRole.Backward,
+                    "op_role": OpRole.Backward,
                 },
             )
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
@@ -835,9 +831,7 @@ class AMPPass(PassBase):
                     'op_role': loss_op.all_attrs()[OP_ROLE_KEY],
                 },
             )
-            loss_op._set_attr(
-                OP_ROLE_KEY, core.op_proto_and_checker_maker.OpRole.Forward
-            )
+            loss_op._set_attr(OP_ROLE_KEY, OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 elementwise_mul_op, ref_mesh, [-1], self.dist_context
             )
@@ -880,9 +874,7 @@ class AMPPass(PassBase):
             )
             elementwise_mul_grad_op_desc.set_output('X@GRAD', [pre_grad_name])
             elementwise_mul_grad_op_desc.set_output('Y@GRAD', [])
-            elementwise_mul_grad_op_desc._set_attr(
-                OP_ROLE_KEY, core.op_proto_and_checker_maker.OpRole.Backward
-            )
+            elementwise_mul_grad_op_desc._set_attr(OP_ROLE_KEY, OpRole.Backward)
             elementwise_mul_grad_op_desc._set_attr('axis', -1)
             elementwise_mul_grad_op = paddle.static.Operator(
                 main_block, elementwise_mul_grad_op_desc

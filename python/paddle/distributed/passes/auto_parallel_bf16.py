@@ -21,7 +21,7 @@ from paddle.distributed.auto_parallel.utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
 )
-from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.framework import core
 from paddle.static.amp.bf16 import AutoMixedPrecisionListsBF16
 from paddle.static.amp.bf16.amp_utils import (
@@ -59,12 +59,12 @@ class BF16State:
         dist_op_context = dist_context.dist_op_context
         training = False
         for op in ops:
-            if int(op.attr("op_role")) == 257:
+            if int(op.attr('op_role')) == 257:
                 training = True
 
-            if int(op.attr("op_role")) == int(OpRole.Forward):
+            if int(op.attr('op_role')) == int(OpRole.Forward):
                 self._mark_black_white_ops(amp_lists, op, ops)
-            elif int(op.attr("op_role")) == int(OpRole.Backward):
+            elif int(op.attr('op_role')) == int(OpRole.Backward):
                 if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
                     fwd_op_id = dist_op_context.grad_op_id_to_op_id[
                         op.desc.original_id()
@@ -73,12 +73,12 @@ class BF16State:
                         self._op_bf16_dict[op.desc.original_id()] = True
                     elif self._is_bf16_op(fwd_op_id) is False:
                         self._op_bf16_dict[op.desc.original_id()] = False
-            elif int(op.attr("op_role")) == int(OpRole.Optimize):
+            elif int(op.attr('op_role')) == int(OpRole.Optimize):
                 break
         return training
 
     def _mark_black_white_ops(self, amp_lists, op, ops):
-        if op.type == "create_py_reader" or op.type == "read":
+        if op.type == 'create_py_reader' or op.type == 'read':
             return
         if amp_lists.fp32_varnames is not None and _is_in_fp32_varnames(
             op, amp_lists
@@ -170,6 +170,10 @@ class BF16State:
     def _insert_cast_op_forward(
         self, op, idx, src_dtype, dst_dtype, dist_context
     ):
+        """
+        only for forward cast
+        modified from paddle.static.amp
+        """
         num_cast_ops = 0
         var_name_dict = {}
         for in_name in op.input_names:
@@ -331,7 +335,7 @@ class BF16State:
                 out_var = self._block.var(out_var_name)
                 if out_var.dtype != src_dtype:
                     out_var.desc.set_dtype(src_dtype)
-            elif int(grad_op.attr("op_role")) == 257:
+            elif int(grad_op.attr('op_role')) == 257:
                 pass
             else:
                 raise ValueError(
@@ -595,11 +599,11 @@ class BF16Pass(PassBase):
 
         with paddle.static.program_guard(main_program, startup_program):
             amp_state = BF16State(main_program.global_block())
-            training = amp_state._build_state(amp_lists, self.dist_context)
+            is_train = amp_state._build_state(amp_lists, self.dist_context)
 
             amp_state.cast_forward_program(self.dist_context)
 
-        if training:
+        if is_train:
             with paddle.static.program_guard(main_program, startup_program):
                 amp_state.cast_backward_program(params_grads, self.dist_context)
                 self._scale_loss()
@@ -608,7 +612,6 @@ class BF16Pass(PassBase):
 
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
-        OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
         loss = self.get_attr("loss")
         assert loss is not None
@@ -636,8 +639,8 @@ class BF16Pass(PassBase):
             cast_op = main_block._insert_op(
                 loss_op_idx + 1,
                 type='cast',
-                inputs={"X": [loss]},
-                outputs={"Out": [cast_loss]},
+                inputs={'X': [loss]},
+                outputs={'Out': [cast_loss]},
                 attrs={
                     "in_dtype": loss.dtype,
                     "out_dtype": core.VarDesc.VarType.FP32,
@@ -645,9 +648,7 @@ class BF16Pass(PassBase):
                 },
             )
 
-            loss_op._set_attr(
-                OP_ROLE_KEY, core.op_proto_and_checker_maker.OpRole.Forward
-            )
+            loss_op._set_attr(OP_ROLE_KEY, OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 cast_op, ref_mesh, [-1], self.dist_context
             )
@@ -679,7 +680,7 @@ class BF16Pass(PassBase):
                 attrs={
                     "in_dtype": core.VarDesc.VarType.FP32,
                     "out_dtype": core.VarDesc.VarType.BF16,
-                    'op_role': core.op_proto_and_checker_maker.OpRole.Backward,
+                    "op_role": OpRole.Backward,
                 },
             )
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
@@ -690,6 +691,10 @@ class BF16Pass(PassBase):
         main_block._sync_with_cpp()
 
     def get_loss(self):
+        # the amp / fp16 might change the effective loss variable for network and
+        # therefore would affect the subsequent passes that rely on the loss.
+        # return the effective loss after amp / fp16 pass.
+
         if self._loss:
             return self._loss
         else:
