@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+import paddle.fluid.core as core
 
 
 class TestIscloseOp(OpTest):
@@ -201,6 +202,21 @@ class TestIscloseError(unittest.TestCase):
             result = paddle.isclose(x, y, equal_nan=1)
 
         self.assertRaises(TypeError, test_equal_nan)
+
+
+class TestIscloseOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        x_data = np.random.rand(10, 10).astype('float16')
+        y_data = np.random.rand(10, 10).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
+            y = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
+            out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
 
 
 class TestIscloseOpFloat32(TestIscloseOp):

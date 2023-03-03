@@ -19,4 +19,4 @@
 #include "paddle/phi/kernels/impl/isclose_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
-    isclose, GPU, ALL_LAYOUT, phi::IscloseKernel, float, double) {}
+    isclose, GPU, ALL_LAYOUT, phi::IscloseKernel, float, double, phi::dtype::bfloat16, phi::dtype::float16) {}
