@@ -120,7 +120,7 @@ class TestExpPrimFp32(OpTest):
         self.shape = [12, 17]
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
     def set_only_prim(self):
         pass
@@ -145,7 +145,7 @@ class TestExpPrimFp16(TestExpPrimFp32):
         self.check_grad(['X'], 'Out', check_prim=True)
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 class TestExpPrim_ZeroDim(TestExpPrimFp32):
@@ -325,7 +325,7 @@ class TestSilu(TestActivation):
     def setUp(self):
         self.op_type = "silu"
         self.prim_op_type = "comp"
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.python_api = paddle.nn.functional.silu
         self.init_dtype()
         self.init_shape()
@@ -349,13 +349,14 @@ class TestSilu(TestActivation):
 class TestSilu_ZeroDim(TestSilu):
     def init_shape(self):
         self.shape = []
+        self.enable_cinn = False
 
 
 class TestSiluFP16(TestActivation):
     def setUp(self):
         self.op_type = "silu"
         self.prim_op_type = "comp"
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.only_prim = True
         self.python_api = paddle.nn.functional.silu
         self.init_dtype()
@@ -1199,7 +1200,7 @@ class TestSqrtPrimFp32(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-        self.enable_cinn = False
+        self.enable_cinn = True
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -1216,11 +1217,13 @@ class TestSqrtPrimFp32(TestActivation):
 class TestSqrt_ZeroDim(TestSqrt):
     def init_shape(self):
         self.shape = []
+        self.enable_cinn = False
 
 
 class TestSqrtPrim_ZeroDim(TestSqrt):
     def init_shape(self):
         self.shape = []
+        self.enable_cinn = False
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -1364,7 +1367,42 @@ class TestCeil_ZeroDim(TestCeil):
 class TestFloor(TestActivation):
     def setUp(self):
         self.op_type = "floor"
+        self.check_eager = True
+        self.python_api = paddle.floor
+        self.init_dtype()
+        self.init_shape()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out = np.floor(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def init_shape(self):
+        self.shape = [10, 12]
+
+    # the gradient on floor, ceil, round is undefined.
+    # we return zero as gradient, but the numpy return nan
+    # The same reason with TestFloor
+    def test_check_grad(self):
+        pass
+
+
+class TestFloor_ZeroDim(TestFloor):
+    def init_shape(self):
+        self.shape = []
+
+
+class TestFloorPrim(TestActivation):
+    def setUp(self):
+        self.op_type = "floor"
         self.prim_op_type = "prim"
+
+        # the gradient on floor, ceil, round is undefined.
+        # we return zero as gradient, but the numpy return nan.
+        # for prim, we compare result with eager python api,
+        # so, we use only_prim flag to express we only test prim.
         self.only_prim = True
         self.check_eager = True
         self.python_api = paddle.floor
@@ -1389,9 +1427,14 @@ class TestFloor(TestActivation):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
-class TestFloor_ZeroDim(TestFloor):
+class TestFloorPrim_ZeroDim(TestFloorPrim):
     def init_shape(self):
         self.shape = []
+
+
+class TestFloorPrimFp16(TestFloorPrim):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 class TestCos(TestActivation):
@@ -1530,6 +1573,8 @@ class TestSin(TestActivation, TestParameter):
         self.op_type = "sin"
         self.init_dtype()
         self.init_shape()
+        # prim not support now
+        self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -2153,6 +2198,7 @@ class TestHardSwish(TestActivation):
         self.op_type = 'hard_swish'
         self.init_dtype()
         self.init_shape()
+        self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.hardswish
 
         np.random.seed(1024)
@@ -2168,18 +2214,42 @@ class TestHardSwish(TestActivation):
         self.inputs = {'X': x}
         self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
         self.outputs = {'Out': out}
+        self.enable_cinn = False
 
     def init_shape(self):
         self.shape = [10, 12]
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_prim=True)
 
 
 class TestHardSwish_ZeroDim(TestHardSwish):
+    def setUp(self):
+        super().setUp()
+        self.enable_cinn = False
+
+    def init_shape(self):
+        self.shape = []
+
+
+class TestHardSwishFP16(TestHardSwish):
+    def setUp(self):
+        super().setUp()
+        self.only_prim = True
+        self.enable_cinn = False
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestHardSwish_ZeroDim_FP16(TestHardSwishFP16):
+    def setUp(self):
+        super().setUp()
+        self.enable_cinn = False
+
     def init_shape(self):
         self.shape = []
 

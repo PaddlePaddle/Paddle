@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/add_n_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
@@ -208,12 +207,12 @@ void AddNKernel(const Context &dev_ctx,
       auto tmp_sr_in_out_array = phi::memory_utils::Alloc(
           dev_ctx.GetPlace(), sr_in_out_data.size() * sizeof(T *));
 
-      paddle::memory::Copy(dev_ctx.GetPlace(),
-                           tmp_sr_in_out_array->ptr(),
-                           phi::CPUPlace(),
-                           reinterpret_cast<void *>(sr_in_out_data.data()),
-                           sr_in_out_data.size() * sizeof(T *),
-                           dev_ctx.stream());
+      memory_utils::Copy(dev_ctx.GetPlace(),
+                         tmp_sr_in_out_array->ptr(),
+                         phi::CPUPlace(),
+                         reinterpret_cast<void *>(sr_in_out_data.data()),
+                         sr_in_out_data.size() * sizeof(T *),
+                         dev_ctx.stream());
 
       T **sr_in_out_array_data =
           reinterpret_cast<T **>(tmp_sr_in_out_array->ptr());
@@ -229,12 +228,12 @@ void AddNKernel(const Context &dev_ctx,
     auto tmp_in_array = phi::memory_utils::Alloc(dev_ctx.GetPlace(),
                                                  in_data.size() * sizeof(T *));
 
-    paddle::memory::Copy(dev_ctx.GetPlace(),
-                         tmp_in_array->ptr(),
-                         phi::CPUPlace(),
-                         reinterpret_cast<void *>(in_data.data()),
-                         in_data.size() * sizeof(T *),
-                         dev_ctx.stream());
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       tmp_in_array->ptr(),
+                       phi::CPUPlace(),
+                       reinterpret_cast<void *>(in_data.data()),
+                       in_data.size() * sizeof(T *),
+                       dev_ctx.stream());
 
     T **in_array_data = reinterpret_cast<T **>(tmp_in_array->ptr());
     ComputeKernelParameter(lod_length);
