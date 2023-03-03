@@ -232,10 +232,9 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     PrepareWeight<int16_t>(
         graph, scope, block, mul_w, &mul_w_int16, &mul_w_max, !transpose_w);
 
+    Node* bias_fp32 = nullptr;
     if (bias != nullptr) {
-      auto* bias_tensor =
-          scope->Var(bias->Name())->GetMutable<phi::DenseTensor>();
-      CastToFp32(bias_tensor);
+      PrepareBias(graph, scope, block, bias, &bias_fp32);
     }
 
     std::string fc_out_name;
@@ -256,8 +255,8 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     fc_xpu_op_desc.SetInput("x", {mul_x->Name()});
     fc_xpu_op_desc.SetInput("w", {mul_w_int16->Name()});
     fc_xpu_op_desc.SetInput("w_max", {mul_w_max->Name()});
-    if (bias) {
-      fc_xpu_op_desc.SetInput("bias", {bias->Name()});
+    if (bias_fp32) {
+      fc_xpu_op_desc.SetInput("bias", {bias_fp32->Name()});
     }
     fc_xpu_op_desc.SetAttr(
         "in_num_col_dims",
@@ -294,7 +293,7 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     IR_NODE_LINK_TO(mul_x, fc_xpu);
     IR_NODE_LINK_TO(mul_w_int16, fc_xpu);
     IR_NODE_LINK_TO(mul_w_max, fc_xpu);
-    SAFE_IR_NODE_LINK_TO(bias, fc_xpu);
+    SAFE_IR_NODE_LINK_TO(bias_fp32, fc_xpu);
     if (act_out) {
       IR_NODE_LINK_TO(fc_xpu, act_out);
     } else if (add_out) {

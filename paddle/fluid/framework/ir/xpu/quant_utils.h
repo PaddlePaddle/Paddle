@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {

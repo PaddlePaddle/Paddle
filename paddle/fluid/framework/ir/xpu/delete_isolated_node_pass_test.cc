@@ -65,10 +65,9 @@ int WeightNodeNum(ir::Graph* graph) {
 
 int WeightTensorNum(Scope* scope) {
   int num = 0;
-  std::vector<std::string> names{
-      "matmul0_w", "matmul0_w_int16", "matmul0_w_max"};
-  for (auto name : names) {
-    if (scope->FindVar(name) != nullptr) {
+  auto vars = scope->LocalVars();
+  for (auto* var : vars) {
+    if (var->Get<phi::DenseTensor>().numel() > 0) {
       num++;
     }
   }
@@ -157,18 +156,6 @@ TEST(delete_isolated_node_pass, basic) {
                             "While op should have 3 input after "
                             "delete_isolated_node_pass, but actually has %d.",
                             while_in_names.size()));
-      std::vector<std::string> expected_in_names{matmul0_out->Name(),
-                                                 matmul0_w->Name() + "_int16",
-                                                 matmul0_w->Name() + "_max"};
-      for (auto name : expected_in_names) {
-        PADDLE_ENFORCE(
-            std::find(while_in_names.begin(), while_in_names.end(), name) !=
-                while_in_names.end(),
-            platform::errors::PreconditionNotMet(
-                "While op should have %s input after "
-                "delete_isolated_node_pass.",
-                name));
-      }
     }
   }
 

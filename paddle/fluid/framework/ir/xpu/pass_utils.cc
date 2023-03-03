@@ -20,6 +20,18 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+static void HashCombine(std::size_t* seed) {}
+
+// combine hash value
+// https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
+template <typename T, typename... Rest>
+static void HashCombine(std::size_t* seed, const T& v, Rest... rest) {
+  std::hash<T> hasher;
+  *seed ^= hasher(v) + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
+  *seed *= 0x00000100000001B3;
+  HashCombine(seed, rest...);
+}
+
 int ConvertActivationType(std::string act_type) {
   if (act_type == "") {
     return static_cast<int>(xpu::Activation_t::LINEAR);
@@ -71,90 +83,139 @@ std::string IntTypeToString<int16_t>() {
 }
 
 template <typename T>
+size_t HashTensor(const phi::DenseTensor& in) {
+  size_t ret = 0;
+  auto in_dims = in.dims();
+  HashCombine(&ret,
+              phi::DataTypeToString(in.dtype()),
+              phi::DataLayoutToString(in.layout()),
+              in_dims.size());
+  for (int i = 0; i < in_dims.size(); i++) {
+    HashCombine(&ret, in_dims[i]);
+  }
+
+  auto* data = in.data<T>();
+  int64_t size = in.numel();
+  for (int64_t i = 0; i < size; i++) {
+    HashCombine(&ret, data[i]);
+  }
+  return ret;
+}
+
+template size_t HashTensor<int16_t>(const phi::DenseTensor& in);
+template size_t HashTensor<float>(const phi::DenseTensor& in);
+
+template <typename T>
 void PrepareWeight(Graph* graph,
                    Scope* scope,
                    BlockDesc* block,
-                   Node* src_w,
-                   Node** dst_w,
-                   Node** dst_w_max,
+                   Node* src,
+                   Node** dst,
+                   Node** dst_max,
                    bool transpose) {
-  auto src_w_name = src_w->Name();
-  std::string dst_w_name = src_w_name + "_" + IntTypeToString<T>();
-  *dst_w = FindNodeWithName(graph, dst_w_name);
-  std::string dst_w_max_name = src_w_name + "_max";
-  *dst_w_max = nullptr;
+  auto src_name = src->Name();
+  auto* src_tensor = scope->Var(src_name)->GetMutable<phi::DenseTensor>();
+  phi::DenseTensor dst_tensor;
+  Assign(*src_tensor, &dst_tensor);
+  phi::DenseTensor dst_max_tensor;
+  PrepareWeight<T>(&dst_tensor, &dst_max_tensor, transpose);
 
-  if (*dst_w == nullptr) {
-    *dst_w_max = FindNodeWithName(graph, dst_w_max_name);
-    PADDLE_ENFORCE(
-        *dst_w_max == nullptr,
-        platform::errors::Fatal(
-            "dst_w_max(%s) node should be nullptr if dst_w node is nullptr.",
-            dst_w_max_name));
-    // Create dst_w node
-    // Update dst_w var_desc in block
-    auto* src_w_desc = src_w->Var();
-    VarDesc dst_w_desc(dst_w_name);
-    dst_w_desc.SetPersistable(src_w_desc->Persistable());
-    dst_w_desc.SetShape(src_w_desc->GetShape());
-    dst_w_desc.SetDataType(src_w_desc->GetDataType());
-    *dst_w = graph->CreateVarNode(&dst_w_desc);
-    auto* block_dst_w_desc = block->Var(dst_w_name);
-    block_dst_w_desc->SetPersistable(src_w_desc->Persistable());
-    block_dst_w_desc->SetShape(src_w_desc->GetShape());
-    block_dst_w_desc->SetDataType(src_w_desc->GetDataType());
-    // Create dst_w_max node
-    // Update dst_w_max var_desc in block
-    VarDesc dst_w_max_desc(dst_w_max_name);
-    dst_w_max_desc.SetPersistable(true);
-    dst_w_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
-    *dst_w_max = graph->CreateVarNode(&dst_w_max_desc);
-    auto* block_dst_w_max_desc = block->Var(dst_w_max_name);
-    block_dst_w_max_desc->SetPersistable(true);
-    block_dst_w_max_desc->SetDataType(proto::VarType::Type::VarType_Type_FP32);
+  size_t dst_hash = HashTensor<T>(dst_tensor);
+  size_t dst_max_hash = HashTensor<float>(dst_max_tensor);
+  std::string dst_name = std::to_string(dst_hash);
+  std::string dst_max_name = std::to_string(dst_max_hash);
+  *dst = FindNodeWithName(graph, dst_name);
+  if (*dst == nullptr) {
+    // Create dst node
+    // Update dst var_desc in block
+    VarDesc dst_desc(dst_name);
+    dst_desc.SetPersistable(true);
+    dst_desc.SetShape(vectorize(dst_tensor.dims()));
+    dst_desc.SetDataType(framework::TransToProtoVarType(dst_tensor.dtype()));
+    *dst = graph->CreateVarNode(&dst_desc);
+    auto* block_dst_desc = block->Var(dst_name);
+    block_dst_desc->SetPersistable(dst_desc.Persistable());
+    block_dst_desc->SetShape(dst_desc.GetShape());
+    block_dst_desc->SetDataType(dst_desc.GetDataType());
+    // Create dst_max node
+    // Update dst_max var_desc in block
+    VarDesc dst_max_desc(dst_max_name);
+    dst_max_desc.SetPersistable(true);
+    dst_max_desc.SetShape(vectorize(dst_max_tensor.dims()));
+    dst_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
+    *dst_max = graph->CreateVarNode(&dst_max_desc);
+    auto* block_dst_max_desc = block->Var(dst_max_name);
+    block_dst_max_desc->SetPersistable(dst_max_desc.Persistable());
+    block_dst_max_desc->SetShape(dst_max_desc.GetShape());
+    block_dst_max_desc->SetDataType(dst_max_desc.GetDataType());
 
-    // Find dst_w/dst_w_max variable in scope
-    auto* dst_w_var = scope->FindVar(dst_w_name);
-    if (dst_w_var == nullptr) {
-      PADDLE_ENFORCE(
-          scope->FindVar(dst_w_max_name) == nullptr,
-          platform::errors::Fatal("dst_w_max(%s) variable should be nullptr if "
-                                  "dst_w variable is nullptr.",
-                                  dst_w_max_name));
-      // Create dst_w/dst_w_max variable/tensor
-      auto* src_w_tensor =
-          scope->Var(src_w_name)->GetMutable<phi::DenseTensor>();
-      auto* dst_w_tensor =
-          scope->Var(dst_w_name)->GetMutable<phi::DenseTensor>();
-      Assign(*src_w_tensor, dst_w_tensor);
-      auto* dst_w_max_tensor =
-          scope->Var(dst_w_max_name)->GetMutable<phi::DenseTensor>();
-      PrepareWeight<int16_t>(dst_w_tensor, dst_w_max_tensor, transpose);
+    // Find dst/dst_max variable in scope
+    auto* dst_var = scope->FindVar(dst_name);
+    if (dst_var == nullptr) {
+      // Create dst/dst_max variable/tensor
+      Assign(dst_tensor, scope->Var(dst_name)->GetMutable<phi::DenseTensor>());
+      Assign(dst_max_tensor,
+             scope->Var(dst_max_name)->GetMutable<phi::DenseTensor>());
     } else {
       // Share the same variable
       PADDLE_ENFORCE_NOT_NULL(
-          scope->FindVar(dst_w_max_name),
-          platform::errors::Fatal("dst_w_max(%s) variable should not be "
-                                  "nullptr if dst_w variable is exist.",
-                                  dst_w_max_name));
+          scope->FindVar(dst_max_name),
+          platform::errors::Fatal(
+              "dst_max(%s) variable should not be nullptr if dst(%s) "
+              "variable is exist. (src_name is %s)",
+              dst_max_name,
+              dst_name,
+              src_name));
     }
   } else {
-    *dst_w_max = FindNodeWithName(graph, dst_w_max_name);
+    *dst_max = FindNodeWithName(graph, dst_max_name);
     PADDLE_ENFORCE_NOT_NULL(
-        *dst_w_max,
+        *dst_max,
         platform::errors::Fatal(
-            "dst_w_max(%s) node should not be nullptr if dst_w node is exist.",
-            dst_w_max_name));
+            "dst_max(%s) variable should not be nullptr if dst(%s) "
+            "variable is exist. (src_name is %s)",
+            dst_max_name,
+            dst_name,
+            src_name));
   }
 }
 
 template void PrepareWeight<int16_t>(Graph* graph,
                                      Scope* scope,
                                      BlockDesc* block,
-                                     Node* src_w,
-                                     Node** dst_w,
-                                     Node** dst_w_max,
+                                     Node* src,
+                                     Node** dst,
+                                     Node** dst_max,
                                      bool transpose);
+
+void PrepareBias(
+    Graph* graph, Scope* scope, BlockDesc* block, Node* src, Node** dst) {
+  auto src_name = src->Name();
+  auto* src_tensor = scope->Var(src_name)->GetMutable<phi::DenseTensor>();
+  if (src_tensor->dtype() == phi::DataType::FLOAT32) {
+    *dst = src;
+  }
+
+  phi::DenseTensor dst_tensor;
+  CastToFp32(src_tensor, &dst_tensor);
+  size_t dst_hash = HashTensor<float>(dst_tensor);
+  std::string dst_name = std::to_string(dst_hash);
+  *dst = FindNodeWithName(graph, dst_name);
+  if (*dst == nullptr) {
+    // Create dst node
+    // Update dst var_desc in block
+    VarDesc dst_desc(dst_name);
+    dst_desc.SetPersistable(true);
+    dst_desc.SetShape(vectorize(dst_tensor.dims()));
+    dst_desc.SetDataType(framework::TransToProtoVarType(dst_tensor.dtype()));
+    *dst = graph->CreateVarNode(&dst_desc);
+    auto* block_dst_desc = block->Var(dst_name);
+    block_dst_desc->SetPersistable(dst_desc.Persistable());
+    block_dst_desc->SetShape(dst_desc.GetShape());
+    block_dst_desc->SetDataType(dst_desc.GetDataType());
+    Assign(dst_tensor, scope->Var(dst_name)->GetMutable<phi::DenseTensor>());
+  }
+}
 
 }  // namespace ir
 }  // namespace framework

@@ -15,6 +15,7 @@
 #include <string>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ir/xpu/pass_utils.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace phi {
@@ -33,16 +34,22 @@ namespace ir {
 
 class DeleteIsolatedNodePass : public Pass {
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(Graph* graph) const override;
 
  private:
   void CollectReservedPersistableNodeNames(
-      ir::Graph* graph,
+      Graph* graph,
       std::unordered_set<std::string>* reserved_persistable_node_names) const;
 
-  int RemoveIsolatedNodes(ir::Graph* graph,
-                          const std::unordered_set<std::string>&
-                              reserved_persistable_node_names) const;
+  int RemoveIsolatedNodes(
+      Graph* graph,
+      const std::unordered_set<std::string>& reserved_persistable_node_names,
+      std::unordered_set<std::string>* delete_node_names) const;
+
+  int UpdateControlFlowOp(
+      Graph* graph,
+      const std::map<int, Graph*>& block_id_graph_map,
+      const std::unordered_set<std::string>& delete_node_names) const;
 
   const std::map<std::string, std::string> control_flow_op_input_map_{
       {"while", "X"},
@@ -50,7 +57,7 @@ class DeleteIsolatedNodePass : public Pass {
   };
 };
 
-void DeleteIsolatedNodePass::ApplyImpl(ir::Graph* graph) const {
+void DeleteIsolatedNodePass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   PADDLE_ENFORCE(graph->IsMainGraph(),
@@ -65,18 +72,38 @@ void DeleteIsolatedNodePass::ApplyImpl(ir::Graph* graph) const {
   }
 
   int delete_counts = 0;
+  std::unordered_set<std::string> delete_node_names;
   for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
     delete_counts += RemoveIsolatedNodes(graph->GetSubGraph(i),
-                                         reserved_persistable_node_names);
+                                         reserved_persistable_node_names,
+                                         &delete_node_names);
   }
-
   if (delete_counts > 0) {
     LOG(INFO) << "---  delete " << delete_counts << " isolated nodes";
+  }
+
+  std::map<int, Graph*> block_id_graph_map;
+  for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
+    auto* sub_graph = graph->GetSubGraph(i);
+    for (auto* node : sub_graph->Nodes()) {
+      if (node->IsVar()) {
+        block_id_graph_map[node->GetVarNodeBlockId()] = sub_graph;
+        break;
+      }
+    }
+  }
+  int update_counts = 0;
+  for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
+    update_counts += UpdateControlFlowOp(
+        graph->GetSubGraph(i), block_id_graph_map, delete_node_names);
+  }
+  if (update_counts > 0) {
+    LOG(INFO) << "---  update " << update_counts << " control flow ops";
   }
 }
 
 void DeleteIsolatedNodePass::CollectReservedPersistableNodeNames(
-    ir::Graph* graph,
+    Graph* graph,
     std::unordered_set<std::string>* reserved_persistable_node_names) const {
   for (auto* node : graph->Nodes()) {
     if (!node->IsVar() || !node->Var()->Persistable()) continue;
@@ -91,9 +118,9 @@ void DeleteIsolatedNodePass::CollectReservedPersistableNodeNames(
 }
 
 int DeleteIsolatedNodePass::RemoveIsolatedNodes(
-    ir::Graph* graph,
-    const std::unordered_set<std::string>& reserved_persistable_node_names)
-    const {
+    Graph* graph,
+    const std::unordered_set<std::string>& reserved_persistable_node_names,
+    std::unordered_set<std::string>* delete_node_names) const {
   BlockDesc* block = nullptr;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
@@ -114,6 +141,7 @@ int DeleteIsolatedNodePass::RemoveIsolatedNodes(
     auto name = node->Var()->Name();
     if (reserved_persistable_node_names.count(name) > 0) continue;
     delete_nodes.insert(node);
+    delete_node_names->insert(node->Name());
     block->RemoveVar(name);
     auto* var = scope.FindVar(name);
     if (var != nullptr) {
@@ -123,44 +151,50 @@ int DeleteIsolatedNodePass::RemoveIsolatedNodes(
     delete_node_counts++;
   }
 
-  std::unordered_map<std::string, Node*> persistable_nodes_map;
-  for (auto* node : nodes) {
-    if (node->IsVar() && node->Var()->Persistable()) {
-      persistable_nodes_map[node->Var()->Name()] = node;
-    }
-  }
+  GraphSafeRemoveNodes(graph, delete_nodes);
+  return delete_node_counts;
+}
 
-  // Update node links and inputs map of ontrol flow ops.
-  for (auto* node : nodes) {
+int DeleteIsolatedNodePass::UpdateControlFlowOp(
+    Graph* graph,
+    const std::map<int, Graph*>& block_id_graph_map,
+    const std::unordered_set<std::string>& delete_node_names) const {
+  int update_counts = 0;
+  for (auto* node : graph->Nodes()) {
     if (!node->IsOp()) continue;
     auto op_type = node->Op()->Type();
     if (control_flow_op_input_map_.count(op_type) == 0) continue;
+
     auto in_arg_name = control_flow_op_input_map_.at(op_type);
-    auto in_names = node->Op()->Inputs().at(in_arg_name);
-    std::unordered_set<std::string> in_names_set(in_names.begin(),
-                                                 in_names.end());
-    for (auto* delete_node : delete_nodes) {
-      auto delete_node_name = delete_node->Var()->Name();
-      if (in_names_set.count(delete_node_name) == 0) continue;
-      in_names_set.erase(delete_node_name);
-      std::string trans_node_name = delete_node_name + "_int16";
-      if (persistable_nodes_map.count(trans_node_name) > 0) {
-        std::string trans_node_max_name = delete_node_name + "_max";
-        auto* trans_node = persistable_nodes_map.at(trans_node_name);
-        auto* trans_max_node = persistable_nodes_map.at(trans_node_max_name);
-        in_names_set.insert(trans_node_name);
-        in_names_set.insert(trans_node_max_name);
-        IR_NODE_LINK_TO(trans_node, node);
-        IR_NODE_LINK_TO(trans_max_node, node);
+    auto in_name = node->Op()->Input(in_arg_name);
+    std::unordered_set<std::string> in_names_set(in_name.begin(),
+                                                 in_name.end());
+    for (auto delete_node_name : delete_node_names) {
+      if (in_names_set.count(delete_node_name) > 0) {
+        in_names_set.erase(delete_node_name);
       }
+    }
+
+    auto* sub_block = PADDLE_GET_CONST(framework::BlockDesc*,
+                                       node->Op()->GetAttr("sub_block"));
+    auto* sub_graph = block_id_graph_map.at(sub_block->ID());
+    std::unordered_set<std::string> persistable_node_names;
+    CollectReservedPersistableNodeNames(graph, &persistable_node_names);
+    std::unordered_set<std::string> sub_persistable_node_names;
+    CollectReservedPersistableNodeNames(sub_graph, &sub_persistable_node_names);
+    for (auto sub_name : sub_persistable_node_names) {
+      if (in_names_set.count(sub_name) > 0) continue;
+      auto* in_node = FindNodeWithName(graph, sub_name);
+      if (in_node == nullptr) continue;
+      in_names_set.insert(sub_name);
+      IR_NODE_LINK_TO(in_node, node);
     }
     std::vector<std::string> new_in_names(in_names_set.begin(),
                                           in_names_set.end());
     node->Op()->SetInput(in_arg_name, new_in_names);
+    update_counts++;
   }
-
-  GraphSafeRemoveNodes(graph, delete_nodes);
-  return delete_node_counts;
+  return update_counts;
 }
 
 }  // namespace ir
