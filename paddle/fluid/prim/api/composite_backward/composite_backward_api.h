@@ -293,6 +293,7 @@ void floor_grad(const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
 void concat_grad(const std::vector<Tensor>& x,
                  const Tensor& out_grad,
                  const Scalar& axis,
