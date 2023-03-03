@@ -47,17 +47,38 @@ class MLPLayer(nn.Layer):
 class TestFuseAdamWPass(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
+        np.random.seed(10)
         self.input_size = 30
         self.hidden_size = 50
         self.output_size = 20
         self.n = 2
+        self.range_num = 5
 
-    def get_loss_data(self, place, use_amp=False, use_apply_passes=False):
+    def get_input_x(self, use_amp):
+        x = []
+        for _ in range(self.range_num):
+            if use_amp:
+                x.append(
+                    np.random.random(size=(10, self.input_size)).astype(
+                        'float16'
+                    )
+                )
+            else:
+                x.append(
+                    np.random.random(size=(10, self.input_size)).astype(
+                        'float32'
+                    )
+                )
+
+        return x
+
+    def get_loss_data(self, place, x, use_amp=False, use_apply_passes=False):
         paddle.enable_static()
         paddle.seed(10)
-        np.random.seed(10)
+
         if place == 'cpu':
             use_amp = False
+
         exe = paddle.static.Executor(place=place)
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -73,13 +94,15 @@ class TestFuseAdamWPass(unittest.TestCase):
         with paddle.static.program_guard(train_program, startup_program):
             if use_amp:
                 data = paddle.static.data(
-                    shape=[10, 30], name='X', dtype='float16'
+                    shape=[10, self.input_size], name='X', dtype='float16'
                 )
             else:
                 data = paddle.static.data(
-                    shape=[10, 30], name='X', dtype='float32'
+                    shape=[10, self.input_size], name='X', dtype='float32'
                 )
-            model = MLPLayer(30, 50, 20, 2)
+            model = MLPLayer(
+                self.input_size, self.hidden_size, self.output_size, self.n
+            )
             out = model(data)
             loss = paddle.mean(out)
             optimizer.minimize(loss)
@@ -90,20 +113,19 @@ class TestFuseAdamWPass(unittest.TestCase):
         exe.run(startup_program)
         if use_amp:
             optimizer.amp_init(place=place, scope=paddle.static.global_scope())
-            x = np.random.random(size=(10, 30)).astype('float16')
-        else:
-            x = np.random.random(size=(10, 30)).astype('float32')
-        for _ in range(5):
+
+        for i in range(5):
             loss_data = exe.run(
-                train_program, feed={"X": x}, fetch_list=[loss.name]
+                train_program, feed={"X": x[i]}, fetch_list=[loss.name]
             )
         return loss_data
 
     def test_fuse_adamw_pass(self):
         place = paddle.CUDAPlace(0)
         for use_amp in [True, False]:
-            loss_without_passes = self.get_loss_data(place, use_amp, False)
-            loss_with_passes = self.get_loss_data(place, use_amp, True)
+            x = self.get_input_x(use_amp)
+            loss_without_passes = self.get_loss_data(place, x, use_amp, True)
+            loss_with_passes = self.get_loss_data(place, x, use_amp, False)
             np.testing.assert_allclose(
                 np.array(loss_without_passes),
                 np.array(loss_with_passes),
