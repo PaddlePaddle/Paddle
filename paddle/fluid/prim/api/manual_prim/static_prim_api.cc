@@ -41,11 +41,10 @@ template <>
 Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
-  // TODO(cxxly): Fix test_resnet_prim_cinn error when SetType("reshape2")
-  op->SetType("reshape");
+  // TODO(cxxly): move to auto generate dir.
+  op->SetType("reshape2");
   op->SetInput("X",
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  // Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
   auto out = empty<DescTensor>({}, x.dtype(), paddle::Place());
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
