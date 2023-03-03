@@ -273,6 +273,11 @@ void StridedSliceCompute(const Context& dev_ctx,
 
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->inplace_version_counter_ = xx.inplace_version_counter_;
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   auto in_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(x);
   auto out_t = EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
       *out, out_dims);
@@ -306,6 +311,11 @@ void StridedSliceCompute(const Context& dev_ctx,
                          const std::vector<int>& infer_flags,
                          const std::vector<int>& decrease_axis,
                          TensorArray* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->inplace_version_counter_ = xx.inplace_version_counter_;
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   const int64_t size = x.size();
   auto in_dims = phi::make_ddim({size});
 
