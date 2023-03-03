@@ -1040,6 +1040,7 @@ class DistributedContext:
                 "_backup_serial_main_program_stack",
                 "_backup_serial_startup_program_stack",
                 "_pass_context",
+                "_tensor_nodes_with_same_name",
             ]:
                 setattr(result, k, v)
             else:
