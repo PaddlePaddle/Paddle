@@ -1630,7 +1630,8 @@ class TheOnePSRuntime(RuntimeBase):
         return feasign_num
 
     def _save_cache_table(self, table_id, pass_id, mem_cache_key_threshold):
-        if self.role_maker._is_first_worker():
+        fleet.util.barrier()
+        if self.context['use_ps_gpu'] or self.role_maker._is_first_worker():
             self._worker.save_cache_table(
                 table_id, pass_id, mem_cache_key_threshold
             )
