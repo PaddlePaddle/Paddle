@@ -106,21 +106,13 @@ file(
   "fusion/gpu/*.cu")
 
 if(WITH_CUTLASS)
-  add_custom_target(
-    genearet_cutlass_code
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py" > "conv2d_bias_act.cu"
-    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py" >
-            "conv2d_bias_residual.cu"
+  execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
 
   file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
-  list(APPEND kernel_cu ${cutlass_cu}
-       "fusion/cutlass/conv2d/conv2d_bias_act.cu"
-       "fusion/cutlass/conv2d/conv2d_bias_residual.cu")
-else()
-  add_custom_target(
-    genearet_cutlass_code
-    COMMAND echo "Paddle is not compiled with CUTLASS third library.")
+  list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
 if(WITH_MKLDNN)
@@ -171,7 +163,6 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   kernel_declare("${kernel_cu}")
   target_link_libraries(phi_gpu ${COMMON_KERNEL_DEPS})
-  add_dependencies(phi_gpu genearet_cutlass_code)
   set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_gpu)
 endif()
 
