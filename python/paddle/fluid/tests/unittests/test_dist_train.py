@@ -25,7 +25,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers.ops as ops
 from paddle.fluid import core
-from paddle.fluid.layers.io import ListenAndServ, Recv, Send
+from paddle.incubate.nn.layer.io import ListenAndServ, Recv, Send
 
 RPC_OP_ROLE_ATTR_NAME = (
     op_role_attr_name
