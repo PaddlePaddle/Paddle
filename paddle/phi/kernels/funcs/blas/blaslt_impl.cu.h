@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
+#include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace phi {
 namespace funcs {
@@ -77,6 +78,7 @@ struct MatmulDescriptor {
               const int K,
               const bool trans_x,
               const bool trans_y,
+              phi::autotune::MatmulPlanner* planner,
               const int batch_size = 1,
               int64_t stride_x = 0,
               int64_t stride_y = 0,
@@ -115,6 +117,7 @@ struct MatmulDescriptor {
       SetBatchAndStride(y_desc, batch_size, stride_y);
       SetBatchAndStride(out_desc, batch_size, stride_out);
     }
+    SetFusedEpilogueOpDescriptor(planner, N);
   }
 
   cublasLtMatmulAlgo_t* SetAlgo() {
@@ -122,6 +125,28 @@ struct MatmulDescriptor {
     is_cached = true;
     algo = new cublasLtMatmulAlgo_t;
     return algo;
+  }
+
+  template <typename T>
+  void SetFusedEpiloguePtr(phi::autotune::MatmulPlanner* planner) {
+    if (planner->bias) {
+      const T* bias_data = static_cast<const T*>(planner->bias);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cublasLtMatmulDescSetAttribute(
+          op_desc,
+          CUBLASLT_MATMUL_DESC_BIAS_POINTER,
+          &bias_data,
+          sizeof(bias_data)));
+
+      if (planner->aux_data) {
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            dynload::cublasLtMatmulDescSetAttribute(
+                op_desc,
+                CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,
+                &(planner->aux_data),
+                sizeof(planner->aux_data)));
+      }
+    }
   }
 
   std::string GetDescResultString(std::string prefix,
@@ -178,6 +203,26 @@ struct MatmulDescriptor {
         &stride,
         sizeof(stride)));
   }
+
+  void SetFusedEpilogueOpDescriptor(
+            phi::autotune::MatmulPlanner* planner, 
+            int64_t lead_dim) {
+      if (planner->bias) {
+        auto fuse_type = static_cast<cublasLtEpilogue_t>(planner->ImplType());
+        PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
+                                  op_desc,
+                                  CUBLASLT_MATMUL_DESC_EPILOGUE,
+                                  &fuse_type,
+                                  sizeof(fuse_type)));
+        if (planner->aux_data) {
+          PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
+            op_desc,
+            CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_LD,
+            &lead_dim,
+            sizeof(lead_dim)));
+        }
+      }
+  }
 };
 
 template <typename T>
@@ -185,7 +230,7 @@ struct DescriptorSetter {
   MatmulDescriptor desc;
   size_t sub_key{std::numeric_limits<size_t>::min()};
 
-  DescriptorSetter(phi::autotune::MatmulCacheKey* matmul_key,
+  DescriptorSetter(phi::autotune::MatmulPlanner* planner,
                    const int M,
                    const int N,
                    const int K,
@@ -195,14 +240,15 @@ struct DescriptorSetter {
                    int64_t stride_x = 0,
                    int64_t stride_y = 0,
                    int64_t stride_out = 0) {
-    if (matmul_key != nullptr) {
+    if (planner != nullptr) {
       sub_key =
-          matmul_key->GenSubKey(static_cast<size_t>(matmul_key->GetImplType()));
+          planner->GenSubKey(static_cast<size_t>(planner->ImplType()));
     }
+
     auto& mamtul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
     if (mamtul_cache.FindSubKey(sub_key)) {
-      desc = *(
-          reinterpret_cast<MatmulDescriptor*>(mamtul_cache.GetSubKey(sub_key)));
+      desc = *(reinterpret_cast<MatmulDescriptor*>(mamtul_cache.GetSubKey(sub_key)));
+      desc.SetFusedEpiloguePtr<T>(planner);
       VLOG(6) << desc.GetDescResultString("[Heap MatmulDescriptor] ");
     } else {
       desc.Create<T>(M,
@@ -210,10 +256,14 @@ struct DescriptorSetter {
                      K,
                      trans_x,
                      trans_y,
+                     planner,
                      batch_size,
                      stride_x,
                      stride_y,
                      stride_out);
+      if (planner != nullptr) {
+        desc.SetFusedEpiloguePtr<T>(planner);
+      }
       VLOG(6) << desc.GetDescResultString("[Stack MatmulDescriptor] ", false);
     }
   }
@@ -233,15 +283,15 @@ struct MatmulWithCublasLt {
                   const int K,
                   const bool trans_x,
                   const bool trans_y,
-                  phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
-    auto setter = DescriptorSetter<T>(matmul_key, M, N, K, trans_x, trans_y);
+                  phi::autotune::MatmulPlanner* planner = nullptr) {
+    auto setter = DescriptorSetter<T>(planner, M, N, K, trans_x, trans_y);
     RunImpl(ctx,
             &setter.desc,
             setter.sub_key,
             x_data,
             y_data,
             out_data,
-            matmul_key);
+            planner);
   }
 
   static void RunWithBatch(
@@ -258,8 +308,8 @@ struct MatmulWithCublasLt {
       int64_t stride_x,
       int64_t stride_y,
       int64_t stride_out,
-      phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
-    auto setter = DescriptorSetter<T>(matmul_key,
+      phi::autotune::MatmulPlanner* planner = nullptr) {
+    auto setter = DescriptorSetter<T>(planner,
                                       M,
                                       N,
                                       K,
@@ -275,7 +325,7 @@ struct MatmulWithCublasLt {
             x_data,
             y_data,
             out_data,
-            matmul_key);
+            planner);
   }
 
   static void RunWithBatch(
@@ -289,7 +339,7 @@ struct MatmulWithCublasLt {
       bool trans_x,
       bool trans_y,
       int batch_size,
-      phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
+      phi::autotune::MatmulPlanner* planner = nullptr) {
     for (int i = 0; i < batch_size; ++i) {
       Run(ctx,
           x_data[i],
@@ -300,7 +350,7 @@ struct MatmulWithCublasLt {
           K,
           trans_x,
           trans_y,
-          matmul_key);
+          planner);
     }
   }
 
@@ -319,7 +369,7 @@ struct MatmulWithCublasLt {
                       const T* x_ptr,
                       const T* y_ptr,
                       T* out_ptr,
-                      phi::autotune::MatmulCacheKey* matmul_key = nullptr) {
+                      phi::autotune::MatmulPlanner* planner = nullptr) {
     MT alpha = static_cast<MT>(1);
     MT beta = static_cast<MT>(0);
 
@@ -327,9 +377,9 @@ struct MatmulWithCublasLt {
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace = GetWorkspace(ctx, workspace_size);
 
-    if (matmul_key != nullptr) {
-      if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune() &&
-          (!desc->is_cached)) {
+    if (planner != nullptr) {
+      if (phi::autotune::AutoTuneStatus::Instance().UseAutoTune()
+          && (!desc->is_cached)) {
         SearchBestAlgo(ctx,
                        cublaslt_handle,
                        desc,
