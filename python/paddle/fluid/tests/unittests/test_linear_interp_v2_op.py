@@ -481,12 +481,17 @@ class TestLinearInterpOpBF16(OpTest):
 
     def test_check_output(self):
         if platform.system() == "Linux":
-            self.check_output(atol=1e-2, check_eager=True)
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=True)
+
         else:
-            self.check_output(atol=1e-2, check_eager=True)
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
             ['X'],
             'Out',
             in_place=True,
