@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle import static
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.process_group import (
     get_world_process_group,
 )
@@ -24,7 +22,6 @@ from paddle.distributed.auto_parallel.utils import (
     set_var_dist_attr,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.passes.pass_base import PassBase, register_pass
 from paddle.framework import core
 from paddle.static.amp.bf16 import AutoMixedPrecisionListsBF16
 from paddle.static.amp.bf16.amp_utils import (
@@ -41,6 +38,7 @@ from paddle.static.amp.fp16_utils import (
 from paddle.utils import unique_name
 
 from ..auto_parallel.utils import is_backward_op, is_forward_op, is_loss_op
+from .pass_base import PassBase, register_pass
 
 world_process_group = get_world_process_group()
 
@@ -170,7 +168,7 @@ class BF16State:
         self._block._sync_with_cpp()
 
     def _insert_cast_op_forward(
-        self, op, idx, src_dtype, dst_dtype, dist_context: DistributedContext
+        self, op, idx, src_dtype, dst_dtype, dist_context
     ):
         num_cast_ops = 0
         var_name_dict = {}
@@ -595,7 +593,7 @@ class BF16Pass(PassBase):
             set(self.get_attr("custom_fp32_varnames")),
         )
 
-        with static.program_guard(main_program, startup_program):
+        with paddle.static.program_guard(main_program, startup_program):
             amp_state = BF16State(main_program.global_block())
             training = amp_state._build_state(amp_lists, self.dist_context)
 
