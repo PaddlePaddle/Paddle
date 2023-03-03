@@ -16,6 +16,10 @@ limitations under the License. */
 #include <unordered_set>
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
+#ifdef PADDLE_WITH_XPU_KP
+#include "paddle/phi/backends/xpu/xpu_op_kpfirst_list.h"
+#endif
+
 namespace phi {
 namespace backends {
 namespace xpu {
@@ -59,6 +63,23 @@ bool is_in_xpu_black_list(const std::string& fluid_op_name) {
   }
   return false;
 }
+
+#ifdef PADDLE_WITH_XPU_KP
+bool is_xpu_kp_support_op(const std::string& fluid_op_name,
+                          const phi::DataType type) {
+  if (is_in_xpu_black_list(fluid_op_name)) return false;
+  auto v = get_xpu_version(0);
+  auto& ops = (v == phi::backends::xpu::XPUVersion::XPU1)
+                  ? phi::backends::xpu::get_kl1_ops()
+                  : phi::backends::xpu::get_kp_ops();
+
+  if (ops.find(fluid_op_name) != ops.end() &&
+      ops[fluid_op_name].find(type) != ops[fluid_op_name].end()) {
+    return true;
+  }
+  return false;
+}
+#endif
 
 bool is_xpu_support_op(const std::string& fluid_op_name,
                        const phi::DataType type) {

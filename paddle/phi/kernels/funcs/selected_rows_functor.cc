@@ -14,8 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/core/mixed_vector.h"
+
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#endif
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/axpy_handler.h"
@@ -73,17 +76,17 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
             out_value->numel() / out_rows.size()));
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto out_place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(out_place),
+    PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
@@ -204,12 +207,12 @@ struct SelectedRowsAddTo<phi::CPUContext, T> {
     mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));

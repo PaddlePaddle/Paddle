@@ -28,7 +28,7 @@ from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 def flatten(nest_list):
     out = []
     for i in nest_list:
-        if isinstance(i, list or tuple):
+        if isinstance(i, (list, tuple)):
             tmp_list = flatten(i)
             for j in tmp_list:
                 out.append(j)
@@ -40,7 +40,7 @@ def flatten(nest_list):
 def _as_list(x):
     if x is None:
         return []
-    return list(x) if isinstance(x, list or tuple) else [x]
+    return list(x) if isinstance(x, (list, tuple)) else [x]
 
 
 def convert_uint16_to_float(in_list):
@@ -378,6 +378,11 @@ class PrimForwardChecker:
             )
 
     def check(self):
+        if (
+            self.place is paddle.fluid.libpaddle.CUDAPlace
+            and not paddle.is_compiled_with_cuda()
+        ):
+            return
         self.eager_desire = self.get_eager_desire()
         if self.enable_check_static_comp:
             self.check_static_comp()
@@ -773,6 +778,11 @@ class PrimGradChecker(PrimForwardChecker):
         self.checker_name = "PrimGradChecker"
 
     def check(self):
+        if (
+            self.place is paddle.fluid.libpaddle.CUDAPlace
+            and not paddle.is_compiled_with_cuda()
+        ):
+            return
         self.eager_desire = self.get_eager_desire()
         if self.enable_check_eager_comp:
             self.check_eager_comp()
@@ -896,7 +906,7 @@ class PrimGradChecker(PrimForwardChecker):
             paddle.device.set_device("gpu:0")
         atol = self.rev_comp_atol
         rtol = self.rev_comp_rtol
-        core._set_prim_backward_enabled(self.enable_rev_comp)
+        core.set_prim_eager_enabled(self.enable_rev_comp)
         actual_ret = self.get_eager_desire()
         # check static forward
         if len(actual_ret) != len(self.eager_desire):
@@ -931,6 +941,7 @@ class PrimGradChecker(PrimForwardChecker):
                     )
                 )
                 raise RuntimeError(msg)
+        core.set_prim_eager_enabled(False)
 
     def check_static_comp(self):
         paddle.enable_static()
