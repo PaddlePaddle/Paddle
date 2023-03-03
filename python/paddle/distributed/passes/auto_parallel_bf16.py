@@ -63,7 +63,7 @@ class BF16State:
                 training = True
 
             if int(op.attr('op_role')) == int(OpRole.Forward):
-                self._mark_black_white_ops(amp_lists, op, ops)
+                self._mark_fp32_bf16_ops(amp_lists, op, ops)
             elif int(op.attr('op_role')) == int(OpRole.Backward):
                 if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
                     fwd_op_id = dist_op_context.grad_op_id_to_op_id[
@@ -77,7 +77,7 @@ class BF16State:
                 break
         return training
 
-    def _mark_black_white_ops(self, amp_lists, op, ops):
+    def _mark_fp32_bf16_ops(self, amp_lists, op, ops):
         if op.type == 'create_py_reader' or op.type == 'read':
             return
         if amp_lists.fp32_varnames is not None and _is_in_fp32_varnames(
