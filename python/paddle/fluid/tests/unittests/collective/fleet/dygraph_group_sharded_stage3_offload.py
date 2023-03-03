@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import subprocess
 
 import numpy as np
 
@@ -26,6 +25,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.nn import Linear
 
 epoch = 10
@@ -217,11 +217,7 @@ def test_stage3_offload():
     # bfp16 offload
     # NOTE: this is a hack to get int format nccl version, like 2134
     # if current platform is not linux, version number will be 0
-    nccl_version_str = subprocess.check_output(
-        r"ldconfig -v | grep 'libnccl.so' | tail -n1 | sed -r 's/^.*\.so\.//'",
-        stderr=subprocess.DEVNULL,
-        shell=True,
-    ).decode('utf-8')
+    nccl_version_str = get_nccl_version_str()
     nccl_version = (
         int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
     )
