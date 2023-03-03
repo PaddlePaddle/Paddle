@@ -14,22 +14,13 @@
 
 #pragma once
 
-#include <iterator>
-#include <utility>
-
 #include "paddle/phi/core/attribute.h"
-#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/tensor_base.h"
-#include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/core/type_defs.h"
-#include "paddle/utils/optional.h"
-#include "paddle/utils/small_vector.h"
 
 namespace phi {
 
 class KernelKey;
-
+class DenseTensor;
 /**
  * Note: InferVarKernelContext is only designed to MKLDNN kernel when the
  * related memeber function 'GetKernelTypeFor' is special.
@@ -42,17 +33,17 @@ class InferVarKernelContext {
                                  const AttributeMap* attrs)
       : kernel_key_(kernel_key), attrs_(attrs) {}
 
-  const std::string& GetVarName(void) const { return *var_name_; }
+  const std::string& GetVarName(void) const;
 
-  const DenseTensor& GetTensor(void) const { return *tensor_; }
+  const DenseTensor& GetTensor(void) const;
 
-  const KernelKey& GetKernelKey(void) const { return *kernel_key_; }
+  const KernelKey& GetKernelKey(void) const;
 
-  const AttributeMap& GetAttrs(void) const { return *attrs_; }
+  const AttributeMap& GetAttrs(void) const;
 
-  void SetVarName(std::string* var_name) { this->var_name_ = var_name; }
+  void SetVarName(std::string* var_name);
 
-  void SetDenseTensor(DenseTensor* tensor) { this->tensor_ = tensor; }
+  void SetDenseTensor(DenseTensor* tensor);
 
  private:
   const KernelKey* kernel_key_;
