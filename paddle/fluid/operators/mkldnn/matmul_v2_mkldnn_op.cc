@@ -254,7 +254,7 @@ class MatMulV2MKLDNNHandler
 
     float scale_out = ComputeOutputScale(ctx);
     if (scale_out != 1.0f) {
-      matmul_attrs.set_scales_mask(DNNL_ARG_DST, 0);
+      matmul_attrs.set_scales_mask(DNNL_ARG_SRC, 0);
     }
 
     if (ctx.HasInput("ResidualData")) {
@@ -320,7 +320,7 @@ class MatMulV2MKLDNNHandler
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 
-  dnnl::memory GetOutputScaleMem() {
+  paddle::optional<dnnl::memory> GetOutputScaleMem() {
     if (output_scale_ != 1.0) {
       auto scales_md = dnnl::memory::desc(
           {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
@@ -329,7 +329,7 @@ class MatMulV2MKLDNNHandler
                           this->engine_,
                           phi::funcs::to_void_cast<float>(&output_scale_));
     } else {
-      return dnnl::memory();
+      return paddle::optional<dnnl::memory>();
     }
   }
 
@@ -379,7 +379,7 @@ class MatMulMKLDNNHandler
 
     dnnl::primitive_attr attrs;
     if (scale != 1.0f) {
-      attrs.set_scales_mask(DNNL_ARG_DST, 0);
+      attrs.set_scales_mask(DNNL_ARG_SRC, 0);
     }
 
     this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
@@ -408,8 +408,8 @@ class MatMulMKLDNNHandler
         {DNNL_ARG_DST, *dst_memory_p}};
 
     auto scales_mem = this->GetOutputScaleMem();
-    if (scales_mem.get_dec().is_zero() != true) {
-      matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scales_mem});
+    if (scales_mem.is_initialized() == true) {
+      matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, *scales_mem});
     }
 
     auto &astream = OneDNNContext::tls().get_stream();
@@ -620,6 +620,10 @@ void ExecuteMatMulV2(const ExecutionContext &ctx,
       {DNNL_ARG_WEIGHTS, *weights_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
 
+  auto scales_mem = handler.GetOutputScaleMem();
+  if (scales_mem.is_initialized() == true) {
+    matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, *scales_mem});
+  }
   if (ctx.HasInput("ResidualData")) {
     auto *residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
     const auto residual_data_memory_p = handler.AcquireSrcMemory(residual_data);
@@ -953,7 +957,7 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
         {DNNL_ARG_WEIGHTS, *weights_memory_p},
         {DNNL_ARG_DST, *dst_memory_p}};
     if (alpha != 1.0f) {
-      matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scale_mem});
+      matmul_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scale_mem});
     }
 
     auto &astream = OneDNNContext::tls().get_stream();
