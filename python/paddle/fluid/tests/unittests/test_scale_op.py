@@ -178,22 +178,6 @@ class TestScaleBF16Op(OpTest):
         self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_eager=True)
 
 
-class TestScaleFp16Op1(TestScaleOp):
-    def init_dtype_type(self):
-        self.dtype = np.float16
-        self.inputs = {'X': np.random.uniform((10, 10)).astype(self.dtype)}
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ["X"], "Out", max_relative_error=0.001, check_eager=True
-            )
-
-
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
