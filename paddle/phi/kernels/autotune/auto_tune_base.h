@@ -22,22 +22,6 @@
 namespace phi {
 namespace autotune {
 
-template <typename T>
-typename std::enable_if<std::is_same<T, float>::value,
-                        AlgorithmsCacheMap&>::type
-GatherGemmScatterGetCache() {
-  return autotune::AutoTuneCache::Instance().Get(
-      AlgorithmType::kGatherGemmScatterFP32NN);
-}
-
-template <typename T>
-typename std::enable_if<std::is_same<T, phi::dtype::float16>::value,
-                        AlgorithmsCacheMap&>::type
-GatherGemmScatterGetCache() {
-  return autotune::AutoTuneCache::Instance().Get(
-      AlgorithmType::kGatherGemmScatterFP16NN);
-}
-
 template <typename T, typename ReturnType, typename... Args>
 class KernelCallback {
  public:
@@ -99,52 +83,6 @@ class AutoTuneBase {
       } else {
         kernels_[0].Run(args...);
       }
-    }
-  }
-
-  template <typename Context>
-  void GatherGemmScatterRun(const Context& ctx,
-                            const size_t key,
-                            const T* const a,
-                            const T* const b,
-                            const T* const c,
-                            T* const d,
-                            const int& m,
-                            const int& n,
-                            const int& k,
-                            const int32_t* a_indices,
-                            const int32_t* b_indices,
-                            const int32_t* c_d_indices,
-                            T alpha,
-                            T beta) {
-    is_init_ = true;
-    CheckKernelSize();
-    auto& cache = GatherGemmScatterGetCache<T>();
-
-    if (cache.Find(key)) {
-      auto best_idx = cache.Get(key);
-      kernels_[best_idx].Run(
-          ctx, a, b, c, d, m, n, k, a_indices, c_d_indices, alpha, beta);
-
-    } else {
-      // Set alpha to 0 and beta to 1 to avoid changing the value of d when
-      // picking the best kernel
-      auto best_idx = PickBestKernel(ctx,
-                                     ctx,
-                                     a,
-                                     b,
-                                     c,
-                                     d,
-                                     m,
-                                     n,
-                                     k,
-                                     a_indices,
-                                     c_d_indices,
-                                     static_cast<T>(0),
-                                     static_cast<T>(1));
-      cache.Set(key, best_idx);
-      kernels_[best_idx].Run(
-          ctx, a, b, c, d, m, n, k, a_indices, c_d_indices, alpha, beta);
     }
   }
 
@@ -239,6 +177,84 @@ class MatmulAutoTuner
   }
 };
 
+template <typename T>
+typename std::enable_if<std::is_same<T, float>::value,
+                        AlgorithmsCacheMap&>::type
+GatherGemmScatterGetCache() {
+  return autotune::AutoTuneCache::Instance().Get(
+      AlgorithmType::kGatherGemmScatterFP32NN);
+}
+
+template <typename T>
+typename std::enable_if<std::is_same<T, phi::dtype::float16>::value,
+                        AlgorithmsCacheMap&>::type
+GatherGemmScatterGetCache() {
+  return autotune::AutoTuneCache::Instance().Get(
+      AlgorithmType::kGatherGemmScatterFP16NN);
+}
+
+template <typename T, typename ReturnType, typename... Args>
+class GatherGemmScatterAutoTuner
+    : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
+ public:
+  static GatherGemmScatterAutoTuner<T, ReturnType, Args...>* Instance(
+      ReturnType (*func)(Args...)) {
+    static std::once_flag gather_gemm_scatter_init_flag;
+    static std::unique_ptr<GatherGemmScatterAutoTuner<T, ReturnType, Args...>>
+        instance;
+    std::call_once(gather_gemm_scatter_init_flag, [&] {
+      auto obj = MakeCallback<T>(func);
+      instance.reset(new GatherGemmScatterAutoTuner<T, ReturnType, Args...>);
+      instance->AddCallBack(func);
+    });
+    return instance.get();
+  }
+  void Run(const phi::GPUContext& ctx,
+           const size_t key,
+           const T* const a,
+           const T* const b,
+           const T* const c,
+           T* const d,
+           const int& m,
+           const int& n,
+           const int& k,
+           const int32_t* a_indices,
+           const int32_t* b_indices,
+           const int32_t* c_d_indices,
+           T alpha,
+           T beta) {
+    this->is_init_ = true;
+    this->CheckKernelSize();
+    auto& cache = GatherGemmScatterGetCache<T>();
+
+    if (cache.Find(key)) {
+      auto best_idx = cache.Get(key);
+      this->kernels_[best_idx].Run(
+          ctx, a, b, c, d, m, n, k, a_indices, c_d_indices, alpha, beta);
+
+    } else {
+      // Set alpha to 0 and beta to 1 to avoid changing the value of d when
+      // picking the best kernel
+      auto best_idx = this->PickBestKernel(ctx,
+                                           ctx,
+                                           a,
+                                           b,
+                                           c,
+                                           d,
+                                           m,
+                                           n,
+                                           k,
+                                           a_indices,
+                                           c_d_indices,
+                                           static_cast<T>(0),
+                                           static_cast<T>(1));
+      cache.Set(key, best_idx);
+      this->kernels_[best_idx].Run(
+          ctx, a, b, c, d, m, n, k, a_indices, c_d_indices, alpha, beta);
+    }
+  }
+};
+
 // Define the auto_tuner inital object.
 #define DEFINE_AUTOTUNER_COMMON_OBJ(name)                                \
   template <typename T, typename ReturnType, typename... Args>           \
@@ -272,8 +288,8 @@ class MatmulAutoTuner
   DEFINE_AUTOTUNER_FN(name)
 
 DEFINE_AUTOTUNER(Transpose)
-DEFINE_AUTOTUNER(GatherGemmScatter)
 DEFINE_AUTOTUNER_FN(Matmul)
+DEFINE_AUTOTUNER_FN(GatherGemmScatter)
 
 #undef DEFINE_AUTOTUNER_COMMON_OBJECT
 #undef DEFINE_AUTOTUNER_FN

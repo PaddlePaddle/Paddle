@@ -125,12 +125,13 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
 #ifdef PADDLE_WITH_CUTLASS
   bool cutlass = true;
-  if (dev_ctx.GetComputeCapability() < 75) cutlass = false;
-  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
+  if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
+  if (in_channels % 8 != 0 || out_channels % 8 != 0) {
     if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;
-    if (std::is_same<T, float>::value) cutlass = false;
   }
+  if (std::is_same<T, double>::value) cutlass = false;
   if (!std::is_same<IntT, int32_t>::value) cutlass = false;
+
   if (cutlass) {
     auto* out_values = out->mutable_non_zero_elements();
     T* out_values_ptr = out_values->data<T>();
@@ -160,7 +161,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                      K,
                      gather_indices,
                      scatter_indices,
-                     cutlass,
+                     1.0f,
+                     1.0f,
                      x.dtype());
     }
   } else {

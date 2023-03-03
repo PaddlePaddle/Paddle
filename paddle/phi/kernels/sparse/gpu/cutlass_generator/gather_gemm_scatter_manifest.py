@@ -28,7 +28,7 @@ class GatherGemmScatterEmitOperationKindLibrary(EmitOperationKindLibrary):
         self.emitters = {
             OperationKind.Gemm: EmitGatherGemmScatterConfigurationLibrary
         }
-        self.header_template = "#pragma once\n#ifdef PADDLE_WITH_CUTLASS\n#include \"paddle/phi/kernels/sparse/gpu/common.h\"\n"
+        self.header_template = "#pragma once\n#ifdef PADDLE_WITH_CUTLASS\n#include \"paddle/phi/kernels/sparse/gpu/cutlass_generator/common.h\"\n"
         self.entry_template = ""
         self.configuration_prototype_template = ""
         self.configuration_template = ""

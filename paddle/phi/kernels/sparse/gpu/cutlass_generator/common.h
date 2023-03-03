@@ -15,7 +15,15 @@
 #pragma once
 
 #ifdef PADDLE_WITH_CUTLASS
+#include "cutlass/arch/mma.h"
+#include "cutlass/epilogue/thread/linear_combination.h"
+#include "cutlass/gemm/device/gemm_grouped.h"
+#include "cutlass/gemm/device/gemm_universal.h"
+#include "cutlass/gemm/device/gemm_universal_adapter.h"
+#include "cutlass/gemm/gemm.h"
 #include "cutlass/half.h"
+#include "cutlass/util/device_memory.h"
+#include "examples/common/helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 namespace phi {
 namespace sparse {
@@ -43,34 +51,21 @@ typedef void (*fp32_gather_gemm_scatter)(const GPUContext& dev_ctx,
                                          const int32_t* c_d_indices,
                                          float const alpha,
                                          float const beta);
-typedef void (*fp64_gather_gemm_scatter)(const GPUContext& dev_ctx,
-                                         const double* const a,
-                                         const double* const b,
-                                         const double* const c,
-                                         double* const d,
-                                         const int m,
-                                         const int n,
-                                         const int k,
-                                         const int32_t* a_indices,
-                                         const int32_t* c_d_indices,
-                                         double const alpha,
-                                         double const beta);
+
 template <typename T, typename Gemm>
-typename std::enable_if<std::is_same<T, float>::value ||
-                            std::is_same<T, double>::value,
-                        void>::type
-launchKernel(const GPUContext& dev_ctx,
-             const T* const a,
-             const T* const b,
-             const T* const c,
-             T* const d,
-             const int m,
-             const int n,
-             const int k,
-             const int32_t* a_indices,
-             const int32_t* c_d_indices,
-             T const alpha,
-             T const beta) {
+typename std::enable_if<std::is_same<T, float>::value, void>::type launchKernel(
+    const GPUContext& dev_ctx,
+    const T* const a,
+    const T* const b,
+    const T* const c,
+    T* const d,
+    const int m,
+    const int n,
+    const int k,
+    const int32_t* a_indices,
+    const int32_t* c_d_indices,
+    T const alpha,
+    T const beta) {
   cutlass::gemm::GemmCoord problem_size_real({m, n, k});
   int split_k_slices = 1;
   typename Gemm::Arguments arguments{

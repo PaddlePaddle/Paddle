@@ -54,44 +54,45 @@ def CreateGatherGemmScatterOperator(
 
     element_a, element_b, element_c, element_epilogue = data_type
 
-    alignment = 0
+    alignment_constraints = [0]
     if 'f16' == element_a.name or 'bf16' == element_a.name:
-        alignment = 8
+        alignment_constraints = [8]
     elif 'f32' == element_a.name or 'tf32' == element_a.name:
-        alignment = 4
+        alignment_constraints = [4]
     elif 'f64' == element_a.name:
-        alignment = 1
+        alignment_constraints = [1]
 
     operations = []
 
     for layout in layouts:
         for tile_description in tile_descriptions:
-            for complex_transform in complex_transforms:
+            for alignment in alignment_constraints:
+                for complex_transform in complex_transforms:
 
-                alignment_c = min(8, alignment)
+                    alignment_c = min(8, alignment)
 
-                A = TensorDescription(
-                    element_a, layout[0], alignment, complex_transform[0]
-                )
-                B = TensorDescription(
-                    element_b, layout[1], alignment, complex_transform[1]
-                )
-                C = TensorDescription(element_c, layout[2], alignment_c)
+                    A = TensorDescription(
+                        element_a, layout[0], alignment, complex_transform[0]
+                    )
+                    B = TensorDescription(
+                        element_b, layout[1], alignment, complex_transform[1]
+                    )
+                    C = TensorDescription(element_c, layout[2], alignment_c)
 
-                new_operation = GatherGemmScatterOperation(
-                    GemmKind.Universal,
-                    tile_description.minimum_compute_capability,
-                    tile_description,
-                    A,
-                    B,
-                    C,
-                    element_epilogue,
-                    epilogue_functor,
-                    swizzling_functor,
-                )
+                    new_operation = GatherGemmScatterOperation(
+                        GemmKind.Universal,
+                        tile_description.minimum_compute_capability,
+                        tile_description,
+                        A,
+                        B,
+                        C,
+                        element_epilogue,
+                        epilogue_functor,
+                        swizzling_functor,
+                    )
 
-                manifest.append(new_operation)
-                operations.append(new_operation)
+                    manifest.append(new_operation)
+                    operations.append(new_operation)
 
     return operations
 
