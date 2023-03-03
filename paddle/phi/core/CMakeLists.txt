@@ -120,6 +120,11 @@ cc_library(
   SRCS mixed_vector.cc
   DEPS device_context place memory)
 
+cc_library(
+  generator
+  SRCS generator.cc
+  DEPS enforce place)
+
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
   add_dependencies(dense_tensor mkldnn)

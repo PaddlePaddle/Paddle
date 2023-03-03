@@ -28,7 +28,6 @@
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -62,6 +61,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/split.h"
 
@@ -441,8 +441,8 @@ void AnalysisPredictor::InitDeviceContexts() {
                   .GetZeroAllocator(platform::CPUPlace())
                   .get());
           gpu_context->SetGenerator(
-              framework::DefaultCUDAGenerator(place_.GetDeviceId()).get());
-          gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
+              phi::DefaultCUDAGenerator(place_.GetDeviceId()).get());
+          gpu_context->SetHostGenerator(phi::DefaultCPUGenerator().get());
 
           gpu_context->SetStream(gpu_resource->GetStream());
           gpu_context->SetBlasHandle(gpu_resource->GetBlasHandleCreator());
@@ -1302,18 +1302,23 @@ void AnalysisPredictor::PrepareArgument() {
               << ", we will use a new PassStrategy. Note that only the GPU "
                  "backend is supported for now.";
     if (!config_.use_cinn_compiler_) {
-      pass_builder->ClearPasses();
       const auto &deleted_passes = pass_builder->GetAllDeletedPasses();
       if (config_.tensorrt_engine_enabled()) {
+        pass_builder->ClearPasses();
         for (const auto &pass : kTrtLowerPrecisionPasses) {
           if (deleted_passes.count(pass)) continue;
           pass_builder->AppendPass(pass);
         }
       } else if (config_.use_gpu()) {
+        pass_builder->ClearPasses();
         for (const auto &pass : kGpuLowerPrecisionPasses) {
           if (deleted_passes.count(pass)) continue;
           pass_builder->AppendPass(pass);
         }
+      } else if (config_.use_xpu()) {
+        // All passes support fp16. Not reset pass_builder.
+      } else {
+        pass_builder->ClearPasses();
       }
     }
   }
@@ -1496,32 +1501,6 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         }
         if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
           SetGflag("initial_cpu_memory_in_mb", "0");
-        }
-
-        // support set gflags from environment.
-        std::vector<std::string> gflags;
-        const phi::ExportedFlagInfoMap &env_map = phi::GetExportedFlagInfoMap();
-        std::ostringstream os;
-        for (auto &pair : env_map) {
-          os << pair.second.name << ",";
-        }
-        std::string tryfromenv_str = os.str();
-        if (!tryfromenv_str.empty()) {
-          tryfromenv_str.pop_back();
-          tryfromenv_str = "--tryfromenv=" + tryfromenv_str;
-          gflags.push_back(tryfromenv_str);
-        }
-        if (framework::InitGflags(gflags)) {
-          VLOG(3)
-              << "The following gpu analysis configurations only take effect "
-                 "for the first predictor: ";
-          for (const auto &gflag : gflags) {
-            VLOG(3) << gflag;
-          }
-        } else {
-          LOG(WARNING) << "The one-time configuration of analysis predictor "
-                          "failed, which may be due to native predictor called "
-                          "first and its configurations taken effect.";
         }
       });
 
@@ -2559,6 +2538,9 @@ USE_TRT_CONVERTER(preln_groupnorm_act)
 #if IS_TRT_VERSION_GE(8522)
 USE_TRT_CONVERTER(flash_multihead_matmul)
 USE_TRT_CONVERTER(cross_multihead_matmul)
+#endif
+#if IS_TRT_VERSION_GE(8510)
+USE_TRT_CONVERTER(grid_sampler)
 #endif
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(set_value)

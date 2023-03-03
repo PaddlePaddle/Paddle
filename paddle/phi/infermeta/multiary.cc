@@ -74,9 +74,12 @@ void AdagradInferMeta(const MetaTensor& param,
                       const MetaTensor& grad,
                       const MetaTensor& moment,
                       const MetaTensor& learning_rate,
+                      const MetaTensor& master_param,
                       float epsilon,
+                      bool multi_precision,
                       MetaTensor* param_out,
-                      MetaTensor* moment_out) {
+                      MetaTensor* moment_out,
+                      MetaTensor* master_param_out) {
   auto lr_dims = learning_rate.dims();
   PADDLE_ENFORCE_EQ(
       phi::product(lr_dims),
@@ -2313,14 +2316,17 @@ void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& moment,
                       const MetaTensor& learning_rate,
                       const MetaTensor& mean_grad,
+                      const MetaTensor& master_param,
                       float epsilon,
                       float decay,
                       float momentum,
                       bool centered,
+                      bool multi_precision,
                       MetaTensor* param_out,
                       MetaTensor* moment_out,
                       MetaTensor* mean_square_out,
-                      MetaTensor* mean_grad_out) {
+                      MetaTensor* mean_grad_out,
+                      MetaTensor* master_param_outs) {
   if (centered) {
     PADDLE_ENFORCE_NOT_NULL(
         mean_grad_out,

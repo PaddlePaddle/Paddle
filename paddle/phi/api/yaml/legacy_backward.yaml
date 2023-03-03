@@ -180,6 +180,7 @@
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   invoke : cast (out_grad, x.dtype())
+  composite: cast_grad(x, out_grad)
   no_need_buffer : x
 
 - backward_op : channel_shuffle_grad
@@ -206,6 +207,7 @@
     param : [x]
   kernel :
     func : concat_grad
+  composite : concat_grad(x, out_grad, axis, x_grad)
   no_need_buffer : x
   backward : concat_double_grad
 
@@ -312,6 +314,7 @@
   kernel :
     func : cumsum_grad
     data_type: x
+  composite: cumsum_grad(x, out_grad, axis, flatten, exclusive, reverse, x_grad)
 
 - backward_op : deformable_conv_grad
   forward : deformable_conv(Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step) -> Tensor(out)
@@ -378,7 +381,7 @@
     param : [x, y]
   kernel :
     func : divide_grad
-  composite : divide_grad(x, y, out, out_grad, -1)
+  composite : divide_grad(x, y, out, out_grad, axis)
   backward : divide_double_grad
 
 - backward_op : dropout_grad
@@ -412,16 +415,6 @@
     param : [x_shape]
   kernel :
     func : einsum_grad
-
-- backward_op : elementwise_heaviside_grad
-  forward : heaviside (Tensor x, Tensor y) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad, int axis = -1)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : elementwise_heaviside_grad
 
 - backward_op : elementwise_pow_grad
   forward : elementwise_pow(Tensor x, Tensor y) -> Tensor(out)
@@ -543,6 +536,7 @@
   kernel :
     data_type: x
     func : gather_grad
+  composite : gather_grad(x, index, out_grad, axis, overwrite)
   no_need_buffer : x
 
 - backward_op : group_norm_grad
@@ -568,6 +562,16 @@
   kernel :
     func : hardswish_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : heaviside_grad
+  forward : heaviside (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : heaviside_grad
 
 - backward_op : hsigmoid_loss_grad
   forward : hsigmoid_loss (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool remote_prefetch, bool is_sparse) -> Tensor(out), Tensor(pre_out), Tensor(w_out)
@@ -634,17 +638,6 @@
   kernel :
     func : kldiv_loss_grad
   no_need_buffer : x
-
-- backward_op : kron_grad
-  forward : kron (Tensor x, Tensor y) -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out_grad)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : kron_grad
-    data_type : out_grad
 
 - backward_op : layer_norm_grad
   forward : layer_norm (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis) -> Tensor(out), Tensor(mean), Tensor(variance)
@@ -730,6 +723,7 @@
     param : [x, y, grad_out]
   kernel :
     func : matmul_double_grad
+  composite : matmul_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x=false, transpose_y=false)
   backward : matmul_triple_grad
   optional : grad_x_grad, grad_y_grad
 
@@ -1182,6 +1176,7 @@
     param : [input]
   kernel :
     func : slice_grad
+  composite: slice_grad(input, out_grad, axes, starts, ends, infer_flags, decrease_axis)
   backward : slice_double_grad
   no_need_buffer : input
 
@@ -1351,6 +1346,7 @@
   kernel :
     func : transpose_grad
   backward : transpose_double_grad
+  composite: transpose_grad(out_grad, perm)
 
 - backward_op : triangular_solve_grad
   forward : triangular_solve (Tensor x, Tensor y, bool upper, bool tranpose, bool unitriangular) -> Tensor(out)

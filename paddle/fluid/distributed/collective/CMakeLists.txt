@@ -1,7 +1,7 @@
 cc_library(
   process_group
   SRCS process_group.cc
-  DEPS dense_tensor)
+  DEPS dense_tensor xxhash)
 
 cc_library(
   eager_reducer
@@ -61,5 +61,7 @@ if(WITH_CUSTOM_DEVICE)
          place
          enforce
          collective_helper
-         device_context)
+         device_context
+         comm_static_check
+         dense_tensor)
 endif()

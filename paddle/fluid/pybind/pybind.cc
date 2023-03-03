@@ -196,8 +196,12 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
+#include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/include/operants_manager.h"
+#include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
@@ -677,6 +681,10 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
   m.def("__set_all_prim_enabled",
         &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
+  m.def("_is_eager_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsEagerPrimEnabled);
+  m.def("__set_eager_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetEagerPrimEnabled);
   m.def("_set_prim_target_grad_name",
         &paddle::prim::PrimCommonUtils::SetTargetGradName);
   m.def("set_num_threads", &platform::SetNumThreads);
@@ -861,6 +869,58 @@ PYBIND11_MODULE(libpaddle, m) {
 
            Args:
                lib[string]: the libarary, could be 'phi', 'fluid' and 'all'.
+           )DOC");
+
+  m.def(
+      "_get_registered_phi_kernels",
+      [](const std::string &kernel_registered_type) {
+        std::unordered_map<std::string, std::vector<std::string>>
+            all_kernels_info;
+        auto phi_kernels = phi::KernelFactory::Instance().kernels();
+        for (auto &kernel_pair : phi_kernels) {
+          auto kernel_name = kernel_pair.first;
+          std::vector<std::string> kernel_keys;
+          for (auto &info_pair : kernel_pair.second) {
+            bool get_function_kernel =
+                kernel_registered_type == "function" &&
+                info_pair.second.GetKernelRegisteredType() ==
+                    phi::KernelRegisteredType::FUNCTION;
+            bool get_structure_kernel =
+                kernel_registered_type == "structure" &&
+                info_pair.second.GetKernelRegisteredType() ==
+                    phi::KernelRegisteredType::STRUCTURE;
+            if (kernel_registered_type == "all" || get_function_kernel ||
+                get_structure_kernel) {
+              std::ostringstream stream;
+              stream << info_pair.first;
+              std::string kernel_key_str = stream.str();
+              if (all_kernels_info.count(kernel_name)) {
+                bool kernel_exist =
+                    std::find(all_kernels_info[kernel_name].begin(),
+                              all_kernels_info[kernel_name].end(),
+                              kernel_key_str) !=
+                    all_kernels_info[kernel_name].end();
+                if (!kernel_exist) {
+                  all_kernels_info[kernel_name].emplace_back(kernel_key_str);
+                }
+              } else {
+                kernel_keys.emplace_back(kernel_key_str);
+              }
+            }
+          }
+          if (!kernel_keys.empty()) {
+            all_kernels_info.emplace(kernel_name, kernel_keys);
+          }
+        }
+
+        return all_kernels_info;
+      },
+      py::arg("kernel_registered_type") = "function",
+      R"DOC(
+           Return the registered kernels in phi.
+
+           Args:
+               kernel_registered_type[string]: the libarary, could be 'function', 'structure', and 'all'.
            )DOC");
 
   // NOTE(Aganlengzi): KernelFactory static instance is initialized BEFORE
@@ -1859,6 +1919,15 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
+  m.def("init_tensor_operants", []() {
+    paddle::OperantsManager::Instance().eager_operants.reset(
+        new paddle::prim::EagerTensorOperants());
+    paddle::OperantsManager::Instance().static_operants.reset(
+        new paddle::prim::StaticTensorOperants());
+    paddle::OperantsManager::Instance().phi_operants.reset(
+        new paddle::operants::PhiTensorOperants());
+    VLOG(4) << "Initialize tensor operants successfully";
+  });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
@@ -2453,8 +2522,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
-  m.def("enable_op_info_recorder", &paddle::platform::EnableOpInfoRecorder);
-  m.def("disable_op_info_recorder", &paddle::platform::DisableOpInfoRecorder);
+  m.def("enable_op_info_recorder", &phi::EnableOpInfoRecorder);
+  m.def("disable_op_info_recorder", &phi::DisableOpInfoRecorder);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("set_cublas_switch", platform::SetAllowTF32Cublas);

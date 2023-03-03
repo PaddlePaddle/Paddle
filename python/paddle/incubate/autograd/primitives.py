@@ -33,6 +33,7 @@ from paddle.tensor import erfinv  # noqa: F401
 from paddle.tensor import exp  # noqa: F401
 from paddle.tensor import expm1  # noqa: F401
 from paddle.tensor import full  # noqa: F401
+from paddle.tensor import greater_equal  # noqa: F401
 from paddle.tensor import lgamma  # noqa: F401
 from paddle.tensor import log  # noqa: F401
 from paddle.tensor import log1p  # noqa: F401
@@ -55,9 +56,12 @@ from paddle.tensor import subtract  # noqa: F401
 from paddle.tensor import sum  # noqa: F401
 from paddle.tensor import tan  # noqa: F401
 from paddle.tensor import tanh  # noqa: F401
+from paddle.tensor import uniform  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
 from paddle.tensor.creation import assign  # noqa: F401
 from paddle.tensor.manipulation import cast  # noqa: F401
+from paddle.tensor.math import maximum  # noqa: F401
+from paddle.tensor.math import minimum  # noqa: F401
 
 """
 math_op = [
@@ -85,6 +89,8 @@ math_op = [
     'logit',
     'max',
     'min',
+    'minimum',
+    'maximum'
 ]
 
 trigonometric_op = [
@@ -116,5 +122,7 @@ others = [
     'fill_constant',
     'reshape',
     'full',
+    'uniform',
+    'greater_equal',
 ]
 """
