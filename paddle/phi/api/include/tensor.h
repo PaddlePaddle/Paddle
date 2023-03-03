@@ -485,7 +485,7 @@ class PADDLE_API Tensor final {
    * @return false
    */
   bool defined() const;
-  
+
   bool can_not_use();
 
   /**

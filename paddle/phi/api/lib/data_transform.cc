@@ -237,6 +237,11 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
   if (tensor_in) {
     phi::DenseTensor& dense_tensor =
         *static_cast<phi::DenseTensor*>(tensor_in.get());
+    if (*dense_tensor.canNotUse) {
+      LOG(WARNING) << "Stride Test Log:"
+                   << "op_type"
+                   << "Find a Tensor Which Can Not Be Used ";
+    }
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
         (!NeedTransformPlace(
              dense_tensor.place(), target_args_def.backend, transform_flag) &&
