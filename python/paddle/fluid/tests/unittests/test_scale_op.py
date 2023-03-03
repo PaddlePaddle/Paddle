@@ -312,5 +312,67 @@ class TestScaleOpZeroNumelVariable(unittest.TestCase):
             self.assertEqual(out, data)
 
 
+class TestScaleIntOp(OpTest):
+    def setUp(self):
+        self.op_type = "scale"
+        self.python_api = paddle.scale
+        self._dtypes = [np.uint8, np.int8, np.int16, np.int32, np.int64]
+
+    def test_check_output(self):
+        for dtype in self._dtypes:
+            self.dtype = dtype
+            # `scale` be a floating number
+            self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
+            self.attrs = {'scale': 0.5}
+            self.outputs = {
+                'Out': (self.inputs['X'] * self.attrs['scale']).astype(
+                    self.dtype
+                )
+            }
+            self.check_output(check_eager=True)
+            # `scale` be an integer
+            self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
+            self.attrs = {'scale': 2}
+            self.outputs = {
+                'Out': (self.inputs['X'] * self.attrs['scale']).astype(
+                    self.dtype
+                )
+            }
+            self.check_output(check_eager=True)
+
+
+class TestScaleIntOpScaleVariable(OpTest):
+    def setUp(self):
+        self.op_type = "scale"
+        self.python_api = paddle.scale
+        self._dtypes = [np.uint8, np.int8, np.int16, np.int32, np.int64]
+
+    def test_check_output(self):
+        for dtype in self._dtypes:
+            self.dtype = dtype
+            # `scale` be a floating number
+            self.scale = 0.5
+            self.inputs = {
+                'X': np.random.random((10, 10)).astype(self.dtype),
+                'ScaleTensor': np.asarray([self.scale]).astype(self.dtype),
+            }
+            self.attrs = {}
+            self.outputs = {
+                'Out': (self.inputs['X'] * self.scale).astype(self.dtype)
+            }
+            self.check_output(check_eager=True)
+            # `scale` be an integer
+            self.scale = 2
+            self.inputs = {
+                'X': np.random.random((10, 10)).astype(self.dtype),
+                'ScaleTensor': np.asarray([self.scale]).astype(self.dtype),
+            }
+            self.attrs = {}
+            self.outputs = {
+                'Out': (self.inputs['X'] * self.scale).astype(self.dtype)
+            }
+            self.check_output(check_eager=True)
+
+
 if __name__ == "__main__":
     unittest.main()
