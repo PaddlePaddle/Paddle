@@ -469,7 +469,7 @@ __global__ void weight_sample_kernel(GpuPsCommGraph graph,
          idx_offset += stride) {
 #pragma unroll
       for (int j = 0; j < ITEMS_PER_THREAD; j++) {
-        int local_idx = BLOCK_SIZE * i + tx - sample_len;
+        int local_idx = BLOCK_SIZE * j + tx - sample_len;
         int target_idx = idx_offset + local_idx;
         if (local_idx >= 0 && target_idx < neighbor_len) {
           float thread_weight = weight[data_offset + target_idx];
@@ -1384,16 +1384,15 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
               default_value);
     } else {
       // Weighted sample.
-      constexpr int sample_count_thredshold = 1024;
+      constexpr int sample_size_thredshold = 1024;
 
       thread_local std::random_device rd;
       thread_local std::mt19937 gen(rd());
       thread_local std::uniform_int_distribution<unsigned long long> distrib;
       unsigned long long random_seed = distrib(gen);
 
-      const bool need_neighbor_count = sample_size > sample_count_thredshold;
+      const bool need_neighbor_count = sample_size > sample_size_thredshold;
       int *neighbor_count_ptr = nullptr;
-
       if (need_neighbor_count) {
         auto neighbor_count =
             memory::Alloc(place,
@@ -1409,12 +1408,13 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
         get_actual_size_and_neighbor_count<false><<<grid_size, 128, 0, cur_stream>>>(
             node_info_list, actual_size_array, nullptr, sample_size, shard_len, default_value);
       }
+      CUDA_CHECK(cudaStreamSynchronize(cur_stream));
 
       paddle::memory::ThrustAllocator<cudaStream_t> allocator(place, cur_stream);
       PADDLE_ENFORCE_GT(sample_size,
                         0,
                         platform::errors::InvalidArgument("sample_size should be greater than 0."));
-      if (sample_size > sample_count_thredshold) {
+      if (sample_size > sample_size_thredshold) {
         // To be optimized.
         thrust::exclusive_scan(thrust::cuda::par(allocator).on(cur_stream),
                                neighbor_count_ptr,
@@ -1450,7 +1450,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
             weight_sample_kernel<8, 512>,
         };
         const int block_sizes[7] = {128, 128, 256, 256, 256, 256, 512};
-        auto choose_fun_idx = [](int sample_size) {
+        auto choose_func_idx = [](int sample_size) {
           if (sample_size <= 128) {
             return 0;
           }
@@ -1463,7 +1463,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
             return 6;
           }
         };
-        int func_idx = choose_fun_idx(sample_size);
+        int func_idx = choose_func_idx(sample_size);
         int block_size = block_sizes[func_idx];
         func_array[func_idx]<<<shard_len, block_size, 0, cur_stream>>>(
             graph, node_info_list, sample_array, shard_len, sample_size, random_seed);
@@ -1820,14 +1820,14 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
           shard_len);
     } else {
       // Weighted sample.
-      constexpr int sample_count_thredshold = 1024;
+      constexpr int sample_size_thredshold = 1024;
       thread_local std::random_device rd;
       thread_local std::mt19937 gen(rd());
       thread_local std::uniform_int_distribution<unsigned long long> distrib;
       unsigned long long random_seed = distrib(gen);
       constexpr int BLOCK_SIZE = 256;
 
-      const bool need_neighbor_count = sample_size > sample_count_thredshold;
+      const bool need_neighbor_count = sample_size > sample_size_thredshold;
       int* neighbor_count_ptr = nullptr;
       if (need_neighbor_count) {
         auto neighbor_count =
@@ -1860,7 +1860,7 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
                                                nullptr, sample_size, shard_len, default_value);
         }
         paddle::memory::ThrustAllocator<cudaStream_t> allocator(place, cur_stream);
-        if (sample_size > sample_count_thredshold) {
+        if (sample_size > sample_size_thredshold) {
           // To be optimized
           thrust::exclusive_scan(thrust::cuda::par(allocator).on(cur_stream),
                                  neighbor_count_ptr,
