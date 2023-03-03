@@ -260,6 +260,7 @@ def bernoulli(shape, dtype, p, seed=0):
         dtype,
     )
 
+
 @REGISTER_COMPOSITE('hard_swish')
 def hard_swish_composite(x):
     """define composite rule of op hard_swish.
