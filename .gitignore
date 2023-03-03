@@ -92,3 +92,5 @@ paddle/fluid/pybind/eager_op_function_impl.h
 paddle/fluid/pybind/op_function_impl.h
 paddle/fluid/pybind/*final_state_op_function_impl.h
 paddle/fluid/prim/api/generated/prim_api/*
+paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_bias_act.cu
+paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_bias_residual.cu
