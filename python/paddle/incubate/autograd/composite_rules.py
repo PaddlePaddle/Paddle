@@ -314,5 +314,5 @@ def sqrt_composite(x):
     res = pow(x, 0.5)
     """
     y = paddle.full([], 0.5)
-    res = pow(x, 0.5)
+    res = pow(x, y)
     return res
