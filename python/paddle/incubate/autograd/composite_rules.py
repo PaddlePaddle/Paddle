@@ -310,6 +310,7 @@ def fill_any_like(x, fill_value, dtype, place=None):
 @REGISTER_COMPOSITE('unsqueeze2')
 def unsqueeze_composite(x, axis):
     """define composite rule of op unsqueeze"""
+    """using reshape to implement unsqueeze op"""
     x_shape = list(x.shape)
     axis_list = list(axis)
     for i in axis_list:
