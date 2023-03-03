@@ -279,8 +279,8 @@ class EagerVariable final {
  public:
   bool can_not_use() {
     auto tensor_dense = static_cast<phi::DenseTensor*>(src_tensor_.get());
-    if (tensor_dense != nullptr && tensor_dense->canNotUse != nullptr) {
-      return true;
+    if (tensor_dense != nullptr) {
+      return *tensor_dense->canNotUse == true;
     } else {
       return false;
     }

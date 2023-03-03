@@ -33,9 +33,9 @@ void UnbindKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(outs[j]);
     shape_refer.emplace_back(outs[j]);
     outs[j]->inplace_version_counter_ = xx.inplace_version_counter_;
-
-    xx.can_not_uses.push_back(outs[j]->canNotUse);
-    outs[j]->can_not_uses.push_back(xx.canNotUse);
+    outs[j]->can_not_uses = xx.can_not_uses;
+    outs[j]->can_not_uses->insert(outs[j]->canNotUse);
+    outs[j]->can_not_uses->insert(xx.canNotUse);
   }
 
   phi::funcs::SplitFunctor<Context, T> functor;

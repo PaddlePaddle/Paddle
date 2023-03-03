@@ -31,7 +31,12 @@ void TransposeGradKernel(const Context& dev_ctx,
   for (size_t i = 0; i < axis.size(); i++) {
     reversed_axis[axis[i]] = i;
   }
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  x_grad->inplace_version_counter_ = xx.inplace_version_counter_;
 
+  x_grad->can_not_uses = xx.can_not_uses;
+  x_grad->can_not_uses->insert(x_grad->canNotUse);
+  x_grad->can_not_uses->insert(xx.canNotUse);
   TransposeKernel<T, Context>(dev_ctx, out_grad, reversed_axis, x_grad);
 }
 

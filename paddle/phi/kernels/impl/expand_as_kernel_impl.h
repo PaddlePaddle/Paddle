@@ -162,8 +162,9 @@ void ExpandAsKernel(const Context& ctx,
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   out->inplace_version_counter_ = xx.inplace_version_counter_;
 
-  xx.can_not_uses.push_back(out->canNotUse);
-  out->can_not_uses.push_back(xx.canNotUse);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
 }
 
 }  // namespace phi

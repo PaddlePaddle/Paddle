@@ -26,6 +26,12 @@ void ExpandBackward(const Context& ctx,
                     const std::vector<int>& reshape_dims_vec,
                     const std::vector<int>& reduce_dims_vec,
                     DenseTensor* in_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  in_grad->inplace_version_counter_ = xx.inplace_version_counter_;
+
+  in_grad->can_not_uses = xx.can_not_uses;
+  in_grad->can_not_uses->insert(in_grad->canNotUse);
+  in_grad->can_not_uses->insert(xx.canNotUse);
   size_t reshape_size = reshape_dims_vec.size();
   size_t reduce_size = reduce_dims_vec.size();
   ctx.template Alloc<T>(in_grad);

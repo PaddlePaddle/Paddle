@@ -38,6 +38,12 @@ void ExpandAsBackward(const Context& ctx,
   }
   auto out_grad0 = EigenVector<T>::Flatten(out_grad);
   auto& place = *ctx.eigen_device();
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  in_grad->inplace_version_counter_ = xx.inplace_version_counter_;
+
+  in_grad->can_not_uses = xx.can_not_uses;
+  in_grad->can_not_uses->insert(in_grad->canNotUse);
+  in_grad->can_not_uses->insert(xx.canNotUse);
   funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
       place, x_grad, out_grad0, reduce_dims, reshape_dims);
 }

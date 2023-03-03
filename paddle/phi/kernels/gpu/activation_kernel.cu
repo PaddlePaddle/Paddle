@@ -37,10 +37,11 @@ void ActivationGPUImpl(const Context& dev_ctx,
   std::vector<DenseTensor*> outs = {out};
   funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
   // output of view_op as input of inplace op
-  if (x.IsSharedWith(*out) && x.can_not_uses.size() > 0) {
-    DenseTensor& xx = const_cast<DenseTensor&>(x);
-    for (int i = 0; i < xx.can_not_uses.size(); ++i) {
-      xx.can_not_uses[i] = std::make_shared<bool>(true);
+  if (x.IsSharedWith(*out) && x.can_not_uses->size() > 0) {
+    phi::DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+    for (auto it = xx.can_not_uses->begin(); it != xx.can_not_uses->end();
+         it++) {
+      **it = true;
     }
   }
 }

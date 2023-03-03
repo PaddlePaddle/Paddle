@@ -331,24 +331,6 @@ NameVarMap<VarType> AutoCheckNotUseInputs(const std::string& op_type,
   NameVarMap<VarType> new_ins(ins);
   if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
     for (auto& pair : new_ins) {
-      if ((op_type == "batch_norm" || op_type == "layer_norm" ||
-           op_type == "sync_batch_norm") &&
-          pair.first != "X") {
-        continue;
-      }
-      if ((op_type == "max_pool2d_with_index_grad" ||
-           op_type == "max_pool2d_with_index") &&
-          pair.first == "Mask") {
-        continue;
-      }
-
-      if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
-        if (pair.first == "LnScale" || pair.first == "LnBias" ||
-            pair.first == "Ln2Scale" || pair.first == "Ln2Bias" ||
-            pair.first == "Ln1Scale" || pair.first == "Ln1Bias") {
-          continue;
-        }
-      }
       for (auto& var : pair.second) {
         if (var->can_not_use()) {
           LOG(WARNING) << "Stride Test Log: " << op_type
@@ -369,24 +351,6 @@ NameVarMap<VarType> AutoCheckNotUseInputs(const std::string& op_type,
     }
   } else {
     for (auto& pair : new_ins) {
-      if ((op_type == "batch_norm" || op_type == "layer_norm" ||
-           op_type == "sync_batch_norm") &&
-          pair.first == "X") {
-        continue;
-      }
-      if ((op_type == "max_pool2d_with_index_grad" ||
-           op_type == "max_pool2d_with_index") &&
-          pair.first != "Mask") {
-        continue;
-      }
-      if ((op_type == "fused_attention" || op_type == "fused_feedforwad")) {
-        if (pair.first != "LnScale" && pair.first != "LnBias" &&
-            pair.first != "Ln2Scale" && pair.first != "Ln2Bias" &&
-            pair.first != "Ln1Scale" && pair.first != "Ln1Bias") {
-          continue;
-        }
-      }
-
       for (auto& var : pair.second) {
         if (var->can_not_use()) {
           LOG(WARNING) << "Stride Test Log: " << op_type

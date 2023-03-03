@@ -432,7 +432,7 @@ uint32_t Tensor::current_inplace_version() {
 bool Tensor::can_not_use() {
   if (is_dense_tensor()) {
     bool can_not_use_ =
-        static_cast<phi::DenseTensor *>(impl_.get())->canNotUse != nullptr;
+        *(static_cast<phi::DenseTensor *>(impl_.get())->canNotUse) == true;
     return can_not_use_;
   } else {
     return false;
@@ -442,13 +442,19 @@ bool Tensor::can_not_use() {
 void Tensor::set_can_not_use(std::string op_name) {
   if (is_dense_tensor()) {
     auto dense_tensor_ = static_cast<phi::DenseTensor *>(impl_.get());
-    if (dense_tensor_->can_not_uses.size() > 0) {
-      dense_tensor_->canNotUse = std::make_shared<bool>(true);
-      LOG(WARNING) << "Stride Test Log(strict):" << op_name
-                   << " share buffer tensor will be overwrited";
+    if (dense_tensor_->can_not_uses->size() > 0) {
+      for (auto it = dense_tensor_->can_not_uses->begin();
+           it != dense_tensor_->can_not_uses->end();
+           it++) {
+        **it = true;
+      }
+      //  LOG(WARNING) << "Stride Test Log(strict):" << op_name
+      //               << " share buffer tensor will be overwrited";
+      //}
     }
   }
 }
+
 void Tensor::reset_inplace_version(bool set_to_zero) {
   if (set_to_zero) {
     if (is_dense_tensor()) {

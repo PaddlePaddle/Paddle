@@ -31,7 +31,12 @@ void DiagonalGradKernel(const Context& dev_ctx,
   const auto* dout = &out_grad;
   const T* dout_data = dout->data<T>();
   auto dout_dim = vectorize(dout->dims());
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  in_grad->inplace_version_counter_ = xx.inplace_version_counter_;
 
+  in_grad->can_not_uses = xx.can_not_uses;
+  in_grad->can_not_uses->insert(in_grad->canNotUse);
+  in_grad->can_not_uses->insert(xx.canNotUse);
   auto* dx = in_grad;
   T* dx_data = dev_ctx.template Alloc<T>(dx);
   auto dx_dim = vectorize(dx->dims());
