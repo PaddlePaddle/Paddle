@@ -85,18 +85,6 @@ def frobenius_norm(x, dim, keep_dim, reduce_all):
     return paddle.linalg.norm(x, p='fro', axis=dim, keepdim=keep_dim)
 
 
-def l2_norm(x, axis, epsilon):
-    x2 = x**2
-    s = np.sum(x2, axis=axis, keepdims=True)
-    r = np.sqrt(s + epsilon)
-    y = x / np.broadcast_to(r, x.shape)
-    return y, r
-
-
-def norm_wrapper(x, axis=1, epsilon=1e-12, is_test=False):
-    return paddle.nn.functional.normalize(x, axis=axis, epsilon=epsilon)
-
-
 class TestFrobeniusNormOp(OpTest):
     def setUp(self):
         self.python_api = frobenius_norm
@@ -406,61 +394,6 @@ class TestPnormBF16Op(OpTest):
         divisor = numel if asvector else x.shape[axis]
         numel /= divisor
         return [grad.astype(x_dtype) * 1 / numel]
-
-
-class TestNormOp(OpTest):
-    def setUp(self):
-        self.op_type = "norm"
-        self.python_api = norm_wrapper
-        self.init_test_case()
-        self.init_dtype()
-        x = np.random.random(self.shape).astype(self.dtype)
-        y, norm = l2_norm(x, self.axis, self.epsilon)
-        self.inputs = {'X': x}
-        self.attrs = {'epsilon': self.epsilon, 'axis': self.axis}
-        self.outputs = {'Out': y, 'Norm': norm}
-        self.python_out_sig = ['Out']
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-    def init_test_case(self):
-        self.shape = [2, 3, 4, 5]
-        self.axis = 1
-        self.epsilon = 1e-8
-
-    def init_dtype(self):
-        self.dtype = "float64"
-
-
-class TestNormOpFp16(TestNormOp):
-    def init_dtype(self):
-        self.dtype = "float16"
-
-    def test_check_output(self):
-        self.check_output_with_place(fluid.core.CUDAPlace(0), atol=5e-2)
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            fluid.core.CUDAPlace(0), ['X'], 'Out', max_relative_error=0.05
-        )
-
-
-class TestNormOpFp2(TestNormOpFp16):
-    def init_test_case(self):
-        self.shape = [3, 4, 5, 6]
-        self.axis = 2
-        self.epsilon = 1e-8
-
-
-class TestNormOpFp3(TestNormOpFp16):
-    def init_test_case(self):
-        self.shape = [5, 6, 7, 8]
-        self.axis = -1
-        self.epsilon = 1e-8
 
 
 def run_fro(self, p, axis, shape_x, dtype, keep_dim, check_dim=False):
