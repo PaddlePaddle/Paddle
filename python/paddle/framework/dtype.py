@@ -88,7 +88,7 @@ def finfo(dtype):
 
             - min(double): The smallest representable number (typically `-max`).
             - max(double): The largest representable number.
-            - eps(double): The smallest representable number such that `1.0 + eps != 1.0`.
+            - eps(double): The smallest representable number such that `1.0 + eps ≠ 1.0`.
             - resolution(double): The approximate decimal resolution of this type, i.e., `10**-precision`.
             - smallest_normal(double): The smallest positive normal number.
             - tiny(double): The smallest positive normal number. Equivalent to smallest_normal.
