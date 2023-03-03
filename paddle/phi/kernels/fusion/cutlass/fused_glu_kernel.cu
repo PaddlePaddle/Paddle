@@ -16,8 +16,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #include "paddle/phi/kernels/fusion/cutlass/cutlass_helper.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_geglu/device/dual_gemm.h"
-#include "paddle/phi/kernels/fusion/cutlass/fused_geglu/thread/right_act_and_mul.h"
+#include "paddle/phi/kernels/fusion/cutlass/fused_glu/device/dual_gemm.h"
+#include "paddle/phi/kernels/fusion/cutlass/fused_glu/thread/right_act_and_mul.h"
 
 DECLARE_bool(gemm_use_half_precision_compute_type);
 
@@ -32,22 +32,28 @@ struct LaunchParams {
   const void* x;
   const void* weight;
   const void* bias;
-  std::string act_type; 
+  std::string act_type;
   void* output;
-  void* store_d0; 
-  void* store_d1; 
+  void* store_d0;
+  void* store_d1;
   int32_t m;
   int32_t n;
   int32_t k;
   bool requires_grad;
 };
 
-template <typename T, typename AccT, typename Arch, bool StoreD, template<typename> class ActivationType>
+template <typename T,
+          typename AccT,
+          typename Arch,
+          bool StoreD,
+          template <typename>
+          class ActivationType>
 void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
-  constexpr int kStages = 3;  // TODO(test 5?)
+  constexpr int kStages = 3;
   constexpr bool kSplitKSerial = false;
   constexpr bool kUseBias = true;
-  constexpr auto kScaleType = cutlass::epilogue::thread::ScaleType::NoBetaScaling;
+  constexpr auto kScaleType =
+      cutlass::epilogue::thread::ScaleType::NoBetaScaling;
 
   using ElementOperandA = T;
   using ElementOperandB = T;
@@ -56,9 +62,6 @@ void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
   using ElementCompute = AccT;
 
   using ThreadblockShape = cutlass::gemm::GemmShape<128, 64, 32>;
-//   using WarpShape = cutlass::gemm::GemmShape<64, 32, 32>;
-  // maybe remove instruct shape
-//   using InstructionShape = cutlass::gemm::GemmShape<16, 8, 16>;
 
   using EpilogueOutputOp0 = cutlass::epilogue::thread::LinearCombination<
       ElementOutput,
@@ -74,7 +77,7 @@ void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
       kScaleType>;
 
   using EpilogueOutputOp2 = cutlass::epilogue::thread::RightActAndMul<
-      ActivationType, 
+      ActivationType,
       ElementOutput,
       128 / cutlass::sizeof_bits<ElementOutput>::value,
       ElementOutput,
@@ -90,8 +93,6 @@ void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
       ElementAccumulator,
       Arch,
       ThreadblockShape,
-    //   WarpShape,
-    //   InstructionShape,
       EpilogueOutputOp0,
       EpilogueOutputOp1,
       EpilogueOutputOp2,
@@ -103,15 +104,19 @@ void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
 
   int split_k_slices = DualGemm::kSplitKSerial ? 2 : 1;
 
-  using TensorInputRef = typename cutlass::TensorRef<ElementOperandA const, cutlass::layout::RowMajor>;
-  using TensorStoreRef = typename cutlass::TensorRef<typename DualGemm::ElementC, typename DualGemm::LayoutC>;
-  using TensorOutRef = typename cutlass::TensorRef<ElementOperandA, cutlass::layout::RowMajor>;
+  using TensorInputRef = typename cutlass::TensorRef<ElementOperandA const,
+                                                     cutlass::layout::RowMajor>;
+  using TensorStoreRef =
+      typename cutlass::TensorRef<typename DualGemm::ElementC,
+                                  typename DualGemm::LayoutC>;
+  using TensorOutRef =
+      typename cutlass::TensorRef<ElementOperandA, cutlass::layout::RowMajor>;
 
   TensorInputRef tensor_a0(reinterpret_cast<const T*>(params.x), params.k);
-  printf("Params n is: %ld \n", params.n); 
-  TensorInputRef tensor_b0(reinterpret_cast<const T*>(params.weight), params.n * 2);
-  TensorInputRef tensor_b1(
-      reinterpret_cast<const T*>(params.weight) + params.n, params.n * 2);
+  TensorInputRef tensor_b0(reinterpret_cast<const T*>(params.weight),
+                           params.n * 2);
+  TensorInputRef tensor_b1(reinterpret_cast<const T*>(params.weight) + params.n,
+                           params.n * 2);
 
   TensorInputRef tensor_bias0(reinterpret_cast<const T*>(params.bias), 0);
   TensorInputRef tensor_bias1(
@@ -154,98 +159,113 @@ void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
 }
 
 template <typename T, typename AccT, typename Arch, bool StoreD>
-void DispatchActivationType(LaunchParams params, const phi::GPUContext& ctx){
-    if(params.act_type == "sigmoid"){
-        return LaunchGeGLUKenrel<T, AccT, Arch, StoreD, cutlass::epilogue::thread::Sigmoid>(params, ctx);
-    } else if (params.act_type == "swish") {
-        return LaunchGeGLUKenrel<T, AccT, Arch, StoreD, cutlass::epilogue::thread::SiLu>(params, ctx);
-    } else if (params.act_type == "gelu"){
-        // TODO (zhengzekang): Here we follow cublasLt to use fast gelu to compute, 
-        // it's faster but the accuracy maybe lower(it use tanh approximate algorithm). 
-        return LaunchGeGLUKenrel<T, AccT, Arch, StoreD, cutlass::epilogue::thread::GELU_taylor>(params, ctx);
-    } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-                    "Currently FusedGEGLU Kernel only accept act_type with `sigmoid`, `swish`, `gelu`. "));
-        return;
-    }
+void DispatchActivationType(LaunchParams params, const phi::GPUContext& ctx) {
+  if (params.act_type == "sigmoid") {
+    return LaunchGeGLUKenrel<T,
+                             AccT,
+                             Arch,
+                             StoreD,
+                             cutlass::epilogue::thread::Sigmoid>(params, ctx);
+  } else if (params.act_type == "swish") {
+    return LaunchGeGLUKenrel<T,
+                             AccT,
+                             Arch,
+                             StoreD,
+                             cutlass::epilogue::thread::SiLu>(params, ctx);
+  } else if (params.act_type == "gelu") {
+    // TODO(zhengzekang): Here we follow cublasLt to use fast gelu to compute,
+    // it's faster but the accuracy maybe lower(it use tanh approximate
+    // algorithm).
+    return LaunchGeGLUKenrel<T,
+                             AccT,
+                             Arch,
+                             StoreD,
+                             cutlass::epilogue::thread::GELU_taylor>(params,
+                                                                     ctx);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently FusedGLU Kernel only accept act_type with `sigmoid`, "
+        "`swish`, `gelu`. "));
+    return;
+  }
 }
 
 template <typename T, typename AccT, typename Arch>
-void DispatchStoreForBackward(LaunchParams params, const phi::GPUContext& ctx){
-    if(params.requires_grad){
-        // If x requires grad, we need to save intermediate matmul result. 
-        return DispatchActivationType<T, AccT, Arch, true>(params, ctx);
-    } else {
-        return DispatchActivationType<T, AccT, Arch, false>(params, ctx);
-    }
+void DispatchStoreForBackward(LaunchParams params, const phi::GPUContext& ctx) {
+  if (params.requires_grad) {
+    // If x requires grad, we need to save intermediate matmul result.
+    return DispatchActivationType<T, AccT, Arch, true>(params, ctx);
+  } else {
+    return DispatchActivationType<T, AccT, Arch, false>(params, ctx);
+  }
 }
 
-template<typename T, typename AccT>
-void DispatchArch(LaunchParams params, const phi::GPUContext& ctx){
+template <typename T, typename AccT>
+void DispatchArch(LaunchParams params, const phi::GPUContext& ctx) {
 #ifdef __CUDA_ARCH__
 #if __CUDA_ARCH__ >= 700 && __CUDA_ARCH__ < 750
-    return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm70>(params, ctx); 
+  return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm70>(params, ctx);
 #elif __CUDA_ARCH__ >= 750 && __CUDA_ARCH__ < 800
-    return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm75>(params, ctx); 
+  return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm75>(params, ctx);
 #elif __CUDA_ARCH__ >= 800 && __CUDA_ARCH__ < 900
-    return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm80>(params, ctx); 
+  return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm80>(params, ctx);
 #else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "Currently cutlass FusedGLU kernel only support SM70, SM75, SM80. "));
+  return;
+#endif
+#endif  // __CUDA_ARCH__
+}
+
+template <typename T>
+void DispatchAccumulateType(LaunchParams params, const phi::GPUContext& ctx) {
+  if (std::is_same<T, cutlass::half_t>::value &&
+      FLAGS_gemm_use_half_precision_compute_type) {
+    return DispatchArch<cutlass::half_t, cutlass::half_t>(params, ctx);
+  } else {
+    return DispatchArch<T, float>(params, ctx);
+  }
+}
+
+void DispatchFusedGLUKernel(LaunchParams params, const phi::GPUContext& ctx) {
+  if (params.dtype == DataType::FLOAT32) {
+    return DispatchAccumulateType<float>(params, ctx);
+    // return;
+  } else if (params.dtype == DataType::FLOAT16) {
+    return DispatchAccumulateType<cutlass::half_t>(params, ctx);
+  } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-                    "Currently cutlass FusedGEGLU kernel only support SM70, SM75, SM80. "));
+        "Currently cutlass FusedGLU kernel "
+        "only support datatype: float32 and float16. "));
     return;
-#endif 
-#endif // __CUDA_ARCH__
+  }
 }
-
-template<typename T>
-void DispatchAccumulateType(LaunchParams params, const phi::GPUContext& ctx){
-    if(std::is_same<T, cutlass::half_t>::value && FLAGS_gemm_use_half_precision_compute_type){
-      return DispatchArch<cutlass::half_t, cutlass::half_t>(params, ctx);
-    } else {
-      return DispatchArch<T, float>(params, ctx);
-    }
-}
-
-void DispatchFusedGEGLUKernel(LaunchParams params, const phi::GPUContext& ctx){
-    if(params.dtype == DataType::FLOAT32){
-        return DispatchAccumulateType<float>(params, ctx);
-        // return; 
-    } else if (params.dtype == DataType::FLOAT16) {
-        return DispatchAccumulateType<cutlass::half_t>(params, ctx);
-    } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-                            "Currently cutlass FusedGEGLU kernel "
-                            "only support datatype: float32 and float16. "));
-        return;
-    }
-}
-
 
 template <typename T, typename Context>
-void FusedGeGLUForwardKernel(const Context& ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& weight,
-                             const DenseTensor& bias,
-                             const std::string& act_type,
-                             const bool requires_grad, 
-                             DenseTensor* output, 
-                             DenseTensor* matmul_result0, 
-                             DenseTensor* matmul_result1) {
+void FusedGLUForwardKernel(const Context& ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& weight,
+                           const DenseTensor& bias,
+                           const std::string& act_type,
+                           const bool requires_grad,
+                           DenseTensor* output,
+                           DenseTensor* matmul_result0,
+                           DenseTensor* matmul_result1) {
   ctx.template Alloc<T>(output);
-  if(requires_grad){
-    // When x requires grad, we need to save the intermediate result. 
+  if (requires_grad) {
+    // When x requires grad, we need to save the intermediate result.
     ctx.template Alloc<T>(matmul_result0);
     ctx.template Alloc<T>(matmul_result1);
   }
   LaunchParams params{};
-  params.dtype = x.dtype(); 
+  params.dtype = x.dtype();
   params.x = x.data();
   params.weight = weight.data();
   params.bias = bias.data();
-  params.act_type = act_type; 
+  params.act_type = act_type;
   params.output = output->data();
-  params.store_d0 = matmul_result0->data(); 
-  params.store_d1 = matmul_result1->data(); 
+  params.store_d0 = matmul_result0->data();
+  params.store_d1 = matmul_result1->data();
 
   auto x_mat_dims = phi::flatten_to_2d(x.dims(), x.dims().size() - 1);
   const int64_t m = x_mat_dims[0];
@@ -261,20 +281,24 @@ void FusedGeGLUForwardKernel(const Context& ctx,
   params.k = k;
   params.requires_grad = requires_grad;
 
-  LaunchGeGLUKenrel<cutlass::half_t, float, cutlass::arch::Sm80, true, cutlass::epilogue::thread::SiLu>(params, ctx);
-  if(FLAGS_gemm_use_half_precision_compute_type){
-    printf("here use half ========= =\n"); 
+  LaunchGeGLUKenrel<cutlass::half_t,
+                    float,
+                    cutlass::arch::Sm80,
+                    true,
+                    cutlass::epilogue::thread::SiLu>(params, ctx);
+  if (FLAGS_gemm_use_half_precision_compute_type) {
+    printf("here use half ========= =\n");
   }
-    // DispatchFusedGEGLUKernel(params, ctx); 
+  // DispatchFusedGLUKernel(params, ctx);
 }
 
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_geglu,
+PD_REGISTER_KERNEL(fused_glu,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::cutlass_internal::FusedGeGLUForwardKernel,
+                   phi::fusion::cutlass_internal::FusedGLUForwardKernel,
                    float,
                    phi::dtype::float16) {}

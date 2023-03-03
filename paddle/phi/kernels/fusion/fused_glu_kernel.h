@@ -19,14 +19,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FusedGeGLUForwardKernel(const Context& ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& weight,
-                             const DenseTensor& bias,
-                             const std::string& act_type,
-                             const bool requires_grad, 
-                             DenseTensor* output, 
-                             DenseTensor* matmul_result0, 
-                             DenseTensor* matmul_result1);
+void FusedGLUForwardKernel(const Context& ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& weight,
+                           const DenseTensor& bias,
+                           const std::string& act_type,
+                           const bool requires_grad,
+                           DenseTensor* output,
+                           DenseTensor* matmul_result0,
+                           DenseTensor* matmul_result1);
 
 }  // namespace phi
