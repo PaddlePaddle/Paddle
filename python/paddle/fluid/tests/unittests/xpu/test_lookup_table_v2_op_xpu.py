@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,204 +18,94 @@ import unittest
 import numpy as np
 
 sys.path.append("..")
-from op_test import OpTest, skip_check_grad_ci
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-from paddle.fluid.op import Operator
 
 paddle.enable_static()
 
 
-class TestLookupTableOp(OpTest):
-    def setUp(self):
-        self.op_type = "lookup_table_v2"
-        table = np.random.random((17, 31)).astype("float64")
-        ids = np.random.randint(0, 17, 4).astype("int64")
-        self.inputs = {'W': table, 'Ids': ids}
-        self.outputs = {'Out': table[ids]}
+class XPUTestLookupTableOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'lookup_table_v2'
+        self.use_dynamic_create_class = False
 
-    def test_check_output_with_place(self):
-        self.check_output_with_place(place=paddle.XPUPlace(0))
+    class TestLookupTableOPBase(XPUOpTest):
+        def setUp(self):
+            self.place = paddle.XPUPlace(0)
+            self.init_dtype()
+            self.op_type = 'lookup_table_v2'
+            self.init_config()
+            self.set_case()
 
-    def test_check_grad(self):
-
-        self.check_grad_with_place(
-            inputs_to_check=['W'],
-            output_names='Out',
-            no_grad_set=set('Ids'),
-            place=paddle.XPUPlace(0),
-            in_place=True,
-        )
-
-
-class TestLookupTableOpWithTensorIds(OpTest):
-    def setUp(self):
-        self.op_type = "lookup_table_v2"
-        table = np.random.random((17, 31)).astype("float64")
-        ids = np.random.randint(low=0, high=17, size=(2, 4, 5)).astype("int32")
-        self.inputs = {'W': table, 'Ids': ids}
-        self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.XPUPlace(0))
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            inputs_to_check=['W'],
-            output_names='Out',
-            no_grad_set=set('Ids'),
-            place=paddle.XPUPlace(0),
-            in_place=True,
-        )
-
-
-@skip_check_grad_ci(
-    reason="Since paddings are not trainable and fixed in forward,"
-    "the gradient of paddings makes no sense and we don't "
-    "test the gradient here."
-)
-class TestLookupTableOpWithPadding(TestLookupTableOp):
-    def test_check_output(self):
-        ids = np.squeeze(self.inputs['Ids'])
-        padding_idx = np.random.choice(ids, 1)[0]
-        self.outputs['Out'][ids == padding_idx] = np.zeros(31)
-        self.attrs = {'padding_idx': int(padding_idx)}
-        self.check_output_with_place(place=paddle.XPUPlace(0))
-
-
-@skip_check_grad_ci(
-    reason="Since paddings are not trainable and fixed in forward,"
-    "the gradient of paddings makes no sense and we don't "
-    "test the gradient here."
-)
-class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
-    def test_check_output(self):
-        ids = self.inputs['Ids']
-        flatten_idx = ids.flatten()
-        padding_idx = np.random.choice(flatten_idx, 1)[0]
-        self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
-        self.attrs = {'padding_idx': padding_idx}
-        self.check_output_with_place(place=paddle.XPUPlace(0))
-
-
-class TestLookupTableWIsSelectedRows(unittest.TestCase):
-    def prepare_ids(self, scope, place):
-        ids_tensor = scope.var('Ids').get_tensor()
-        ids_array = np.array([0, 4, 3, 5]).astype("int64")
-        ids_tensor.set(ids_array, place)
-        return ids_array
-
-    def prepare_w(self, scope, place):
-        rows = [0, 1, 2, 3, 4, 5, 6]
-        row_numel = 12
-        w_selected_rows = scope.var('W')
-        w_array = np.ones((len(rows), row_numel)).astype("float32")
-        for i in range(len(rows)):
-            w_array[i] *= i
-        w_tensor = w_selected_rows.get_tensor()
-        w_tensor.set(w_array, place)
-
-    def create_out_tensor(self, scope, place):
-        return scope.var('Out').get_tensor()
-
-    def check_result(self, ids_array, result_array):
-        # all(): return True if all elements of the iterable are true (or if the iterable is empty)
-        for idx, row in enumerate(ids_array):
-            assert (row == result_array[idx]).all()
-
-    def check_with_place(self, place):
-        scope = core.Scope()
-        ids_array = self.prepare_ids(scope, place)
-
-        self.prepare_w(scope, place)
-
-        out_tensor = self.create_out_tensor(scope, place)
-
-        # create and run lookup_table_v2 operator
-        lookup_table = Operator("lookup_table_v2", W='W', Ids='Ids', Out='Out')
-        lookup_table.run(scope, place)
-
-        # get result from Out
-        result_array = np.array(out_tensor)
-
-        self.check_result(ids_array, result_array)
-
-    def test_w_is_selected_rows(self):
-        places = [paddle.XPUPlace(0)]
-        for place in places:
-            self.check_with_place(place)
-
-
-class TestLookupTableWithTensorIdsWIsSelectedRows(
-    TestLookupTableWIsSelectedRows
-):
-    def prepare_ids(self, scope, place):
-        ids_tensor = scope.var('Ids').get_tensor()
-        ids_array = np.random.randint(low=0, high=6, size=(2, 4, 3)).astype(
-            "int64"
-        )
-        ids_tensor.set(ids_array, place)
-        return ids_array
-
-    def check_result(self, ids_array, result_array):
-        for idx, row in np.ndenumerate(ids_array):
-            assert (row == result_array[idx]).all()
-
-
-class TestLookupTableApi(unittest.TestCase):
-    def test_api(self):
-        x = paddle.static.data(name='x', shape=[-1, 20], dtype='int64')
-        emb = paddle.static.nn.embedding(input=x, size=[128, 64])
-
-        place = paddle.XPUPlace(0)
-        x_data = np.random.randint(0, 127, [2, 20]).astype("int64")
-
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        ret = exe.run(
-            feed={
-                'x': x_data,
-            },
-            fetch_list=[emb],
-            return_numpy=False,
-        )
-
-
-class TestEmbedOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            input_data = np.random.randint(0, 10, (4, 6)).astype("int64")
-
-            def test_Variable():
-                # the input type must be Variable
-                paddle.static.nn.embedding(input=input_data, size=(10, 64))
-
-            self.assertRaises(TypeError, test_Variable)
-
-            def test_input_dtype():
-                # the input dtype must be int64
-                input = fluid.data(name='x1', shape=[4, 6], dtype='float32')
-                paddle.static.nn.embedding(input=input, size=(10, 64))
-
-            self.assertRaises(TypeError, test_input_dtype)
-
-            def test_param_dtype():
-                # dtype must be float32 or float64
-                input2 = fluid.data(name='x2', shape=[4, 6], dtype='int64')
-                paddle.static.nn.embedding(
-                    input=input2, size=(10, 64), dtype='int64'
-                )
-
-            self.assertRaises(TypeError, test_param_dtype)
-            input3 = fluid.data(name='x3', shape=[4, 6], dtype='int64')
-            paddle.static.nn.embedding(
-                input=input3, size=(10, 64), dtype='float16'
+        def set_case(self):
+            table = np.random.random(self.input_shape).astype(self.dtype)
+            ids = np.random.randint(0, self.id_range, self.id_count).astype(
+                self.id_dtype
             )
+            self.inputs = {'W': table, 'Ids': ids}
+            self.outputs = {'Out': table[ids]}
 
+        def init_dtype(self):
+            self.dtype = self.in_type
+
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
+
+        def init_config(self):
+            self.input_shape = (17, 31)
+            self.id_range = 17
+            self.id_count = 4
+            self.id_dtype = "int32"
+
+    class XPUTestLookupTable1(TestLookupTableOPBase):
+        def init_config(self):
+            self.input_shape = (25, 52)
+            self.id_range = 25
+            self.id_count = 14
+            self.id_dtype = "int64"
+
+    class TestLookupTableOpWithTensorIds(TestLookupTableOPBase):
+        def set_case(self):
+            table = np.random.random((17, 31)).astype(self.dtype)
+            ids = np.random.randint(low=0, high=17, size=(2, 4, 5)).astype(
+                self.id_dtype
+            )
+            self.inputs = {'W': table, 'Ids': ids}
+            self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
+
+    class TestLookupTableOpWithPadding(TestLookupTableOPBase):
+        def test_check_output(self):
+            ids = np.squeeze(self.inputs['Ids'])
+            padding_idx = np.random.choice(ids, 1)[0]
+            self.outputs['Out'][ids == padding_idx] = np.zeros(31)
+            self.attrs = {'padding_idx': int(padding_idx)}
+            self.check_output_with_place(self.place)
+
+    class TestLookupTableOpWithTensorIdsAndPadding(
+        TestLookupTableOpWithTensorIds
+    ):
+        def test_check_output(self):
+            ids = self.inputs['Ids']
+            flatten_idx = ids.flatten()
+            padding_idx = np.random.choice(flatten_idx, 1)[0]
+            self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
+            self.attrs = {'padding_idx': padding_idx}
+            self.check_output_with_place(self.place)
+
+
+support_types = get_xpu_op_support_types('lookup_table_v2')
+for stype in support_types:
+    create_test_class(globals(), XPUTestLookupTableOP, stype)
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

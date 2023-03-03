@@ -26,6 +26,7 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         xnp = np.random.random((5, 20)).astype("float64")
         self.inputs = {'X': xnp, 'Index': np.array([[], []]).astype("int32")}
@@ -37,12 +38,13 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestGatherNdOpWithIndex1(OpTest):
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         xnp = np.random.random((5, 20)).astype("float64")
         self.inputs = {'X': xnp, 'Index': np.array([1]).astype("int32")}
@@ -60,7 +62,9 @@ class TestGatherNdOpWithLowIndex(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1], [2]]).astype("int64")
 
@@ -74,7 +78,7 @@ class TestGatherNdOpWithLowIndex(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestGatherNdOpIndex1(OpTest):
@@ -82,6 +86,7 @@ class TestGatherNdOpIndex1(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([1, 2]).astype("int32")
@@ -102,7 +107,9 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1, 1], [2, 1]]).astype("int64")
 
@@ -113,7 +120,7 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestGatherNdOpWithHighRankSame(OpTest):
@@ -121,6 +128,7 @@ class TestGatherNdOpWithHighRankSame(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         shape = (5, 2, 3, 1, 10)
         xnp = np.random.rand(*shape).astype("float64")
@@ -133,7 +141,7 @@ class TestGatherNdOpWithHighRankSame(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestGatherNdOpWithHighRankDiff(OpTest):
@@ -141,6 +149,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         shape = (2, 3, 4, 1, 10)
         xnp = np.random.rand(*shape).astype("float64")
@@ -154,7 +163,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 # Test Python API

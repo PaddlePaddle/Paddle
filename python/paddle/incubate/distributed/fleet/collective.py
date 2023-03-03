@@ -15,9 +15,9 @@ import logging
 import os
 
 import paddle
+import paddle.distributed.transpiler.distribute_transpiler as dist_transpiler
 import paddle.fluid as fluid
 import paddle.fluid.io as io
-import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program

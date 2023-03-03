@@ -49,6 +49,8 @@ class DescTensor : public phi::ExtendedTensor,
 
   const phi::Place& place() const override { return place_; }
 
+  bool initialized() const override { return desc_ptr_ != nullptr; }
+
   // TODO(jiabin): override more operators here.
 
  private:

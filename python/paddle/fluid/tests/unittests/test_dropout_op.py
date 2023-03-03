@@ -769,6 +769,29 @@ class TestDropout2DCAPI(unittest.TestCase):
                     result.numpy(), result_np, rtol=1e-05
                 )
 
+    def test_static_fp16_with_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = paddle.static.data(
+                    name="input", shape=[2, 3, 4, 5], dtype="float16"
+                )
+
+                m = paddle.nn.Dropout2D(p=0.5)
+                res1 = m(input)
+
+                in_np = np.random.random([2, 3, 4, 5]).astype("float16")
+                res_np = in_np
+
+                exe = paddle.static.Executor(place)
+                fetches = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"input": in_np},
+                    fetch_list=[res1],
+                )
+
 
 class TestDropout3DFAPI(unittest.TestCase):
     def setUp(self):

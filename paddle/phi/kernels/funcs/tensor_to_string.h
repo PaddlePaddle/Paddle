@@ -16,9 +16,9 @@
 
 #include <sstream>
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -39,12 +39,12 @@ static std::vector<T> ToVector(const T *x, size_t n, const phi::Place &place) {
     std::vector<CopyT> cpu_x(n);
     auto *dev_ctx = static_cast<phi::GPUContext *>(
         phi::DeviceContextPool::Instance().Get(place));
-    paddle::memory::Copy(phi::CPUPlace(),
-                         cpu_x.data(),
-                         place,
-                         x,
-                         n * sizeof(T),
-                         dev_ctx->stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       cpu_x.data(),
+                       place,
+                       x,
+                       n * sizeof(T),
+                       dev_ctx->stream());
     dev_ctx->Wait();
     return std::vector<T>(cpu_x.data(), cpu_x.data() + n);
   }
