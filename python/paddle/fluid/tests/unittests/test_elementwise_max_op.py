@@ -524,5 +524,31 @@ class TestElementwiseMaxOp_broadcast_4(TestElementwiseOp):
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
 
+class TestElementwiseFP16Op_broadcast_4(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float16)
+        sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(np.float16)
+        y = x + sgn * np.random.uniform(1, 2, (2, 3, 1, 5)).astype(np.float16)
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseMaxBF16Op_broadcast_4(TestElementwiseBF16Op):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float32)
+        sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(np.float32)
+        y = x + sgn * np.random.uniform(1, 2, (2, 3, 1, 5)).astype(np.float32)
+        self.attrs = {'axis': 1}
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(np.maximum(x, y))}
+
+
 if __name__ == '__main__':
     unittest.main()
