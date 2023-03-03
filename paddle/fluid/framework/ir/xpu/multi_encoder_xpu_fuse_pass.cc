@@ -1215,6 +1215,7 @@ int MultiEncoderXPUFusePass::CastMask(ir::Graph* graph) const {
 std::vector<PatternParam> MultiEncoderXPUFusePass::GeneratePatternParams()
     const {
   return std::vector<PatternParam>{
+      // Params are arranged in alphabetic order
       {"gelu", "matmul_v2", "matmul", "matmul_v2", false, false, true}};
 }
 
