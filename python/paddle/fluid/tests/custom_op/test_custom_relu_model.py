@@ -292,7 +292,6 @@ class TestStaticModel(unittest.TestCase):
                 exe = exe = paddle.static.Executor()
                 exe.run(paddle.static.default_startup_program())
 
-                # For PE
                 if use_pe:
                     places = (
                         paddle.static.cpu_places()
@@ -301,7 +300,7 @@ class TestStaticModel(unittest.TestCase):
                     )
                     main_program = paddle.static.CompiledProgram(
                         paddle.static.default_main_program()
-                    ).with_data_parallel(loss_name=loss.name, places=places)
+                    )
                 else:
                     main_program = paddle.static.default_main_program()
 
