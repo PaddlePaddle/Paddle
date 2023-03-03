@@ -28,9 +28,14 @@ void UnbindKernel(const Context& dev_ctx,
   axis = axis < 0 ? x_dims.size() + axis : axis;
 
   std::vector<const DenseTensor*> shape_refer;
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+
   for (size_t j = 0; j < outs.size(); ++j) {
     dev_ctx.template Alloc<T>(outs[j]);
     shape_refer.emplace_back(outs[j]);
+    outs[j]->can_not_uses = xx.can_not_uses;
+    outs[j]->can_not_uses->insert(outs[j]->canNotUse);
+    outs[j]->can_not_uses->insert(xx.canNotUse);
   }
 
   phi::funcs::SplitFunctor<Context, T> functor;

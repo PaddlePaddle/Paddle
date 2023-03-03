@@ -55,7 +55,11 @@ void IndexSelectGradKernel(const Context& ctx,
                            DenseTensor* x_grad) {
   auto* output_grad_data = out_grad.data<T>();
   auto* in_grad_data = ctx.template Alloc<T>(x_grad);
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
 
+  x_grad->can_not_uses = xx.can_not_uses;
+  x_grad->can_not_uses->insert(x_grad->canNotUse);
+  x_grad->can_not_uses->insert(xx.canNotUse);
   auto input_dim = x_grad->dims();
   auto output_dim = out_grad.dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();

@@ -45,7 +45,11 @@ void DiagonalGradKernel(const Context& dev_ctx,
   auto* dx_data = dev_ctx.template Alloc<T>(dx);
   auto dx_dim = dx->dims().Get();
   auto dx_dim_size = dx->dims().size();
+   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
 
+  in_grad->can_not_uses = xx.can_not_uses;
+  in_grad->can_not_uses->insert(in_grad->canNotUse);
+  in_grad->can_not_uses->insert(xx.canNotUse);
   std::vector<int64_t> res_dx = vectorize(phi::stride(dx->dims()));
   DenseTensor dx_stride_tensor;
   phi::TensorFromVector<int64_t>(res_dx, dev_ctx, &dx_stride_tensor);

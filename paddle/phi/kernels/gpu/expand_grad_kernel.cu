@@ -28,6 +28,11 @@ void ExpandGradKernel(const Context& ctx,
                       const IntArray& shape,
                       DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
+   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+
+  x_grad->can_not_uses = xx.can_not_uses;
+  x_grad->can_not_uses->insert(x_grad->canNotUse);
+  x_grad->can_not_uses->insert(xx.canNotUse);
   if (x_grad->dims() == out_grad.dims()) {
     phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
   } else {

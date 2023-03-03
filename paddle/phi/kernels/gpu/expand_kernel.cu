@@ -75,6 +75,11 @@ void ExpandKernel(const Context& ctx,
   std::vector<DenseTensor*> outs = {out};
   phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
       ctx, ins, &outs, -1, kps::IdentityFunctor<T>());
+   DenseTensor& xx = const_cast<DenseTensor&>(x);
+
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
 }
 
 }  // namespace phi

@@ -39,6 +39,10 @@ void TransposeKernel(const Context& ctx,
   }
 
   ctx.template Alloc<T>(out);
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   if (out->numel() == 0) {
     return;
   }

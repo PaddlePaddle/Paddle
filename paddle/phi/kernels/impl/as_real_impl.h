@@ -36,6 +36,10 @@ void AsRealKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   ctx.template Alloc<typename T::value_type>(out);
   auto out_dims_original = out->dims();
   Copy(ctx, x, ctx.GetPlace(), false, out);
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   out->Resize(out_dims_original);  // restored the shape.
   out->set_type(paddle::experimental::CppTypeToDataType<
                 typename T::value_type>::Type());  // restored the dtype.

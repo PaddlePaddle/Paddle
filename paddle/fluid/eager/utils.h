@@ -162,7 +162,7 @@ class EagerUtils {
         const_cast<paddle::experimental::Tensor&>(target);
     if (target.is_dense_tensor()) {
         auto dense_tensor_ =
-            std::dynamic_pointer_cast<phi::DenseTensor*>(target.impl());
+            std::dynamic_pointer_cast<phi::DenseTensor>(xx.impl());
         if (dense_tensor_->can_not_uses->size() > 0) {
           for (auto it = dense_tensor_->can_not_uses->begin();
            it != dense_tensor_->can_not_uses->end();

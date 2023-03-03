@@ -264,7 +264,7 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
         view_output_var->MutableVar()->GetMutable<phi::DenseTensor>();
     view_output_tensor->ShareBufferWith(*input_dense_tensor);
     view_output_tensor->ShareInplaceVersionCounterWith(*input_dense_tensor);
-    auto dense_tensor_ = const_cast<phi::DenseTensor*>(input_dense_tensor);
+    auto dense_tensor_ = const_cast<phi::DenseTensor>(input_dense_tensor);
      if (dense_tensor_->can_not_uses->size() > 0) {
         for (auto it = dense_tensor_->can_not_uses->begin();
           it != dense_tensor_->can_not_uses->end();
@@ -299,9 +299,9 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
       view_output_tensor->set_impl(std::make_shared<phi::DenseTensor>());
     }
     paddle::experimental::Tensor& xx =
-        const_cast<paddle::experimental::Tensor&>(input_densor);
+        const_cast<paddle::experimental::Tensor&>(input_tensor);
       auto dense_tensor_ =
-          std::dynamic_pointer_cast<phi::DenseTensor*>(target.impl());
+          std::dynamic_pointer_cast<phi::DenseTensor*>(xx.impl());
       if (dense_tensor_->can_not_uses->size() > 0) {
         for (auto it = dense_tensor_->can_not_uses->begin();
           it != dense_tensor_->can_not_uses->end();

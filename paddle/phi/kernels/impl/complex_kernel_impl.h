@@ -43,7 +43,10 @@ void RealKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<phi::dtype::Real<T>>(
       out, static_cast<size_t>(numel * sizeof(phi::dtype::Real<T>)));
-
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
   phi::funcs::RealFunctor<T> functor(x_data, out_data, numel);
   for_range(functor);

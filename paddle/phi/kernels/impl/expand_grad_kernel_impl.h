@@ -30,7 +30,10 @@ void ExpandBackward(const Context& ctx,
   size_t reduce_size = reduce_dims_vec.size();
   ctx.template Alloc<T>(in_grad);
   in_grad->data<T>();
-
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  in_grad->can_not_uses = xx.can_not_uses;
+  in_grad->can_not_uses->insert(in_grad->canNotUse);
+  in_grad->can_not_uses->insert(xx.canNotUse);
   auto x_grad = EigenVector<T>::Flatten(*in_grad);
   Eigen::DSizes<Eigen::DenseIndex, Dims * 2> reshape_dims;
   for (size_t i = 0; i < reshape_size; ++i) {
