@@ -81,8 +81,12 @@ class TestWhereOpBFloat16(OpTest):
         self.check_grad(['X', 'Y'], 'Out', check_eager=False)
 
     def init_config(self):
-        self.x = np.random.uniform((-3), 5, 100).astype(self.dtype)
-        self.y = np.random.uniform((-3), 5, 100).astype(self.dtype)
+        self.x = convert_float_to_uint16(
+            np.random.uniform((-3), 5, 100).astype(self.dtype)
+        )
+        self.y = convert_float_to_uint16(
+            np.random.uniform((-3), 5, 100).astype(self.dtype)
+        )
         self.cond = np.zeros(100).astype('bool')
 
 
