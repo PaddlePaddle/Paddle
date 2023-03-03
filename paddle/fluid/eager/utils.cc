@@ -268,14 +268,16 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
      if (dense_tensor_->can_not_uses->size() > 0) {
         for (auto it = dense_tensor_->can_not_uses->begin();
           it != dense_tensor_->can_not_uses->end();
-          it++)
-            **it = true;
+          it++) {
+            if (*it!= dense_tensor_->canNotUse) **it = true;
+            }
       }
     if (view_output_tensor->can_not_uses->size() > 0) {
         for (auto it = view_output_tensor->can_not_uses->begin();
           it != view_output_tensor->can_not_uses->end();
-          it++)
-            **it = true;
+          it++){
+            if (*it!= dense_tensor_->canNotUse) **it = true;
+            }
       }
     VLOG(3) << "Perform View between Output Var(" << view_output_var->name()
             << ") and Input Var(" << input_var->name()
@@ -305,8 +307,9 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
       if (dense_tensor_->can_not_uses->size() > 0) {
         for (auto it = dense_tensor_->can_not_uses->begin();
           it != dense_tensor_->can_not_uses->end();
-          it++)
-            **it = true;
+          it++) {
+            if (*it!= dense_tensor_->canNotUse) **it = true;
+            }
       }
     auto view_output_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(view_output_tensor->impl());
@@ -314,7 +317,9 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
         for (auto it = view_output_dense_tensor->can_not_uses->begin();
           it != view_output_dense_tensor->can_not_uses->end();
           it++)
-            **it = true;
+             {
+            if (*it!= dense_tensor_->canNotUse) **it = true;
+            }
       }
     view_output_dense_tensor->ShareBufferWith(*input_dense_tensor);
     view_output_dense_tensor->ShareInplaceVersionCounterWith(

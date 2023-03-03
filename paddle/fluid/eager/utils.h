@@ -167,7 +167,9 @@ class EagerUtils {
           for (auto it = dense_tensor_->can_not_uses->begin();
            it != dense_tensor_->can_not_uses->end();
            it++)
-              **it = true;
+               {
+            if (*it!= dense_tensor_->canNotUse) **it = true;
+            }
         }
     }
     if (require_any_grad && autograd_meta) {
