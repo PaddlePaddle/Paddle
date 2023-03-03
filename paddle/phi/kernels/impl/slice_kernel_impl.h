@@ -53,7 +53,7 @@ void SliceCompute(const Context& ctx,
     }
   }
 
-  funcs::CheckAndUpdateSliceAttrs<int64_t>(in_dims, axes, &starts, &ends);
+  funcs::UpdateSliceAttrs<int64_t>(in_dims, axes, &starts, &ends);
   slice_dims = funcs::GetSliceDims<int64_t>(
       in_dims, axes, starts, ends, nullptr, nullptr);
   out_dims = funcs::GetDecreasedDims<int64_t>(slice_dims, decrease_axis);

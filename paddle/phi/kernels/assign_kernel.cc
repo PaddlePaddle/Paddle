@@ -186,6 +186,7 @@ PD_REGISTER_KERNEL(assign_value,
                    bool,
                    int,
                    float,
+                   double,
                    int64_t,
                    phi::dtype::float16) {}
 #endif
