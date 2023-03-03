@@ -117,7 +117,7 @@ class CumsumCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     bool flatten = static_cast<bool>(this->Attr<bool>("flatten"));
     bool exclusive = static_cast<bool>(this->Attr<bool>("exclusive"));
     bool reverse = static_cast<bool>(this->Attr<bool>("reverse"));
-    VLOG(6) << "Runing add_grad composite func";
+    VLOG(6) << "Runing cumsum composite func";
     prim::cumsum_grad<prim::DescTensor>(
         x, out_grad, axis, flatten, exclusive, reverse, dx_ptr);
     this->RecoverOutputName(dx, dx_name);

@@ -56,7 +56,6 @@ void SetOp(ProgramDesc* prog,
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
     op->SetInput("Input", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Filter", {inputs[1]});
-    if (inputs.size() > 2) op->SetInput("Bias", {inputs[2]});
     op->SetOutput("Output", {outputs[0]});
     const std::vector<int> strides({1, 1});
     const std::vector<int> paddings({1, 1});
@@ -702,7 +701,7 @@ ProgramDesc BuildQuantConv2dProgramDesc(const bool& use_mkldnn,
   SetOp(&prog,
         "conv2d",
         "Conv2d",
-        {"b", "filter", "bias"},
+        {"b", "filter"},
         {"c"},
         use_mkldnn,
         {},

@@ -20,6 +20,7 @@
 import functools
 import operator
 
+import paddle.framework.dtype as dtypes
 from paddle.fluid import core
 
 from .primitives import *  # noqa: F403
@@ -260,6 +261,31 @@ def bernoulli(shape, dtype, p, seed=0):
     )
 
 
+@REGISTER_COMPOSITE('hard_swish')
+def hard_swish_composite(x):
+    """define composite rule of op hard_swish.
+    offset=3, threshold=6, scale=6
+    out = minimum(
+        maxmum(x + offset, 0), threshold
+    ) * x / scale
+    """
+    offset = 3.0
+    threshold = 6.0
+    scale = 6.0
+    res = (
+        minimum(
+            maximum(
+                x + full(x.shape, offset, dtype=x.dtype),
+                full(x.shape, 0.0, dtype=x.dtype),
+            ),
+            full(x.shape, threshold, dtype=x.dtype),
+        )
+        * x
+        / full(x.shape, scale, dtype=x.dtype)
+    )
+    return res
+
+
 @REGISTER_COMPOSITE('silu')
 def silu_composite(x):
     """
@@ -269,3 +295,13 @@ def silu_composite(x):
     sum_temp = 1 + exp(-x)
     res = x / sum_temp
     return res
+
+
+@REGISTER_COMPOSITE('fill_any_like')
+def fill_any_like(x, fill_value, dtype, place=None):
+    """define composite rule of op full_like."""
+    """op name: full_like  op type name: fill_any_like."""
+    """arg place is not used, add it here to keep same as python api."""
+    dtype = dtypes.dtype(dtype)
+    val = full(x.shape, fill_value, dtype)
+    return val
