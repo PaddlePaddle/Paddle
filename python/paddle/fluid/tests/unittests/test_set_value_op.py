@@ -18,6 +18,7 @@ import unittest
 from functools import reduce
 
 import numpy as np
+from op_test import convert_float_to_uint16
 
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
@@ -1517,6 +1518,29 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
         np.testing.assert_array_equal(a_grad_1, a_grad_2)
         np.testing.assert_array_equal(b_grad_1, b_grad_2)
         paddle.enable_static()
+
+
+class TestSetValueOpBF16(unittest.TestCase):
+    def testsetvaluebf16(OpTest):
+        def setUp(self):
+            paddle.enable_static()
+            self.dtype = np.uint16
+            self.shape = [2, 3, 4]
+            self.data = np.ones(self.shape).astype(self.dtype)
+            self.program = paddle.static.Program()
+            x = np.random.rand([6]).astype('float32')
+            self.data[0, 0] = np.random.rand([6]).astype('float32')
+            out = self.data[0, 0]
+            self.inputs = {
+                'X': convert_float_to_uint16(x),
+            }
+            self.outputs = {'Out': convert_float_to_uint16(out)}
+
+        def test_check_output(self):
+            self.check_output(atol=1e-3)
+
+        def test_check_grad(self):
+            self.check_grad(['X'], 'Out', max_relative_error=1e-3)
 
 
 if __name__ == '__main__':
