@@ -36,13 +36,17 @@ from .convert_operators import (
     convert_range,
     convert_zip,
 )
+from .program_translator import (
+    CONVERSION_OPTIONS,
+    StaticFunction,
+    convert_to_static,
+    unwrap_decorators,
+)
 
 __all__ = []
 
 
 translator_logger = TranslatorLogger()
-
-CONVERSION_OPTIONS = "__jst_not_to_static"
 
 
 class ConversionOptions:
@@ -198,13 +202,6 @@ def convert_call(func):
             #  [1. 1. 1.]]
 
     """
-    # NOTE(Aurelius84): Fix it after all files migrating into jit.
-    from paddle.jit.dy2static.program_translator import (
-        StaticFunction,
-        convert_to_static,
-        unwrap_decorators,
-    )
-
     translator_logger.log(
         1, "Convert callable object: convert {}.".format(func)
     )
