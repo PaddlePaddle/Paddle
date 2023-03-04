@@ -84,12 +84,12 @@ class TestWhereOpBFloat16(OpTest):
 
     def init_config(self):
         self.x = convert_float_to_uint16(
-            np.random.uniform((-3), 5, 100).astype(np.float32)
+            np.random.uniform((-5), 5, (60, 2)).astype(np.float32)
         )
         self.y = convert_float_to_uint16(
-            np.random.uniform((-3), 5, 100).astype(np.float32)
+            np.random.uniform((-5), 5, (60, 2)).astype(np.float32)
         )
-        self.cond = np.zeros(100).astype('bool')
+        self.cond = np.ones((60, 2)).astype('bool')
 
 
 class TestWhereOp3(TestWhereOp):
