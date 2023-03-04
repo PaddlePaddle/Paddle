@@ -133,9 +133,8 @@ class TestAtan2API(unittest.TestCase):
 class TestAtan2OpBfp16(OpTest):
     def setUp(self):
         self.op_type = "atan2"
-        self.dtype = np.uint16
-        input_x = np.random.rand(0.1, 1).astype(np.float32)
-        input_y = np.random.rand(-1, -0.1).astype(np.float32)
+        input_x = np.random.uniform(0.1, 1.0).astype(np.float32)
+        input_y = np.random.uniform(-1.0, -0.1).astype(np.float32)
         output_np = paddle.atan2(input_x, input_y)
         output_ref = np.arctan2(input_x, input_y)
         self.inputs = {

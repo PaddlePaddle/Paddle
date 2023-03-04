@@ -23,5 +23,5 @@ PD_REGISTER_KERNEL(atan2,
                    float,
                    double,
                    phi::dtype::float16,
-                   int,
-                   int64_t) {}
+                   phi::dtype
+                   : bfloat16, int, int64_t) {}
