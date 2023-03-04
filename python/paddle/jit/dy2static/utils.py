@@ -96,6 +96,13 @@ RE_PYMODULE = r'[a-zA-Z0-9_]+\.'
 
 RETURN_NO_VALUE_MAGIC_NUM = 1.77113e27
 
+TRUE_FUNC_PREFIX = 'true_fn'
+FALSE_FUNC_PREFIX = 'false_fn'
+
+WHILE_BODY_PREFIX = 'while_body'
+FOR_CONDITION_PREFIX = 'for_loop_condition'
+FOR_BODY_PREFIX = 'for_loop_body'
+
 
 def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     """
@@ -1199,19 +1206,6 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             )
 
         def post_func():
-            """NOTE: why we need merge w_vars and push_pop_vars here ?
-            because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
-            """
-            from paddle.jit.dy2static.ifelse_transformer import (
-                FALSE_FUNC_PREFIX,
-                TRUE_FUNC_PREFIX,
-            )
-            from paddle.jit.dy2static.loop_transformer import (
-                FOR_BODY_PREFIX,
-                FOR_CONDITION_PREFIX,
-                WHILE_BODY_PREFIX,
-            )
-
             control_flow_function_def = [
                 WHILE_BODY_PREFIX,
                 WHILE_BODY_PREFIX,

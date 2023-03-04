@@ -16,7 +16,12 @@ import copy
 from collections import defaultdict
 
 from paddle.fluid import unique_name
-from paddle.utils import gast
+from paddle.utils import (
+    FOR_BODY_PREFIX,
+    FOR_CONDITION_PREFIX,
+    WHILE_BODY_PREFIX,
+    gast,
+)
 
 from .base_transformer import (
     BaseTransformer,
@@ -39,10 +44,6 @@ from .utils import (
 __all__ = []
 
 WHILE_CONDITION_PREFIX = 'while_condition'
-WHILE_BODY_PREFIX = 'while_body'
-
-FOR_CONDITION_PREFIX = 'for_loop_condition'
-FOR_BODY_PREFIX = 'for_loop_body'
 
 
 def create_while_nodes(
