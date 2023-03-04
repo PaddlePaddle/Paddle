@@ -56,6 +56,7 @@ class Pad3dOpConverter : public OpConverter {
           paddings_tensor.mutable_data<int>(platform::CPUPlace());
       paddings = std::vector<int>(paddings_data,
                                   paddings_data + paddings_tensor.numel());
+
     } else {
       paddings =
           PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
@@ -85,6 +86,7 @@ class Pad3dOpConverter : public OpConverter {
     // convert paddle pad to tensorrt pad
     std::vector<int> pre_pad_v(inputDim, 0);
     std::vector<int> post_pad_v(inputDim, 0);
+
     for (int i = 0; i < inputDim; i += 2) {
       pre_pad_v[i + 2] = paddings[pad_size - 2 - i];
       post_pad_v[i + 2] = paddings[pad_size - 1 - i];
@@ -105,6 +107,7 @@ class Pad3dOpConverter : public OpConverter {
                                  *pre_pad,
                                  nvinfer1::ElementWiseOperation::kSUB)
                 ->getOutput(0);
+
     auto const total_padding =
         TRT_ENGINE_ADD_LAYER(engine_,
                              ElementWise,
@@ -184,10 +187,13 @@ class Pad3dOpConverter : public OpConverter {
   template <typename T>
   nvinfer1::ITensor* vectorToTensor(std::vector<T> v) {
     int* v_data = const_cast<T*>(static_cast<const T*>(v.data()));
+
     nvinfer1::Weights v_wt{nvinfer1::DataType::kINT32,
                            static_cast<void*>(v_data),
                            static_cast<int32_t>(v.size())};
+
     auto v_dim = nvinfer1::Dims{1, {static_cast<int>(v.size())}};
+
     return TRT_ENGINE_ADD_LAYER(engine_, Constant, v_dim, v_wt)->getOutput(0);
   }
 };
