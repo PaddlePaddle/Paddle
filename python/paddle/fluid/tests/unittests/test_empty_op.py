@@ -295,7 +295,7 @@ class TestEmptyOpFP16(unittest.TestCase):
                     feed={'x': input_x, 'dtype': dtype}, fetch_list=[out]
                 )
                 if core.is_float16_supported(place):
-                    self.check_grad_with_place(place, atol=1e-3)
+                    self.check_output_with_place(place, atol=1e-3)
 
 
 class TestEmptyOpBP16(unittest.TestCase):
