@@ -300,14 +300,45 @@ class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
 
         param = paddle.randn(shape).astype(paddle.bfloat16)
         master_weight = param.astype(paddle.float32)
-        main_grad = paddle.randn(shape).astype(paddle.float32)
-        grad = main_grad.astype(paddle.bfloat16)
+        grad = paddle.randn(shape).astype(paddle.bfloat16)
+        main_grad = grad.astype(paddle.float32)
         moment1 = paddle.randn(shape).astype(paddle.float32)
         moment2 = paddle.randn(shape).astype(paddle.float32).abs()
         lr = paddle.zeros([1]).astype(paddle.float32)
         lr[0] = lr_rate
         beta1_pow_acc = paddle.ones([1]).astype(paddle.float32)
+        beta1_pow_acc[0] = _beta1**10
         beta2_pow_acc = paddle.ones([1]).astype(paddle.float32)
+        beta2_pow_acc[0] = _beta2**10
+
+        ref_param = param.astype(paddle.float32)
+        ref_beta1_pow_acc = beta1_pow_acc.astype(paddle.float32)
+        ref_beta2_pow_acc = beta2_pow_acc.astype(paddle.float32)
+        ref_moment_1 = moment1.astype(paddle.float32)
+        ref_moment_2 = moment2.astype(paddle.float32)
+
+        # reference code
+        _, _, _, _, _, _ = paddle._C_ops.adamw_(
+            ref_param,
+            main_grad,
+            lr,
+            ref_moment_1,
+            ref_moment_2,
+            ref_beta1_pow_acc,
+            ref_beta2_pow_acc,
+            master_weight,
+            found_inf,
+            _beta1,
+            _beta2,
+            _epsilon,
+            lr_ratio_,
+            _weight_decay,
+            with_decay,
+            _lazy_mode,
+            1000,
+            False,
+            False,
+        )
 
         if use_main_grad:
             _, _, _, _, _, _ = paddle._C_ops.adamw_(
@@ -331,6 +362,12 @@ class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
                 find_master,
                 False,
             )
+            np.testing.assert_allclose(
+                param.astype("float32").numpy(), ref_param.numpy(), rtol=1e-2
+            )
+            np.testing.assert_allclose(
+                master_weight.numpy(), ref_param.numpy(), rtol=1e-6
+            )
         else:
             _, _, _, _, _, _ = paddle._C_ops.adamw_(
                 param,
@@ -352,6 +389,12 @@ class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
                 1000,
                 find_master,
                 False,
+            )
+            np.testing.assert_allclose(
+                param.astype("float32").numpy(), ref_param.numpy(), rtol=1e-2
+            )
+            np.testing.assert_allclose(
+                master_weight.numpy(), ref_param.numpy(), rtol=1e-6
             )
 
     def _get_places(self):
