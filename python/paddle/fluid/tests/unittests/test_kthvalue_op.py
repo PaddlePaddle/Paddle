@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -205,6 +205,23 @@ class TestModeOpInStatic(unittest.TestCase):
                 feed={"x": self.input_data}, fetch_list=[result]
             )[0]
             np.testing.assert_allclose(paddle_result, expect_value, rtol=1e-05)
+
+
+class TestKthvalueOpBF16(unittest.TestCase):
+    def testkthvalebf16(OpTest):
+        def setUp(self):
+            self.op_type = 'kthvalue'
+            self.dtype = np.uint16
+            x = np.random.rand((2, 3, 2)).astype('float32')
+            out = paddle.kthvalue(x, k=2, axis=1)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+            self.outputs = {'Out': convert_float_to_uint16(out)}
+
+        def test_check_output(self):
+            self.check_output(atol=1e-2)
+
+        def test_check_grad(self):
+            self.check_grad(['X'], 'Out', max_relative_error=1e-2)
 
 
 if __name__ == '__main__':
