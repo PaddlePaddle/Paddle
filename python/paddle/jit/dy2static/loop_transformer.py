@@ -26,6 +26,9 @@ from .base_transformer import (
 from .ifelse_transformer import ARGS_NAME
 from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
 from .utils import (
+    FOR_BODY_PREFIX,
+    FOR_CONDITION_PREFIX,
+    WHILE_BODY_PREFIX,
     FunctionNameLivenessAnalysis,
     GetterSetterHelper,
     ast_to_source_code,
@@ -39,10 +42,6 @@ from .utils import (
 __all__ = []
 
 WHILE_CONDITION_PREFIX = 'while_condition'
-WHILE_BODY_PREFIX = 'while_body'
-
-FOR_CONDITION_PREFIX = 'for_loop_condition'
-FOR_BODY_PREFIX = 'for_loop_body'
 
 
 def create_while_nodes(
