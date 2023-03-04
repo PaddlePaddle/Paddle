@@ -110,8 +110,8 @@ class TestInstanceNormOp(OpTest):
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
-        self.scale = 0.5
-        self.bias = 0.5
+        self.scale = np.full((3), 0.5)
+        self.bias = np.full((3), 0.5)
         self.epsilon = 1e-8
 
     def init_dtype(self):
