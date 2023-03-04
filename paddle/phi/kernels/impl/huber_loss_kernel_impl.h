@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/huber_loss_kernel.h"
@@ -43,19 +44,22 @@ void HuberLossKernel(const Context& dev_ctx,
                      float delta,
                      DenseTensor* out,
                      DenseTensor* residual) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   T delta_ = static_cast<T>(delta);
   auto& place = *dev_ctx.eigen_device();
 
-  auto x = EigenVector<T>::Flatten(input);
-  auto y = EigenVector<T>::Flatten(label);
+  auto x = EigenVector<T>::Flatten(input).template cast<MPType>();
+  auto y = EigenVector<T>::Flatten(label).template cast<MPType>();
 
   dev_ctx.template Alloc<T>(residual);
   auto eigen_residual = EigenVector<T>::Flatten(*residual);
-  eigen_residual.device(place) = y - x;
+  eigen_residual.device(place) = (y - x).template cast<T>();
 
   dev_ctx.template Alloc<T>(out);
   auto loss = EigenVector<T>::Flatten(*out);
-  loss.device(place) = eigen_residual.unaryExpr(HuberLossForward<T>(delta_));
+  loss.device(place) =
+      (eigen_residual.unaryExpr(HuberLossForward<MPType>(delta_)))
+          .template cast<T>();
 }
 
 }  // namespace phi

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/huber_loss_grad_kernel.h"
@@ -49,26 +50,31 @@ void HuberLossGradKernel(const Context& dev_ctx,
                          float delta,
                          DenseTensor* input_grad,
                          DenseTensor* label_grad) {
-  T delta_ = static_cast<T>(delta);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType delta_ = static_cast<MPType>(delta);
   auto& place = *dev_ctx.eigen_device();
 
-  auto eigen_residual = EigenVector<T>::Flatten(residual);
-  auto eigen_out_grad = EigenVector<T>::Flatten(out_grad);
+  auto eigen_residual =
+      EigenVector<T>::Flatten(residual).template cast<MPType>();
+  auto eigen_out_grad =
+      EigenVector<T>::Flatten(out_grad).template cast<MPType>();
 
   if (input_grad) {
     dev_ctx.template Alloc<T>(input_grad);
     auto eigen_input_grad = EigenVector<T>::Flatten(*input_grad);
     eigen_input_grad.device(place) =
-        eigen_residual.unaryExpr(HuberLossBackward<T>(delta_, -1.0));
-    eigen_input_grad.device(place) = eigen_out_grad * eigen_input_grad;
+        (eigen_out_grad *
+         eigen_residual.unaryExpr(HuberLossBackward<MPType>(delta_, -1.0)))
+            .template cast<T>();
   }
 
   if (label_grad) {
     dev_ctx.template Alloc<T>(label_grad);
     auto eigen_label_grad = EigenVector<T>::Flatten(*label_grad);
     eigen_label_grad.device(place) =
-        eigen_residual.unaryExpr(HuberLossBackward<T>(delta_, 1.0));
-    eigen_label_grad.device(place) = eigen_out_grad * eigen_label_grad;
+        (eigen_out_grad *
+         eigen_residual.unaryExpr(HuberLossBackward<MPType>(delta_, 1.0)))
+            .template cast<T>();
   }
 }
 

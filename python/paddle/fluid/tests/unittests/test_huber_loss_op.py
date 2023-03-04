@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 
@@ -39,12 +39,13 @@ class TestHuberLossOp(OpTest):
         self.python_out_sig = ["Out"]
         self.python_api = huber_loss_wraper
 
+        self.dtype = self.set_dtype()
         self.delta = 1.0
         self.init_input()
         shape = self.set_shape()
         residual = self.inputs['Y'] - self.inputs['X']
         loss = np.vectorize(huber_loss_forward)(residual, self.delta).astype(
-            'float32'
+            self.dtype
         )
         self.attrs = {'delta': self.delta}
         self.outputs = {'Residual': residual, 'Out': loss.reshape(shape)}
@@ -52,9 +53,12 @@ class TestHuberLossOp(OpTest):
     def init_input(self):
         shape = self.set_shape()
         self.inputs = {
-            'X': np.random.uniform(0, 1.0, shape).astype('float32'),
-            'Y': np.random.uniform(0, 1.0, shape).astype('float32'),
+            'X': np.random.uniform(0, 1.0, shape).astype(self.dtype),
+            'Y': np.random.uniform(0, 1.0, shape).astype(self.dtype),
         }
+
+    def set_dtype(self):
+        return np.float32
 
     def set_shape(self):
         return (100, 1)
@@ -89,6 +93,71 @@ def TestHuberLossOp2(TestHuberLossOp):
 def TestHuberLossOp3(TestHuberLossOp):
     def set_shape(self):
         return (6, 6, 1)
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+def TestHuberLossOpFP16(TestHuberLossOp):
+    def set_dtype(self):
+        return np.float16
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+def TestHuberLossOpBF16(OpTest):
+    def setUp(self):
+        self.op_type = 'huber_loss'
+        self.python_out_sig = ["Out"]
+        self.python_api = huber_loss_wraper
+
+        self.dtype = self.set_dtype()
+        self.delta = 1.0
+        self.init_input()
+        shape = self.set_shape()
+        residual = self.inputs['Y'] - self.inputs['X']
+        loss = np.vectorize(huber_loss_forward)(residual, self.delta).astype(
+            self.dtype
+        )
+        self.attrs = {'delta': self.delta}
+        self.outputs = {
+            'Residual': convert_float_to_uint16(residual),
+            'Out': convert_float_to_uint16(loss.reshape(shape)),
+        }
+
+    def init_input(self):
+        shape = self.set_shape()
+        self.inputs = {
+            'X': convert_float_to_uint16(
+                np.random.uniform(0, 1.0, shape).astype(self.dtype)
+            ),
+            'Y': convert_float_to_uint16(
+                np.random.uniform(0, 1.0, shape).astype(self.dtype)
+            ),
+        }
+
+    def set_dtype(self):
+        return np.float32
+
+    def set_shape(self):
+        return (100, 1)
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.008, no_grad_set=set("residual")
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.008, no_grad_set=set('residual')
+        )
 
 
 if __name__ == '__main__':
