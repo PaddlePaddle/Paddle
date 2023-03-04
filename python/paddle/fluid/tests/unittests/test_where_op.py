@@ -69,7 +69,11 @@ class TestWhereOpBFloat16(OpTest):
         self.dtype = np.uint16
         self.python_api = paddle.where
         self.init_config()
-        self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
+        self.inputs = {
+            'Condition': self.cond,
+            'X': convert_float_to_uint16(self.x),
+            'Y': convert_float_to_uint16(self.y),
+        }
         self.outputs = {
             'Out': convert_float_to_uint16(np.where(self.cond, self.x, self.y))
         }
@@ -83,12 +87,8 @@ class TestWhereOpBFloat16(OpTest):
         self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_eager=False)
 
     def init_config(self):
-        self.x = convert_float_to_uint16(
-            np.random.uniform((-5), 5, (60, 2)).astype(np.float32)
-        )
-        self.y = convert_float_to_uint16(
-            np.random.uniform((-5), 5, (60, 2)).astype(np.float32)
-        )
+        self.x = np.random.uniform((-5), 5, (60, 2)).astype(np.float32)
+        self.y = np.random.uniform((-5), 5, (60, 2)).astype(np.float32)
         self.cond = np.ones((60, 2)).astype('bool')
 
 
