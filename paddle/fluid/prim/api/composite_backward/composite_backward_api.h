@@ -812,11 +812,13 @@ void maximum_grad(const Tensor& x,
   if (x_grad) {
     auto tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
     auto x_grad_tmp = out_grad * tmp;
+    x_grad_tmp = reshape<T>(x_grad_tmp, x.shape());
     set_output<T>(x_grad_tmp, x_grad);
   }
   if (y_grad) {
     auto tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
     auto y_grad_tmp = out_grad * tmp;
+    y_grad_tmp = reshape<T>(y_grad_tmp, y.shape());
     set_output<T>(y_grad_tmp, y_grad);
   }
 }
