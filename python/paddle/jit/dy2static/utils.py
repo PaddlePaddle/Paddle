@@ -293,8 +293,6 @@ def is_numpy_api(node):
     assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
     func_str = astor.to_source(gast.gast_to_ast(node.func))
     try:
-        import numpy as np  # noqa: F401
-
         module_result = eval(
             "_is_api_in_module_helper({}, '{}')".format(func_str, "numpy")
         )
