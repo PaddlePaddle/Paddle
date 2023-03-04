@@ -94,7 +94,7 @@ class TestInstanceNormOp(OpTest):
         self.init_test_case()
         self.init_dtype()
         x = np.random.random(self.shape).astype(self.dtype)
-        mean, var = _cal_mean_variance(x, self.epsilon, self.shape)
+        mean, var = _cal_mean_variance(x, self.epsilon, self.shape[:2])
         y, _mean, _var = _reference_instance_norm_naive(
             x, self.scale, self.bias, self.epsilon, mean, var
         )
