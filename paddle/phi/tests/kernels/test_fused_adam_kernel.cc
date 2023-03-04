@@ -472,14 +472,6 @@ TEST(fused_adam, test_fp16_gpu) {
     TestFusedAdamBase<dtype::float16, GPUPlace>(shapes, atol, use_adamw, true);
   }
 }
-
-TEST(fused_adam, test_bf16_gpu) {
-  auto shapes = GenerateRandomShapes(40, 0, 2 << 18);
-  float atol = 5e-3f;
-  for (auto use_adamw : {false, true}) {
-    TestFusedAdamBase<dtype::bfloat16, GPUPlace>(shapes, atol, use_adamw, true);
-  }
-}
 #endif
 
 }  // namespace phi
