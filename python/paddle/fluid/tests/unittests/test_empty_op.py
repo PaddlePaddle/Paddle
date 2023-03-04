@@ -309,10 +309,10 @@ class TestEmptyOpBP16(unittest.TestCase):
             self.outputs = {'Out': out}
 
         def test_check_output(self):
-            self.check_output(atol=1e-2)
+            self.check_output(atol=1e-3)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', max_relative_error=1e-2)
+            self.check_grad(['X'], 'Out', max_relative_error=1e-3)
 
 
 class TestEmptyError(unittest.TestCase):
