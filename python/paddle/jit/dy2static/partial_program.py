@@ -26,8 +26,7 @@ from paddle.fluid.framework import _apply_pass
 from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
 
 from . import logging_utils
-from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
-from .utils import _out_grad_names, _param_grad_names
+from .utils import RETURN_NO_VALUE_MAGIC_NUM, _out_grad_names, _param_grad_names
 
 __all__ = []
 
