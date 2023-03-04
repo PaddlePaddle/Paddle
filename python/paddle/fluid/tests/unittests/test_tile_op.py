@@ -227,13 +227,10 @@ class TestWhereOpBFloat16(OpTest):
         self.dtype = np.uint16
         self.__class__.op_type = self.op_type
         self.python_api = paddle.tile
-        self.inputs = {
-            'X': convert_float_to_uint16(
-                np.random.uniform(10, size=(100, 4, 5)).astype(np.float32)
-            )
-        }
+        x = np.random.uniform(10, size=(100, 4, 5)).astype(np.float32)
+        output = np.tile(x, (2, 1, 4))
+        self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {'repeat_times': [2, 1, 4]}
-        output = np.tile(self.inputs['X'], (2, 1, 4))
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
