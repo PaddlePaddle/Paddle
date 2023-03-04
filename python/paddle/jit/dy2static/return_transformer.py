@@ -44,7 +44,6 @@ RETURN_VALUE_INIT_NAME = '__return_value_init'
 # should return.
 
 # Assign not support float64, use float32 value as magic number.
-RETURN_NO_VALUE_MAGIC_NUM = 1.77113e27
 RETURN_NO_VALUE_VAR_NAME = "__no_value_return_var"
 
 

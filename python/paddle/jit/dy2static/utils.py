@@ -30,7 +30,6 @@ import astor
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
@@ -95,6 +94,8 @@ FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
 RE_PYNAME = '[a-zA-Z0-9_]+'
 RE_PYMODULE = r'[a-zA-Z0-9_]+\.'
 
+RETURN_NO_VALUE_MAGIC_NUM = 1.77113e27
+
 
 def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     """
@@ -144,10 +145,6 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
 
 
 def create_undefined_variable():
-    from paddle.jit.dy2static.return_transformer import (
-        RETURN_NO_VALUE_MAGIC_NUM,
-    )
-
     var = data_layer_not_check(
         unique_name.generate("undefined_var"), [1], "float64"
     )
@@ -257,6 +254,7 @@ def is_api_in_module(node, module_prefix):
 
     func_str = astor.to_source(gast.gast_to_ast(func_node)).strip()
     try:
+        import paddle.fluid as fluid  # noqa: F401
         import paddle.fluid.dygraph as dygraph  # noqa: F401
         import paddle.fluid.layers as layers  # noqa: F401
         import paddle.jit.dy2static as _jst  # noqa: F401
@@ -312,6 +310,7 @@ def is_numpy_api(node):
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
+    import paddle.fluid as fluid  # noqa: F401
 
     full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
@@ -392,6 +391,7 @@ def update_args_of_func(node, dygraph_node, method_name):
         )
 
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
+    import paddle.fluid as fluid  # noqa: F401
 
     if method_name == "__init__" or eval(
         "issubclass({}, fluid.dygraph.Layer)".format(class_src)
