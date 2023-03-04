@@ -81,13 +81,15 @@ class ElementwiseMulCompositeGradOpMaker
     auto y_grad = this->GetSingleInputGrad("Y");
     auto y_grad_p = this->GetOutputPtr(&y_grad);
     auto y_grad_name = this->GetOutputName(y_grad);
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite mul_grad but we got: ",
+            axis));
     prim::multiply_grad<prim::DescTensor>(
-        x,
-        y,
-        out_grad,
-        static_cast<int>(this->Attr<int>("axis")),
-        x_grad_p,
-        y_grad_p);
+        x, y, out_grad, axis, x_grad_p, y_grad_p);
     VLOG(6) << "Runing mul_grad composite func";
     this->RecoverOutputName(x_grad, x_grad_name);
     this->RecoverOutputName(y_grad, y_grad_name);

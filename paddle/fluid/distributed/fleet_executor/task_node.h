@@ -128,7 +128,7 @@ class TaskNode final {
   // task_id-->type
   std::unordered_map<int64_t, DependType> id_to_dep_type_;
 
-  framework::ProgramDesc* program_;
+  framework::ProgramDesc* program_{nullptr};
   std::string cond_var_;
   std::vector<std::unique_ptr<OperatorBase>> ops_vec_;
   std::unordered_map<const OperatorBase*, std::vector<std::string>>

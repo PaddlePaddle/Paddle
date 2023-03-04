@@ -18,7 +18,8 @@ import logging
 from collections import defaultdict
 
 import paddle
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
+
+
 from paddle.fluid.framework import (
     Program,
     Variable,
@@ -899,18 +900,11 @@ class Optimizer:
         self._create_global_learning_rate()
 
         if in_dygraph_mode():
-            found_inf = self._get_auxiliary_var('found_inf')
-            if found_inf:
-                if isinstance(found_inf, core.eager.Tensor):
-                    self._set_auxiliary_var('found_inf', True)
-            else:
-                if isinstance(found_inf, core.eager.Tensor):
-                    self._set_auxiliary_var('found_inf', False)
-                for param_and_grad in parameters_and_grads:
-                    if param_and_grad[1] is None:
-                        continue
-                    if param_and_grad[0].trainable is True:
-                        self._append_optimize_op(target_block, param_and_grad)
+            for param_and_grad in parameters_and_grads:
+                if param_and_grad[1] is None:
+                    continue
+                if param_and_grad[0].trainable is True:
+                    self._append_optimize_op(target_block, param_and_grad)
         else:
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
@@ -944,6 +938,10 @@ class Optimizer:
         :param loss: the loss variable.
         :param startup_program: the startup program
         """
+        from paddle.distributed.distribute_lookup_table import (
+            find_distributed_lookup_table,
+        )
+
         program = framework.default_main_program()
         global_block = framework.default_main_program().global_block()
         table_name = find_distributed_lookup_table(program)
@@ -2081,13 +2079,83 @@ class AdagradOptimizer(Optimizer):
             name=name,
         )
         self.type = "adagrad"
+        self._multi_precision = False
         self._epsilon = epsilon
         self.initial_accumulator_value = initial_accumulator_value
+        self._master_weights = {}
+
+    def _create_master_weight(self, param):
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
+
+            var_name = param.name + '_fp32_master'
+            var_name = unique_name.generate(var_name)
+            var = paddle.static.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True,
+            )
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            self._master_weights[param.name] = var
+        return var
+
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = (
+            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
+        target_name = target_param.name
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name
+                )
+            )
+        return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._moment_acc_str, master_p)
+                continue
+            if (
+                p.dtype == core.VarDesc.VarType.FP16
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Lars optimizer."
+                )
             self._add_accumulator(
                 self._moment_acc_str,
                 p,
@@ -2100,30 +2168,52 @@ class AdagradOptimizer(Optimizer):
         moment_acc = self._get_accumulator(
             self._moment_acc_str, param_and_grad[0]
         )
+
+        find_master = (
+            self._multi_precision
+            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
+
         if in_dygraph_mode():
             _C_ops.adagrad_(
                 param_and_grad[0],
                 param_and_grad[1],
                 moment_acc,
                 self._create_param_lr(param_and_grad),
+                master_weight,
                 self._epsilon,
+                find_master,
             )
             return None
         else:
             # Create the adagrad optimizer op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": moment_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            }
+            outputs = {
+                "ParamOut": param_and_grad[0],
+                "MomentOut": moment_acc,
+            }
+
+            attrs = {"epsilon": self._epsilon, "multi_precision": find_master}
+
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+
             adagrad_op = block.append_op(
                 type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "Moment": moment_acc,
-                    "LearningRate": self._create_param_lr(param_and_grad),
-                },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "MomentOut": moment_acc,
-                },
-                attrs={"epsilon": self._epsilon},
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
                 stop_gradient=True,
             )
 
@@ -3289,12 +3379,84 @@ class RMSPropOptimizer(Optimizer):
         self._epsilon = epsilon
         self._momentum = momentum
         self._centered = centered
+        self._multi_precision = False
+        self._master_weights = {}
+
+    def _create_master_weight(self, param):
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
+
+            var_name = param.name + '_fp32_master'
+            var_name = unique_name.generate(var_name)
+            var = paddle.static.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True,
+            )
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            self._master_weights[param.name] = var
+        return var
+
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = (
+            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
+        target_name = target_param.name
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name
+                )
+            )
+        return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
 
         for p in parameters:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._momentum_acc_str, master_p)
+                self._add_accumulator(self._mean_square_acc_str, master_p)
+                self._add_accumulator(self._mean_grad_acc_str, master_p)
+                continue
+            if (
+                p.dtype == core.VarDesc.VarType.FP16
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Lars optimizer."
+                )
             self._add_accumulator(self._momentum_acc_str, p)
             self._add_accumulator(self._mean_square_acc_str, p)
             self._add_accumulator(self._mean_grad_acc_str, p)
@@ -3312,6 +3474,15 @@ class RMSPropOptimizer(Optimizer):
         mean_grad_acc = self._get_accumulator(
             self._mean_grad_acc_str, param_and_grad[0]
         )
+        find_master = (
+            self._multi_precision
+            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
         if in_dygraph_mode():
             _C_ops.rmsprop_(
                 param_and_grad[0],
@@ -3320,34 +3491,45 @@ class RMSPropOptimizer(Optimizer):
                 momentum_acc,
                 self._create_param_lr(param_and_grad),
                 mean_grad_acc,
+                master_weight,
                 self._epsilon,
                 self._rho,
                 self._momentum,
                 self._centered,
+                find_master,
             )
             return None
         else:
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": momentum_acc,
+                "MeanSquare": mean_square_acc,
+                "MeanGrad": mean_grad_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            }
+
+            outputs = {
+                "ParamOut": param_and_grad[0],
+                "MomentOut": momentum_acc,
+                "MeanSquareOut": mean_square_acc,
+                "MeanGradOut": mean_grad_acc,
+            }
+
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+
             rmsprop_op = block.append_op(
                 type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "Moment": momentum_acc,
-                    "MeanSquare": mean_square_acc,
-                    "MeanGrad": mean_grad_acc,
-                    "LearningRate": self._create_param_lr(param_and_grad),
-                },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "MomentOut": momentum_acc,
-                    "MeanSquareOut": mean_square_acc,
-                    "MeanGradOut": mean_grad_acc,
-                },
+                inputs=inputs,
+                outputs=outputs,
                 attrs={
                     "epsilon": self._epsilon,
                     "decay": self._rho,
                     "momentum": self._momentum,
                     "centered": self._centered,
+                    "multi_precision": find_master,
                 },
                 stop_gradient=True,
             )
@@ -3916,14 +4098,14 @@ class ModelAverage(Optimizer):
             self._get_accumulator('num_updates', param)
         )
         # backup param value to grad
-        layers.assign(input=param, output=grad)
+        paddle.assign(param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = paddle.add_n([num_accumulates, old_num_accumulates])
         sum = paddle.add_n([sum_1, sum_2, sum_3])
-        tmp = layers.cast(
+        tmp = paddle.cast(
             x=tmp, dtype='float32' if self._dtype is None else self._dtype
         )
-        sum = layers.cast(
+        sum = paddle.cast(
             x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
         paddle.assign(paddle.divide(sum, tmp), output=param)
@@ -3931,7 +4113,7 @@ class ModelAverage(Optimizer):
     def _add_average_restore_op(self, block, param_grad):
         param = block._clone_variable(param_grad[0])
         grad = block._clone_variable(param_grad[1])
-        layers.assign(input=grad, output=param)
+        paddle.assign(grad, output=param)
 
     def _append_average_accumulate_op(self, param):
         self.helper = LayerHelper("average_accumulate")
@@ -4225,15 +4407,13 @@ class ExponentialMovingAverage:
                 param = block._clone_variable(param)
                 tmp = block._clone_variable(tmp)
                 ema = block._clone_variable(self._ema_vars[param.name])
-                layers.assign(input=param, output=tmp)
+                paddle.assign(param, output=tmp)
                 # bias correction
                 with layers.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
-                        layers.assign(
-                            output=param, input=ema / (1.0 - decay_pow)
-                        )
+                        paddle.assign(ema / (1.0 - decay_pow), output=param)
                     with switch.default():
-                        layers.assign(output=param, input=ema)
+                        paddle.assign(ema, output=param)
 
         self.restore_program = Program()
         block = self.restore_program.global_block()
@@ -4241,7 +4421,7 @@ class ExponentialMovingAverage:
             for param, tmp in self._params_tmps:
                 tmp = block._clone_variable(tmp)
                 param = block._clone_variable(param)
-                layers.assign(input=tmp, output=param)
+                paddle.assign(tmp, output=param)
 
     def _get_ema_decay(self):
         with default_main_program()._lr_schedule_guard():
@@ -4257,9 +4437,9 @@ class ExponentialMovingAverage:
                 decay_t = (self._thres_steps + 1.0) / (self._thres_steps + 10.0)
                 with layers.control_flow.Switch() as switch:
                     with switch.case(decay_t < self._decay):
-                        layers.tensor.assign(decay_t, decay_var)
+                        paddle.assign(decay_t, decay_var)
                     with switch.default():
-                        layers.tensor.assign(
+                        paddle.assign(
                             np.array([self._decay], dtype=np.float32), decay_var
                         )
         return decay_var
@@ -4272,7 +4452,7 @@ class ExponentialMovingAverage:
             dtype='int64',
             persistable=True,
         )
-        global_step = layers.cast(global_step, "float32")
+        global_step = paddle.cast(global_step, "float32")
         decay_var = block._clone_variable(self._decay_var)
         decay_pow_acc = paddle.pow(decay_var, global_step)
         return decay_pow_acc, global_step
@@ -4309,7 +4489,7 @@ class ExponentialMovingAverage:
                     ema_t = param_ema * self._decay_var + param * (
                         1 - self._decay_var
                     )
-                    layers.assign(input=ema_t, output=param_ema)
+                    paddle.assign(ema_t, output=param_ema)
 
         # for fp16 params
         for param_ema, master_ema in param_master_emas:
@@ -7268,7 +7448,7 @@ class LookaheadOptimizer:
                     for param_name in params:
                         fast_var = main_block.var(param_name)
                         slow_var = param_to_slow[param_name]
-                        layers.assign(input=fast_var, output=slow_var)
+                        paddle.assign(fast_var, output=slow_var)
                 with switch.case(mod == zero_var):
                     for param_name in params:
                         fast_var = main_block.var(param_name)
@@ -7279,8 +7459,8 @@ class LookaheadOptimizer:
                                 slow_var, paddle.subtract(one_var, alpha)
                             ),
                         )
-                        layers.assign(input=tmp_var, output=slow_var)
-                        layers.assign(input=tmp_var, output=fast_var)
+                        paddle.assign(tmp_var, output=slow_var)
+                        paddle.assign(tmp_var, output=fast_var)
                 with switch.default():
                     pass
         return mini_out

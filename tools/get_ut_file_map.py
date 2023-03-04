@@ -145,8 +145,11 @@ def notsuccessfuc(rootPath):
     ut_map_path = "%s/build/ut_map" % rootPath
     files = os.listdir(ut_map_path)
     count = 0
+
     # ut failed!!
     for ut in files:
+        if ut == 'simple_precise_test':
+            continue
         coverage_info = '%s/%s/fnda.tmp' % (ut_map_path, ut)
         if os.path.exists(coverage_info):
             pass
@@ -175,15 +178,15 @@ def notsuccessfuc(rootPath):
 
 def ut_file_map_supplement(rootPath):
     ut_file_map_new = "%s/build/ut_file_map.json" % rootPath
-    os.system('mkdir /pre_test_tmp')
+    precision_test_map_store_dir = "/precision_test_map_store"
+    os.system('mkdir %s' % precision_test_map_store_dir)
     os.system(
-        'cd /pre_test_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/ut_file_map.json --no-check-certificate'
+        'cd %s && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/tmp_test/ut_file_map.json --no-check-certificate'
+        % precision_test_map_store_dir
     )
-    ut_file_map_old = "/pre_test_tmp/ut_file_map.json"
+    ut_file_map_old = "%s/ut_file_map.json" % precision_test_map_store_dir
     with open(ut_file_map_new, 'r') as load_f:
         load_dict_new = json.load(load_f)
-    with open(ut_file_map_old, 'r') as f:
-        load_dict_old = json.load(f)
 
     all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
 
@@ -193,35 +196,24 @@ def ut_file_map_supplement(rootPath):
             all_uts_paddle_list.append(ut.strip())
         f.close()
 
-    with open("/pre_test_tmp/ut_file_map.json", "w") as f:
+    with open("%s/ut_file_map.json" % precision_test_map_store_dir, "w") as f:
         json.dump(load_dict_new, f, indent=4)
         print("load_dict_new success!!")
 
     os.system(
-        'cd /pre_test_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta --no-check-certificate'
+        'cd %s && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta --no-check-certificate'
+        % precision_test_map_store_dir
     )
-    prec_delta_old = '/pre_test_tmp/prec_delta'
     prec_delta_new = "%s/build/prec_delta" % rootPath
-    with open(prec_delta_old, 'r') as f:
-        prec_delta_old_list = []
-        for ut in f.readlines():
-            prec_delta_old_list.append(ut.strip())
-        f.close()
     with open(prec_delta_new, 'r') as f:
         prec_delta_new_list = []
         for ut in f.readlines():
             prec_delta_new_list.append(ut.strip())
         f.close()
-
-    for ut in prec_delta_old_list:
-        filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, ut)
-        if ut in all_uts_paddle_list:
-            if not os.path.exists(filename) and ut not in prec_delta_new_list:
-                prec_delta_new_list.append(ut)
     prec_delta_new_list.append(
         'test_py_reader_error_msg'
     )  # add a python case for pycoverage
-    prec_delta_file = open("/pre_test_tmp/prec_delta", 'w')
+    prec_delta_file = open("%s/prec_delta" % precision_test_map_store_dir, 'w')
     for ut in prec_delta_new_list:
         prec_delta_file.write(ut + '\n')
     print("prec_delta_file success!!")
