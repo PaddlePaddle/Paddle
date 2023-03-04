@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -191,6 +192,42 @@ class TestEmptyLikeAPI_Static2(TestEmptyLikeAPI_Static):
     def init_config(self):
         self.x_shape = (3, 200, 3)
         self.data_x_shape = [-1, 200, 3]
+
+
+class TestEmptyLikeOpFP16(unittest.TestCase):
+    def testemptylikefp16(self):
+        paddle.enable_static()
+        input_x = (np.random.random([2, 3])).astype('int32')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[2, 3], dtype='int32')
+            dtype = 'float16'
+            out = paddle.empty_like(x, dtype=dtype)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(
+                    feed={'x': input_x, 'dtype': dtype}, fetch_list=[out]
+                )
+                if core.is_float16_supported(place):
+                    self.check_grad_with_place(place, atol=1e-3)
+
+
+class TestEmptyLikeOpBP16(unittest.TestCase):
+    def testemptylikebp16(OpTest):
+        def setUp(self):
+            self.op_type = 'empty_like'
+            self.dtype = np.uint16
+            x = np.random.rand([2, 3]).astype(np.float32)
+            out = paddle.empty_like(x)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+            self.outputs = {'Out': convert_float_to_uint16(out)}
+
+        def test_check_output(self):
+            self.check_output(atol=1e-2)
+
+        def test_check_grad(self):
+            self.check_grad(['X'], 'Out', max_relative_error=1e-2)
 
 
 class TestEmptyError(unittest.TestCase):

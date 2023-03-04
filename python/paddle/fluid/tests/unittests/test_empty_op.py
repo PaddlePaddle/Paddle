@@ -19,6 +19,7 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
@@ -277,6 +278,41 @@ class TestEmptyAPI(unittest.TestCase):
         self.__check_out__(res_4, dtype)
         self.__check_out__(res_5, dtype)
         self.__check_out__(res_6, dtype)
+
+
+class TestEmptyOpFP16(unittest.TestCase):
+    def testemptyfp16(self):
+        input_x = (np.random.random([2, 3])).astype('int32')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[2, 3], dtype='int32')
+            dtype = 'float16'
+            out = paddle.empty(x, dtype=dtype)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(
+                    feed={'x': input_x, 'dtype': dtype}, fetch_list=[out]
+                )
+                if core.is_float16_supported(place):
+                    self.check_grad_with_place(place, atol=1e-3)
+
+
+class TestEmptyOpBP16(unittest.TestCase):
+    def testemptybp16(OpTest):
+        def setUp(self):
+            self.op_type = 'empty'
+            dtype = 'bfloat16'
+            x = np.random.rand([2, 3]).astype('int32')
+            out = paddle.empty(x, dtype=dtype)
+            self.inputs = {'X': x, 'dtype': dtype}
+            self.outputs = {'Out': out}
+
+        def test_check_output(self):
+            self.check_output(atol=1e-2)
+
+        def test_check_grad(self):
+            self.check_grad(['X'], 'Out', max_relative_error=1e-2)
 
 
 class TestEmptyError(unittest.TestCase):
