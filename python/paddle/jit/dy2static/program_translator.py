@@ -29,7 +29,6 @@ from paddle.utils import gast
 
 from . import error, logging_utils
 from .ast_transformer import DygraphToStaticAst
-from .convert_call_func import CONVERSION_OPTIONS
 from .function_spec import (
     FunctionSpec,
     _hash_spec_names,
@@ -59,6 +58,8 @@ __all__ = []
 # For each traced function, we set `max_traced_program_count` = 10 to consider caching performance.
 # Once exceeding the threshold, we will raise warning to users to make sure the conversion is as expected.
 MAX_TRACED_PROGRAM_COUNT = 10
+
+CONVERSION_OPTIONS = "__jst_not_to_static"
 
 
 def synchronized(func):
