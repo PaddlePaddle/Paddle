@@ -99,7 +99,7 @@ class TestBFloat16ArangeOp(OpTest):
     def init_config(self):
         self.dtype = np.uint16
         self.python_api = arange_wrapper
-        self.case = (0, 1, 0.2)
+        self.case = (0, 5, 1)
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
