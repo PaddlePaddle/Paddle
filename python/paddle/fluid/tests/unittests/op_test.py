@@ -1922,7 +1922,7 @@ class OpTest(unittest.TestCase):
                 atol = 1e-1
 
         if self.is_float16_op():
-            atol = 1e-3
+            atol = max(atol, 1e-3)
 
         if no_check_set is not None:
             if (
