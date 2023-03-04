@@ -21,7 +21,10 @@ from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+import os
 
+# set cuda
+os.environ["CUDA_VISIBLE_DEVICES"] = "2,3"
 
 class TrtConvertPad3d(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
@@ -29,7 +32,7 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1():
-            return np.ones([1, 1, 3, 64, 64]).astype(np.float32)
+            return np.ones([2, 3, 3, 8, 8]).astype(np.float32)
 
         def generate_paddings(p):
             return np.array(p).astype(np.int32)
@@ -37,7 +40,7 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
         for value in [True, False]:
             for paddings in [
                 [0, 0, 0, 0, 1, 1],
-                [0, 0, 1, 2, 3, 4],
+                [0, 0, 1, 2, 1, 2],
                 [1, 1, 1, 1, 1, 1],
                 [0, 0, -1, -1, 1, 1],
             ]:
@@ -112,13 +115,13 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 1, 3, 64, 64],
+                "input_data": [3, 2, 3, 8, 8],
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [1, 4, 7, 66, 66],
+                "input_data": [3, 4, 7, 8, 8],
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data": [1, 1, 3, 64, 64],
+                "input_data": [3, 2, 3, 8, 8],
             }
             if len(attrs[0]['paddings']) != 6:
                 self.dynamic_shape.min_input_shape["input_padding"] = [6]
@@ -144,28 +147,16 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        # for static_shape
-        clear_dynamic_shape()
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
+            attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
+            attrs, True
         ), 1e-3
-
-        if len(attrs[0]['paddings']) == 6:
-            # for dynamic_shape
-            generate_dynamic_shape(attrs)
-            self.trt_param.precision = paddle_infer.PrecisionType.Float32
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, True
-            ), 1e-5
-            self.trt_param.precision = paddle_infer.PrecisionType.Half
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, True
-            ), 1e-3
 
     def test(self):
         self.run_test()

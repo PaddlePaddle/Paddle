@@ -1725,7 +1725,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "pad3d") {
-      if (!desc.HasAttr("paddings") && !desc.Input("Paddings").size()) {
+      if (!desc.HasAttr("paddings") && !desc.HasInput("Paddings")) {
         return false;
       }
       if (desc.HasAttr("mode")) {

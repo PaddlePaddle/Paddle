@@ -43,15 +43,22 @@ class Pad3dOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
-    nvinfer1::ITensor* paddings;
-    if (op_desc.Input("Paddings").size() >= 1) {
-      paddings = engine_->GetITensor(op_desc.Input("Paddings")[0]);
+    std::vector<int> paddings;
+    if (op_desc.HasInput("Paddings")) {
+      auto* paddings_v = scope.FindVar(op_desc.Input("Paddings")[0]);
+      auto* padding_t = paddings_v->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor paddings_tensor;
+      paddings_tensor.Resize(padding_t->dims());
+      platform::CPUPlace cpu_place;
+      paddle::framework::TensorCopySync(
+          (*padding_t), cpu_place, &paddings_tensor);
+      auto* paddings_data =
+          paddings_tensor.mutable_data<int>(platform::CPUPlace());
+      paddings = std::vector<int>(paddings_data,
+                                  paddings_data + paddings_tensor.numel());
     } else {
-      std::vector<int> paddings_v =
+      paddings =
           PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
-
-      // convert vector<int> to ITensor
-      paddings = vectorToTensor<int>(paddings_v);
     }
 
     float value{0.F};
@@ -67,40 +74,24 @@ class Pad3dOpConverter : public OpConverter {
     }
 
     const int inputDim = input->getDimensions().nbDims;
-    const int pad_size = paddings->getDimensions().d[0];
-    PADDLE_ENFORCE_EQ(
-        inputDim * 2,
-        pad_size,
-        phi::errors::InvalidArgument(
-            "The size of paddings must be equal to twice of input dimensions"));
+    const int pad_size = paddings.size();
+    PADDLE_ENFORCE_EQ(inputDim * 2 - 4,
+                      pad_size,
+                      phi::errors::InvalidArgument(
+                          "Expected paddings size is %d, but received %d.",
+                          inputDim * 2 - 4,
+                          pad_size));
 
-    // slice the paddings into pre and post
-    // [pre1, post1, pre2, post2, ...]
-    // => [pre1, pre2, pre3, pre4, post1, post2, post3, post4]
-    nvinfer1::Permutation perm;
-    for (int i = 0; i < inputDim; i++) {
-      perm.order[i] = i * 2;
-      perm.order[i + inputDim] = i * 2 + 1;
+    // convert paddle pad to tensorrt pad
+    std::vector<int> pre_pad_v(inputDim, 0);
+    std::vector<int> post_pad_v(inputDim, 0);
+    for (int i = 0; i < inputDim; i += 2) {
+      pre_pad_v[i + 2] = paddings[pad_size - 2 - i];
+      post_pad_v[i + 2] = paddings[pad_size - 1 - i];
     }
-    auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *paddings);
-    shuffle_layer->setFirstTranspose(perm);
-    paddings = shuffle_layer->getOutput(0);
 
-    // split the paddings into pre and post
-    auto pre_pad = TRT_ENGINE_ADD_LAYER(engine_,
-                                        Slice,
-                                        *paddings,
-                                        nvinfer1::Dims{1, {0}},
-                                        nvinfer1::Dims{1, {inputDim}},
-                                        nvinfer1::Dims{1, {1}})
-                       ->getOutput(0);
-    auto post_pad = TRT_ENGINE_ADD_LAYER(engine_,
-                                         Slice,
-                                         *paddings,
-                                         nvinfer1::Dims{1, {inputDim}},
-                                         nvinfer1::Dims{1, {inputDim}},
-                                         nvinfer1::Dims{1, {1}})
-                        ->getOutput(0);
+    nvinfer1::ITensor* pre_pad = vectorToTensor<int>(pre_pad_v);
+    nvinfer1::ITensor* post_pad = vectorToTensor<int>(post_pad_v);
 
     std::vector<int> zeros_v(inputDim, 0);
     auto const zeros = vectorToTensor<int>(zeros_v);
