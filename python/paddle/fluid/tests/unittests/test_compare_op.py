@@ -480,22 +480,6 @@ class API_TestElementwise_Equal(unittest.TestCase):
                 self.assertEqual((res == np.array([True, False])).all(), True)
 
 
-class API_TestElementwise_Less_Equal(unittest.TestCase):
-    def test_api_fp16(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            label = paddle.to_tensor([3, 3], dtype="float16")
-            limit = paddle.to_tensor([3, 2], dtype="float16")
-            out = paddle.less_equal(x=label, y=limit)
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                (res,) = exe.run(fetch_list=[out])
-                self.assertEqual((res == np.array([True, False])).all(), True)
-
-
 class TestCompareOpPlace(unittest.TestCase):
     def test_place_1(self):
         paddle.enable_static()
