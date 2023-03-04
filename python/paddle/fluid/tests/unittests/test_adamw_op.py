@@ -300,10 +300,10 @@ class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
 
         param = paddle.randn(shape).astype(paddle.bfloat16)
         master_weight = param.astype(paddle.float32)
-        main_grad = paddle.randn(shape).astype(paddle.float32) / 10000
+        main_grad = paddle.randn(shape).astype(paddle.float32)
         grad = main_grad.astype(paddle.bfloat16)
         moment1 = paddle.randn(shape).astype(paddle.float32)
-        moment2 = paddle.randn(shape).astype(paddle.float32)
+        moment2 = paddle.randn(shape).astype(paddle.float32).abs()
         lr = paddle.zeros([1]).astype(paddle.float32)
         lr[0] = lr_rate
         beta1_pow_acc = paddle.ones([1]).astype(paddle.float32)
