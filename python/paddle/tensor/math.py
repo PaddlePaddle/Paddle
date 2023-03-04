@@ -5107,3 +5107,57 @@ def frexp(x, name=None):
 
     mantissa = paddle.where((x < 0), mantissa * -1, mantissa)
     return mantissa, exponent
+
+
+def trapezoid(y, x=None, dx=None, axis=-1):
+    """ """
+    if not (x is None or dx is None):
+        raise ValueError("Not permitted to specify both x and dx input args.")
+    if y.dtype not in [paddle.float32, paddle.float64]:
+        raise TypeError(
+            "The data type of input must be Tensor, and dtype should be one of ['paddle.float32', 'paddle.float64'], but got {}".format(
+                y.dtype
+            )
+        )
+    y_shape = y.shape
+    length = y_shape[axis]
+    if length <= 1:
+        raise ValueError('The calculation dimension must be greater than 1')
+    if axis < 0:
+        axis = y.dim() + axis
+    else:
+        axis = axis
+    if x is None:
+        if dx is None:
+            dx = 1.0
+        dx = paddle.to_tensor(dx)
+        if dx.dim() > 1:
+            raise ValueError('Expected dx to be a scalar, got dx={}'.format(dx))
+        elem_sum = paddle.sum(y, axis=axis)
+        elem_sum -= 0.5 * paddle.sum(
+            paddle.gather(y, paddle.to_tensor([0, length - 1]), axis=axis),
+            axis=axis,
+        )
+        return elem_sum * dx
+    else:
+        if x.dtype not in [paddle.float32, paddle.float64]:
+            raise TypeError(
+                "The data type of input must be Tensor, and dtype should be one of ['paddle.float32', 'paddle.float64'], but got {}".format(
+                    x.dtype
+                )
+            )
+        if x.dim() == 1:
+            dx = paddle.diff(x)
+            shape = [1] * y.dim()
+            shape[axis] = dx.shape[0]
+            dx = dx.reshape(shape)
+        else:
+            dx = paddle.diff(x, axis=axis)
+        return 0.5 * paddle.sum(
+            (
+                paddle.gather(y, paddle.arange(1, length), axis=axis)
+                + paddle.gather(y, paddle.arange(0, length - 1), axis=axis)
+            )
+            * dx,
+            axis=axis,
+        )
