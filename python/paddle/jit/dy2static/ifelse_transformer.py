@@ -40,9 +40,10 @@ from paddle.jit.dy2static.utils import (
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
-from paddle.utils import FALSE_FUNC_PREFIX, TRUE_FUNC_PREFIX, gast
+from paddle.utils import gast
 
 from .base_transformer import BaseTransformer
+from .utils import FALSE_FUNC_PREFIX, TRUE_FUNC_PREFIX
 
 __all__ = []
 
