@@ -135,8 +135,8 @@ class TestAtan2Bfloat16(unittest.TestCase):
         def setUp(self):
             self.op_type = 'atan2'
             self.dtype = np.uint16
-            x = np.random.rand(0.1, 1).astype(np.float32)
-            y = np.random.rand(-1, -0.1).astype(np.float32)
+            x = np.random.rand([0.1, 1]).astype(np.float32)
+            y = np.random.rand([-1, -0.1]).astype(np.float32)
             out = paddle.atan2(x, y)
             out_ref = np.arctan2(x, y)
             self.inputs = {

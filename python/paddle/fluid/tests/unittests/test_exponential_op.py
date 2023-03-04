@@ -352,29 +352,33 @@ class TestExponentialFp16(unittest.TestCase):
         paddle.enable_static()
         self.op_type = "exponential"
         self.config()
-
         self.attrs = {"lambda": self.lam}
-        self.inputs = {'X': np.empty([1024, 1024], dtype=self.dtype)}
-        self.outputs = {'Out': np.ones([1024, 1024], dtype=self.dtype)}
 
     def config(self):
         self.lam = 0.5
-        self.dtype = "float64"
+        self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.testexponentialfp16)
 
-    def verify_output(self, outs):
-        hist1, _ = np.histogram(outs[0], range=(0, 5))
-        hist1 = hist1.astype("float16")
-        hist1 = hist1 / float(outs[0].size)
+    def testexponentialfp16(self, outs):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                self.inputs = {'X': np.empty([1024, 1024], dtype=self.dtype)}
+                self.outputs = {'Out': np.ones([1024, 1024], dtype=self.dtype)}
+                hist1, _ = np.histogram(outs[0], range=(0, 5))
+                hist1 = hist1.astype("float32")
+                hist1 = hist1 / float(outs[0].size)
 
-        data_np = np.random.exponential(1.0 / self.lam, [1024, 1024])
-        hist2, _ = np.histogram(data_np, range=(0, 5))
-        hist2 = hist2.astype("float32")
-        hist2 = hist2 / float(data_np.size)
+                data_np = np.random.exponential(1.0 / self.lam, [1024, 1024])
+                hist2, _ = np.histogram(data_np, range=(0, 5))
+                hist2 = hist2.astype("float32")
+                hist2 = hist2 / float(data_np.size)
 
-        np.testing.assert_allclose(hist1, hist2, rtol=0.02)
+                np.testing.assert_allclose(hist1, hist2, rtol=0.02)
 
 
 class TestExponentialBp16(unittest.TestCase):
