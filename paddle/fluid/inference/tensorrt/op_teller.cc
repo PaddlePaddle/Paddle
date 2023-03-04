@@ -1728,13 +1728,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!desc.HasAttr("paddings") && !desc.Input("Paddings").size()) {
         return false;
       }
-      if (!desc.HasAttr("pad_value")) {
-        return false;
-      }
       if (desc.HasAttr("mode")) {
         std::string mode = PADDLE_GET_CONST(std::string, desc.GetAttr("mode"));
-        if (mode != "constant") {
-          VLOG(3) << "The pad3d layer of TRT only support constant mode.";
+        if (mode != "constant" && mode != "reflect" && mode != "replicate") {
+          VLOG(3) << "The pad3d layer of TRT only support constant/reflect/replicate mode.";
           return false;
         }
       }

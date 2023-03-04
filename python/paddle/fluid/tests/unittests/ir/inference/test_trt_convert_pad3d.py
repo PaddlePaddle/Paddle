@@ -41,70 +41,71 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
                 [1, 1, 1, 1, 1, 1],
                 [0, 0, -1, -1, 1, 1],
             ]:
-                for mode in ['tensor', 'tensor']:
-                    if mode == 'list':
-                        dics = [
-                            {
-                                "value": value,
-                                "data_format": "NCDHW",
-                                "mode": "constant",
-                                "paddings": paddings,
-                            },
-                            {},
-                        ]
-                        ops_config = [
-                            {
-                                "op_type": "pad3d",
-                                "op_inputs": {"X": ["input_data"]},
-                                "op_outputs": {"Out": ["output_data"]},
-                                "op_attrs": dics[0],
-                            }
-                        ]
-                        ops = self.generate_op_config(ops_config)
-                        inputs = {
-                            "input_data": TensorConfig(
-                                data_gen=partial(generate_input1)
-                            )
-                        }
-                    else:
-                        dics = [
-                            {
-                                "value": value,
-                                "data_format": "NCDHW",
-                                "mode": "constant",
-                                "paddings": [0],
-                            },
-                            {},
-                        ]
-                        ops_config = [
-                            {
-                                "op_type": "pad3d",
-                                "op_inputs": {
-                                    "X": ["input_data"],
-                                    "Paddings": ["input_padding"],
+                for mode in ['tensor', 'list']:
+                    for pad_mode in ['constant', 'reflect', 'replicate']:
+                        if mode == 'list':
+                            dics = [
+                                {
+                                    "value": value,
+                                    "data_format": "NCDHW",
+                                    "mode": pad_mode,
+                                    "paddings": paddings,
                                 },
-                                "op_outputs": {"Out": ["output_data"]},
-                                "op_attrs": dics[0],
+                                {},
+                            ]
+                            ops_config = [
+                                {
+                                    "op_type": "pad3d",
+                                    "op_inputs": {"X": ["input_data"]},
+                                    "op_outputs": {"Out": ["output_data"]},
+                                    "op_attrs": dics[0],
+                                }
+                            ]
+                            ops = self.generate_op_config(ops_config)
+                            inputs = {
+                                "input_data": TensorConfig(
+                                    data_gen=partial(generate_input1)
+                                )
                             }
-                        ]
-                        ops = self.generate_op_config(ops_config)
-                        inputs = {
-                            "input_data": TensorConfig(
-                                data_gen=partial(generate_input1)
-                            ),
-                            "input_padding": TensorConfig(
-                                data_gen=partial(generate_paddings, paddings)
-                            ),
-                        }
-                    for i in range(10):
-                        program_config = ProgramConfig(
-                            ops=ops,
-                            weights={},
-                            inputs=inputs,
-                            outputs=["output_data"],
-                        )
+                        else:
+                            dics = [
+                                {
+                                    "value": value,
+                                    "data_format": "NCDHW",
+                                    "mode": pad_mode,
+                                    "paddings": [0],
+                                },
+                                {},
+                            ]
+                            ops_config = [
+                                {
+                                    "op_type": "pad3d",
+                                    "op_inputs": {
+                                        "X": ["input_data"],
+                                        "Paddings": ["input_padding"],
+                                    },
+                                    "op_outputs": {"Out": ["output_data"]},
+                                    "op_attrs": dics[0],
+                                }
+                            ]
+                            ops = self.generate_op_config(ops_config)
+                            inputs = {
+                                "input_data": TensorConfig(
+                                    data_gen=partial(generate_input1)
+                                ),
+                                "input_padding": TensorConfig(
+                                    data_gen=partial(generate_paddings, paddings)
+                                ),
+                            }
+                        for i in range(10):
+                            program_config = ProgramConfig(
+                                ops=ops,
+                                weights={},
+                                inputs=inputs,
+                                outputs=["output_data"],
+                            )
 
-                        yield program_config
+                            yield program_config
 
     def sample_predictor_configs(
         self, program_config
