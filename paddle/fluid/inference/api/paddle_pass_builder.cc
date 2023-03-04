@@ -519,13 +519,29 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "identity_scale_op_clean_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
-      "multi_encoder_xpu_fuse_pass",
-      "multi_encoder_xpu_slice_fuse_pass",
-      "fc_xpu_fuse_pass",
+      //      "multi_encoder_xpu_fuse_pass",
+      //      "multi_encoder_xpu_slice_fuse_pass",
+      //      "fc_xpu_fuse_pass",
       "link_xpu_op_max_pass",
       "delete_op_device_pass",
       "delete_isolated_node_pass",
   });
+  if (std::find(passes_.begin(), passes_.end(), "fc_xpu_fuse_pass") ==
+      passes_.end()) {
+    if (std::getenv("ENABLE_FC_XPU_FUSE_PASS") != nullptr) {
+      auto pos = passes_.begin() + 4;
+      passes_.insert(pos, "fc_xpu_fuse_pass");
+    }
+  }
+  if (std::find(passes_.begin(),
+                passes_.end(),
+                "fused_multi_transformer_quant_pass") == passes_.end()) {
+    if (std::getenv("ENABLE_FUSE_MT_PASS") != nullptr) {
+      auto pos = passes_.begin() + 4;
+      passes_.insert(pos, "fused_multi_transformer_quant_pass");
+    }
+  }
+
   use_xpu_ = true;
 }
 

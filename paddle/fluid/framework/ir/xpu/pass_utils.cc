@@ -70,6 +70,11 @@ std::string IntTypeToString<int16_t>() {
   return "int16";
 }
 
+template <>
+std::string IntTypeToString<float>() {
+  return "int16";
+}
+
 template <typename T>
 void PrepareWeight(Graph* graph,
                    Scope* scope,
@@ -129,7 +134,7 @@ void PrepareWeight(Graph* graph,
       Assign(*src_w_tensor, dst_w_tensor);
       auto* dst_w_max_tensor =
           scope->Var(dst_w_max_name)->GetMutable<phi::DenseTensor>();
-      PrepareWeight<int16_t>(dst_w_tensor, dst_w_max_tensor, transpose);
+      PrepareWeight<T>(dst_w_tensor, dst_w_max_tensor, transpose);
     } else {
       // Share the same variable
       PADDLE_ENFORCE_NOT_NULL(
@@ -155,6 +160,13 @@ template void PrepareWeight<int16_t>(Graph* graph,
                                      Node** dst_w,
                                      Node** dst_w_max,
                                      bool transpose);
+template void PrepareWeight<float>(Graph* graph,
+                                   Scope* scope,
+                                   BlockDesc* block,
+                                   Node* src_w,
+                                   Node** dst_w,
+                                   Node** dst_w_max,
+                                   bool transpose);
 
 }  // namespace ir
 }  // namespace framework
