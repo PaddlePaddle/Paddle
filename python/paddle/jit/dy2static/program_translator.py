@@ -1030,10 +1030,6 @@ class ConcreteProgram:
                             error_data.raise_new_exception()
                         raise
 
-                from paddle.jit.dy2static.program_translator import (
-                    ProgramTranslator,
-                )
-
                 # 3. Gets all ParamBases and buffered VarBases in the function
                 all_parameters_and_buffers = (
                     ProgramTranslator.get_instance()._params_recorder.pop(
