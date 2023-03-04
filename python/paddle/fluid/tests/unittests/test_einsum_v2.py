@@ -557,6 +557,24 @@ class TestBF16(unittest.TestCase):
             self.assertEqual(C.item(), D.item())
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestFP16(unittest.TestCase):
+    """
+    EinsumOp support float16 type, add unittest here for the correctness.
+    """
+
+    def test_shape(self):
+        A = paddle.to_tensor(np.array([1.0, 2.0])).astype(paddle.float16)
+        A = A.cuda()
+        B = paddle.to_tensor(np.array([2.0, 3.0])).astype(paddle.float16)
+        B = B.cuda()
+        C = paddle.einsum('i,i->', A, B)
+        D = paddle.to_tensor(8.0).astype(paddle.float16)
+        self.assertEqual(C.item(), D.item())
+
+
 class TestComplex(unittest.TestCase):
     """
     EinsumOp support Complex type

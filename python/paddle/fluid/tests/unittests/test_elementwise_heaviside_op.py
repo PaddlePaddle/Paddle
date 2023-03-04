@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
+import paddle.fluid.core as core
 
 
 def Heaviside_grad(x, y, dout):
@@ -177,6 +178,49 @@ class TestHeavisideAPI_float16(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=Heaviside_grad(
+                self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
+            ),
+            check_eager=True,
+        )
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestHeavisideAPI_bfloat16(OpTest):
+    def setUp(self):
+        self.dtype = np.uint16
+        self.op_type = "elementwise_heaviside"
+        self.python_api = paddle.heaviside
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(
+                convert_float_to_uint16(
+                    np.random.uniform(1, 2, [20, 5]).astype(np.float32)
+                )
+            ),
+            'Y': OpTest.np_dtype_to_fluid_dtype(
+                convert_float_to_uint16(
+                    np.random.uniform(1, 2, [20, 5]).astype(np.float32)
+                )
+            ),
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                np.heaviside(self.inputs['X'], self.inputs['Y'])
+            )
+        }
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
             ['X', 'Y'],
             'Out',
             user_defined_grads=Heaviside_grad(
