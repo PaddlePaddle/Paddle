@@ -23,7 +23,11 @@ from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
-from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
+from paddle.fluid.dygraph.base import (
+    _switch_declarative_mode_guard_,
+    param_guard,
+    switch_to_static_graph,
+)
 from paddle.fluid.layers.utils import flatten
 from paddle.utils import gast
 
@@ -993,8 +997,6 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
-        from paddle.fluid.dygraph.base import _switch_declarative_mode_guard_
-
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
                 # 1. Adds `fluid.data` layers for input if needed
@@ -1028,10 +1030,6 @@ class ConcreteProgram:
                         if error_data:
                             error_data.raise_new_exception()
                         raise
-
-                from paddle.jit.dy2static.program_translator import (
-                    ProgramTranslator,
-                )
 
                 # 3. Gets all ParamBases and buffered VarBases in the function
                 all_parameters_and_buffers = (
