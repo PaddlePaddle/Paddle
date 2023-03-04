@@ -38,6 +38,10 @@ PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
     false,
     "Enable serial execution for standalone executor, used for debug.");
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_static_build,
+    false,
+    "Build the interpreterCore statically without running kernels.");
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
                             "Use inplace in new executor");
@@ -116,6 +120,9 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       execution_config_(execution_config),
       var_scope_(scope) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
+
+  static_build_ = FLAGS_new_executor_static_build &&
+                  interpreter::BlockCanBeStaticBuilt(block);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -275,20 +282,21 @@ paddle::framework::FetchList InterpreterCore::Run(
         block_, execution_config_, &var_scope_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
+    paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
         execution_config_,
-        HasLocalScope());
+        HasLocalScope(),
+        static_build_);
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     is_build_ = true;
     UpdateSyncOpNum();
-    if (skip_run) {
+    if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }
@@ -1270,20 +1278,21 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
         block_, execution_config_, &var_scope_);
     FeedInput();
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
+    paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
         execution_config_,
-        HasLocalScope());
+        HasLocalScope(),
+        static_build_);
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
     is_build_ = true;
-    if (skip_run) {
+    if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }

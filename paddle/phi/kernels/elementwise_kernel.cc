@@ -324,7 +324,8 @@ PD_REGISTER_KERNEL(
     divide, XPU, ALL_LAYOUT, phi::DivideKernel, phi::dtype::float16, float) {}
 
 PD_REGISTER_KERNEL(
-    add, XPU, ALL_LAYOUT, phi::AddKernel, phi::dtype::float16, float) {}
+    add, XPU, ALL_LAYOUT, phi::AddKernel, phi::dtype::float16, float, int64_t) {
+}
 
 PD_REGISTER_KERNEL(multiply,
                    XPU,

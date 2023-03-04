@@ -379,7 +379,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     else:
         helper = LayerHelper("temporal_shift", **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'temporal_shift'
+            x, 'x', ['float16', 'float32', 'float64'], 'temporal_shift'
         )
         check_type(seg_num, 'seg_num', int, 'temporal_shift')
         check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')

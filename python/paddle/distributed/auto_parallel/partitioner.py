@@ -251,7 +251,7 @@ class Partitioner:
                     serial_ops[idx].desc.original_id()
                 ] = serial_ops[idx]
 
-        # partiiton
+        # partition
         appended_grad_times = 0
         for idx, op in enumerate(serial_ops):
 
@@ -263,7 +263,7 @@ class Partitioner:
                 if not op_dist_attr.is_recompute:
                     appended_grad_times += 1
 
-            # partititon input variables
+            # partition input variables
             for serial_input_varname in op.desc.input_arg_names():
                 if (
                     serial_input_varname
