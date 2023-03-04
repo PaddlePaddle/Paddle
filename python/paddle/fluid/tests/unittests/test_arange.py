@@ -79,20 +79,14 @@ class TestBFloat16ArangeOp(OpTest):
         self.__class__.op_type = self.op_type
         self.init_config()
         self.inputs = {
-            'Start': convert_float_to_uint16(
-                np.array([self.case[0]]).astype(np.float32)
-            ),
-            'End': convert_float_to_uint16(
-                np.array([self.case[1]]).astype(np.float32)
-            ),
-            'Step': convert_float_to_uint16(
-                np.array([self.case[2]]).astype(np.float32)
-            ),
+            'Start': convert_float_to_uint16(self.start),
+            'End': convert_float_to_uint16(self.end),
+            'Step': convert_float_to_uint16(self.step),
         }
 
         self.outputs = {
             'Out': convert_float_to_uint16(
-                np.arange(self.case[0], self.case[1], self.case[2])
+                np.arange(self.start, self.end, self.step)
             )
         }
 
@@ -100,6 +94,9 @@ class TestBFloat16ArangeOp(OpTest):
         self.dtype = np.uint16
         self.python_api = arange_wrapper
         self.case = (0, 5, 1)
+        self.start = np.array([self.case[0]]).astype(np.float32)
+        self.end = np.array([self.case[1]]).astype(np.float32)
+        self.step = np.array([self.case[2]]).astype(np.float32)
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
