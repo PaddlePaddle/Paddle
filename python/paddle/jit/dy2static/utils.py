@@ -14,6 +14,7 @@
 
 import ast
 import atexit
+import builtins
 import copy
 import functools
 import importlib.util
@@ -23,6 +24,7 @@ import shutil
 import sys
 import tempfile
 import textwrap
+import types
 import warnings
 from importlib.machinery import SourceFileLoader
 
@@ -1542,3 +1544,19 @@ def prim_or_cinn_is_enabled(build_strategy):
         elif value.lower() in ['true', '1']:
             return True
     return False
+
+
+def is_builtin(func, name=None):
+    """predict whether a function is a builtin function with name={name}.
+    if name == None, then any builtin function will return True
+    """
+
+    def name_judge():
+        return name is None or func.__name__ == name
+
+    if isinstance(func, types.BuiltinFunctionType) and name_judge():
+        return True
+    elif func in builtins.__dict__.values() and name_judge():
+        return True
+    else:
+        return False
