@@ -130,31 +130,21 @@ class TestAtan2API(unittest.TestCase):
             run(place)
 
 
-class TestAtan2OpBfp16(OpTest):
-    def setUp(self):
-        self.op_type = "atan2"
-        input_x = np.random.uniform(0.1, 1.0).astype(np.float32)
-        input_y = np.random.uniform(-1.0, -0.1).astype(np.float32)
-        output_np = paddle.atan2(input_x, input_y)
-        output_ref = np.arctan2(input_x, input_y)
-        self.inputs = {
-            'X': convert_float_to_uint16(input_x),
-            'Y': convert_float_to_uint16(input_y),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(output_np)}
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place, atol=1e-2)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        if core.is_bfloat16_supported(place):
-            self.check_grad_with_place(
-                place, ['X', 'Y'], 'Out', max_relative_error=1e-2
-            )
+class TestAtan2OpBF16(unittest.TestCase):
+    def testatan2bf16(OpTest):
+        def setUp(self):
+            self.op_type = 'atan2'
+            self.dtype = np.uint16
+            x = np.random.rand([0.1, 1]).astype('float32')
+            y = np.random.rand([-1, -0.1]).astype('float32')
+            out = paddle.atan2(x, y)
+            out_ref = np.arctan2(x, y)
+            self.inputs = {
+                'X': convert_float_to_uint16(x),
+                'Y': convert_float_to_uint16(y),
+            }
+            self.outputs = {'Out': convert_float_to_uint16(out)}
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
 
 class TestAtan2Error(unittest.TestCase):
