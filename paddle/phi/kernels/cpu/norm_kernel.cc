@@ -31,7 +31,7 @@ void NormKernel(const Context& ctx,
                 DenseTensor* out,
                 DenseTensor* norm) {
   auto xdim = x.dims();
-  T eps = epsilon;
+  T eps = static_cast<T>(epsilon);
   if (axis < 0) axis = xdim.size() + axis;
   int pre, n, post;
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
@@ -77,4 +77,10 @@ void NormKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(norm, CPU, ALL_LAYOUT, phi::NormKernel, float, double) {}
+PD_REGISTER_KERNEL(norm,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::NormKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16) {}
