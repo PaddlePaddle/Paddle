@@ -42,12 +42,14 @@ void KthvalueGradKernel(const Context& dev_ctx,
                         int axis,
                         bool keepdim,
                         DenseTensor* d_x) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType mpx = static_cast<MPType>(dev_ctx);
   const auto& in_dims = x.dims();
   auto out_dims = indices.dims();
-  T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
+  T* x_grad_data = mpx.template Alloc<T>(d_x);
   // For 0D Tensor
   if (in_dims.size() == 0) {
-    phi::funcs::set_constant(dev_ctx, d_x, 1.0);
+    phi::funcs::set_constant(mpx, d_x, 1.0);
     return;
   }
 
@@ -58,11 +60,11 @@ void KthvalueGradKernel(const Context& dev_ctx,
   int pre, n, post;
   phi::funcs::GetDims(in_dims, axis, &pre, &n, &post);
   int block_size = getBlockSize(post * k);
-  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+  int max_threads = mpx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
   int grid_size = std::min(max_blocks, pre);
   phi::funcs::AssignGradWithAxis<T>
-      <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
+      <<<grid_size, block_size, 64 * 4, mpx.stream()>>>(
           out_grad_data, indices_data, x_grad_data, pre, post, n, 1);
 }
 
