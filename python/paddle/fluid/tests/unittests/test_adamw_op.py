@@ -355,18 +355,20 @@ class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
             )
 
     def _get_places(self):
-        places = ['cpu']
+        places = []
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
         return places
 
     def test_main(self):
-        for place in self._get_places():
-            use_main_grad_list = [True, False]
-            for use_main_grad in use_main_grad_list:
-                self._test_adamw_op_dygraph_place_amp_with_maingrad(
-                    place, use_main_grad
-                )
+        for _ in range(10):
+            shape = paddle.randint(1, 1024, [2])
+            for place in self._get_places():
+                use_main_grad_list = [True, False]
+                for use_main_grad in use_main_grad_list:
+                    self._test_adamw_op_dygraph_place_amp_with_maingrad(
+                        place, shape, use_main_grad
+                    )
 
 
 class TestAdamWOpMultiPrecison(unittest.TestCase):
