@@ -195,20 +195,21 @@ class TestEmptyLikeAPI_Static2(TestEmptyLikeAPI_Static):
 
 
 class TestEmptyLikeOpFP16(unittest.TestCase):
-    def testemptylikefp16(self):
-        paddle.enable_static()
-        input_x = (np.random.random([2, 3])).astype('int32')
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data(name="x", shape=[2, 3], dtype='int32')
-            dtype = 'float16'
-            out = paddle.empty_like(x, dtype=dtype)
-            if paddle.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-                exe = paddle.static.Executor(place)
-                exe.run(paddle.static.default_startup_program())
-                out = exe.run(
-                    feed={'x': input_x, 'dtype': dtype}, fetch_list=[out]
-                )
+    def testemptylikefp16(OpTest):
+        def setUp(self):
+            paddle.enable_static()
+            input_x = (np.random.random([2, 3])).astype('int32')
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(name="x", shape=[2, 3], dtype='int32')
+                dtype = 'float16'
+                out = paddle.empty_like(x, dtype=dtype)
+                if paddle.is_compiled_with_cuda():
+                    place = paddle.CUDAPlace(0)
+                    exe = paddle.static.Executor(place)
+                    exe.run(paddle.static.default_startup_program())
+                    out = exe.run(
+                        feed={'x': input_x, 'dtype': dtype}, fetch_list=[out]
+                    )
                 if core.is_float16_supported(place):
                     self.check_output_with_place(place, atol=1e-3)
 
