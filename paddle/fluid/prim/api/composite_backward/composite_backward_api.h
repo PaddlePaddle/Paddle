@@ -810,16 +810,42 @@ void maximum_grad(const Tensor& x,
                   Tensor* x_grad,
                   Tensor* y_grad) {
   if (x_grad) {
-    auto tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
-    auto x_grad_tmp = out_grad * tmp;
-    x_grad_tmp = reshape<T>(x_grad_tmp, x.shape());
-    set_output<T>(x_grad_tmp, x_grad);
+    auto x_tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
+    auto x_grad_unreduce = out_grad * x_tmp;
+    if (x_grad_unreduce.dims() != x.dims()) {
+      auto axes = get_reduce_dims_from_out(x_grad_unreduce.dims(), x.dims());
+      if (!axes.size()) {
+        set_output<T>(x_grad_unreduce, x_grad);
+      } else {
+        auto x_grad_reduced = x_grad_unreduce.sum(
+            phi::vectorize(axes), x_grad_unreduce.dtype(), false);
+        if (x_grad_reduced.dims().size() != x.dims().size()) {
+          x_grad_reduced = reshape<T>(x_grad_reduced, x.shape());
+        }
+        set_output<T>(x_grad_reduced, x_grad);
+      }
+    } else {
+      set_output<T>(x_grad_unreduce, x_grad);
+    }
   }
   if (y_grad) {
-    auto tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
-    auto y_grad_tmp = out_grad * tmp;
-    y_grad_tmp = reshape<T>(y_grad_tmp, y.shape());
-    set_output<T>(y_grad_tmp, y_grad);
+    auto y_tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
+    auto y_grad_unreduce = out_grad * y_tmp;
+    if (y_grad_unreduce.dims() != y.dims()) {
+      auto axes = get_reduce_dims_from_out(y_grad_unreduce.dims(), y.dims());
+      if (!axes.size()) {
+        set_output<T>(y_grad_unreduce, y_grad);
+      } else {
+        auto y_grad_reduced = y_grad_unreduce.sum(
+            phi::vectorize(axes), y_grad_unreduce.dtype(), false);
+        if (y_grad_reduced.dims().size() != y.dims().size()) {
+          y_grad_reduced = reshape<T>(y_grad_reduced, y.shape());
+        }
+        set_output<T>(y_grad_reduced, y_grad);
+      }
+    } else {
+      set_output<T>(y_grad_unreduce, y_grad);
+    }
   }
 }
 
