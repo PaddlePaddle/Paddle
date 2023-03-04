@@ -38,7 +38,7 @@ namespace ir {
 
 static const char kParamScopeAttr[] = "__param_scope__";
 
-static std::vector<std::string> support_subgraph_passes = {
+static const std::vector<std::string> support_subgraph_passes = {
     "simplify_with_basic_ops_pass",
     "fused_multi_transformer_encoder_pass",
     "fused_multi_transformer_decoder_pass",
@@ -49,8 +49,8 @@ static std::vector<std::string> support_subgraph_passes = {
     "fuse_multi_transformer_layer_pass",
     "delete_quant_dequant_linear_op_pass",
     "delete_weight_dequant_linear_op_pass",
-    //    "fused_multi_transformer_quant_pass",
-    //    "fc_xpu_fuse_pass",
+    "fused_multi_transformer_quant_pass",
+    "fc_xpu_fuse_pass",
     "delete_op_device_pass"};
 
 Graph *Pass::Apply(Graph *graph) const {
@@ -87,24 +87,6 @@ Graph *Pass::Apply(Graph *graph) const {
     graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
   }
   graph->Get<PassRecorder>(kPassRecorder).insert(Type());
-
-  if (std::find(support_subgraph_passes.begin(),
-                support_subgraph_passes.end(),
-                "fc_xpu_fuse_pass") == support_subgraph_passes.end()) {
-    if (std::getenv("ENABLE_FC_XPU_FUSE_PASS") != nullptr) {
-      auto pos = support_subgraph_passes.begin() + 10;
-      support_subgraph_passes.insert(pos, "fc_xpu_fuse_pass");
-    }
-  }
-  if (std::find(support_subgraph_passes.begin(),
-                support_subgraph_passes.end(),
-                "fused_multi_transformer_quant_pass") ==
-      support_subgraph_passes.end()) {
-    if (std::getenv("ENABLE_FUSE_MT_PASS") != nullptr) {
-      auto pos = support_subgraph_passes.begin() + 10;
-      support_subgraph_passes.insert(pos, "fused_multi_transformer_quant_pass");
-    }
-  }
 
   if (graph->IsMainGraph() && std::count(support_subgraph_passes.begin(),
                                          support_subgraph_passes.end(),

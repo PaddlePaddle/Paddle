@@ -14,6 +14,10 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#ifdef PADDLE_WITH_XPU_XFT
+#include "models/fused_multi_transformer_op.h"
+namespace xft = baidu::xpu::xft;
+#endif
 
 namespace phi {
 namespace fusion {
@@ -50,7 +54,7 @@ void FusedMultiTransformerXpuKernel(
     bool trans_qkvw,
     DenseTensor* out,
     std::vector<DenseTensor*> cache_kv_out) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
+  using XPUTypeT = typename XPUTypeTrait<T>::Type;
 
   PADDLE_ENFORCE_EQ(pre_layer_norm,
                     true,
@@ -61,18 +65,19 @@ void FusedMultiTransformerXpuKernel(
       nullptr,
       phi::errors::PreconditionNotMet("SeqLengths not support at now."));
   PADDLE_ENFORCE_EQ(
-      rotary_tensor.get_ptr(),
+      rotary_pos_emb.get_ptr(),
       nullptr,
       phi::errors::PreconditionNotMet("RotaryPosEmb not support at now."));
   PADDLE_ENFORCE_EQ(
-      pre_caches.size(),
-      0,
+      pre_caches.get_ptr(),
+      nullptr,
       phi::errors::PreconditionNotMet("PreCaches not support at now."));
   PADDLE_ENFORCE_NE(
       src_mask.get_ptr(),
       nullptr,
       phi::errors::PreconditionNotMet("SrcMask should not be nullptr."));
-  PADDLE_ENFORCE_EQ(trans_qkvw true,
+  PADDLE_ENFORCE_EQ(trans_qkvw,
+                    true,
                     phi::errors::PreconditionNotMet(
                         "Only support trans_qkvw == true at now."));
 
@@ -84,12 +89,12 @@ void FusedMultiTransformerXpuKernel(
 
   int time_step_value = -1;
   if (time_step) {
-    PADDLE_ENFORCE_EQ(time_step.place(),
-                      platform::CPUPlace(),
+    PADDLE_ENFORCE_EQ(time_step.get_ptr()->place(),
+                      phi::CPUPlace(),
                       phi::errors::PreconditionNotMet(
                           "The place of input(TimeStep) must be CPUPlace."));
     // cache_seq_len
-    time_step_value = time_step.data<int>()[0];
+    time_step_value = time_step.get_ptr()->data<int>()[0];
     PADDLE_ENFORCE_GT(
         time_step_value,
         0,
@@ -104,10 +109,10 @@ void FusedMultiTransformerXpuKernel(
   }
 
   XPUTypeT* x_data = reinterpret_cast<XPUTypeT*>(const_cast<T*>(x.data<T>()));
-  XPUTypeT* src_mask_data =
-      reinterpret_cast<XPUTypeT*>(const_cast<T*>(src_mask.data<T>()));
+  XPUTypeT* src_mask_data = reinterpret_cast<XPUTypeT*>(
+      const_cast<T*>(src_mask.get_ptr()->data<T>()));
   auto* out_data = reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(out));
-  auto src_mask_dims = src_mask.dims();
+  auto src_mask_dims = src_mask.get_ptr()->dims();
   auto out_dims = out->dims();
   auto X = xft::xftTensor<XPUTypeT, 3>(
       x_data, std::array<int64_t, 3>{x_dims[0], x_dims[1], x_dims[2]});
@@ -186,14 +191,14 @@ void FusedMultiTransformerXpuKernel(
                           std::array<int64_t, 1>{ffn2_bias[i]->dims()[0]});
     // cache kv in
     if (time_step_value > 0) {
-      auto cachekv_dims = cache_kv[i]->dims();
-      CacheKVIn.emplace_back(
-          reinterpret_cast<XPUTypeT*>(const_cast<T*>(cache_kv[i]->data<T>())),
-          std::array<int64_t, 5>{cachekv_dims[0],
-                                 cachekv_dims[1],
-                                 cachekv_dims[2],
-                                 cachekv_dims[3],
-                                 cachekv_dims[4]});
+      auto cachekv_dims = cache_kv.get_ptr()->at(i)->dims();
+      CacheKVIn.emplace_back(reinterpret_cast<XPUTypeT*>(const_cast<T*>(
+                                 cache_kv.get_ptr()->at(i)->data<T>())),
+                             std::array<int64_t, 5>{cachekv_dims[0],
+                                                    cachekv_dims[1],
+                                                    cachekv_dims[2],
+                                                    cachekv_dims[3],
+                                                    cachekv_dims[4]});
     }
     // cache kv out
     auto cachekv_out_dims = cache_kv_out[i]->dims();
@@ -212,7 +217,7 @@ void FusedMultiTransformerXpuKernel(
   param.size_per_head = dim_head;
   param.hidden_act = act_method;
   param.is_fuse_qkv = true;
-  int r = xft::fused_multi_transformer<T, TW, int16_t>(xpu_ctx,
+  int r = xft::fused_multi_transformer<T, TW, int16_t>(ctx.x_context(),
                                                        X,
                                                        CacheKVIn,
                                                        SrcMask,

@@ -846,7 +846,6 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"fused_feedforward_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
-      {"fused_multi_transformer", XPUKernelSet({phi::DataType::FLOAT32})},
   };
 
   return s_xpu2_kernels;
