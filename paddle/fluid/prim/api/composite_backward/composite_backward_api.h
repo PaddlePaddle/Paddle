@@ -809,47 +809,41 @@ void maximum_grad(const Tensor& x,
                   int axis,
                   Tensor* x_grad,
                   Tensor* y_grad) {
-  auto broadcast_shape = broadcast(x.shape(), y.shape());
-  auto x_broadcasted = x.expand(IntArray(broadcast_shape));
-  auto y_broadcasted = y.expand(IntArray(broadcast_shape));
   if (x_grad) {
-    auto x_tmp = cast<T>(greater_than<T>(x_broadcasted, y_broadcasted),
-                         out_grad.dtype());
-    auto x_grad_unreduce = out_grad * x_tmp;
-    if (x_grad_unreduce.dims() != x.dims()) {
-      auto axes = get_reduce_dims(x_grad_unreduce.dims(), x.dims());
-      if (!axes.size()) {
-        set_output<T>(x_grad_unreduce, x_grad);
+    auto x_tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
+    auto dx_res = out_grad * x_tmp;
+    if (y.dims() != x.dims()) {
+      // Maybe need reduce here
+      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dx_res, x_grad);
       } else {
-        auto x_grad_reduced = x_grad_unreduce.sum(
-            phi::vectorize(axes), x_grad_unreduce.dtype(), false);
-        if (x_grad_reduced.dims().size() != x.dims().size()) {
-          x_grad_reduced = reshape<T>(x_grad_reduced, x.shape());
-        }
-        set_output<T>(x_grad_reduced, x_grad);
+        auto dx_reduce_res =
+            dx_res.sum(phi::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
+        set_output<T>(dx_tmp, x_grad);
       }
+
     } else {
-      set_output<T>(x_grad_unreduce, x_grad);
+      set_output<T>(dx_res, x_grad);
     }
   }
   if (y_grad) {
-    auto y_tmp =
-        cast<T>(less_equal<T>(x_broadcasted, y_broadcasted), out_grad.dtype());
-    auto y_grad_unreduce = out_grad * y_tmp;
-    if (y_grad_unreduce.dims() != y.dims()) {
-      auto axes = get_reduce_dims(y_grad_unreduce.dims(), y.dims());
-      if (!axes.size()) {
-        set_output<T>(y_grad_unreduce, y_grad);
+    auto y_tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
+    auto dy_res = out_grad * y_tmp;
+    if (x.dims() != y.dims()) {
+      // Maybe need reduce here
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dy_res, y_grad);
       } else {
-        auto y_grad_reduced = y_grad_unreduce.sum(
-            phi::vectorize(axes), y_grad_unreduce.dtype(), false);
-        if (y_grad_reduced.dims().size() != y.dims().size()) {
-          y_grad_reduced = reshape<T>(y_grad_reduced, y.shape());
-        }
-        set_output<T>(y_grad_reduced, y_grad);
+        auto dy_reduce_res =
+            dy_res.sum(phi::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
+        set_output<T>(dy_tmp, y_grad);
       }
     } else {
-      set_output<T>(y_grad_unreduce, y_grad);
+      set_output<T>(dy_res, y_grad);
     }
   }
 }
