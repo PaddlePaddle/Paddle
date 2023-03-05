@@ -22,6 +22,7 @@ from utils import SUB_TOLERANCE
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
+from paddle.incubate.autograd import primapi
 
 TOLERANCE_NUMPY = {
     "float32": {"rtol": 2e-5, "atol": 2e-5},
@@ -196,7 +197,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             # Ensure that layer_norm in original block
             self.assertTrue('layer_norm' in fwd_ops)
 
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that layer_norm is splitted into small ops
@@ -242,7 +243,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             # Ensure that layer_norm in original block
             self.assertTrue('layer_norm' in fwd_ops)
 
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that layer_norm is splitted into small ops
@@ -341,7 +342,7 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
             y = fn(x, norm_shape, w, b)
 
             blocks = main_program.blocks
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
             z = paddle.static.gradients([y], x)
 
         exe = paddle.static.Executor()
@@ -374,7 +375,7 @@ class TestCompositelayer_normPrimBackward(unittest.TestCase):
             y = fn(x, norm_shape, weight, bias)
 
             blocks = main_program.blocks
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
             z = paddle.static.gradients([y], x)
 
         exe = paddle.static.Executor()
@@ -480,7 +481,7 @@ class TestCompositeNumpylayer_norm(unittest.TestCase):
             # Ensure that layer_norm in original block
             self.assertTrue('layer_norm' in fwd_ops)
 
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that layer_norm is splitted into small ops
@@ -532,7 +533,7 @@ class TestCompositeNumpylayer_norm(unittest.TestCase):
             )
 
             blocks = main_program.blocks
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
             z = paddle.static.gradients([y], x)
 
         exe = paddle.static.Executor()

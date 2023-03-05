@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
+from paddle.incubate.autograd import primapi
 
 paddle.framework.random._manual_program_seed(2023)
 
@@ -49,7 +50,7 @@ class TestCompositeCopyOp(unittest.TestCase):
             # Ensure that dropout in original block
             self.assertTrue('dropout' in fwd_ops)
 
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that dropout is not splitted into small ops

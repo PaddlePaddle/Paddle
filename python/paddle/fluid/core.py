@@ -446,6 +446,10 @@ def __sync_stat_with_flag(flag):
         )
 
 
+def _is_all_prim_enabled():
+    return _is_fwd_prim_enabled() and _is_bwd_prim_enabled()
+
+
 # Alert!!! This method is only for test coveraget, user should never use it directly, this may cause serious system errors.
 def _test_use_sync(value):
     __sync_stat_with_flag(value)
