@@ -2579,6 +2579,13 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+    if (op_type == "temporal_shift") {
+#if !IS_TRT_VERSION_GE(8200)
+      VLOG(3) << "temporal_shift is not supported when TensorRT < 8.5.1";
+      return false;
+#endif
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
