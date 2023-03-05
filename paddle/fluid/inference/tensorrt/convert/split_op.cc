@@ -31,7 +31,7 @@ class SplitOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto inputs = op_desc.Inputs();
     auto input_dims = input->getDimensions();
-    size_t output_num = op_desc.Output("Out").size();
+    int output_num = op_desc.Output("Out").size();
 
     // Get Attrs
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
@@ -140,7 +140,7 @@ class SplitOpConverter : public OpConverter {
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
 
       // input : [C,H,W]
-      for (size_t i = 0; i < output_num; i++) {
+      for (int i = 0; i < output_num; i++) {
         trt_start_dims.d[axis] = std::accumulate(
             output_lengths.begin(), output_lengths.begin() + i, 0);
         trt_size_dims.d[axis] = output_lengths[i];
@@ -169,7 +169,7 @@ class SplitOpConverter : public OpConverter {
       layer = engine_->AddPluginV2Ext(&input, 1, plugin);
     }
     std::vector<std::string> output_names;
-    for (size_t i = 0; i < output_num; i++) {
+    for (int i = 0; i < output_num; i++) {
       output_names.push_back(op_desc.Output("Out")[i]);
     }
     RreplenishLayerAndOutput(layer, "split", output_names, test_mode);
