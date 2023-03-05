@@ -165,10 +165,6 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       bool is_retain_op_type =
           is_retain_op(retain_op_type, any_op_desc->Type());
       if (!is_retain_op_type && !is_retain_op_name) {
-        std::cout << "remove q dq with  :" << any_op_desc->Type() << std::endl;
-        std::cout << "var name   :" << quantize_linear_op_x->Var()->Name()
-                  << std::endl;
-
         any_op_desc->SetAttr(
             "Input_scale_" + quantize_linear_op_x->Var()->Name(), input_scale);
 
