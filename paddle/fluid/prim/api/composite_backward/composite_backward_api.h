@@ -809,7 +809,7 @@ void maximum_grad(const Tensor& x,
                   int axis,
                   Tensor* x_grad,
                   Tensor* y_grad) {
-  auto broadcast_shape = broadcast<T>(x.shape(), y.shape());
+  auto broadcast_shape = broadcast(x.shape(), y.shape());
   auto x_broadcasted = x.expand(IntArray(broadcast_shape));
   auto y_broadcasted = y.expand(IntArray(broadcast_shape));
   if (x_grad) {
