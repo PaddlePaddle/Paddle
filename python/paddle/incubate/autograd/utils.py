@@ -185,22 +185,23 @@ def _get_args_values(op, phi_name):
         # IntArray and Scalar are legacy type. In these case, tensor-relative types are removed in composite op.
         if arg_type in ("IntArray", "Scalar"):
             tensor_key = "int_array" if arg_type == "IntArray" else "scalar"
-            tensor_content = op_content[tensor_key].get(arg_name)
-            if not tensor_content:
-                raise ValueError(
-                    f'No value found for {arg_name} of {arg_type} type for operator {op.type}.'
-                )
-            for item in ("tensor_name", "tensor_name"):
-                # name of intarray may differ from operator arg_name
-                arg_name_new = tensor_content.get(item)
-                if (
-                    arg_name_new is not None
-                    and arg_name_new in op.input_names
-                    and get_var_block(op.block, op.input(arg_name_new))
-                ):
+            if op_content.get(tensor_key):
+                tensor_content = op_content[tensor_key].get(arg_name)
+                if not tensor_content:
                     raise ValueError(
-                        f"Tensor type of {arg_type} is not supported in composite op. Please set other type value of input arg {arg_name_new} for operator {op.type}."
+                        f'No value found for {arg_name} of {arg_type} type for operator {op.type}.'
                     )
+                for item in ("tensor_name", "tensor_name"):
+                    # name of intarray may differ from operator arg_name
+                    arg_name_new = tensor_content.get(item)
+                    if (
+                        arg_name_new is not None
+                        and arg_name_new in op.input_names
+                        and get_var_block(op.block, op.input(arg_name_new))
+                    ):
+                        raise ValueError(
+                            f"Tensor type of {arg_type} is not supported in composite op. Please set other type value of input arg {arg_name_new} for operator {op.type}."
+                        )
 
         if arg_type in ("Tensor", "Tensor[]"):
             # assume Tensor type must belong to inputs
