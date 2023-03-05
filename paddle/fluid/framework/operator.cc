@@ -1955,7 +1955,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi::KernelContext phi_kernel_context;
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
-        // TODO(inference): Now we only suppor dense_tensor cache, we may be
+        // TODO(inference): Now we only support dense_tensor cache, we may be
         // support ScalarTensor, SparseTensor in future.
         bool all_dense_tensor_input_{true};
         for (auto& iter : Inputs()) {
@@ -2738,6 +2738,10 @@ void OperatorWithKernel::ParseInputDataType(
     }
     if (t != nullptr) {
       *data_type = paddle::framework::TransToProtoVarType(t->dtype());
+      if (*t->canNotUse == true) {
+        LOG(WARNING) << "Stride Test Log:" << Type()
+                     << "Find a Tensor Which Can Not Be Used ";
+      }
     }
   }
 }
@@ -2929,6 +2933,10 @@ phi::KernelKey OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
     const phi::KernelKey& expected_kernel_type) const {
+  if (*tensor.canNotUse == true) {
+    LOG(WARNING) << "Stride Test Log:" << Type()
+                 << "Find a Tensor Which Can Not Be Used";
+  }
 #ifdef PADDLE_WITH_MKLDNN
   // When the op is first oneDNN op (there was some non oneDNN op
   // previously)
