@@ -1725,13 +1725,18 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "pad3d") {
+#if !IS_TRT_VERSION_GE(8200)
+      VLOG(3) << "pad3d is not supported when TensorRT < 8.4";
+      return false;
+#endif
       if (!desc.HasAttr("paddings") && !desc.HasInput("Paddings")) {
         return false;
       }
       if (desc.HasAttr("mode")) {
         std::string mode = PADDLE_GET_CONST(std::string, desc.GetAttr("mode"));
         if (mode != "constant" && mode != "reflect" && mode != "replicate") {
-          VLOG(3) << "The pad3d layer of TRT only support constant/reflect/replicate mode.";
+          VLOG(3) << "The pad3d layer of TRT only support "
+                     "constant/reflect/replicate mode.";
           return false;
         }
       }
