@@ -100,7 +100,7 @@ class SplitOpConverter : public OpConverter {
       // input : [N,C,H,W]
       nvinfer1::ITensor* start_point_tensor = zeros_tensor;
       nvinfer1::ITensor* this_len_tensor = zeros_tensor;
-      for (size_t i = 0; i < output_num; i++) {
+      for (int i = 0; i < output_num; i++) {
         if (sections_tensor_list || !in_axis_dim_dynamic) {
           start_point_tensor = Sum(start_point_tensor, this_len_tensor);
           this_len_tensor = Gather(sections_tensor, std::vector<int32_t>{i});
