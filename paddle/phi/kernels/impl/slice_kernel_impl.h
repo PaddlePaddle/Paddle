@@ -142,6 +142,10 @@ void SliceRawKernel(const Context& ctx,
       PADDLE_THROW(phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
+  DenseTensor& xx = const_cast<DenseTensor&>(input);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
 }
 
 template <typename T, typename Context>

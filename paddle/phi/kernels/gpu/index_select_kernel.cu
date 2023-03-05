@@ -53,7 +53,11 @@ void IndexSelectKernel(const Context& ctx,
 
   auto* in_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(output);
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
 
+  output->can_not_uses = xx.can_not_uses;
+  output->can_not_uses->insert(output->canNotUse);
+  output->can_not_uses->insert(xx.canNotUse);
   int64_t numel = output->numel();
   if (numel == 0) {
     return;

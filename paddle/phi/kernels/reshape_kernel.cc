@@ -38,9 +38,17 @@ void ReshapeInferKernel(const Context& dev_ctx,
   }
   if (x.initialized() && x.Holder() == out->Holder()) {
     dev_ctx.Alloc(out, x.dtype());
+    DenseTensor& xx = const_cast<DenseTensor&>(x);
+    out->can_not_uses = xx.can_not_uses;
+    out->can_not_uses->insert(out->canNotUse);
+    out->can_not_uses->insert(xx.canNotUse);
     return;
   }
   dev_ctx.Alloc(out, x.dtype());
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
   // TODO(chenweihang): the output dims are overwrite after copying,
   // here we need to use copy method that only copy data
   auto dims = out->dims();
