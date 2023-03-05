@@ -156,6 +156,69 @@ def transpose(x, perm, name=None):
 
 
 @dygraph_only
+def sum(x, axis=None, dtype=None, keepdim=False, name=None):
+    """
+    Computes the sum of tensor elements over the given dimension.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
+        axis (int|list|tuple, optional): The dimensions along which the sum is performed. If
+            :attr:`None`, sum all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        dtype (str, optional): The dtype of output Tensor. The default value is None, the dtype
+            of output is the same as input Tensor `x`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Results of summation operation on the specified axis of input Tensor `x`,
+        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
+        otherwise it's data type is the same as `x`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            # x is a Tensor with following elements:
+            #    [[0.2, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, 0.6, 0.7]]
+            # Each example is followed by the corresponding output tensor.
+            x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
+                                  [0.1, 0.2, 0.6, 0.7]])
+            out1 = paddle.sum(x)  # [3.5]
+            out2 = paddle.sum(x, axis=0)  # [0.3, 0.5, 1.1, 1.6]
+            out3 = paddle.sum(x, axis=-1)  # [1.9, 1.6]
+            out4 = paddle.sum(x, axis=1, keepdim=True)  # [[1.9], [1.6]]
+
+            # y is a Tensor with shape [2, 2, 2] and elements as below:
+            #      [[[1, 2], [3, 4]],
+            #      [[5, 6], [7, 8]]]
+            # Each example is followed by the corresponding output tensor.
+            y = paddle.to_tensor([[[1, 2], [3, 4]],
+                                  [[5, 6], [7, 8]]])
+            out5 = paddle.sum(y, axis=[1, 2]) # [10, 26]
+            out6 = paddle.sum(y, axis=[0, 1]) # [16, 20]
+
+            # x is a Tensor with following elements:
+            #    [[True, True, True, True]
+            #     [False, False, False, False]]
+            # Each example is followed by the corresponding output tensor.
+            x = paddle.to_tensor([[True, True, True, True],
+                                  [False, False, False, False]])
+            out7 = paddle.sum(x)  # [4]
+            out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
+            out9 = paddle.sum(x, axis=1)  # [4, 0]
+    """
+    return _C_ops.sparse_sum(x, axis, dtype, keepdim)
+
+
+@dygraph_only
 def atan(x, name=None):
     """
     Calculate elementwise atan of SparseTensor, requiring x to be a SparseCooTensor or SparseCsrTensor.
