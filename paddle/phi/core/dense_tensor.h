@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <set>
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/storage_properties.h"
 #include "paddle/phi/core/stream.h"
@@ -164,6 +165,11 @@ class DenseTensor : public TensorBase,
   T* data();
 
   void* data();
+
+  std::shared_ptr<bool> canNotUse = std::make_shared<bool>(false);
+  std::shared_ptr<std::set<std::shared_ptr<bool>>> can_not_uses =
+      std::make_shared<std::set<std::shared_ptr<bool>>>(
+          std::set<std::shared_ptr<bool>>());
 
   /// \brief Get whether the storage_properties is inited.
   /// \return The init status of storage_properties.
