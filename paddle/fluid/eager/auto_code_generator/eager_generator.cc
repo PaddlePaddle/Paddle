@@ -1739,8 +1739,25 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
         " \n"
         "%s\n"
         "  }\n";
+    std::string check_can_not_use = "";
     std::string amp_logic_str = "";
     if (in_vars.size() != 0) {
+      const char* CHECK_TENSORS_VECTOR_TEMPLATE =
+          "    paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
+          "egr::kSlotSmallVectorSize> "
+          "check_tensors_vector = { "
+          "%s };\n"
+          "for(size_t i = 0; i < check_tensors_vector.size(); ++i)"
+          "    for(size_t j = 0; j < check_tensors_vector[i].size(); ++j)"
+          "        if (check_tensors_vector[i][j].can_not_use() == true)"
+          "            LOG(WARNING) << \"Stride Test Log: \""
+          "            << \"%s\" << \"Find a Tensor Which Can Not Use.\";";
+      std::string check_tensors_vector = paddle::string::Sprintf(
+          CHECK_TENSORS_VECTOR_TEMPLATE, amp_tensors_vector_str, op_type);
+      // check_tensors_vector += dispensable_amp_tensors_vector_str;
+      check_tensors_vector += "\n";
+      check_can_not_use += check_tensors_vector;
+      check_can_not_use += "\n";
       const char* AMP_TENSORS_VECTOR_TEMPLATE =
           "    paddle::small_vector<std::vector<paddle::experimental::Tensor>, "
           "egr::kSlotSmallVectorSize> "
@@ -1780,6 +1797,8 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     amp_logic_str += "\n";
     std::string amp_context =
         paddle::string::Sprintf(AMP_LOGIC_CONTEXT, amp_logic_str);
+    generated_function_body += check_can_not_use;
+    generated_function_body += "\n";
     generated_function_body += amp_context;
     generated_function_body += "\n";
   }
