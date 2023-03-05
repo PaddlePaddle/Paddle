@@ -130,19 +130,20 @@ class Pad3dOpConverter : public OpConverter {
                ->getOutput(0);
 
     // add slice layer
-    nvinfer1::Dims stride{inputDim, {}};
+    nvinfer1::Dims stride;
+    stride.nbDims = inputDim;
     std::fill_n(stride.d, inputDim, 1);
     auto const& dummy = stride;
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+    auto* slice_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                        Slice,
                                        *const_cast<nvinfer1::ITensor*>(input),
                                        dummy,
                                        dummy,
                                        stride);
-    layer->setInput(1, *start);
-    layer->setInput(2, *size);
+    slice_layer->setInput(1, *start);
+    slice_layer->setInput(2, *size);
     if (padding_mode == "constant") {
-      layer->setMode(nvinfer1::SliceMode::kFILL);
+      slice_layer->setMode(nvinfer1::SliceMode::kFILL);
       if (value != 0.F) {
         nvinfer1::ITensor* fill_value = nullptr;
         switch (input->getType()) {
@@ -153,9 +154,11 @@ class Pad3dOpConverter : public OpConverter {
             nvinfer1::Weights value_wt{nvinfer1::DataType::kFLOAT,
                                        static_cast<void*>(value_ptr),
                                        static_cast<int32_t>(1)};
+            nvinfer1::Dims dims;
+            dims.nbDims = 0;
             fill_value =
                 TRT_ENGINE_ADD_LAYER(
-                    engine_, Constant, nvinfer1 ::Dims{0, {0}}, value_wt)
+                    engine_, Constant, dims, value_wt)
                     ->getOutput(0);
           }
           default: {
@@ -163,24 +166,26 @@ class Pad3dOpConverter : public OpConverter {
             nvinfer1::Weights value_wt{nvinfer1::DataType::kINT32,
                                        static_cast<void*>(value_ptr),
                                        static_cast<int32_t>(1)};
+            nvinfer1::Dims dims;
+            dims.nbDims = 0;
             fill_value =
                 TRT_ENGINE_ADD_LAYER(
-                    engine_, Constant, nvinfer1 ::Dims{0, {0}}, value_wt)
+                    engine_, Constant, dims, value_wt)
                     ->getOutput(0);
           }
         }
-        layer->setInput(4, *fill_value);
+        slice_layer->setInput(4, *fill_value);
       }
     } else if (padding_mode == "reflect") {
-      layer->setMode(nvinfer1::SliceMode::kREFLECT);
+      slice_layer->setMode(nvinfer1::SliceMode::kREFLECT);
     } else if (padding_mode == "replicate") {
-      layer->setMode(nvinfer1::SliceMode::kCLAMP);
+      slice_layer->setMode(nvinfer1::SliceMode::kCLAMP);
     } else {
       PADDLE_THROW("Unsupported mode: %s", padding_mode);
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "pad3d", {output_name}, test_mode);
+    RreplenishLayerAndOutput(slice_layer, "pad3d", {output_name}, test_mode);
   }
 
  private:
@@ -192,7 +197,9 @@ class Pad3dOpConverter : public OpConverter {
                            static_cast<void*>(v_data),
                            static_cast<int32_t>(v.size())};
 
-    auto v_dim = nvinfer1::Dims{1, {static_cast<int>(v.size())}};
+    nvinfer1::Dims v_dim;
+    v_dim.nbDims = 1;
+    v_dim.d[0] = static_cast<int>(v.size());
 
     return TRT_ENGINE_ADD_LAYER(engine_, Constant, v_dim, v_wt)->getOutput(0);
   }
