@@ -1046,14 +1046,51 @@ class TestToPrim(unittest.TestCase):
         paddle.disable_static()
 
     @param.parameterized.expand((({'dropout'},),))
-    def test_exclude(self, exclude):
+    def test_blacklist(self, blacklist):
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
-            x = paddle.rand((1,))
-            y = paddle.nn.functional.dropout(x)
-        primapi.to_prim(program.blocks, exclude)
+            paddle.nn.functional.softmax(
+                paddle.nn.functional.dropout(paddle.rand((1,)))
+            )
+        primapi.to_prim(program.blocks, blacklist=blacklist)
         ops = tuple(op.type for op in program.block(0).ops)
-        self.assertTrue(all(tuple(op in ops for op in exclude)))
+        self.assertTrue(all(tuple(op in ops for op in blacklist)))
+
+    @param.parameterized.expand((({'dropout'},),))
+    def test_whitelist(self, whitelist):
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            paddle.nn.functional.softmax(
+                paddle.nn.functional.dropout(paddle.rand((1,)))
+            )
+        primapi.to_prim(program.blocks, whitelist=whitelist)
+        ops = tuple(op.type for op in program.block(0).ops)
+        self.assertTrue(all(tuple(op not in ops for op in whitelist)))
+
+    @param.parameterized.expand((({'softmax'}, {'softmax', 'dropout'}),))
+    def test_both_not_empty(self, blacklist, whitelist):
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            paddle.nn.functional.softmax(
+                paddle.nn.functional.dropout(paddle.rand((1,)))
+            )
+        primapi.to_prim(
+            program.blocks, blacklist=blacklist, whitelist=whitelist
+        )
+        ops = tuple(op.type for op in program.block(0).ops)
+        self.assertTrue(all(tuple(op in ops for op in blacklist)))
+
+    @param.parameterized.expand(((('dropout',), 'softmax'),))
+    def test_type_error(self, blacklist, whitelist):
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            paddle.nn.functional.softmax(
+                paddle.nn.functional.dropout(paddle.rand((1,)))
+            )
+        with self.assertRaises(TypeError):
+            primapi.to_prim(
+                program.blocks, blacklist=blacklist, whitelist=whitelist
+            )
 
 
 if __name__ == '__main__':
