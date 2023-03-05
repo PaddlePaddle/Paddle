@@ -809,8 +809,13 @@ void maximum_grad(const Tensor& x,
                   int axis,
                   Tensor* x_grad,
                   Tensor* y_grad) {
+  auto x_zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+  auto y_zero_tensor = full<T>(phi::vectorize(y.dims()), 0.0, y.dtype());
+  x_broadcasted = x + y_zero_tensor;
+  y_broadcasted = y + x_zero_tensor;
   if (x_grad) {
-    auto x_tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
+    auto x_tmp = cast<T>(greater_than<T>(x_broadcasted, y_broadcasted),
+                         out_grad.dtype());
     auto x_grad_unreduce = out_grad * x_tmp;
     if (x_grad_unreduce.dims() != x.dims()) {
       auto axes = get_reduce_dims(x_grad_unreduce.dims(), x.dims());
@@ -829,7 +834,8 @@ void maximum_grad(const Tensor& x,
     }
   }
   if (y_grad) {
-    auto y_tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
+    auto y_tmp =
+        cast<T>(less_equal<T>(x_broadcasted, y_broadcasted), out_grad.dtype());
     auto y_grad_unreduce = out_grad * y_tmp;
     if (y_grad_unreduce.dims() != y.dims()) {
       auto axes = get_reduce_dims(y_grad_unreduce.dims(), y.dims());
