@@ -811,8 +811,8 @@ void maximum_grad(const Tensor& x,
                   Tensor* y_grad) {
   auto x_zero_tensor = full<T>(phi::vectorize(x.dims()), 1, x.dtype());
   auto y_zero_tensor = full<T>(phi::vectorize(y.dims()), 1, y.dtype());
-  x_broadcasted = x * y_zero_tensor;
-  y_broadcasted = y * x_zero_tensor;
+  auto x_broadcasted = x * y_zero_tensor;
+  auto y_broadcasted = y * x_zero_tensor;
   if (x_grad) {
     auto x_tmp = cast<T>(greater_than<T>(x_broadcasted, y_broadcasted),
                          out_grad.dtype());
