@@ -66,19 +66,10 @@ cba_kernel_no_alpha = (
 
 # this is used for leaky_relu, this activation need a fuse_alpha parameter
 
-cba_kernel_alpha = (
-    SubstituteTemplate(CommonCutlassConvKernelPart1, dict_for_part1)
-    + '''
-  float alpha = params.alpha;
-  typename ImplicitGemm::Arguments arguments{
-      problem_size,
-      {(cutlass::half_t *)(input), {ic, ic * iw, ic * iw * ih}},
-      {(cutlass::half_t *)(weight), {kc, kc * kw, kc * kw * kh}},
-      {(cutlass::half_t *)(bias), {0, 0, 0}},
-      {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
-      {1.f, 1.f, alpha}};
-'''
-    + CommonCutlassConvKernelPart2
+cba_kernel_alpha = cba_kernel_no_alpha.replace(
+    "{1.f, 1.f}", "{1.f, 1.f, alpha}"
+).replace(
+    "typename ImplicitG", "float alpha = params.alpha; typename ImplicitG"
 )
 
 

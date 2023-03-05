@@ -49,6 +49,7 @@ void Conv2dFusionKernel(const Context& ctx,
   const int ic = in_dims[3];
   const int ih = in_dims[1];
   const int iw = in_dims[2];
+  CHECK_EQ(groups == 1, true);
   CHECK_EQ(ic == groups * filter_dims[3], true);
   int pad_h0 = 0;
   int pad_h1 = 0;
