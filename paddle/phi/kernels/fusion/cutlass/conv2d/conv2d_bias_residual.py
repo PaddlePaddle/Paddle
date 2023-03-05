@@ -163,7 +163,7 @@ def generate_sm75_1688():
                         TileDesc("128, 64, 64", 2, "32, 32, 64", math_inst),
                         TileDesc("64, 64, 32", 2, "32, 32, 32", math_inst),
                         TileDesc("64, 128, 32", 2, "32, 64, 32", math_inst),
-                        # diff is too large, so comment is
+                        # diff is too large, so comment it
                         # TileDesc("64, 128, 64", 2, "64, 64, 32", math_inst),
                         TileDesc("64, 256, 32", 2, "64, 64, 32", math_inst),
                         TileDesc("128, 64, 32", 2, "64, 32, 32", math_inst),
