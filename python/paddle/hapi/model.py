@@ -223,7 +223,7 @@ def prepare_distributed_context(place=None):
         )
 
     place = _get_paddle_place(place)
-    strategy = fluid.dygraph.parallel.ParallelStrategy()
+    strategy = paddle.distributed.parallel.ParallelStrategy()
     strategy.nranks = paddle.distributed.ParallelEnv().nranks
     strategy.local_rank = paddle.distributed.ParallelEnv().local_rank
     strategy.trainer_endpoints = (
@@ -781,7 +781,7 @@ class DynamicGraphAdapter:
 
         if self._nranks > 1:
             dist.init_parallel_env()
-            stradegy = fluid.dygraph.parallel.ParallelStrategy()
+            stradegy = paddle.distributed.parallel.ParallelStrategy()
             stradegy.nranks = paddle.distributed.ParallelEnv().nranks
             stradegy.local_rank = paddle.distributed.ParallelEnv().local_rank
             stradegy.trainer_endpoints = (
@@ -790,9 +790,7 @@ class DynamicGraphAdapter:
             stradegy.current_endpoint = (
                 paddle.distributed.ParallelEnv().current_endpoint
             )
-            self.ddp_model = fluid.dygraph.parallel.DataParallel(
-                self.model.network, stradegy
-            )
+            self.ddp_model = paddle.DataParallel(self.model.network, stradegy)
 
     @property
     def mode(self):
