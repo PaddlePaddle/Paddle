@@ -134,12 +134,13 @@ class Pad3dOpConverter : public OpConverter {
     stride.nbDims = inputDim;
     std::fill_n(stride.d, inputDim, 1);
     auto const& dummy = stride;
-    auto* slice_layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                       Slice,
-                                       *const_cast<nvinfer1::ITensor*>(input),
-                                       dummy,
-                                       dummy,
-                                       stride);
+    auto* slice_layer =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             Slice,
+                             *const_cast<nvinfer1::ITensor*>(input),
+                             dummy,
+                             dummy,
+                             stride);
     slice_layer->setInput(1, *start);
     slice_layer->setInput(2, *size);
     if (padding_mode == "constant") {
@@ -156,10 +157,8 @@ class Pad3dOpConverter : public OpConverter {
                                        static_cast<int32_t>(1)};
             nvinfer1::Dims dims;
             dims.nbDims = 0;
-            fill_value =
-                TRT_ENGINE_ADD_LAYER(
-                    engine_, Constant, dims, value_wt)
-                    ->getOutput(0);
+            fill_value = TRT_ENGINE_ADD_LAYER(engine_, Constant, dims, value_wt)
+                             ->getOutput(0);
           }
           default: {
             int* value_ptr = const_cast<int*>(reinterpret_cast<int*>(&value));
@@ -168,10 +167,8 @@ class Pad3dOpConverter : public OpConverter {
                                        static_cast<int32_t>(1)};
             nvinfer1::Dims dims;
             dims.nbDims = 0;
-            fill_value =
-                TRT_ENGINE_ADD_LAYER(
-                    engine_, Constant, dims, value_wt)
-                    ->getOutput(0);
+            fill_value = TRT_ENGINE_ADD_LAYER(engine_, Constant, dims, value_wt)
+                             ->getOutput(0);
           }
         }
         slice_layer->setInput(4, *fill_value);
