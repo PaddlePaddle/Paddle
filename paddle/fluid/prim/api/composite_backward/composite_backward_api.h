@@ -813,7 +813,7 @@ void maximum_grad(const Tensor& x,
     auto x_tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
     auto x_grad_unreduce = out_grad * x_tmp;
     if (x_grad_unreduce.dims() != x.dims()) {
-      auto axes = get_reduce_dims_from_out(x_grad_unreduce.dims(), x.dims());
+      auto axes = get_reduce_dims(x_grad_unreduce.dims(), x.dims());
       if (!axes.size()) {
         set_output<T>(x_grad_unreduce, x_grad);
       } else {
@@ -832,7 +832,7 @@ void maximum_grad(const Tensor& x,
     auto y_tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
     auto y_grad_unreduce = out_grad * y_tmp;
     if (y_grad_unreduce.dims() != y.dims()) {
-      auto axes = get_reduce_dims_from_out(y_grad_unreduce.dims(), y.dims());
+      auto axes = get_reduce_dims(y_grad_unreduce.dims(), y.dims());
       if (!axes.size()) {
         set_output<T>(y_grad_unreduce, y_grad);
       } else {
