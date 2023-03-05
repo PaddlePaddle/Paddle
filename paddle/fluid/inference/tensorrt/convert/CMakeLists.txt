@@ -27,6 +27,7 @@ list(
   multihead_matmul_roformer_op.cc
   flash_multihead_matmul_op.cc
   cross_multihead_matmul_op.cc
+  grid_sampler_op.cc
   shuffle_channel_op.cc
   fill_any_like_op.cc
   where_op.cc

@@ -133,5 +133,20 @@ class TestComplexConjOp(unittest.TestCase):
                     np.testing.assert_array_equal(result, target)
 
 
+class Testfp16ConjOp(unittest.TestCase):
+    def testfp16(self):
+        input_x = (
+            np.random.random((12, 14)) + 1j * np.random.random((12, 14))
+        ).astype('float16')
+        with static.program_guard(static.Program()):
+            x = static.data(name="x", shape=[12, 14], dtype='float16')
+            out = paddle.conj(x)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': input_x}, fetch_list=[out])
+
+
 if __name__ == "__main__":
     unittest.main()
