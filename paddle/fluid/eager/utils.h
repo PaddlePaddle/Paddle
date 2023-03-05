@@ -156,7 +156,21 @@ class EagerUtils {
 
   static void CheckInplace(const paddle::experimental::Tensor& target,
                            const AutogradMeta* autograd_meta,
-                           bool require_any_grad) {
+                           bool require_any_grad,
+                           std::string op_name = "op_name") {
+    paddle::experimental::Tensor& xx =
+        const_cast<paddle::experimental::Tensor&>(target);
+    if (target.is_dense_tensor()) {
+      auto dense_tensor_ =
+          std::dynamic_pointer_cast<phi::DenseTensor>(xx.impl());
+      if (dense_tensor_->can_not_uses->size() > 0) {
+        for (auto it = dense_tensor_->can_not_uses->begin();
+             it != dense_tensor_->can_not_uses->end();
+             it++) {
+          if (*it != dense_tensor_->canNotUse) **it = true;
+        }
+      }
+    }
     if (require_any_grad && autograd_meta) {
       PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() &&
                             egr::egr_utils_api::IsLeafTensor(target),

@@ -264,7 +264,21 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
         view_output_var->MutableVar()->GetMutable<phi::DenseTensor>();
     view_output_tensor->ShareBufferWith(*input_dense_tensor);
     view_output_tensor->ShareInplaceVersionCounterWith(*input_dense_tensor);
-
+    // auto dense_tensor_ = const_cast<phi::DenseTensor&>(*input_dense_tensor);
+    if (input_dense_tensor->can_not_uses->size() > 0) {
+      for (auto it = input_dense_tensor->can_not_uses->begin();
+           it != input_dense_tensor->can_not_uses->end();
+           it++) {
+        if (*it != input_dense_tensor->canNotUse) **it = true;
+      }
+    }
+    if (view_output_tensor->can_not_uses->size() > 0) {
+      for (auto it = view_output_tensor->can_not_uses->begin();
+           it != view_output_tensor->can_not_uses->end();
+           it++) {
+        if (*it != view_output_tensor->canNotUse) **it = true;
+      }
+    }
     VLOG(3) << "Perform View between Output Var(" << view_output_var->name()
             << ") and Input Var(" << input_var->name()
             << "), share allocation and inplace version.";
@@ -286,8 +300,26 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
     if (view_output_tensor->impl() == nullptr) {
       view_output_tensor->set_impl(std::make_shared<phi::DenseTensor>());
     }
+    // paddle::experimental::Tensor& xx =
+    //     const_cast<paddle::experimental::Tensor&>(input_tensor);
+    //   auto dense_tensor_ =
+    //       std::dynamic_pointer_cast<phi::DenseTensor>(xx.impl());
+    if (input_dense_tensor->can_not_uses->size() > 0) {
+      for (auto it = input_dense_tensor->can_not_uses->begin();
+           it != input_dense_tensor->can_not_uses->end();
+           it++) {
+        if (*it != input_dense_tensor->canNotUse) **it = true;
+      }
+    }
     auto view_output_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(view_output_tensor->impl());
+    if (view_output_dense_tensor->can_not_uses->size() > 0) {
+      for (auto it = view_output_dense_tensor->can_not_uses->begin();
+           it != view_output_dense_tensor->can_not_uses->end();
+           it++) {
+        if (*it != view_output_dense_tensor->canNotUse) **it = true;
+      }
+    }
     view_output_dense_tensor->ShareBufferWith(*input_dense_tensor);
     view_output_dense_tensor->ShareInplaceVersionCounterWith(
         *input_dense_tensor);
