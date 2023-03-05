@@ -20,7 +20,6 @@
 import functools
 import operator
 
-import paddle.framework.dtype as dtypes
 from paddle.fluid import core
 
 from .primitives import *  # noqa: F403
@@ -361,7 +360,6 @@ def fill_any_like(x, fill_value, dtype, place=None):
     """define composite rule of op full_like."""
     """op name: full_like  op type name: fill_any_like."""
     """arg place is not used, add it here to keep same as python api."""
-    dtype = dtypes.dtype(dtype)
     val = full(x.shape, fill_value, dtype)
     return val
 

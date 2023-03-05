@@ -14,6 +14,7 @@
 import typing
 
 import paddle
+import paddle.framework.dtype as dtypes
 from paddle.fluid import framework as framework
 
 from .phi_ops_map import op_info, op_map
@@ -159,7 +160,7 @@ def _solve_arg(item):
     return arg_type.strip(), arg_name.strip()
 
 
-def _get_attr_value(op, arg_name):
+def _get_attr_value(op, arg_type, arg_name):
     op_content = op_map[op.type]
     if "attrs" in op_content.keys() and arg_name in op_content["attrs"].keys():
         arg_name = op_content["attrs"][arg_name]
@@ -169,6 +170,8 @@ def _get_attr_value(op, arg_name):
     if arg_name not in op.attr_names:
         return None
     else:
+        if arg_type == "DataType":
+            return dtypes.dtype(op.attr(arg_name))
         return op.attr(arg_name)
 
 
@@ -213,7 +216,7 @@ def _get_args_values(op, phi_name):
             else:
                 inputs.append(arg_name)
         else:
-            attr_value = _get_attr_value(op, arg_name)
+            attr_value = _get_attr_value(op, arg_type, arg_name)
             attrs.append(attr_value)
 
     return inputs, attrs
