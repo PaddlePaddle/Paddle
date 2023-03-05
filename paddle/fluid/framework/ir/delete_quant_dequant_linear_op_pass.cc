@@ -141,38 +141,50 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                                                   "conv2d_transpose",
                                                   "conv2d_fusion",
                                                   "depthwise_conv2d_transpose"};
-    // for example, modify according to your needs
-    const std::vector<std::string> retain_op_name{"hard_swish_0.tmp_0",
-                                                  "hard_sigmoid_0.tmp_0"};
+    // for example, modify according to your needs, save d/dq in the front
+    const std::vector<std::string> retain_op_name{"batch_norm_0.tmp_2"};
 
-    // Conclusion: qdq befor bn or relu must be delete, vector(retain_op_type)
-    // have done. const std::vector<std::string> delete_op_type {"batch_norm",
-    // "relu"};
+    // Conclusion: qdq befor bn or relu must be delete.
+    // {"batch_norm", "relu"};
 
     auto quantize_x_name = quantize_linear_op_x->Var()->Name();
-    auto* quantize_out_op_desc = dequantize_linear_op_out->outputs[0]->Op();
 
-    bool is_retain_op_name = std::find(retain_op_name.begin(),
-                                       retain_op_name.end(),
-                                       quantize_x_name) != retain_op_name.end();
-    bool is_retain_op_type =
-        std::find(retain_op_type.begin(),
-                  retain_op_type.end(),
-                  quantize_out_op_desc->Type()) != retain_op_type.end();
+    auto is_retain_op = [&](const std::vector<std::string>& retain_op_vector,
+                            const std::string& type_or_name) {
+      return std::find(retain_op_vector.begin(),
+                       retain_op_vector.end(),
+                       type_or_name) != retain_op_vector.end();
+    };
 
-    if (!is_retain_op_type && !is_retain_op_name) {
-      quantize_out_op_desc->SetAttr(
-          "Input_scale_" + quantize_linear_op_x->Var()->Name(), input_scale);
+    bool is_retain_op_name = is_retain_op(retain_op_name, quantize_x_name);
 
-      // link x to any_op2
-      quantize_out_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
-                                        quantize_linear_op_x->Var()->Name());
-      quantize_out_op_desc->Flush();
+    int nums_any_ops = dequantize_linear_op_out->outputs.size();
+    for (int i = 0; i < nums_any_ops; ++i) {
+      auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
 
-      IR_NODE_LINK_TO(quantize_linear_op_x,
-                      dequantize_linear_op_out->outputs[0]);
+      bool is_retain_op_type =
+          is_retain_op(retain_op_type, any_op_desc->Type());
+      if (!is_retain_op_type && !is_retain_op_name) {
+        std::cout << "remove q dq with  :" << any_op_desc->Type() << std::endl;
+        std::cout << "var name   :" << quantize_linear_op_x->Var()->Name()
+                  << std::endl;
 
-      // Forbid removing weight tensor when weight is shared between ops
+        any_op_desc->SetAttr(
+            "Input_scale_" + quantize_linear_op_x->Var()->Name(), input_scale);
+
+        // link x to any_op2
+        any_op_desc->RenameInput(dequantize_linear_op_out->Var()->Name(),
+                                 quantize_linear_op_x->Var()->Name());
+        any_op_desc->Flush();
+        IR_NODE_LINK_TO(quantize_linear_op_x,
+                        dequantize_linear_op_out->outputs[i]);
+      }
+    }
+
+    // Forbid removing weight tensor when weight is shared between ops
+    if (!is_retain_op(retain_op_type,
+                      dequantize_linear_op_out->outputs[0]->Op()->Type()) &&
+        !is_retain_op_name) {
       if (quantize_linear_op_scale->outputs.size() <= 1UL)
         nodes2rm.insert(quantize_linear_op_scale);
       nodes2rm.insert(quantize_linear_op);
