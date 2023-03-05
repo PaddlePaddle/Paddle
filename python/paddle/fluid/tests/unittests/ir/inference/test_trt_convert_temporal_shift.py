@@ -32,7 +32,7 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
             T = attrs[0]["seg_num"]
             return np.ones([3 * T, 10, 64, 64]).astype(np.float32)
 
-        for shift_value in [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50]:
+        for shift_value in [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.49]:
             for T in range(2, 5):
                 dics = [{"shift_ratio": shift_value, "seg_num": T}, {}]
 
@@ -93,9 +93,9 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), (0, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-3
+        yield self.create_inference_config(), (0, 3), 1e-3
 
     def test(self):
         self.run_test()

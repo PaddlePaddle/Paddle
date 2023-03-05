@@ -64,12 +64,13 @@ class TemporalShiftOpConverter : public OpConverter {
     nvinfer1::ITensor* pre_pad = vectorToTensor<int>(pre_pad_v);
     nvinfer1::ITensor* post_pad = vectorToTensor<int>(post_pad_v);
 
-    std::vector<int> zeros_v(inputDim, 0);
+    int dims = 5;
+    std::vector<int> zeros_v(dims, 0);
     auto const zeros = vectorToTensor<int>(zeros_v);
 
     nvinfer1::ITensor* start{};
     nvinfer1::ITensor* size{};
-    // elementwise add zeros and pre_pad
+
     start = TRT_ENGINE_ADD_LAYER(engine_,
                                  ElementWise,
                                  *zeros,
@@ -85,8 +86,8 @@ class TemporalShiftOpConverter : public OpConverter {
                              nvinfer1::ElementWiseOperation::kSUM)
             ->getOutput(0);
 
-    std::vector<int> input_shape_v(inputDim, 0);
-    for (int i = 0; i < inputDim; i++) {
+    std::vector<int> input_shape_v(dims, 0);
+    for (int i = 0; i < dims; i++) {
       input_shape_v[i] = input->getDimensions().d[i];
     }
     auto const input_shape = vectorToTensor<int>(input_shape_v);
@@ -98,8 +99,8 @@ class TemporalShiftOpConverter : public OpConverter {
                                 nvinfer1::ElementWiseOperation::kSUM)
                ->getOutput(0);
     nvinfer1::Dims stride;
-    stride.nbDims = inputDim;
-    std::fill_n(stride.d, inputDim, 1);
+    stride.nbDims = dims;
+    std::fill_n(stride.d, dims, 1);
     auto const& dummy = stride;
     auto* slice_layer =
         TRT_ENGINE_ADD_LAYER(engine_,
@@ -111,7 +112,6 @@ class TemporalShiftOpConverter : public OpConverter {
     slice_layer->setInput(1, *start);
     slice_layer->setInput(2, *size);
     slice_layer->setMode(nvinfer1::SliceMode::kFILL);
-
 
     // Slice Padded Tensor
     int slice_c = int(C * shift_ratio);

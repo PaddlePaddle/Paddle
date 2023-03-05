@@ -2739,7 +2739,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act",
-      "temporal_shift"};
+      "temporal_shift",
       "grid_sampler"};
 
   std::unordered_set<std::string> teller_set{
@@ -2893,7 +2893,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act",
-      "temporal_shift"};
+      "temporal_shift"
       "grid_sampler"};
 };
 
