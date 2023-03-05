@@ -809,10 +809,12 @@ void maximum_grad(const Tensor& x,
                   int axis,
                   Tensor* x_grad,
                   Tensor* y_grad) {
-  auto x_zero_tensor = full<T>(phi::vectorize(x.dims()), 1, x.dtype());
-  auto y_zero_tensor = full<T>(phi::vectorize(y.dims()), 1, y.dtype());
-  auto x_broadcasted = x * y_zero_tensor;
-  auto y_broadcasted = y * x_zero_tensor;
+  std::vector<Tensor> xy;
+  xy.push_back(x);
+  xy.push_back(y);
+  auto broadcast_shape = broadcast_shapes<T>(xy);
+  auto x_broadcasted = x.expand(IntArray(broadcast_shape));
+  auto y_broadcasted = y.expand(IntArray(broadcast_shape));
   if (x_grad) {
     auto x_tmp = cast<T>(greater_than<T>(x_broadcasted, y_broadcasted),
                          out_grad.dtype());
