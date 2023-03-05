@@ -36,12 +36,12 @@ class GridGenerator(nn.Layer):
             in_channels, 6, weight_attr=param_attr, bias_attr=bias_attr
         )
 
-    @paddle.jit.to_static(
-        input_spec=[
-            paddle.static.InputSpec(shape=[None, 3, 32, 100], dtype='float32'),
-            paddle.static.InputSpec(shape=[32, 100], dtype='float32'),
-        ]
-    )
+    # @paddle.jit.to_static(
+    # input_spec=[
+    # paddle.static.InputSpec(shape=[None, 3, 32, 100], dtype='float32'),
+    # paddle.static.InputSpec(shape=[32, 100], dtype='float32'),
+    # ]
+    # )
     def forward(self, batch_C_prime, I_r_size):
         """
         Generate the grid for the grid_sampler.

@@ -13,10 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_add_kernel.h"
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
-// #include "paddle/phi/kernels/copy_kernel.h"
 #include "paddle/phi/kernels/cpu/index_add_impl.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
