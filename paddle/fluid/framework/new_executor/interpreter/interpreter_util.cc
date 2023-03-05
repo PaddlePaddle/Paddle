@@ -930,32 +930,35 @@ void BuildOpFuncList(const platform::Place& place,
 
     vec_func_list->emplace_back(op_func_node);
 
-    // gc---------------------------------------------
-    auto iter = unused_var_map.find(op);
-    if (iter == unused_var_map.end()) {
-      interpreter::LogDeviceMemoryStats(place);
-      continue;
-    }
-
-    auto& delete_vars = iter->second;
-    std::deque<std::shared_ptr<memory::Allocation>>* garbages =
-        new std::deque<std::shared_ptr<memory::Allocation>>();
-
-    for (auto& var_name : delete_vars) {
-      auto* var = local_scope->FindVar(var_name);
-      if (var == nullptr || skip_gc_vars.find(var_name) != skip_gc_vars.end()) {
+    if (!static_build) {
+      // gc---------------------------------------------
+      auto iter = unused_var_map.find(op);
+      if (iter == unused_var_map.end()) {
+        interpreter::LogDeviceMemoryStats(place);
         continue;
       }
 
-      VLOG(6) << "Erase variable " << var_name;
-      if (var->IsType<phi::DenseTensor>()) {
-        garbages->emplace_back(
-            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
-      }
-    }
-    delete garbages;  // free mem
+      auto& delete_vars = iter->second;
+      std::deque<std::shared_ptr<memory::Allocation>>* garbages =
+          new std::deque<std::shared_ptr<memory::Allocation>>();
 
-    interpreter::LogDeviceMemoryStats(place);
+      for (auto& var_name : delete_vars) {
+        auto* var = local_scope->FindVar(var_name);
+        if (var == nullptr ||
+            skip_gc_vars.find(var_name) != skip_gc_vars.end()) {
+          continue;
+        }
+
+        VLOG(6) << "Erase variable " << var_name;
+        if (var->IsType<phi::DenseTensor>()) {
+          garbages->emplace_back(
+              var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+        }
+      }
+      delete garbages;  // free mem
+
+      interpreter::LogDeviceMemoryStats(place);
+    }
   }
 }
 
@@ -1004,6 +1007,12 @@ void BuildVariableScope(const framework::BlockDesc& block,
     }
     var_scope->AddVar(var_name, var_desc);
   }
+}
+
+bool IsExtendedTensor(const phi::TensorBase& tensor) {
+  return framework::RawTensor::classof(&tensor) ||
+         framework::Strings::classof(&tensor) ||
+         framework::Vocab::classof(&tensor);
 }
 
 phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
@@ -1106,7 +1115,8 @@ void FakeInitializeOutputsForFunctionKernel(
     auto& outs_vector = it->second;
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       phi::TensorBase* out_tensor = GetTensorFormVar(outs_vector[offset]);
-      if (out_tensor && !out_tensor->initialized()) {
+      if (out_tensor && !IsExtendedTensor(*out_tensor) &&
+          !out_tensor->initialized()) {
         phi::TensorArgDef& tensor_arg_def = output_defs[i];
         phi::DataType dtype = tensor_arg_def.dtype;
         phi::Place place = phi::TransToPhiPlace(tensor_arg_def.backend);
@@ -1142,7 +1152,8 @@ void FakeInitializeOutputsForStructureKernel(
     auto multi_output_var = execution_context->MultiOutputVar(parameter_name);
     for (Variable* var : multi_output_var) {
       phi::TensorBase* out_tensor = GetTensorFormVar(var);
-      if (out_tensor && !out_tensor->initialized()) {
+      if (out_tensor && !IsExtendedTensor(*out_tensor) &&
+          !out_tensor->initialized()) {
         phi::DataType dtype =
             phi::TransToPhiDataType(op_kernel_type.data_type_);
         phi::Place place = execution_context->GetPlace();
