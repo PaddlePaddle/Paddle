@@ -255,7 +255,7 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
 {}
- // check tensors can not use
+ // check tensors can not be used
 {}
   // AMP Logic
 {}
