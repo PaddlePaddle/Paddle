@@ -149,6 +149,14 @@ const Place &Tensor::place() const {
   return impl_->place();
 }
 
+bool Tensor::can_not_use() {
+  if (is_dense_tensor()) {
+    return *(static_cast<phi::DenseTensor *>(impl_.get())->canNotUse);
+  } else {
+    return false;
+  }
+}
+
 bool Tensor::is_cpu() const {
   return place().GetType() == phi::AllocationType::CPU;
 }

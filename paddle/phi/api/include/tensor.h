@@ -486,6 +486,7 @@ class PADDLE_API Tensor final {
    */
   bool defined() const;
 
+  bool can_not_use();
   /**
    * @brief Determine whether Tensor is initialized.
    *

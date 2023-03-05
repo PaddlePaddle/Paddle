@@ -175,6 +175,8 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallV
 {}
   // Call grad_api function
 {}
+// check tensors which can not be used
+{}
   // Check NaN and Inf id needed
 {}
   // Get GradOut autograd_meta
@@ -194,6 +196,8 @@ FORWARD_FUNCTION_TEMPLATE = """
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
+{}
+// check tensors can not use
 {}
   // AMP Logic
 {}
@@ -250,6 +254,8 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
+{}
+ // check tensors can not use
 {}
   // AMP Logic
 {}
@@ -416,6 +422,18 @@ BUMP_INPLACE_VERSION_TEMPLATE = """
   VLOG(3) << \"Tensor(\" << {}.name() << \") uses Inplace Strategy.\";
 """
 
+CHECK_CAN_NOT_USE_TEMPLATE = """
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>, egr::kSlotSmallVectorSize> check_tensors_vector = {};
+"""
+
+CHECK_CAN_NOT_USE_OTHER = """
+   for(size_t i = 0; i < check_tensors_vector.size(); ++i)
+       for(size_t j = 0; j < check_tensors_vector[i].size(); ++j)
+        if (check_tensors_vector[i][j].can_not_use() == true)
+          LOG(WARNING) << "Stride Test Log: "
+                       <<"{}" << " Find a Tensor Which Can Not Use.";
+"""
+
 AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
     VLOG(5) << "Check and Prepare For AMP";
     {}
@@ -469,6 +487,13 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
 CHECK_NAN_AND_INF_TEMPLATE = """  if (FLAGS_check_nan_inf) {{ egr::CheckTensorHasNanOrInf("{}", {}); }}
 """
 
+CHECK_CAN_NOT_USE_BACKWARD_TEMPLATE = """
+   for(size_t i = 0; i < returns.size(); ++i)
+       for(size_t j = 0; j < returns[i].size(); ++j)
+        if (returns[i][j].can_not_use() == true)
+          LOG(WARNING) << "Stride Test Log: "
+                       <<"{}" << "(backward) Find a Tensor Which Can Not Use.";
+"""
 inplace_optional_out_type_map = {
     "Tensor": "paddle::optional<paddle::experimental::Tensor>&",
     "std::vector<Tensor>": "paddle::optional<std::vector<paddle::experimental::Tensor>>&",
@@ -1586,6 +1611,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         amp_call_str = (
             f"return {forward_ad_function_name}({amp_inputs_call_args_str});"
         )
+        can_not_use_check_str = CHECK_CAN_NOT_USE_TEMPLATE.format(
+            amp_tensors_vector_list_str,
+        )
+        can_not_use_check_str += CHECK_CAN_NOT_USE_OTHER.format(
+            str(forward_api_name)
+        )
         if is_inplaced or (forward_api_name == "cast"):
             amp_logic_str = "\n VLOG(5) << \" No AMP for {} because it is a inplace or cast api. \"; ".format(
                 forward_ad_function_name
@@ -1643,6 +1674,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     inputs_args_definition_str,
                     forward_api_name,
                     dygraph_event_str,
+                    can_not_use_check_str,
                     amp_logic_str,
                     layout_logic_str,
                     forward_api_name,
@@ -1663,6 +1695,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 inputs_args_definition_str,
                 forward_api_name,
                 dygraph_event_str,
+                can_not_use_check_str,
                 amp_logic_str,
                 layout_logic_str,
                 inputs_autograd_meta_str,
@@ -2272,6 +2305,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             grad_function_call_str = f"""
 {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"""
 
+        check_backward_tensors_can_not_use_str = (
+            CHECK_CAN_NOT_USE_BACKWARD_TEMPLATE.format(backward_api_name)
+        )
         # Check Nan and Inf
         check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(
             backward_api_name, "returns"
@@ -2387,6 +2423,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             self.backward_api_name,
             before_log_str,
             grad_function_call_str,
+            check_backward_tensors_can_not_use_str,
             check_nan_inf_str,
             outputs_autograd_meta_str,
             next_grad_node_creation_str,
