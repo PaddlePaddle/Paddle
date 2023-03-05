@@ -144,15 +144,13 @@ class ProgramInfo:
 
 
 class PartialProgramLayerHook:
-    def before_append_backward(self, partial_program_layer, forward_program):
+    def before_append_backward(self, forward_program):
         ...
 
-    def after_append_backward(
-        self, partial_program_layer, whole_program, backward_start_idx
-    ):
+    def after_append_backward(self, whole_program, backward_start_idx):
         ...
 
-    def after_infer(self, partial_program_layer, infer_program):
+    def after_infer(self, infer_program):
         ...
 
 
@@ -264,7 +262,7 @@ class PartialProgramLayer:
                 for_test=is_infer_mode
             )
             if self._hooker:
-                infer_program = self._hooker.after_infer(self, infer_program)
+                infer_program = self._hooker.after_infer(infer_program)
             return infer_program
         else:
             train_program = self._append_backward_desc(
@@ -298,11 +296,9 @@ class PartialProgramLayer:
                 pure_fp16_program, self._amp_list, use_fp16_guard=False
             )
 
-        core.check_and_set_prim_all_enabled()
-        from paddle.incubate.autograd.primapi import to_prim
-
-        to_prim(pure_fp16_program.blocks)
         if is_infer_mode:
+            if self._hooker:
+                pure_fp16_program = self._hooker.after_infer(pure_fp16_program)
             return pure_fp16_program
         else:
             train_pure_fp16_program = self._append_backward_desc(
@@ -314,7 +310,6 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
         whole_program = self._train_program
-        # _, forward_end_op_index = self._infer_info('fp32', self._create_program)
         forward_end_op_index = self.get_forward_end_op_idx(whole_program)
         assert forward_end_op_index >= 0
 
@@ -437,7 +432,9 @@ class PartialProgramLayer:
         return _param_grad_names(self._train_program.desc, self._params)
 
     def get_forward_end_op_idx(self, program):
-        return self._forward_end_index_map[_hash_with_id(program, self)]
+        return self._forward_end_index_map[
+            paddle.utils._hash_with_id(program, self)
+        ]
 
     @LazyInitialized
     def _out_grad_names(self):
@@ -637,7 +634,7 @@ class PartialProgramLayer:
         # make sure all status of is_test are False in train mode.
         program = _change_is_test_status(main_program.clone(), is_test=False)
         if self._hooker:
-            program = self._hooker.before_append_backward(self, program)
+            program = self._hooker.before_append_backward(program)
         targets = []
         for out in self._outputs.tolist():
             if isinstance(out, framework.Variable):
@@ -652,12 +649,14 @@ class PartialProgramLayer:
 
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(
-                    self, program, start_idx
+                    program, start_idx
                 )
-            self.prepare_gradient_aggregation(start_idx, main_program, program)
+            self.prepare_gradient_aggregation(
+                start_idx + 1, main_program, program
+            )
 
         self._forward_end_index_map[
-            _hash_with_id(program, self)
+            paddle.utils._hash_with_id(program, self)
         ] = start_idx - len(self._outputs.tolist())
         return program
 

@@ -19,6 +19,7 @@ import parameterized as param
 
 import paddle
 from paddle.fluid import core
+from paddle.incubate.autograd import primapi
 
 np.random.seed(2023)
 
@@ -154,7 +155,7 @@ class TestCompositeDropout(unittest.TestCase):
                     input_, p, training=(not is_test), mode=mode
                 )
                 if core._is_fwd_prim_enabled():
-                    paddle.incubate.autograd.to_prim(mp.blocks)
+                    primapi.to_prim(mp.blocks)
                 grad = paddle.static.gradients(output, input_)[0]
             exe = paddle.static.Executor(self.place)
             exe.run(sp)
