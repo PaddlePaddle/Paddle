@@ -17,8 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -26,17 +24,29 @@ class TestTrapezoidAPI(unittest.TestCase):
     def set_args(self):
         self.y = np.array([[2, 4, 8], [3, 5, 9]]).astype('float32')
         self.x = None
-        self.dx = 1.0
+        self.dx = None
         self.axis = -1
 
     def get_output(self):
-        self.output = np.trapz(y=self.y, x=self.x, dx=self.dx, axis=self.axis)
+        if self.x is None and self.dx is None:
+            self.output = self.ref_api(
+                y=self.y, x=self.x, dx=1.0, axis=self.axis
+            )
+        else:
+            self.output = self.ref_api(
+                y=self.y, x=self.x, dx=self.dx, axis=self.axis
+            )
+
+    def set_up(self):
+        self.ref_api = np.trapz
+        self.paddle_api = paddle.trapezoid
 
     def setUp(self):
+        self.set_up()
         self.set_args()
         self.get_output()
         self.places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
+        if paddle.device.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
     def func_dygraph(self):
@@ -47,9 +57,8 @@ class TestTrapezoidAPI(unittest.TestCase):
                 self.x = paddle.to_tensor(self.x, place=place)
             if self.dx is not None:
                 self.dx = paddle.to_tensor(self.dx, place=place)
-            out = paddle.trapezoid(y=y, x=self.x, dx=self.dx, axis=self.axis)
+            out = self.paddle_api(y=y, x=self.x, dx=self.dx, axis=self.axis)
             np.testing.assert_allclose(out, self.output, rtol=1e-05)
-            # self.assertTrue((out.numpy() == self.output).all(), True)
 
     def test_dygraph(self):
         with _test_eager_guard():
@@ -60,29 +69,31 @@ class TestTrapezoidAPI(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [paddle.CPUPlace()]
+        if paddle.device.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
         for place in places:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                y = paddle.fluid.data(
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                y = paddle.static.data(
                     name="y", shape=self.y.shape, dtype=self.y.dtype
                 )
                 x = None
                 dx = None
                 if self.x is not None:
-                    x = paddle.fluid.data(
+                    x = paddle.static.data(
                         name="x", shape=self.x.shape, dtype=self.x.dtype
                     )
                 if self.dx is not None:
-                    dx = paddle.fluid.data(
+                    dx = paddle.static.data(
                         name="dx", shape=[1], dtype='float32'
                     )
 
-                exe = fluid.Executor(place)
-                out = paddle.trapezoid(y=y, x=x, dx=dx, axis=self.axis)
+                exe = paddle.static.Executor(place)
+                out = self.paddle_api(y=y, x=x, dx=dx, axis=self.axis)
                 fetches = exe.run(
-                    fluid.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={
                         "y": self.y,
                         "x": self.x,
@@ -92,10 +103,9 @@ class TestTrapezoidAPI(unittest.TestCase):
                     fetch_list=[out],
                 )
                 np.testing.assert_allclose(fetches[0], self.output, rtol=1e-05)
-                # self.assertTrue((fetches[0] == self.output).all(), True)
 
 
-class TestTrapezoidAPIX(TestTrapezoidAPI):
+class TestTrapezoidWithX(TestTrapezoidAPI):
     def set_args(self):
         self.y = np.array([[2, 4, 8], [3, 5, 9]]).astype('float32')
         self.x = np.array([[1, 2, 3], [3, 4, 5]]).astype('float32')
@@ -103,7 +113,7 @@ class TestTrapezoidAPIX(TestTrapezoidAPI):
         self.axis = -1
 
 
-class TestTrapezoidAPIAxis(TestTrapezoidAPI):
+class TestTrapezoidAxis(TestTrapezoidAPI):
     def set_args(self):
         self.y = np.array([[2, 4, 8], [3, 5, 9]]).astype('float32')
         self.x = None
@@ -111,7 +121,7 @@ class TestTrapezoidAPIAxis(TestTrapezoidAPI):
         self.axis = 0
 
 
-class TestTrapezoidXdx(TestTrapezoidAPI):
+class TestTrapezoidWithDx(TestTrapezoidAPI):
     def set_args(self):
         self.y = np.array([[2, 4, 8], [3, 5, 9]]).astype('float32')
         self.x = None
@@ -127,12 +137,94 @@ class TestTrapezoidfloat64(TestTrapezoidAPI):
         self.axis = -1
 
 
+class TestTrapezoidWithOutDxX(TestTrapezoidAPI):
+    def set_args(self):
+        self.y = np.array([[2, 4, 8], [3, 5, 9]]).astype('float64')
+        self.x = None
+        self.dx = None
+        self.axis = -1
+
+
 class TestTrapezoidBroadcast(TestTrapezoidAPI):
     def set_args(self):
         self.y = np.random.random((3, 3, 4)).astype('float32')
         self.x = np.random.random((3)).astype('float32')
         self.dx = None
         self.axis = 1
+
+
+class TestTrapezoidAxis1(TestTrapezoidAPI):
+    def set_args(self):
+        self.y = np.random.random((3, 3, 4)).astype('float32')
+        self.x = None
+        self.dx = 1
+        self.axis = 1
+
+
+class TestTrapezoidError(unittest.TestCase):
+    # test error
+    def setUp(self):
+        self.paddle_api = paddle.trapezoid
+
+    def test_errors(self):
+        self.setUp()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+
+            def test_y_dtype():
+                y = paddle.static.data(
+                    name='y',
+                    shape=[4, 4],
+                    dtype="float16",
+                )
+                x = paddle.static.data(name='x', shape=[4, 4], dtype="float32")
+                dx = None
+                self.paddle_api(y, x, dx)
+
+            self.assertRaises(TypeError, test_y_dtype)
+
+            def test_x_dtype():
+                y1 = paddle.static.data(
+                    name='y1',
+                    shape=[4, 4],
+                    dtype="float32",
+                )
+                x1 = paddle.static.data(
+                    name='x1', shape=[4, 4], dtype="float16"
+                )
+                dx1 = None
+                self.paddle_api(y1, x1, dx1)
+
+            self.assertRaises(TypeError, test_x_dtype)
+
+            def test_dx_dim():
+                y2 = paddle.static.data(
+                    name='y2',
+                    shape=[4, 4],
+                    dtype="float32",
+                )
+                x2 = None
+                dx2 = paddle.static.data(
+                    name='dx2', shape=[4, 4], dtype="float32"
+                )
+                self.paddle_api(y2, x2, dx2)
+
+            self.assertRaises(ValueError, test_dx_dim)
+
+            def test_xwithdx():
+                y3 = paddle.static.data(
+                    name='y3',
+                    shape=[4, 4],
+                    dtype="float32",
+                )
+                x3 = paddle.static.data(
+                    name='x3', shape=[4, 4], dtype="float32"
+                )
+                dx3 = 1.0
+                self.paddle_api(y3, x3, dx3)
+
+            self.assertRaises(ValueError, test_xwithdx)
 
 
 if __name__ == '__main__':

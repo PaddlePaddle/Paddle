@@ -5109,8 +5109,33 @@ def frexp(x, name=None):
     return mantissa, exponent
 
 
-def trapezoid(y, x=None, dx=None, axis=-1):
-    """ """
+def _trapezoid(y, x=None, dx=None, axis=-1, sum_mode='sum'):
+    """
+    Integrate along the given axis using the composite trapezoidal rule.
+
+    Args:
+
+    y (Tensor): Input array to integrate.It's data type should be float32, float64.
+    x (Tensor, optional): The sample points corresponding to the `y` values.
+        It's data type should be float32, float64.If `x` is None,
+        the sample points are assumed to be evenly spaced `dx` apart. The
+        default is None.
+    dx (float, optional): The spacing between sample points when x is None.
+      If neither x nor dx is provided then the default is dx = 1
+    axis (int, optional): The axis along which to integrate.The default is -1.
+    sum_mode (str):
+        use a different summation.
+
+    Returns:
+
+        - trapz : Tensor
+            Definite integral of `y` = n-dimensional array as approximated along
+            a single axis by the trapezoidal rule.
+    """
+    if sum_mode == 'sum':
+        sum = paddle.sum
+    elif sum_mode == 'cumsum':
+        sum = paddle.cumsum
     if not (x is None or dx is None):
         raise ValueError("Not permitted to specify both x and dx input args.")
     if y.dtype not in [paddle.float32, paddle.float64]:
@@ -5121,24 +5146,14 @@ def trapezoid(y, x=None, dx=None, axis=-1):
         )
     y_shape = y.shape
     length = y_shape[axis]
-    if length <= 1:
-        raise ValueError('The calculation dimension must be greater than 1')
     if axis < 0:
-        axis = y.dim() + axis
-    else:
-        axis = axis
+        axis += y.dim()
     if x is None:
         if dx is None:
             dx = 1.0
         dx = paddle.to_tensor(dx)
         if dx.dim() > 1:
             raise ValueError('Expected dx to be a scalar, got dx={}'.format(dx))
-        elem_sum = paddle.sum(y, axis=axis)
-        elem_sum -= 0.5 * paddle.sum(
-            paddle.gather(y, paddle.to_tensor([0, length - 1]), axis=axis),
-            axis=axis,
-        )
-        return elem_sum * dx
     else:
         if x.dtype not in [paddle.float32, paddle.float64]:
             raise TypeError(
@@ -5153,11 +5168,125 @@ def trapezoid(y, x=None, dx=None, axis=-1):
             dx = dx.reshape(shape)
         else:
             dx = paddle.diff(x, axis=axis)
-        return 0.5 * paddle.sum(
-            (
-                paddle.gather(y, paddle.arange(1, length), axis=axis)
-                + paddle.gather(y, paddle.arange(0, length - 1), axis=axis)
-            )
-            * dx,
-            axis=axis,
+    return 0.5 * sum(
+        (
+            paddle.gather(y, paddle.arange(1, length), axis=axis)
+            + paddle.gather(y, paddle.arange(0, length - 1), axis=axis)
         )
+        * dx,
+        axis=axis,
+    )
+
+
+def trapezoid(y, x=None, dx=None, axis=-1):
+    """
+    Integrate along the given axis using the composite trapezoidal rule.Use the sum method.
+
+    Args:
+
+    y (Tensor): Input array to integrate.It's data type should be float32, float64.
+    x (Tensor, optional): The sample points corresponding to the `y` values.
+        It's data type should be float32, float64.If `x` is None,
+        the sample points are assumed to be evenly spaced `dx` apart. The
+        default is None.
+    dx (float, optional): The spacing between sample points when x is None.
+      If neither x nor dx is provided then the default is dx = 1
+    axis (int, optional): The axis along which to integrate.The default is -1.
+
+    Returns:
+
+        - trapz : Tensor
+            Definite integral of `y` = n-dimensional array as approximated along
+            a single axis by the trapezoidal rule.
+    Examples:
+        .. code-block:: python
+        import paddle
+        y = paddle.to_tensor([4, 5, 6], dtype='float32')
+        print(paddle.trapezoid(y))
+        # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [10.])
+
+        y = paddle.to_tensor([4, 5, 6], dtype='float32')
+        print(paddle.trapezoid(y, dx=2.))
+        # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [20.])
+
+        y = paddle.to_tensor([4, 5, 6], dtype='float32')
+        x = paddle.to_tensor([1, 2, 3], dtype='float32')
+        print(paddle.trapezoid(y, x))
+        # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [10.])
+
+
+        y = paddle.to_tensor([1, 2, 3], dtype='float32')
+        x = paddle.to_tensor([8, 6, 4], dtype='float32')
+        print(paddle.trapezoid(y, x))
+        # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [-8.])
+
+        y = paddle.arange(6).reshape((2, 3)).astype('float32')
+        print(trapezoid(y, axis=0))
+        # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [1.50000000, 2.50000000, 3.50000000])
+        print(trapezoid(a, axis=1))
+        # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [2., 8.])
+    """
+    return _trapezoid(y, x=x, dx=dx, axis=axis, sum_mode='sum')
+
+
+def cumulative_trapezoid(y, x=None, dx=None, axis=-1):
+    """
+    Integrate along the given axis using the composite trapezoidal rule.Use the cumsum method
+
+    Args:
+
+    y (Tensor): Input array to integrate.It's data type should be float32, float64.
+    x (Tensor, optional): The sample points corresponding to the `y` values.
+        It's data type should be float32, float64.If `x` is None,
+        the sample points are assumed to be evenly spaced `dx` apart. The
+        default is None.
+    dx (float, optional): The spacing between sample points when x is None.
+      If neither x nor dx is provided then the default is dx = 1
+    axis (int, optional): The axis along which to integrate.The default is -1.
+
+    Returns:
+
+        - trapz : Tensor
+            Definite integral of `y` = n-dimensional array as approximated along
+            a single axis by the trapezoidal rule.
+    Examples:
+        .. code-block:: python
+        import paddle
+        y = paddle.to_tensor([4, 5, 6], dtype='float32')
+        print(paddle.cumulative_trapezoid(y))
+        # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [4.50000000, 10.       ])
+
+        paddle.to_tensor([4, 5, 6], dtype='float32')
+        print(paddle.cumulative_trapezoid(y, dx=2.))
+        # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [9. , 20.])
+
+        y = paddle.to_tensor([4, 5, 6], dtype='float32')
+        x = paddle.to_tensor([1, 2, 3], dtype='float32')
+        print(paddle.cumulative_trapezoid(y, x))
+        # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [4.50000000, 10.       ])
+
+        y = paddle.to_tensor([1, 2, 3], dtype='float32')
+        x = paddle.to_tensor([8, 6, 4], dtype='float32')
+        print(paddle.cumulative_trapezoid(y, x))
+        # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [-3., -8.])
+
+        y = paddle.arange(6).reshape((2, 3)).astype('float32')
+        print(cumulative_trapezoid(y, axis=0))
+        # Tensor(shape=[1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [[1.50000000, 2.50000000, 3.50000000]])
+        print(cumulative_trapezoid(y, axis=1))
+        # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+        # [[0.50000000, 2.        ],
+        # [3.50000000, 8.        ]])
+    """
+    return _trapezoid(y, x=x, dx=dx, axis=axis, sum_mode='cumsum')
