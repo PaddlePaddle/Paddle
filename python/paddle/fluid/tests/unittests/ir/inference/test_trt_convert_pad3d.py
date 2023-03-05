@@ -34,7 +34,7 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
         def generate_paddings(p):
             return np.array(p).astype(np.int32)
 
-        for value in [True, False]:
+        for value in [0, 1.1, 2.3, 3]:
             for paddings in [
                 [0, 0, 0, 0, 1, 1],
                 [0, 0, 1, 2, 1, 2],
@@ -110,7 +110,7 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
                             yield program_config
 
     def sample_predictor_configs(
-        self, program_config
+            self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
