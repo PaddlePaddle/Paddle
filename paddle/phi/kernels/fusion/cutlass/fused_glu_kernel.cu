@@ -61,8 +61,6 @@ void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
   using ElementAccumulator = AccT;
   using ElementCompute = AccT;
 
-  using ThreadblockShape = cutlass::gemm::GemmShape<128, 64, 32>;
-
   using EpilogueOutputOp0 = cutlass::epilogue::thread::LinearCombination<
       ElementOutput,
       128 / cutlass::sizeof_bits<ElementOutput>::value,
@@ -92,7 +90,6 @@ void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
       cutlass::layout::RowMajor,
       ElementAccumulator,
       Arch,
-      ThreadblockShape,
       EpilogueOutputOp0,
       EpilogueOutputOp1,
       EpilogueOutputOp2,
@@ -149,12 +146,18 @@ void LaunchGeGLUKenrel(LaunchParams params, const phi::GPUContext& ctx) {
                                          split_k_slices};
 
   DualGemm fused_geglu_op;
+  paddle::memory::AllocationPtr workspace_ptr{nullptr};
+  workspace_ptr = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      fused_geglu_op.get_workspace_size(arguments),
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+
   cutlass::Status status = fused_geglu_op.can_implement(arguments);
   PD_CUTLASS_CHECK(status);
-  fused_geglu_op.initialize(
-      arguments, nullptr /*workspace todo*/, ctx.stream());
+  status =
+      fused_geglu_op.initialize(arguments, workspace_ptr->ptr(), ctx.stream());
   PD_CUTLASS_CHECK(status);
-  status = fused_geglu_op();
+  status = fused_geglu_op(ctx.stream());
   PD_CUTLASS_CHECK(status);
 }
 
@@ -202,19 +205,18 @@ void DispatchStoreForBackward(LaunchParams params, const phi::GPUContext& ctx) {
 
 template <typename T, typename AccT>
 void DispatchArch(LaunchParams params, const phi::GPUContext& ctx) {
-#ifdef __CUDA_ARCH__
-#if __CUDA_ARCH__ >= 700 && __CUDA_ARCH__ < 750
-  return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm70>(params, ctx);
-#elif __CUDA_ARCH__ >= 750 && __CUDA_ARCH__ < 800
-  return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm75>(params, ctx);
-#elif __CUDA_ARCH__ >= 800 && __CUDA_ARCH__ < 900
-  return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm80>(params, ctx);
-#else
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "Currently cutlass FusedGLU kernel only support SM70, SM75, SM80. "));
-  return;
-#endif
-#endif  // __CUDA_ARCH__
+  const int compute_capability = ctx.GetComputeCapability();
+  if (compute_capability == 70) {
+    return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm70>(params, ctx);
+  } else if (compute_capability >= 75) {
+    return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm75>(params, ctx);
+  } else if (compute_capability >= 80 && compute_capability < 90) {
+    return DispatchStoreForBackward<T, AccT, cutlass::arch::Sm80>(params, ctx);
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently cutlass FusedGLU kernel only support SM70, SM75, SM80. "));
+    return;
+  }
 }
 
 template <typename T>
@@ -228,15 +230,12 @@ void DispatchAccumulateType(LaunchParams params, const phi::GPUContext& ctx) {
 }
 
 void DispatchFusedGLUKernel(LaunchParams params, const phi::GPUContext& ctx) {
-  if (params.dtype == DataType::FLOAT32) {
-    return DispatchAccumulateType<float>(params, ctx);
-    // return;
-  } else if (params.dtype == DataType::FLOAT16) {
+  if (params.dtype == DataType::FLOAT16) {
     return DispatchAccumulateType<cutlass::half_t>(params, ctx);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Currently cutlass FusedGLU kernel "
-        "only support datatype: float32 and float16. "));
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Currently cutlass FusedGLU kernel "
+                                   "only support float16 datatype. "));
     return;
   }
 }
@@ -280,16 +279,7 @@ void FusedGLUForwardKernel(const Context& ctx,
   params.n = n / 2;
   params.k = k;
   params.requires_grad = requires_grad;
-
-  LaunchGeGLUKenrel<cutlass::half_t,
-                    float,
-                    cutlass::arch::Sm80,
-                    true,
-                    cutlass::epilogue::thread::SiLu>(params, ctx);
-  if (FLAGS_gemm_use_half_precision_compute_type) {
-    printf("here use half ========= =\n");
-  }
-  // DispatchFusedGLUKernel(params, ctx);
+  DispatchFusedGLUKernel(params, ctx);
 }
 
 }  // namespace cutlass_internal
@@ -300,5 +290,4 @@ PD_REGISTER_KERNEL(fused_glu,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::FusedGLUForwardKernel,
-                   float,
                    phi::dtype::float16) {}

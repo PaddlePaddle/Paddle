@@ -20,35 +20,44 @@ from paddle.fluid.layer_helper import LayerHelper
 
 def cutlass_fused_glu(x, weight, bias, act_type):
     """
-    Cutlass Fused Multihead Attention.
-    This method requires SM_ARCH in sm70, sm75, sm80.
+    Cutlass Fused GLU.
+
+    This method requires SM_ARCH in sm70, sm75, sm80, and activation support `sigmoid`, `swish`, `gelu`.
+
     Args:
-        query (Tensor): the Query Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
-        key (Tensor): the Key Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
-        value (Tensor): the Value Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
-        mask (Tensor): the Mask Tensor. Its shape is [batchsize, num_head, seq_len, seq_len]. And it can broadcast in each dims (which means you can set dimsize=1).
-        scale (Float): the attention matrix's scale. Default is sqrt(1.0 / head_size).
-        causal (Bool): whether causal masking is used or not. Default is False.
+        x (Tensor): the Input Tensor. Its shape is [M, K].
+        weight (Tensor): the Weight Tensor. Its shape is [K, 2N].
+        bias (Tensor): the Bias Tensor. Its shape is [2N].
+        act_type (Str): the activation type, support `sigmoid`, `swish`, `gelu`.
     Returns:
-        Tensor: the output Tensor.
+        Tensor: the output Tensor. Its shape is [M, N].
+
     Examples:
         .. code-block:: python
             # required: gpu
-            import math
+
             import paddle
-            from paddle.incubate.nn.functional import cutlass_fused_multi_head_attention
-            batch = 1
-            num_head = 8
-            seq_len = 256
-            head_size = 32
-            dtype = paddle.float16
-            query = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
-            key = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
-            value = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
-            mask = paddle.randn([1, 1, 1, seq_len], dtype=dtype)
-            scale = float(1.0 / math.sqrt(head_size))
-            out = cutlass_fused_multi_head_attention(query, key, value, mask, scale)
-            print(out.shape) # [batch, seq_len, num_head, head_size]
+            import numpy as np
+            from paddle.incubate.nn.functional import cutlass_fused_glu
+
+            def naive_swiglu(x, weight, bias, act):
+                out = paddle.matmul(x, weight)
+                out = out + bias
+                x0, x1 = paddle.chunk(out, 2, axis=1)
+                x1 = paddle.nn.functional.swish(x1)
+                return x0 * x1
+
+            batch = 8
+            hidden = 32
+            dtype=paddle.float16
+
+            x = paddle.randn([batch, hidden], dtype=dtype)
+            weight = paddle.randn([hidden, hidden * 2], dtype=dtype)
+            bias = paddle.randn([hidden * 2], dtype=dtype)
+
+            naive_swiglu_out = naive_swiglu(x, weight, bias, "swish")
+            # equals to: out = fused_swiglu_out = cutlass_fused_glu(x, weight, bias, "swish")
+
     """
     # requires_grad = not x.stop_gradient
     requires_grad = True

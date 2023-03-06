@@ -139,12 +139,6 @@ template <
     typename ElementAccumulator_,
     /// Tag indicating architecture to tune for
     typename ArchTag_,
-    /// Threadblock-level tile size (concept: GemmShape)
-    typename ThreadblockShape_,
-    /// Warp-level tile size (concept: GemmShape)
-    // typename WarpShape_,
-    /// Instruction-level tile size (concept: GemmShape)
-    // typename InstructionShape_,
     /// Epilogue output operator
     typename EpilogueOutputOp0_,
     typename EpilogueOutputOp1_,
@@ -172,8 +166,7 @@ class DualGemm {
   using ElementAccumulator = ElementAccumulator_;
   using ArchTag = ArchTag_;
   using GemmType = gemm_kernel_utils::DefaultGemmType<ArchTag, ElementA>;
-  using ThreadblockShape = ThreadblockShape_;
-  // using WarpShape = WarpShape_;
+  using ThreadblockShape = cutlass::gemm::GemmShape<128, 64, GemmType::ThreadK>;
   using WarpShape = cutlass::gemm::GemmShape<64, 32, GemmType::WarpK>;
   using InstructionShape = typename GemmType::InstructionShape;
   using EpilogueOutputOp0 = EpilogueOutputOp0_;
@@ -211,8 +204,6 @@ class DualGemm {
   using LayoutScaleBias = layout::RowMajor;
   /// Define the kernel
   /// Define the threadblock-scoped matrix multiply-accumulate
-  static_assert(ArchTag::kMinComputeCapability >= 80, "Only multistage is implemented");
-  static_assert(kStages >= 3, "Only multistage is implemented");
 
   using DefaultConfig =
     typename cutlass::gemm::device::DefaultGemmConfiguration<
@@ -241,7 +232,7 @@ class DualGemm {
         InstructionShape,
         typename DefaultConfig::EpilogueOutputOp,
         ThreadblockSwizzle, 
-        kStages,
+        DefaultConfig::kStages, 
         SplitKSerial, // SplitKSerial
         Operator>;
 
@@ -481,7 +472,7 @@ public:
   }
 
   /// Runs the kernel using initialized state.
-  Status run(cudaStream_t stream = nullptr) {
+  Status run(cudaStream_t stream) {
 
     ThreadblockSwizzle threadblock_swizzle;
 

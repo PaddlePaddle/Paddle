@@ -251,13 +251,13 @@
     data_type : x
   backward : cross_grad
 
-- op : cutlass_fused_geglu
+- op : cutlass_fused_glu
   args : (Tensor x, Tensor weight, Tensor bias, str act_type, bool requires_grad)
   output : Tensor(out), Tensor(matmul0_result), Tensor(matmul1_result)
   infer_meta :
-    func : FusedGEGLUInferMeta
+    func : FusedGLUInferMeta
   kernel :
-    func : fused_geglu
+    func : fused_glu
     data_type : x
 
 - op : det

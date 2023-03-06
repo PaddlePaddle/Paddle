@@ -2995,14 +2995,14 @@ void MoeInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-void FusedGEGLUInferMeta(const MetaTensor& x,
-                         const MetaTensor& weight,
-                         const MetaTensor& bias,
-                         const std::string& act_type,
-                         const bool requires_grad, 
-                         MetaTensor* out, 
-                         MetaTensor* matmul_result0, 
-                         MetaTensor* matmul_result1) {
+void FusedGLUInferMeta(const MetaTensor& x,
+                       const MetaTensor& weight,
+                       const MetaTensor& bias,
+                       const std::string& act_type,
+                       const bool requires_grad,
+                       MetaTensor* out,
+                       MetaTensor* matmul_result0,
+                       MetaTensor* matmul_result1) {
   auto x_mat_dims = phi::flatten_to_2d(x.dims(), x.dims().size() - 1);
   const int64_t k = x_mat_dims[1];
   const int64_t n = weight.dims()[1];
@@ -3012,10 +3012,17 @@ void FusedGEGLUInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument("The matmul dim is not matched, the x "
                                    "dim[1] should be equal to weight dim[0]"));
 
-  if(act_type != "sigmoid" && act_type != "swish" && act_type != "gelu"){
+  if (act_type != "sigmoid" && act_type != "swish" && act_type != "gelu") {
     PADDLE_THROW(phi::errors::Unimplemented(
-                    "Currently FusedGEGLU Kernel only accept act_type with `sigmoid`, `swish`, `gelu`. "));
-    return; 
+        "Currently FusedGLU Kernel only accept act_type with `sigmoid`, "
+        "`swish`, `gelu`. "));
+    return;
+  }
+
+  if ((n % 2) != 0) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The output channels should be divided by 2. "));
+    return;
   }
 
   std::vector<int64_t> out_dims_vec;
