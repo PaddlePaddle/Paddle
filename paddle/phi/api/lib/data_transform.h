@@ -72,7 +72,7 @@ static inline phi::TensorArgDef GetKernelInputArgDef(
     input_actual_def.SetBackend(kernel_backend);
   }
 #endif
-  return input_def;
+  return input_actual_def;
 }
 
 std::shared_ptr<phi::DenseTensor> PrepareData(
