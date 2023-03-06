@@ -809,15 +809,13 @@ void maximum_grad(const Tensor& x,
                   int axis,
                   Tensor* x_grad,
                   Tensor* y_grad) {
+  auto x_broadcasted = x;
+  auto y_broadcasted = y;
   if ((x.size() < y.size()) || (x.dims().size() < y.dims().size())) {
-    auto x_broadcasted = x.expand(IntArray(y.dims()));
-    auto y_broadcasted = y;
-  } else if ((y.size() < x.size()) || (y.dims().size() < x.dims().size())) {
-    auto x_broadcasted = x;
-    auto y_broadcasted = y.expand(IntArray(x.dims()));
-  } else {
-    auto x_broadcasted = x;
-    auto y_broadcasted = y;
+    x_broadcasted = x.expand(y.shape());
+  }
+  if ((y.size() < x.size()) || (y.dims().size() < x.dims().size())) {
+    y_broadcasted = y.expand(x.shape());
   }
   if (x_grad) {
     auto x_tmp = cast<T>(greater_than<T>(x_broadcasted, y_broadcasted),
