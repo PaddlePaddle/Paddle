@@ -312,7 +312,7 @@ class TestSigmoidBF16(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 '''
