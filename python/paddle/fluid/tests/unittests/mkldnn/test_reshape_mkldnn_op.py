@@ -29,7 +29,16 @@ paddle.enable_static()
 
 class TestReshape2OneDNNOp(TestReshapeOp):
     def setUp(self):
-        super().setUp()
+        self.init_data()
+        self.op_type = "reshape2"
+        self.python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.attrs = {"shape": self.new_shape}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype("float32"),
+        }
         self.x = self.inputs["X"]
         self.attrs['use_mkldnn'] = True
         self.set_additional_inputs()
@@ -43,6 +52,9 @@ class TestReshape2OneDNNOp(TestReshapeOp):
 
     def set_outputs(self):
         pass
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
 
 
 class TestReshape2OneDNNOpDimInfer1(TestReshape2OneDNNOp):
