@@ -24,6 +24,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+import paddle.static as static
 from paddle.fluid import Program, program_guard
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -2648,7 +2649,9 @@ class TestLog(TestActivation):
 class Test_Log_Op_Fp16(unittest.TestCase):
     def test_api_fp16(self):
         paddle.enable_static()
-        with static.program_guard(paddle.static.Program(), paddle.static.Program()):
+        with static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = [[2, 3, 4], [7, 8, 9]]
             x = paddle.to_tensor(x, dtype='float16')
             out = paddle.log(x)
@@ -2811,7 +2814,9 @@ class TestLog1p(TestActivation):
 class Test_Log1p_Op_Fp16(unittest.TestCase):
     def test_api_fp16(self):
         paddle.enable_static()
-        with static.program_guard(paddle.static.Program(), paddle.static.Program()):
+        with static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = [[2, 3, 4], [7, 8, 9]]
             x = paddle.to_tensor(x, dtype='float16')
             out = paddle.log1p(x)
