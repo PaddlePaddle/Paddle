@@ -18,7 +18,13 @@ limitations under the License. */
 #include <algorithm>
 #include <cstdio>
 
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/inference/tensorrt/plugin/deformable_conv_op_plugin.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace inference {
@@ -546,6 +552,47 @@ __global__ void ModulatedDeformableIm2colGpuKernel<half>(
 }
 
 template <typename T>
+struct CUDATypeTraits;
+
+template <>
+struct CUDATypeTraits<half> {
+  typedef platform::float16 TYPE;
+};
+
+template <>
+struct CUDATypeTraits<float> {
+  typedef float TYPE;
+};
+
+template <typename T>
+void gemm_impl_new(int m,
+                   int n,
+                   int k,
+                   const T* alpha,
+                   const T* A,
+                   const T* B,
+                   const T* beta,
+                   T* C) {
+  auto* device_ctx = static_cast<phi::GPUContext*>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+  const phi::GPUContext& dev_ctx = *device_ctx;
+
+  typedef typename CUDATypeTraits<T>::TYPE run_type;
+  auto blas = phi::funcs::GetBlas<phi::GPUContext, run_type>(dev_ctx);
+  // note: here calls GEMM like cblas, so do not use like cblas
+  blas.GEMM(CblasNoTrans,
+            CblasNoTrans,
+            n,
+            m,
+            k,
+            static_cast<run_type>(*alpha),
+            reinterpret_cast<run_type*>(const_cast<T*>(B)),
+            reinterpret_cast<run_type*>(const_cast<T*>(A)),
+            static_cast<run_type>(*beta),
+            reinterpret_cast<run_type*>(C));
+}
+
+template <typename T>
 void gemm_impl(cublasHandle_t handle,
                cublasOperation_t transa,
                cublasOperation_t transb,
@@ -1044,6 +1091,32 @@ void DeformableConvPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, with_fp16_);
 }
 
+size_t DeformableConvPluginDynamic::getWorkspaceSize(
+    const nvinfer1::PluginTensorDesc* inputs,
+    int nbInputs,
+    const nvinfer1::PluginTensorDesc* outputs,
+    int nbOutputs) const TRT_NOEXCEPT {
+  PADDLE_ENFORCE_EQ(
+      nbInputs,
+      3,
+      platform::errors::InvalidArgument(
+          "The number of inputs should be equal to 3, but got %d", nbInputs));
+  PADDLE_ENFORCE_EQ(
+      nbOutputs,
+      1,
+      platform::errors::InvalidArgument(
+          "The number of inputs should be equal to 1, but got %d", nbOutputs));
+  int c_i = inputs[0].dims.d[1], h_i = inputs[0].dims.d[2],
+      w_i = inputs[0].dims.d[3];
+  int k_h = kernel_dims_[2], k_w = kernel_dims_[3];
+  int c_o = outputs[0].dims.d[1], h_o = outputs[0].dims.d[2],
+      w_o = outputs[0].dims.d[3];
+  int num_bytes = (data_type_ == nvinfer1::DataType::kFLOAT ? 4 : 2);
+  size_t data_col_size = static_cast<size_t>(c_i * k_h * k_w * im2col_step_ *
+                                             h_o * w_o * num_bytes);
+  return data_col_size;
+}
+
 nvinfer1::DimsExprs DeformableConvPluginDynamic::getOutputDimensions(
     int output_index,
     const nvinfer1::DimsExprs* inputDims,
@@ -1056,8 +1129,7 @@ nvinfer1::DimsExprs DeformableConvPluginDynamic::getOutputDimensions(
           "The number of inputs should be equal to 3, but got %d", nb_inputs));
   nvinfer1::DimsExprs ret;
   ret.nbDims = inputDims[0].nbDims;
-  ret.d[0] = expr_builder.constant(kernel_dims_[0]);
-
+  ret.d[0] = inputDims[0].d[0];
   auto ConvOutputSizeDynamic =
       [&](const nvinfer1::IDimensionExpr* input_size,
           int filter_size,
@@ -1068,7 +1140,7 @@ nvinfer1::DimsExprs DeformableConvPluginDynamic::getOutputDimensions(
     return expr_builder.operation(
         nvinfer1::DimensionOperation::kSUM,
         *expr_builder.operation(
-            nvinfer1::DimensionOperation::kCEIL_DIV,
+            nvinfer1::DimensionOperation::kFLOOR_DIV,
             *expr_builder.operation(
                 nvinfer1::DimensionOperation::kSUM,
                 *input_size,
@@ -1077,12 +1149,14 @@ nvinfer1::DimsExprs DeformableConvPluginDynamic::getOutputDimensions(
         *expr_builder.constant(1));
   };
 
-  ret.d[1] = ConvOutputSizeDynamic(inputDims[0].d[1],
+  ret.d[1] = expr_builder.constant(kernel_dims_[0]);
+
+  ret.d[2] = ConvOutputSizeDynamic(inputDims[0].d[2],
                                    kernel_dims_[2],
                                    dilations_[0],
                                    paddings_[0],
                                    strides_[0]);
-  ret.d[2] = ConvOutputSizeDynamic(inputDims[0].d[2],
+  ret.d[3] = ConvOutputSizeDynamic(inputDims[0].d[3],
                                    kernel_dims_[3],
                                    dilations_[1],
                                    paddings_[1],
@@ -1135,6 +1209,23 @@ nvinfer1::DataType DeformableConvPluginDynamic::getOutputDataType(
   return input_types[0];
 }
 
+void DeformableConvPluginDynamic::configurePlugin(
+    const nvinfer1::DynamicPluginTensorDesc* in,
+    int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc* out,
+    int nbOutputs) TRT_NOEXCEPT {
+  PADDLE_ENFORCE_EQ(
+      nbInputs,
+      3,
+      platform::errors::InvalidArgument(
+          "The number of inputs should be equal to 3, but got %d", nbInputs));
+  PADDLE_ENFORCE_EQ(
+      nbOutputs,
+      1,
+      platform::errors::InvalidArgument(
+          "The number of inputs should be equal to 1, but got %d", nbOutputs));
+}
+
 int DeformableConvPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc* input_desc,
     const nvinfer1::PluginTensorDesc* output_desc,
@@ -1172,6 +1263,7 @@ int DeformableConvPluginDynamic::enqueue_impl(
   const auto& offset_dims = input_desc[1].dims;
   const auto& mask_dims = input_desc[2].dims;
   const auto& output_dims = output_desc[0].dims;
+
   int batch_size = input_dims.d[0];
   const T* input = reinterpret_cast<const T*>(inputs[0]);
   const T* offset = reinterpret_cast<const T*>(inputs[1]);
@@ -1200,8 +1292,8 @@ int DeformableConvPluginDynamic::enqueue_impl(
   int blocks = NumBlocks(num_kernels);
   int threads = kNumCUDAThreads;
 
-  T alpha = static_cast<T>(1.0f);
-  T beta = static_cast<T>(0.0f);
+  const T alpha = static_cast<T>(1.0f);
+  const T beta = static_cast<T>(0.0f);
 
   for (int i = 0; i < batch_size / im2col_step_; ++i) {
     const T* data_im = input + i * im2col_step_ * input_stride;
@@ -1236,20 +1328,8 @@ int DeformableConvPluginDynamic::enqueue_impl(
       const T* weight = filter + g * M * K;
       const T* col = data_col + g * K * N;
       T* out = output + i * im2col_step_ * output_stride + g * M * N;
-      gemm_impl<T>(cublasHandle_,
-                   CUBLAS_OP_N,
-                   CUBLAS_OP_N,
-                   N,
-                   M,
-                   K,
-                   &alpha,
-                   col,
-                   N,
-                   weight,
-                   K,
-                   &beta,
-                   out,
-                   N);
+
+      gemm_impl_new<T>(N, M, K, &alpha, col, weight, &beta, out);
     }
   }
   return 0;

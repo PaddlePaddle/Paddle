@@ -222,13 +222,11 @@ class DeformableConvPluginDynamic : public DynamicPluginTensorRT {
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nbInputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nbOutputs) TRT_NOEXCEPT override{};
+                       int nbOutputs) TRT_NOEXCEPT override;
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nbInputs,
                           const nvinfer1::PluginTensorDesc* outputs,
-                          int nbOutputs) const TRT_NOEXCEPT override {
-    return 0;
-  };
+                          int nbOutputs) const TRT_NOEXCEPT override;
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
