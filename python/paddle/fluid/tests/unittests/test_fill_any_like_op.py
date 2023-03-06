@@ -61,7 +61,7 @@ class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
         self.value = 0.0
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 @unittest.skipIf(
@@ -96,7 +96,7 @@ class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
         self.value = 1.0
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 class TestFillAnyLikeOpValue2(TestFillAnyLikeOp):
@@ -104,7 +104,7 @@ class TestFillAnyLikeOpValue2(TestFillAnyLikeOp):
         self.value = 1e-10
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
@@ -112,7 +112,7 @@ class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
         self.value = 1e-100
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 class TestFillAnyLikeOpType(TestFillAnyLikeOp):
@@ -136,7 +136,7 @@ class TestFillAnyLikeOpType(TestFillAnyLikeOp):
         self.skip_cinn()
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
@@ -144,7 +144,7 @@ class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
         self.dtype = np.float16
 
     def skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 if __name__ == "__main__":

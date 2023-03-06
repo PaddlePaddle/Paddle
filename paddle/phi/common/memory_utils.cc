@@ -47,6 +47,27 @@ void AllocationDeleter(Allocation* allocation) {
   MemoryUtils::Instance().AllocationDeleter(allocation);
 }
 
+void Copy(const Place& dst_place,
+          void* dst,
+          const Place& src_place,
+          const void* src,
+          size_t num,
+          void* stream) {
+  MemoryUtils::Instance().Copy(dst_place, dst, src_place, src, num, stream);
+}
+
+void Copy(const Place& dst_place,
+          void* dst,
+          const Place& src_place,
+          const void* src,
+          size_t num) {
+  MemoryUtils::Instance().Copy(dst_place, dst, src_place, src, num);
+}
+
+int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id) {
+  return MemoryUtils::Instance().DeviceMemoryStatCurrentValue(stat_type,
+                                                              dev_id);
+}
 }  // namespace memory_utils
 
 }  // namespace phi
