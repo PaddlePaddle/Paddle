@@ -34,31 +34,32 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
 
         for shift_value in [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.49]:
             for T in range(2, 5):
-                dics = [{"shift_ratio": shift_value, "seg_num": T}, {}]
+                for data_format in ["NCHW", "NHWC"]:
+                    dics = [{"shift_ratio": shift_value, "seg_num": T, "data_format": data_format}, {}]
 
-                ops_config = [
-                    {
-                        "op_type": "temporal_shift",
-                        "op_inputs": {"X": ["input_data"]},
-                        "op_outputs": {"Out": ["output_data"]},
-                        "op_attrs": dics[0],
-                    }
-                ]
+                    ops_config = [
+                        {
+                            "op_type": "temporal_shift",
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": {"Out": ["output_data"]},
+                            "op_attrs": dics[0],
+                        }
+                    ]
 
-                ops = self.generate_op_config(ops_config)
-                for i in range(10):
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data": TensorConfig(
-                                data_gen=partial(generate_input1, dics)
-                            ),
-                        },
-                        outputs=["output_data"],
-                    )
+                    ops = self.generate_op_config(ops_config)
+                    for i in range(10):
+                        program_config = ProgramConfig(
+                            ops=ops,
+                            weights={},
+                            inputs={
+                                "input_data": TensorConfig(
+                                    data_gen=partial(generate_input1, dics)
+                                ),
+                            },
+                            outputs=["output_data"],
+                        )
 
-                yield program_config
+                    yield program_config
 
     def sample_predictor_configs(
             self, program_config
