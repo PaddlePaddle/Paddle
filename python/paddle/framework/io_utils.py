@@ -27,11 +27,12 @@ from paddle.fluid.framework import Parameter, Variable, static_only
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
-batch = paddle.batch
-
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+
+# This file contains various utility functions that are used in static.io(io related api that used in static graph)
+# and framework.io(io related api that used in dygraph)
 
 
 class _open_buffer:

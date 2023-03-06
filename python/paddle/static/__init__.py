@@ -34,7 +34,6 @@ from .io import save  # noqa: F401
 from .io import load  # noqa: F401
 from .io import load_program_state  # noqa: F401
 from .io import set_program_state  # noqa: F401
-from .io import get_program_persistable_vars  # noqa: F401
 from ..fluid import Scope  # noqa: F401
 from .input import data  # noqa: F401
 from .input import InputSpec  # noqa: F401
@@ -120,7 +119,6 @@ __all__ = [  # noqa
     'normalize_program',
     'load_program_state',
     'set_program_state',
-    'get_program_persistable_vars',
     'cpu_places',
     'cuda_places',
     'xpu_places',

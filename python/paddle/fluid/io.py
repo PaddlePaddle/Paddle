@@ -62,9 +62,6 @@ from . import core
 from paddle.utils import deprecated
 from paddle.fluid.framework import static_only
 
-batch = paddle.batch
-
-
 __all__ = [
     'save_inference_model',
     'load_inference_model',
