@@ -423,19 +423,25 @@ class SliceCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
     auto dx_ptr = this->GetOutputPtr(&input_grad);
     std::string dx_name = this->GetOutputName(input_grad);
-    auto axes = this->Attr<std::vector<int64_t>>("axes");
-    auto starts = this->Attr<std::vector<int64_t>>("starts");
-    auto ends = this->Attr<std::vector<int64_t>>("ends");
-    auto infer_flags = this->Attr<std::vector<int64_t>>("infer_flags");
-    auto decrease_axis = this->Attr<std::vector<int64_t>>("decrease_axis");
+    auto axes = this->Attr<std::vector<int>>("axes");
+    auto starts = this->Attr<std::vector<int>>("starts");
+    auto ends = this->Attr<std::vector<int>>("ends");
+    auto infer_flags = this->Attr<std::vector<int>>("infer_flags");
+    auto decrease_axis = this->Attr<std::vector<int>>("decrease_axis");
     VLOG(6) << "Runing slice_grad composite func";
+    std::vector<int64_t> new_axes =
+        std::vector<int64_t>(axes.begin(), axes.end());
+    std::vector<int64_t> new_infer_flags =
+        std::vector<int64_t>(infer_flags.begin(), infer_flags.end());
+    std::vector<int64_t> new_decrease_axis =
+        std::vector<int64_t>(decrease_axis.begin(), decrease_axis.end());
     prim::slice_grad<prim::DescTensor>(input,
                                        out_grad,
-                                       axes,
+                                       new_axes,
                                        paddle::experimental::IntArray(starts),
                                        paddle::experimental::IntArray(ends),
-                                       infer_flags,
-                                       decrease_axis,
+                                       new_infer_flags,
+                                       new_decrease_axis,
                                        dx_ptr);
     this->RecoverOutputName(input_grad, dx_name);
   }
@@ -478,6 +484,7 @@ REGISTER_OPERATOR(slice,
                   ops::SliceOpMaker,
                   ops::SliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::SliceOpGradMaker<paddle::imperative::OpBase>,
+                  ops::SliceCompositeGradOpMaker,
                   ops::SliceOpVarTypeInference);
 REGISTER_OPERATOR(slice_grad,
                   ops::SliceOpGrad,

@@ -722,8 +722,4 @@ PADDLE_API Tensor operator*(const Scalar& x, const Tensor& y);
 
 PADDLE_API Tensor operator/(const Scalar& x, const Tensor& y);
 
-// TODO(chenweihang): Remove this using later
-// namespace experimental {
-// using paddle::Tensor;
-// }  // namespace experimental
 }  // namespace paddle

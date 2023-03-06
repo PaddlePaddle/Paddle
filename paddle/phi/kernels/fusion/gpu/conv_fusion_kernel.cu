@@ -22,6 +22,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/common/backend.h"
@@ -313,12 +314,8 @@ class CudnnConvDescManager {
       int groups,
       cudnnDataType_t dtype) {
     auto* desc = new phi::backends::gpu::ConvolutionDescriptor();
-    desc->set(dtype,
-              paddings,
-              strides,
-              dilations,
-              paddle::platform::AllowTF32Cudnn(),
-              groups);
+    desc->set(
+        dtype, paddings, strides, dilations, phi::AllowTF32Cudnn(), groups);
     return desc;
   }
 

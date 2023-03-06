@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/strings_api.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -43,8 +44,10 @@ TEST(API, strings_empty) {
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::INT64, phi::make_ddim({2}), phi::DataLayout::NCHW));
-  auto* shape_data =
-      dense_shape->mutable_data<int64_t>(paddle::platform::CPUPlace());
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+  auto* shape_data = dev_ctx->template Alloc<int64_t>(dense_shape.get());
+
   shape_data[0] = 2;
   shape_data[1] = 3;
 

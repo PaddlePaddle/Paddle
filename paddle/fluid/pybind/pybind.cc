@@ -681,6 +681,10 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
   m.def("__set_all_prim_enabled",
         &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
+  m.def("_is_eager_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsEagerPrimEnabled);
+  m.def("__set_eager_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetEagerPrimEnabled);
   m.def("_set_prim_target_grad_name",
         &paddle::prim::PrimCommonUtils::SetTargetGradName);
   m.def("set_num_threads", &platform::SetNumThreads);
@@ -2522,10 +2526,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_op_info_recorder", &phi::DisableOpInfoRecorder);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
-  m.def("get_cublas_switch", platform::AllowTF32Cublas);
-  m.def("set_cudnn_switch", platform::SetAllowTF32Cudnn);
-  m.def("get_cudnn_switch", platform::AllowTF32Cudnn);
+  m.def("set_cublas_switch", phi::SetAllowTF32Cublas);
+  m.def("get_cublas_switch", phi::AllowTF32Cublas);
+  m.def("set_cudnn_switch", phi::SetAllowTF32Cudnn);
+  m.def("get_cudnn_switch", phi::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
   m.def("clear_executor_cache", []() {
     pybind11::gil_scoped_release release;

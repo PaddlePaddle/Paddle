@@ -494,8 +494,15 @@ class AllocatorFacadePrivate {
   const AllocatorMap& GetAllocatorMap() { return allocators_; }
 
   void InitNaiveBestFitCPUAllocator() {
-    // It is more efficient to use CPUAllocator directly.
+#if defined(__APPLE__) && defined(__arm64__)
+    // NOTE(wuweilong): It is more efficient to use CPUAllocator directly,
+    // but it wll cause some problem in Mac OS m1 chip, so we use
+    // NaiveBestFitAllocator instead.
+    allocators_[platform::CPUPlace()] =
+        std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
+#else
     allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
+#endif
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
