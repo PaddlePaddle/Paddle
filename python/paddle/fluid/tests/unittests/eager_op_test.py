@@ -1463,6 +1463,7 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
+                print(actual_np, expect_np)
                 self.op_test.assertTrue(
                     np.allclose(
                         actual_np,
