@@ -73,6 +73,12 @@ void IndexSelectKernel(const Context& ctx,
     index_select_cuda_kernel<T, int><<<grid_dim, block_dim, 0, stream>>>(
         in_data, out_data, index_data, numel, stride, size, delta);
   }
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  output->inplace_version_counter_ = xx.inplace_version_counter_;
+
+  output->can_not_uses = xx.can_not_uses;
+  output->can_not_uses->insert(output->canNotUse);
+  output->can_not_uses->insert(xx.canNotUse);
 }
 
 }  // namespace phi

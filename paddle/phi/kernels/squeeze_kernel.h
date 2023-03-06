@@ -42,6 +42,12 @@ void Squeeze(const Context& dev_ctx,
   MetaTensor meta_out(out);
   SqueezeInferMeta(x, axes, &meta_out);
   SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  out->inplace_version_counter_ = xx.inplace_version_counter_;
+
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
 }
 
 }  // namespace phi

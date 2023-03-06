@@ -429,6 +429,29 @@ uint32_t Tensor::current_inplace_version() {
   return 0;
 }
 
+bool Tensor::can_not_use() {
+  if (is_dense_tensor()) {
+    bool can_not_use_ =
+        *(static_cast<phi::DenseTensor *>(impl_.get())->canNotUse) == true;
+    return can_not_use_;
+  } else {
+    return false;
+  }
+}
+
+void Tensor::set_can_not_use(std::string op_name) {
+  if (is_dense_tensor()) {
+    auto dense_tensor_ = static_cast<phi::DenseTensor>(impl_.get());
+    if (dense_tensor_->can_not_uses->size() > 0) {
+      for (auto it = dense_tensor_->can_not_uses->begin();
+           it != dense_tensor_->can_not_uses->end();
+           it++) {
+        **it = true;
+      }
+    }
+  }
+}
+
 void Tensor::reset_inplace_version(bool set_to_zero) {
   if (set_to_zero) {
     if (is_dense_tensor()) {

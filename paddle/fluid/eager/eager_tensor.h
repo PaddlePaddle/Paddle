@@ -64,6 +64,8 @@ class VariableCompatTensor
     return *static_cast<const T*>(holder_->Ptr());
   }
 
+  bool can_not_use() { return false; }
+
   bool IsInitialized() const { return holder_ != nullptr; }
 
   template <typename T>
@@ -273,6 +275,16 @@ class EagerVariable final {
   const std::string& name() const { return name_; }
 
   void set_name(const std::string& name) { name_ = name; }
+
+ public:
+  bool can_not_use() {
+    auto tensor_dense = static_cast<phi::DenseTensor*>(src_tensor_.get());
+    if (tensor_dense != nullptr) {
+      return *tensor_dense->canNotUse == true;
+    } else {
+      return false;
+    }
+  }
 
  private:
   template <typename VarType>

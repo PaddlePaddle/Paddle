@@ -151,7 +151,12 @@ inline bool NeedTransformBackend(const phi::Backend& type_for_var_backend,
 
 inline bool NeedTransform(const phi::KernelKey& kernel_type_for_var,
                           const phi::KernelKey& expected_kernel_key,
-                          const phi::DenseTensor& tensor) {
+                          const phi::DenseTensor& tensor,
+                          std::string op_name = "op_name") {
+  if (*tensor.canNotUse == true) {
+    LOG(WARNING) << "Stride Test Log:" << op_name
+                 << " Find a Tensor Can Not Be Used";
+  }
   return NeedTransformBackend(kernel_type_for_var.backend(),
                               expected_kernel_key.backend(),
                               tensor) ||

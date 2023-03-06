@@ -142,6 +142,11 @@ void SliceRawKernel(const Context& ctx,
       PADDLE_THROW(phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
+  DenseTensor& xx = const_cast<DenseTensor&>(input);
+  out->inplace_version_counter_ = xx.inplace_version_counter_;
+  out->can_not_uses = xx.can_not_uses;
+  out->can_not_uses->insert(out->canNotUse);
+  out->can_not_uses->insert(xx.canNotUse);
 }
 
 template <typename T, typename Context>
@@ -176,6 +181,7 @@ void SliceArrayKernel(const Context& dev_ctx,
     auto* out_tensor = &out->at(i);
     const auto& in_tensor = input.at(i + start);
     out_tensor->set_lod(in_tensor.lod());
+
     if (in_tensor.memory_size() > 0) {
       phi::Copy<Context>(
           dev_ctx, in_tensor, dev_ctx.GetPlace(), false, out_tensor);

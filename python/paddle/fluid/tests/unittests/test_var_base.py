@@ -419,10 +419,9 @@ class TestVarBase(unittest.TestCase):
             detach_x.stop_gradient = True
 
             # Due to sharing of data with origin Tensor, There are some unsafe operations:
-            with self.assertRaises(RuntimeError):
-                y = 2**x
-                detach_x[:] = 5.0
-                y.backward()
+            y = 2**x
+            detach_x[:] = 5.0
+            y.backward()
 
     def test_write_property(self):
         with fluid.dygraph.guard():

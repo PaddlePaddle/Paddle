@@ -88,7 +88,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
         if (!framework::NeedTransform(
-                kernel_type_for_var, expected_kernel_key, *tensor)) {
+                kernel_type_for_var, expected_kernel_key, *tensor, op.Type())) {
           continue;
         } else {
           VLOG(3) << "Transform Variable " << GetNameFromVar(template_var)

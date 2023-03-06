@@ -56,6 +56,13 @@ void BCELossKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outs = {out};
   auto functor = BCELossFunctor<T>();
   phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+  if (input.IsSharedWith(*out) && input.can_not_uses->size() > 0) {
+    phi::DenseTensor& xx = const_cast<phi::DenseTensor&>(input);
+    for (auto it = xx.can_not_uses->begin(); it != xx.can_not_uses->end();
+         it++) {
+      **it = true;
+    }
+  }
 }
 
 }  // namespace phi

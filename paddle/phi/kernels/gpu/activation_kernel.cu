@@ -36,6 +36,14 @@ void ActivationGPUImpl(const Context& dev_ctx,
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
   funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
+  // output of view_op as input of inplace op
+  if (x.IsSharedWith(*out) && x.can_not_uses->size() > 0) {
+    phi::DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+    for (auto it = xx.can_not_uses->begin(); it != xx.can_not_uses->end();
+         it++) {
+      **it = true;
+    }
+  }
 }
 
 #define DEFINE_GPU_ACTIVATION_KERNEL(name, functor_class)               \

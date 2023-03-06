@@ -219,7 +219,12 @@ void SliceGradCompute(const Context& ctx,
   auto* d_out = &out_grad;
   auto* d_input = input_grad;
   ctx.template Alloc<T>(d_input);
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  input_grad->inplace_version_counter_ = xx.inplace_version_counter_;
 
+  input_grad->can_not_uses = xx.can_not_uses;
+  input_grad->can_not_uses->insert(input_grad->canNotUse);
+  input_grad->can_not_uses->insert(xx.canNotUse);
   auto out_dims = d_out->dims();
   auto in_dims = d_input->dims();
 

@@ -128,7 +128,7 @@ class TensorArray : public TensorBase,
     return tensors_.end();
   }
 
- private:
+ public:
   std::vector<DenseTensor> tensors_;
 };
 

@@ -106,7 +106,7 @@ OpSupportedInfos(const std::string& place,
   return std::make_tuple(
       std::move(all_ops), std::move(supported_ops), std::move(unsupported_ops));
 }
-
+bool can_not_use() { return false; }
 AutoCastGuard::AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel level)
     : tracer_(tracer) {
   pre_amp_level_ = tracer_->GetAmpLevel();
@@ -326,6 +326,44 @@ static inline framework::proto::VarType::Type GetPromoteType(
 }
 
 template <typename VarType>
+NameVarMap<VarType> AutoCheckNotUseInputs(const std::string& op_type,
+                                          const NameVarMap<VarType>& ins) {
+  NameVarMap<VarType> new_ins(ins);
+  if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
+    for (auto& pair : new_ins) {
+      for (auto& var : pair.second) {
+        if (var->can_not_use()) {
+          LOG(WARNING) << "Stride Test Log: " << op_type
+                       << " Find a Tensor Which Can Not Use.";
+        }
+      }
+    }
+  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type) ||
+             AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
+                 op_type)) {
+    for (auto& pair : new_ins) {
+      for (auto& var : pair.second) {
+        if (var->can_not_use()) {
+          LOG(WARNING) << "Stride Test Log: " << op_type
+                       << " Find a Tensor Which Can Not Use.";
+        }
+      }
+    }
+  } else {
+    for (auto& pair : new_ins) {
+      for (auto& var : pair.second) {
+        if (var->can_not_use()) {
+          LOG(WARNING) << "Stride Test Log: " << op_type
+                       << " Find a Tensor Which Can Not Use.";
+        }
+      }
+    }
+  }
+  NameVarMap<VarType> res;
+  return res;
+}
+
+template <typename VarType>
 NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
                                    const NameVarMap<VarType>& ins) {
   NameVarMap<VarType> new_ins(ins);
@@ -412,9 +450,15 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
   }
   return new_ins;
 }
+
 template NameVarMap<VarBase> AutoCastInputs<VarBase>(
     const std::string& op_type, const NameVarMap<VarBase>& ins);
 template NameVarMap<egr::EagerVariable> AutoCastInputs<egr::EagerVariable>(
+    const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
+template NameVarMap<VarBase> AutoCheckNotUseInputs<VarBase>(
+    const std::string& op_type, const NameVarMap<VarBase>& ins);
+template NameVarMap<egr::EagerVariable>
+AutoCheckNotUseInputs<egr::EagerVariable>(
     const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
 template <typename VarType>
 NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,

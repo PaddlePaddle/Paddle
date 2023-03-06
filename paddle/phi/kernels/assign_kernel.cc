@@ -25,6 +25,13 @@ void AssignKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) {
   phi::Copy(dev_ctx, x, x.place(), false, out);
+  if (x.IsSharedWith(*out) && x.can_not_uses->size() > 0) {
+    phi::DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+    for (auto it = xx.can_not_uses->begin(); it != xx.can_not_uses->end();
+         it++) {
+      **it = true;
+    }
+  }
 }
 
 template <typename Context>

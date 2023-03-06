@@ -28,6 +28,13 @@ void ExponentialKernel(const Context &dev_ctx,
   phi::funcs::uniform_distribution<T> dist;
   phi::funcs::exponential_transform<T> trans(lambda);
   phi::funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
+  if (x.IsSharedWith(*out) && x.can_not_uses->size() > 0) {
+    phi::DenseTensor &xx = const_cast<phi::DenseTensor &>(x);
+    for (auto it = xx.can_not_uses->begin(); it != xx.can_not_uses->end();
+         it++) {
+      **it = true;
+    }
+  }
 }
 
 }  // namespace phi

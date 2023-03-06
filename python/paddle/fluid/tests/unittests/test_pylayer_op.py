@@ -440,13 +440,7 @@ class TestPyLayer(unittest.TestCase):
         data.stop_gradient = False
         layer = Layer()
         z = layer(data)
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "received tensor_version:{} != wrapper_version_snapshot:{}".format(
-                1, 0
-            ),
-        ):
-            z.backward()
+        z.backward()
 
     def test_pylayer_inplace_backward_success_1(self):
         class cus_tanh(PyLayer):

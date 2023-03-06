@@ -527,6 +527,13 @@ void BatchNormKernel(const Context &ctx,
                      DenseTensor *saved_mean,
                      DenseTensor *saved_variance,
                      DenseTensor *reserve_space) {
+  if (x.IsSharedWith(*y) && x.can_not_uses->size() > 0) {
+    phi::DenseTensor &xx = const_cast<phi::DenseTensor &>(x);
+    for (auto it = xx.can_not_uses->begin(); it != xx.can_not_uses->end();
+         it++) {
+      **it = true;
+    }
+  }
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);

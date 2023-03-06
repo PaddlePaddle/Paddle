@@ -29,6 +29,13 @@ class InplaceABNKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* y = ctx.Output<phi::DenseTensor>("Y");
     auto* x = ctx.Input<phi::DenseTensor>("X");
+    if (x->IsSharedWith(*y) && x->can_not_uses->size() > 0) {
+      phi::DenseTensor* xx = const_cast<phi::DenseTensor*>(x);
+      for (auto it = xx->can_not_uses->begin(); it != xx->can_not_uses->end();
+           it++) {
+        **it = true;
+      }
+    }
     PADDLE_ENFORCE_EQ(x,
                       y,
                       platform::errors::InvalidArgument(

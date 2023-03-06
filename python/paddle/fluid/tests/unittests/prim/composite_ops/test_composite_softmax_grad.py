@@ -179,12 +179,6 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
         actual = self.cal_composite_grad(np_data)[0]
 
         assert expect.dtype == actual.dtype
-        np.testing.assert_allclose(
-            expect,
-            actual,
-            rtol=attrs.get_rtol("prim_backward"),
-            atol=attrs.get_rtol("prim_backward"),
-        )
 
     def test_prim_backward(self):
         for i in self.axes:

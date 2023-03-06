@@ -52,6 +52,13 @@ void IndexAddKernel(const Context& ctx,
                     const DenseTensor& add_value,
                     int axis,
                     DenseTensor* output) {
+  if (x.IsSharedWith(*output) && x.can_not_uses->size() > 0) {
+    phi::DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+    for (auto it = xx.can_not_uses->begin(); it != xx.can_not_uses->end();
+         it++) {
+      **it = true;
+    }
+  }
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   auto add_value_dim = add_value.dims();

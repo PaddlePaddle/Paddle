@@ -204,6 +204,13 @@ void SetValueImpl(const Context& dev_ctx,
 
   // Step 3: Set out tensor with value
   out_e.device(eigen_place) = out_e - pad_e;
+  if (in.IsSharedWith(*out) && in.can_not_uses->size() > 0) {
+    phi::DenseTensor& xx = const_cast<phi::DenseTensor&>(in);
+    for (auto it = xx.can_not_uses->begin(); it != xx.can_not_uses->end();
+         it++) {
+      **it = true;
+    }
+  }
 }
 
 template <typename T, typename Context>

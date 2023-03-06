@@ -750,7 +750,15 @@ static PyObject* tensor_method_detach(TensorObject* self,
     PADDLE_THROW(platform::errors::Fatal(
         "tp_alloc return null, can not new a PyObject."));
   }
-
+  if (self->tensor.is_dense_tensor()) {
+    auto* xx = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    auto vv = reinterpret_cast<TensorObject*>(obj);
+    auto* out = static_cast<phi::DenseTensor*>(vv->tensor.impl().get());
+    out->inplace_version_counter_ = xx->inplace_version_counter_;
+    out->can_not_uses = xx->can_not_uses;
+    out->can_not_uses->insert(out->canNotUse);
+    out->can_not_uses->insert(xx->canNotUse);
+  }
   return obj;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

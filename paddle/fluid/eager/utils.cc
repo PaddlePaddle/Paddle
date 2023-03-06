@@ -291,7 +291,7 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
     view_output_dense_tensor->ShareBufferWith(*input_dense_tensor);
     view_output_dense_tensor->ShareInplaceVersionCounterWith(
         *input_dense_tensor);
-
+    // TODO(yjjiang11): monitor inplace backward
     VLOG(4) << "Perform View between Output Tensor("
             << view_output_tensor->name() << ") and Input Tensor("
             << input_tensor.name()

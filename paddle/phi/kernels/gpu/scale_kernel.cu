@@ -61,6 +61,13 @@ void ScaleKernel(const Context& dev_ctx,
       inputs,
       &outputs,
       ScaleFunctor<T>(scale.to<T>(), static_cast<T>(bias), bias_after_scale));
+  if (x.IsSharedWith(*out) && x.can_not_uses->size() > 0) {
+    phi::DenseTensor& xx = const_cast<phi::DenseTensor&>(x);
+    for (auto it = xx.can_not_uses->begin(); it != xx.can_not_uses->end();
+         it++) {
+      **it = true;
+    }
+  }
 }
 
 }  // namespace phi

@@ -103,7 +103,7 @@ class VarBase {
   framework::Variable* MutableVar() { return var_->MutableVar(); }
 
   bool HasGradVar() const { return grad_var_ != nullptr; }
-
+  bool can_not_use() { return false; }
   const std::shared_ptr<VarBase>& GradVarBase() const { return grad_var_; }
 
   void ClearGradVarBase() { grad_var_ = nullptr; }
