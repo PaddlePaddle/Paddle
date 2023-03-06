@@ -533,14 +533,17 @@ int FusedMultiTransformerQuantPass::ApplyImpl(ir::Graph* graph,
     fused_mt->RenameOp("fused_multi_transformer_xpu");
     framework::OpDesc* fused_mt_xpu_op_desc = fused_mt->Op();
     fused_mt_xpu_op_desc->SetType("fused_multi_transformer_xpu");
-    fused_mt_xpu_op_desc->SetInput("qkvw", w_int16_names_vec[0]);
-    fused_mt_xpu_op_desc->SetInput("qkvw_max", w_max_names_vec[0]);
-    fused_mt_xpu_op_desc->SetInput("out_linear_w", w_int16_names_vec[1]);
-    fused_mt_xpu_op_desc->SetInput("out_linear_w_max", w_max_names_vec[1]);
-    fused_mt_xpu_op_desc->SetInput("ffn1_weight", w_int16_names_vec[2]);
-    fused_mt_xpu_op_desc->SetInput("ffn1_weight_max", w_max_names_vec[2]);
-    fused_mt_xpu_op_desc->SetInput("ffn2_weight", w_int16_names_vec[3]);
-    fused_mt_xpu_op_desc->SetInput("ffn2_weight_max", w_max_names_vec[3]);
+    fused_mt_xpu_op_desc->SetInput("QKVW", w_int16_names_vec[0]);
+    fused_mt_xpu_op_desc->SetInput("QKVWMax", w_max_names_vec[0]);
+    fused_mt_xpu_op_desc->SetInput("OutLinearW", w_int16_names_vec[1]);
+    fused_mt_xpu_op_desc->SetInput("OutLinearWMax", w_max_names_vec[1]);
+    fused_mt_xpu_op_desc->SetInput("FFN1Weight", w_int16_names_vec[2]);
+    fused_mt_xpu_op_desc->SetInput("FFN1WeightMax", w_max_names_vec[2]);
+    fused_mt_xpu_op_desc->SetInput("FFN2Weight", w_int16_names_vec[3]);
+    fused_mt_xpu_op_desc->SetInput("FFN2WeightMax", w_max_names_vec[3]);
+    if (!fused_mt_xpu_op_desc->HasAttr("rotary_emb_dims")) {
+      fused_mt_xpu_op_desc->SetAttr("rotary_emb_dims", 0);
+    }
     // unlink QKVW/OutLinearW/FFN1Weight/FFN2Weight from fused_mt_xpu
     for (auto nodes : w_nodes_vec) {
       for (auto node : nodes) {
