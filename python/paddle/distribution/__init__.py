@@ -28,6 +28,7 @@ from paddle.distribution.transform import *  # noqa: F403
 from paddle.distribution.transformed_distribution import TransformedDistribution
 from paddle.distribution.uniform import Uniform
 from paddle.distribution.laplace import Laplace
+from paddle.distribution.geometric import Geometric
 
 __all__ = [  # noqa
     'Beta',
@@ -45,6 +46,7 @@ __all__ = [  # noqa
     'Laplace',
     'LogNormal',
     'Gumbel',
+    'Geometric',
 ]
 
 __all__.extend(transform.__all__)
