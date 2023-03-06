@@ -55,6 +55,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
 DECLARE_int32(paddle_num_threads);
@@ -83,7 +85,7 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
-std::once_flag npu_init_flag;
+std::once_flag memory_method_init_flag;
 
 bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
@@ -453,6 +455,29 @@ void InitGLOG(const std::string &prog_name) {
     google::InstallFailureSignalHandler();
     google::InstallFailureWriter(&SignalHandle);
 #endif
+  });
+}
+
+void InitMemoryMethod() {
+  std::call_once(memory_method_init_flag, [&]() {
+    auto &memory_utils = phi::MemoryUtils::Instance();
+    auto memory_method = std::make_unique<phi::MemoryInterface>();
+    memory_method->alloc = paddle::memory::Alloc;
+    memory_method->alloc_with_stream = paddle::memory::Alloc;
+    memory_method->alloc_shared = paddle::memory::AllocShared;
+    memory_method->alloc_shared_with_stream = paddle::memory::AllocShared;
+    memory_method->in_same_stream = paddle::memory::InSameStream;
+    memory_method->allocation_deleter =
+        paddle::memory::allocation::Allocator::AllocationDeleter;
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_HIP)
+    memory_method->copy_with_stream =
+        paddle::memory::Copy<phi::Place, phi::Place>;
+#endif
+    memory_method->copy = paddle::memory::Copy<phi::Place, phi::Place>;
+    memory_method->device_memory_stat_current_value =
+        paddle::memory::DeviceMemoryStatCurrentValue;
+    memory_utils.Init(std::move(memory_method));
   });
 }
 

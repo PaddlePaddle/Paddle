@@ -29,7 +29,7 @@ namespace cub = hipcub;
 #include <iterator>
 #include <random>
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 
@@ -458,7 +458,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                      (NumBlocks(num_classes) * kNumCUDAThreads * vec_size) +
                  1) *
                 vec_size;
-  // auto gen_cuda = paddle::framework::DefaultCUDAGenerator(device_id);
+  // auto gen_cuda = phi::DefaultCUDAGenerator(device_id);
   auto gen_cuda = dev_ctx.GetGenerator();
   if (!fix_seed) {
     auto seed_offset = gen_cuda->IncrementOffset(offset);
@@ -581,12 +581,12 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
   T* sampled_local_class_center_ptr =
       dev_ctx.template Alloc<T>(sampled_local_class_center);
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       sampled_local_class_center_ptr,
-                       dev_ctx.GetPlace(),
-                       cub_sort_values_out_ptr,
-                       actual_num_samples * sizeof(T),
-                       nullptr);
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     sampled_local_class_center_ptr,
+                     dev_ctx.GetPlace(),
+                     cub_sort_values_out_ptr,
+                     actual_num_samples * sizeof(T),
+                     nullptr);
 }
 }  // namespace phi
 

@@ -89,7 +89,7 @@ def runtime_main():
 if __name__ == "__main__":
     # NOTE(liangjianzhong): dist unittest should be imlpement using runtime_main in test_dist_base.py
     # but the runtime_main in test_dist_base.py use the fleet, DistributedStrategy from
-    # paddle.fluid.incubate.fleet.collective which is not support by sharding (paddle.distributed.fleet).
+    # paddle.incubate.distributed.fleet.collective which is not support by sharding (paddle.distributed.fleet).
     # this should be update in future.
     # runtime_main(TestDistMnist2x2)
     runtime_main()

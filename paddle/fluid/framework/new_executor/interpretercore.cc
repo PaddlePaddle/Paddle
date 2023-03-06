@@ -38,6 +38,10 @@ PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
     false,
     "Enable serial execution for standalone executor, used for debug.");
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_static_build,
+    false,
+    "Build the interpreterCore statically without running kernels.");
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
                             "Use inplace in new executor");
@@ -116,6 +120,9 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       execution_config_(execution_config),
       var_scope_(scope) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
+
+  static_build_ = FLAGS_new_executor_static_build &&
+                  interpreter::BlockCanBeStaticBuilt(block);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
@@ -275,20 +282,21 @@ paddle::framework::FetchList InterpreterCore::Run(
         block_, execution_config_, &var_scope_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
+    paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
         execution_config_,
-        HasLocalScope());
+        HasLocalScope(),
+        static_build_);
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     is_build_ = true;
     UpdateSyncOpNum();
-    if (skip_run) {
+    if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }
@@ -531,11 +539,6 @@ void InterpreterCore::BuildInplace() {
 void InterpreterCore::PrepareForCUDAGraphCapture() {
   if (!FLAGS_new_executor_use_cuda_graph) return;
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_EQ(
-      platform::IsCUDAGraphCapturing(),
-      false,
-      platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
-                                         "when running the first batch."));
   PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
                     true,
                     platform::errors::InvalidArgument(
@@ -548,14 +551,23 @@ void InterpreterCore::PrepareForCUDAGraphCapture() {
                         "FLAGS_sync_nccl_allreduce must be False to support "
                         "CUDA Graph capturing."));
 
-  // All output vars of coalesce_tensor op should not be gc.
+  // All output vars of coalesce_tensor op should be persistable.
   // If fused output var of coalesce_tensor is gc, it will cause accuracy
   // problem. The specific reasons need to be analyzed.
   for (auto& op_desc : block_.AllOps()) {
     if (op_desc->Type() == kCoalesceTensor) {
       for (auto& out_var_name : op_desc->OutputArgumentNames()) {
-        execution_config_.skip_gc_vars.insert(out_var_name);
-        VLOG(4) << "Insert Var(" << out_var_name << ") into skip_gc_vars.";
+        // The fused var needs to be set to persistable, not just added to
+        // skip_gc_vars.
+        // In the case where the feed fetch var is changed, StandaloneExecutor
+        // will be newly constructed. If the fused var is not persistable,
+        // these vars will be recreated and initialized, resulting in
+        // precision problems.
+        auto* out_var = op_desc->Block()->FindVarRecursive(out_var_name);
+        if (out_var) {
+          out_var->SetPersistable(true);
+          VLOG(4) << "Mark Var(" << out_var_name << ") as Persistable.";
+        }
       }
     }
   }
@@ -1266,20 +1278,21 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
         block_, execution_config_, &var_scope_);
     FeedInput();
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
+    paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
         execution_config_,
-        HasLocalScope());
+        HasLocalScope(),
+        static_build_);
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
     is_build_ = true;
-    if (skip_run) {
+    if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }

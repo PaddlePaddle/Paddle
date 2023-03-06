@@ -133,6 +133,7 @@ class InterpreterCore {
 
  private:
   bool is_build_{false};
+  bool static_build_{false};
 
   const platform::Place place_;
   const BlockDesc& block_;  // not owned

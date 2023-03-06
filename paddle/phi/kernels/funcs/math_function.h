@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
@@ -120,11 +119,11 @@ struct TensorSetConstantXPU {
     int numel = tensor_->numel();
     std::unique_ptr<T[]> data_cpu(new T[numel]);
     std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
-    paddle::memory::Copy(place_,
-                         begin,
-                         phi::CPUPlace(),
-                         static_cast<void*>(data_cpu.get()),
-                         numel * sizeof(T));
+    memory_utils::Copy(place_,
+                       begin,
+                       phi::CPUPlace(),
+                       static_cast<void*>(data_cpu.get()),
+                       numel * sizeof(T));
   }
   phi::DenseTensor* tensor_;
   U value_;

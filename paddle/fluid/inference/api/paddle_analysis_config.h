@@ -138,7 +138,7 @@ struct DistConfig {
 /// and loading it into AnalysisPredictor.
 ///
 struct PD_INFER_DECL AnalysisConfig {
-  AnalysisConfig() = default;
+  AnalysisConfig();
   ///
   /// \brief Construct a new AnalysisConfig from another
   /// AnalysisConfig.

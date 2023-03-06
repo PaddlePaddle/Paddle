@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/rnn_kernel.h"
 
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/gpu/rnn_functor.h"
 
@@ -205,8 +205,7 @@ void RnnKernel(const Context &dev_ctx,
 #endif
   std::vector<int> SequenceLength;
   if (has_seq_length) {
-    SequenceLength =
-        paddle::operators::GetDataFromTensor<int>(sequence_length.get_ptr());
+    SequenceLength = phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
   }
 
   auto handle = dev_ctx.cudnn_handle();
