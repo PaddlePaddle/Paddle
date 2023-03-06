@@ -31,6 +31,9 @@ class TestElementwisePowOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
         self.inputs = {
             'X': np.random.uniform(1, 2, [20, 5]).astype("float64"),
             'Y': np.random.uniform(1, 2, [20, 5]).astype("float64"),
@@ -45,15 +48,23 @@ class TestElementwisePowOp(OpTest):
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_eager=False, check_prim=True
+            )
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_eager=True, check_prim=True
+            )
 
 
 class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(1, 2, []).astype("float64"),
             'Y': np.random.uniform(1, 2, []).astype("float64"),
@@ -65,6 +76,10 @@ class TestElementwisePowOp_ZeroDim2(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(1, 2, [20, 5]).astype("float64"),
             'Y': np.random.uniform(1, 2, []).astype("float64"),
@@ -76,6 +91,10 @@ class TestElementwisePowOp_ZeroDim3(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(1, 2, []).astype("float64"),
             'Y': np.random.uniform(1, 2, [20, 5]).astype("float64"),
@@ -87,6 +106,10 @@ class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(1, 2, [10, 10]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [10, 10]).astype("float64"),
@@ -98,6 +121,10 @@ class TestElementwisePowOp_big_shape_2(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(1, 2, [10, 10]).astype("float64"),
             'Y': np.random.uniform(0.2, 2, [10, 10]).astype("float64"),
@@ -112,6 +139,10 @@ class TestElementwisePowOp_scalar(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [3, 3, 4]).astype(np.float64),
             'Y': np.random.uniform(0.1, 1, [1]).astype(np.float64),
@@ -123,6 +154,10 @@ class TestElementwisePowOp_tensor(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [100]).astype("float64"),
             'Y': np.random.uniform(1, 3, [100]).astype("float64"),
@@ -134,6 +169,10 @@ class TestElementwisePowOp_broadcast_0(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 1, 100]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [100]).astype("float64"),
@@ -145,6 +184,10 @@ class TestElementwisePowOp_broadcast_1(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 100, 1]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [100]).astype("float64"),
@@ -159,6 +202,10 @@ class TestElementwisePowOp_broadcast_2(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [100, 3, 1]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [100]).astype("float64"),
@@ -175,6 +222,10 @@ class TestElementwisePowOp_broadcast_3(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 20, 5, 1]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [20, 5]).astype("float64"),
@@ -191,6 +242,10 @@ class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(0.1, 1, [2, 10, 3, 5]).astype("float64"),
             'Y': np.random.uniform(0.1, 1, [2, 10, 1, 5]).astype("float64"),
@@ -202,6 +257,10 @@ class TestElementwisePowOpInt(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {'X': np.asarray([1, 3, 6]), 'Y': np.asarray([1, 1, 1])}
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -217,6 +276,10 @@ class TestElementwisePowGradOpInt(unittest.TestCase):
         self.x = np.asarray([1, 3, 6])
         self.y = np.asarray([1, 1, 1])
         self.res = self.x**self.y
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         # dout = 1
         self.grad_res = np.asarray([1, 1, 1])
         # dx = dout * y * pow(x, y-1)
@@ -250,6 +313,10 @@ class TestElementwisePowOpFP16(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.python_api = paddle.pow
+        self.prim_op_type = "prim"
+        self.enable_fw_comp = False
+        self.enable_rev_comp = False
+
         self.inputs = {
             'X': np.random.uniform(1, 2, [20, 5]).astype("float16"),
             'Y': np.random.uniform(1, 2, [20, 5]).astype("float16"),
