@@ -19,15 +19,15 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
     OpTestTool,
     convert_float_to_uint16,
 )
-from paddle.fluid.tests.unittests.test_reshape_op import TestReshapeOp
 
 paddle.enable_static()
 
 
-class TestReshape2OneDNNOp(TestReshapeOp):
+class TestReshape2OneDNNOp(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
@@ -52,6 +52,9 @@ class TestReshape2OneDNNOp(TestReshapeOp):
 
     def set_outputs(self):
         pass
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
