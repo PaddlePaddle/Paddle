@@ -14,7 +14,6 @@
 import unittest
 
 import numpy as np
-
 import scipy.stats
 from config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
@@ -196,8 +195,9 @@ class TestGumbelPMF(unittest.TestCase):
     (TEST_CASE_NAME, 'probs1', 'probs2'),
     [
         (
-            'one-dim', xrand((2,), dtype='float32', min=0.0, max=1.0),
-                       xrand((2,), dtype='float32', min=0.0, max=1.0)
+            'one-dim',
+            xrand((2,), dtype='float32', min=0.0, max=1.0),
+            xrand((2,), dtype='float32', min=0.0, max=1.0)
         ),
         (
             'multi-dim',

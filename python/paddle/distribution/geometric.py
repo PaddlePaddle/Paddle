@@ -86,7 +86,7 @@ class Geometric(Distribution):
             raise ValueError("`Probs` must be specified.")
         if isinstance(probs, numbers.Real) or isinstance(probs, list):
              probs = paddle.full(
-                 shape=(), fill_value=probs, dtype=paddle.float32
+                shape=(), fill_value=probs, dtype=paddle.float32
              )
 
         if isinstance(probs, (paddle.Tensor, framework.Variable)):
@@ -143,7 +143,7 @@ class Geometric(Distribution):
         """Variance of geometric distribution"""
         return paddle.to_tensor(
             (self.one_tensor / self.probs - self.one_tensor) / self.probs,
-            dtype=self.probs.dtype
+            dtype=self.probs.dtype,
         )
 
     @property
@@ -206,7 +206,9 @@ class Geometric(Distribution):
             Tensor: A sample tensor that fits the Geometric distribution.
         """
         if not isinstance(shape, tuple):
-            raise TypeError(f'sample shape must be tuple, but get {type(shape)}.')
+            raise TypeError(
+                f'sample shape must be tuple, but get {type(shape)}.'
+            )
 
         shape = Distribution._extend_shape(self, sample_shape=shape)
         tiny = np.finfo(dtype='float32').tiny

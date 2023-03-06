@@ -20,11 +20,11 @@ from paddle.distribution.categorical import Categorical
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
+from paddle.distribution.geometric import Geometric
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.normal import Normal
 from paddle.distribution.uniform import Uniform
-from paddle.distribution.geometric import Geometric
 from paddle.fluid.framework import _non_static_mode
 
 __all__ = ["register_kl", "kl_divergence"]

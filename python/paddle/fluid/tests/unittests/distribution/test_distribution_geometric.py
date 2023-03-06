@@ -23,7 +23,6 @@ import paddle
 from paddle.distribution.geometric import Geometric
 from paddle.distribution.kl import kl_divergence
 
-
 np.random.seed(2023)
 
 
@@ -205,8 +204,9 @@ class TestGumbelPMF(unittest.TestCase):
     (TEST_CASE_NAME, 'probs1', 'probs2'),
     [
         (
-            'one-dim', xrand((2,), dtype='float32', min=0.0, max=1.0),
-                       xrand((2,), dtype='float32', min=0.0, max=1.0)
+            'one-dim',
+            xrand((2,), dtype='float32', min=0.0, max=1.0),
+            xrand((2,), dtype='float32', min=0.0, max=1.0),
         ),
         (
             'multi-dim',
