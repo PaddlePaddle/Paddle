@@ -1678,11 +1678,8 @@ class TracedLayer:
     @switch_to_static_graph
     def _compile(self):
         self._compiled_program = CompiledProgram(
-            self._program
-        ).with_data_parallel(
+            self._program,
             build_strategy=self._build_strategy,
-            exec_strategy=self._exec_strategy,
-            places=self._place,
         )
 
     def _build_feed(self, inputs):
