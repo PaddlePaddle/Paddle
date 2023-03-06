@@ -92,8 +92,22 @@ foreach(TEST_INFERENCE_IR_PASS ${TEST_MKLDNN_IR_PASSES})
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
 endforeach()
 
+file(
+  GLOB TEST_ONEDNN_IR_PASSES
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "test_onednn_*.py")
+string(REPLACE ".py" "" TEST_ONEDNN_IR_PASSES "${TEST_ONEDNN_IR_PASSES}")
+foreach(TEST_INFERENCE_IR_PASS ${TEST_ONEDNN_IR_PASSES})
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
+endforeach()
+
 if(WITH_MKLDNN)
   foreach(target ${TEST_MKLDNN_IR_PASSES})
+    py_test_modules(${target} MODULES ${target})
+    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
+  endforeach()
+
+  foreach(target ${TEST_ONEDNN_IR_PASSES})
     py_test_modules(${target} MODULES ${target})
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()

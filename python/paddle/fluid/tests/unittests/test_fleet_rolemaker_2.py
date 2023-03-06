@@ -35,12 +35,12 @@ class TestCloudRoleMaker2(unittest.TestCase):
     def test_pslib_2(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
+        from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+            fleet,
+        )
         from paddle.incubate.distributed.fleet.role_maker import (
             GeneralRoleMaker,
             RoleMakerBase,
-        )
-        from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
-            fleet,
         )
 
         paddle.enable_static()
