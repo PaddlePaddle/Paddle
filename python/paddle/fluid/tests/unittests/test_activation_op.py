@@ -2633,16 +2633,18 @@ class TestLog(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad(['X'], 'Out', check_eager=True)
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
         in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
-
+        in3 = paddle.static.data(
+                name='in3', shape=[11,17], dtype="float16"
+        )
+        
         self.assertRaises(TypeError, paddle.log, in1)
         self.assertRaises(TypeError, paddle.log, in2)
+        self.assertRaises(TypeError, paddle.log, in3)
 
 
 class TestLog_ZeroDim(TestLog):
