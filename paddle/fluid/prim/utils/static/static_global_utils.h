@@ -65,6 +65,12 @@ class StaticCompositeContext {
 
   bool IsFwdPrimEnabled() { return enable_fwd_prim_; }
 
+  void SetEagerPrimEnabled(bool enable_prim) {
+    enable_eager_prim_ = enable_prim;
+  }
+
+  bool IsEagerPrimEnabled() { return enable_eager_prim_; }
+
   void SetAllPrimEnabled(bool enable_prim) {
     enable_fwd_prim_ = enable_prim;
     enable_bwd_prim_ = enable_prim;
@@ -102,6 +108,7 @@ class StaticCompositeContext {
   std::map<std::string, std::string> target_grad_name_;
   static thread_local bool enable_bwd_prim_;
   static thread_local bool enable_fwd_prim_;
+  static thread_local bool enable_eager_prim_;
   static StaticCompositeContext* static_composite_context_;
   DISABLE_COPY_AND_ASSIGN(StaticCompositeContext);
 };

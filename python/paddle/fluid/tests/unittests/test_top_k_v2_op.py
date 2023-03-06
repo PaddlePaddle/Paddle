@@ -45,6 +45,7 @@ class TestTopkOp(OpTest):
 
     def setUp(self):
         self.op_type = "top_k_v2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 20)
@@ -60,7 +61,7 @@ class TestTopkOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(set(['X']), 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
 class TestTopkOp1(TestTopkOp):
@@ -77,7 +78,7 @@ class TestTopkOp2(TestTopkOp):
         self.largest = False
 
 
-class TestTopkOp3(OpTest):
+class TestTopkOp3(TestTopkOp):
     def init_args(self):
         self.k = 6
         self.axis = 1
@@ -85,6 +86,7 @@ class TestTopkOp3(OpTest):
 
     def setUp(self):
         self.op_type = "top_k_v2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(16, 100)
@@ -105,6 +107,7 @@ class TestTopkOp4(TestTopkOp):
 
     def setUp(self):
         self.op_type = "top_k_v2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 10, 5)
@@ -125,6 +128,7 @@ class TestTopkOp5(TestTopkOp):
 
     def setUp(self):
         self.op_type = "top_k_v2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.topk
         self.dtype = np.float64
         self.input_data = np.random.rand(10, 10, 5)
@@ -137,17 +141,39 @@ class TestTopkOp5(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-class TestTopkOp6(OpTest):
+class TestTopkOp6(TestTopkOp):
     def init_args(self):
-        self.k = 100
+        self.k = 3
         self.axis = 1
         self.largest = True
 
     def setUp(self):
         self.op_type = "top_k_v2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.topk
-        self.dtype = np.float64
-        self.input_data = np.random.rand(80, 16384)
+        self.dtype = np.float32
+        self.input_data = np.random.rand(10, 10, 5)
+        self.init_args()
+        self.inputs = {'X': self.input_data}
+        self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
+        output, indices = numpy_topk(
+            self.input_data, axis=self.axis, k=self.k, largest=self.largest
+        )
+        self.outputs = {'Out': output, 'Indices': indices}
+
+
+class TestTopkOp7(TestTopkOp):
+    def init_args(self):
+        self.k = 10
+        self.axis = 1
+        self.largest = True
+
+    def setUp(self):
+        self.op_type = "top_k_v2"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.topk
+        self.dtype = np.float16
+        self.input_data = np.random.rand(10, 20, 10)
         self.init_args()
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
