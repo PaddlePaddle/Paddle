@@ -181,17 +181,28 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
                     pass
 
     def test_api(self):
-        self.test_dynamic_case('float64')
-        self.test_dynamic_case('broadcast1')
-        self.test_dynamic_case('broadcast2')
         self.test_dynamic_case()
-        self.test_dynamic_case('test_err')
+        self.test_static_case()
+
+    def test_float64(self):
+        self.test_dynamic_case('float64')
+        self.test_static_case('float64')
+
+    def test_broadcast(self):
+        self.test_dynamic_case('broadcast1')
+        self.test_static_case('broadcast1')
+
+    def test_broadcast_with_same_dim(self):
+        self.test_dynamic_case('broadcast2')
+        self.test_static_case('broadcast2')
+
+    def test_reduction(self):
         self.test_dynamic_case(full=True, reduction='mean')
         self.test_dynamic_case(full=True, reduction='sum')
         self.test_static_case(full=True, reduction='mean')
-        self.test_static_case()
-        self.test_static_case('broadcast1')
-        self.test_static_case('broadcast2')
+
+    def test_error(self):
+        self.test_dynamic_case('test_err')
         self.test_static_case('test_err')
 
 
