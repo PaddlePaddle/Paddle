@@ -312,8 +312,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearBwd(ir::Graph *graph,
     fused_gemm_epilogue_grad_op_desc.SetOutput("DY", {matmul_grad_dw->Name()});
     fused_gemm_epilogue_grad_op_desc.SetOutput("DBias",
                                                {ele_grad_dbias->Name()});
-    fused_gemm_epilogue_grad_op_desc.SetAttr("activation_grad",
-                                             activation_grad);
+    fused_gemm_epilogue_grad_op_desc.SetAttr("activation", activation_grad);
     fused_gemm_epilogue_grad_op_desc.SetAttr(
         "op_role", matmul_grad_op_desc->GetAttr("op_role"));
     fused_gemm_epilogue_grad_op_desc.SetAttr("trans_x", trans_x);
@@ -450,8 +449,7 @@ ir::Graph *FuseGemmEpiloguePass::FuseLinearActBwd(
     fused_gemm_epilogue_grad_op_desc.SetOutput("DY", {matmul_grad_dw->Name()});
     fused_gemm_epilogue_grad_op_desc.SetOutput("DBias",
                                                {ele_grad_dbias->Name()});
-    fused_gemm_epilogue_grad_op_desc.SetAttr("activation_grad",
-                                             activation_grad);
+    fused_gemm_epilogue_grad_op_desc.SetAttr("activation", activation_grad);
     fused_gemm_epilogue_grad_op_desc.SetAttr(
         "op_role", matmul_grad_op_desc->GetAttr("op_role"));
     fused_gemm_epilogue_grad_op_desc.SetAttr("trans_x", trans_x);

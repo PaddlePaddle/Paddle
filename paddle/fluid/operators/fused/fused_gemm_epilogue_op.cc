@@ -33,6 +33,9 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(
         ctx->HasOutput("Out"), "Output", "Out", "FusedGemmEpilogueOp");
 
+    // printf("[%s, %d]: ctx->HasOutput(\"Out\") = %d\n", __func__, __LINE__,
+    // ctx->HasOutput("Out")); printf("[%s, %d]: ctx->HasOutput(\"activation\")
+    // = %d\n", __func__, __LINE__, ctx->HasAttr("activation"));
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     auto bias_dims = ctx->GetInputDim("Bias");
@@ -275,8 +278,8 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
             dout_mat_dims[0],
             x_mat_dims[0]));
 
-    auto activation_grad = ctx->Attrs().Get<std::string>("activation_grad");
-    if ((activation_grad != "relu_grad") && (activation_grad != "gelu_grad") &&
+    auto activation_grad = ctx->Attrs().Get<std::string>("activation");
+    if ((activation_grad != "relu") && (activation_grad != "gelu") &&
         (activation_grad != "none")) {
       PADDLE_ENFORCE_EQ(
           true,
@@ -359,7 +362,7 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
 
     AddAttr<std::string>(
-        "activation_grad",
+        "activation",
         R"DOC((string, default none), The backward activation function. It could be
     one of {none, relu_grad, gelu_grad}. When none is given, The backward Act would
     be null operations)DOC")
@@ -412,6 +415,7 @@ REGISTER_OPERATOR(
     ops::FusedGemmEpilogueOpMaker,
     ops::FusedGemmEpilogueOpGradMaker<paddle::framework::OpDesc>,
     ops::FusedGemmEpilogueOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(fused_gemm_epilogue_grad,
-                  ops::FusedGemmEpilogueGradOp,
-                  ops::FusedGemmEpilogueGradOpMaker);
+REGISTER_OPERATOR(fused_gemm_epilogue_grad, ops::FusedGemmEpilogueGradOp);
+// REGISTER_OPERATOR(fused_gemm_epilogue_grad,
+//                   ops::FusedGemmEpilogueGradOp,
+//                   ops::FusedGemmEpilogueGradOpMaker);

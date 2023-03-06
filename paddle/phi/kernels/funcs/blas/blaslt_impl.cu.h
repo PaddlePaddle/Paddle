@@ -153,8 +153,7 @@ struct MatmulDescriptor {
     out << prefix << " \n";
 #define GET_DESC_DATA_INFO(src)                      \
   do {                                               \
-    out << "#data "                                  \
-        << "= [";                                    \
+    out << #src << "= [";                            \
     int num = sizeof((*src)) / sizeof(src->data[0]); \
     for (int i = 0; i < num; ++i) {                  \
       out << src->data[i] << ", ";                   \
@@ -163,7 +162,7 @@ struct MatmulDescriptor {
   } while (0);
 
     if (has_algo) {
-      GET_DESC_DATA_INFO(algo);
+      GET_DESC_DATA_INFO(&algo);
     }
     GET_DESC_DATA_INFO(x_desc);
     GET_DESC_DATA_INFO(y_desc);

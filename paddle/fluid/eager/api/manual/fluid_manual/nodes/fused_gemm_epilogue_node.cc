@@ -71,7 +71,7 @@ fused_gemm_epilogueGradNodeCompat::operator()(
       attrs_map0,
       egr::Controller::Instance().GetExpectedPlace(),
       &this->default_attr_map_,
-      true,
+      false,
       {});
   if (outs0.find("DBias") != outs0.end()) {
     outputs[2] = egr::EagerUtils::GetOutputs(outs0["DBias"]);

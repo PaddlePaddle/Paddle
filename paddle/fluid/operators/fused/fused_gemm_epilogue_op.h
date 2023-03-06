@@ -331,14 +331,14 @@ class GemmEpilogueAlgoCache {
 
 static cublasLtEpilogue_t GetEpilogueType(const std::string& activation,
                                           bool enable_auxiliary) {
-  if (activation == "relu") {
+  if (activation == "none") {
+    return CUBLASLT_EPILOGUE_BIAS;
+  } else if (activation == "relu") {
     return enable_auxiliary ? CUBLASLT_EPILOGUE_RELU_AUX_BIAS
                             : CUBLASLT_EPILOGUE_RELU_BIAS;
   } else if (activation == "gelu") {
     return enable_auxiliary ? CUBLASLT_EPILOGUE_GELU_AUX_BIAS
                             : CUBLASLT_EPILOGUE_GELU_BIAS;
-  } else if (activation == "none") {
-    return CUBLASLT_EPILOGUE_BIAS;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The activation attribute of fused_gemm_epilogue op should be"
@@ -572,12 +572,12 @@ static constexpr auto BoolToCuBlasEnum(bool transpose) {
 
 static cublasLtEpilogue_t GetEpilogueGradType(
     const std::string& activation_grad) {
-  if (activation_grad == "relu_grad") {
-    return CUBLASLT_EPILOGUE_DRELU;
-  } else if (activation_grad == "gelu_grad") {
-    return CUBLASLT_EPILOGUE_DGELU;
-  } else if (activation_grad == "none") {
+  if (activation_grad == "none") {
     return CUBLASLT_EPILOGUE_DEFAULT;
+  } else if (activation_grad == "relu") {
+    return CUBLASLT_EPILOGUE_DRELU;
+  } else if (activation_grad == "gelu") {
+    return CUBLASLT_EPILOGUE_DGELU;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The activation_grad attribute of fused_gemm_epilogue op should "

@@ -26,9 +26,9 @@ namespace operators {
 #if CUDA_VERSION >= 11060
 
 template <typename T>
-cublasLtEpilogue_t GetFwdFusedEpilogueType(const phi::GPUContext& ctx,
-                                           const std::string& activation,
-                                           phi::DenseTensor* reserve_space) {
+int GetFwdFusedEpilogueType(const phi::GPUContext& ctx,
+                            const std::string& activation,
+                            phi::DenseTensor* reserve_space) {
   cublasLtEpilogue_t fuse_type = CUBLASLT_EPILOGUE_BIAS;
   if (activation != "none") {
     if (activation == "relu") {
@@ -55,8 +55,10 @@ cublasLtEpilogue_t GetFwdFusedEpilogueType(const phi::GPUContext& ctx,
           activation));
     }
   }
-  return fuse_type;
+  return static_cast<int>(fuse_type);
 }
+
+#define PRTDBG printf("[%s, %d]: Run here.\n", __func__, __LINE__);
 
 template <typename DeviceContext, typename T>
 class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
@@ -74,25 +76,31 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
 
+    if (ctx.HasAttr("activation")) {
+      PRTDBG;
+    } else {
+      PRTDBG;
+    }
+    if (ctx.HasOutput("Out")) {
+      PRTDBG;
+    } else {
+      PRTDBG;
+    }
     std::string activation = ctx.Attr<std::string>("activation");
     dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
-
     // (M * K) * (K * N)
     auto x_mat_dims =
         phi::flatten_to_2d(x->dims(), trans_x ? 1 : x->dims().size() - 1);
     int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
     int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
-
     VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
             << "}, out.shape={" << out->dims() << "}, M=" << M << ", N=" << N
             << ", K=" << K << ", trans_x=" << trans_x << ", trans_y=" << trans_y
             << ", activation=" << activation
             << ", reserve_space=" << reserve_space;
-
-    cublasLtEpilogue_t fuse_type =
+    int fuse_type =
         GetFwdFusedEpilogueType<T>(dev_ctx, activation, reserve_space);
-
     void* reserve_data = reserve_space ? reserve_space->data() : nullptr;
     auto fued_impl = phi::autotune::MatmulPlanner(
         vectorize(x->dims()),
@@ -103,7 +111,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
         static_cast<int>(fuse_type),
         static_cast<const void*>(bias->data<T>()),
         reserve_data);
-
+    PRTDBG;
     phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx,
                                            x->data<T>(),
                                            y->data<T>(),
@@ -114,6 +122,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
                                            trans_x,
                                            trans_y,
                                            &fued_impl);
+    PRTDBG;
   }
 };
 
@@ -128,13 +137,23 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* y = ctx.Input<phi::DenseTensor>("Y");
     const phi::DenseTensor* reserve_space =
         ctx.Input<phi::DenseTensor>("ReserveSpace");
-
+    PRTDBG;
     phi::DenseTensor* dx = ctx.Output<phi::DenseTensor>("DX");
     phi::DenseTensor* dy = ctx.Output<phi::DenseTensor>("DY");
     phi::DenseTensor* dbias = ctx.Output<phi::DenseTensor>("DBias");
+    PRTDBG;
 
-    std::string activation_grad = ctx.Attr<std::string>("activation_grad");
-
+    if (ctx.HasAttr("activation")) {
+      PRTDBG;
+    } else {
+      PRTDBG;
+    }
+    if (ctx.HasOutput("Out")) {
+      PRTDBG;
+    } else {
+      PRTDBG;
+    }
+    std::string activation_grad = ctx.Attr<std::string>("activation");
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
 
@@ -144,7 +163,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
     int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
-
+    PRTDBG;
     ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
                                         dout,
                                         x,
@@ -159,6 +178,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
                                         dx,
                                         dy,
                                         dbias);
+    PRTDBG;
   }
 };
 #endif
