@@ -100,6 +100,7 @@ void BuildVariableScope(const framework::BlockDesc& block,
                         VariableScope* var_scope);
 
 void FakeInitializeOutputsForFunctionKernel(
+    const framework::OperatorBase& op,
     const phi::Kernel& phi_kernel,
     const phi::KernelSignature& kernel_sig,
     const RuntimeContext& ctx,

@@ -204,6 +204,7 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
 }
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
+  // is_operator_base = (kernelCode >> 4) & 1
   // has_fluid_kernel = (kernelCode >> 3) & 1
   // has_structed_kernel = (kernelCode >> 2) & 1
   // need_move_to_phi = (kernelCode >> 1) & 1
@@ -212,6 +213,12 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
   std::set<std::pair<std::string, KernelCode>> invalid_ops;
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
+    const framework::OpInfo& info = OpInfoMap::Instance().Get(op_type);
+    auto op_base =
+        info.Creator()(op_type, op->Inputs(), op->Outputs(), op->GetAttrMap());
+
+    bool is_operator_base =
+        (dynamic_cast<framework::OperatorWithKernel*>(op_base) == nullptr);
     bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
@@ -222,10 +229,10 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
         OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_type) &&
         !OpsWithAvailablePhiInferMeta.count(op_type);
 
-    KernelCode kernel_code = (has_fluid_kernel << 3) +
+    KernelCode kernel_code = (is_operator_base << 4) + (has_fluid_kernel << 3) +
                              (has_structured_kernel << 2) +
                              (need_move_to_phi << 1) + need_set_dtype;
-    if (need_move_to_phi || need_set_dtype) {
+    if (is_operator_base || need_move_to_phi || need_set_dtype) {
       invalid_ops.insert(std::make_pair(op_type, kernel_code));
     }
   }
@@ -234,7 +241,8 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     std::stringstream ss;
     ss << "The following OPs are unable to static build:\n";
     for (auto& item : invalid_ops) {
-      ss << item.first << " [has_fluid_kernel = " << (item.second >> 3 & 1)
+      ss << item.first << " [is_operator_base = " << (item.second >> 4 & 1)
+         << ", has_fluid_kernel = " << (item.second >> 3 & 1)
          << ", has_structed_kerenl = " << (item.second >> 2 & 1)
          << ", need_move_to_phi = " << (item.second >> 1 & 1)
          << ", need_set_dtype = " << (item.second & 1) << "]\n";
@@ -818,16 +826,19 @@ void BuildOpFuncList(const platform::Place& place,
                            use_local_scope,
                            static_build);
         VLOG(4) << "apply data transform done. ";
-        // step 4. infershape, see OperatorWithKernel::RunImpl in operator.cc
-        // for why.
-        if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
-              op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+
+        // step 4. infershape
+        if (!static_build) {
           VLOG(4) << "infer shape";
-          InterpretercoreInferShapeContext infer_shape_ctx(*op,
-                                                           runtime_context);
-          // TODO(Aurelius84): In case of control flow ops, they are NOT
-          // inheritted from OperatorWithKernel.
-          op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
+          // see kAllKernelsMustComputeRuntimeShape in operator.h for why
+          if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+                op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+            InterpretercoreInferShapeContext infer_shape_ctx(*op,
+                                                             runtime_context);
+            // TODO(Aurelius84): In case of control flow ops, they are NOT
+            // inheritted from OperatorWithKernel.
+            op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
+          }
         }
 
         // step 5. run kernel
@@ -837,6 +848,7 @@ void BuildOpFuncList(const platform::Place& place,
           VLOG(6) << op_type << " run function kernel";
           if (static_build) {
             FakeInitializeOutputsForFunctionKernel(
+                *op,
                 *(op_func_node.phi_kernel_),
                 *(op_with_kernel->PhiKernelSignature()),
                 runtime_context,
@@ -1073,21 +1085,22 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
 }
 
 void FakeInitializeOutputsForFunctionKernel(
+    const framework::OperatorBase& op,
     const phi::Kernel& phi_kernel,
     const phi::KernelSignature& kernel_sig,
-    const RuntimeContext& ctx,
+    const RuntimeContext& runtime_ctx,
     const platform::DeviceContext& dev_ctx) {
-  std::string op_name = std::string(kernel_sig.name);
-  if (OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_name)) {
+  std::string op_type = op.Type();
+  if (OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_type)) {
     PADDLE_ENFORCE_GT(
-        OpsWithAvailablePhiInferMeta.count(op_name),
+        OpsWithAvailablePhiInferMeta.count(op_type),
         0,
         phi::errors::Unavailable(
             "Cannot static build for op %s because it did not set output dtype "
             "in phi kernel register. Please set its output dtype and remove it "
             "from OpsNeedSetOutputDtypeWhenRegisterPhiKernel set, or add it to "
             " OpsWithAvailablePhiInferMeta set if its InferMeta is available.",
-            op_name));
+            op_type));
   }
 
   auto output_names = kernel_sig.output_names;
@@ -1102,11 +1115,11 @@ void FakeInitializeOutputsForFunctionKernel(
 
   size_t start_idx = 0;
   for (size_t i = 0; i < output_names.size(); ++i) {
-    auto it = ctx.outputs.find(output_names[i]);
+    auto it = runtime_ctx.outputs.find(output_names[i]);
     // Deal with the case that some outputs are not found or be NULL when run
     // the kernel. For example : the outputs of matmul_grad are dx and dy,
     // sometimes dx or dy may be NULL.
-    if (it == ctx.outputs.end() || it->second.empty()) {
+    if (it == runtime_ctx.outputs.end() || it->second.empty()) {
       VLOG(4) << "Output " << output_names[i] << " not found";
       ++start_idx;
       continue;
@@ -1125,6 +1138,10 @@ void FakeInitializeOutputsForFunctionKernel(
             OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
                 std::string(kernel_sig.name))) {
           VLOG(4) << "Get dtype result from InferMeta";
+          InterpretercoreInferShapeContext infer_shape_ctx(op, runtime_ctx);
+          dynamic_cast<const framework::OperatorWithKernel*>(&op)
+              ->Info()
+              .infer_shape_(&infer_shape_ctx);
           dtype = out_tensor->dtype();  // dtype from InferMeta
         }
 
