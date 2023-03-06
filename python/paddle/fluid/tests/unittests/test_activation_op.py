@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+import warnings
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
@@ -23,6 +25,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle.fluid import Program, program_guard
+from paddle.fluid.layer_helper import LayerHelper
 
 paddle.enable_static()
 
@@ -256,6 +259,9 @@ class TestParameter:
 class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
+        self.python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
         self.init_shape()
 
@@ -272,12 +278,42 @@ class TestSigmoid(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
 
 
 class TestSigmoid_ZeroDim(TestSigmoid):
     def init_shape(self):
         self.shape = []
+
+
+class TestSigmoidFP16(TestActivation):
+    def setUp(self):
+        self.op_type = "sigmoid"
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
+        self.only_prim = True
+        self.python_api = paddle.nn.functional.sigmoid
+        self.init_dtype()
+        self.init_shape()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out = 1 / (1 + np.exp(-x))
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
+
+    def test_check_output(self):
+        check_eager = False
+        if hasattr(self, 'check_eager'):
+            check_eager = self.check_eager
+        self.check_output(check_eager=check_eager, check_prim=True)
 
 
 @unittest.skipIf(
@@ -286,6 +322,9 @@ class TestSigmoid_ZeroDim(TestSigmoid):
 class TestSigmoidBF16(OpTest):
     def setUp(self):
         self.op_type = "sigmoid"
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
+        self.python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
         self.init_shape()
 
@@ -306,6 +345,7 @@ class TestSigmoidBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
+        # elementwise_pow can not support bfloat16, skip check_prim = True.
         self.check_output_with_place(place)
 
     def test_check_grad(self):
@@ -1484,6 +1524,49 @@ class TestFloor_ZeroDim(TestFloor):
         self.shape = []
 
 
+class TestFloorPrim(TestActivation):
+    def setUp(self):
+        self.op_type = "floor"
+        self.prim_op_type = "prim"
+
+        # the gradient on floor, ceil, round is undefined.
+        # we return zero as gradient, but the numpy return nan.
+        # for prim, we compare result with eager python api,
+        # so, we use only_prim flag to express we only test prim.
+        self.only_prim = True
+        self.check_eager = True
+        self.python_api = paddle.floor
+        self.init_dtype()
+        self.init_shape()
+
+        if len(self.shape) == 0:
+            # for 0-D tensor, skip cinn testing
+            self.enable_cinn = False
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out = np.floor(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def init_shape(self):
+        self.shape = [10, 12]
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestFloorPrim_ZeroDim(TestFloorPrim):
+    def init_shape(self):
+        self.shape = []
+
+
+class TestFloorPrimFp16(TestFloorPrim):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
 class TestCos(TestActivation):
     def setUp(self):
         self.op_type = "cos"
@@ -2228,6 +2311,30 @@ class TestRelu6API(unittest.TestCase):
                 name='x_fp16', shape=[12, 10], dtype='float16'
             )
             F.relu6(x_fp16)
+
+
+class TestRelu6APIWarnings(unittest.TestCase):
+    def test_warnings(self):
+        with warnings.catch_warnings(record=True) as context:
+            warnings.simplefilter("always")
+
+            paddle.enable_static()
+            helper = LayerHelper("relu6")
+            data = paddle.static.data(
+                name='data', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            os.environ['FLAGS_print_extra_attrs'] = "1"
+            helper.append_op(
+                type="relu6",
+                inputs={'X': data},
+                outputs={'Out': out},
+                attrs={'threshold': 6.0},
+            )
+            self.assertTrue(
+                "op relu6 use extra_attr: threshold" in str(context[-1].message)
+            )
+            os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
@@ -3796,6 +3903,7 @@ def create_test_act_fp16_class(
 create_test_act_fp16_class(TestActivation)
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid)
+create_test_act_fp16_class(TestSigmoidFP16)
 create_test_act_fp16_class(TestSilu)
 create_test_act_fp16_class(TestSiluFP16)
 create_test_act_fp16_class(TestLogSigmoid)
