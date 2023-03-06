@@ -2450,7 +2450,7 @@ Scope* OperatorWithKernel::PrepareData(
   }
 
   auto has_infer_varkernel_fn =
-      (run_phi_kernel_ && phi_kernel_->infer_var_kernel_fn_ != nullptr);
+      (run_phi_kernel_ && phi_kernel_->get_kerneltype_forvar_fn_ != nullptr);
   phi::AttributeMap infer_attrs{};
   auto fluid_attrs = Attrs();
   phi::GetKernelTypeForVarContext infer_varkernel_context =
@@ -2526,7 +2526,7 @@ Scope* OperatorWithKernel::PrepareData(
         infer_varkernel_context.SetDenseTensor(
             const_cast<phi::DenseTensor*>(tensor_in));
         kernel_type_for_var =
-            phi_kernel_->infer_var_kernel_fn_(&infer_varkernel_context);
+            phi_kernel_->get_kerneltype_forvar_fn_(&infer_varkernel_context);
       }
       bool need_trans_dtype =
           NeedTransformDataType(expected_kernel_key, kernel_type_for_var);

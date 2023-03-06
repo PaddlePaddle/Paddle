@@ -477,7 +477,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
   phi::Kernel* phi_kernel = op_func_node->phi_kernel_;
   auto has_infer_varkernel_fn =
-      (phi_kernel && phi_kernel->infer_var_kernel_fn_ != nullptr);
+      (phi_kernel && phi_kernel->get_kerneltype_forvar_fn_ != nullptr);
   phi::AttributeMap infer_attrs{};
   auto fluid_attrs =
       static_cast<const framework::OperatorWithKernel*>(op_base)->Attrs();
@@ -568,8 +568,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                   const_cast<std::string*>(&parameter_name));
               infer_varkernel_context.SetDenseTensor(
                   const_cast<phi::DenseTensor*>(tensor_in));
-              kernel_key_for_var =
-                  phi_kernel->infer_var_kernel_fn_(&infer_varkernel_context);
+              kernel_key_for_var = phi_kernel->get_kerneltype_forvar_fn_(
+                  &infer_varkernel_context);
             }
             std::unique_ptr<phi::KernelKey>
                 expected_kernel_key_for_argument_def = nullptr;
