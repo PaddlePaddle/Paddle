@@ -262,6 +262,27 @@ class PADDLE_API GPUContext : public DeviceContext,
   std::unique_ptr<Impl> impl_;
 };
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+// Currently, GPUPinnedContext is only used to data copying.
+class GPUPinnedContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, GPUPinnedContext> {
+ public:
+  GPUPinnedContext();
+  explicit GPUPinnedContext(GPUPinnedPlace place);
+
+  const Place& GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+  static const char* name() { return "GPUPinnedContext"; }
+
+ private:
+  GPUPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+#endif
+
 // Note: In order to register the kernel of CUDNN, DnnContext is required.
 // Currently, CUDNN kernel directly uses GPUContext. But if the kernel function
 // has the same name, this will lead to duplicate instantiations of GPU kernel
