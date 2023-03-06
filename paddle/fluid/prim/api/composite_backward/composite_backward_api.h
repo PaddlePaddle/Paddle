@@ -820,11 +820,13 @@ void maximum_grad(const Tensor& x,
                   Tensor* y_grad) {
   auto x_broadcasted = x;
   auto y_broadcasted = y;
+  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> y_dim = phi::vectorize<int64_t>(y.dims());
   if ((x.size() < y.size()) || (x.dims().size() < y.dims().size())) {
-    x_broadcasted = x.expand(y.shape());
+    x_broadcasted = x.expand(IntArray(y_dim));
   }
   if ((y.size() < x.size()) || (y.dims().size() < x.dims().size())) {
-    y_broadcasted = y.expand(x.shape());
+    y_broadcasted = y.expand(IntArray(x_dim));
   }
   if (x_grad) {
     auto x_tmp = cast<T>(greater_than<T>(x_broadcasted, y_broadcasted),
