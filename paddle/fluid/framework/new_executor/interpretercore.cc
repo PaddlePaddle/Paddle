@@ -197,7 +197,7 @@ void InterpreterCore::RunImpl() {
   if (platform::IsCUDAGraphCapturing()) {
     VLOG(4) << "yoki1";
     auto dev_ctxs = stream_analyzer_.GetAllDeviceContexts();
-    /*VLOG(4) << "yoki2";
+    VLOG(4) << "yoki2";
     for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
       VLOG(4) << "yoki3";
       auto* stream_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
@@ -214,7 +214,7 @@ void InterpreterCore::RunImpl() {
         VLOG(4) << "CUDAGraphAllocator is not nullptr.";
       }
     }
-    VLOG(4) << "yoki7";*/
+    VLOG(4) << "yoki7";
     auto* cuda_graph_dev_ctx = platform::CUDAGraph::CapturingDeviceContext();
     auto cuda_graph_stream = cuda_graph_dev_ctx->stream();
 
@@ -779,7 +779,7 @@ void InterpreterCore::Convert(
       VLOG(4) << "yoki5";
       stream_dev_ctx->cusolver_dn_handle();
       VLOG(4) << "yoki6";
-      auto stream = stream_dev_ctx->stream();
+      /*auto stream = stream_dev_ctx->stream();
       VLOG(4) << "yoki5";
       if (!stream_dev_ctx->IsCUDAGraphAllocatorValid()) {
         VLOG(4) << "yoki6";
@@ -789,7 +789,7 @@ void InterpreterCore::Convert(
         VLOG(4) << "set CUDAGraphAllocator. dev_ctx: " << stream_dev_ctx << "  stream: " << stream;
       } else {
         VLOG(4) << "CUDAGraphAllocator is not nullptr.";
-      }
+      }*/
     }
     VLOG(4) << "yoki7";
   }
