@@ -2125,6 +2125,8 @@ class OpTest(unittest.TestCase):
         max_relative_error,
         msg_prefix,
     ):
+        print(numeric_grads)
+        print(analytic_grads)
         for a, b, name in zip(numeric_grads, analytic_grads, names):
             # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
             # max_relative_error is 1e-7. According to the value of np.abs(a), we
@@ -2188,6 +2190,7 @@ class OpTest(unittest.TestCase):
                     b.flatten()[offset],
                 )
 
+            print("max_diff", max_diff, max_relative_error)
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def _check_grad_helper(self):
