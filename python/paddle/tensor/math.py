@@ -5148,6 +5148,13 @@ def vander(x, N=None, increasing=False, name=None):
             # [[1., 1., 1.],
             #  [1., 2., 4.],
             #  [1., 3., 9.]]
+            real = paddle.to_tensor([2., 4.])
+            imag = paddle.to_tensor([1., 3.])
+            complex = paddle.complex(real, imag)
+            out3 = vander(complex)
+            print(out3.numpy())
+            # [[2.+1.j, 1.+0.j],
+            #  [4.+3.j, 1.+0.j]]
     """
     check_variable_and_dtype(
         x,
