@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import numbers
-import numpy as np
-import paddle
 
+import numpy as np
+
+import paddle
 from paddle.distribution import Distribution
 from paddle.distribution.uniform import Uniform as Un
 from paddle.fluid import framework
@@ -81,23 +82,35 @@ class Geometric(Distribution):
     """
 
     def __init__(self, probs=None):
-        if (probs is None):
+        if probs is None:
             raise ValueError("`Probs` must be specified.")
         if isinstance(probs, numbers.Real) or isinstance(probs, list):
-             probs = paddle.full(shape=(),fill_value=probs, dtype=paddle.float32)
+             probs = paddle.full(
+                 shape=(), fill_value=probs, dtype=paddle.float32
+             )
 
         if isinstance(probs, (paddle.Tensor, framework.Variable)):
-            if (probs.dtype != paddle.float32):
-                raise ValueError(f"Probs'dtype must be float32, but get {probs.dtype}")
+            if probs.dtype != paddle.float32:
+                raise ValueError(
+                    f"Probs'dtype must be float32, but get {probs.dtype}"
+                )
 
-            all_ones = paddle.full(shape=probs.shape, fill_value=1, dtype=probs.dtype)
-            all_zeros = paddle.full(shape=probs.shape, fill_value=0, dtype=probs.dtype)
-            all_false = paddle.full(shape=probs.shape, fill_value=False, dtype=bool)
+            all_ones = paddle.full(
+                shape=probs.shape, fill_value=1, dtype=probs.dtype
+            )
+            all_zeros = paddle.full(
+                shape=probs.shape, fill_value=0, dtype=probs.dtype
+            )
+            all_false = paddle.full(
+                shape=probs.shape, fill_value=False, dtype=bool
+            )
 
             lessthen_0 = probs > all_ones
             morethen_1 = probs <= all_zeros
 
-            if (paddle.equal_all(lessthen_0, all_false) and paddle.equal_all(morethen_1, all_false)):
+            if paddle.equal_all(lessthen_0, all_false) and paddle.equal_all(
+                morethen_1, all_false
+            ):
                 batch_shape = tuple(probs.shape)
             else:
                 raise ValueError(
@@ -110,9 +123,9 @@ class Geometric(Distribution):
             )
 
         self.probs = probs
-        self.one_tensor = paddle.full(self.probs.shape,
-                                      fill_value=1,
-                                      dtype=self.probs.dtype)
+        self.one_tensor = paddle.full(
+            self.probs.shape, fill_value=1, dtype=self.probs.dtype
+        )
         super(Geometric, self).__init__(batch_shape)
 
     @property
@@ -128,7 +141,10 @@ class Geometric(Distribution):
     @property
     def variance(self):
         """Variance of geometric distribution"""
-        return paddle.to_tensor((self.one_tensor / self.probs - self.one_tensor) / self.probs, dtype=self.probs.dtype)
+        return paddle.to_tensor(
+            (self.one_tensor / self.probs - self.one_tensor) / self.probs,
+            dtype=self.probs.dtype
+        )
 
     @property
     def stddev(self):
@@ -173,7 +189,9 @@ class Geometric(Distribution):
             Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
         """
         if not isinstance(shape, tuple):
-            raise TypeError(f'sample shape must be tuple, but get {type(shape)}.')
+            raise TypeError(
+                f'sample shape must be tuple, but get {type(shape)}.'
+            )
 
         with paddle.no_grad():
             return self.rsample(shape)
@@ -193,12 +211,10 @@ class Geometric(Distribution):
         shape = Distribution._extend_shape(self, sample_shape=shape)
         tiny = np.finfo(dtype='float32').tiny
 
-        sample_uniform = Un(low=float(tiny),
-                            high=float(1)
-                            )
+        sample_uniform = Un(low=float(tiny), high=float(1))
 
         new_t = sample_uniform.sample(list(shape))
-        return (paddle.log(new_t) / paddle.log1p(-(self.probs)))
+        return paddle.log(new_t) / paddle.log1p(-(self.probs))
 
     def entropy(self):
         """Entropy of dirichlet distribution
@@ -206,7 +222,9 @@ class Geometric(Distribution):
         Returns:
             Tensor: Entropy.
         """
-        x = (self.one_tensor - self.probs) * paddle.log(self.one_tensor - self.probs)
+        x = (self.one_tensor - self.probs) * paddle.log(
+            self.one_tensor - self.probs
+        )
         y = self.probs * paddle.log(self.probs)
 
         return -(x + y) / self.probs
@@ -221,7 +239,7 @@ class Geometric(Distribution):
             Tensor: Entropy.
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
-            return 1. - paddle.pow((1. - self.probs), k)
+            return 1.0 - paddle.pow((1.0 - self.probs), k)
         else:
             raise TypeError(f"k must be int|Variable,but get {type(k)}")
 

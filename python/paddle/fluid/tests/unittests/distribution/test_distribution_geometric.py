@@ -15,15 +15,17 @@ import numbers
 import unittest
 
 import numpy as np
-import paddle
 import scipy.stats
-
-from paddle.distribution.geometric import Geometric
-from paddle.distribution.kl import kl_divergence
 from config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 
+import paddle
+from paddle.distribution.geometric import Geometric
+from paddle.distribution.kl import kl_divergence
+
+
 np.random.seed(2023)
+
 
 @place(DEVICES)
 @parameterize_cls(
@@ -37,7 +39,7 @@ class TestGeometric(unittest.TestCase):
     def setUp(self):
         probs = self.probs
         if not isinstance(self.probs, numbers.Real):
-            probs = paddle.to_tensor(self.probs,dtype=paddle.float32)
+            probs = paddle.to_tensor(self.probs, dtype=paddle.float32)
 
         self._paddle_geom = paddle.distribution.geometric.Geometric(probs)
 
@@ -68,7 +70,6 @@ class TestGeometric(unittest.TestCase):
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )
 
-
     def test_entropy(self):
         with paddle.fluid.dygraph.guard(self.place):
             np.testing.assert_allclose(
@@ -78,12 +79,12 @@ class TestGeometric(unittest.TestCase):
                 atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
             )
 
-
     def test_sample_shape(self):
         cases = [
             {
                 'input': (),
-                'expect': () + tuple(paddle.squeeze(self._paddle_geom.probs).shape),
+                'expect': ()
+                + tuple(paddle.squeeze(self._paddle_geom.probs).shape),
             },
             {
                 'input': (4, 2),
@@ -96,7 +97,6 @@ class TestGeometric(unittest.TestCase):
                 tuple(self._paddle_geom.sample(case.get('input')).shape)
                 == case.get('expect')
             )
-
 
     def test_sample(self):
         sample_shape = (30000,)
@@ -117,12 +117,12 @@ class TestGeometric(unittest.TestCase):
             atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
         )
 
-
     def test_rsample_shape(self):
         cases = [
             {
                 'input': (),
-                'expect': () + tuple(paddle.squeeze(self._paddle_geom.probs).shape),
+                'expect': ()
+                + tuple(paddle.squeeze(self._paddle_geom.probs).shape),
             },
             {
                 'input': (2, 5),
@@ -135,7 +135,6 @@ class TestGeometric(unittest.TestCase):
                 tuple(self._paddle_geom.rsample(case.get('input')).shape)
                 == case.get('expect')
             )
-
 
     def test_rsample(self):
 
@@ -163,8 +162,8 @@ class TestGeometric(unittest.TestCase):
     (TEST_CASE_NAME, 'probs', 'value'),
     [
         ('one-dim', xrand((2,), dtype='float32', min=0.0, max=1.0), 5),
-        ('mult-dim', xrand((2,2), dtype='float32', min=0.0, max=1.0), 5),
-        ('mult-dim', xrand((2,2,2), dtype='float32', min=0.0, max=1.0), 5),
+        ('mult-dim', xrand((2, 2), dtype='float32', min=0.0, max=1.0), 5),
+        ('mult-dim', xrand((2, 2, 2), dtype='float32', min=0.0, max=1.0), 5),
     ],
 )
 class TestGumbelPMF(unittest.TestCase):
@@ -205,8 +204,10 @@ class TestGumbelPMF(unittest.TestCase):
 @parameterize_cls(
     (TEST_CASE_NAME, 'probs1', 'probs2'),
     [
-        ('one-dim', xrand((2,), dtype='float32', min=0.0, max=1.0),
-                    xrand((2,), dtype='float32', min=0.0, max=1.0)),
+        (
+            'one-dim', xrand((2,), dtype='float32', min=0.0, max=1.0),
+                       xrand((2,), dtype='float32', min=0.0, max=1.0)
+        ),
         (
             'multi-dim',
             xrand((2, 2), dtype='float32', min=0.0, max=1.0),
@@ -231,7 +232,7 @@ class TestGeometricKL(unittest.TestCase):
         )
 
     def _kl(self):
-        temp = np.log(self.probs1,self.probs2)
+        temp = np.log(self.probs1, self.probs2)
         kl_diff = self.probs1 * np.abs(temp)
 
         return np.sum(kl_diff, axis=-1)

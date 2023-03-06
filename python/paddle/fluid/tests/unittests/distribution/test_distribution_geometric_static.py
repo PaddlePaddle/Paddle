@@ -14,23 +14,25 @@
 import unittest
 
 import numpy as np
-import paddle
-import scipy.stats
 
-from paddle.distribution.geometric import Geometric
+import scipy.stats
 from config import ATOL, DEVICES, RTOL
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+
+import paddle
+from paddle.distribution.geometric import Geometric
 
 np.random.seed(2023)
 
 paddle.enable_static()
+
 
 @place(DEVICES)
 @parameterize_cls(
     (TEST_CASE_NAME, 'probs'),
     [
         ('one-dim', xrand((2,), dtype='float32', min=0.0, max=1.0)),
-        ('multi-dim', xrand((2,3), dtype='float32', min=0.0, max=1.0)),
+        ('multi-dim', xrand((2, 3), dtype='float32', min=0.0, max=1.0)),
     ],
 )
 class TestGeometric(unittest.TestCase):
@@ -73,6 +75,7 @@ class TestGeometric(unittest.TestCase):
                 rtol=RTOL.get(str(self.probs.dtype)),
                 atol=ATOL.get(str(self.probs.dtype)),
             )
+
     def test_stddev(self):
         with paddle.static.program_guard(self.program):
             [stddev] = self.executor.run(
@@ -86,7 +89,6 @@ class TestGeometric(unittest.TestCase):
                 rtol=RTOL.get(str(self.probs.dtype)),
                 atol=ATOL.get(str(self.probs.dtype)),
             )
-
 
     def test_sample(self):
         with paddle.static.program_guard(self.program):
@@ -124,13 +126,14 @@ class TestGeometric(unittest.TestCase):
                 atol=ATOL.get(str(self.probs.dtype)),
             )
 
+
 @place(DEVICES)
 @parameterize_cls(
     (TEST_CASE_NAME, 'probs', 'value'),
     [
         ('one-dim', xrand((2,), dtype='float32', min=0.0, max=1.0), 5),
-        ('mult-dim', xrand((2,2), dtype='float32', min=0.0, max=1.0), 5),
-        ('mult-dim', xrand((2,2,2), dtype='float32', min=0.0, max=1.0), 5),
+        ('mult-dim', xrand((2, 2), dtype='float32', min=0.0, max=1.0), 5),
+        ('mult-dim', xrand((2, 2, 2), dtype='float32', min=0.0, max=1.0), 5),
     ],
 )
 class TestGumbelPMF(unittest.TestCase):
@@ -143,9 +146,7 @@ class TestGumbelPMF(unittest.TestCase):
             )
 
             self._paddle_geometric = Geometric(probs)
-
-            self.feeds = {'probs': self.probs, 'value':self.value}
-
+            self.feeds = {'probs': self.probs, 'value': self.value}
 
     def test_pmf(self):
         with paddle.static.program_guard(self.program):
@@ -175,7 +176,6 @@ class TestGumbelPMF(unittest.TestCase):
                 atol=ATOL.get(str(self.probs.dtype)),
             )
 
-
     def test_cdf(self):
         with paddle.static.program_guard(self.program):
             [cdf] = self.executor.run(
@@ -195,8 +195,10 @@ class TestGumbelPMF(unittest.TestCase):
 @parameterize_cls(
     (TEST_CASE_NAME, 'probs1', 'probs2'),
     [
-        ('one-dim', xrand((2,), dtype='float32', min=0.0, max=1.0),
-                    xrand((2,), dtype='float32', min=0.0, max=1.0)),
+        (
+            'one-dim', xrand((2,), dtype='float32', min=0.0, max=1.0),
+                       xrand((2,), dtype='float32', min=0.0, max=1.0)
+        ),
         (
             'multi-dim',
             xrand((2, 2), dtype='float32', min=0.0, max=1.0),
@@ -224,9 +226,9 @@ class TestGeometricKL(unittest.TestCase):
             self._paddle_geomQ = Geometric(probs_q)
 
             self.feeds = {
-                    'probs1': self.probs1,
-                    'probs2': self.probs2,
-                }
+                'probs1': self.probs1,
+                'probs2': self.probs2,
+            }
 
     def test_kl_divergence(self):
         with paddle.static.program_guard(self.program_p, self.program_q):
@@ -234,7 +236,9 @@ class TestGeometricKL(unittest.TestCase):
             [kl_diver] = self.executor.run(
                 self.program_p,
                 feed=self.feeds,
-                fetch_list=[self._paddle_geomP.kl_divergence(self._paddle_geomQ)]
+                fetch_list=[
+                    self._paddle_geomP.kl_divergence(self._paddle_geomQ)
+                ],
             )
             np.testing.assert_allclose(
                 kl_diver,
@@ -244,7 +248,7 @@ class TestGeometricKL(unittest.TestCase):
             )
 
     def _kl(self):
-        temp = np.log(self.probs1,self.probs2)
+        temp = np.log(self.probs1, self.probs2)
         kl_diff = self.probs1 * np.abs(temp)
 
         return np.sum(kl_diff, axis=-1)
