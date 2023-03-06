@@ -26,7 +26,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/pstring.h"
@@ -114,8 +114,7 @@ TEST(DEV_API, strings_cast_convert_utf8) {
   auto gpu0 = GPUPlace();
   auto cpu = CPUPlace();
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   GPUContext* dev_ctx = reinterpret_cast<GPUContext*>(pool.Get(gpu0));
   CPUContext* cpu_ctx = reinterpret_cast<CPUContext*>(pool.Get(cpu));
 
