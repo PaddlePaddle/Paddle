@@ -171,7 +171,6 @@ class TestAllcloseError(unittest.TestCase):
         self.assertRaises(TypeError, test_equal_nan)
 
 
-
 class TestAllcloseOpFp16(unittest.TestCase):
     def test_fp16(self):
         x_data = np.random.rand(10, 10).astype('float16')
