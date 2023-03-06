@@ -37,12 +37,12 @@ class TestTrapezoidAPI(unittest.TestCase):
                 y=self.y, x=self.x, dx=self.dx, axis=self.axis
             )
 
-    def set_up(self):
+    def set_api(self):
         self.ref_api = np.trapz
         self.paddle_api = paddle.trapezoid
 
     def setUp(self):
-        self.set_up()
+        self.set_api()
         self.set_args()
         self.get_output()
         self.places = [paddle.CPUPlace()]
@@ -163,11 +163,11 @@ class TestTrapezoidAxis1(TestTrapezoidAPI):
 
 class TestTrapezoidError(unittest.TestCase):
     # test error
-    def setUp(self):
+    def set_api(self):
         self.paddle_api = paddle.trapezoid
 
     def test_errors(self):
-        self.setUp()
+        self.set_api()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):

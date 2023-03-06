@@ -21,13 +21,8 @@ import paddle
 
 
 class TestCumulativeTrapezoidAPI(TestTrapezoidAPI):
-    def set_up(self):
+    def set_api(self):
         self.ref_api = cumulative_trapezoid
-        self.paddle_api = paddle.cumulative_trapezoid
-
-
-class TestCumulativeTrapezoidError(TestTrapezoidError):
-    def setUp(self):
         self.paddle_api = paddle.cumulative_trapezoid
 
 
@@ -85,6 +80,11 @@ class TestCumulativeTrapezoidAxis1(TestCumulativeTrapezoidAPI):
         self.x = None
         self.dx = 1
         self.axis = 1
+
+
+class TestCumulativeTrapezoidError(TestTrapezoidError):
+    def set_api(self):
+        self.paddle_api = paddle.cumulative_trapezoid
 
 
 if __name__ == '__main__':
