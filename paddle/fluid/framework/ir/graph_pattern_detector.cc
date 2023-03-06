@@ -3720,6 +3720,27 @@ PDNode *patterns::AddSupportInt8::operator()() {
   return quant_out;
 }
 
+PDNode *patterns::SplitLayerNorm::operator()() {
+  auto layer_norm_op =
+      pattern->NewNode(layer_norm_op_repr())->assert_is_op("layer_norm");
+  auto layer_norm_in = pattern->NewNode(layer_norm_in_repr())
+                           ->AsInput()
+                           ->assert_is_op_input("layer_norm", "X");
+  auto layer_norm_bias = pattern->NewNode(layer_norm_bias_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("layer_norm", "Bias");
+  auto layer_norm_scale = pattern->NewNode(layer_norm_scale_repr())
+                              ->AsInput()
+                              ->assert_is_op_input("layer_norm", "Scale");
+  auto layer_norm_out = pattern->NewNode(layer_norm_out_repr())
+                            ->assert_is_op_output("layer_norm", "Y");
+
+  layer_norm_op->LinksFrom({layer_norm_in, layer_norm_bias, layer_norm_scale})
+      .LinksTo({layer_norm_out});
+
+  return layer_norm_out;
+}
+
 PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
   auto layer_norm_op =
       pattern->NewNode(layer_norm_op_repr())

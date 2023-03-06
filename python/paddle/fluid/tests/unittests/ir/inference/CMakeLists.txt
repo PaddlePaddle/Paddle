@@ -225,6 +225,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
                                                                        240)
     set_tests_properties(test_shuffle_channel_detect_pass PROPERTIES TIMEOUT
                                                                      120)
+    set_tests_properties(test_split_layernorm_to_math_ops_pass
+                         PROPERTIES TIMEOUT 120)
     if(WIN32)
       set_tests_properties(test_matmul_scale_fuse_pass PROPERTIES TIMEOUT 300)
       set_tests_properties(test_matmul_v2_scale_fuse_pass PROPERTIES TIMEOUT
