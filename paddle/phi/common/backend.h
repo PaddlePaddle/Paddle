@@ -181,6 +181,8 @@ inline Backend StringToBackend(const char* backend_cstr) {
 #endif
   } else if (s == std::string("IPU")) {
     return Backend::IPU;
+  } else if (s == std::string("Custom")) {
+    return Backend::CUSTOM;
   } else {
     return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
                                 phi::CustomRegisteredDeviceMap::Instance()

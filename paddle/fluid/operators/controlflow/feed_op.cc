@@ -275,13 +275,13 @@ PD_REGISTER_GENERAL_KERNEL(
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 PD_REGISTER_GENERAL_KERNEL(
     feed_dense_tensor,
-    CUSTOM,
+    Custom,
     ALL_LAYOUT,
     paddle::operators::FeedDenseTensorKernel<phi::CustomContext>,
     ALL_DTYPE) {}
 PD_REGISTER_GENERAL_KERNEL(
     feed_strings,
-    CUSTOM,
+    Custom,
     ALL_LAYOUT,
     paddle::operators::FeedStringsKernel<phi::CustomContext>,
     ALL_DTYPE) {}
