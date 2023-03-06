@@ -321,5 +321,5 @@ def fill_any_like(x, fill_value, dtype, place=None):
 @REGISTER_COMPOSITE('relu')
 def relu_composite(x):
     """define composite rule of op relu."""
-    # relu(x) = max(x, 0)
+    # relu(x) = max(x, 0) 
     return maximum(x, zeros_like(x))
