@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/broadcast_kernel.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -48,19 +48,31 @@ void BroadcastKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+#if NCCL_VERSION_CODE >= 21000
 PD_REGISTER_KERNEL(broadcast,
                    GPU,
                    ALL_LAYOUT,
                    phi::BroadcastKernel,
                    float,
                    double,
-#if NCCL_VERSION_CODE >= 21000
-                   phi::dtype::bfloat16
-#endif
+                   phi::dtype::bfloat16,
                    int,
                    bool,
                    int8_t,
                    uint8_t,
                    int64_t,
-                   phi::dtype::float16) {
-}
+                   phi::dtype::float16) {}
+#else
+PD_REGISTER_KERNEL(broadcast,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BroadcastKernel,
+                   float,
+                   double,
+                   int,
+                   bool,
+                   int8_t,
+                   uint8_t,
+                   int64_t,
+                   phi::dtype::float16) {}
+#endif
