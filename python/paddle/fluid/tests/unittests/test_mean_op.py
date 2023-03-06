@@ -92,9 +92,7 @@ class TestMeanOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and do not support bfloat16",
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestFP16MeanOp(TestMeanOp):
     def init_dtype_type(self):
@@ -151,9 +149,6 @@ def ref_reduce_mean_grad(x, axis, dtype, reduce_all):
     return (1.0 / np.prod(shape) * np.ones(shape)).astype(dtype)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class TestReduceMeanOp(OpTest):
     def setUp(self):
         self.op_type = 'reduce_mean'
