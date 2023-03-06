@@ -32,7 +32,7 @@ if(WITH_XPU)
   py_test(test_custom_op_relu_model_static_multidevice
           SRCS test_custom_op_relu_model_static_multidevice.py ENVS
                ${CUSTOM_XPU_ENVS})
-  set_tests_properties(test_custom_relu_model
+  set_tests_properties(test_custom_op_relu_model_static_multidevice
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 180)
 endif()
 
