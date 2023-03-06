@@ -94,6 +94,7 @@ void FusedMultiTransformerXpuKernel(
 
   int time_step_value = -1;
   if (TimeStep) {
+    LOG(INFO) << "DEBUG: time_step_ptr=" << TimeStep.get_ptr()->data<int>();
     PADDLE_ENFORCE_EQ(TimeStep.get_ptr()->place(),
                       phi::CPUPlace(),
                       phi::errors::PreconditionNotMet(
@@ -252,4 +253,6 @@ PD_REGISTER_KERNEL(fused_multi_transformer_xpu,
                    XPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedMultiTransformerXpuKernel,
-                   float) {}
+                   float) {
+  kernel->InputAt(20).SetBackend(phi::Backend::CPU);
+}
