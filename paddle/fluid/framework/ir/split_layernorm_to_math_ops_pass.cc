@@ -182,7 +182,8 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     if (begin_norm_axis < 0) begin_norm_axis += input_shape.size();
     std::vector<int32_t> reduce_dim;
     int feature_size = 1;
-    for (int i = begin_norm_axis; i < input_shape.size(); i++) {
+    for (int i = begin_norm_axis; i < static_cast<int>(input_shape.size());
+         i++) {
       feature_size *= input_shape[i];
       reduce_dim.push_back(i);
     }
