@@ -901,28 +901,20 @@ class Completer:
                     self._array_nodes[array_var_name].append(node.outputs[0])
             if node.is_var() and node.var() is not None:
                 if node.node.graph_id() != 0:
-                    for before_node in reversed(all_nodes[:idx]):
-                        if (
-                            before_node.is_var()
-                            and before_node.var() is not None
-                            and before_node.node.graph_id()
-                            == node.node.graph_id() - 1
-                            and before_node.var().name() == node.var().name()
-                        ):
+                    parent_nodes = (
+                        self._dist_context._tensor_nodes_with_same_name[
+                            node.node.graph_id() - 1
+                        ].get(node.var().name(), None)
+                    )
+                    if parent_nodes is not None:
+                        sorted_parent_nodes = sorted(
+                            parent_nodes, key=lambda x: x[0]
+                        )
+                        for _, parent_node in sorted_parent_nodes:
                             self._node_pairs_between_graphs.append(
-                                (before_node, node)
+                                (parent_node, node)
                             )
-                    for after_node in all_nodes[idx + 1 :]:
-                        if (
-                            after_node.is_var()
-                            and after_node.var() is not None
-                            and after_node.node.graph_id()
-                            == node.node.graph_id() - 1
-                            and after_node.var().name() == node.var().name()
-                        ):
-                            self._node_pairs_between_graphs.append(
-                                (after_node, node)
-                            )
+
         self._has_prepared = True
 
     def complete_forward_annotation(self, serial_main_program=None):
