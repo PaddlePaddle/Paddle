@@ -29,31 +29,15 @@ the image layout as follows.
   formats can be used for training. Noted that, the format should
   be keep consistent between the training and inference period.
 """
-import numpy as np
-
-try:
-    import cv2
-except ImportError:
-    cv2 = None
-
 import os
 import pickle
 import tarfile
 
+import numpy as np
+
+from paddle.utils.lazy_import import try_import
+
 __all__ = []
-
-
-def _check_cv2():
-    if cv2 is None:
-        import sys
-
-        sys.stderr.write(
-            '''Warning with paddle image module: opencv-python should be imported,
-         or paddle image module could NOT work; please install opencv-python first.'''
-        )
-        return False
-    else:
-        return True
 
 
 def batch_images_from_tar(
@@ -136,8 +120,7 @@ def load_image_bytes(bytes, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    assert _check_cv2() is True
-
+    cv2 = try_import('cv2')
     flag = 1 if is_color else 0
     file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, flag)
@@ -161,8 +144,7 @@ def load_image(file, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    assert _check_cv2() is True
-
+    cv2 = try_import('cv2')
     # cv2.IMAGE_COLOR for OpenCV3
     # cv2.CV_LOAD_IMAGE_COLOR for older OpenCV Version
     # cv2.IMAGE_GRAYSCALE for OpenCV3
@@ -190,7 +172,7 @@ def resize_short(im, size):
     :param size: the shorter edge size of image after resizing.
     :type size: int
     """
-    assert _check_cv2() is True
+    cv2 = try_import('cv2')
 
     h, w = im.shape[:2]
     h_new, w_new = size, size
