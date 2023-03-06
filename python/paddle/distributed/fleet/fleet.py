@@ -1453,7 +1453,7 @@ class Fleet:
 
                 compiled_program = compiler.CompiledProgram(
                     self.origin_main_program
-                ).with_data_parallel(loss_name=loss.name, share_vars_from=None)
+                )
                 loss.block.program._graph = compiled_program
                 return self.user_defined_optimizer.minimize(
                     loss,
