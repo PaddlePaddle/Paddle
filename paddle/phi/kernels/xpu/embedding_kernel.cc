@@ -25,6 +25,8 @@ void EmbeddingKernel(const Context &ctx,
                      const DenseTensor &weight,
                      int64_t padding_idx,
                      DenseTensor *out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
   auto *ids_t = &inputx;  // int
   auto *output_t = out;   // float
   PADDLE_ENFORCE_EQ(
@@ -66,18 +68,23 @@ void EmbeddingKernel(const Context &ctx,
   size_t xm = table_t->dims()[0];
   size_t n = table_t->dims()[1];
 
-  int r = xpu::embedding<T, int64_t>(dev_ctx.x_context(),
-                                     table,
-                                     ids,
-                                     output,
-                                     xm,
-                                     n,
-                                     ym,
-                                     static_cast<int>(padding_idx));
+  int r = xpu::embedding<XPUType>(dev_ctx.x_context(),
+                                  reinterpret_cast<const XPUType *>(table),
+                                  ids,
+                                  reinterpret_cast<XPUType *>(output),
+                                  xm,
+                                  n,
+                                  ym,
+                                  padding_idx);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(embedding, XPU, ALL_LAYOUT, phi::EmbeddingKernel, float) {}
+PD_REGISTER_KERNEL(embedding,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::EmbeddingKernel,
+                   float,
+                   phi::dtype::float16) {}

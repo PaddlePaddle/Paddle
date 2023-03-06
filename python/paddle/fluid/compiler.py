@@ -324,6 +324,11 @@ class CompiledProgram:
         if self._places is not None:
             if not isinstance(self._places, (list, tuple)):
                 self._places = [self._places]
+        if self._places is not None and len(self._places) > 1:
+            raise NotImplementedError(
+                "If you need to train with multi-gpus, please use `fleet` instead of `with_data_parallel`."
+                "This will be removed soon in develop version."
+            )
 
         return self
 
@@ -411,12 +416,6 @@ class CompiledProgram:
                 "only contain one thread, so reset the number of threads to 1 here."
             )
             self._exec_strategy.num_threads = 1
-
-        if self._build_strategy.num_trainers > 1:
-            assert self._is_data_parallel, (
-                "If you use multi-trainer to train the model, you should use "
-                "the data parallel model, i.e. calling with_data_parallel function."
-            )
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.

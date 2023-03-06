@@ -20,3 +20,7 @@ cc_library(
   int_array
   SRCS int_array.cc
   DEPS phi_enforce phi_tensor_utils)
+cc_library(
+  memory_utils
+  SRCS memory_utils.cc
+  DEPS phi_enforce phi_place)

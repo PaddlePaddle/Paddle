@@ -85,8 +85,6 @@ void TransposeKernel(const Context& dev_ctx,
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
       x.mem_desc(), funcs::to_void_cast(x.data<T>()));
 
-  // a trick is used here to fake transpose of out_md, so later it will be
-  // "untransposed", leaving output data in plain format tag
   auto fake_strides = funcs::FakeTransposeStrides(x_vec_dims, axis);
   auto dst_md = dnnl::memory::desc(x_vec_dims, out_type, fake_strides);
   auto reorder_dst_memory_p =

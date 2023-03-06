@@ -14,8 +14,13 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/context_pool.h"
 
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/core/cuda_stream.h"
+#endif
 
 #include "paddle/fluid/platform/init.h"
 
@@ -30,11 +35,11 @@ DeviceContextPool& DeviceContextPool::Instance() {
 const phi::DeviceContext* DeviceContextPool::Get(const Place& place) {
   auto it = context_map_.find(place);
   if (it == context_map_.end()) {
-    if (!paddle::platform::DeviceContextPool::IsInitialized()) {
+    if (!phi::DeviceContextPool::IsInitialized()) {
       paddle::framework::InitDevices();
     }
     // only when we need the specific DeviceContext, get and cache it
-    auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+    auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     {
       std::lock_guard<std::mutex> lock(mutex_);
       context_map_[place] = dev_ctx;
@@ -49,4 +54,29 @@ phi::DeviceContext* DeviceContextPool::GetMutable(const Place& place) {
 }
 
 }  // namespace experimental
+}  // namespace paddle
+
+namespace paddle {
+
+PADDLE_API phi::Allocator* GetAllocator(const phi::Place& place) {
+  const phi::DeviceContext* dev_ctx =
+      paddle::experimental::DeviceContextPool::Instance().Get(place);
+  return const_cast<phi::Allocator*>(&dev_ctx->GetAllocator());
+}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PADDLE_API phi::CUDAStream* GetCurrentCUDAStream(const phi::Place& place) {
+  PADDLE_ENFORCE(place.GetType() == phi::AllocationType::GPU,
+                 phi::errors::InvalidArgument(
+                     "GetCurrentCUDAStream only supports GPUPlace input. "
+                     "However, your input is place=%s",
+                     place));
+
+  auto& pool = paddle::experimental::DeviceContextPool::Instance();
+  const phi::GPUContext* dev_ctx =
+      static_cast<const phi::GPUContext*>(pool.Get(place));
+  return dev_ctx->cuda_stream();
+}
+#endif
+
 }  // namespace paddle

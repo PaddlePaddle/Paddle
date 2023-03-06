@@ -21,14 +21,6 @@ limitations under the License. */
 #include "glog/logging.h"
 
 namespace paddle {
-namespace platform {
-
-void ParseCommandLineFlags(int argc, char** argv, bool remove);
-
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 bool InitGflags(std::vector<std::string> argv);
@@ -38,6 +30,8 @@ void InitGLOG(const std::string& prog_name);
 void InitDevices();
 
 void InitDevices(const std::vector<int> devices);
+
+void InitMemoryMethod();
 
 #ifndef _WIN32
 class SignalMessageDumper {

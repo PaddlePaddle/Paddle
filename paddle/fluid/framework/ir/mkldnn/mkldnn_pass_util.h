@@ -155,7 +155,7 @@ static void GetInfoFromTheFirstOp(ir::Graph* graph,
   }
 }
 
-static void ConvertToFusedOp(OpDesc* op) {
+inline void ConvertToFusedOp(OpDesc* op) {
   const std::map<std::string, std::string> fused_ops = {
       {"conv2d", "fused_conv2d"},
       {"depthwise_conv2d", "fused_conv2d"},
@@ -172,6 +172,7 @@ static void ConvertToFusedOp(OpDesc* op) {
   auto it = fused_ops.find(op->Type());
   if (it != fused_ops.end()) {
     op->SetType(it->second);
+    VLOG(3) << "Converted " << it->first << " to " << it->second;
   }
 }
 

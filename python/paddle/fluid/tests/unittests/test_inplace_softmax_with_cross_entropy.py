@@ -64,9 +64,7 @@ class TestSoftmaxWithXe(unittest.TestCase):
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.enable_inplace = inplace
                 prog = fluid.CompiledProgram(
-                    fluid.default_main_program()
-                ).with_data_parallel(
-                    build_strategy=build_strategy, places=place
+                    fluid.default_main_program(), build_strategy=build_strategy
                 )
 
                 fetch_list = [z_d.name, s_d.name]

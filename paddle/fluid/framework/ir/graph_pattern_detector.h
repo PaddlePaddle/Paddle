@@ -1402,7 +1402,7 @@ struct QuantConv : public PatternBase {
   QuantConv(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "quant_conv") {}
 
-  PDNode* operator()();
+  PDNode* operator()(const std::string& conv_type);
 
   PATTERN_DECL_NODE(quant_in);
   PATTERN_DECL_NODE(quant_op);
@@ -1759,7 +1759,7 @@ struct DeleteDropoutOpPattern : public PatternBase {
   DeleteDropoutOpPattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "delete_dropout_op_pattern") {}
 
-  void operator()();
+  void operator()(bool with_mask);
 
   PATTERN_DECL_NODE(dropout_op_x);
   PATTERN_DECL_NODE(dropout_op);
@@ -1925,7 +1925,6 @@ struct FusionGru : public PatternBase {
 struct FusionLSTM : public PatternBase {
   FusionLSTM(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fusion_lstm") {}
-  // TODO(lidanqing): Is it enough to detect fusion_lstm with these things
   PDNode* operator()();
 
   // declare op

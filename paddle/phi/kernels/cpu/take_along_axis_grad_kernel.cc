@@ -30,7 +30,7 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
                              int axis,
                              DenseTensor* x_grad) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
       true,
       errors::PreconditionNotMet("This kernel only runs on CPU."));
 

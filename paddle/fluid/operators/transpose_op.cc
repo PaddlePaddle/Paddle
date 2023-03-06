@@ -33,17 +33,8 @@ void TransposeOp::InferShape(framework::InferShapeContext *ctx) const {
   size_t x_rank = x_dims.size();
   size_t axis_size = axis.size();
 
-  // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
-  // axis_size
-  PADDLE_ENFORCE_GE(x_rank,
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "The input tensor's dimension "
-                        "should be equal to or greater than the axis's size. "
-                        "But received input tensor's dimension is %d, "
-                        "axis's size is %d",
-                        x_rank,
-                        axis_size));
+  int x_rank = x_dims.size();
+  int axis_size = axis.size();
 
   std::vector<int> count(axis_size, 0);
   for (size_t i = 0; i < axis_size; i++) {
@@ -55,21 +46,39 @@ void TransposeOp::InferShape(framework::InferShapeContext *ctx) const {
                           axis[i],
                           i));
 
-    PADDLE_ENFORCE_EQ(
-        axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
-        true,
-        phi::errors::InvalidArgument(
-            "Each element of Attribute axis should "
-            "be a unique value range from 0 to (dims - 1), "
-            "where the dims is the axis's size, "
-            "unique value means this axis value can appear only once. "
-            "But received axis[%d] is %d, axis_size is %d, "
-            "count[axis[%d]] is %d",
-            i,
-            axis[i],
-            axis_size,
-            i,
-            count[axis[i]]));
+    std::vector<int> formated_axis = axis;
+    std::vector<int> count(axis_size, 0);
+    for (int i = 0; i < axis_size; i++) {
+      PADDLE_ENFORCE_LT(axis[i],
+                        axis_size,
+                        platform::errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [ -dimension(X), dimension(X) ) "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i,
+                            axis_size,
+                            axis[i]));
+      PADDLE_ENFORCE_GE(axis[i],
+                        -axis_size,
+                        platform::errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [ -dimension(X), dimension(X) )  "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i,
+                            axis_size,
+                            axis[i]));
+
+      if (axis[i] < 0) {
+        formated_axis[i] = axis[i] + axis_size;
+      }
+      PADDLE_ENFORCE_EQ(++count[formated_axis[i]],
+                        1,
+                        platform::errors::InvalidArgument(
+                            "Each element of axis should be unique. but "
+                            "axis[%d] is %d appear not only once",
+                            i,
+                            axis[i]));
+    }
   }
 
   framework::DDim out_dims(x_dims);
@@ -87,7 +96,7 @@ void TransposeOp::InferShape(framework::InferShapeContext *ctx) const {
   }
 #endif
   for (size_t i = 0; i < axis_size; i++) {
-    out_dims[i] = x_dims[axis[i]];
+    out_dims[i] = x_dims[formated_axis[i]];
   }
   ctx->SetOutputDim("Out", out_dims);
 }
@@ -241,6 +250,25 @@ class Transpose2GradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class Transpose2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::experimental::Tensor xshape =
+        this->GetSingleForwardOutput("XShape");
+    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::experimental::Tensor dx = this->GetSingleInputGrad("X");
+    auto *dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    std::vector<int> axis =
+        static_cast<std::vector<int>>(this->Attr<std::vector<int>>("axis"));
+    VLOG(6) << "Runing transpose2_grad composite func";
+    prim::transpose_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
+    this->RecoverOutputName(dx, dx_name);
+  }
+};
+
 template <typename T>
 class Transpose2DoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -306,7 +334,8 @@ REGISTER_OPERATOR(transpose2,
                   ops::Transpose2Op,
                   ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
-                  ops::Transpose2GradMaker<paddle::imperative::OpBase>);
+                  ops::Transpose2GradMaker<paddle::imperative::OpBase>,
+                  ops::Transpose2CompositeGradOpMaker);
 REGISTER_OPERATOR(transpose2_grad,
                   ops::Transpose2OpGrad,
                   ops::TransposeGradInferVarType,
