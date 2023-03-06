@@ -354,6 +354,8 @@ class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
+        self.prim_op_type = "prim"
+
         self.init_data_type()
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.data_type)}
         self.outputs = {'Out': self.inputs['X'].prod(axis=0)}
@@ -367,16 +369,20 @@ class TestProdOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
 class TestProdOp_ZeroDim(OpTest):
     def setUp(self):
         self.python_api = paddle.prod
         self.op_type = "reduce_prod"
+        self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random([]).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].prod()}
         self.attrs = {'dim': [], 'reduce_all': True}
+        # reduce doesn't support float64 in cinn.
+        # 0-D tensor doesn't support in cinn
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -389,6 +395,7 @@ class TestProd6DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
+        self.prim_op_type = "prim"
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((5, 6, 2, 3, 4, 2)).astype(self.data_type)
@@ -407,13 +414,14 @@ class TestProd6DOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
 class TestProd8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
+        self.prim_op_type = "prim"
         self.init_data_type()
         self.inputs = {
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype(
@@ -434,7 +442,7 @@ class TestProd8DOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
 class TestAllOp(OpTest):

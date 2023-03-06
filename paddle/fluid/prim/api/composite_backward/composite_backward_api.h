@@ -835,7 +835,7 @@ void prod_grad(const Tensor& x,
       x_grad_tmp = out_grad.expand(IntArray(x_dim));
       out_tmp = out.expand(IntArray(x_dim));
     } else {
-      if (!keepdim) {
+      if (!keep_dim) {
         auto axis_ = std::vector<int64_t>();
         if (reduce_all) {
           for (int64_t i = 1; i < x_dim_size; i++) {
