@@ -33,7 +33,7 @@ struct isa_impl<
 ///
 /// \brief The template function actually called by isa.
 ///
-template <typename Target, typename From>
+template <typename Target, typename From, typename Enable = void>
 struct isa_wrap {
   static inline bool call(const From &Val) {
     return isa_impl<Target, From>::call(Val);
@@ -52,42 +52,17 @@ struct isa_wrap<Target, const From> {
 };
 
 template <typename Target, typename From>
-struct isa_wrap<Target, From *> {
-  static inline bool call(const From *Val) {
+struct isa_wrap<
+    Target,
+    From,
+    typename std::enable_if_t<std::is_pointer<std::decay_t<From>>::value>> {
+  static inline bool call(
+      std::remove_pointer_t<std::decay_t<From>> const *Val) {
     if (Val == nullptr) {
       throw("isa<> used on a null pointer");
     }
-    return isa_impl<Target, From>::call(*Val);
-  }
-};
-
-template <typename Target, typename From>
-struct isa_wrap<Target, From *const> {
-  static inline bool call(const From *Val) {
-    if (Val == nullptr) {
-      throw("isa<> used on a null pointer");
-    }
-    return isa_impl<Target, From>::call(*Val);
-  }
-};
-
-template <typename Target, typename From>
-struct isa_wrap<Target, const From *> {
-  static inline bool call(const From *Val) {
-    if (Val == nullptr) {
-      throw("isa<> used on a null pointer");
-    }
-    return isa_impl<Target, From>::call(*Val);
-  }
-};
-
-template <typename Target, typename From>
-struct isa_wrap<Target, const From *const> {
-  static inline bool call(const From *Val) {
-    if (Val == nullptr) {
-      throw("isa<> used on a null pointer");
-    }
-    return isa_impl<Target, From>::call(*Val);
+    return isa_impl<Target, std::remove_pointer_t<std::decay_t<From>>>::call(
+        *Val);
   }
 };
 
