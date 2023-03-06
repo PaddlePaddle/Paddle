@@ -31,56 +31,43 @@ __global__ void SetValueCudaKernel(const T value,
   CUDA_KERNEL_LOOP_TYPE(index, length, int64_t) { data[index] = value; }
 }
 
-template <typename T>
-__global__ void SumCooCudaKernel(const int64_t* x_indices_data,
-                                 const T* x_values_data,
-                                 const std::size_t n_dim,
-                                 const int64_t x_nnz,
-                                 int64_t* out_indices_data,
-                                 T* out_values_data) {
-  CUDA_KERNEL_LOOP_TYPE(index, x_nnz * n_dim, int64_t) {}
-}
-//
 // template <typename T>
-// __global__ void SumCsr2DCudaKernel(const int64_t *x_crows_data,
-//                                   const int64_t *x_cols_data,
-//                                   const T *x_values_data,
-//                                   const int *perm,
-//                                   const int64_t *x_dims,
-//                                   const int64_t *out_dims,
-//                                   const int64_t x_nnz,
-//                                   int64_t *out_crows_data,
-//                                   int64_t *out_cols_data,
-//                                   T *out_values_data) {
-//  int64_t __index__ =
-//      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-//  // compute out_crows_data by x_cols_data
-//  for (int64_t i = __index__; i <= out_dims[0]; i += blockDim.x * gridDim.x) {
-//    out_crows_data[i] = 0;
-//  }
-//  __syncthreads();
-//  if (__index__ == 0) {
-//    for (int64_t i = 0; i < x_nnz; ++i) {
-//      int j = x_cols_data[i];
-//      out_crows_data[j + 2]++;
-//    }
-//    for (int64_t i = 0; i < out_dims[0]; i += 1) {
-//      out_crows_data[i + 1] += out_crows_data[i];
-//    }
-//    // compute out_cols_data and out_values_data by out_crows_data and x
-//    for (int i = 0; i < x_dims[0]; ++i) {
-//      int64_t start = x_crows_data[i];
-//      int64_t end = x_crows_data[i + 1];
-//      for (int64_t j = start; j < end; ++j) {
-//        int64_t x_cols_j = x_cols_data[j] + 1;
-//        int64_t jjj = out_crows_data[x_cols_j];
-//        out_cols_data[jjj] = i;
-//        out_values_data[jjj] = x_values_data[j];
-//        out_crows_data[x_cols_j]++;
-//      }
-//    }
-//  }
-//}
+// __global__ void SumCooCudaKernel(const int64_t* x_indices_data,
+//                                  const T* x_values_data,
+//                                  const std::size_t n_dim,
+//                                  const int64_t x_nnz,
+//                                  int64_t* out_indices_data,
+//                                  T* out_values_data) {
+//   CUDA_KERNEL_LOOP_TYPE(index, x_nnz * n_dim, int64_t) {}
+// }
+
+__global__ void SumAllCsr2DCudaKernel(int64_t* out_crows_data,
+                                      int64_t* out_cols_data) {
+  CUDA_KERNEL_LOOP_TYPE(index, 2, int64_t) {
+    out_crows_data[index] = index;
+    if (index == 0) {
+      out_cols_data[0] = 0;
+    }
+  }
+}
+
+template <typename T>
+__global__ void SumCsr2DCudaKernel(const int64_t* x_crows_data,
+                                   const T* x_values_data,
+                                   const int x_dim0,
+                                   int64_t* out_crows_data,
+                                   int64_t* out_cols_data,
+                                   T* out_values_data) {
+  CUDA_KERNEL_LOOP_TYPE(index, x_dim0, int64_t) {
+    out_crows_data[index] = index;
+    out_cols_data[index] = 0;
+    T sum_value = 0;
+    for (auto j = x_crows_data[index]; j < x_crows_data[index + 1]; ++j) {
+      sum_value += x_values_data[j];
+    }
+    out_values_data[index] = sum_value;
+  }
+}
 //
 // template <typename T>
 // __global__ void SumCsr3DCudaKernel(const int64_t *x_crows_data,
@@ -167,9 +154,9 @@ void SumCooKernel(const Context& dev_ctx,
                   SparseCooTensor* out) {
   size_t n_dim = axis.size();
   // create out sparse tensor
-  const DDim& x_dims = x.dims();
-  const DenseTensor& x_indices = x.indices();
-  const DenseTensor& x_values = x.values();
+  const auto& x_dims = x.dims();
+  const auto& x_indices = x.indices();
+  const auto& x_values = x.values();
   DDim out_dims;
   DenseTensor out_indices;
   DenseTensor out_values;
@@ -271,13 +258,13 @@ void SumCooKernel(const Context& dev_ctx,
   //  auto *out_indices_data = out_indices.data<int64_t>();
   //  int *d_perm;
   // #ifdef PADDLE_WITH_HIP
-  //  hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-  //  hipMemcpy(
+  //  hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) *
+  //  perm.size()); hipMemcpy(
   //      d_perm, perm.data(), sizeof(int) * perm.size(),
   //      hipMemcpyHostToDevice);
   // #else
-  //  cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-  //  cudaMemcpy(
+  //  cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) *
+  //  perm.size()); cudaMemcpy(
   //      d_perm, perm.data(), sizeof(int) * perm.size(),
   //      cudaMemcpyHostToDevice);
   // #endif
@@ -298,58 +285,78 @@ void SumCsrKernel(const Context& dev_ctx,
                   bool keep_dim,
                   SparseCsrTensor* out) {
   size_t n_dim = axis.size();
-  const DenseTensor& x_crows = x.crows();
-  const DenseTensor& x_values = x.values();
+  const auto& x_crows = x.crows();
+  const auto& x_values = x.values();
   const auto* x_crows_data = x_crows.data<int64_t>();
-  const T* x_values_data = x_values.data<T>();
+  const auto* x_values_data = x_values.data<T>();
 
   DenseTensor out_crows, out_cols, out_values;
   DDim out_dims;
   if (n_dim == 0) {
-    // TODO(zrr1999)
     out_dims = make_ddim({1, 1});
     out_crows = Empty<int64_t, Context>(dev_ctx, {2});  // crows = [0, 1]
+    out_cols = Empty<int64_t, Context>(dev_ctx, {1});   // crows = [0]
     auto* out_crows_data = out_crows.data<int64_t>();
-    out_crows_data[0] = 0;
-    out_crows_data[1] = 1;
-
-    out_cols = Empty<int64_t, Context>(dev_ctx, {1});  // crows = [0]
     auto* out_cols_data = out_cols.data<int64_t>();
-    out_cols_data[0] = 0;
+
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, 2, 1);
+    SumAllCsr2DCudaKernel<<<config.block_per_grid.x,
+                            config.thread_per_block.x,
+                            0,
+                            dev_ctx.stream()>>>(out_crows_data, out_cols_data);
 
     out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, true);
   } else {
-    // TODO(zrr1999)
     PADDLE_ENFORCE_EQ(axis[0],
                       -1,
                       phi::errors::Unimplemented(
                           "`axis` of SumCsrKernel only support None or -1 now."
                           "More number will be supported in the future."));
-    out_dims = make_ddim({x.dims()[0], 1});
     out_crows = EmptyLike<int64_t, Context>(dev_ctx, x.crows());
-
-    std::vector<T> out_data;
+    out_cols = Empty<int64_t, Context>(dev_ctx, {x.dims()[0]});
+    out_values = Empty<T, Context>(dev_ctx, {x.dims()[0]});
     auto* out_crows_data = out_crows.data<int64_t>();
-    out_crows_data[0] = 0;
-    for (int i = 0; i < x.dims()[0]; ++i) {
-      if (x_crows_data[i] != x_crows_data[i + 1]) {
-        T sum_value(0);
-        for (auto j = x_crows_data[i]; j < x_crows_data[i + 1]; ++j) {
-          sum_value += x_values_data[j];
-        }
-        out_crows_data[i + 1] = out_crows_data[i] + 1;
-        out_data.push_back(sum_value);
-      } else {
-        out_crows_data[i + 1] = out_crows_data[i];
-      }
-    }
-
-    out_cols =
-        Empty<int64_t, Context>(dev_ctx, {static_cast<int>(out_data.size())});
-    out_values =
-        Empty<T, Context>(dev_ctx, {static_cast<int>(out_data.size())});
     auto* out_cols_data = out_cols.data<int64_t>();
-    T* out_values_data = out_values.data<T>();
+    auto* out_values_data = out_values.data<T>();
+
+    if (x.dims().size() == 2) {
+      out_dims = make_ddim({x.dims()[0], 1});
+      auto config =
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.dims()[0], 1);
+      SumCsr2DCudaKernel<T><<<config.block_per_grid.x,
+                              config.thread_per_block.x,
+                              0,
+                              dev_ctx.stream()>>>(x_crows_data,
+                                                  x_values_data,
+                                                  x.dims()[0],
+                                                  out_crows_data,
+                                                  out_cols_data,
+                                                  out_values_data);
+
+    } else {
+      // TODO(zrr1999)
+      //      out_dims = make_ddim({x.dims()[0], x.dims()[1], 1});
+      //      int j = 0;
+      //      for (int batch = 0; batch < x.dims()[0]; ++batch) {
+      //        auto* cur_x_crows_data = x_crows_data + batch * x.dims()[2];
+      //        auto* cur_out_crows_data = out_crows_data + batch * x.dims()[2];
+      //        for (int i = 0; i < x.dims()[1]; ++i) {
+      //          cur_out_crows_data[0] = 0;
+      //          if (cur_x_crows_data[i] != cur_x_crows_data[i + 1]) {
+      //            T sum_value = 0;
+      //            for (auto k = cur_x_crows_data[i]; k < cur_x_crows_data[i +
+      //            1];
+      //                 ++k) {
+      //              sum_value += x_values_data[j++];
+      //            }
+      //            out_data.emplace_back(sum_value);
+      //            cur_out_crows_data[i + 1] = cur_out_crows_data[i] + 1;
+      //          } else {
+      //            cur_out_crows_data[i + 1] = cur_out_crows_data[i];
+      //          }
+      //        }
+      //      }
+    }
     for (size_t i = 0; i < out_data.size(); ++i) {
       out_cols_data[i] = 0;
       out_values_data[i] = out_data[i];
