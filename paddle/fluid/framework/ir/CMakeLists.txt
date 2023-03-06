@@ -483,12 +483,4 @@ if(WITH_MKLDNN)
     test_cpu_bfloat16_pass
     SRCS mkldnn/cpu_bfloat16_pass_tester.cc
     DEPS cpu_bfloat16_pass)
-  cc_test(
-    test_multi_gru_fuse_pass
-    SRCS mkldnn/multi_gru_fuse_pass_tester.cc
-    DEPS multi_gru_fuse_pass)
-  cc_test(
-    test_multi_gru_seq_fuse_pass
-    SRCS mkldnn/multi_gru_seq_fuse_pass_tester.cc
-    DEPS multi_gru_seq_fuse_pass)
 endif()

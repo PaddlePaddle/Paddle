@@ -131,7 +131,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   runtime_context.outputs["Out"] = {scope_->Var(new_var_name)};
 
   if (!static_build) {
-    InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
+    RuntimeInferShapeContext infer_shape_ctx(*op, runtime_context);
     op->Info().infer_shape_(&infer_shape_ctx);
   }
 

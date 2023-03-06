@@ -159,7 +159,6 @@ cc_library(
        cudnn_workspace_helper
        ${XPU_CTX_DEPS}
        ${MLU_CTX_DEPS}
-       eigen3
        phi_backends
        phi_device_context
        generator)

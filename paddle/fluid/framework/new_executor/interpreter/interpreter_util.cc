@@ -833,8 +833,7 @@ void BuildOpFuncList(const platform::Place& place,
           // see kAllKernelsMustComputeRuntimeShape in operator.h for why
           if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
                 op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
-            InterpretercoreInferShapeContext infer_shape_ctx(*op,
-                                                             runtime_context);
+            RuntimeInferShapeContext infer_shape_ctx(*op, runtime_context);
             // TODO(Aurelius84): In case of control flow ops, they are NOT
             // inheritted from OperatorWithKernel.
             op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
@@ -1138,7 +1137,7 @@ void FakeInitializeOutputsForFunctionKernel(
             OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
                 std::string(kernel_sig.name))) {
           VLOG(4) << "Get dtype result from InferMeta";
-          InterpretercoreInferShapeContext infer_shape_ctx(op, runtime_ctx);
+          RuntimeInferShapeContext infer_shape_ctx(op, runtime_ctx);
           dynamic_cast<const framework::OperatorWithKernel*>(&op)
               ->Info()
               .infer_shape_(&infer_shape_ctx);
