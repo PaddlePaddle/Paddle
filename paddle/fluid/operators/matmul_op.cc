@@ -560,8 +560,8 @@ class MatMulOp : public framework::OperatorWithKernel {
     auto dim_y = context->GetInputDim("Y");
 
 #ifdef PADDLE_WITH_MKLDNN
-    // (jczaja): For NHWC execution output shape needs
-    // to be computed like instead x*y we are to do y*x
+    // For NHWC execution output shape needs to be
+    // computed like instead x*y we are to do y*x
     bool channelwise_onednn =
         context->IsRunMKLDNNKernel() &&
         (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==

@@ -151,7 +151,7 @@ void ComputeRowImpl(const Context& dev_ctx,
                                      ? skip_update->data<bool>()
                                      : nullptr;
   if (skip_update_flag &&
-      paddle::platform::is_cpu_place(skip_update->place()) &&
+      skip_update->place().GetType() == phi::AllocationType::CPU &&
       (*skip_update_flag)) {
     return;
   }
@@ -224,7 +224,7 @@ void ComputeRowImpl(const Context& dev_ctx,
   phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
-  if (paddle::platform::is_gpu_place(dev_ctx.GetPlace()) &&
+  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU &&
       beta1_pow.place() == phi::CPUPlace() &&
       beta2_pow.place() == phi::CPUPlace()) {
     SparseLambMomentREGUpdateFunctor<T> moment_update_functor(

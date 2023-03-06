@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/operator_scale_onednn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -86,17 +87,8 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
       scale = *(scale_tensor->data<float>());
     }
 
-    if (op_type == "matmul") {
-      operator_op->Op()->SetType("fused_matmul");
-      operator_op->Op()->SetAttr("trans_x",
-                                 operator_op->Op()->GetAttr("transpose_X"));
-      operator_op->Op()->SetAttr("trans_y",
-                                 operator_op->Op()->GetAttr("transpose_Y"));
-      operator_op->Op()->SetAttr("matmul_alpha",
-                                 operator_op->Op()->GetAttr("alpha"));
-    }
-    if (op_type == "matmul_v2") {
-      operator_op->Op()->SetType("fused_matmul");
+    if (op_type == "matmul" || op_type == "matmul_v2") {
+      ConvertToFusedOp(operator_op->Op());
     }
 
     operator_op->Op()->SetAttr("fused_output_scale", scale);

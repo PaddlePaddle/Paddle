@@ -135,6 +135,16 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
               << " is diabled by config in TensorRT";
       return false;
     }
+    for (const auto &out_var : node->Op()->OutputNames()) {
+      for (const auto &var_name : node->Op()->Output(out_var)) {
+        if (find(trt_disabled_ops.begin(), trt_disabled_ops.end(), var_name) !=
+            trt_disabled_ops.end()) {
+          VLOG(3) << node->Op()->Type().c_str()
+                  << " is diabled by config in TensorRT";
+          return false;
+        }
+      }
+    }
     bool is_ok = tensorrt::OpTeller::Global().Tell(
         node, no_calib_int8, with_dynamic_shape);
     if (!is_ok)
@@ -580,11 +590,20 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
         Get<std::string>("model_opt_cache_dir"), engine_key);
     // we can load the engine info serialized before from the disk.
     if (!trt_engine_serialized_data.empty()) {
-      trt_engine->Deserialize(trt_engine_serialized_data);
-      LOG(INFO) << "Load TRT Optimized Info from "
-                << GetTrtEngineSerializedPath(
-                       Get<std::string>("model_opt_cache_dir"), engine_key);
-      return;
+      try {
+        trt_engine->Deserialize(trt_engine_serialized_data);
+        LOG(INFO) << "Load TRT Optimized Info from "
+                  << GetTrtEngineSerializedPath(
+                         Get<std::string>("model_opt_cache_dir"), engine_key);
+        return;
+      } catch (const std::exception &exp) {
+        LOG(WARNING)
+            << "Fail to load TRT Optimized Info from "
+            << GetTrtEngineSerializedPath(
+                   Get<std::string>("model_opt_cache_dir"), engine_key)
+            << ". Engine deserialization failed: Serialized Engine Version "
+               "does not match Current Version, TRT engine will be rebuilded";
+      }
     }
   }
 

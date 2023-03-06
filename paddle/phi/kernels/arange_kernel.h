@@ -25,4 +25,11 @@ void ArangeKernel(const Context& dev_ctx,
                   const DenseTensor& step,
                   DenseTensor* out);
 
+template <typename T, typename Context>
+void ArangeNullaryKernel(const Context& dev_ctx,
+                         const T start,
+                         const T end,
+                         const T step,
+                         DenseTensor* out);
+
 }  // namespace phi

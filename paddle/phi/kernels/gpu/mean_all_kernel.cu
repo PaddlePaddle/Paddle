@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/mean_all_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
@@ -33,7 +33,7 @@ void MeanAllKernel(const Context& dev_ctx,
   auto stream = dev_ctx.stream();
 
   if (rank == 0) {  // scalar
-    paddle::memory::Copy(
+    memory_utils::Copy(
         place, out_data, place, in_data, numel * sizeof(T), stream);
     return;
   }
