@@ -196,8 +196,12 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
+#include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/include/operants_manager.h"
+#include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
@@ -677,6 +681,10 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
   m.def("__set_all_prim_enabled",
         &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
+  m.def("_is_eager_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsEagerPrimEnabled);
+  m.def("__set_eager_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetEagerPrimEnabled);
   m.def("_set_prim_target_grad_name",
         &paddle::prim::PrimCommonUtils::SetTargetGradName);
   m.def("set_num_threads", &platform::SetNumThreads);
@@ -1911,6 +1919,15 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
+  m.def("init_tensor_operants", []() {
+    paddle::OperantsManager::Instance().eager_operants.reset(
+        new paddle::prim::EagerTensorOperants());
+    paddle::OperantsManager::Instance().static_operants.reset(
+        new paddle::prim::StaticTensorOperants());
+    paddle::OperantsManager::Instance().phi_operants.reset(
+        new paddle::operants::PhiTensorOperants());
+    VLOG(4) << "Initialize tensor operants successfully";
+  });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
@@ -2509,10 +2526,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_op_info_recorder", &phi::DisableOpInfoRecorder);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
-  m.def("get_cublas_switch", platform::AllowTF32Cublas);
-  m.def("set_cudnn_switch", platform::SetAllowTF32Cudnn);
-  m.def("get_cudnn_switch", platform::AllowTF32Cudnn);
+  m.def("set_cublas_switch", phi::SetAllowTF32Cublas);
+  m.def("get_cublas_switch", phi::AllowTF32Cublas);
+  m.def("set_cudnn_switch", phi::SetAllowTF32Cudnn);
+  m.def("get_cudnn_switch", phi::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
   m.def("clear_executor_cache", []() {
     pybind11::gil_scoped_release release;

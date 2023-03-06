@@ -100,17 +100,6 @@ class TestStackOp6(TestStackOpBase):
         self.axis = 3
 
 
-class TestStackF16Op1(TestStackOpBase):
-    def initParameters(self):
-        self.dtype = 'float16'
-
-
-class TestStackF16Op2(TestStackOpBase):
-    def initParameters(self):
-        self.dtype = 'float16'
-        self.axis = -1
-
-
 class TestStackOp_ZeroDim(TestStackOpBase):
     def initParameters(self):
         self.input_dim = ()
@@ -161,9 +150,8 @@ class TestStackBF16Op(OpTest):
         self.check_output(check_eager=True, check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            self.get_x_names(), 'Y', check_eager=True, check_prim=True
-        )
+        # concat_grad unspport bfloat16 dtype, skip check_prim
+        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
 
 
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):

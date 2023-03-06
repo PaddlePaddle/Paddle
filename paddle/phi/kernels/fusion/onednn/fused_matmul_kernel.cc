@@ -14,7 +14,7 @@
 
 #include <string>
 
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/backends/onednn/matmul_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
@@ -113,7 +113,8 @@ class FusedMatmulOneDNNHandler
 
     // TODO(jczaja): Why not for int8??
     if (!funcs::is_int8<OT>() && is_output_fused) {
-      out_strides = FakeTransposeStrides(out_ddims);
+      std::vector<int> transpose_axis = {0, 2, 1, 3};
+      out_strides = phi::funcs::FakeTransposeStrides(out_ddims, transpose_axis);
     }
 
     auto x_md = memory::desc(x_dims, funcs::OneDNNGetDataType<XT>(), x_strides);
@@ -198,24 +199,6 @@ class FusedMatmulOneDNNHandler
     return matmul_attrs;
   }
 
-  std::vector<int64_t> FakeTransposeStrides(
-      const std::vector<int64_t> &matmul_out_dims) const {
-    // fuse matmul_v2 + transpose + reshape guarantees that output is 4D and
-    // transpose axis are: {0, 2, 1, 3}
-    std::vector<int64_t> transpose_axis = {0, 2, 1, 3};
-    std::vector<int64_t> fake_strides(transpose_axis.size());
-    int ndims = static_cast<int>(transpose_axis.size());
-
-    int total_stride = 1;
-
-    for (int i = ndims - 1; i >= 0; --i) {
-      fake_strides[transpose_axis[i]] = total_stride;
-      total_stride *= matmul_out_dims[transpose_axis[i]];
-    }
-
-    return fake_strides;
-  }
-
   std::shared_ptr<memory> AcquireWeightsMemory(const DenseTensor *input) {
     const YT *input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(
@@ -235,80 +218,6 @@ class FusedMatmulOneDNNHandler
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
-
-static DDim RowMatrixDimsFromVector(const DDim &x_dim) {
-  return x_dim.size() > 1 ? x_dim : make_ddim({1, x_dim[0]});
-}
-
-static DDim ColumnMatrixDimsFromVector(const DDim &y_dim) {
-  return y_dim.size() > 1 ? y_dim : make_ddim({y_dim[0], 1});
-}
-
-static std::vector<int64_t> TransposeAxis(const std::vector<int64_t> &x,
-                                          const std::vector<int> &axis) {
-  size_t in_rank = x.size();
-  size_t axis_size = axis.size();
-
-  auto axis_set = std::set<int>(axis.begin(), axis.end());
-  PADDLE_ENFORCE_EQ(axis_set.size(),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "In an axis array, elements must be unique."));
-
-  PADDLE_ENFORCE_EQ(
-      in_rank,
-      axis_size,
-      phi::errors::InvalidArgument("The input dimension's size "
-                                   "should be equal to the axis's size. "
-                                   "But received dimension is %d, "
-                                   "axis's size is %d",
-                                   in_rank,
-                                   axis_size));
-
-  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()),
-                    axis_size,
-                    phi::errors::InvalidArgument(
-                        "Axis values must be ranging from 0 to (dims - 1)."));
-
-  std::vector<int64_t> new_x(x.size());
-  for (size_t i = 0; i < x.size(); i++) {
-    new_x[i] = x[axis[i]];
-  }
-  return new_x;
-}
-
-static std::vector<int64_t> GetInputStrides(const std::string input_name,
-                                            const DDim &input_dims,
-                                            std::vector<int> shape,
-                                            std::vector<int> axis,
-                                            const bool transpose_input) {
-  auto new_dims = input_dims;
-  if (!shape.empty() && !axis.empty()) {
-    new_dims = input_dims.reshape(shape).transpose(axis);
-  }
-
-  auto &MatrixDimsFromVector =
-      input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
-  funcs::MatDescriptor mat_dim = funcs::CreateMatrixDescriptor(
-      MatrixDimsFromVector(new_dims), 0, transpose_input);
-
-  std::vector<int64_t> strides;
-  if (!shape.empty()) {
-    auto shape2 = input_dims.reshape(shape);
-    strides.push_back(1);
-    for (auto i = shape2.size() - 1; i > 0; --i) {
-      strides.insert(strides.begin(),
-                     strides.front() * static_cast<int64_t>(shape2[i]));
-    }
-    strides = TransposeAxis(strides, axis);
-    if (shape.size() == 2)
-      strides.insert(strides.begin(),
-                     static_cast<int64_t>(shape[0] * shape[1]));
-    mat_dim.stride_ = strides[0];
-    if (mat_dim.trans_) std::swap(*strides.rbegin(), *(++strides.rbegin()));
-  }
-  return strides;
-}
 
 template <typename T, typename T_out>
 void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
@@ -492,10 +401,10 @@ void FusedMatmulKernel(const Context &dev_ctx,
   auto is_output_fused =
       !fused_reshape_Out.empty() && !fused_transpose_Out.empty();
 
-  auto x_strides_override = GetInputStrides(
-      "X", x.dims(), fused_reshape_X, fused_transpose_X, transpose_x);
-  auto y_strides_override = GetInputStrides(
-      "Y", y.dims(), fused_reshape_Y, fused_transpose_Y, transpose_y);
+  auto x_strides_override = funcs::GetInputStrides(
+      "X", x.dims(), transpose_x, fused_reshape_X, fused_transpose_X);
+  auto y_strides_override = funcs::GetInputStrides(
+      "Y", y.dims(), transpose_y, fused_reshape_Y, fused_transpose_Y);
 
   int ndims = std::max(x_dims.size(), y_dims.size());
   ndims = std::max(ndims, 3);

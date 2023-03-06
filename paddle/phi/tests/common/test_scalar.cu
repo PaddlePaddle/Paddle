@@ -17,7 +17,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"

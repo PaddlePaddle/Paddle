@@ -36,9 +36,8 @@ static int BuildFusion(Graph* graph,
                   ->assert_is_op_input("lookup_table_v2")
                   ->assert_var_not_persistable();
   patterns::Embedding embedding_pattern(pattern, name_scope);
-  // TODO(jczaja): Intermediate can only be for val that are not used anywhere
-  //               but lookup table output may go into other LSTM (for reverse
-  //               direction)
+  // Intermediate can only be for val that are not used anywhere but
+  // lookup table output may go into other LSTM (for reverse direction)
   auto* embedding_out = embedding_pattern(x);
   patterns::FC fc_pattern(pattern, name_scope);
 
@@ -227,13 +226,13 @@ static int BuildFusion(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
 
-    // TODO(jczaja): Add support for is_sparse / is_distributed
     auto is_sparse =
         PADDLE_GET_CONST(bool, lookup_table->Op()->GetAttr("is_sparse"));
     auto is_distributed =
         PADDLE_GET_CONST(bool, lookup_table->Op()->GetAttr("is_distributed"));
 
-    if (is_sparse == true || is_distributed == true) {
+    if (is_sparse || is_distributed) {
+      VLOG(4) << "Only dense embedding is supported in oneDNN";
       return;
     }
 
@@ -252,10 +251,7 @@ static int BuildFusion(Graph* graph,
                              Cell,
                              fc_out,
                              fc_bias);
-      // Remove unneeded nodes.
-      // TODO(jczaja): Proper removing of lookup table
       std::unordered_set<const Node*> marked_nodes(
-          // {lookup_table, mul, lstm, elementwise_add, fc_bias, W});
           {mul, lstm, elementwise_add, fc_bias});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
@@ -271,10 +267,6 @@ static int BuildFusion(Graph* graph,
                              Cell,
                              fc_out,
                              nullptr);
-      // Remove unneeded nodes.
-      // TODO(jczaja): Proper removing of lookup table
-      // std::unordered_set<const Node*> marked_nodes({lookup_table, W, mul,
-      // lstm});
       std::unordered_set<const Node*> marked_nodes({mul, lstm});
       GraphSafeRemoveNodes(graph, marked_nodes);
     }

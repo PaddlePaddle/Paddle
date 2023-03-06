@@ -79,6 +79,37 @@ PD_BUILD_GRAD_OP(custom_scalar_add)
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(ScalarAddBackward));
 
+// y = 1 + x
+std::vector<paddle::Tensor> LeftScalarAddForward(const paddle::Tensor& x) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {1 + x};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+// dy / dx = 1 * grad_out
+std::vector<paddle::Tensor> LeftScalarAddBackward(
+    const paddle::Tensor& x,
+    const paddle::Tensor& out,
+    const paddle::Tensor& grad_out) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {1 * grad_out};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_left_scalar_add)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(LeftScalarAddForward));
+
+PD_BUILD_GRAD_OP(custom_left_scalar_add)
+    .Inputs({"X", "Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(LeftScalarAddBackward));
+
 // y = x - 1
 std::vector<paddle::Tensor> SubtractForward(const paddle::Tensor& x) {
   if (x.is_cpu() || x.is_gpu()) {
@@ -140,6 +171,37 @@ PD_BUILD_GRAD_OP(custom_scalar_subtract)
     .Inputs({"X", "Out", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(ScalarSubtractBackward));
+
+// y = - 1 + x
+std::vector<paddle::Tensor> LeftScalarSubtractForward(const paddle::Tensor& x) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {-1 + x};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+// dy / dx = 1 * grad_out
+std::vector<paddle::Tensor> LeftScalarSubtractBackward(
+    const paddle::Tensor& x,
+    const paddle::Tensor& out,
+    const paddle::Tensor& grad_out) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {1 * grad_out};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_left_scalar_subtract)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(LeftScalarSubtractForward));
+
+PD_BUILD_GRAD_OP(custom_left_scalar_subtract)
+    .Inputs({"X", "Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(LeftScalarSubtractBackward));
 
 // y = x * 5
 std::vector<paddle::Tensor> MultiplyForward(const paddle::Tensor& x) {
@@ -206,6 +268,37 @@ PD_BUILD_GRAD_OP(custom_scalar_multiply)
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(ScalarMultiplyBackward));
 
+// y = 5 * x
+std::vector<paddle::Tensor> LeftScalarMultiplyForward(const paddle::Tensor& x) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {5 * x};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+// dy / dx = 5 * grad_out
+std::vector<paddle::Tensor> LeftScalarMultiplyBackward(
+    const paddle::Tensor& x,
+    const paddle::Tensor& out,
+    const paddle::Tensor& grad_out) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {5 * grad_out};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_left_scalar_multiply)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(LeftScalarMultiplyForward));
+
+PD_BUILD_GRAD_OP(custom_left_scalar_multiply)
+    .Inputs({"X", "Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(LeftScalarMultiplyBackward));
+
 // y = 1 / x
 std::vector<paddle::Tensor> DivideForward(const paddle::Tensor& x) {
   if (x.is_cpu() || x.is_gpu()) {
@@ -270,3 +363,93 @@ PD_BUILD_GRAD_OP(custom_scalar_divide)
     .Inputs({"X", "Out", paddle::Grad("Out")})
     .Outputs({paddle::Grad("X")})
     .SetKernelFn(PD_KERNEL(ScalarDivideBackward));
+
+// y = 1 / x
+std::vector<paddle::Tensor> LeftScalarDivideForward(const paddle::Tensor& x) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {1 / x};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+// dy / dx = -grad_out / (x * x)
+std::vector<paddle::Tensor> LeftScalarDivideBackward(
+    const paddle::Tensor& x,
+    const paddle::Tensor& out,
+    const paddle::Tensor& grad_out) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {-grad_out / (x * x)};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_left_scalar_divide)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(LeftScalarDivideForward));
+
+PD_BUILD_GRAD_OP(custom_left_scalar_divide)
+    .Inputs({"X", "Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(LeftScalarDivideBackward));
+
+// out = x & y
+std::vector<paddle::Tensor> AndForward(const paddle::Tensor& x,
+                                       const paddle::Tensor& y) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x & y};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_logical_and)
+    .Inputs({"X", "Y"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(AndForward));
+
+// out = x | y
+std::vector<paddle::Tensor> OrForward(const paddle::Tensor& x,
+                                      const paddle::Tensor& y) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x | y};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_logical_or)
+    .Inputs({"X", "Y"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(OrForward));
+
+// out = x ^ y
+std::vector<paddle::Tensor> XorForward(const paddle::Tensor& x,
+                                       const paddle::Tensor& y) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {x ^ y};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_logical_xor)
+    .Inputs({"X", "Y"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(XorForward));
+
+// out = ~x
+std::vector<paddle::Tensor> NotForward(const paddle::Tensor& x) {
+  if (x.is_cpu() || x.is_gpu()) {
+    return {~x};
+  } else {
+    PD_THROW("Not implemented.");
+  }
+}
+
+PD_BUILD_OP(custom_logical_not)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .SetKernelFn(PD_KERNEL(NotForward));

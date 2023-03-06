@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <vector>
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
@@ -36,7 +37,14 @@ Tensor full(const IntArray& shape,
             const Scalar& value,
             DataType dtype = DataType::FLOAT32,
             const Place& place = CPUPlace());
+
+template <typename T>
+std::vector<Tensor> split(const Tensor& x,
+                          const IntArray& sections,
+                          const Scalar& axis);
+
 template <typename T>
 Tensor cast(const Tensor& x, DataType dtype);
+
 }  // namespace prim
 }  // namespace paddle
