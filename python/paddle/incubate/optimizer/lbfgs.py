@@ -236,7 +236,7 @@ class LBFGS(Optimizer):
         with paddle.no_grad():
 
             # Make sure the closure is always called with grad enabled
-            closure = paddle.set_grad_enabled(True)(closure)
+            closure = paddle.enable_grad()(closure)
 
             lr = self.lr
             max_iter = self.max_iter
@@ -376,7 +376,7 @@ class LBFGS(Optimizer):
                     # no line search, simply move with fixed-step
                     self._add_grad(alpha, d)
                     if n_iter != max_iter:
-                        with paddle.set_grad_enabled(True):
+                        with paddle.enable_grad():
                             loss = float(closure())
                         flat_grad = self._gather_flat_grad()
                         opt_cond = flat_grad.abs().max() <= tolerance_grad

@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 
 namespace phi {
 
@@ -36,7 +36,7 @@ void CastKernelImpl(const CPUContext& dev_ctx,
 
   auto* out_begin = dev_ctx.Alloc<OutT>(out);
 
-  paddle::platform::Transform<CPUContext> trans;
+  phi::Transform<CPUContext> trans;
   trans(dev_ctx,
         in_begin,
         in_end,

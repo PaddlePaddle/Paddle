@@ -184,6 +184,34 @@ def init_communicator(
                 'rank_ids': nranks,
             },
         )
+    elif core.is_compiled_with_xpu():
+        bkcl_id_var = block.create_var(
+            name=fluid.unique_name.generate('bkcl_id'),
+            persistable=True,
+            type=fluid.core.VarDesc.VarType.RAW,
+        )
+
+        block.append_op(
+            type='c_gen_bkcl_id',
+            inputs={},
+            outputs={'Out': bkcl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints,
+            },
+        )
+
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': bkcl_id_var},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': 0,
+            },
+        )
 
 
 def prepare_distributed_context(place=None):
@@ -195,7 +223,7 @@ def prepare_distributed_context(place=None):
         )
 
     place = _get_paddle_place(place)
-    strategy = fluid.dygraph.parallel.ParallelStrategy()
+    strategy = paddle.distributed.parallel.ParallelStrategy()
     strategy.nranks = paddle.distributed.ParallelEnv().nranks
     strategy.local_rank = paddle.distributed.ParallelEnv().local_rank
     strategy.trainer_endpoints = (
@@ -753,7 +781,7 @@ class DynamicGraphAdapter:
 
         if self._nranks > 1:
             dist.init_parallel_env()
-            stradegy = fluid.dygraph.parallel.ParallelStrategy()
+            stradegy = paddle.distributed.parallel.ParallelStrategy()
             stradegy.nranks = paddle.distributed.ParallelEnv().nranks
             stradegy.local_rank = paddle.distributed.ParallelEnv().local_rank
             stradegy.trainer_endpoints = (
@@ -762,9 +790,7 @@ class DynamicGraphAdapter:
             stradegy.current_endpoint = (
                 paddle.distributed.ParallelEnv().current_endpoint
             )
-            self.ddp_model = fluid.dygraph.parallel.DataParallel(
-                self.model.network, stradegy
-            )
+            self.ddp_model = paddle.DataParallel(self.model.network, stradegy)
 
     @property
     def mode(self):
