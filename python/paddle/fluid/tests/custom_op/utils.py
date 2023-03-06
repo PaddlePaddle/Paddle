@@ -25,6 +25,7 @@ IS_MAC = sys.platform.startswith('darwin')
 # paddle include directory. Because the following path is generated after installing
 # PaddlePaddle whl. So here we specific `include_dirs` to avoid errors in CI.
 paddle_includes = []
+paddle_libraries = []
 for site_packages_path in getsitepackages():
     paddle_includes.append(
         os.path.join(site_packages_path, 'paddle', 'include')
@@ -32,6 +33,7 @@ for site_packages_path in getsitepackages():
     paddle_includes.append(
         os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
     )
+    paddle_libraries.append(os.path.join(site_packages_path, 'paddle', 'libs'))
 
 # Test for extra compile args
 extra_cc_args = ['-w', '-g'] if not IS_WINDOWS else ['/w']
