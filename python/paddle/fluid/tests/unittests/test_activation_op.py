@@ -2638,11 +2638,22 @@ class TestLog(TestActivation):
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
         in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
-        in3 = paddle.static.data(name='in3', shape=[11, 17], dtype="float16")
 
         self.assertRaises(TypeError, paddle.log, in1)
         self.assertRaises(TypeError, paddle.log, in2)
-        self.assertRaises(TypeError, paddle.log, in3)
+
+
+class Test_Log_Op_Fp16(unittest.TestCase):
+    def test_api_fp16(self):
+        paddle.enable_static()
+        with static.program_guard(paddle.static.Program(), paddle.static.Program()):
+            x = [[2,3,4], [7,8,9]]
+            x = paddle.to_tensor(x, dtype='float16')
+            out = paddle.log(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
 
 
 class TestLog_ZeroDim(TestLog):
@@ -2792,10 +2803,18 @@ class TestLog1p(TestActivation):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=True)
 
-    def test_error(self):
-        input1 = paddle.static.data(name='input1', shape=[11, 17], dtype="float16")
 
-        self.assertRaises(TypeError, paddle.log1p, input1)
+class Test_Log1p_Op_Fp16(unittest.TestCase):
+    def test_api_fp16(self):
+        paddle.enable_static()
+        with static.program_guard(paddle.static.Program(), paddle.static.Program()):
+            x = [[2,3,4], [7,8,9]]
+            x = paddle.to_tensor(x, dtype='float16')
+            out = paddle.log1p(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
 
 
 class TestLog1p_ZeroDim(TestLog1p):
