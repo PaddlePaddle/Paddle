@@ -368,6 +368,7 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/include/tensor_utils.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/binary.h"
@@ -381,6 +382,10 @@ def source_include(header_file_path):
 
 DECLARE_bool(conv2d_disable_cudnn);
 DECLARE_int32(low_precision_op_list);
+DECLARE_bool(api_dump);
+DECLARE_bool(ordered_api_dump);
+
+extern std::atomic<size_t> api_call_count;
 """
 
 

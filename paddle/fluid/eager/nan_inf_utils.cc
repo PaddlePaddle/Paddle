@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -104,6 +105,17 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
 #else
       PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
           "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
+          tensor_name));
+#endif
+      return;
+    }
+    if (paddle::platform::is_xpu_place(place)) {
+#ifdef PADDLE_WITH_XPU
+      paddle::framework::details::tensor_check<phi::XPUContext>(
+          api_name, tensor_name, *dense_tensor, place);
+#else
+      PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+          "Tensor[%s] use xpu place. PaddlePaddle must compile with XPU.",
           tensor_name));
 #endif
       return;

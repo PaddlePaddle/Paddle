@@ -33,5 +33,62 @@ class DefaultAllocator : public phi::Allocator {
   phi::Place place_;
 };
 
+void DumpTensor(const std::string& output_dir,
+                const std::string& kernel_name,
+                const std::string& tensor_name,
+                const std::vector<phi::DenseTensor*>& tensor_vec);
+
+void DumpTensor(const std::string& output_dir,
+                const std::string& kernel_name,
+                const std::string& tensor_name,
+                const std::vector<const phi::DenseTensor*>& tensor_vec);
+
+void DumpTensor(const std::string& output_dir,
+                const std::string& kernel_name,
+                const std::string& tensor_name,
+                const phi::DenseTensor& tensor);
+
+void DumpTensor(const std::string& output_dir,
+                const std::string& kernel_name,
+                const std::string& tensor_name,
+                const phi::SelectedRows& tensor);
+
+void DumpTensor(const std::string& output_dir,
+                const std::string& kernel_name,
+                const std::string& tensor_name,
+                const paddle::optional<phi::DenseTensor>& tensor);
+
+void DumpTensor(const std::string& output_dir,
+                const std::string& kernel_name,
+                const std::string& tensor_name,
+                const paddle::optional<phi::SelectedRows>& tensor);
+
+void DumpTensor(const std::string& output_dir,
+                const std::string& kernel_name,
+                const std::string& tensor_name,
+                const phi::SelectedRows* tensor);
+
+void DumpTensor(const std::string& output_dir,
+                const std::string& kernel_name,
+                const std::string& tensor_name,
+                const std::shared_ptr<phi::SelectedRows>& tensor);
+
+void DumpTensor(
+    const std::string& output_dir,
+    const std::string& kernel_name,
+    const std::string& tensor_name,
+    const paddle::optional<std::vector<const phi::DenseTensor*>>& tensor);
+
+void DumpTensor(const std::string& output_dir,
+                const std::string& kernel_name,
+                const std::string& tensor_name,
+                const phi::DenseTensor* tensor);
+
+void DumpTensor(const std::string& output_dir,
+                const std::string& kernel_name,
+                const std::string& tensor_name,
+                const std::shared_ptr<phi::DenseTensor>& tensor);
+
+bool APINeedsToBeDumped(const std::string& api_name);
 }  // namespace experimental
 }  // namespace paddle

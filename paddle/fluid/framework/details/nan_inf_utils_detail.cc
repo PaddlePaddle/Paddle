@@ -180,6 +180,103 @@ void tensor_check<phi::CPUContext>(const std::string& op_type,
   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
+#ifdef PADDLE_WITH_XPU
+
+template <typename T, typename Dummy = void>
+struct XPUCheckNanOrInfImpl;
+
+template <typename T>
+struct XPUCheckNanOrInfImpl<
+    T,
+    typename std::enable_if<
+        std::is_integral<T>::value ||
+        std::is_same<T, ::paddle::platform::complex<float>>::value ||
+        std::is_same<T, ::paddle::platform::complex<double>>::value ||
+        std::is_same<T, ::paddle::platform::bfloat16>::value ||
+        std::is_same<T, double>::value>::type> {
+  XPUCheckNanOrInfImpl(const std::string& o, const std::string& v)
+      : op_type(o), var_name(v) {}
+
+  bool operator()(const phi::XPUContext&,
+                  const phi::DenseTensor& has_nan_or_inf) const {
+    VLOG(10) << var_name << " need not to check, it's type is not float point";
+    return false;
+  }
+
+  std::string op_type;
+  std::string var_name;
+};
+
+template <typename T>
+struct XPUCheckNanOrInfImpl<
+    T,
+    typename std::enable_if<
+        std::is_same<T, float>::value ||
+        std::is_same<T, ::paddle::platform::float16>::value>::type> {
+  XPUCheckNanOrInfImpl(const std::string& o, const std::string& v)
+      : op_type(o), var_name(v) {}
+
+  bool operator()(const phi::XPUContext& dev_ctx,
+                  const phi::DenseTensor& tensor) const {
+    using XPUType = typename XPUTypeTrait<T>::Type;
+
+    phi::DenseTensor has_nan_or_inf;
+    has_nan_or_inf.Resize({1});
+    dev_ctx.template Alloc<bool>(&has_nan_or_inf);
+    xpu::check_nan_or_inf(dev_ctx.x_context(),
+                          reinterpret_cast<const XPUType*>(tensor.data()),
+                          reinterpret_cast<typename XPUTypeTrait<bool>::Type*>(
+                              has_nan_or_inf.data()),
+                          tensor.numel());
+
+    phi::DenseTensor cpu_tensor;
+    paddle::platform::CPUPlace cpu_place;
+    cpu_tensor.Resize({1});
+    paddle::platform::DeviceContextPool::Instance()
+        .Get(cpu_place)
+        ->template Alloc<bool>(&cpu_tensor);
+    paddle::memory::Copy(cpu_place,
+                         cpu_tensor.data(),
+                         has_nan_or_inf.place(),
+                         has_nan_or_inf.data(),
+                         paddle::experimental::SizeOf(cpu_tensor.dtype()));
+    dev_ctx.Wait();
+    return *cpu_tensor.data<bool>();
+  }
+
+  std::string op_type;
+  std::string var_name;
+};
+
+template <>
+template <typename T>
+void TensorCheckerVisitor<phi::XPUContext>::apply(
+    typename std::enable_if<
+        std::is_floating_point<T>::value ||
+        std::is_same<T, ::paddle::platform::complex<float>>::value ||
+        std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
+    const {
+  XPUCheckNanOrInfImpl<T> check_nan_or_inf_impl(op_type, var_name);
+  auto* dev_ctx = reinterpret_cast<phi::XPUContext*>(
+      platform::DeviceContextPool::Instance().Get(tensor.place()));
+  if (check_nan_or_inf_impl(*dev_ctx, tensor)) {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "There are NAN or INF in %s, %s.", op_type, var_name));
+  }
+}
+
+template <>
+void tensor_check<phi::XPUContext>(const std::string& op_type,
+                                   const std::string& var_name,
+                                   const phi::DenseTensor& tensor,
+                                   const platform::Place& place) {
+  TensorCheckerVisitor<phi::XPUContext> vistor(
+      op_type, var_name, tensor, place);
+  VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
+}
+
+#endif
+
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const std::string& var_name,
                          const framework::Variable* var,

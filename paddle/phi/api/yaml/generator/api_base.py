@@ -1192,6 +1192,81 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
     ):
         return ''
 
+    def gen_dump_input_tensor(self, code_indent):
+        api_name = self.api
+        dump_tensor_list = []
+        for name in self.inputs['names']:
+            if (
+                not self.kernel['param'] is None
+                and name not in self.kernel['param']
+            ):
+                continue
+            if self.inputs['input_info'][name] in ['const Tensor&']:
+                dump_tensor_list.append(
+                    f"{code_indent}    DumpTensor(dump.str(), \"{api_name}\", \"{name}\", input_{name});"
+                )
+            elif self.inputs['input_info'][name] in [
+                'const std::vector<Tensor>&',
+                'const paddle::optional<Tensor&>',
+                'const paddle::optional<Tensor>&',
+                'const paddle::optional<std::vector<Tensor>>&',
+            ]:
+                dump_tensor_list.append(
+                    f"{code_indent}    DumpTensor(dump.str(), \"{api_name}\", \"{name}\", input_{name});"
+                )
+            else:
+                raise NotImplementedError(
+                    'not implement dump tensor of type {}'.format(
+                        self.inputs['input_info'][name]
+                    )
+                )
+        if len(dump_tensor_list) == 0:
+            return ""
+        dump_tensor_str = "\n".join(dump_tensor_list)
+        return f"""{code_indent}  if (FLAGS_api_dump && APINeedsToBeDumped("{api_name}")) {{
+{code_indent}    std::stringstream dump;
+{code_indent}    dump << "dump";
+{code_indent}    if (FLAGS_ordered_api_dump) {{
+{code_indent}      dump << "/" << local_api_call_count;
+{code_indent}    }}
+{code_indent}    dev_ctx->Wait();
+{dump_tensor_str}
+{code_indent}  }}"""
+
+    def gen_dump_output_tensor(self, outputs_args, code_indent):
+        api_name = self.api
+        dump_tensor_list = []
+        for i in range(len(self.outputs['names'])):
+            name = self.outputs['names'][i]
+            if self.outputs['types'][i] in ['Tensor']:
+                dump_tensor_list.append(
+                    f"{code_indent}    DumpTensor(dump.str(), \"{api_name}\", \"{name}\", {outputs_args[i]});"
+                )
+
+            elif self.outputs['types'][i] in ['std::vector<Tensor>']:
+                dump_tensor_list.append(
+                    f"{code_indent}    DumpTensor(dump.str(), \"{api_name}\", \"{name}\", {outputs_args[i]});"
+                )
+
+            else:
+                raise NotImplementedError(
+                    'not implement dump tensor of type {}'.format(
+                        self.outputs['types'][i]
+                    )
+                )
+        if len(dump_tensor_list) == 0:
+            return ""
+        dump_tensor_str = "\n".join(dump_tensor_list)
+        return f"""{code_indent}  if (FLAGS_api_dump && APINeedsToBeDumped("{api_name}")) {{
+{code_indent}    std::stringstream dump;
+{code_indent}    dump << "dump";
+{code_indent}    if (FLAGS_ordered_api_dump) {{
+{code_indent}      dump << "/" << local_api_call_count;
+{code_indent}    }}
+{code_indent}    dev_ctx->Wait();
+{dump_tensor_str}
+{code_indent}  }}"""
+
     def gen_kernel_code(self, kernel_name, code_indent, inplace_flag=False):
         kernel_dispatch = self.kernel['dispatch'][kernel_name]
         input_tensors, kernel_args, kernel_signature = self.get_kernel_args(
@@ -1234,7 +1309,10 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  if(phi::RecordEvent::IsEnabled()){{
 {code_indent}    kernel_record_event = new phi::RecordEvent(\"{self.api} compute\", phi::TracerEventType::OperatorInner, 1);
 {code_indent}  }}
+{code_indent}  size_t local_api_call_count = api_call_count++;
+{self.gen_dump_input_tensor(code_indent)}
 {code_indent}    (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
+{self.gen_dump_output_tensor(outputs_args, code_indent)}
 {code_indent}  if(kernel_record_event != nullptr){{
 {code_indent}    delete kernel_record_event;
 {code_indent}  }}
