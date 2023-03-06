@@ -43,6 +43,8 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
 
+#include "paddle/phi/kernels/autotune/phi_kernel_tune.h"
+
 namespace phi {
 class DenseTensor;
 }  // namespace phi
@@ -1442,6 +1444,38 @@ bool OperatorWithKernel::SupportsCUDNN(const phi::DataType data_type) const {
   }
 }
 
+bool OperatorWithKernel::SupportsCUTLASS(const phi::DataType data_type) const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(),
+                  phi_kernels.end(),
+                  [data_type](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == phi::Backend::CUTLASS &&
+                           kern_pair.first.dtype() == data_type;
+                  });
+  if (has_phi_kernel) {
+    return true;
+  } else {
+    auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
+    if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
+      return false;
+    } else {
+      auto& op_kernels = op_kernel_iter->second;
+      proto::VarType::Type fluid_data_type =
+          framework::TransToProtoVarType(data_type);
+      return std::any_of(
+          op_kernels.begin(),
+          op_kernels.end(),
+          [fluid_data_type](OpKernelMap::const_reference kern_pair) {
+            return platform::is_gpu_place(kern_pair.first.place_) &&
+                   kern_pair.first.library_type_ == LibraryType::kCUTLASS &&
+                   kern_pair.first.data_type_ == fluid_data_type;
+          });
+    }
+  }
+}
+
 bool OperatorWithKernel::SupportsKernelType(
     const OpKernelType& kernel_type, const ExecutionContext& exe_ctx) const {
   auto& all_op_kernels = AllOpKernels();
@@ -1545,6 +1579,34 @@ bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                                         proto::VarType::Type data_type) const {
   return this->CanCUDNNBeUsed(ctx, phi::TransToPhiDataType(data_type));
+}
+
+bool OperatorWithKernel::CanCUTLASSBeUsed(
+    const framework::ExecutionContext& ctx, phi::DataType data_type) const {
+  bool use_cutlass = ctx.HasAttr("use_cutlass") &&
+                     ctx.Attr<bool>("use_cutlass") &&
+                     paddle::platform::is_gpu_place(ctx.GetPlace());
+
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
+  auto& dev_ctx = ctx.device_context<phi::GPUContext>();
+  if (use_cutlass && data_type == phi::DataType::BFLOAT16 &&
+      dev_ctx.GetComputeCapability() < 75) {
+    PADDLE_ENFORCE_GE(
+        dev_ctx.GetComputeCapability(),
+        75,
+        phi::errors::PreconditionNotMet(
+            "Expect compute compatiblity to be less than 75, but got %d. ",
+            dev_ctx.GetComputeCapability()));
+  }
+#endif  // PADDLE_WITH_CUDA && PADDLE_WITH_CUTLASS
+
+  return use_cutlass && this->SupportsCUTLASS(data_type);
+}
+
+bool OperatorWithKernel::CanCUTLASSBeUsed(
+    const framework::ExecutionContext& ctx,
+    proto::VarType::Type data_type) const {
+  return this->CanCUTLASSBeUsed(ctx, phi::TransToPhiDataType(data_type));
 }
 
 void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
@@ -1698,8 +1760,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
       VLOG(6) << *kernel_signature_.get();
       phi_kernel_name = kernel_signature_->name;
+      LOG(INFO) << "JZZ: " << type_;
+      // if (type_ == "conv2d_fusion2"){
+      //   LOG(INFO) << "JZZ conv2d_fusion_cutlass";
+      //   kernel_type_.reset(
+      //       new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx,
+      //       true))));
+      // } else {
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
+      //}
       dev_ctx = pool.Get(kernel_type_->place_);
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
@@ -1745,6 +1815,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi_kernel_.reset(
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
               phi_kernel_name, phi_kernel_key)));
+
+      LOG(INFO) << "JZZ Phi kernel: " << phi_kernel_.get();
 
       if (phi_kernel_->IsValid()) {
         VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
@@ -1972,11 +2044,63 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                           tensors,
                           HasAttr(CacheImpl::kNotAllowInferShapeCahce)));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
+
+        LOG(INFO) << "JZZ 1";
+
+        phi::KernelKey phi_kernel_key_cutlass;
+        std::unique_ptr<phi::Kernel> phi_kernel_cutlass;
+        // Judge whether need to tune between cudnn and cutlass
+        if (kernel_type_.get()->library_type_ == LibraryType::kCUDNN) {
+          // Try to get cutlass kernel
+          OpKernelType kernel_type_cutlass(
+              std::move(InnerGetExpectedKernelType(exe_ctx, true)));
+
+          LOG(INFO) << "JZZ 1.1";
+
+          if (kernel_type_cutlass.library_type_ == LibraryType::kCUTLASS) {
+            phi_kernel_key_cutlass =
+                TransOpKernelTypeToPhiKernelKey(kernel_type_cutlass);
+
+            LOG(INFO) << "JZZ 1.2";
+
+            phi_kernel_cutlass.reset(
+                new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
+                    phi_kernel_name, phi_kernel_key_cutlass)));
+
+            LOG(INFO) << "JZZ 1.3";
+
+            if (phi_kernel_cutlass->IsValid()) {
+              PhiKernelTuner tuner(impl_->getKernelContext());
+              tuner.AddPhiKernel(phi_kernel_.get());
+              tuner.AddPhiKernel(phi_kernel_cutlass.get());
+              std::pair<phi::Kernel*, int> best_kernel(tuner.Run());
+              phi_kernel_.reset(best_kernel.first);
+              LOG(INFO) << "JZZ address0:" << phi_kernel_.get();
+              LOG(INFO) << phi_kernel_->args_def().input_defs().size();
+              if (best_kernel.second == 1) {
+                kernel_type_.reset(new OpKernelType(
+                    std::move(InnerGetExpectedKernelType(exe_ctx, true))));
+              }
+            }
+          }
+        }
+
+        LOG(INFO) << "JZZ address2:" << phi_kernel_.get();
+        LOG(INFO) << phi_kernel_->args_def().input_defs().size();
+
+        LOG(INFO) << "JZZ 2";
+
         (*phi_kernel_)(impl_->getKernelContext());
+
+        LOG(INFO) << "JZZ address3:" << phi_kernel_.get();
+        LOG(INFO) << phi_kernel_->args_def().input_defs().size();
+
       } else {
         phi::KernelContext phi_kernel_context;
         // Do data transform before building KernelContext
         // TODO(zhiqiu): support TransferInplaceVarsBack
+        LOG(INFO) << "JZZ address1:" << phi_kernel_.get();
+        LOG(INFO) << phi_kernel_->args_def().input_defs().size();
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, &phi_kernel_context);
         (*phi_kernel_)(&phi_kernel_context);
       }
@@ -2036,7 +2160,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 }
 
 OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
-    const ExecutionContext& ctx) const {
+    const ExecutionContext& ctx, const bool use_cutlass) const {
   phi::KernelKey phi_kernel_key = this->GetExpectedKernelType(ctx);
   auto expected_kernel_key =
       framework::TransPhiKernelKeyToOpKernelType(phi_kernel_key);
@@ -2060,6 +2184,12 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   if (this->CanCUDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
+#if defined(PADDLE_WITH_CUTLASS)
+  if (this->CanCUTLASSBeUsed(ctx, expected_kernel_key.data_type_) &&
+      use_cutlass) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUTLASS;
+  }
+#endif
 #endif
 
   if (HasAttr("op_device")) {
@@ -2164,8 +2294,6 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
   }
   VLOG(6) << *kernel_signature_.get();
   phi_kernel_name = kernel_signature_->name;
-  kernel_type_.reset(
-      new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
   auto phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
   phi_kernel_.reset(new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
@@ -2518,6 +2646,8 @@ Scope* OperatorWithKernel::PrepareData(
         auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
         if ((in_def->backend != tensor_backend &&
              !(in_def->backend == phi::Backend::GPUDNN &&
+               tensor_backend == phi::Backend::GPU) &&
+             !(in_def->backend == phi::Backend::CUTLASS &&
                tensor_backend == phi::Backend::GPU) &&
              !(in_def->backend == phi::Backend::KPS &&
                tensor_backend == phi::Backend::XPU) &&
@@ -3040,6 +3170,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
     one_dnn_ctx->SetOutputsName(Outputs());
   }
 #endif
+
+  LOG(INFO) << input_names.size() << ", " << input_defs.size();
 
   PADDLE_ENFORCE_EQ(input_names.size(),
                     input_defs.size(),

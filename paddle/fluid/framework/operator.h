@@ -650,6 +650,8 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportsCUDNN(phi::DataType data_type) const;
 
+  bool SupportsCUTLASS(phi::DataType data_type) const;
+
   bool SupportsKernelType(const OpKernelType& kernel_type,
                           const ExecutionContext& exe_ctx) const;
 
@@ -664,6 +666,12 @@ class OperatorWithKernel : public OperatorBase {
 
   bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                       proto::VarType::Type data_type) const;
+
+  bool CanCUTLASSBeUsed(const framework::ExecutionContext& ctx,
+                        phi::DataType data_type) const;
+
+  bool CanCUTLASSBeUsed(const framework::ExecutionContext& ctx,
+                        proto::VarType::Type data_type) const;
 
   virtual void InferShape(InferShapeContext* ctx) const;
 
@@ -762,7 +770,8 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
-  OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx) const;
+  OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx,
+                                          const bool use_cutlass = false) const;
 
   void HandleComplexGradToRealGrad(const Scope& scope,
                                    RuntimeContext* ctx) const;

@@ -1,11 +1,8 @@
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -48,7 +45,8 @@ enum class Backend : uint8_t {
   // acceleration device's backend
   GPU,
   // the third library backend
-  GPUDNN,  // cuDNN and hipDNN
+  GPUDNN,   // cuDNN and hipDNN
+  CUTLASS,  // cutlass library
 
   // various acceleration devices' backends
   XPU,  // XPU currently does not exist at the same time as CUDA
@@ -125,6 +123,9 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::GPUDNN:
       os << "GPUDNN";
       break;
+    case Backend::CUTLASS:
+      os << "CUTLASS";
+      break;
     case Backend::KPS:
       os << "KPS";
       break;
@@ -167,6 +168,8 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::ONEDNN;
   } else if (s == std::string("GPUDNN")) {
     return Backend::GPUDNN;
+  } else if (s == std::string("CUTLASS")) {
+    return Backend::CUTLASS;
   } else if (s == std::string("KPS")) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     // NOTE(chenweihang) KPS is not yet a complete backend, and it still needs
@@ -203,6 +206,8 @@ inline std::string BackendToString(const Backend& backend) {
       return "ONEDNN";
     case Backend::GPUDNN:
       return "GPUDNN";
+    case Backend::CUTLASS:
+      return "CUTLASS";
     case Backend::KPS:
       return "KPS";
     case Backend::IPU:
