@@ -150,7 +150,9 @@ def ref_reduce_mean_grad(x, axis, dtype, reduce_all):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA",
 )
 class TestReduceMeanOp(OpTest):
     def setUp(self):
@@ -184,8 +186,6 @@ class TestReduceMeanOp(OpTest):
             self.check_output(check_eager=True)
         else:
             place = paddle.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                return
             self.check_output_with_place(place=place)
 
     def test_check_grad(self):
@@ -193,21 +193,9 @@ class TestReduceMeanOp(OpTest):
             self.check_grad(['X'], ['Out'], check_eager=True)
         else:
             place = paddle.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                return
-            with fluid.dygraph.guard(place=place):
-                x = paddle.tensor(self.inputs['X'])
-                y = paddle.mean(
-                    x, axis=self.attrs['dim'], keepdim=self.attrs['keep_dim']
-                )
-                dx = paddle.grad(y, x)[0].numpy()
-                dx_expected = ref_reduce_mean_grad(
-                    self.inputs['X'],
-                    self.attrs['dim'],
-                    self.dtype,
-                    self.attrs['reduce_all'],
-                )
-                np.testing.assert_array_equal(dx, dx_expected)
+            self.check_grad_with_place(
+                place, ['X'], ['Out'], numeric_grad_delta=0.5
+            )
 
 
 @unittest.skipIf(
