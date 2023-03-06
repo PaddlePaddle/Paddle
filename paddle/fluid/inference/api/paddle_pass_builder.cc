@@ -94,9 +94,9 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_quant_dequant_op_pass",              //
       "delete_quant_dequant_filter_op_pass",       //
       "trt_delete_weight_dequant_linear_op_pass",  //
-      "delete_quant_dequant_linear_op_pass",
-      "identity_scale_op_clean_pass",  //
-      "add_support_int8_pass",         //
+      "delete_quant_dequant_linear_op_pass",       //
+      "identity_scale_op_clean_pass",              //
+      "add_support_int8_pass",                     //
       // "fc_fuse_pass",                        //
       "simplify_with_basic_ops_pass",                 //
       "trt_embedding_eltwise_layernorm_fuse_pass",    //
