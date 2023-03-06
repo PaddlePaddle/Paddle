@@ -408,7 +408,10 @@ class OpTest(unittest.TestCase):
                 cls.dtype in [np.float32, np.float64]
                 and cls.op_type
                 not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST
-                and not hasattr(cls, 'exist_fp64_check_grad')
+                and not (
+                    hasattr(cls, 'exist_fp64_check_grad')
+                    or hasattr(cls, 'exist_fp32_check_grad')
+                )
                 and not is_xpu_op_test()
                 and not is_mkldnn_op_test()
                 and not is_rocm_op_test()
@@ -2193,6 +2196,8 @@ class OpTest(unittest.TestCase):
         self.__class__.exist_check_grad = True
         if self.dtype == np.float64:
             self.__class__.exist_fp64_check_grad = True
+        if self.dtype == np.float32:
+            self.__class__.exist_fp32_check_grad = True
 
     def check_grad(
         self,

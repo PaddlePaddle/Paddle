@@ -18,6 +18,7 @@ import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
 from eager_op_test import OpTest
+from op_test import convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -179,7 +180,7 @@ class TestExpandV2OpBoolean(OpTest):
         self.check_output()
 
 
-#  Situation 56: input x is Integer
+#  Situation 6: input x is Integer
 class TestExpandV2OpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
@@ -194,6 +195,76 @@ class TestExpandV2OpInt64_t(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+#  Situation 7: input x is Float32
+class TestExpandV2FP32Op(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.dtype = np.float32
+        self.python_api = paddle.expand
+        self.inputs = {
+            'X': np.random.randint(10, size=(8, 8, 5)).astype(self.dtype)
+        }
+        self.attrs = {'shape': [8, 8, 5]}
+        output = np.tile(self.inputs['X'], (1, 1, 1))
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True, max_relative_error=1e-2)
+
+
+#  Situation 8: input x is Float16
+class TestExpandV2FP16Op(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.dtype = np.float16
+        self.python_api = paddle.expand
+        self.inputs = {
+            'X': np.random.randint(10, size=(8, 8, 5)).astype(self.dtype)
+        }
+        self.attrs = {'shape': [8, 8, 5]}
+        output = np.tile(self.inputs['X'], (1, 1, 1))
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, max_relative_error=1e-2
+        )
+
+
+#  Situation 8: input x is BF16
+class TestExpandV2BF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "prim"
+        self.dtype = np.uint16
+        self.python_api = paddle.expand
+        x = np.random.randint(10, size=(8, 8, 5)).astype(np.float32)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'shape': [8, 8, 5]}
+        output = np.tile(self.inputs['X'], (1, 1, 1)).astype(np.float32)
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-1)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, max_relative_error=1e0
+        )
 
 
 class TestExpandV2Error(unittest.TestCase):
