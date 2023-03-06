@@ -15,8 +15,9 @@
 import unittest
 
 import numpy as np
-import paddle
 from eager_op_test import OpTest
+
+import paddle
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -130,8 +131,12 @@ def max_pool2D_forward_naive(
     return out, mask
 
 
-def maxpool3d_wrapper(x, kernel_size, strides, paddings, global_pooling=False, adaptive=False):
-     return paddle._C_ops.max_pool3d_with_index(x, kernel_size, strides, paddings, global_pooling, adaptive)
+def maxpool3d_wrapper(
+    x, kernel_size, strides, paddings, global_pooling=False, adaptive=False
+):
+    return paddle._C_ops.max_pool3d_with_index(
+        x, kernel_size, strides, paddings, global_pooling, adaptive
+    )
 
 
 class TestMaxPoolWithIndex_Op(OpTest):
@@ -211,9 +216,13 @@ class TestCase3(TestCase2):
         self.global_pool = False
 
 
+def maxpool2d_wrapper(
+    x, kernel_size, strides, paddings, global_pooling=False, adaptive=False
+):
+    return paddle._C_ops.max_pool2d_with_index(
+        x, kernel_size, strides, paddings, global_pooling, adaptive
+    )
 
-def maxpool2d_wrapper(x, kernel_size, strides, paddings, global_pooling=False, adaptive=False):
-     return paddle._C_ops.max_pool2d_with_index(x, kernel_size, strides, paddings, global_pooling, adaptive)
 
 # ----------------max_pool2d_with_index----------------
 class TestCase4(TestMaxPoolWithIndex_Op):
