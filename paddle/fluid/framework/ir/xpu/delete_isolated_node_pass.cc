@@ -178,8 +178,6 @@ int DeleteIsolatedNodePass::UpdateControlFlowOp(
     auto* sub_block = PADDLE_GET_CONST(framework::BlockDesc*,
                                        node->Op()->GetAttr("sub_block"));
     auto* sub_graph = block_id_graph_map.at(sub_block->ID());
-    std::unordered_set<std::string> persistable_node_names;
-    CollectReservedPersistableNodeNames(graph, &persistable_node_names);
     std::unordered_set<std::string> sub_persistable_node_names;
     CollectReservedPersistableNodeNames(sub_graph, &sub_persistable_node_names);
     for (auto sub_name : sub_persistable_node_names) {

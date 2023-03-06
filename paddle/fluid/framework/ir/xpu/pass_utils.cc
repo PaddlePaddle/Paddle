@@ -122,8 +122,8 @@ void PrepareWeight(Graph* graph,
 
   size_t dst_hash = HashTensor<T>(dst_tensor);
   size_t dst_max_hash = HashTensor<float>(dst_max_tensor);
-  std::string dst_name = std::to_string(dst_hash);
-  std::string dst_max_name = std::to_string(dst_max_hash);
+  std::string dst_name = src_name + "_" + std::to_string(dst_hash);
+  std::string dst_max_name = src_name + "_max_" + std::to_string(dst_max_hash);
   *dst = FindNodeWithName(graph, dst_name);
   if (*dst == nullptr) {
     // Create dst node
@@ -199,7 +199,7 @@ void PrepareBias(
   phi::DenseTensor dst_tensor;
   CastToFp32(src_tensor, &dst_tensor);
   size_t dst_hash = HashTensor<float>(dst_tensor);
-  std::string dst_name = std::to_string(dst_hash);
+  std::string dst_name = src_name + "_" + std::to_string(dst_hash);
   *dst = FindNodeWithName(graph, dst_name);
   if (*dst == nullptr) {
     // Create dst node
