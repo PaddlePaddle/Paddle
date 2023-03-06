@@ -33,16 +33,16 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
                                    bool* out_data) {
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-    const MPType  static_cast<MPType>a = in_data[i], static_cast<MPType>b = other_data[i];
-    if (static_cast<MPType>isnan(a) || static_cast<MPType>isnan(b)) {
-      val = equal_nan && static_cast<MPType>isnan(a) == static_cast<MPType>isnan(b);
+    const MPType a = static_cast<MPType>in_data[i], b = static_cast<MPType>other_data[i];
+    if (isnan(a) || isnan(b)) {
+      val = equal_nan && isnan(a) == isnan(b);
     } else {
-      MPType left = (static_cast<MPType>a > static_cast<MPType>b ? static_cast<MPType>a - static_cast<MPType>b : static_cast<MPType>b - static_cast<MPType>a);
-      MPType right = atol + (static_cast<MPType>b > 0 ? rtol * static_cast<MPType>b : (-rtol) * static_cast<MPType>b);
-      MPType diff = static_cast<MPType>(left > right ? left - right : right - left);
-      val = static_cast<MPType>a == static_cast<MPType>b || left <= right || diff <= 1e-15;
+      MPType left = (a > b ? a - b : b - a);
+      MPType right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+      MPType diff = (left > right ? left - right : right - left);
+      val = a == b || left <= right || diff <= 1e-15;
     }
     if (!val) *out_data = false;
   }
