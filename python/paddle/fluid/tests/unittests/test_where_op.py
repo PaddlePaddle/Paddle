@@ -91,7 +91,7 @@ class TestWhereOpBFloat16(OpTest):
     def init_config(self):
         self.x = np.random.uniform((-5), 5, (60, 2)).astype(np.float32)
         self.y = np.random.uniform((-5), 5, (60, 2)).astype(np.float32)
-        self.cond = np.randint(2, size=(60, 2)).astype('bool')
+        self.cond = np.random.randint(2, size=(60, 2)).astype('bool')
 
 
 class TestWhereOp3(TestWhereOp):
