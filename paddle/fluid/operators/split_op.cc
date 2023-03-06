@@ -207,22 +207,39 @@ Example:
   }
 };
 
-class SplitWithNumCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
  public:
   void Apply() override {
+    std::vector<paddle::experimental::Tensor> tensor_sections =
+        this->GetMultiForwardInput("SectionsTensorList");
+    paddle::experimental::Tensor tensor_axis =
+        this->GetSingleForwardInput("AxisTensor");
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    std::vector<int> sections =
+        static_cast<std::vector<int>>(this->Attr<std::vector<int>>("sections"));
+
+    paddle::experimental::Tensor input_grad = this->GetSingleInputGrad("X");
+    auto dx_ptr = this->GetOutputPtr(&input_grad);
+    std::string dx_name = this->GetOutputName(input_grad);
     std::vector<paddle::experimental::Tensor> out_grad =
         this->GetMultiOutputGrad("Out");
-    paddle::experimental::Tensor input_grad = this->GetSingleForwardInput("X");
-    auto *dx_ptr = this->GetOutputPtr(&input_grad);
-    int axis = static_cast<int>(this->Attr<int>("axis"));
 
-    std::string dx_name = this->GetOutputName(input_grad);
-
-    VLOG(6) << "Runing split_with_num_grad composite func";
-    prim::split_with_num_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
-    this->RecoverOutputName(input_grad, dx_name);
+    if (tensor_axis.is_initialized()) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support dynamic index from tensor for split composite "
+          "grad for now. "));
+    } else {
+      if (sections.size() > 0) {
+        VLOG(6) << "Runing split_grad composite func";
+        prim::split_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
+      } else {
+        VLOG(6) << "Runing split_with_num_grad composite func";
+        prim::split_with_num_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
+      }
+      this->RecoverOutputName(input_grad, dx_name);
+    }
   }
 };
 
