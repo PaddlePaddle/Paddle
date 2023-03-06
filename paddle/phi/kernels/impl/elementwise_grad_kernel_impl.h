@@ -139,7 +139,7 @@ struct DivGradDY {
 };
 
 template <typename T>
-struct DivGradDY<paddle::platform::complex<T>> {
+struct DivGradDY<phi::dtype::complex<T>> {
   HOSTDEVICE phi::dtype::complex<T> operator()(
       phi::dtype::complex<T> x,
       phi::dtype::complex<T> y,
@@ -830,13 +830,12 @@ struct HeavisideGradDy {
 };
 
 template <typename T, typename Context>
-void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
-                                    const DenseTensor& x,
-                                    const DenseTensor& y,
-                                    const DenseTensor& dout,
-                                    int axis,
-                                    DenseTensor* dx,
-                                    DenseTensor* dy) {
+void HeavisideGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& y,
+                         const DenseTensor& dout,
+                         DenseTensor* dx,
+                         DenseTensor* dy) {
   funcs::ElementwiseGradPreProcess(dout, dx);
   phi::funcs::
       ElemwiseGradCompute<Context, T, HeavisideGradDx<T>, HeavisideGradDy<T>>(
@@ -845,7 +844,7 @@ void ElementwiseHeavisideGradKernel(const Context& dev_ctx,
           y,
           dout,
           dout,
-          axis,
+          -1,
           dx,
           dy,
           HeavisideGradDx<T>(),

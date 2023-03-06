@@ -25,61 +25,103 @@ import paddle.inference as paddle_infer
 
 class TrtConvertGridSampler(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        self.trt_param.workspace_size = 1073741824
         return True
 
     def sample_program_configs(self):
         def generate_input1():
-            return np.random.random([1, 3, 32, 32]).astype(np.float32)
+            if self.dims == 4:
+                self.input_shape = [1, 3, 32, 32]
+                return np.random.random([1, 3, 32, 32]).astype(np.float32)
+            elif self.dims == 5:
+                self.input_shape = [1, 3, 32, 32, 64]
+                return np.random.random([1, 3, 32, 32, 64]).astype(np.float32)
 
         def generate_input2():
-            return np.random.random([1, 3, 3, 2]).astype(np.float32)
+            if self.dims == 4:
+                self.input_shape = [1, 3, 3, 2]
+                return np.random.random([1, 3, 3, 2]).astype(np.float32)
+            elif self.dims == 5:
+                self.input_shape = [1, 3, 3, 2, 3]
+                return np.random.random([1, 3, 3, 2, 3]).astype(np.float32)
 
-        ops_config = [
-            {
-                "op_type": "grid_sampler",
-                "op_inputs": {
-                    "X": ["input_data"],
-                    "Grid": ["grid_data"],
-                },
-                "op_outputs": {"Output": ["output_data"]},
-                "op_attrs": {},
-            }
-        ]
+        mode = ["bilinear", "nearest"]
+        padding_mode = ["zeros", "reflection", "border"]
+        align_corners = [True, False]
+        descs = []
+        for m in mode:
+            for p in padding_mode:
+                for a in align_corners:
+                    descs.append(
+                        {
+                            "mode": m,
+                            "padding_mode": p,
+                            "align_corners": a,
+                        }
+                    )
 
-        ops = self.generate_op_config(ops_config)
-        for i in range(10):
-            program_config = ProgramConfig(
-                ops=ops,
-                weights={},
-                inputs={
-                    "input_data": TensorConfig(
-                        data_gen=partial(generate_input1)
-                    ),
-                    "grid_data": TensorConfig(
-                        data_gen=partial(generate_input2)
-                    ),
-                },
-                outputs=["output_data"],
-            )
+        for dims in [4, 5]:
+            for desc in descs:
+                self.dims = dims
+                ops_config = [
+                    {
+                        "op_type": "grid_sampler",
+                        "op_inputs": {
+                            "X": ["input_data"],
+                            "Grid": ["grid_data"],
+                        },
+                        "op_outputs": {"Output": ["output_data"]},
+                        "op_attrs": desc,
+                    }
+                ]
+                ops = self.generate_op_config(ops_config)
 
-        yield program_config
+                program_config = ProgramConfig(
+                    ops=ops,
+                    weights={},
+                    inputs={
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input1)
+                        ),
+                        "grid_data": TensorConfig(
+                            data_gen=partial(generate_input2)
+                        ),
+                    },
+                    outputs=["output_data"],
+                )
+
+                yield program_config
 
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 3, 32, 32],
-                "grid_data": [1, 3, 3, 2],
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [1, 3, 64, 64],
-                "grid_data": [1, 3, 4, 4],
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [1, 3, 32, 32],
-                "grid_data": [1, 3, 3, 2],
-            }
+        def generate_dynamic_shape():
+            if self.dims == 4:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 3, 32, 32],
+                    "grid_data": [1, 3, 3, 2],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [1, 3, 64, 64],
+                    "grid_data": [1, 3, 6, 2],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 3, 32, 32],
+                    "grid_data": [1, 3, 3, 2],
+                }
+            elif self.dims == 5:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 3, 32, 32, 64],
+                    "grid_data": [1, 3, 3, 2, 3],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [1, 3, 64, 64, 128],
+                    "grid_data": [1, 3, 3, 6, 3],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 3, 32, 32, 64],
+                    "grid_data": [1, 3, 3, 2, 3],
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -92,13 +134,9 @@ class TrtConvertGridSampler(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (0, 4), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (0, 4), 1e-3
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), (1, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half

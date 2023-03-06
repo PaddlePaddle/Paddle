@@ -553,6 +553,13 @@ void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
                "8.5.2.2. Stop this pass";
     return;
   }
+  int sm = platform::GetGPUComputeCapability(platform::GetCurrentDeviceId());
+  if (sm < 80) {
+    VLOG(3) << "Flash attention oss plugin only available for nvidia gpu with "
+               "sm >= 80, but got sm = "
+            << sm << " . Stop this pass";
+    return;
+  }
 #else
   // if no tensorrt, early stop
   return;

@@ -47,7 +47,7 @@ def get_skipped_kernel_list():
 
 
 def parse_args():
-    parser = argparse.ArgumentParser("gather phi kernel and infermate info")
+    parser = argparse.ArgumentParser("gather phi kernel and infermeta info")
     parser.add_argument(
         "--paddle_root_path",
         type=str,
