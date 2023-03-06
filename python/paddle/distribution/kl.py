@@ -196,7 +196,7 @@ def _kl_laplace_laplace(p, q):
 
 
 @register_kl(Geometric, Geometric)
-def _kl_uniform_uniform(p, q):
+def _kl_geometric_geometric(p, q):
     return p.kl_divergence(q)
 
 
