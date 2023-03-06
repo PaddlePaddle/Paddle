@@ -2709,7 +2709,7 @@ static std::string GenerateGradNodeCCContents(
   std::string generated_grad_function_body =
       paddle::string::Sprintf(EAGER_LOG_TEMPLATE, fwd_op_type);
 
-  const char* CHECK_BACKWARD_CAN_NOT_USE =
+  /*const char* CHECK_BACKWARD_CAN_NOT_USE =
       "\n"
       "for(size_t i = 0; i < grads.size(); ++i)\n"
       "    for(size_t j = 0; j < grads[i].size(); ++j)\n"
@@ -2718,6 +2718,7 @@ static std::string GenerateGradNodeCCContents(
       "            << \"%s\" << \"Find a Tensor Which Can Not Use.\";\n";
   generated_grad_function_body +=
       paddle::string::Sprintf(CHECK_BACKWARD_CAN_NOT_USE, fwd_op_type);
+  */
   // This is a Copy
   auto op_base_infos = bwd_info.GetOpBaseInfos();
 
