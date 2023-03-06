@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/roi_pool_grad_kernel.h"
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -98,12 +97,12 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     if (boxes_num) {
       int boxes_batch_size = boxes_num->numel();
       std::vector<int> boxes_num_list(boxes_batch_size);
-      paddle::memory::Copy(phi::CPUPlace(),
-                           boxes_num_list.data(),
-                           gplace,
-                           boxes_num->data<int>(),
-                           sizeof(int) * boxes_batch_size,
-                           0);
+      memory_utils::Copy(phi::CPUPlace(),
+                         boxes_num_list.data(),
+                         gplace,
+                         boxes_num->data<int>(),
+                         sizeof(int) * boxes_batch_size,
+                         0);
       int start = 0;
       for (int n = 0; n < boxes_batch_size; ++n) {
         for (int i = start; i < start + boxes_num_list[n]; ++i) {
@@ -126,12 +125,12 @@ void RoiPoolGradKernel(const Context& dev_ctx,
         bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
-    paddle::memory::Copy(gplace,
-                         roi_id_data,
-                         phi::CPUPlace(),
-                         box_batch_id_data,
-                         bytes,
-                         dev_ctx.stream());
+    memory_utils::Copy(gplace,
+                       roi_id_data,
+                       phi::CPUPlace(),
+                       box_batch_id_data,
+                       bytes,
+                       dev_ctx.stream());
 
     dev_ctx.template Alloc<T>(dx);
     phi::funcs::SetConstant<Context, T> set_zero;

@@ -16,7 +16,6 @@
 
 #include "paddle/phi/kernels/affine_grid_grad_kernel.h"
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"

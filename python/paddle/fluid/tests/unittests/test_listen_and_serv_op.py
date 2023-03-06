@@ -49,9 +49,9 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     pserver_endpoints = ip + ":" + port
     current_endpoint = ip + ":" + port
 
-    config = fluid.DistributeTranspilerConfig()
+    config = paddle.distributed.transpiler.DistributeTranspilerConfig()
     config.sync_mode = sync_mode
-    t = fluid.DistributeTranspiler(config=config)
+    t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
     t.transpile(
         trainer_id,
         pservers=pserver_endpoints,
@@ -87,11 +87,11 @@ def run_pserver_with_empty_block(
     ps2 = ip + ":" + port
     pserver_endpoints = ps1 + "," + ps2
 
-    config = fluid.DistributeTranspilerConfig()
+    config = paddle.distributed.transpiler.DistributeTranspilerConfig()
     config.sync_mode = sync_mode
     config.slice_var_up = False
 
-    t = fluid.DistributeTranspiler(config=config)
+    t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
     t.transpile(
         trainer_id,
         pservers=pserver_endpoints,
