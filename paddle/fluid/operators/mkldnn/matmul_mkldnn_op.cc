@@ -136,13 +136,29 @@ class MatMulV1OneDNNHandler
     auto out_md = memory::desc(
         out_ddims, phi::funcs::OneDNNGetDataType<OT>(), out_strides);
 
-    dnnl::primitive_attr matmul_attrs;
-    const float alpha = ctx.Attr<float>("alpha");
-    if (alpha != 1.0f) {
-      matmul_attrs.set_output_scales(0, {alpha});
+    const float scale_out = ComputeOutputScale(ctx);
+    if (scale_out == 1.0f) {
+      this->AcquireForwardPrimitiveDescriptor(x_md, y_md, out_md);
+    } else {
+      dnnl::primitive_attr matmul_attrs;
+      matmul_attrs.set_output_scales(0, {scale_out});
+      this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
     }
+  }
 
-    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
+  float ComputeOutputScale(const ExecutionContext &ctx) {
+    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
+    if (ctx.HasAttr("Scale_x") && ctx.HasAttr("Scale_y") &&
+        ctx.HasAttr("Scale_out")) {
+      float scale_x = ctx.Attr<float>("Scale_x");
+      float scale_y = ctx.Attr<float>("Scale_y");
+      bool force_fp32_out = ctx.HasAttr("force_fp32_output")
+                                ? ctx.Attr<bool>("force_fp32_output")
+                                : false;
+      float scale_out = force_fp32_out ? 1.f : ctx.Attr<float>("Scale_out");
+      alpha *= scale_out / (scale_x * scale_y);
+    }
+    return alpha;
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor *input) {
@@ -333,6 +349,9 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
     }
     constexpr bool is_int8 = phi::funcs::is_int8<T>();
     constexpr bool is_bfloat16 = phi::funcs::is_bfloat16<T>();
+    const bool force_fp32_output = ctx.HasAttr("force_fp32_output")
+                                       ? ctx.Attr<bool>("force_fp32_output")
+                                       : false;
 
     const auto &dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto &onednn_engine = dev_ctx.GetEngine();
@@ -354,7 +373,7 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
 
     CalculateMatrixDims(ctx, x_dims, y_dims, &x_bd_dims, &y_bd_dims, out);
 
-    if ((!is_int8) && (!is_bfloat16)) {
+    if (force_fp32_output || ((!is_int8) && (!is_bfloat16))) {
       ExecuteMatMulV1<T, float>(ctx,
                                 onednn_engine,
                                 x,
