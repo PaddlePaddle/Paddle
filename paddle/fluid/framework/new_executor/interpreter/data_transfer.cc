@@ -665,9 +665,17 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       bool should_skip_input =
           no_buffer_ins && no_buffer_ins->count(parameter_name) > 0;
 
+      phi::TensorArgDef in_def = input_defs.at(i);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      // When the backend of input tensor arg_def is CUSTOM, we need to set it
+      // to the actual backend by expected_kernel_key.
+      if (in_def.backend == phi::Backend::CUSTOM) {
+        in_def.SetBackend(phi::TransToPhiBackend(expected_kernel_key.place_));
+      }
+#endif
       apply_data_transform_for_one_parameter(parameter_name,
                                              new_ins[parameter_name],
-                                             &input_defs.at(i),
+                                             &in_def,
                                              should_skip_input,
                                              &arguments);
     }
