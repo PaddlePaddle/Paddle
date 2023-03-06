@@ -143,8 +143,8 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
     def setUp(self):
         core._set_prim_backward_enabled(True)
         self.dtypes = ["float32", "float64"]
-        self.shapes = [[2, 3, 4], [2, 3]]
-        self.axes = [0, 1]
+        self.shapes = [[], [2, 3, 4], [2, 3]]
+        self.axes = [-1, 0, 1]
 
     def cal_composite_grad(self, inputs):
         paddle.enable_static()

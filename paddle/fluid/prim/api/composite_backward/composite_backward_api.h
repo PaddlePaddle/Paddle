@@ -31,20 +31,11 @@ void softmax_grad(const Tensor& out,
                   int axis,
                   Tensor* x_grad) {
   if (x_grad) {
-    if (out_grad.dims().size() > 0) {
+    if ((out_grad.dims().size() > 0) && (axis >= 0)) {
       auto new_out_grad = out_grad * out;
-      if (axis > 0) {
-        auto tmp_x_grad = new_out_grad -
-                          out * sum<T>(new_out_grad, {axis}, out.dtype(), true);
-        set_output<T>(tmp_x_grad, x_grad);
-      } else {
-        auto tmp_x_grad =
-            new_out_grad - out * sum<T>(new_out_grad,
-                                        phi::vectorize(out_grad.dims()),
-                                        out.dtype(),
-                                        true);
-        set_output<T>(tmp_x_grad, x_grad);
-      }
+      auto tmp_x_grad =
+          new_out_grad - out * sum<T>(new_out_grad, {axis}, out.dtype(), true);
+      set_output<T>(tmp_x_grad, x_grad);
     } else {
       set_output<T>(
           full<T>(phi::vectorize(out_grad.dims()), 0.0, out_grad.dtype()),
