@@ -31,5 +31,5 @@ __all__ = [
     'fused_linear',
     'fused_bias_dropout_residual_layer_norm',
     'fused_ec_moe',
-    'cutlass_fused_multi_head_attention',
+    'cutlass_fused_multihead_attention',
 ]

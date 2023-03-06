@@ -42,7 +42,7 @@ def cutlass_fused_multihead_attention(
             # required: gpu
             import math
             import paddle
-            from paddle.incubate.nn.functional import cutlass_fused_multi_head_attention
+            from paddle.incubate.nn.functional import cutlass_fused_multihead_attention
 
             batch = 1
             num_head = 8
@@ -72,7 +72,7 @@ def cutlass_fused_multihead_attention(
                 return result
 
             out = naive_attention_impl(query, key, value, mask, scale)
-            # equals to: out = cutlass_fused_multi_head_attention(query, key, value, mask, scale)
+            # equals to: out = cutlass_fused_multihead_attention(query, key, value, mask, scale)
 
             print(out.shape) # [batch, seq_len, num_head, head_size]
     """
