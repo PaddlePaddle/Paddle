@@ -14,7 +14,7 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
@@ -188,8 +188,8 @@ void TransposeNormal<DeviceContext, T>::operator()(
   auto* out_ptr = out->data<T>();
 
   // copy in_stride, out_stride, axis to gpu device
-  const paddle::platform::CUDAPlace& cuda_place = context.GetPlace();
-  paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
+  const phi::GPUPlace& cuda_place = context.GetPlace();
+  phi::CPUPlace cpu_place = phi::CPUPlace();
   size_t size = 3 * rank * sizeof(int64_t);
   auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
   auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
@@ -200,7 +200,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
     cpu_buf[rank + i] = out_stride[i];
     cpu_buf[2 * rank + i] = axis[i];
   }
-  paddle::memory::Copy(
+  memory_utils::Copy(
       cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
   REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
   REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
@@ -232,7 +232,7 @@ struct TransposeNormal<phi::GPUContext, T> {
 
     // copy in_stride, out_stride, axis to gpu device
     const phi::GPUPlace& cuda_place = context.GetPlace();
-    phi::CPUPlace cpu_place = paddle::platform::CPUPlace();
+    phi::CPUPlace cpu_place = phi::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
     auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
     auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
@@ -243,7 +243,7 @@ struct TransposeNormal<phi::GPUContext, T> {
       cpu_buf[rank + i] = out_stride[i];
       cpu_buf[2 * rank + i] = axis[i];
     }
-    paddle::memory::Copy(
+    memory_utils::Copy(
         cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
     REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
     REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
@@ -287,7 +287,7 @@ DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<float>);
 DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<double>);
 
 struct TensorSetConstantGPU {
-  TensorSetConstantGPU(const paddle::platform::DeviceContext& context,
+  TensorSetConstantGPU(const phi::DeviceContext& context,
                        phi::DenseTensor* tensor,
                        float value)
       : context_(context), tensor_(tensor), value_(value) {}
@@ -300,16 +300,15 @@ struct TensorSetConstantGPU {
             static_cast<T>(value_));
   }
 
-  const paddle::platform::DeviceContext& context_;
+  const phi::DeviceContext& context_;
   phi::DenseTensor* tensor_;
   float value_;
 };
 
 template <>
-void set_constant_with_place<paddle::platform::CUDAPlace>(
-    const paddle::platform::DeviceContext& context,
-    phi::DenseTensor* tensor,
-    float value) {
+void set_constant_with_place<phi::GPUPlace>(const phi::DeviceContext& context,
+                                            phi::DenseTensor* tensor,
+                                            float value) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantGPU(context, tensor, value));
 }

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device_context.h"
-
+#include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/phi/backends/callback_manager.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/custom/enforce_custom.h"
 #include "paddle/phi/backends/device_base.h"
 #include "paddle/phi/backends/device_guard.h"
@@ -285,8 +285,7 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->async_memory_copy_h2d(device, c_stream, dst, src, size));
     } else if (pimpl_->memory_copy_h2d) {
-      paddle::platform::DeviceContextPool& pool =
-          paddle::platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       pool.Get(place)->Wait();
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->memory_copy_h2d(device, dst, src, size));
@@ -306,8 +305,7 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->async_memory_copy_d2h(device, c_stream, dst, src, size));
     } else if (pimpl_->memory_copy_d2h) {
-      paddle::platform::DeviceContextPool& pool =
-          paddle::platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       pool.Get(place)->Wait();
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->memory_copy_d2h(device, dst, src, size));
@@ -327,8 +325,7 @@ class CustomDevice : public DeviceInterface {
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->async_memory_copy_d2d(device, c_stream, dst, src, size));
     } else if (pimpl_->memory_copy_d2d) {
-      paddle::platform::DeviceContextPool& pool =
-          paddle::platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       pool.Get(place)->Wait();
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
           pimpl_->memory_copy_d2d(device, dst, src, size));
@@ -364,8 +361,7 @@ class CustomDevice : public DeviceInterface {
         MemoryCopyH2D(dst_dev_id, dst, tmp.get(), size);
       } else {
         auto src_place = CustomPlace(Type(), src_dev_id);
-        paddle::platform::DeviceContextPool& pool =
-            paddle::platform::DeviceContextPool::Instance();
+        phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
         pool.Get(src_place)->Wait();
         PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
             pimpl_->memory_copy_p2p(dst_device, src_device, dst, src, size));
