@@ -45,13 +45,13 @@ namespace cutlass_internal {
 
 # This is a cutlass kernel, will be many these like kernels
 
-dict_for_part1 = {
+dict_for_declare_part = {
     "conv_kind_name": "Fprop",
     "epi_part": "${epi_func}< ${element_c}, ${epilogue_vector_length}, ${element_accum}, ${element_epilogue}>",
 }
 
 cba_kernel_no_alpha = (
-    SubstituteTemplate(CommonCutlassConvKernelDeclare, dict_for_part1)
+    SubstituteTemplate(CommonCutlassConvKernelDeclare, dict_for_declare_part)
     + '''
   typename ImplicitGemm::Arguments arguments{
       problem_size,

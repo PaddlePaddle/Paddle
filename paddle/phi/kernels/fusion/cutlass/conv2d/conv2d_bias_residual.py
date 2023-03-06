@@ -43,13 +43,13 @@ namespace cutlass_internal {
 
 # This is a cutlass kernel, will be many these like kernels
 
-dict_for_part1 = {
+dict_for_declare_part = {
     "conv_kind_name": "FpropWithBroadcast",
     "epi_part": "cutlass::epilogue::thread::LinearCombinationResidualBlock< ${element_c}, ${element_accum}, ${element_epilogue}, ${element_residul}, ${epilogue_vector_length}, ${act1}, ${binary}, ${act2}>",
 }
 
 cbr_kernel = (
-    SubstituteTemplate(CommonCutlassConvKernelDeclare, dict_for_part1)
+    SubstituteTemplate(CommonCutlassConvKernelDeclare, dict_for_declare_part)
     + '''
   const half *residual = params.residual;
   typename ImplicitGemm::Arguments arguments{
