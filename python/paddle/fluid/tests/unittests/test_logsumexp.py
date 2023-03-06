@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 
+
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
     if isinstance(axis, int):
         axis = (axis,)
