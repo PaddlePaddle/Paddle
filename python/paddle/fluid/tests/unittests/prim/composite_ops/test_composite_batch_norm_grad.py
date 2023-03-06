@@ -20,6 +20,7 @@ from utils import SUB_TOLERANCE
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
+from paddle.incubate.autograd import primapi
 
 np.random.seed(2023)
 
@@ -190,7 +191,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
                 attrs.use_global_stats,
             )
             blocks = main_program.blocks
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
             z = paddle.static.gradients([y], [x1])
 
