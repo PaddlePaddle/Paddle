@@ -1343,6 +1343,7 @@ class TestCeil_ZeroDim(TestCeil):
 class TestFloor(TestActivation):
     def setUp(self):
         self.op_type = "floor"
+        self.prim_op_type = "prim"
         self.check_eager = True
         self.python_api = paddle.floor
         self.init_dtype()
@@ -1370,16 +1371,10 @@ class TestFloor_ZeroDim(TestFloor):
         self.shape = []
 
 
-class TestFloorPrim(TestActivation):
+class TestFloor_Prim(TestActivation):
     def setUp(self):
         self.op_type = "floor"
         self.prim_op_type = "prim"
-
-        # the gradient on floor, ceil, round is undefined.
-        # we return zero as gradient, but the numpy return nan.
-        # for prim, we compare result with eager python api,
-        # so, we use only_prim flag to express we only test prim.
-        self.only_prim = True
         self.check_eager = True
         self.python_api = paddle.floor
         self.init_dtype()
@@ -1400,15 +1395,19 @@ class TestFloorPrim(TestActivation):
         self.shape = [10, 12]
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        # the gradient on floor, ceil, round is undefined.
+        # we return zero as gradient, but the numpy return nan.
+        # for prim, we compare result with eager python api,
+        # so, we use only_prim flag to express we only test prim.
+        self.check_grad(['X'], 'Out', check_prim=True, only_check_prim=True)
 
 
-class TestFloorPrim_ZeroDim(TestFloorPrim):
+class TestFloor_ZeroDim_Prim(TestFloor_Prim):
     def init_shape(self):
         self.shape = []
 
 
-class TestFloorPrimFp16(TestFloorPrim):
+class TestFloorFp16_Prim(TestFloor_Prim):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -3783,7 +3782,7 @@ create_test_act_fp16_class(TestSoftshrink)
 create_test_act_fp16_class(TestSqrt)
 create_test_act_fp16_class(TestAbs)
 create_test_act_fp16_class(TestCeil, grad_check=False)
-create_test_act_fp16_class(TestFloor, grad_check=False)
+create_test_act_fp16_class(TestFloor, check_prim=True, grad_check=False)
 create_test_act_fp16_class(TestCos, grad_atol=0.85)
 create_test_act_fp16_class(TestTan, grad_atol=0.85)
 create_test_act_fp16_class(TestCosh, grad_atol=0.85)
