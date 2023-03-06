@@ -181,7 +181,7 @@ class TestSumOp4(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSumOp5(OpTest):
@@ -197,7 +197,7 @@ class TestSumOp5(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSumOp6(OpTest):
@@ -211,7 +211,7 @@ class TestSumOp6(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSumOp7(OpTest):
@@ -227,7 +227,7 @@ class TestSumOp7(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestCumsumFP16(unittest.TestCase):
