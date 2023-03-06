@@ -130,7 +130,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   RuntimeContext runtime_context({}, {});
   runtime_context.inputs["X"] = {scope_->FindVar(var_name)};
   runtime_context.outputs["Out"] = {scope_->Var(new_var_name)};
-  InterpretercoreInferShapeContext infer_shape_ctx(*op, runtime_context);
+  RuntimeInferShapeContext infer_shape_ctx(*op, runtime_context);
   op.get()->Info().infer_shape_(&infer_shape_ctx);
 
   // 2. choose kernel
