@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/lstm_compute.h"
@@ -218,7 +218,7 @@ __global__ void KeLstmBackward(Op op,
 }
 
 template <class T, class Op>
-void gpu_lstm_forward(const paddle::platform::DeviceContext& context,
+void gpu_lstm_forward(const phi::DeviceContext& context,
                       Op op,
                       phi::funcs::LstmMetaValue<T> value,
                       int frame_size,
@@ -269,7 +269,7 @@ void gpu_lstm_forward(const paddle::platform::DeviceContext& context,
 }
 
 template <class T, class Op>
-void gpu_lstm_backward(const paddle::platform::DeviceContext& context,
+void gpu_lstm_backward(const phi::DeviceContext& context,
                        Op op,
                        phi::funcs::LstmMetaValue<T> value,
                        phi::funcs::LstmMetaGrad<T> grad,

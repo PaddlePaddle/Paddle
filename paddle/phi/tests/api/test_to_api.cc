@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -28,14 +29,15 @@ namespace framework = paddle::framework;
 using DDim = phi::DDim;
 
 paddle::experimental::Tensor CreateInputTensor() {
-  const auto alloc = std::make_unique<paddle::experimental::DefaultAllocator>(
-      paddle::platform::CPUPlace());
+  const auto alloc =
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   auto dense_x = std::make_shared<phi::DenseTensor>(
       alloc.get(),
       phi::DenseTensorMeta(
           phi::DataType::INT64, phi::make_ddim({3, 4}), phi::DataLayout::NCHW));
-  auto* dense_x_data =
-      dense_x->mutable_data<int64_t>(paddle::platform::CPUPlace());
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+  auto* dense_x_data = dev_ctx->template Alloc<int64_t>(dense_x.get());
 
   for (int64_t i = 0; i < 12; ++i) {
     dense_x_data[i] = i;
