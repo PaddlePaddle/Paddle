@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/lamb_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -57,15 +57,15 @@ void LambKernel(const Context& dev_ctx,
   }
   bool cpu_skip_update = false;
   if (skip_update && skip_update->IsInitialized()) {
-    if (paddle::platform::is_cpu_place(skip_update->place())) {
+    if (skip_update->place().GetType() == phi::AllocationType::CPU) {
       cpu_skip_update = *(skip_update->data<bool>());
     } else {
       const bool* skip_update_flag = skip_update->data<bool>();
-      paddle::memory::Copy(phi::CPUPlace(),
-                           static_cast<void*>(&cpu_skip_update),
-                           dev_ctx.GetPlace(),
-                           static_cast<const void*>(skip_update_flag),
-                           sizeof(bool));
+      memory_utils::Copy(phi::CPUPlace(),
+                         static_cast<void*>(&cpu_skip_update),
+                         dev_ctx.GetPlace(),
+                         static_cast<const void*>(skip_update_flag),
+                         sizeof(bool));
     }
   }
   if (cpu_skip_update) {
@@ -114,11 +114,11 @@ void LambKernel(const Context& dev_ctx,
     int r = xpu_malloc(reinterpret_cast<void**>(&beta1_pow_xpu_ptr),
                        (beta1_pow.numel()) * sizeof(MT));
     PADDLE_ENFORCE_XPU_SUCCESS(r);
-    paddle::memory::Copy(dev_ctx.GetPlace(),
-                         beta1_pow_xpu_ptr,
-                         beta1_pow.place(),
-                         beta1_pow.data<MT>(),
-                         sizeof(MT) * beta1_pow.numel());
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       beta1_pow_xpu_ptr,
+                       beta1_pow.place(),
+                       beta1_pow.data<MT>(),
+                       sizeof(MT) * beta1_pow.numel());
     beta1_pow_ptr = beta1_pow_xpu_ptr;
     beta1_pow_out_ptr = RAII_GUARD.alloc_l3_or_gm<MT>(beta1_pow_out->numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(beta1_pow_out_ptr);
@@ -130,11 +130,11 @@ void LambKernel(const Context& dev_ctx,
     int r = xpu_malloc(reinterpret_cast<void**>(&beta2_pow_xpu_ptr),
                        (beta2_pow.numel()) * sizeof(MT));
     PADDLE_ENFORCE_XPU_SUCCESS(r);
-    paddle::memory::Copy(dev_ctx.GetPlace(),
-                         beta2_pow_xpu_ptr,
-                         beta2_pow.place(),
-                         beta2_pow.data<MT>(),
-                         sizeof(MT) * beta2_pow.numel());
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       beta2_pow_xpu_ptr,
+                       beta2_pow.place(),
+                       beta2_pow.data<MT>(),
+                       sizeof(MT) * beta2_pow.numel());
     beta2_pow_ptr = beta2_pow_xpu_ptr;
 
     beta2_pow_out_ptr = RAII_GUARD.alloc_l3_or_gm<MT>(beta2_pow_out->numel());
@@ -198,22 +198,22 @@ void LambKernel(const Context& dev_ctx,
 
   if (beta1_pow.place().GetType() == phi::AllocationType::CPU) {
     // copy beta1_pow_out from xpu to cpu
-    paddle::memory::Copy(beta1_pow.place(),
-                         dev_ctx.template HostAlloc<MT>(beta1_pow_out),
-                         dev_ctx.GetPlace(),
-                         beta1_pow_out_ptr,
-                         sizeof(MT) * beta1_pow_out->numel());
+    memory_utils::Copy(beta1_pow.place(),
+                       dev_ctx.template HostAlloc<MT>(beta1_pow_out),
+                       dev_ctx.GetPlace(),
+                       beta1_pow_out_ptr,
+                       sizeof(MT) * beta1_pow_out->numel());
     if (beta1_pow_xpu_ptr) {
       xpu_free(beta1_pow_xpu_ptr);
     }
   }
   if (beta2_pow.place().GetType() == phi::AllocationType::CPU) {
     // copy beta2_pow_out from xpu to cpu
-    paddle::memory::Copy(beta2_pow.place(),
-                         dev_ctx.template HostAlloc<MT>(beta2_pow_out),
-                         dev_ctx.GetPlace(),
-                         beta2_pow_out_ptr,
-                         sizeof(MT) * beta2_pow_out->numel());
+    memory_utils::Copy(beta2_pow.place(),
+                       dev_ctx.template HostAlloc<MT>(beta2_pow_out),
+                       dev_ctx.GetPlace(),
+                       beta2_pow_out_ptr,
+                       sizeof(MT) * beta2_pow_out->numel());
     if (beta2_pow_xpu_ptr) {
       xpu_free(beta2_pow_xpu_ptr);
     }
