@@ -152,8 +152,8 @@ const Place &Tensor::place() const {
 bool Tensor::can_not_use() const {
   if (is_dense_tensor()) {
     auto densor_ptr = static_cast<phi::DenseTensor *>(impl_.get());
-    if (dense_ptr != nullptr) {
-      return *dense_ptr->canNotUse;
+    if (densor_ptr != nullptr) {
+      return *densor_ptr->canNotUse;
     } else {
       return false;
     }
