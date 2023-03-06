@@ -886,8 +886,8 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
             # The input.dims[1] must be equal to the weight's length.
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [4]}
-                self.dynamic_shape.max_input_shape = {"input_data": [256]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [16]}
+                self.dynamic_shape.max_input_shape = {"input_data": [64]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [32]}
             elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 32]}
                 self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
