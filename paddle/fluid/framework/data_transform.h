@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/common/transform.h"
-#include "paddle/phi/core/infer_varkernel_utils.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -47,7 +47,7 @@ void SetTensorToVariable(const Variable &in_var,
                          const phi::DenseTensor &tensor,
                          Variable *out_var);
 
-phi::InferVarKernelContext BuildInferVarKernelContext(
+phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(
     const phi::KernelKey &kernel_key,
     const AttributeMap &fluid_attrs,
     phi::AttributeMap *phi_attrs,

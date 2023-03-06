@@ -476,17 +476,15 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   bool transfered = false;
   DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
   phi::Kernel* phi_kernel = op_func_node->phi_kernel_;
-  auto has_infer_varkernel_fn = (phi_kernel && phi_kernel->IsValid() &&
-                                 phi_kernel->GetKernelRegisteredType() ==
-                                     phi::KernelRegisteredType::FUNCTION &&
-                                 phi_kernel->infer_var_kernel_fn_ != nullptr);
+  auto has_infer_varkernel_fn =
+      (phi_kernel && phi_kernel->infer_var_kernel_fn_ != nullptr);
   phi::AttributeMap infer_attrs{};
   auto fluid_attrs =
       static_cast<const framework::OperatorWithKernel*>(op_base)->Attrs();
   auto phi_kernelkey =
       framework::TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
-  phi::InferVarKernelContext infer_varkernel_context =
-      BuildInferVarKernelContext(
+  phi::GetKernelTypeForVarContext infer_varkernel_context =
+      BuildGetKernelTypeForVarContext(
           phi_kernelkey, fluid_attrs, &infer_attrs, has_infer_varkernel_fn);
   auto apply_data_transform_for_one_parameter =
       [&](const std::string& parameter_name,

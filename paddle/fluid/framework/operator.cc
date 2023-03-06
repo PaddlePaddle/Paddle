@@ -38,8 +38,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/ddim.h"
-#include "paddle/phi/core/infer_varkernel_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
@@ -2448,17 +2448,15 @@ Scope* OperatorWithKernel::PrepareData(
     }
   }
 
-  auto has_infer_varkernel_fn = (run_phi_kernel_ &&
-                                 phi_kernel_->GetKernelRegisteredType() ==
-                                     phi::KernelRegisteredType::FUNCTION &&
-                                 phi_kernel_->infer_var_kernel_fn_ != nullptr);
+  auto has_infer_varkernel_fn =
+      (run_phi_kernel_ && phi_kernel_->infer_var_kernel_fn_ != nullptr);
   phi::AttributeMap infer_attrs{};
   auto fluid_attrs = Attrs();
-  phi::InferVarKernelContext infer_varkernel_context =
-      BuildInferVarKernelContext(expected_kernel_key,
-                                 fluid_attrs,
-                                 &infer_attrs,
-                                 has_infer_varkernel_fn);
+  phi::GetKernelTypeForVarContext infer_varkernel_context =
+      BuildGetKernelTypeForVarContext(expected_kernel_key,
+                                      fluid_attrs,
+                                      &infer_attrs,
+                                      has_infer_varkernel_fn);
 
   const auto& name_map = Inputs();
   auto prepare_input_data = [&](const std::string& in_name,

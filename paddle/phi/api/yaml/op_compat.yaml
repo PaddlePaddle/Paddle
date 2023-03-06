@@ -167,19 +167,11 @@
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :
     output : Out
-  inputs :
-    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
-  outputs :
-    output : Out
   extra :
     attrs : [bool use_mkldnn = false]
 
 - op : bilinear_interp (bilinear_interp_v2)
   backward : bilinear_interp_grad (bilinear_interp_v2_grad)
-  inputs :
-    {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
-  outputs :
-    output : Out
   inputs :
     {x : X, out_size : OutSize, size_tensor : SizeTensor, scale_tensor : Scale}
   outputs :

@@ -15,14 +15,14 @@
 #include "paddle/phi/kernels/interpolate_kernel.h"
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
-#include "paddle/phi/core/infer_varkernel_utils.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 
 namespace phi {
 
 phi::KernelKey InterpolateGetKernelTypeForVar(
-    const InferVarKernelContext* ctx) {
+    const GetKernelTypeForVarContext* ctx) {
   const std::string& var_name = ctx->GetVarName();
   const DenseTensor& tensor = ctx->GetTensor();
   const KernelKey& expected_kernel_type = ctx->GetKernelKey();
@@ -32,10 +32,10 @@ phi::KernelKey InterpolateGetKernelTypeForVar(
   if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto it = attrs.find("data_layout");
-    PADDLE_ENFORCE_NE(it,
-                      attrs.end(),
-                      paddle::platform::errors::NotFound(
-                          "Cannot find attribute %s.", "data_layout"));
+    PADDLE_ENFORCE_NE(
+        it,
+        attrs.end(),
+        phi::errors::NotFound("Cannot find attribute %s.", "data_layout"));
     const std::string data_layout = PADDLE_GET_CONST(std::string, it->second);
     auto dl = phi::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool

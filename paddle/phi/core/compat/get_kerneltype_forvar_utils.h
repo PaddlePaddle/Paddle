@@ -1,10 +1,10 @@
-//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//    http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,22 +15,22 @@
 #pragma once
 
 #include "paddle/phi/core/attribute.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
 class KernelKey;
 class DenseTensor;
 /**
- * Note: InferVarKernelContext is only designed to MKLDNN kernel when the
- * related memeber function 'GetKernelTypeFor' is special.
+ * Note: GetKernelTypeForVarContext is currently designed to MKLDNN kernel when
+ * the related memeber function 'GetKernelTypeForVar' is special. It is
+ * possiable to uesed for other custom hardwares in the future.
  */
-class InferVarKernelContext {
+class GetKernelTypeForVarContext {
  public:
-  InferVarKernelContext() = default;
-  InferVarKernelContext(const InferVarKernelContext&) = default;
-  explicit InferVarKernelContext(const phi::KernelKey* kernel_key,
-                                 const AttributeMap* attrs)
+  GetKernelTypeForVarContext() = default;
+  GetKernelTypeForVarContext(const GetKernelTypeForVarContext&) = default;
+  explicit GetKernelTypeForVarContext(const phi::KernelKey* kernel_key,
+                                      const AttributeMap* attrs)
       : kernel_key_(kernel_key), attrs_(attrs) {}
 
   const std::string& GetVarName(void) const;
@@ -46,13 +46,13 @@ class InferVarKernelContext {
   void SetDenseTensor(DenseTensor* tensor);
 
  private:
-  const KernelKey* kernel_key_;
+  const KernelKey* kernel_key_;  // not owned
   // Use AttributeMap in namespace 'phi' to avoid depending 'fuild'
-  const AttributeMap* attrs_;
-  std::string* var_name_;
-  DenseTensor* tensor_;
+  const AttributeMap* attrs_;  // not owned
+  std::string* var_name_;      // not owned
+  DenseTensor* tensor_;        // not owned
 };
 
-typedef KernelKey (*InferVarKernelFn)(const InferVarKernelContext*);
+typedef KernelKey (*GetKernelTypeForVarFn)(const GetKernelTypeForVarContext*);
 
 }  // namespace phi

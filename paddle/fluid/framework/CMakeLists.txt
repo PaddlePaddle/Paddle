@@ -480,7 +480,7 @@ if(WITH_XPU)
          infershape_utils
          op_utils
          op_compat_infos
-         infer_varkernel_utils)
+         get_kerneltype_forvar_utils)
 else()
   cc_library(
     operator
@@ -507,7 +507,7 @@ else()
          infershape_utils
          op_utils
          op_compat_infos
-         infer_varkernel_utils)
+         get_kerneltype_forvar_utils)
 endif()
 
 cc_test(
