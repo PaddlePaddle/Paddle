@@ -36,7 +36,6 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
             for T in range(2, 5):
                 for data_format in ["NCHW", "NHWC"]:
                     dics = [{"shift_ratio": shift_value, "seg_num": T, "data_format": data_format}, {}]
-
                     ops_config = [
                         {
                             "op_type": "temporal_shift",
@@ -84,12 +83,12 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        # # for static_shape
-        # clear_dynamic_shape()
-        # self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        # yield self.create_inference_config(), (1, 3), 1e-5
-        # self.trt_param.precision = paddle_infer.PrecisionType.Half
-        # yield self.create_inference_config(), (1, 3), 1e-3
+        # for static_shape
+        clear_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), (0, 3), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), (0, 3), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)

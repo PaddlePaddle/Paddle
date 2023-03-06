@@ -154,11 +154,12 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
                                                     "bilinear_interp",
                                                     "bilinear_interp_v2",
                                                     "nearest_interp",
-                                                    "nearest_interp_v2"};
+                                                    "nearest_interp_v2",
+                                                    "temporal_shift"};
   // Ops must run under the original layout even though it has
   // data_format/data_layout attribute, otherwise it will be very troublesome!
-  std::unordered_set<std::string> must_original_layout_ops{"affine_channel",
-                                                           "softmax"};
+  std::unordered_set<std::string> must_original_layout_ops{
+      "affine_channel", "softmax", "temporal_shift"};
   // OPs unrelated to layout are consistent according to the layout of input
   // var！
   std::unordered_set<std::string> any_layout_ops{"relu"};
