@@ -5170,7 +5170,7 @@ def vander(x, N=None, increasing=False, name=None):
     res = paddle.empty([x.shape[0], N], dtype=x.dtype)
 
     if N > 0:
-        res[:, 0] = 1
+        res[:, 0] = paddle.to_tensor([1], dtype=x.dtype)
     if N > 1:
         res[:, 1:] = x[:, None]
         res[:, 1:] = paddle.cumprod(res[:, 1:], dim=-1)

@@ -69,6 +69,28 @@ class TestVanderAPI(unittest.TestCase):
             self.api_case(n)
             self.api_case(n, increasing=True)
 
+    def test_complex(self):
+        paddle.disable_static(self.place)
+        real = np.random.rand(5)
+        imag = np.random.rand(5)
+        complex_np = real + 1j * imag
+        complex_paddle = paddle.complex(
+            paddle.to_tensor(real), paddle.to_tensor(imag)
+        )
+
+        def test_api_case(N, increasing=False):
+            for n in N:
+                res_np = np.vander(complex_np, n, increasing)
+                res_paddle = paddle.vander(complex_paddle, n, increasing)
+                np.testing.assert_allclose(
+                    res_paddle.numpy(), res_np, rtol=1e-05
+                )
+
+        N = [0, 1, 2, 3, 4]
+        test_api_case(N)
+        test_api_case(N, increasing=True)
+        paddle.enable_static()
+
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
