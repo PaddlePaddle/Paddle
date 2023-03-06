@@ -141,14 +141,6 @@ def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
     return np.mean(x, axis=axis, keepdims=keepdim)
 
 
-def ref_reduce_mean_grad(x, axis, dtype, reduce_all):
-    if reduce_all:
-        axis = list(range(x.ndim))
-
-    shape = [x.shape[i] for i in axis]
-    return (1.0 / np.prod(shape) * np.ones(shape)).astype(dtype)
-
-
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_float16_supported(core.CUDAPlace(0)),
