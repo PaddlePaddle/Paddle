@@ -119,7 +119,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     Computes the variance of ``x`` along ``axis`` .
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float16, float32, float64.
         axis (int|list|tuple, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int).
 
             - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
@@ -145,7 +145,9 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             # [1.         4.33333333]
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'var'
+        )
 
     u = mean(x, axis, True, name)
     out = paddle.sum(paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name)
@@ -168,7 +170,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
     Computes the standard-deviation of ``x`` along ``axis`` .
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float16, float32, float64.
         axis (int|list|tuple, optional): The axis along which to perform
             standard-deviation calculations. ``axis`` should be int, list(int)
             or tuple(int). If ``axis`` is a list/tuple of dimension(s),
@@ -211,7 +213,9 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
 
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'std'
+        )
     out = var(**locals())
     return paddle.sqrt(out)
 
