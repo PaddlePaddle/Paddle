@@ -579,6 +579,14 @@
     func : imag
   backward : imag_grad
 
+- op : index_get
+  args : (Tensor x, Tensor[] indices)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexGetInferMeta
+  kernel :
+    func : index_get
+
 - op : index_sample
   args : (Tensor x, Tensor index)
   output : Tensor

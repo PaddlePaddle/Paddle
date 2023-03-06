@@ -2995,6 +2995,28 @@ void MoeInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void IndexGetInferMeta(const MetaTensor& x,
+                       const std::vector<const MetaTensor*>& indices,
+                       MetaTensor* out) {
+  auto in_dims = x.dims();
+  PADDLE_ENFORCE_LT(
+      in_dims.size(),
+      7,
+      phi::errors::InvalidArgument(
+          "The rank of input should be less than 7, but received %d.",
+          in_dims.size()));
+
+  auto pre_dim = indices[0]->dims();
+  auto tmp_dim = phi::make_ddim({0});
+  for (size_t i = 1; i < indices.size(); ++i) {
+    tmp_dim = indices[i]->dims();
+    if (pre_dim != tmp_dim) {
+      pre_dim = phi::funcs::BroadcastTwoDims(pre_dim, tmp_dim, -1);
+    }
+  }
+  out->set_dims(pre_dim);
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

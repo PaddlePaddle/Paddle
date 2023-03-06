@@ -92,6 +92,22 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
   }
 }
 
+static DDim BroadcastTwoDims(const DDim &x_dims, const DDim &y_dims, int axis) {
+  int max_dim = std::max(x_dims.size(), y_dims.size());
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+  std::vector<int> x_dims_array(max_dim);
+  std::vector<int> y_dims_array(max_dim);
+  std::vector<int> out_dims_array(max_dim);
+  GetBroadcastDimsArrays(x_dims,
+                         y_dims,
+                         x_dims_array.data(),
+                         y_dims_array.data(),
+                         out_dims_array.data(),
+                         max_dim,
+                         axis);
+  return phi::make_ddim(out_dims_array);
+}
+
 inline void GetPrePostNumel(
     const DDim &dim, int axis, int *pre, int *n, int *post) {
   *pre = 1;

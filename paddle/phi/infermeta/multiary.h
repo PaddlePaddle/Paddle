@@ -541,4 +541,8 @@ void MoeInferMeta(const MetaTensor& x,
                   const std::string& act_type,
                   MetaTensor* out);
 
+void IndexGetInferMeta(const MetaTensor& x,
+                       const std::vector<const MetaTensor*>& indices,
+                       MetaTensor* out);
+
 }  // namespace phi
