@@ -142,7 +142,7 @@ class TestMaxoutAPI(unittest.TestCase):
 class TestMaxOutOpFP16(OpTest):
     def setUp(self):
         self.op_type = "maxout"
-        self.python_api = paddle.nn.Maxout
+        self.python_api = paddle.nn.functional.maxout
         input_np = np.random.uniform(-1, 1, [2, 6, 5, 4]).astype(np.float16)
         self.groups = 2
         self.axis = 1
