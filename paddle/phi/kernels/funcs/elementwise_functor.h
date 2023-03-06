@@ -640,32 +640,12 @@ struct ElementwisePowFunctor<dtype::float16> {
 };
 
 template <>
-struct ElementwisePowFunctor<dtype::bfloat16> {
-  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
-                                               const dtype::bfloat16 b) const {
-    float f_a = static_cast<float>(a);
-    float f_b = static_cast<float>(b);
-    return static_cast<dtype::bfloat16>(std::pow(f_a, f_b));
-  }
-};
-
-template <>
 struct ElementwiseInversePowFunctor<dtype::float16> {
   inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
                                               const dtype::float16 b) const {
     float f_a = static_cast<float>(a);
     float f_b = static_cast<float>(b);
     return static_cast<dtype::float16>(std::pow(f_b, f_a));
-  }
-};
-
-template <>
-struct ElementwiseInversePowFunctor<dtype::bfloat16> {
-  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
-                                               const dtype::bfloat16 b) const {
-    float f_a = static_cast<float>(a);
-    float f_b = static_cast<float>(b);
-    return static_cast<dtype::bfloat16>(std::pow(f_b, f_a));
   }
 };
 }  // namespace funcs

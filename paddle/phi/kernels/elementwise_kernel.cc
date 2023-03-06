@@ -151,8 +151,7 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    float,
                    double,
                    int,
-                   int64_t,
-                   phi::dtype::bfloat16) {}
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(subtract,
                    CPU,
@@ -254,8 +253,7 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}
 
 #endif
 

@@ -152,44 +152,6 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
                     check_prim=self.check_prim,
                 )
 
-    def test_check_grad_normal(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['X', 'Y'],
-                'Out',
-                check_dygraph=self.check_dygraph(),
-                check_prim=self.check_prim,
-                only_check_prim=True,
-            )
-
-    def test_check_grad_ingore_x(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['Y'],
-                'Out',
-                no_grad_set=set("X"),
-                check_dygraph=self.check_dygraph(),
-                check_prim=self.check_prim,
-                only_check_prim=True,
-            )
-
-    def test_check_grad_ingore_y(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['X'],
-                'Out',
-                no_grad_set=set('Y'),
-                check_dygraph=self.check_dygraph(),
-                check_prim=self.check_prim,
-                only_check_prim=True,
-            )
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()

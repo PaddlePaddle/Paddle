@@ -195,6 +195,10 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
         self.x_shape = [12, 13]
         self.y_shape = [12, 13]
 
+    # elementwise_pow does't support bfloat16
+    def if_check_prim(self):
+        self.check_prim = False
+
 
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast."
