@@ -813,13 +813,13 @@ void gather_nd_grad(const Tensor& x,
 
 template <typename T>
 void prod_grad(const Tensor& x,
-                const Tensor& out,
-                const Tensor& out_grad,
-                IntArray& axis,
-                bool keep_dim,
-                bool reduce_all,
-                Tensor* x_grad){
-  if(x_grad){
+               const Tensor& out,
+               const Tensor& out_grad,
+               const IntArray& axis,
+               bool keep_dim,
+               bool reduce_all,
+               Tensor* x_grad) {
+  if (x_grad) {
     std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
     int64_t axis_size = axis.size();
     int64_t x_dim_size = x_dim.size();
