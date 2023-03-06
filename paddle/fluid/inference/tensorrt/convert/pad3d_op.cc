@@ -36,6 +36,7 @@ class Pad3dOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+#if IS_TRT_VERSION_GE(8200)
     VLOG(3) << "convert a fluid transpose op to tensorrt tranpose layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -67,11 +68,9 @@ class Pad3dOpConverter : public OpConverter {
       value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
     }
 
-    std::string padding_mode;
+    std::string padding_mode = "constant";
     if (op_desc.HasAttr("mode")) {
       padding_mode = PADDLE_GET_CONST(std::string, op_desc.GetAttr("mode"));
-    } else {
-      padding_mode = "constant";
     }
 
     const int inputDim = input->getDimensions().nbDims;
@@ -92,11 +91,11 @@ class Pad3dOpConverter : public OpConverter {
       post_pad_v[i + 2] = paddings[pad_size - 1 - i];
     }
 
-    nvinfer1::ITensor* pre_pad = vectorToTensor<int>(pre_pad_v);
-    nvinfer1::ITensor* post_pad = vectorToTensor<int>(post_pad_v);
+    nvinfer1::ITensor* pre_pad = Add1DConstantLayer(pre_pad_v);
+    nvinfer1::ITensor* post_pad = Add1DConstantLayer(post_pad_v);
 
     std::vector<int> zeros_v(inputDim, 0);
-    auto const zeros = vectorToTensor<int>(zeros_v);
+    auto const zeros = Add1DConstantLayer(zeros_v);
 
     nvinfer1::ITensor* start{};
     nvinfer1::ITensor* size{};
@@ -120,7 +119,7 @@ class Pad3dOpConverter : public OpConverter {
     for (int i = 0; i < inputDim; i++) {
       input_shape_v[i] = input->getDimensions().d[i];
     }
-    auto const input_shape = vectorToTensor<int>(input_shape_v);
+    auto const input_shape = Add1DConstantLayer(input_shape_v);
 
     size = TRT_ENGINE_ADD_LAYER(engine_,
                                 ElementWise,
@@ -183,22 +182,9 @@ class Pad3dOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(slice_layer, "pad3d", {output_name}, test_mode);
-  }
-
- private:
-  template <typename T>
-  nvinfer1::ITensor* vectorToTensor(std::vector<T> v) {
-    int* v_data = const_cast<T*>(static_cast<const T*>(v.data()));
-
-    nvinfer1::Weights v_wt{nvinfer1::DataType::kINT32,
-                           static_cast<void*>(v_data),
-                           static_cast<int32_t>(v.size())};
-
-    nvinfer1::Dims v_dim;
-    v_dim.nbDims = 1;
-    v_dim.d[0] = static_cast<int>(v.size());
-
-    return TRT_ENGINE_ADD_LAYER(engine_, Constant, v_dim, v_wt)->getOutput(0);
+#else
+    VLOG(3) << "pad3d is not supported when TensorRT < 8.2";
+#endif
   }
 };
 

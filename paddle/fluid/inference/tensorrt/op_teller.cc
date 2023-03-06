@@ -1726,7 +1726,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "pad3d") {
 #if !IS_TRT_VERSION_GE(8200)
-      VLOG(3) << "pad3d is not supported when TensorRT < 8.4";
+      VLOG(3) << "pad3d is not supported when TensorRT < 8.2";
       return false;
 #endif
       if (!desc.HasAttr("paddings") && !desc.HasInput("Paddings")) {
@@ -1734,7 +1734,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       if (desc.HasAttr("mode")) {
         std::string mode = PADDLE_GET_CONST(std::string, desc.GetAttr("mode"));
-        if (mode != "constant" && mode != "reflect" && mode != "replicate") {
+        if (mode != "constant" || (mode != "reflect" && mode != "replicate")) {
           VLOG(3) << "The pad3d layer of TRT only support "
                      "constant/reflect/replicate mode.";
           return false;
@@ -1747,14 +1747,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           VLOG(3) << "The pad3d layer of TRT only support NCDHW data format.";
           return false;
         }
-      }
-      std::vector<int64_t> shape;
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
       }
     }
     if (op_type == "swish") {
