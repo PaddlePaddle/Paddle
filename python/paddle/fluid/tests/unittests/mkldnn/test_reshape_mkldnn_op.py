@@ -54,6 +54,9 @@ class TestReshape2OneDNNOp(TestReshapeOp):
     def set_outputs(self):
         pass
 
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
 
 class TestReshape2OneDNNOpDimInfer1(TestReshape2OneDNNOp):
     def init_data(self):
