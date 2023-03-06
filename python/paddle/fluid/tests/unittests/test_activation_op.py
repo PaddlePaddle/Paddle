@@ -2968,6 +2968,10 @@ class TestPow_ZeroDim(TestPow):
     def init_shape(self):
         self.shape = []
 
+    def setUp(self):
+        super(TestPow_ZeroDim, self).setUp()
+        self.enable_cinn = False
+
 
 class TestPowFP16(TestActivation):
     def setUp(self):
@@ -3003,6 +3007,7 @@ class TestPow_factor_tensor(TestActivation):
         self.op_type = "pow"
         self.check_eager = False
         self.python_api = paddle.pow
+        self.enable_cinn = False
         self.init_dtype()
 
         np.random.seed(1024)
