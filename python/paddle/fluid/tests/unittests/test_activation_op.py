@@ -2792,8 +2792,6 @@ class TestLog1p(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad(['X'], 'Out', check_eager=True)
     
     def test_error(self):
