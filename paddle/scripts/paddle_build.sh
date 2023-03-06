@@ -207,6 +207,7 @@ function cmake_base() {
         -DWITH_ROCM=${WITH_ROCM:-OFF}
         -DWITH_CINN=${WITH_CINN:-OFF}
         -DCINN_GIT_TAG=${CINN_GIT_TAG:-develop}
+        -DWITH_GPU_GRAPH=${GPU_GRAPH:-develop}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
         -DWITH_AVX=${WITH_AVX:-OFF}
@@ -264,6 +265,7 @@ EOF
         -DWITH_ROCM=${WITH_ROCM:-OFF} \
         -DWITH_CINN=${WITH_CINN:-OFF} \
         -DCINN_GIT_TAG=${CINN_GIT_TAG:-develop} \
+        -DWITH_GPU_GRAPH=${GPU_GRAPH:-develop} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
@@ -3653,6 +3655,7 @@ EOF
     export WITH_ROCM=${WITH_ROCM:-OFF}
     export WITH_CINN=${WITH_CINN:-OFF}
     export CINN_GIT_TAG=${CINN_GIT_TAG:-develop}
+    export GPU_GRAPH=${GPU_GRAPH:-develop}
     export WITH_DISTRIBUTE=${distibuted_flag}
     export WITH_MKL=${WITH_MKL:-ON}
     export WITH_AVX=${WITH_AVX:-OFF}
@@ -3901,6 +3904,7 @@ EOF
     export WITH_ROCM=${WITH_ROCM:-OFF}
     export WITH_CINN=${WITH_CINN:-OFF}
     export CINN_GIT_TAG=${CINN_GIT_TAG:-develop}
+    export GPU_GRAPH=${GPU_GRAPH:-develop}
     export WITH_DISTRIBUTE=${distibuted_flag}
     export WITH_MKL=${WITH_MKL:-ON}
     export WITH_AVX=${WITH_AVX:-OFF}

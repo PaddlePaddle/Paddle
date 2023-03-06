@@ -678,6 +678,7 @@ def cmake_run(build_path):
                 "NEW_RELEASE_ALL",
                 "GENERATOR",
                 "CINN_GIT_TAG",
+                "GPU_GRAPH",
             )
         }
     )
