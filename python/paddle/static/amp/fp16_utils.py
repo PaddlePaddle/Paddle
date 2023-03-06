@@ -53,6 +53,15 @@ def _rename_arg(op, old_name, new_name):
     op_desc._rename_output(old_name, new_name)
 
 
+def _rename_block_arg(block, old_name, new_name):
+    for op in block.ops:
+        _rename_arg(op, old_name, new_name)
+        if op.has_attr('sub_block'):
+            _rename_block_arg(
+                block.program.block(op.attr('sub_block').id), old_name, new_name
+            )
+
+
 def _rename_op_input(program, op_var_rename_map, origin_ops, keep_fp32_ops):
     for block in program.blocks:
         ops = block.ops
@@ -215,6 +224,12 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     )
                     num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
+                if op.has_attr('sub_block'):
+                    _rename_block_arg(
+                        block.program.block(op.attr('sub_block').id),
+                        in_var.name,
+                        out_var.name,
+                    )
             else:
                 if op.has_attr('in_dtype'):
                     op._set_attr('in_dtype', dest_dtype)
@@ -461,7 +476,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                                 e
                             )
                         )
-                        in_var = global_block.var(in_var_name)
+                        in_var = block._var_recursive(in_var_name)
                         if in_var is not None:
                             _logger.debug(
                                 "-- var {} is got in the global block --".format(
