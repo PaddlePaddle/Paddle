@@ -1840,7 +1840,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         if is_composite_grad_api and next_grad_node_creation_str != '':
             next_grad_node_creation_str = f"""
- if (!paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {{
+ if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
     {next_grad_node_creation_str}
  }}
   """
@@ -2260,7 +2260,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         # TODO(Ruting):using composite only when we don't have backward kernel in the future.
         elif is_composite_grad_api:
             grad_function_call_str = f"""
-  if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {{
+  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
   {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
   VLOG(4) << "Composite api {composite_grad_api_name} is called ";
   }}else{{

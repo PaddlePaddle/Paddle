@@ -97,6 +97,7 @@ pass_library(shuffle_channel_detect_pass inference)
 pass_library(delete_quant_dequant_op_pass inference)
 pass_library(delete_quant_dequant_filter_op_pass inference)
 pass_library(trt_delete_weight_dequant_linear_op_pass inference)
+pass_library(delete_op_device_pass inference)
 pass_library(delete_weight_dequant_linear_op_pass inference)
 pass_library(delete_quant_dequant_linear_op_pass inference)
 pass_library(delete_dropout_op_pass inference)
@@ -215,17 +216,22 @@ if(WITH_XPU)
   cc_library(
     xpu_quant_utils
     SRCS xpu/quant_utils.cc
-    DEPS pass)
+    DEPS pass phi)
   cc_library(
     xpu_pass_utils
     SRCS xpu/pass_utils.cc
     DEPS pass)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
+  pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
-  pass_library(multi_encoder_xpu_slice_fuse_pass inference DIR xpu)
-  pass_library(generate_sequence_xpu_fuse_pass inference DIR xpu)
+  pass_library(multi_encoder_xpu_slice_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(generate_sequence_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
+  pass_library(link_xpu_op_max_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -371,6 +377,10 @@ cc_test(
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
 cc_test(
+  test_delete_op_device_pass
+  SRCS delete_op_device_pass_test.cc
+  DEPS delete_op_device_pass)
+cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc
   DEPS delete_dropout_op_pass)
@@ -481,10 +491,4 @@ if(WITH_MKLDNN)
     test_multi_gru_seq_fuse_pass
     SRCS mkldnn/multi_gru_seq_fuse_pass_tester.cc
     DEPS multi_gru_seq_fuse_pass)
-  set(TEST_FC_RNN_PASS_DEPS fc_gru_fuse_pass fc_lstm_fuse_pass
-                            mkldnn_placement_pass)
-  cc_test(
-    test_fc_rnn_mkldnn_fuse_pass
-    SRCS mkldnn/mkldnn_fc_rnn_fuse_pass_tester.cc
-    DEPS ${TEST_FC_RNN_PASS_DEPS})
 endif()

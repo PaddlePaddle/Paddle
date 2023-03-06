@@ -41,7 +41,12 @@ from paddle.fluid import core, framework
             {'Out': ['y']},
             set(),
             tuple(),
-            ('pow', 'scale', 'elementwise_mul'),
+            (
+                'elementwise_mul',
+                'fill_constant',
+                'elementwise_sub',
+                'elementwise_mul',
+            ),
         ),
         ('empty', {}, {'Out': ['y']}, set(), tuple(), tuple()),
     ),
