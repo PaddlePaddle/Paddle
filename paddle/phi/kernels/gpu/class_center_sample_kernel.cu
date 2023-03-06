@@ -369,10 +369,9 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
       // use global calculate stream
       const auto calcu_stream =
           static_cast<GPUContext*>(
-              paddle::platform::DeviceContextPool::Instance().Get(
-                  dev_ctx.GetPlace()))
+              phi::DeviceContextPool::Instance().Get(dev_ctx.GetPlace()))
               ->stream();
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           num_classes_per_device_ptr,
           num_classes_per_device_ptr,
           num_classes_per_device.numel(),
