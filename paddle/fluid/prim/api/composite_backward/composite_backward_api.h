@@ -811,5 +811,57 @@ void gather_nd_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void prod_grad(const Tensor& x,
+                const Tensor& out,
+                const Tensor& out_grad,
+                IntArray& axis,
+                bool keep_dim,
+                bool reduce_all,
+                Tensor* x_grad){
+  if(x_grad){
+    std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
+    int64_t axis_size = axis.size();
+    int64_t x_dim_size = x_dim.size();
+    reduce_all = false;
+    if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+      reduce_all = true;
+    } else {
+      reduce_all = false;
+    }
+    auto x_grad_tmp = Tensor();
+    auto out_tmp = Tensor();
+    if (x_dim_size == 1) {
+      x_grad_tmp = out_grad.expand(IntArray(x_dim));
+      out_tmp = out.expand(IntArray(x_dim));
+    } else {
+      if (!keepdim) {
+        auto axis_ = std::vector<int64_t>();
+        if (reduce_all) {
+          for (int64_t i = 1; i < x_dim_size; i++) {
+            axis_.push_back(i);
+          }
+        } else {
+          axis_ = axis.GetData();
+          for (int64_t i = 0; i < axis_size; i++) {
+            if (axis[i] < 0) {
+              axis_[i] = axis[i] + x_dim_size;
+            }
+          }
+        }
+        auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+        auto out_ = unsqueeze<T>(out, axis_);
+        x_grad_tmp = out_grad_.expand(IntArray(x_dim));
+        out_tmp = out_.expand(IntArray(x_dim));
+      } else {
+        x_grad_tmp = out_grad.expand(IntArray(x_dim));
+        out_tmp = out.expand(IntArray(x_dim));
+      }
+    }
+    auto x_grad_res = x_grad_tmp * out_tmp * (1 / x);
+    set_output<T>(x_grad_res, x_grad);
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle
