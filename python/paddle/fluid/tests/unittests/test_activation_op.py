@@ -291,6 +291,7 @@ class TestSigmoidFP16(TestActivation):
         self.op_type = "sigmoid"
         self.prim_op_type = "comp"
         self.enable_cinn = False
+        # we only test sigmoid fp16 for prim
         self.only_prim = True
         self.python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
@@ -307,7 +308,7 @@ class TestSigmoidFP16(TestActivation):
         self.dtype = np.float16
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def test_check_output(self):
         check_eager = False
@@ -3770,7 +3771,6 @@ def create_test_act_fp16_class(
 create_test_act_fp16_class(TestActivation)
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid)
-create_test_act_fp16_class(TestSigmoidFP16)
 create_test_act_fp16_class(TestSilu)
 create_test_act_fp16_class(TestSiluFP16)
 create_test_act_fp16_class(TestLogSigmoid)
