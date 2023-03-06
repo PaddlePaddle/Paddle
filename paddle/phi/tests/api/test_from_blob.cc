@@ -16,9 +16,10 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/from_blob.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/context_pool.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
@@ -30,15 +31,15 @@ PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 namespace paddle {
 namespace tests {
 
-using paddle::memory::Copy;
+using phi::memory_utils::Copy;
 
 TEST(from_blob, CPU) {
   // 1. create data
-  int32_t data[] = {4, 3, 2, 1};
+  int64_t data[] = {4, 3, 2, 1};
 
   // 2. test API
   auto test_tesnor = experimental::from_blob(
-      data, {1, 2, 2}, phi::DataType::INT32, phi::CPUPlace());
+      data, {1, 2, 2}, phi::DataType::INT64, phi::CPUPlace());
 
   // 3. check result
   // 3.1 check tensor attributes
@@ -48,14 +49,14 @@ TEST(from_blob, CPU) {
   ASSERT_EQ(test_tesnor.dims()[2], 2);
   ASSERT_EQ(test_tesnor.numel(), 4);
   ASSERT_EQ(test_tesnor.is_cpu(), true);
-  ASSERT_EQ(test_tesnor.dtype(), phi::DataType::INT32);
+  ASSERT_EQ(test_tesnor.dtype(), phi::DataType::INT64);
   ASSERT_EQ(test_tesnor.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(test_tesnor.initialized(), true);
   ASSERT_EQ(test_tesnor.is_dense_tensor(), true);
 
   // 3.2 check tensor values
-  auto* test_tensor_data = test_tesnor.template data<int32_t>();
-  for (int32_t i = 0; i < 4; i++) {
+  auto* test_tensor_data = test_tesnor.template data<int64_t>();
+  for (int64_t i = 0; i < 4; i++) {
     ASSERT_EQ(test_tensor_data[i], 4 - i);
   }
 
@@ -64,10 +65,10 @@ TEST(from_blob, CPU) {
 
   // 3.4 test other API
   auto test_tensor_pow = pow(test_tesnor, 2);
-  auto* test_tensor_pow_data = test_tensor_pow.template data<int32_t>();
-  for (int32_t i = 0; i < 4; i++) {
+  auto* test_tensor_pow_data = test_tensor_pow.template data<int64_t>();
+  for (int64_t i = 0; i < 4; i++) {
     ASSERT_EQ(test_tensor_pow_data[i],
-              static_cast<int32_t>(std::pow(4 - i, 2)));
+              static_cast<int64_t>(std::pow(4 - i, 2)));
   }
 }
 
@@ -110,7 +111,7 @@ TEST(from_blob, GPU) {
        gpu_tesnor_data,
        sizeof(cpu_data),
        ctx->stream());
-  for (int32_t i = 0; i < 6; i++) {
+  for (int64_t i = 0; i < 6; i++) {
     ASSERT_NEAR(
         gpu_tesnor_data_cpu[i], static_cast<float>((i + 1) * 0.1f), 1e-5);
   }
@@ -128,13 +129,69 @@ TEST(from_blob, GPU) {
        gpu_tesnor_pow_data,
        sizeof(cpu_data),
        ctx->stream());
-  for (int32_t i = 0; i < 6; i++) {
+  for (int64_t i = 0; i < 6; i++) {
     ASSERT_NEAR(gpu_tesnor_pow_data_cpu[i],
                 static_cast<float>(std::pow(i + 1, 2) * 0.01f),
                 1e-5);
   }
 }
 #endif
+
+TEST(from_blob, Option) {
+  // 1. create data
+  auto data = new int64_t[8];
+  for (int64_t i = 0; i < 8; i++) {
+    data[i] = i;
+  }
+
+  // 2. test API
+  int isdelete = 0;
+  auto deleter = [&isdelete](void* data) {
+    delete[] static_cast<int64_t*>(data);
+    isdelete++;
+  };
+
+  {
+    size_t offset = sizeof(int64_t) * 4;
+    auto test_tesnor = experimental::from_blob(data,
+                                               {1, 2, 2, 1},
+                                               phi::DataType::INT64,
+                                               phi::CPUPlace(),
+                                               DataLayout::NHWC,
+                                               offset,
+                                               deleter);
+
+    // check tensor attributes
+    ASSERT_EQ(test_tesnor.dims().size(), 4);
+    ASSERT_EQ(test_tesnor.dims()[1], 2);
+    ASSERT_EQ(test_tesnor.dims()[2], 2);
+    ASSERT_EQ(test_tesnor.numel(), 4);
+    ASSERT_EQ(test_tesnor.is_cpu(), true);
+    ASSERT_EQ(test_tesnor.dtype(), phi::DataType::INT64);
+    ASSERT_EQ(test_tesnor.layout(), phi::DataLayout::NHWC);  // check layout
+
+    // check tensor values
+    auto* test_tensor_data = test_tesnor.template data<int64_t>();
+    for (int64_t i = 0; i < 4; i++) {
+      ASSERT_EQ(test_tensor_data[i], i + 4);
+    }
+
+    // check storage_offset
+    ASSERT_EQ(data + 4, test_tensor_data);
+
+    // test other API
+    auto test_tensor_pow = pow(test_tesnor, 2);
+    auto* test_tensor_pow_data = test_tensor_pow.template data<int64_t>();
+    for (int64_t i = 0; i < 4; i++) {
+      ASSERT_EQ(test_tensor_pow_data[i],
+                static_cast<int64_t>(std::pow(i + 4, 2)));
+    }
+
+    // check deleter
+    ASSERT_EQ(isdelete, 0);
+  }
+  ASSERT_EQ(isdelete, 1);
+}
 
 }  // namespace tests
 }  // namespace paddle

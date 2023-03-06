@@ -403,3 +403,8 @@ cc_library(
   tensor_api
   SRCS ${tensor_api_source_file}
   DEPS operants_manager)
+
+cc_library(
+  from_blob
+  SRCS from_blob.cc
+  DEPS phi_tensor_raw)

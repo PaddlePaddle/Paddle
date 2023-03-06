@@ -14,26 +14,23 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
+
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace experimental {
 
+using Deleter = std::function<void(void*)>;
+
 Tensor from_blob(void* data,
                  const phi::DDim& shape,
                  DataType dtype,
-                 const Place& place) {
-  PADDLE_ENFORCE_NOT_NULL(
-      data, phi::errors::InvalidArgument("data can not be nullptr"));
-
-  auto meta = phi::DenseTensorMeta(dtype, shape);
-  size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(shape));
-
-  auto alloc = std::make_shared<phi::Allocation>(data, size, place);
-  return Tensor(std::make_shared<phi::DenseTensor>(alloc, meta));
-}
+                 const Place& place,
+                 DataLayout layout = DataLayout::NCHW,
+                 size_t storage_offset = 0,
+                 Deleter deleter = nullptr);
 
 }  // namespace experimental
 }  // namespace paddle
