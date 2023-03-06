@@ -149,6 +149,9 @@ def ref_reduce_mean_grad(x, axis, dtype, reduce_all):
     return (1.0 / np.prod(shape) * np.ones(shape)).astype(dtype)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestReduceMeanOp(OpTest):
     def setUp(self):
         self.op_type = 'reduce_mean'
@@ -180,17 +183,15 @@ class TestReduceMeanOp(OpTest):
         if self.dtype != 'float16':
             self.check_output(check_eager=True)
         else:
-            if not core.is_compiled_with_cuda():
-                return
             place = paddle.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                return
             self.check_output_with_place(place=place)
 
     def test_check_grad(self):
         if self.dtype != 'float16':
             self.check_grad(['X'], ['Out'], check_eager=True)
         else:
-            if not core.is_compiled_with_cuda():
-                return
             place = paddle.CUDAPlace(0)
             if core.is_float16_supported(place):
                 return
