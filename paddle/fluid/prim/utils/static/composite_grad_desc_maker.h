@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 

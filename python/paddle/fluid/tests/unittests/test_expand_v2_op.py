@@ -35,7 +35,7 @@ class TestExpandV2OpRank1(OpTest):
         self.attrs = {'shape': self.shape}
         output = np.tile(self.inputs['X'], self.expand_times)
         self.outputs = {'Out': output}
-        self.enable_cinn = False
+        self.enable_cinn = True
 
     def init_data(self):
         self.ori_shape = [100]
