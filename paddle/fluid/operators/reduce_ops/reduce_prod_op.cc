@@ -38,17 +38,15 @@ class ReduceProdOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_prod"; }
 };
 
-
 class ReduceProdCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
-
  public:
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
   void Apply() override {
     // get inputs
     paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
     paddle::experimental::Tensor out = this->GetSingleForwardOutput("Out");
     paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    
+
     // get attr
     std::vector<int> axis = this->Attr<std::vector<int>>("dim");
     bool keep_dim = this->Attr<bool>("keep_dim");
@@ -64,13 +62,8 @@ class ReduceProdCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     std::string x_grad_name = this->GetOutputName(x_grad_t);
     VLOG(6) << "Runing prod_grad composite func";
     // call composite backward func
-    prim::prod_grad<prim::DescTensor>(x,
-                                      out,
-                                      out_grad,
-                                       axis,
-                                       keep_dim,
-                                       reduce_all,
-                                       x_grad);
+    prim::prod_grad<prim::DescTensor>(
+        x, out, out_grad, axis, keep_dim, reduce_all, x_grad);
     // recover output name
     this->RecoverOutputName(x_grad_t, x_grad_name);
   }
