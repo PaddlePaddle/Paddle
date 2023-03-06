@@ -19,8 +19,8 @@ import enum
 
 from conv2d_common import (
     CommonConvFunction,
-    CommonCutlassConvKernelPart1,
-    CommonCutlassConvKernelPart2,
+    CommonCutlassConvKernelDeclare,
+    CommonCutlassConvKernelExecute,
     CommonTail,
     GenerateFunctionForPhi,
 )
@@ -49,7 +49,7 @@ dict_for_part1 = {
 }
 
 cbr_kernel = (
-    SubstituteTemplate(CommonCutlassConvKernelPart1, dict_for_part1)
+    SubstituteTemplate(CommonCutlassConvKernelDeclare, dict_for_part1)
     + '''
   const half *residual = params.residual;
   typename ImplicitGemm::Arguments arguments{
@@ -63,7 +63,7 @@ cbr_kernel = (
       (cutlass::half_t *)(bias), nullptr,
       0, oc};
 '''
-    + CommonCutlassConvKernelPart2
+    + CommonCutlassConvKernelExecute
 )
 
 

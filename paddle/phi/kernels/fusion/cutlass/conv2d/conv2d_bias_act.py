@@ -19,8 +19,8 @@ import enum
 
 from conv2d_common import (
     CommonConvFunction,
-    CommonCutlassConvKernelPart1,
-    CommonCutlassConvKernelPart2,
+    CommonCutlassConvKernelDeclare,
+    CommonCutlassConvKernelExecute,
     CommonTail,
     GenerateFunctionForPhi,
 )
@@ -51,7 +51,7 @@ dict_for_part1 = {
 }
 
 cba_kernel_no_alpha = (
-    SubstituteTemplate(CommonCutlassConvKernelPart1, dict_for_part1)
+    SubstituteTemplate(CommonCutlassConvKernelDeclare, dict_for_part1)
     + '''
   typename ImplicitGemm::Arguments arguments{
       problem_size,
@@ -61,7 +61,7 @@ cba_kernel_no_alpha = (
       {(cutlass::half_t *)(output), {oc, oc * ow, oc * ow * oh}},
       {1.f, 1.f}};
 '''
-    + CommonCutlassConvKernelPart2
+    + CommonCutlassConvKernelExecute
 )
 
 # this is used for leaky_relu, this activation need a fuse_alpha parameter

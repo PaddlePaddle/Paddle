@@ -17,7 +17,7 @@ import sys
 sys.path.append("../")
 from util import SubstituteTemplate
 
-CommonCutlassConvKernelPart1 = """
+CommonCutlassConvKernelDeclare = """
 cutlass::Status ${kernel_func_name}(ConvAllParams params) {
   using kernel_base =
   typename cutlass::conv::kernel::DefaultConv2d${conv_kind_name}<
@@ -80,7 +80,7 @@ cutlass::Status ${kernel_func_name}(ConvAllParams params) {
 """
 
 
-CommonCutlassConvKernelPart2 = """
+CommonCutlassConvKernelExecute = """
   ImplicitGemm implicit_gemm_op;
   size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
 
