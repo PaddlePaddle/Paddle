@@ -129,6 +129,13 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     out = (x - mean(x)) / sqrt(var + epsilon))
     var = mean((x-mean(x))^2)
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        print("Running layer_norm in amp")
+        is_amp = True
+        x = cast(x, "float32")
 
     axis = tuple(range(begin_norm_axis, len(x.shape)))
     mean_ = mean(x, axis=axis, keepdim=True)
@@ -148,6 +155,9 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
 
     mean_ = reshape(mean_, [-1])
     variance = reshape(variance, [-1])
+    if is_amp:
+        out = cast(out, "float16")
+
     return out, mean_, variance
 
 
@@ -192,18 +202,30 @@ def mean_composite(x, axis, keepdim):
     return divide(sum_x, norm)
 
 
+def maybe_wrap_dim(dim: int, dim_post_expr: int):
+    """get real dim form idx and len of dims"""
+    if dim_post_expr == 0:
+        assert dim == 0 or dim == -1
+        return 0
+    min = -dim_post_expr
+    max = dim_post_expr - 1
+    assert not (dim < min or dim > max)
+    if dim < 0:
+        dim += dim_post_expr
+    return dim
+
+
 @REGISTER_COMPOSITE('flatten_contiguous_range')
 def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     """
     define composite rule of op flatten, flatten_contiguous_range -> flatten.
-    CINN doesn't need xshape for backward pass, return none instead of xshape.
 
+    xshape is the dim with 0 added to the front of x, keep the shape information of x to calculate the grad.
+    CINN doesn't need xshape for backward pass, return none instead of xshape.
     shape_out is the parameter of reshape, get from start_axis and stop_axis.
     out = reshape(x, shape=shape_out), xshape
     """
     shape_in = x.shape
-    shape_x_out = [0]
-    shape_x_out.extend(shape_in)
     start_dim = start_axis if len(shape_in) != 0 else 0
     end_dim = stop_axis if len(shape_in) != 0 else 0
     assert start_dim <= end_dim
@@ -218,7 +240,6 @@ def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     shape_out.append(slice_numel)
     for i in range(end_dim + 1, len(shape_in)):
         shape_out.append(shape_in[i])
-
     return reshape(x, shape=shape_out), None
 
 

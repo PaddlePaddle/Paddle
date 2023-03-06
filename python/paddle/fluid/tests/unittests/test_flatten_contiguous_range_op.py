@@ -32,7 +32,6 @@ class TestFlattenOp(OpTest):
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.in_shape).astype("float64")}
         self.init_attrs()
-        self.enable_cinn = False
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
             "XShape": np.random.random(self.in_shape).astype("float32"),
