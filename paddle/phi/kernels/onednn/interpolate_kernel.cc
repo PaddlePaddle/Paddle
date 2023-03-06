@@ -35,7 +35,8 @@ phi::KernelKey InterpolateGetKernelTypeForVar(
     PADDLE_ENFORCE_NE(
         it,
         attrs.end(),
-        phi::errors::NotFound("Cannot find attribute %s.", "data_layout"));
+        phi::errors::NotFound("Cannot find attribute data_layout, please check "
+                              "the AttributeMap"));
     const std::string data_layout = PADDLE_GET_CONST(std::string, it->second);
     auto dl = phi::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
