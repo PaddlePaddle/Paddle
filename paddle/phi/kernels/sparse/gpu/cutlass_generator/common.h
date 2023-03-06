@@ -17,9 +17,7 @@
 #ifdef PADDLE_WITH_CUTLASS
 #include "cutlass/arch/mma.h"
 #include "cutlass/epilogue/thread/linear_combination.h"
-#include "cutlass/gemm/device/gemm_grouped.h"
 #include "cutlass/gemm/device/gemm_universal.h"
-#include "cutlass/gemm/device/gemm_universal_adapter.h"
 #include "cutlass/gemm/gemm.h"
 #include "cutlass/half.h"
 #include "cutlass/util/device_memory.h"
