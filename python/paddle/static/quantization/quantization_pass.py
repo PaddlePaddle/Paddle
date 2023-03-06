@@ -3226,11 +3226,15 @@ class QuantWeightPass:
                     self._quantized_ops[x_node.name()] = quant_weight_node
 
                 for next_op_node in out_node.outputs:
-                    graph.update_input_link(
-                        out_node,
-                        self._quantized_ops[x_node.name()],
-                        next_op_node,
-                    )
+                    if (
+                        self._quantized_ops[x_node.name()].node
+                        in graph.graph.nodes()
+                    ):
+                        graph.update_input_link(
+                            out_node,
+                            self._quantized_ops[x_node.name()],
+                            next_op_node,
+                        )
                 graph.safe_remove_nodes(_op)
         self._remove_unused_var_nodes(graph)
 

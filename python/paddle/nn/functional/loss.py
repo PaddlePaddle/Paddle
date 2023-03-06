@@ -2601,7 +2601,7 @@ def cross_entropy(
             "npu"
         ) or core.is_compiled_with_custom_device("mlu"):
             if not soft_label:
-                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     valid_label,
                     'soft_label',
@@ -2616,7 +2616,7 @@ def cross_entropy(
                     use_softmax,
                 )
             else:
-                _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
+                _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,
                     label,
                     'soft_label',
@@ -3875,7 +3875,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
     if not (input.shape == label.shape):
         raise ValueError("input's shape must equal to " "label's shape")
 
-    label = fluid.layers.cast(label, input.dtype)
+    label = paddle.cast(label, input.dtype)
     out = paddle.log(1 + paddle.exp(-label * input))
 
     if reduction == 'sum':

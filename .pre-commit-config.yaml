@@ -5,7 +5,6 @@ exclude: |
         paddle/fluid/framework/fleet/heter_ps/cudf/.+|
         paddle/fluid/distributed/ps/thirdparty/round_robin.h|
         python/paddle/utils/gast/.+|
-        .+_pb2\.py|
         python/paddle/fluid/tests/unittests/npu/.+|
         python/paddle/fluid/tests/unittests/mlu/.+
     )$
@@ -65,9 +64,10 @@ repos:
     hooks:
     -   id: isort
 -   repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
+    rev: 5.0.4
     hooks:
     -   id: flake8
+        args: ["--config=.flake8"]
 -   repo: https://github.com/PyCQA/autoflake
     rev: v1.7.7
     hooks:

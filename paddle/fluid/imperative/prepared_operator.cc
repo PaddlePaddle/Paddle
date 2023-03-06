@@ -273,24 +273,30 @@ PreparedOp PrepareImpl(
     kernel_signature = (*arg_map_fn)(
         framework::ExecutionArgumentMappingContext(dygraph_exe_ctx));
   } else {
-    default_kernel_signature =
-        default_phi_kernel_sig_map.GetNullable(op.Type());
-    if (default_kernel_signature) {
+    if (phi::KernelFactory::Instance().HasStructuredKernel(op.Type())) {
       has_phi_kernel = true;
-      kernel_signature = *default_kernel_signature;
+      kernel_signature = phi::KernelSignature(op.Type().c_str());
+    } else {
+      default_kernel_signature =
+          default_phi_kernel_sig_map.GetNullable(op.Type());
+      if (default_kernel_signature) {
+        has_phi_kernel = true;
+        kernel_signature = *default_kernel_signature;
+      }
     }
   }
 
   if (has_phi_kernel) {
     VLOG(6) << kernel_signature;
     phi_kernel_name = kernel_signature.name;
+
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
 #ifdef PADDLE_WITH_XPU_KP
     if (expected_kernel_key.backend() == phi::Backend::XPU) {
       bool use_xpu_kp_kernel_rt =
-          FLAGS_run_kp_kernel && paddle::platform::is_xpu_support_op(
+          FLAGS_run_kp_kernel && paddle::platform::is_xpu_kp_support_op(
                                      op.Type(), expected_kernel_key.dtype());
       bool use_xpu_kp_kernel_debug =
           paddle::platform::is_in_xpu_kpwhite_list(op.Type());
@@ -363,8 +369,8 @@ PreparedOp PrepareImpl(
   bool use_xpu_kp_kernel_rt =
       expected_kernel_key.backend() == phi::Backend::XPU &&
       FLAGS_run_kp_kernel &&
-      paddle::platform::is_xpu_support_op(op.Type(),
-                                          expected_kernel_key.dtype());
+      paddle::platform::is_xpu_kp_support_op(op.Type(),
+                                             expected_kernel_key.dtype());
   bool use_xpu_kp_kernel_debug =
       expected_kernel_key.backend() == phi::Backend::XPU &&
       paddle::platform::is_in_xpu_kpwhite_list(op.Type());
@@ -648,6 +654,7 @@ static void PreparedOpRunPtImpl(
     const phi::KernelSignature* default_kernel_signature,
     const phi::KernelSignature& kernel_signature,
     const phi::Kernel& phi_kernel,
+    const framework::RuntimeContext& ctx,
     platform::DeviceContext* dev_ctx,
     const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs,
@@ -678,19 +685,25 @@ static void PreparedOpRunPtImpl(
                                        1,
                                        platform::EventRole::kInnerOp);
 
-    PreparePhiData<VarType>(phi_kernel, kernel_signature, ins);
+    if (phi_kernel.GetKernelRegisteredType() ==
+        phi::KernelRegisteredType::FUNCTION) {
+      PreparePhiData<VarType>(phi_kernel, kernel_signature, ins);
+      phi::KernelContext phi_kernel_context;
+      BuildDygraphPhiKernelContext<VarType>(kernel_signature,
+                                            phi_kernel,
+                                            ins,
+                                            outs,
+                                            attrs,
+                                            default_attrs,
+                                            dev_ctx,
+                                            &phi_kernel_context);
 
-    phi::KernelContext phi_kernel_context;
-    BuildDygraphPhiKernelContext<VarType>(kernel_signature,
-                                          phi_kernel,
-                                          ins,
-                                          outs,
-                                          attrs,
-                                          default_attrs,
-                                          dev_ctx,
-                                          &phi_kernel_context);
-
-    phi_kernel(&phi_kernel_context);
+      phi_kernel(&phi_kernel_context);
+    } else {
+      DygraphExecutionContext<VarType> exe_ctx(
+          op, empty_scope, *dev_ctx, ctx, ins, outs, attrs, default_attrs);
+      phi_kernel(&exe_ctx);
+    }
   }
 
   if (FLAGS_check_nan_inf) {
@@ -722,6 +735,7 @@ void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                                  default_kernel_signature_,
                                  kernel_signature_,
                                  phi_kernel_,
+                                 ctx_,
                                  dev_ctx_,
                                  ins,
                                  outs,
@@ -753,6 +767,7 @@ void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                                          default_kernel_signature_,
                                          kernel_signature_,
                                          phi_kernel_,
+                                         ctx_,
                                          dev_ctx_,
                                          ins,
                                          outs,
@@ -784,6 +799,7 @@ void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
                                             default_kernel_signature_,
                                             kernel_signature_,
                                             phi_kernel_,
+                                            ctx_,
                                             dev_ctx_,
                                             ins,
                                             outs,

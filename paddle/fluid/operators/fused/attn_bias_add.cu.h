@@ -100,11 +100,10 @@ void LaunchBiasAddFwKernel(const phi::GPUContext& ctx,
                            const T* in0,
                            const T* in1,
                            T* out) {
-  int in_vec_size =
-      std::min(phi::GetVectorizedSize<T>(in0), phi::GetVectorizedSize<T>(in1));
-  int out_vec_size = std::min(4, phi::GetVectorizedSize<T>(out));
-  int vec_size = std::min(out_vec_size, in_vec_size);
-
+  uint64_t addr =
+      (reinterpret_cast<uint64_t>(in0) | reinterpret_cast<uint64_t>(in1) |
+       reinterpret_cast<uint64_t>(out));
+  int vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T*>(addr));
   int numel = m * n;
   const int threads = 256;
   const int data_per_thread = 1;

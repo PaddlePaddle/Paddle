@@ -235,6 +235,10 @@ std::unordered_set<std::string> CinnLaunchContext::ExtractInternalVarNames(
       remain_var_names.erase(var_name + InplaceOutSuffix);
     }
   };
+
+  VLOG(1) << "Input var list: " << string::join_strings(input_var_names, ", ");
+  VLOG(1) << "Output var list: "
+          << string::join_strings(output_var_names, ", ");
   std::for_each(
       input_var_names.begin(), input_var_names.end(), exclude_names_fn);
   std::for_each(
@@ -474,6 +478,8 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
                "interpreter_core_: "
             << interpreter_core_.get() << "; scope: " << scope
             << "; cached_scope_: " << cached_scope_;
+    VLOG(1) << "Internal var list: "
+            << string::join_strings(internal_var_names_, ", ");
     for (auto&& var_name : internal_var_names_) {
       auto* var = scope->FindVar(var_name);
       if (var != nullptr) {
@@ -483,14 +489,12 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
                                     framework::proto::VarType::LOD_TENSOR);
     }
     if (!interpreter_core_) {
+      framework::interpreter::ExecutionConfig execution_config;
+      execution_config.create_local_scope = false;
+      execution_config.used_for_cinn = true;
+      execution_config.skip_gc_vars = skip_gc_vars_;
       interpreter_core_ = std::make_unique<framework::InterpreterCore>(
-          place,
-          runtime_program_desc_->Block(0),
-          skip_gc_vars_,
-          scope,
-          /*used_for_jit*/ false,
-          /*used_for_control_flow_op*/ false,
-          /*used_for_cinn*/ true);
+          place, runtime_program_desc_->Block(0), scope, execution_config);
     } else {
       interpreter_core_->reset_scope(scope);
     }
@@ -506,8 +510,7 @@ std::string CinnLaunchContext::RedirectVarName(const std::string& var_name) {
   }
   std::string remove_suffix_name = var_name.substr(0, pos);
   if (!inplace_var_names_.count(remove_suffix_name)) {
-    LOG(WARNING) << "Variable:" << remove_suffix_name
-                 << " was not marked as inplaced by Paddle, but CINN does";
+    return var_name;
   }
   VLOG(4) << "Inplaced variable:" << var_name << " redirect to "
           << remove_suffix_name;

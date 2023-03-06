@@ -18,7 +18,7 @@ from seq2seq_utils import Seq2SeqModelHyperParams as args
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import ParamAttr, layers
+from paddle.fluid import ParamAttr
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.base import to_variable
 from paddle.jit.api import to_static
@@ -67,7 +67,7 @@ class BasicLSTMUnit(Layer):
         )
 
     def forward(self, input, pre_hidden, pre_cell):
-        concat_input_hidden = layers.concat([input, pre_hidden], 1)
+        concat_input_hidden = paddle.concat([input, pre_hidden], 1)
         gate_input = paddle.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = paddle.add(gate_input, self._bias)
@@ -235,7 +235,7 @@ class BaseModel(fluid.dygraph.Layer):
 
         max_seq_len = src_emb.shape[0]
 
-        enc_len_mask = fluid.layers.sequence_mask(
+        enc_len_mask = paddle.static.nn.sequence_lod.sequence_mask(
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
         enc_len_mask = paddle.transpose(enc_len_mask, [1, 0])
@@ -301,7 +301,7 @@ class BaseModel(fluid.dygraph.Layer):
         )
         loss = paddle.squeeze(loss, axes=[2])
         max_tar_seq_len = paddle.shape(tar)[1]
-        tar_mask = fluid.layers.sequence_mask(
+        tar_mask = paddle.static.nn.sequence_lod.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask
@@ -337,7 +337,7 @@ class BaseModel(fluid.dygraph.Layer):
 
         max_seq_len = src_emb.shape[0]
 
-        enc_len_mask = fluid.layers.sequence_mask(
+        enc_len_mask = paddle.static.nn.sequence_lod.sequence_mask(
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
         enc_len_mask = paddle.transpose(enc_len_mask, [1, 0])
@@ -488,12 +488,12 @@ class BaseModel(fluid.dygraph.Layer):
                 self._gather(x, beam_indices, batch_pos) for x in new_dec_cell
             ]
             next_finished = self._gather(beam_finished, beam_indices, batch_pos)
-            next_finished = fluid.layers.cast(next_finished, "bool")
+            next_finished = paddle.cast(next_finished, "bool")
             next_finished = paddle.logical_or(
                 next_finished,
                 paddle.equal(token_indices, end_token_tensor),
             )
-            next_finished = fluid.layers.cast(next_finished, "float32")
+            next_finished = paddle.cast(next_finished, "float32")
 
             dec_hidden, dec_cell = new_dec_hidden, new_dec_cell
             beam_finished = next_finished
@@ -754,7 +754,7 @@ class AttentionModel(fluid.dygraph.Layer):
 
         max_seq_len = src_emb.shape[0]
 
-        enc_len_mask = fluid.layers.sequence_mask(
+        enc_len_mask = paddle.static.nn.sequence_lod.sequence_mask(
             src_sequence_length, maxlen=max_seq_len, dtype="float32"
         )
         enc_padding_mask = enc_len_mask - 1.0
@@ -808,7 +808,7 @@ class AttentionModel(fluid.dygraph.Layer):
         for step_idx in range(max_seq_len):
             j = step_idx + 0
             step_input = tar_emb[j]
-            step_input = fluid.layers.concat([step_input, input_feed], 1)
+            step_input = paddle.concat([step_input, input_feed], 1)
             new_dec_hidden, new_dec_cell = [], []
             for i in range(self.num_layers):
                 new_hidden, new_cell = self.dec_units[i](
@@ -826,7 +826,7 @@ class AttentionModel(fluid.dygraph.Layer):
                     step_input = new_hidden
             dec_att = self.attention(step_input, enc_outputs, enc_padding_mask)
             dec_att = paddle.squeeze(dec_att, [1])
-            concat_att_out = fluid.layers.concat([dec_att, step_input], 1)
+            concat_att_out = paddle.concat([dec_att, step_input], 1)
             out = self.concat_fc(concat_att_out)
             input_feed = out
             dec_output.append(out)
@@ -839,7 +839,7 @@ class AttentionModel(fluid.dygraph.Layer):
         )
         loss = paddle.squeeze(loss, axes=[2])
         max_tar_seq_len = paddle.shape(tar)[1]
-        tar_mask = fluid.layers.sequence_mask(
+        tar_mask = paddle.static.nn.sequence_lod.sequence_mask(
             tar_sequence_length, maxlen=max_tar_seq_len, dtype='float32'
         )
         loss = loss * tar_mask

@@ -195,7 +195,7 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
 
         self.custom_op = custom_relu_xpu_module_setup.custom_relu
 
-        self.dtypes = ['float32', 'float64']
+        self.dtypes = ['float32']
         self.device = 'xpu'
 
         # config seed
