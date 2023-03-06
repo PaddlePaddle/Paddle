@@ -20,7 +20,7 @@ import sys
 
 import paddle
 from .. import framework
-from ..framework import convert_np_dtype_to_dtype_, _in_legacy_dygraph
+from ..framework import convert_np_dtype_to_dtype_
 from .. import core
 from .. import unique_name
 from ..framework import (
@@ -34,12 +34,13 @@ from ..framework import (
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
-from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
 from paddle import _C_ops, _legacy_C_ops
+from paddle.device import get_all_custom_device_type
+from paddle.fluid.framework import _global_flags
 
 _grad_scalar = None
 
@@ -52,7 +53,9 @@ class TensorHookRemoveHelper:
 
     def __init__(self, tensor, hook_id):
         self._tensor = (
-            tensor if framework._in_eager_mode_ else weakref.ref(tensor)
+            tensor
+            if framework.global_var._in_eager_mode_
+            else weakref.ref(tensor)
         )
         self._hook_id = hook_id
 
@@ -63,7 +66,11 @@ class TensorHookRemoveHelper:
         Returns:
             bool: Return True if removed successfully
         """
-        tensor = self._tensor if framework._in_eager_mode_ else self._tensor()
+        tensor = (
+            self._tensor
+            if framework.global_var._in_eager_mode_
+            else self._tensor()
+        )
         if tensor is not None:
             res = tensor._remove_grad_hook(self._hook_id)
             if res is True:
@@ -163,12 +170,12 @@ def monkey_patch_varbase():
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import Linear
+                from paddle.nn import Linear
                 import numpy as np
 
                 data = np.ones([3, 1024], dtype='float32')
                 with fluid.dygraph.guard():
-                    linear = fluid.dygraph.Linear(1024, 4)
+                    linear = Linear(1024, 4)
                     t = to_variable(data)
                     linear(t)  # call with default weight
                     custom_weight = np.random.randn(1024, 4).astype("float32")
@@ -176,7 +183,7 @@ def monkey_patch_varbase():
                     out = linear(t)  # call with different weight
 
         """
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             base_tensor = core.eager.Tensor
         else:
             base_tensor = core.VarBase
@@ -273,6 +280,8 @@ def monkey_patch_varbase():
                 # 4: [5000.]
 
         """
+        from paddle.distributed.parallel import scale_loss
+
         if framework._non_static_mode():
             if in_profiler_mode():
                 record_event = profiler.RecordEvent(
@@ -280,7 +289,7 @@ def monkey_patch_varbase():
                 )
                 record_event.begin()
             if grad_tensor is not None:
-                if framework._in_eager_mode_:
+                if framework.global_var._in_eager_mode_:
                     assert isinstance(
                         grad_tensor, core.eager.Tensor
                     ), "The type of grad_tensor must be paddle.Tensor"
@@ -294,7 +303,7 @@ def monkey_patch_varbase():
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape
                 )
 
-            if framework._in_eager_mode_:
+            if framework.global_var._in_eager_mode_:
                 if grad_tensor is None:
                     grad_tensor = []
                 else:
@@ -309,7 +318,7 @@ def monkey_patch_varbase():
             ):
                 # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
                 scaled_loss = scale_loss(self)
-                if framework._in_eager_mode_:
+                if framework.global_var._in_eager_mode_:
                     core.eager.run_backward(
                         [scaled_loss], grad_tensor, retain_graph
                     )
@@ -321,7 +330,7 @@ def monkey_patch_varbase():
                         framework._dygraph_tracer(),
                     )
             else:
-                if framework._in_eager_mode_:
+                if framework.global_var._in_eager_mode_:
                     core.eager.run_backward([self], grad_tensor, retain_graph)
                 else:
                     core.dygraph_run_backward(
@@ -366,7 +375,7 @@ def monkey_patch_varbase():
                 # [500.]
 
         """
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             if self.grad is None:
                 return None
             if self.grad.is_selected_rows():
@@ -376,7 +385,14 @@ def monkey_patch_varbase():
             if self._grad_ivar() is None:
                 return None
 
-            new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
+            new_ivar = self._grad_ivar()
+            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+            if (
+                _global_flags()['FLAGS_npu_storage_format']
+                and 'npu' in get_all_custom_device_type()
+            ):
+                new_ivar = paddle.incubate._npu_identity(x=new_ivar, format=-1)
+            new_ivar = new_ivar._copy_to(core.CPUPlace(), True)
             if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
                 return (
                     np.array(new_ivar.value().get_selected_rows().get_tensor()),
@@ -664,7 +680,7 @@ def monkey_patch_varbase():
                 #        [[0.30574632, 0.55739117, 0.30902600, 0.39413780, 0.44830436],
                 #         [0.79010487, 0.53972793, 0.09495186, 0.44267157, 0.72112119]])
         """
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             from paddle.tensor.to_string import tensor_to_string
 
             return tensor_to_string(self)
@@ -698,7 +714,7 @@ def monkey_patch_varbase():
             raise RuntimeError(
                 "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
             )
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             new_varbase = core.eager.Tensor()
         else:
             new_varbase = core.VarBase()
@@ -716,7 +732,7 @@ def monkey_patch_varbase():
         assert (
             numel == 1
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             assert self._is_initialized(), "tensor not initialized"
             return bool(np.all(self.numpy() > 0))
         else:
@@ -841,18 +857,11 @@ def monkey_patch_varbase():
             return _setitem_impl_(self, item, value)
 
         else:
-            if framework._in_eager_mode_:
+            if framework.global_var._in_eager_mode_:
                 return self.__setitem_eager_tensor__(item, value)
             else:
                 # Call c++ func __setitem_varbase__ to speedup.
                 return self.__setitem_varbase__(item, value)
-
-    @framework.dygraph_only
-    def _grad_ivar(self):
-        if self.grad is not None:
-            if self.grad._is_initialized():
-                return self.grad
-        return None
 
     @framework.dygraph_only
     def _set_grad_ivar(self, value):
@@ -879,6 +888,10 @@ def monkey_patch_varbase():
     @framework.dygraph_only
     def _clear_data(self):
         self.get_tensor()._clear()
+
+    @framework.dygraph_only
+    def _use_gpudnn(self, use_gpudnn=True):
+        return self._tensor_use_gpudnn(use_gpudnn)
 
     @framework.dygraph_only
     def _uva(self, device_id=0):
@@ -952,14 +965,12 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                from paddle.fluid.framework import _test_eager_guard
-                with _test_eager_guard():
-                    indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
-                    values = [1, 2, 3, 4, 5]
-                    dense_shape = [3, 4]
-                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
-                    print(sparse_x.values())
-                    #[1, 2, 3, 4, 5]
+                indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                values = [1, 2, 3, 4, 5]
+                dense_shape = [3, 4]
+                sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                print(sparse_x.values())
+                #[1, 2, 3, 4, 5]
         """
         return _C_ops.sparse_values(self)
 
@@ -977,16 +988,14 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                from paddle.fluid.framework import _test_eager_guard
-                with _test_eager_guard():
-                    indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
-                    values = [1, 2, 3, 4, 5]
-                    dense_shape = [3, 4]
-                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
-                    dense_x = sparse_x.to_dense()
-                    #[[0., 1., 0., 2.],
-                    # [0., 0., 3., 0.],
-                    # [4., 5., 0., 0.]]
+                indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                values = [1, 2, 3, 4, 5]
+                dense_shape = [3, 4]
+                sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                dense_x = sparse_x.to_dense()
+                #[[0., 1., 0., 2.],
+                # [0., 0., 3., 0.],
+                # [4., 5., 0., 0.]]
         """
 
         return _C_ops.sparse_to_dense(self)
@@ -1005,14 +1014,12 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                from paddle.fluid.framework import _test_eager_guard
-                with _test_eager_guard():
-                    dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
-                    dense_x = paddle.to_tensor(dense_x, dtype='float32')
-                    sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
-                    #indices=[[0, 0, 1, 1],
-                    #         [1, 3, 2, 3]],
-                    #values=[1., 2., 3., 4.]
+                dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
+                dense_x = paddle.to_tensor(dense_x, dtype='float32')
+                sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
+                #indices=[[0, 0, 1, 1],
+                #         [1, 3, 2, 3]],
+                #values=[1., 2., 3., 4.]
         """
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
@@ -1020,7 +1027,7 @@ def monkey_patch_varbase():
     def __hash__(self):
         return hash(id(self))
 
-    if framework._in_eager_mode_ and not hasattr(core, "eager"):
+    if framework.global_var._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
     for method_name, method in (
@@ -1047,13 +1054,12 @@ def monkey_patch_varbase():
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
     ):
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             setattr(core.eager.Tensor, method_name, method)
         else:
             setattr(core.VarBase, method_name, method)
 
-    if framework._in_eager_mode_:
-        setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
+    if framework.global_var._in_eager_mode_:
         setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
         setattr(core.eager.Tensor, "value", value)
         setattr(core.eager.Tensor, "cpu", cpu)
@@ -1064,6 +1070,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "_uva", _uva)
         setattr(core.eager.Tensor, "_clear_data", _clear_data)
         setattr(core.eager.Tensor, "__hash__", __hash__)
+        setattr(core.eager.Tensor, "_use_gpudnn", _use_gpudnn)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)
@@ -1073,7 +1080,7 @@ def monkey_patch_varbase():
         # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
         # So, we need to overwrite it to a more readable one.
         # See details in https://github.com/pybind/pybind11/issues/2537.
-        origin = getattr(core.VarDesc.VarType, "__repr__")
+        origin = getattr(core.VarDesc.VarType, "__str__")
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
@@ -1086,7 +1093,7 @@ def monkey_patch_varbase():
                 # for example, paddle.fluid.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)
 
-        setattr(core.VarDesc.VarType, "__repr__", dtype_str)
+        setattr(core.VarDesc.VarType, "__str__", dtype_str)
         _already_patch_repr = True
 
     # patch math methods for varbase

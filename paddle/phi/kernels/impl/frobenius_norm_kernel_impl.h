@@ -27,6 +27,7 @@ void FrobeniusNormKernel(const Context& ctx,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, axis, reduce_all);
   Reduce<Context, T, funcs::FrobeniusNormFunctor>(
       ctx, x, reduce_all, axis, keep_dim, x.dtype(), out);
 }

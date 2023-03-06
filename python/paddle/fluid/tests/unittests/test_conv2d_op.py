@@ -13,19 +13,19 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     convert_float_to_uint16,
     get_numeric_gradient,
 )
 from paddle.fluid.tests.unittests.testsuite import create_op
-from paddle.fluid import Program, program_guard
 
 
 def conv2d_forward_naive(
@@ -706,17 +706,17 @@ class TestConv2DOpError(unittest.TestCase):
                 x1 = fluid.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
-                fluid.layers.conv2d(x1, 1, 1)
+                paddle.static.nn.conv2d(x1, 1, 1)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
                 # the input dtype of conv2d must be float16 or float32 or float64
                 # float16 only can be set on GPU place
-                x2 = fluid.layers.data(
-                    name='x2', shape=[3, 4, 5, 6], dtype="int32"
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                 )
-                fluid.layers.conv2d(x2, 1, 1)
+                paddle.static.nn.conv2d(x2, 1, 1)
 
             self.assertRaises(TypeError, test_dtype)
 

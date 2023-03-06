@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/p_norm_kernel.h"
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 
@@ -104,6 +104,13 @@ void PNormKernel(const Context& dev_ctx,
   std::vector<int64_t> axis_dims = {static_cast<int64_t>(axis)};
   std::vector<int> reduce_axis =
       funcs::details::GetReduceDim(axis_dims, xdim.size(), asvector);
+
+  for (int i = 0; i < xdim.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      xdim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
 
   using MT = typename dtype::MPTypeTrait<T>::Type;
   if (porder == 0) {

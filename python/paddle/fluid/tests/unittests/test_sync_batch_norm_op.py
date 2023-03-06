@@ -16,18 +16,18 @@ test for sync bachnorm op.
 for both FP64 and FP16 input.
 """
 
-import unittest
-import numpy as np
 import os
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.nn as nn
-from paddle.fluid import compiler
-from paddle.fluid import Program, program_guard
+import unittest
 
-from op_test import OpTest, _set_use_system_allocator
+import numpy as np
 from decorator_helper import prog_scope
+from op_test import OpTest, _set_use_system_allocator
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn as nn
+from paddle.fluid import Program, compiler, program_guard
 
 _set_use_system_allocator(True)
 
@@ -67,13 +67,13 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         use_cudnn = self.dtype == np.float16
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                data = fluid.layers.data(
+                data = paddle.static.data(
                     name='input',
                     shape=self.dshape,
                     dtype=self.dtype,
-                    append_batch_size=False,
                 )
-                conv = fluid.layers.conv2d(
+                data.desc.set_need_check_feed(False)
+                conv = paddle.static.nn.conv2d(
                     input=data,
                     num_filters=32,
                     filter_size=1,
@@ -81,7 +81,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     bias_attr=False,
                     use_cudnn=use_cudnn,
                 )
-                bn = fluid.layers.batch_norm(
+                bn = paddle.static.nn.batch_norm(
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
                     bias_attr=fluid.ParamAttr(name='bn_bias'),
@@ -91,11 +91,11 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     is_test=only_forward,
                 )
                 if core.is_compiled_with_rocm():
-                    bn = fluid.layers.cast(bn, 'float32')
+                    bn = paddle.cast(bn, 'float32')
                 else:
-                    bn = fluid.layers.cast(bn, 'float64')
-                sigmoid = fluid.layers.sigmoid(bn)
-                out = fluid.layers.reduce_sum(sigmoid)
+                    bn = paddle.cast(bn, 'float64')
+                sigmoid = paddle.nn.functional.sigmoid(bn)
+                out = paddle.sum(sigmoid)
                 if not sync_bn:
                     out = out / core.get_cuda_device_count()
                 if not only_forward:
@@ -248,7 +248,10 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
 
             # the input dtype of SyncBatchNorm must be float16 or float32 or float64
             # float16 only can be set on GPU place
-            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            x2 = paddle.static.data(
+                name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
+            )
+            x2.desc.set_need_check_feed(False)
             self.assertRaises(TypeError, my_sync_batch_norm, x2)
 
 

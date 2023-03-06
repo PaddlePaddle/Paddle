@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import unittest
-import paddle
-from paddle.static import InputSpec
-from paddle.fluid import core, ir
+
 import numpy as np
+
+import paddle
+from paddle.fluid import core
+from paddle.incubate.passes import ir
+from paddle.static import InputSpec
 
 
 # 0: ewadd(X=mul(X=x, Y=w), Y=b) => fc(Input=x, W=w, Bias=b)

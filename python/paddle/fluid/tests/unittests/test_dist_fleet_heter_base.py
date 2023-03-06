@@ -15,22 +15,21 @@
     high level unit test for distribute fleet.
 """
 
-import os
-import sys
-import subprocess
-
-import shutil
 import argparse
-from contextlib import closing
+import os
+import shutil
 import socket
-import time
+import subprocess
+import sys
 import tempfile
+import time
 import unittest
+from contextlib import closing
 
 import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 
 __all__ = ['FleetDistHeterRunnerBase', 'TestFleetHeterBase', 'runtime_main']
 

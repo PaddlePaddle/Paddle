@@ -47,7 +47,7 @@ class TestBase(IPUOpTest):
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.fluid.layers.fill_constant(**self.attrs)
-        out = paddle.fluid.layers.elementwise_add(x, x)
+        out = paddle.add(x, x)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

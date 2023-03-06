@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class NPUWhereIndexKernel : public framework::OpKernel<T> {
  public:
@@ -39,7 +37,7 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
     const aclrtStream& stream = dev_ctx.stream();
 
     // Run Cast and ReduceSum to get 0 dim of Out
-    Tensor booled_cond;
+    phi::DenseTensor booled_cond;
     if (framework::TransToProtoVarType(condition->dtype()) !=
         framework::proto::VarType::BOOL) {
       auto bool_type = ConvertToNpuDtype(framework::proto::VarType::BOOL);
@@ -53,7 +51,7 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
     } else {
       booled_cond.ShareDataWith(*condition);
     }
-    Tensor casted_cond;
+    phi::DenseTensor casted_cond;
     auto dst_dtype = ConvertToNpuDtype(framework::proto::VarType::INT64);
     casted_cond.mutable_data<int64_t>(dims, place);
     const auto& cast_runner =
@@ -63,9 +61,9 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
                     {{"dst_type", static_cast<int>(dst_dtype)}});
     cast_runner.Run(stream);
 
-    Tensor sumed_true_num;
+    phi::DenseTensor sumed_true_num;
     sumed_true_num.mutable_data<int64_t>({1}, place);
-    Tensor cond_axes;
+    phi::DenseTensor cond_axes;
     cond_axes.mutable_data<int>({dims.size()}, place);
     std::vector<int> axes_vec;
     for (int i = 0; i < dims.size(); ++i) {
@@ -78,7 +76,7 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
                                          {{"keep_dims", false}});
     sum_runner.Run(stream);
 
-    Tensor local_true_num;
+    phi::DenseTensor local_true_num;
     paddle::framework::TensorCopySync(
         sumed_true_num, platform::CPUPlace(), &local_true_num);
     auto true_num = *local_true_num.data<int64_t>();

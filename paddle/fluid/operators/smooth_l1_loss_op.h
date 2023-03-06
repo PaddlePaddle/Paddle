@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -79,7 +78,7 @@ class SmoothL1LossKernel : public framework::OpKernel<T> {
     }
 
     auto in_counts = in0->numel();
-    Tensor ptensor_errors;
+    phi::DenseTensor ptensor_errors;
     ptensor_errors.mutable_data<T>({static_cast<int>(in_counts)},
                                    context.GetPlace());
     auto errors = EigenVector<T>::Flatten(ptensor_errors);
@@ -138,7 +137,7 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
     auto mat_dims =
         phi::make_ddim({static_cast<int>(in_dims[0]), static_cast<int>(cols)});
 
-    Tensor ptensor_diff;
+    phi::DenseTensor ptensor_diff;
     ptensor_diff.mutable_data<T>({static_cast<int>(counts)},
                                  context.GetPlace());
     auto diff = EigenVector<T>::Flatten(ptensor_diff);
@@ -147,7 +146,7 @@ class SmoothL1LossGradKernel : public framework::OpKernel<T> {
         SmoothL1LossBackward<T>(sigma2));
 
     // compute weights
-    Tensor ptensor_weights;
+    phi::DenseTensor ptensor_weights;
     ptensor_weights.mutable_data<T>(mat_dims, context.GetPlace());
     auto weights = EigenMatrix<T>::From(ptensor_weights);
     // initialize to 1.0

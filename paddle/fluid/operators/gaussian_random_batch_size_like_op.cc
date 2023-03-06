@@ -23,9 +23,9 @@ class GaussianRandomBatchSizeLikeOp : public BatchSizeLikeOp {
  protected:
   using BatchSizeLikeOp::BatchSizeLikeOp;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }

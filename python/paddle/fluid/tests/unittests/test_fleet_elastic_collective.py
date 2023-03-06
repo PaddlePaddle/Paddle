@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
 
 from paddle.distributed.fleet.elastic.collective import CollectiveLauncher
 from paddle.distributed.fleet.launch import launch_collective

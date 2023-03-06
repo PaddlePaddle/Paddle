@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import argparse
 
-from sparse_api_gen import SparseAPI
+import yaml
 from backward_api_gen import BackwardAPI
+from sparse_api_gen import SparseAPI
 
 
 class SparseBackwardAPI(SparseAPI, BackwardAPI):
@@ -134,6 +134,8 @@ def source_include(header_file_path):
 #include "paddle/phi/infermeta/sparse/unary.h"
 #include "paddle/phi/infermeta/sparse/binary.h"
 #include "paddle/phi/infermeta/sparse/backward.h"
+
+DECLARE_int32(low_precision_op_list);
 """
 
 

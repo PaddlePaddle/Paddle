@@ -1,5 +1,5 @@
-set(INTERPRETER_SRCS data_transfer.cc dependency_builder.cc event_manager.cc
-                     execution_config.cc interpreter_util.cc)
+set(INTERPRETER_SRCS data_transfer.cc dependency_builder.cc execution_config.cc
+                     interpreter_util.cc stream_analyzer.cc)
 
 set(INTERPRETER_DEPS
     device_context

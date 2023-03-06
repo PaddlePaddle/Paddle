@@ -16,8 +16,9 @@
 
 import argparse
 import json
-import yaml
 from typing import Dict, List
+
+import yaml
 
 skipped_phi_api_list_file = "/tools/infrt/skipped_phi_api.json"
 api_yaml_file = "/paddle/phi/api/yaml/api.yaml"
@@ -46,7 +47,7 @@ def get_skipped_kernel_list():
 
 
 def parse_args():
-    parser = argparse.ArgumentParser("gather phi kernel and infermate info")
+    parser = argparse.ArgumentParser("gather phi kernel and infermeta info")
     parser.add_argument(
         "--paddle_root_path",
         type=str,

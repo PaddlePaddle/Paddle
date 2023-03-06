@@ -16,6 +16,7 @@ import os
 
 os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
+
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
 
@@ -45,12 +46,11 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         paddle.fluid.framework.switch_startup_program(startup_program)
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
-        input_x = paddle.fluid.layers.data(
+        input_x = paddle.static.data(
             name="x",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False,
         )
         x_embedding = paddle.fluid.layers.embedding(
             is_distributed=False,
@@ -58,17 +58,17 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
             size=[1000000000, 100000],
             param_attr=paddle.fluid.ParamAttr(
                 name="embedding",
-                initializer=paddle.fluid.initializer.Constant(value=0.01),
+                initializer=paddle.paddle.nn.initializer.Constant(value=0.01),
             ),
             is_sparse=True,
         )
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+        input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-        fc_1 = paddle.fluid.layers.fc(input=x_embedding, size=64, act='tanh')
-        fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
-        prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
-        cost = paddle.fluid.layers.cross_entropy(
-            input=prediction, label=input_y
+        fc_1 = paddle.static.nn.fc(x=x_embedding, size=64, activation='tanh')
+        fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+        prediction = paddle.static.nn.fc(x=[fc_2], size=2, activation='softmax')
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=input_y, reduction='none', use_softmax=False
         )
         avg_cost = paddle.mean(x=cost)
 

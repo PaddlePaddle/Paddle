@@ -85,33 +85,28 @@ struct FastDivMod {
 struct BroadcastConfig {
   FastDivMod divmoders[phi::DDim::kMaxRank];
   uint32_t strides[phi::DDim::kMaxRank];
-  int kDims{0};
-  HOSTDEVICE BroadcastConfig() {}
+  int rank{0};
 
-  HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
-                             const std::vector<int64_t>& in_dims,
-                             int dim_size) {
-    std::vector<uint32_t> strides_in;
-    std::vector<FastDivMod> divmoders_in;
-    // for divmoders
-    divmoders_in.resize(dim_size);
+  // BroadcastConfig should be defined on host used on device.
+  BroadcastConfig() {}
+
+  BroadcastConfig(const std::vector<int64_t>& out_dims,
+                  const std::vector<int64_t>& in_dims,
+                  int dim_size) {
     for (int i = 0; i < dim_size; ++i) {
-      divmoders_in[i] = FastDivMod(out_dims[i]);
+      divmoders[i] = FastDivMod(out_dims[i]);
     }
-    // for strides
-    strides_in.resize(dim_size, 1);
+
     for (int i = 0; i < dim_size; ++i) {
-      strides_in[i] = in_dims[i] == 1 ? 0 : strides_in[i];
-      strides_in[i] = (i != 0 && strides_in[i] != 0)
-                          ? std::accumulate(in_dims.begin(),
-                                            in_dims.begin() + i,
-                                            1,
-                                            std::multiplies<int64_t>())
-                          : strides_in[i];
+      strides[i] = in_dims[i] == 1 ? 0 : 1;
+      strides[i] = (i != 0 && strides[i] != 0)
+                       ? std::accumulate(in_dims.begin(),
+                                         in_dims.begin() + i,
+                                         1,
+                                         std::multiplies<int64_t>())
+                       : strides[i];
     }
-    kDims = dim_size;
-    memcpy(strides, strides_in.data(), kDims * sizeof(uint32_t));
-    memcpy(divmoders, divmoders_in.data(), kDims * sizeof(FastDivMod));
+    rank = dim_size;
   }
 };
 
@@ -452,7 +447,7 @@ __device__ __forceinline__ void ReadDataBc(
       }
 #pragma unroll
       for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-        if (i >= config.kDims) break;
+        if (i >= config.rank) break;
         auto fast_divmoder = config.divmoders[i].Divmod(index_output);
         index_output = fast_divmoder.val[0];
         index_src += fast_divmoder.val[1] * config.strides[i];
@@ -784,7 +779,7 @@ __device__ __forceinline__ void ReadDataBc(
     }
 #pragma unroll
     for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-      if (i >= config.kDims) break;
+      if (i >= config.rank) break;
       auto fast_divmoder = config.divmoders[i].Divmod(index_output);
       index_output = fast_divmoder.val[0];
       index_src += fast_divmoder.val[1] * config.strides[i];

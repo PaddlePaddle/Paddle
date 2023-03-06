@@ -15,6 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <algorithm>
 #include <memory>
@@ -28,12 +32,13 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -723,14 +728,13 @@ void _concatCompute(const std::vector<phi::DenseTensor> &ins,
     for (auto &in : ins) {
       auto in_stride = phi::stride_numel(in.dims());
       auto out_stride = phi::stride_numel(out->dims());
-      paddle::operators::StridedNumelCopyWithAxis<T>(
-          ctx,
-          axis,
-          out->data<T>() + output_offset,
-          out_stride,
-          in.data<T>(),
-          in_stride,
-          in_stride[axis]);
+      phi::funcs::StridedNumelCopyWithAxis<T>(ctx,
+                                              axis,
+                                              out->data<T>() + output_offset,
+                                              out_stride,
+                                              in.data<T>(),
+                                              in_stride,
+                                              in_stride[axis]);
       output_offset += in_stride[axis];
     }
   } else {
@@ -1167,6 +1171,19 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
         platform::errors::InvalidArgument(
             "PyArray does not own data, in which case  memory leak "
             "or double free would occur"));
+
+    // TODO(qili93): temporary for ascned npu performance to be removed along
+    // with npu_identity op
+    paddle::experimental::Tensor tensor_out(
+        std::make_shared<phi::DenseTensor>());
+    if (tensor.storage_properties_initialized()) {
+      paddle::experimental::Tensor tensor_in(
+          std::make_shared<phi::DenseTensor>(tensor));
+      tensor_out = npu_identity_ad_func(tensor_in, -1);
+      auto dense_tensor =
+          std::dynamic_pointer_cast<phi::DenseTensor>(tensor_out.impl());
+      tensor_buf_ptr = dense_tensor->data();
+    }
 
     size_t copy_bytes = sizeof_dtype * numel;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

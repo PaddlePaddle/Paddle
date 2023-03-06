@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
 import unittest
-import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
 from typing import List
 
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
-class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
+import paddle.inference as paddle_infer
+
+
+class TrtConvertEqualOneInputCornerCase(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -37,45 +39,49 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for batch in [1, 2, 4]:
-            for shape in [[batch, 1], [batch, 1, 32], [batch, 1, 16, 32]]:
-                for axis in [-1 if len(shape) == 1 else 1]:
-                    self.dims = len(shape)
-                    dics = [{"axis": axis}, {"in_dtype": 0, "out_dtype": 5}]
-                    ops_config = [
-                        {
-                            "op_type": "equal",
-                            "op_inputs": {
-                                "X": ["input_data1"],
-                                "Y": ["input_data2"],
+        for op_type in ["equal", "not_equal"]:
+            for batch in [1, 2, 4]:
+                for shape in [[batch, 1], [batch, 1, 32], [batch, 1, 16, 32]]:
+                    for axis in [-1 if len(shape) == 1 else 1]:
+                        self.dims = len(shape)
+                        dics = [{"axis": axis}, {"in_dtype": 0, "out_dtype": 5}]
+                        ops_config = [
+                            {
+                                "op_type": op_type,
+                                "op_inputs": {
+                                    "X": ["input_data1"],
+                                    "Y": ["input_data2"],
+                                },
+                                "op_outputs": {"Out": ["compare_output_data"]},
+                                "op_attrs": dics[0],
+                                "outputs_dtype": {
+                                    "compare_output_data": np.bool_
+                                },
                             },
-                            "op_outputs": {"Out": ["compare_output_data"]},
-                            "op_attrs": dics[0],
-                        },
-                        {
-                            "op_type": "cast",
-                            "op_inputs": {"X": ["compare_output_data"]},
-                            "op_outputs": {"Out": ["output_data"]},
-                            "op_attrs": dics[1],
-                        },
-                    ]
-                    ops = self.generate_op_config(ops_config)
+                            {
+                                "op_type": "cast",
+                                "op_inputs": {"X": ["compare_output_data"]},
+                                "op_outputs": {"Out": ["output_data"]},
+                                "op_attrs": dics[1],
+                                "outputs_dtype": {"output_data": np.float32},
+                            },
+                        ]
+                        ops = self.generate_op_config(ops_config)
 
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data1": TensorConfig(
-                                data_gen=partial(generate_input, shape)
-                            ),
-                            "input_data2": TensorConfig(
-                                data_gen=partial(generate_input, shape)
-                            ),
-                        },
-                        outputs=["output_data"],
-                    )
-
-                    yield program_config
+                        program_config = ProgramConfig(
+                            ops=ops,
+                            weights={},
+                            inputs={
+                                "input_data1": TensorConfig(
+                                    data_gen=partial(generate_input, shape)
+                                ),
+                                "input_data2": TensorConfig(
+                                    data_gen=partial(generate_input, shape)
+                                ),
+                            },
+                            outputs=["output_data"],
+                        )
+                        yield program_config
 
     def sample_predictor_configs(
         self, program_config
@@ -101,8 +107,8 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                     "input_data2": [1, 1, 4],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data1": [4, 1, 256],
-                    "input_data2": [1, 1, 256],
+                    "input_data1": [4, 1, 32],
+                    "input_data2": [4, 1, 32],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data1": [2, 1, 16],
@@ -114,8 +120,8 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
                     "input_data2": [1, 1, 4, 4],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data1": [4, 1, 128, 256],
-                    "input_data2": [4, 1, 128, 256],
+                    "input_data1": [4, 1, 64, 32],
+                    "input_data2": [4, 1, 64, 32],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data1": [2, 1, 32, 16],
@@ -128,9 +134,11 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
+            if not dynamic_shape:
+                return 0, 5
             if self.dims == 1:
                 return 0, 3
-            return 1, 2
+            return 1, 3
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -159,6 +167,7 @@ class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
         ), 1e-3
 
     def test(self):
+        self.trt_param.workspace_size = 1 << 20
         self.run_test()
 
 

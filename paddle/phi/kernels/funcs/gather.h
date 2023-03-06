@@ -38,7 +38,6 @@ void CPUGather(const phi::CPUContext& ctx,
                const DenseTensor& src,
                const DenseTensor& index,
                DenseTensor* output) {
-  // check index of shape 1-D
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
@@ -48,14 +47,15 @@ void CPUGather(const phi::CPUContext& ctx,
             "in gather_op, but received value is [%d].",
             index.dims()[1]));
   } else {
-    PADDLE_ENFORCE_EQ(index.dims().size(),
-                      1,
-                      phi::errors::InvalidArgument(
-                          "index.dims().size() should be 1 or 2 in gather_op,"
-                          "but received shape's size is [%d].",
-                          index.dims().size()));
+    PADDLE_ENFORCE_EQ(
+        index.dims().size() == 1 || index.dims().size() == 0,
+        true,
+        phi::errors::InvalidArgument(
+            "The index should be 0D or 1D, when it is not 2D, but we get %d",
+            index.dims().size()));
   }
-  int64_t index_size = index.dims()[0];
+
+  int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
 
   auto src_dims = src.dims();
 
@@ -188,7 +188,9 @@ void GatherV2Function(const phi::CPUContext& ctx,
     inner_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);
   }
-  out_dim_vec.push_back(index_size);
+  if (index->dims().size() != 0) {
+    out_dim_vec.push_back(index_size);
+  }
   for (int i = axis_index + 1; i < input_dim.size(); i++) {
     outer_dim_size *= input_dim[i];
     out_dim_vec.push_back(input_dim[i]);
@@ -224,7 +226,13 @@ void GatherV2GradFunction(const phi::CPUContext& ctx,
 
   if (input->numel() == 0) return;
   int axis_index = axis;
-  int64_t input_index_dim_size = input_dim[axis_index];
+  int64_t input_index_dim_size;
+  if (input_dim.size() == out->dims().size()) {
+    input_index_dim_size = input_dim[axis_index];
+  } else {
+    // 0d index
+    input_index_dim_size = 1;
+  }
 
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;

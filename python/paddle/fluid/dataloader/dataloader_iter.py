@@ -20,8 +20,8 @@ import numbers
 import logging
 import itertools
 import threading
+import warnings
 import numpy as np
-import multiprocessing
 from collections import namedtuple
 from paddle.fluid.framework import (
     _set_expected_place,
@@ -29,14 +29,13 @@ from paddle.fluid.framework import (
     set_flags,
 )
 
-# NOTE: queue has a different name in python2 and python3
 import queue
 
 import paddle
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
 from .. import core, layers
-from ..framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from ..framework import in_dygraph_mode
 from ..multiprocess_utils import (
     _set_SIGCHLD_handler,
     MP_STATUS_CHECK_INTERVAL,
@@ -305,28 +304,23 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 )
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
-                if _in_legacy_dygraph():
-                    data = self._reader.read_next_var_list()
-                    data = _restore_batch(data, self._structure_infos.pop(0))
-                else:  # in static mode
-                    if self._return_list:
-                        data = self._reader.read_next_list()
-                        for i in range(len(data)):
-                            data[i] = data[i]._move_to_list()
-                        structs = [
-                            self._structure_infos.pop(0)
-                            for _ in range(len(self._places))
-                        ]
-                        data = [
-                            _restore_batch(d, s) for d, s in zip(data, structs)
-                        ]
-                        # static graph organized data on multi-device with list, if
-                        # place number is 1, there is only 1 device, extra the data
-                        # from list for devices to be compatible with dygraph mode
-                        if len(self._places) == 1:
-                            data = data[0]
-                    else:
-                        data = self._reader.read_next()
+                # in static graph mode
+                if self._return_list:
+                    data = self._reader.read_next_list()
+                    for i in range(len(data)):
+                        data[i] = data[i]._move_to_list()
+                    structs = [
+                        self._structure_infos.pop(0)
+                        for _ in range(len(self._places))
+                    ]
+                    data = [_restore_batch(d, s) for d, s in zip(data, structs)]
+                    # static graph organized data on multi-device with list, if
+                    # place number is 1, there is only 1 device, extra the data
+                    # from list for devices to be compatible with dygraph mode
+                    if len(self._places) == 1:
+                        data = data[0]
+                else:
+                    data = self._reader.read_next()
             benchmark().after_reader()
 
             return data
@@ -413,6 +407,29 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         self._base_seed = np.random.randint(low=0, high=sys.maxsize)
 
+        # Note(zhangbo): shm_buffer_size is used for MemoryMapAllocationPool.
+        # MemoryMapAllocationPool is used to cache and reuse shm, thus reducing munmap in dataloader.
+        # For more details, please see: paddle/fluid/memory/allocation/mmap_allocator.h
+        if os.environ.get('FLAGS_use_shm_cache', False) in [
+            1,
+            '1',
+            True,
+            'True',
+            'true',
+        ]:
+            try:
+                self._worker_shm_buffer_size = (2 + 1) * len(self._dataset[0])
+            except:
+                self._worker_shm_buffer_size = 0
+                warnings.warn(
+                    "Setting the shm cache buffer size to 0, equivalent to not using the shm cache policy."
+                )
+        else:
+            self._worker_shm_buffer_size = 0
+        self._main_thread_shm_buffer_size = (
+            (self._worker_shm_buffer_size) * 2 * self._num_workers
+        )
+
         # init workers and indices queues and put 2 indices in each indices queue
         self._init_workers()
         for _ in range(self._outstanding_capacity):
@@ -422,6 +439,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._shutdown = False
 
     def _init_workers(self):
+        import paddle.incubate.multiprocessing as multiprocessing
+
         # multiprocess worker and indice queue list initial as empty
         self._workers = []
         self._worker_status = []
@@ -455,6 +474,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._num_workers,
                     self._use_shared_memory,
                     self._base_seed,
+                    self._worker_shm_buffer_size,
                 ),
             )
             worker.daemon = True
@@ -485,6 +505,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
             core.Variable(), self._outstanding_capacity, len(self._places) > 1
+        )
+        core._set_max_memory_map_allocation_pool_size(
+            self._main_thread_shm_buffer_size
         )
         self._reader = core.create_py_reader(
             self._blocking_queue,
@@ -528,9 +551,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._reader.read_next_list()[0]
                 )
             else:
-                if _in_legacy_dygraph():
-                    self._reader.read_next_var_list()
-                elif self._return_list:
+                if self._return_list:
                     self._reader.read_next_list()
                 else:
                     data = self._reader.read_next()
@@ -816,28 +837,22 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 )
                 data = _restore_batch(data, self._structure_infos.pop(0))
             else:
-                if _in_legacy_dygraph():
-                    data = self._reader.read_next_var_list()
-                    data = _restore_batch(data, self._structure_infos.pop(0))
+                if self._return_list:
+                    data = self._reader.read_next_list()
+                    for i in range(len(data)):
+                        data[i] = data[i]._move_to_list()
+                    structs = [
+                        self._structure_infos.pop(0)
+                        for _ in range(len(self._places))
+                    ]
+                    data = [_restore_batch(d, s) for d, s in zip(data, structs)]
+                    # static graph organized data on multi-device with list, if
+                    # place number is 1, there is only 1 device, extra the data
+                    # from list for devices to be compatible with dygraph mode
+                    if len(self._places) == 1:
+                        data = data[0]
                 else:
-                    if self._return_list:
-                        data = self._reader.read_next_list()
-                        for i in range(len(data)):
-                            data[i] = data[i]._move_to_list()
-                        structs = [
-                            self._structure_infos.pop(0)
-                            for _ in range(len(self._places))
-                        ]
-                        data = [
-                            _restore_batch(d, s) for d, s in zip(data, structs)
-                        ]
-                        # static graph organized data on multi-device with list, if
-                        # place number is 1, there is only 1 device, extra the data
-                        # from list for devices to be compatible with dygraph mode
-                        if len(self._places) == 1:
-                            data = data[0]
-                    else:
-                        data = self._reader.read_next()
+                    data = self._reader.read_next()
             self._on_output_batch()
             benchmark().after_reader()
             return data

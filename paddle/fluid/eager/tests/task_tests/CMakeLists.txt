@@ -1,16 +1,4 @@
 cc_test(
-  test_egr_task_tensor_utils
-  SRCS tensor_utils_test.cc
-  DEPS ${eager_deps})
-cc_test(
-  test_egr_task_eager_utils
-  SRCS eager_utils_test.cc
-  DEPS ${eager_deps})
-cc_test(
-  test_egr_task_forward_autograd
-  SRCS forward_autograd_test.cc
-  DEPS ${eager_deps} ${fluid_deps} eager_scale scale_node)
-cc_test(
   test_egr_task_nan_inf_utils
   SRCS nan_inf_utils_test.cc
   DEPS eager_nan_inf_utils)
@@ -44,4 +32,16 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     test_egr_task_autocodegen
     SRCS generated_test.cc
     DEPS ${eager_deps} ${fluid_deps} ${generated_deps})
+  cc_test(
+    test_egr_task_tensor_utils
+    SRCS tensor_utils_test.cc
+    DEPS ${eager_deps} ${generated_deps})
+  cc_test(
+    test_egr_task_eager_utils
+    SRCS eager_utils_test.cc
+    DEPS ${eager_deps} ${generated_deps})
+  cc_test(
+    test_egr_task_forward_autograd
+    SRCS forward_autograd_test.cc
+    DEPS ${eager_deps} ${fluid_deps} ${generated_deps} eager_scale scale_node)
 endif()

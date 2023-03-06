@@ -17,8 +17,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/cupti_lib_path.h"
+#include "paddle/phi/core/enforce.h"
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -467,6 +467,34 @@ void* GetWarpCTCDsoHandle() {
   return GetDsoHandleFromSearchPath(warpctc_dir, "warpctc.dll");
 #else
   return GetDsoHandleFromSearchPath(warpctc_dir, "libwarpctc.so");
+#endif
+}
+
+void* GetWarpRNNTDsoHandle() {
+  std::string warprnnt_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    warprnnt_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "libwarprnnt.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "warprnnt.dll");
+#else
+  return GetDsoHandleFromSearchPath(warprnnt_dir, "libwarprnnt.so");
+#endif
+}
+
+void* GetFlashAttnDsoHandle() {
+  std::string flashattn_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    flashattn_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "flashattn.dll");
+#else
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.so");
 #endif
 }
 

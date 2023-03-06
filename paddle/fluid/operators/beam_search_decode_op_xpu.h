@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-int SetMeta(const LoDTensor& srcTensor, LoDTensor* dstTensor) {
+int SetMeta(const phi::DenseTensor& srcTensor, phi::DenseTensor* dstTensor) {
   if (srcTensor.dtype() == paddle::experimental::DataType::INT32 ||
       srcTensor.dtype() == paddle::experimental::DataType::INT64 ||
       srcTensor.dtype() == paddle::experimental::DataType::FLOAT32 ||
@@ -33,8 +33,8 @@ int SetMeta(const LoDTensor& srcTensor, LoDTensor* dstTensor) {
   return xpu::Error_t::SUCCESS;
 }
 template <typename T>
-int CopyTensorByXPU(const LoDTensor& srcTensor,
-                    LoDTensor* dstTensor,
+int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
+                    phi::DenseTensor* dstTensor,
                     int flag,
                     const Place& place) {
   const T* srcData = srcTensor.template data<T>();
@@ -67,8 +67,8 @@ int CopyTensorByXPU(const LoDTensor& srcTensor,
   return xpu::Error_t::SUCCESS;
 }
 
-const int CopyTensorByType(const LoDTensor& srcTensor,
-                           LoDTensor* dstTensor,
+const int CopyTensorByType(const phi::DenseTensor& srcTensor,
+                           phi::DenseTensor* dstTensor,
                            int flag,
                            const Place& place) {
   int r = 0;
@@ -97,8 +97,8 @@ const int CopyTensorByType(const LoDTensor& srcTensor,
 struct BeamSearchDecodeXPUFunctor {
   BeamSearchDecodeXPUFunctor(const LoDTensorArray& step_ids,
                              const LoDTensorArray& step_scores,
-                             LoDTensor* id_tensor,
-                             LoDTensor* score_tensor,
+                             phi::DenseTensor* id_tensor,
+                             phi::DenseTensor* score_tensor,
                              size_t beam_size,
                              int end_id)
       : beam_size_(beam_size),
@@ -164,8 +164,8 @@ struct BeamSearchDecodeXPUFunctor {
   // scenarios.
   LoDTensorArray step_ids_ = LoDTensorArray();
   LoDTensorArray step_scores_ = LoDTensorArray();
-  LoDTensor* id_tensor_;
-  LoDTensor* score_tensor_;
+  phi::DenseTensor* id_tensor_;
+  phi::DenseTensor* score_tensor_;
 };
 
 }  // namespace operators

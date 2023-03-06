@@ -14,9 +14,8 @@
 
 __all__ = []
 
-from paddle import _C_ops
+from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.framework import dygraph_only
-from paddle import in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -87,28 +86,31 @@ def softmax(x, axis=-1, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             paddle.seed(100)
 
-            mask = np.random.rand(3, 4) < 0.5
-            np_x = np.random.rand(3, 4) * mask
-            # [[0.         0.         0.96823406 0.19722934]
-            #  [0.94373937 0.         0.02060066 0.71456372]
-            #  [0.         0.         0.         0.98275049]]
+            mask = paddle.rand((3, 4)) < 0.5
+            x = paddle.rand((3, 4)) * mask
+            print(x)
+            # Tensor(shape=[3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0.83438963, 0.70008713, 0.        , 0.88831252],
+            #         [0.02200012, 0.        , 0.75432241, 0.65136462],
+            #         [0.96088767, 0.82938021, 0.35367414, 0.86653489]])
 
-            csr = paddle.to_tensor(np_x).to_sparse_csr()
-            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
-            #        crows=[0, 2, 5, 6],
-            #        cols=[2, 3, 0, 2, 3, 3],
-            #        values=[0.96823406, 0.19722934, 0.94373937, 0.02060066, 0.71456372,
-            #                0.98275049])
+            csr = x.to_sparse_csr()
+            print(csr)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0 , 3 , 6 , 10],
+            #        cols=[0, 1, 3, 0, 2, 3, 0, 1, 2, 3],
+            #        values=[0.83438963, 0.70008713, 0.88831252, 0.02200012, 0.75432241,
+            #                0.65136462, 0.96088767, 0.82938021, 0.35367414, 0.86653489])
 
             out = paddle.sparse.nn.functional.softmax(csr)
-            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
-            #        crows=[0, 2, 5, 6],
-            #        cols=[2, 3, 0, 2, 3, 3],
-            #        values=[0.68373820, 0.31626180, 0.45610887, 0.18119845, 0.36269269,
-            #                1.        ])
+            print(out)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0 , 3 , 6 , 10],
+            #        cols=[0, 1, 3, 0, 2, 3, 0, 1, 2, 3],
+            #        values=[0.34132850, 0.29843223, 0.36023921, 0.20176248, 0.41964680,
+            #                0.37859070, 0.30015594, 0.26316854, 0.16354506, 0.27313042])
 
     """
     return _C_ops.sparse_softmax(x, axis)

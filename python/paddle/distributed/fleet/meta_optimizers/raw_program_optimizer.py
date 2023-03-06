@@ -11,18 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle.fluid as fluid
-from paddle.fluid import core, unique_name
-from .meta_optimizer_base import MetaOptimizerBase
+import paddle.static as static
+from paddle.fluid import core
+from paddle.utils import unique_name
+
 from .common import (
-    OpRole,
     OP_ROLE_KEY,
     OP_ROLE_VAR_KEY,
     CollectiveHelper,
-    is_loss_grad_op,
+    OpRole,
     is_backward_op,
+    is_loss_grad_op,
     is_optimizer_op,
 )
+from .meta_optimizer_base import MetaOptimizerBase
 
 
 class RawProgramOptimizer(MetaOptimizerBase):
@@ -132,7 +134,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
         self.rank = self.role_maker._worker_index()
         self.nranks = self.role_maker._worker_num()
         if startup_program is None:
-            startup_program = fluid.default_startup_program()
+            startup_program = static.default_startup_program()
         self.startup_program = startup_program
 
         block = loss.block

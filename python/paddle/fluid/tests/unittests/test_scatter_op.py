@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import os
+import unittest
+
+import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
@@ -191,6 +193,25 @@ class TestScatterOp5(OpTest):
             )
 
 
+class TestScatterOp6(OpTest):
+    def setUp(self):
+        self.op_type = "scatter"
+        self.python_api = paddle.scatter
+        ref_np = np.ones((3, 50)).astype("float32")
+        index_np = np.array([[1], [2]]).astype("int32")
+        updates_np = np.random.random((2, 50)).astype("float32")
+        output_np = np.copy(ref_np)
+        output_np[np.array([1, 2]).astype("int32")] = updates_np
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        self.check_output(check_eager=False)
+
+    def test_check_grad(self):
+        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+
+
 class TestScatterAPI(unittest.TestCase):
     def setUp(self):
         self.places = [fluid.CPUPlace()]
@@ -353,6 +374,32 @@ class TestScatterOpFp16(OpTest):
 class TestScatterInplaceAPI(TestScatterAPI):
     def executed_api(self):
         self.scatter = paddle.scatter_
+
+
+@unittest.skipIf(core.is_compiled_with_cuda(), "CUDA will not throw exception")
+class TestScatterError(unittest.TestCase):
+    def test_scatter_index(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
+
+        def test_neg_index():
+            index = paddle.to_tensor([2, 1, -1, 1], dtype='int64')
+            updates = paddle.to_tensor(
+                [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+            )
+            out = paddle.scatter(x, index, updates)
+
+        self.assertRaises(IndexError, test_neg_index)
+
+        def test_too_big_index():
+            index = paddle.to_tensor([2, 1, 5, 1], dtype='int64')
+            updates = paddle.to_tensor(
+                [[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32'
+            )
+            out = paddle.scatter(x, index, updates)
+
+        self.assertRaises(IndexError, test_too_big_index)
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

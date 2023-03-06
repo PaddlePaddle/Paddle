@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import time
 
-from paddle.fluid.op import Operator
+import numpy as np
 from op_test import OpTest
+
+from paddle.fluid.op import Operator
 
 
 class BenchmarkSuite(OpTest):

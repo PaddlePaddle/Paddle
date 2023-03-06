@@ -16,12 +16,11 @@
 #include <thrust/host_vector.h>
 
 #include "paddle/fluid/operators/sequence_ops/sequence_enumerate_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
-using platform::PADDLE_CUDA_NUM_THREADS;
-using LoDTensor = phi::DenseTensor;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void CalcOutPut(const T* in_data,
@@ -52,8 +51,8 @@ template <typename T>
 class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     int win_size = context.Attr<int>("win_size");
     int pad_value = context.Attr<int>("pad_value");
 
@@ -77,7 +76,7 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
     out->Resize({in_dims[0], win_size});
     auto out_data = out->mutable_data<T>(context.GetPlace());
     // Copy LoD to GPU
-    paddle::framework::MixVector<size_t> mixv_lod0(&lod0);
+    phi::MixVector<size_t> mixv_lod0(&lod0);
     const size_t* dev_in_lod_ptr = mixv_lod0.CUDAData(context.GetPlace());
     // Calc output tensor
     CalcOutPut<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,

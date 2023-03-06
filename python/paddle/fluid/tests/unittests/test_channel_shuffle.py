@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-from op_test import OpTest
+import numpy as np
+from eager_op_test import OpTest
+
 import paddle
-import paddle.nn.functional as F
-import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.nn.functional as F
 
 
 def channel_shuffle_np(x, groups, data_format="NCHW"):
@@ -46,6 +47,7 @@ class TestChannelShuffleOp(OpTest):
         self.op_type = "channel_shuffle"
         self.init_data_format()
         n, c, h, w = 2, 9, 4, 4
+        self.python_api = paddle.nn.functional.channel_shuffle
 
         if self.format == "NCHW":
             shape = [n, c, h, w]

@@ -28,8 +28,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <class bidiiter>
 void SampleUniqueNeighbors(bidiiter begin, bidiiter end, int num_samples) {
   int left_num = std::distance(begin, end);

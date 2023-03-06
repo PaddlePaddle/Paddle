@@ -16,8 +16,8 @@
 
 #include <algorithm>
 #include <vector>
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -36,7 +36,18 @@ struct CudaAbsFunctor<T, phi::funcs::Complex<T, phi::dtype::Real<T>>> {
 };
 
 template <typename T>
-struct CudaAbsFunctor<T, phi::funcs::NoComplex<T, phi::dtype::Real<T>>> {
+struct CudaAbsFunctor<
+    T,
+    std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
+                     std::is_same<T, phi::dtype::bfloat16>::value>> {
+  __device__ __forceinline__ T operator()(const T x) const { return abs(x); }
+};
+
+template <typename T>
+struct CudaAbsFunctor<
+    T,
+    std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
+                     !std::is_same<T, phi::dtype::bfloat16>::value>> {
   __device__ __forceinline__ T operator()(const T x) const {
     return std::abs(x);
   }
@@ -63,5 +74,6 @@ PD_REGISTER_KERNEL(abs,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

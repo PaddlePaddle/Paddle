@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 from paddle.fluid.default_scope_funcs import (
     enter_local_scope,
     find_var,
@@ -20,7 +22,6 @@ from paddle.fluid.default_scope_funcs import (
     scoped_function,
     var,
 )
-import unittest
 
 
 class TestDefaultScopeFuncs(unittest.TestCase):

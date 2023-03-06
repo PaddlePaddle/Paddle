@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
 
 

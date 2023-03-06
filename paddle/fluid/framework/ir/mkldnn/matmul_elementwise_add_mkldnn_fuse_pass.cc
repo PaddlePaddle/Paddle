@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,9 @@
 #include "paddle/fluid/framework/ir/mkldnn/matmul_elementwise_add_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -25,7 +26,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void MatmulElementwiseAddMKLDNNFusePass::ApplyImpl(Graph* graph) const {
-  auto matmul_types = {"matmul", "matmul_v2"};
+  auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
   auto matmul_as_x = {true, false};
 
   for (const auto& matmul_type : matmul_types)
@@ -64,11 +65,8 @@ void MatmulElementwiseAddMKLDNNFusePass::FuseMatmulElementwiseAdd(
           << "op compat for matmul_elementwise_add_mkldnn_fuse_pass failed.";
       return;
     }
-    if (matmul->Op()->HasAttr("ResidualData")) {
-      LOG(WARNING) << "matmul_elementwise_add can be fused once";
-      return;
-    }
 
+    ConvertToFusedOp(matmul->Op());
     matmul->Op()->SetInput("ResidualData", {elementwise_addend->Name()});
     matmul->Op()->SetOutput("Out", {elementwise_add_out->Name()});
 
@@ -129,6 +127,27 @@ MatmulElementwiseAddMKLDNNFusePass::MatmulElementwiseAddMKLDNNFusePass() {
       .IsType<bool>()
       .End();
 
+  AddOpCompat(OpCompat("fused_matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End();
+
   AddOpCompat(OpCompat("elementwise_add"))
       .AddInput("X")
       .IsTensor()
@@ -153,6 +172,7 @@ REGISTER_PASS(matmul_elementwise_add_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(matmul_elementwise_add_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("fused_matmul", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .LE("elementwise_add", 1));

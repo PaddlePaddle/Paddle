@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import paddle
-import scipy.stats
 
 import config
+import numpy as np
 import parameterize
+import scipy.stats
 
+import paddle
 from paddle.distribution.gumbel import Gumbel
 
 

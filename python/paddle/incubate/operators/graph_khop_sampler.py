@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _legacy_C_ops
+from paddle.fluid.data_feeder import check_variable_and_dtype
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 
 def graph_khop_sampler(
@@ -28,6 +28,7 @@ def graph_khop_sampler(
     name=None,
 ):
     """
+
     Graph Khop Sampler API.
 
     This API is mainly used in Graph Learning domain, and the main purpose is to
@@ -50,38 +51,36 @@ def graph_khop_sampler(
         sample_sizes (list|tuple): The number of neighbors and number of layers we want
                                    to sample. The data type should be int, and the shape
                                    should only have one dimension.
-        sorted_eids (Tensor): The sorted edge ids, should not be None when `return_eids`
+        sorted_eids (Tensor, optional): The sorted edge ids, should not be None when `return_eids`
                               is True. The shape should be [num_edges, 1], and the data
-                              type should be the same with `row`.
-        return_eids (bool): Whether to return the id of the sample edges. Default is False.
+                              type should be the same with `row`. Default is None.
+        return_eids (bool, optional): Whether to return the id of the sample edges. Default is False.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        edge_src (Tensor): The src index of the output edges, also means the first column of
-                           the edges. The shape is [num_sample_edges, 1] currently.
-        edge_dst (Tensor): The dst index of the output edges, also means the second column
-                           of the edges. The shape is [num_sample_edges, 1] currently.
-        sample_index (Tensor): The original id of the input nodes and sampled neighbor nodes.
-        reindex_nodes (Tensor): The reindex id of the input nodes.
-        edge_eids (Tensor): Return the id of the sample edges if `return_eids` is True.
+        - edge_src (Tensor), The src index of the output edges, also means the first column of
+          the edges. The shape is [num_sample_edges, 1] currently.
+        - edge_dst (Tensor), The dst index of the output edges, also means the second column
+          of the edges. The shape is [num_sample_edges, 1] currently.
+        - sample_index (Tensor), The original id of the input nodes and sampled neighbor nodes.
+        - reindex_nodes (Tensor), The reindex id of the input nodes.
+        - edge_eids (Tensor), Return the id of the sample edges if `return_eids` is True.
 
     Examples:
-
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]
-        colptr = [0, 2, 4, 5, 6, 7, 9, 11, 11, 13, 13]
-        nodes = [0, 8, 1, 2]
-        sample_sizes = [2, 2]
-        row = paddle.to_tensor(row, dtype="int64")
-        colptr = paddle.to_tensor(colptr, dtype="int64")
-        nodes = paddle.to_tensor(nodes, dtype="int64")
+            row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]
+            colptr = [0, 2, 4, 5, 6, 7, 9, 11, 11, 13, 13]
+            nodes = [0, 8, 1, 2]
+            sample_sizes = [2, 2]
+            row = paddle.to_tensor(row, dtype="int64")
+            colptr = paddle.to_tensor(colptr, dtype="int64")
+            nodes = paddle.to_tensor(nodes, dtype="int64")
 
-        edge_src, edge_dst, sample_index, reindex_nodes = \
-            paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
+            edge_src, edge_dst, sample_index, reindex_nodes = paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
 
     """
 

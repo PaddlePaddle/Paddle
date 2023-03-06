@@ -12,23 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import core
-from ..fluid import framework
-from ..fluid.framework import Variable, in_dygraph_mode
-from ..fluid import layers
-from ..fluid import unique_name
-from ..fluid.layer_helper import LayerHelper
 import warnings
-from ..fluid.dygraph import base as imperative_base
 from collections import defaultdict
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
+
+from ..fluid import core, framework, unique_name
+from ..fluid.dygraph import base as imperative_base
+from ..fluid.framework import Variable, in_dygraph_mode
+from ..fluid.layer_helper import LayerHelper
+from .optimizer import Optimizer
 
 __all__ = []
 
-GRAD_TYPES = [int(paddle.float32), int(paddle.float16)]
+GRAD_TYPES = [int(paddle.float32), int(paddle.float16), int(paddle.bfloat16)]
 
 
 class Adam(Optimizer):
@@ -72,7 +70,7 @@ class Adam(Optimizer):
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in paramter groups
             represents the scale of base learning_rate.
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -235,7 +233,7 @@ class Adam(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(
+            var = paddle.static.create_global_var(
                 name=var_name,
                 shape=param.shape,
                 value=0,
@@ -265,8 +263,8 @@ class Adam(Optimizer):
         """
         if self._name is not None:
             name = self._name + "_" + name
-        find_master = (
-            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param.dtype
         )
         target_param = (
             self._master_weights[param.name] if find_master else param
@@ -285,10 +283,7 @@ class Adam(Optimizer):
 
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
-        if (
-            acc_dtype == core.VarDesc.VarType.FP16
-            or acc_dtype == core.VarDesc.VarType.BF16
-        ):
+        if self._is_dtype_fp16_or_bf16(acc_dtype):
             acc_dtype = core.VarDesc.VarType.FP32
         self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
@@ -322,16 +317,16 @@ class Adam(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16 or BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
@@ -353,9 +348,8 @@ class Adam(Optimizer):
         beta2_pow_acc = self._get_accumulator(
             self._beta2_pow_acc_str, param_and_grad[0]
         )
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
@@ -399,98 +393,55 @@ class Adam(Optimizer):
             )
 
             return None
-
-        if framework._in_legacy_dygraph():
-
-            _beta1 = (
-                self._beta1
-                if not isinstance(self._beta1, Variable)
-                else self._beta1.numpy().item(0)
-            )
-            _beta2 = (
-                self._beta2
-                if not isinstance(self._beta2, Variable)
-                else self._beta2.numpy().item(0)
-            )
-            _, _, _, _, _, _ = _legacy_C_ops.adam(
-                param_and_grad[0],
-                param_and_grad[1],
-                lr,
-                moment1,
-                moment2,
-                beta1_pow_acc,
-                beta2_pow_acc,
-                master_weight,
-                param_and_grad[0],
-                moment1,
-                moment2,
-                beta1_pow_acc,
-                beta2_pow_acc,
-                master_weight,
-                'epsilon',
-                self._epsilon,
-                'lazy_mode',
-                self._lazy_mode,
-                'min_row_size_to_use_multithread',
-                1000,
-                'beta1',
-                _beta1,
-                'beta2',
-                _beta2,
-                'multi_precision',
-                find_master,
-            )
-
-            return None
-
-        inputs = {
-            "Param": [param_and_grad[0]],
-            "Grad": [param_and_grad[1]],
-            "LearningRate": [lr],
-            "Moment1": [moment1],
-            "Moment2": [moment2],
-            "Beta1Pow": [beta1_pow_acc],
-            "Beta2Pow": [beta2_pow_acc],
-        }
-        outputs = {
-            "ParamOut": [param_and_grad[0]],
-            "Moment1Out": [moment1],
-            "Moment2Out": [moment2],
-            "Beta1PowOut": [beta1_pow_acc],
-            "Beta2PowOut": [beta2_pow_acc],
-        }
-        attrs = {
-            "lazy_mode": self._lazy_mode,
-            "min_row_size_to_use_multithread": 1000,
-            "multi_precision": find_master,
-        }
-
-        if isinstance(self._beta1, Variable):
-            inputs['Beta1Tensor'] = self._beta1
         else:
-            attrs['beta1'] = self._beta1
-        if isinstance(self._beta2, Variable):
-            inputs['Beta2Tensor'] = self._beta2
-        else:
-            attrs['beta2'] = self._beta2
-        if isinstance(self._epsilon, Variable):
-            inputs['EpsilonTensor'] = self._epsilon
-        else:
-            attrs['epsilon'] = self._epsilon
+            inputs = {
+                "Param": [param_and_grad[0]],
+                "Grad": [param_and_grad[1]],
+                "LearningRate": [lr],
+                "Moment1": [moment1],
+                "Moment2": [moment2],
+                "Beta1Pow": [beta1_pow_acc],
+                "Beta2Pow": [beta2_pow_acc],
+            }
+            outputs = {
+                "ParamOut": [param_and_grad[0]],
+                "Moment1Out": [moment1],
+                "Moment2Out": [moment2],
+                "Beta1PowOut": [beta1_pow_acc],
+                "Beta2PowOut": [beta2_pow_acc],
+            }
+            attrs = {
+                "lazy_mode": self._lazy_mode,
+                "min_row_size_to_use_multithread": 1000,
+                "multi_precision": find_master,
+            }
 
-        if find_master:
-            inputs["MasterParam"] = master_weight
-            outputs["MasterParamOut"] = master_weight
+            if isinstance(self._beta1, Variable):
+                inputs['Beta1Tensor'] = self._beta1
+            else:
+                attrs['beta1'] = self._beta1
+            if isinstance(self._beta2, Variable):
+                inputs['Beta2Tensor'] = self._beta2
+            else:
+                attrs['beta2'] = self._beta2
+            if isinstance(self._epsilon, Variable):
+                inputs['EpsilonTensor'] = self._epsilon
+            else:
+                attrs['epsilon'] = self._epsilon
 
-        adam_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=attrs,
-            stop_gradient=True,
-        )
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
 
-        return adam_op
+            adam_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
+                stop_gradient=True,
+            )
+
+            return adam_op
 
     @imperative_base.no_grad
     @framework.dygraph_only
@@ -571,7 +522,7 @@ class Adam(Optimizer):
 
     def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """
-        All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, float32).
+        All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (bfloat16, float16, float32).
         This function will be overridden in the corresponding optimizer file.
         Args:
             target_block: the block in which the loss tensor is present
@@ -604,7 +555,7 @@ class Adam(Optimizer):
                 self._beta2_pow_acc_dict['FP32_LODTensor'][
                     param_group_idx
                 ].append(beta2_pow_acc)
-            elif param.dtype == paddle.float16:
+            elif self._is_dtype_fp16_or_bf16(param.dtype):
                 self._param_dict['FP16_LODTensor'][param_group_idx].append(
                     param
                 )
@@ -628,7 +579,7 @@ class Adam(Optimizer):
                     self._master_weight_dict['FP16_LODTensor'] = None
             else:
                 raise ValueError(
-                    "Now multi_tensor_momentum only support fp32 and fp16 parameters and grad is LOD_TENSOR."
+                    "Now multi_tensor_momentum only support fp32, fp16 or bf16 parameters and grad is LOD_TENSOR."
                 )
 
     def _append_optimize_multi_tensor_op(
@@ -656,7 +607,7 @@ class Adam(Optimizer):
                         )
                         lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP32_LODTensor'].append(lr)
-                    elif tp == GRAD_TYPES[1]:
+                    elif tp == GRAD_TYPES[1] or tp == GRAD_TYPES[2]:
                         grad_dict['FP16_LODTensor'].append(
                             parameters_and_grads[index][1]
                         )
@@ -678,7 +629,7 @@ class Adam(Optimizer):
                             lr = self._create_param_lr(param_and_grad)
                             lr_dict['FP32_LODTensor'].append(lr)
                         elif (
-                            param_and_grad[0].dtype == paddle.float16
+                            self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                             and param_and_grad[1].type
                             == core.VarDesc.VarType.LOD_TENSOR
                         ):
@@ -711,7 +662,7 @@ class Adam(Optimizer):
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP32_LODTensor'].append(lr)
                     elif (
-                        param_and_grad[0].dtype == paddle.float16
+                        self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                         and param_and_grad[1].type
                         == core.VarDesc.VarType.LOD_TENSOR
                     ):
@@ -735,55 +686,28 @@ class Adam(Optimizer):
                     else self._beta2.numpy().item(0)
                 )
 
-                if framework._non_static_mode():
+                if framework.in_dygraph_mode():
                     master_weight = self._master_weight_dict[key]
                     master_weight = (
                         master_weight[param_group_idx]
                         if master_weight is not None
                         else None
                     )
-                    if in_dygraph_mode():
-
-                        _, _, _, _, _, _ = _C_ops.merged_adam_(
-                            self._param_dict[key][param_group_idx],
-                            grad_dict[key],
-                            lr_dict[key],
-                            self._moment1_dict[key][param_group_idx],
-                            self._moment2_dict[key][param_group_idx],
-                            self._beta1_pow_acc_dict[key][param_group_idx],
-                            self._beta2_pow_acc_dict[key][param_group_idx],
-                            master_weight,
-                            _beta1,
-                            _beta2,
-                            self._epsilon,
-                            find_master,
-                            False,
-                        )
-                    else:
-                        _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
-                            self._param_dict[key][param_group_idx],
-                            grad_dict[key],
-                            lr_dict[key],
-                            self._moment1_dict[key][param_group_idx],
-                            self._moment2_dict[key][param_group_idx],
-                            self._beta1_pow_acc_dict[key][param_group_idx],
-                            self._beta2_pow_acc_dict[key][param_group_idx],
-                            master_weight,
-                            self._param_dict[key][param_group_idx],
-                            self._moment1_dict[key][param_group_idx],
-                            self._moment2_dict[key][param_group_idx],
-                            self._beta1_pow_acc_dict[key][param_group_idx],
-                            self._beta2_pow_acc_dict[key][param_group_idx],
-                            master_weight,
-                            'epsilon',
-                            self._epsilon,
-                            'beta1',
-                            _beta1,
-                            'beta2',
-                            _beta2,
-                            'multi_precision',
-                            find_master,
-                        )
+                    _, _, _, _, _, _ = _C_ops.merged_adam_(
+                        self._param_dict[key][param_group_idx],
+                        grad_dict[key],
+                        lr_dict[key],
+                        self._moment1_dict[key][param_group_idx],
+                        self._moment2_dict[key][param_group_idx],
+                        self._beta1_pow_acc_dict[key][param_group_idx],
+                        self._beta2_pow_acc_dict[key][param_group_idx],
+                        master_weight,
+                        _beta1,
+                        _beta2,
+                        self._epsilon,
+                        find_master,
+                        False,
+                    )
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],

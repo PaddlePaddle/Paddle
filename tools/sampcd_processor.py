@@ -16,21 +16,21 @@ please make sure to run in the tools path
 usage: python sample_test.py {cpu or gpu}
     {cpu or gpu}: running in cpu version or gpu version
 
-for example, you can run cpu version python2 testing like this:
+for example, you can run cpu version testing like this:
 
     python sampcd_processor.py cpu
 
 """
-import os
-import sys
-import subprocess
-import multiprocessing
-import platform
-import inspect
 import argparse
-import shutil
-import re
+import inspect
 import logging
+import multiprocessing
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
 import time
 
 logger = logging.getLogger()
@@ -486,7 +486,7 @@ def get_filenames(full_test=False):
     '''
     global whl_error
     import paddle  # noqa: F401
-    import paddle.fluid.contrib.slim.quantization  # noqa: F401
+    import paddle.static.quantization  # noqa: F401
 
     whl_error = []
     if full_test:

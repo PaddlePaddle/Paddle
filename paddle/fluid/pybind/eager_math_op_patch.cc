@@ -16,6 +16,10 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <string>
 #include <unordered_map>
@@ -52,12 +56,6 @@ typedef SSIZE_T ssize_t;
 namespace paddle {
 namespace pybind {
 
-extern PyTypeObject* p_tensor_type;
-
-bool PyCheckTensor(PyObject* obj) {
-  return PyObject_IsInstance(obj, reinterpret_cast<PyObject*>(p_tensor_type));
-}
-
 static bool PyCheckInteger(PyObject* obj) {
 #if PY_VERSION_HEX < 0x03000000
   return (PyLong_Check(obj) || PyInt_Check(obj)) && !PyBool_Check(obj);
@@ -73,6 +71,47 @@ static bool IsNumpyType(PyObject* obj) {
   auto type_name = std::string(Py_TYPE(obj)->tp_name);
   return type_name == "numpy.int64" || type_name == "numpy.longlong" ||
          type_name == "numpy.int32" || type_name == "numpy.int16";
+}
+
+static bool IsNumpyArray(PyObject* obj) {
+  auto type_name = std::string(Py_TYPE(obj)->tp_name);
+  return type_name == "numpy.ndarray";
+}
+
+void InitTensorWithNumpyValue(const py::object& array,
+                              const paddle::platform::Place& place,
+                              Tensor* self,
+                              bool zero_copy = false) {
+  PADDLE_ENFORCE_EQ(
+      self->defined(),
+      true,
+      paddle::platform::errors::Fatal(
+          "Calling InitTensorWithNumpyValue of Eager Tensor without "
+          "EmptyTensorInitializer is "
+          "forbidden. Please check your code and make sure you new a "
+          "eager tensor before init it with NumPy."));
+  phi::DenseTensor* impl_ptr =
+      static_cast<phi::DenseTensor*>(self->impl().get());
+  if (platform::is_cpu_place(place)) {
+    SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (platform::is_xpu_place(place)) {
+    SetTensorFromPyArray<platform::XPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (platform::is_gpu_place(place)) {
+    SetTensorFromPyArray<platform::CUDAPlace>(
+        impl_ptr, array, place, zero_copy);
+  } else if (platform::is_cuda_pinned_place(place)) {
+    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
+        impl_ptr, array, place, zero_copy);
+  } else if (platform::is_npu_place(place)) {
+    SetTensorFromPyArray<platform::NPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (platform::is_custom_place(place)) {
+    SetTensorFromPyArray<platform::CustomPlace>(
+        impl_ptr, array, place, zero_copy);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Place should be one of "
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/CustomPlace"));
+  }
 }
 
 std::set<phi::DataType> _supported_int_dtype_{DataType::UINT8,
@@ -192,7 +231,13 @@ static PyObject* tensor__add__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::experimental::Tensor other_tensor;
-  if (!PyCheckTensor(other_obj)) {
+  if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__add__", 0);
     {
@@ -200,8 +245,6 @@ static PyObject* tensor__add__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -289,7 +332,13 @@ static PyObject* tensor__sub__method(TensorObject* self,
   }
   // 2. create or get tensor for other_obj
   paddle::experimental::Tensor other_tensor;
-  if (!PyCheckTensor(other_obj)) {
+  if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__sub__", 0);
     {
@@ -297,8 +346,6 @@ static PyObject* tensor__sub__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -349,7 +396,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       1);
 
   EAGER_TRY
-  VLOG(1) << "Running Eager tensor__rsub__method";
+  VLOG(4) << "Running Eager tensor__rsub__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -382,7 +429,13 @@ static PyObject* tensor__rsub__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::experimental::Tensor other_tensor;
-  if (!PyCheckTensor(other_obj)) {
+  if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__rsub__", 0);
     {
@@ -390,8 +443,6 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -477,20 +528,24 @@ static PyObject* tensor__mul__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::experimental::Tensor other_tensor;
-  if (!PyCheckTensor(other_obj)) {
+  if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__mul__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -579,7 +634,13 @@ static PyObject* tensor__div__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::experimental::Tensor other_tensor;
-  if (!PyCheckTensor(other_obj)) {
+  if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__div__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -591,8 +652,6 @@ static PyObject* tensor__div__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -695,7 +754,13 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 place);
-  } else if (!PyCheckTensor(other_obj)) {
+  } else if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__rdiv__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -707,8 +772,6 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -771,7 +834,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
       1);
 
   EAGER_TRY
-  VLOG(1) << "Running Eager tensor__gt__method";
+  VLOG(4) << "Running Eager tensor__gt__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -809,7 +872,13 @@ static PyObject* tensor__gt__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 place);
-  } else if (!PyCheckTensor(other_obj)) {
+  } else if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__gt__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -821,8 +890,6 @@ static PyObject* tensor__gt__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -857,7 +924,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
       1);
 
   EAGER_TRY
-  VLOG(1) << "Running Eager tensor__ge__method";
+  VLOG(4) << "Running Eager tensor__ge__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -895,7 +962,13 @@ static PyObject* tensor__ge__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 place);
-  } else if (!PyCheckTensor(other_obj)) {
+  } else if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__ge__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -907,8 +980,6 @@ static PyObject* tensor__ge__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -982,7 +1053,13 @@ static PyObject* tensor__mod__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
-  } else if (!PyCheckTensor(other_obj)) {
+  } else if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__mod__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -994,8 +1071,6 @@ static PyObject* tensor__mod__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1068,7 +1143,13 @@ static PyObject* tensor__matmul__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
-  } else if (!PyCheckTensor(other_obj)) {
+  } else if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__matmul__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -1080,8 +1161,6 @@ static PyObject* tensor__matmul__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1134,7 +1213,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
       1);
 
   EAGER_TRY
-  VLOG(1) << "Running Eager tensor__lt__method";
+  VLOG(4) << "Running Eager tensor__lt__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -1172,7 +1251,13 @@ static PyObject* tensor__lt__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
-  } else if (!PyCheckTensor(other_obj)) {
+  } else if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__lt__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -1184,8 +1269,6 @@ static PyObject* tensor__lt__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1220,7 +1303,7 @@ static PyObject* tensor__le__method(TensorObject* self,
       1);
 
   EAGER_TRY
-  VLOG(1) << "Running Eager tensor__le__method";
+  VLOG(4) << "Running Eager tensor__le__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -1258,7 +1341,13 @@ static PyObject* tensor__le__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
-  } else if (!PyCheckTensor(other_obj)) {
+  } else if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__le__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -1270,8 +1359,6 @@ static PyObject* tensor__le__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1345,7 +1432,13 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
-  } else if (!PyCheckTensor(other_obj)) {
+  } else if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__floordiv__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -1357,8 +1450,6 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1430,7 +1521,13 @@ static PyObject* tensor__pow__method(TensorObject* self,
 
   // 2. create or get tensor for other_obj
   paddle::experimental::Tensor other_tensor;
-  if (!PyCheckTensor(other_obj)) {
+  if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__pow__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -1442,8 +1539,6 @@ static PyObject* tensor__pow__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1518,7 +1613,13 @@ static PyObject* tensor__rpow__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
-  } else if (!PyCheckTensor(other_obj)) {
+  } else if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__rpow__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -1530,8 +1631,6 @@ static PyObject* tensor__rpow__method(TensorObject* self,
       other_tensor = full_ad_func(
           self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1604,7 +1703,13 @@ static PyObject* tensor__ne__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
-  } else if (!PyCheckTensor(other_obj)) {
+  } else if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__ne__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -1616,8 +1721,6 @@ static PyObject* tensor__ne__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var
@@ -1690,7 +1793,13 @@ static PyObject* tensor__eq__method(TensorObject* self,
                                 phi::Scalar(other_double),
                                 self_tensor.dtype(),
                                 self_tensor.place());
-  } else if (!PyCheckTensor(other_obj)) {
+  } else if (PyCheckTensor(other_obj)) {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    other_tensor = paddle::experimental::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
+  } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__eq__", 0);
     if (PyComplex_Check(other_obj)) {
@@ -1702,8 +1811,6 @@ static PyObject* tensor__eq__method(TensorObject* self,
       other_tensor =
           full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
-  } else {
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
   }
 
   // 3. promote types or unify right var type to left var

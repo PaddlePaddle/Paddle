@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-os.environ["FLAGS_enable_eager_mode"] = "0"
 import math
+import os
+import tempfile
 import time
 import unittest
-import tempfile
 
 import numpy as np
+from predictor_utils import PredictorTools
 
 import paddle
-
-from predictor_utils import PredictorTools
+from paddle.fluid import core
 
 SEED = 2020
 IMAGENET1000 = 1281167
@@ -38,7 +36,6 @@ place = (
     paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
 )
 
-program_translator = paddle.jit.ProgramTranslator()
 
 if paddle.is_compiled_with_cuda():
     paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -164,8 +161,8 @@ class ResNet(paddle.nn.Layer):
         self.conv = ConvBNLayer(
             num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu'
         )
-        self.pool2d_max = paddle.fluid.dygraph.Pool2D(
-            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
+        self.pool2d_max = paddle.nn.MaxPool2D(
+            kernel_size=3, stride=2, padding=1
         )
 
         self.bottleneck_block_list = []
@@ -185,10 +182,7 @@ class ResNet(paddle.nn.Layer):
                 )
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-
-        self.pool2d_avg = paddle.fluid.dygraph.Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True
-        )
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
 
@@ -235,10 +229,10 @@ class TestResnet(unittest.TestCase):
             self.temp_dir.name, "./inference/resnet_v2"
         )
         self.model_filename = (
-            "resnet_v2" + paddle.fluid.dygraph.io.INFER_MODEL_SUFFIX
+            "resnet_v2" + paddle.jit.translated_layer.INFER_MODEL_SUFFIX
         )
         self.params_filename = (
-            "resnet_v2" + paddle.fluid.dygraph.io.INFER_PARAMS_SUFFIX
+            "resnet_v2" + paddle.jit.translated_layer.INFER_PARAMS_SUFFIX
         )
         self.dy_state_dict_save_path = os.path.join(
             self.temp_dir.name, "./resnet_v2.dygraph"
@@ -249,7 +243,7 @@ class TestResnet(unittest.TestCase):
 
     def do_train(self, to_static):
         """
-        Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
+        Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
         paddle.disable_static(place)
         np.random.seed(SEED)
@@ -313,8 +307,9 @@ class TestResnet(unittest.TestCase):
                     if to_static:
                         paddle.jit.save(resnet, self.model_save_prefix)
                     else:
-                        paddle.fluid.dygraph.save_dygraph(
-                            resnet.state_dict(), self.dy_state_dict_save_path
+                        paddle.save(
+                            resnet.state_dict(),
+                            self.dy_state_dict_save_path + '.pdparams',
                         )
                         # avoid dataloader throw abort signaal
                     data_loader._reset()
@@ -324,13 +319,11 @@ class TestResnet(unittest.TestCase):
         return total_loss.numpy()
 
     def predict_dygraph(self, data):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         paddle.disable_static(place)
         resnet = ResNet()
 
-        model_dict, _ = paddle.fluid.dygraph.load_dygraph(
-            self.dy_state_dict_save_path
-        )
+        model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
         resnet.set_dict(model_dict)
         resnet.eval()
 
@@ -387,7 +380,7 @@ class TestResnet(unittest.TestCase):
         return out
 
     def train(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         return self.do_train(to_static)
 
     def verify_predict(self):
@@ -431,6 +424,20 @@ class TestResnet(unittest.TestCase):
             ),
         )
         self.verify_predict()
+
+    def test_resnet_composite(self):
+        core._set_prim_backward_enabled(True)
+        static_loss = self.train(to_static=True)
+        core._set_prim_backward_enabled(False)
+        dygraph_loss = self.train(to_static=False)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
 
     def test_in_static_mode_mkldnn(self):
         paddle.fluid.set_flags({'FLAGS_use_mkldnn': True})

@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import copy
-from op_test import OpTest
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest
+
 import paddle
 from paddle.framework import core
 
@@ -28,6 +30,7 @@ class TestPutAlongAxisOp(OpTest):
         self.reduce_op = "assign"
         self.dtype = 'float64'
         self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         # numpy put_along_axis is an inplace opearion.
         self.xnp_result = copy.deepcopy(self.xnp)

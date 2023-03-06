@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.backward import append_backward
-
-from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import (
-    create_test_class,
-    get_xpu_op_support_types,
-    XPUOpTestWrapper,
-)
 
 paddle.enable_static()
 
@@ -56,6 +57,9 @@ class XPUTestWhereOp(XPUOpTestWrapper):
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
     class TestXPUWhereOp2(TestXPUWhereOp):
         def init_data(self):
@@ -146,8 +150,8 @@ class TestXPUWhereAPI(unittest.TestCase):
         train_prog = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
-            x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[4, 2], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 4, 1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 4, 2], dtype='float32')
             x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype("float32")
             y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype(
                 "float32"

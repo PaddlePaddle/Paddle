@@ -45,7 +45,7 @@ void CalculateXEGradForMinMax(const Context& ctx,
   const auto& bcast_info = phi::CalcBCastInfo(x_dims, e_dims);
   thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
   if (bcast_info.use_bcast) {
-    CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
+    CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
   }
 
   int64_t out_len = bcast_info.out_len;
@@ -177,7 +177,7 @@ void CalculateXGrad(const Context& ctx,
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
       if (bcast_info.use_bcast) {
-        CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
+        CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
       }
       int64_t out_len = bcast_info.out_len;
       const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
@@ -300,7 +300,7 @@ void CalculateXGrad(const Context& ctx,
       const auto& bcast_info = phi::CalcBCastInfo(out_grad_dims, e_dims);
       thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
       if (bcast_info.use_bcast) {
-        CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
+        CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
       }
       int64_t out_len = bcast_info.out_len;
       const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
@@ -386,7 +386,7 @@ void CalculateEGrad(const Context& ctx,
   const auto& bcast_info = phi::CalcBCastInfo(x_dims, e_dims);
   thrust::device_vector<int64_t> l_bcastoff, r_bcastoff;
   if (bcast_info.use_bcast) {
-    CopyBCastOff(bcast_info, l_bcastoff, r_bcastoff);
+    CopyBCastOff(bcast_info, &l_bcastoff, &r_bcastoff);
   }
   int64_t out_len = bcast_info.out_len;
   const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());

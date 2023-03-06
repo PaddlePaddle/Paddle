@@ -16,10 +16,9 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.layers as layers
-import paddle.fluid.framework as framework
-import paddle.fluid as fluid
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
 
 paddle.enable_static()
 
@@ -32,10 +31,10 @@ class TestPythonOperatorOverride(unittest.TestCase):
         y_data = np.random.random(size=shape).astype(dtype)
         python_out = fn(x_data, y_data)
 
-        x_var = layers.create_global_var(
+        x_var = paddle.static.create_global_var(
             name='x', shape=shape, value=0.0, dtype=dtype, persistable=True
         )
-        y_var = layers.create_global_var(
+        y_var = paddle.static.create_global_var(
             name='y', shape=shape, value=0.0, dtype=dtype, persistable=True
         )
         out = fn(x_var, y_var)

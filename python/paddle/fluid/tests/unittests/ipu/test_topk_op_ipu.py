@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -30,7 +31,7 @@ class TestTopKOp(IPUOpTest):
         self.set_op_attrs()
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.topk
+        self.op = paddle.topk
 
     def set_data_feed(self):
         data = np.random.uniform(size=[3, 5])

@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import fluid
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.fluid.dygraph as dg
-import numpy as np
-import unittest
-from paddle.fluid.framework import _test_eager_guard
+from paddle import fluid
 
 
 class ComplexKronTestCase(unittest.TestCase):
@@ -35,7 +36,6 @@ class ComplexKronTestCase(unittest.TestCase):
     def runTest(self):
         for place in self._places:
             self.test_kron_api(place)
-            self.test_eager(place)
 
     def test_kron_api(self, place):
         with dg.guard(place):
@@ -45,10 +45,6 @@ class ComplexKronTestCase(unittest.TestCase):
             np.testing.assert_allclose(
                 out_var.numpy(), self.ref_result, rtol=1e-05
             )
-
-    def test_eager(self, place):
-        with _test_eager_guard():
-            self.test_kron_api(place)
 
 
 def load_tests(loader, standard_tests, pattern):

@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import math
-import numpy
 import warnings
-from paddle import Tensor
+
+import numpy
+
 import paddle.fluid.core as core
-from ..fluid.framework import _in_legacy_dygraph
+from paddle import Tensor
 
 __all__ = [  # noqa
     'LRScheduler',
@@ -107,7 +108,7 @@ class LRScheduler:
 
     def __call__(self):
         """
-        Return lastest computed learning rate on current epoch.
+        Return latest computed learning rate on current epoch.
         """
         return self.last_lr
 
@@ -295,6 +296,9 @@ class NoamDecay(LRScheduler):
         last_epoch=-1,
         verbose=False,
     ):
+        if d_model <= 0:
+            raise ValueError("d_model should be grater than 0")
+
         self.d_model = d_model
         self.warmup_steps = warmup_steps
         super().__init__(learning_rate, last_epoch, verbose)
@@ -329,7 +333,7 @@ class PiecewiseDecay(LRScheduler):
     Args:
         boundaries(list|tuple): A list/tuple of steps numbers. The type of element in the list is python int.
         values(list|tuple): A list/tuple of learning rate values that will be picked during different epoch boundaries.
-            The type of element in the list is python float.
+            The type of element in the list is python float. The ``values`` have one more element than ``boundaries``.
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
@@ -387,6 +391,14 @@ class PiecewiseDecay(LRScheduler):
     """
 
     def __init__(self, boundaries, values, last_epoch=-1, verbose=False):
+        if len(boundaries) == 0:
+            raise ValueError('The boundaries cannot be empty.')
+
+        if len(values) <= len(boundaries):
+            raise ValueError(
+                f'The values have one more element than boundaries, but received len(values) [{len(values)}] < len(boundaries) + 1 [{len(boundaries) + 1}].'
+            )
+
         self.boundaries = boundaries
         self.values = values
         super().__init__(last_epoch=last_epoch, verbose=verbose)
@@ -1392,15 +1404,8 @@ class ReduceOnPlateau(LRScheduler):
         else:
             self.last_epoch = epoch
 
-        if not _in_legacy_dygraph():
-            tmp = core.eager.Tensor
-        else:
-            # need to declarate explicitly
-            from paddle.framework import VarBase as Tensor
-
-            tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
-        if isinstance(metrics, (tmp, numpy.ndarray)):
+        if isinstance(metrics, (core.eager.Tensor, numpy.ndarray)):
             assert len(metrics.shape) == 1 and metrics.shape[0] == 1, (
                 "the metrics.shape "
                 "should be (1L,), but the current metrics.shape is {}. Maybe that "
@@ -1412,7 +1417,7 @@ class ReduceOnPlateau(LRScheduler):
             metrics, (int, float, numpy.float32, numpy.float64)
         ):
             raise TypeError(
-                "metrics must be 'int', 'float', 'np.float', 'numpy.ndarray' or 'paddle.Tensor', but receive {}".format(
+                "metrics must be 'int', 'float', 'np.float64', 'numpy.ndarray' or 'paddle.Tensor', but receive {}".format(
                     type(metrics)
                 )
             )
@@ -1647,6 +1652,7 @@ class MultiplicativeDecay(LRScheduler):
 
 class OneCycleLR(LRScheduler):
     r"""
+
     Sets the learning rate according to the one cycle learning rate scheduler.
     The scheduler adjusts the learning rate from an initial learning rate to the maximum learning rate and then
     from that maximum learning rate to the minimum learning rate, which is much less than the initial learning rate.
@@ -1660,22 +1666,25 @@ class OneCycleLR(LRScheduler):
     Also note that you should update learning rate each step.
 
     Args:
-        max_learning_rate (float): The maximum learning rate. It is a python float number.
-             Functionally, it defines the initial learning rate by ``divide_factor`` .
+        max_learning_rate (float): The maximum learning rate. It is a python float number. Functionally, it defines the initial learning rate by ``divide_factor`` .
         total_steps (int): Number of total training steps.
-        divide_factor (float): Initial learning rate will be determined by initial_learning_rate = max_learning_rate / divide_factor. Default: 25.
+        divide_factor (float, optional): Initial learning rate will be determined by initial_learning_rate = max_learning_rate / divide_factor. Default: 25.
         end_learning_rate (float, optional): The minimum learning rate during training, it should be much less than initial learning rate.
         phase_pct (float): The percentage of total steps which used to increasing learning rate. Default: 0.3.
-        anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing,
-            'linear' for linear annealing. Default: 'cos'.
+        anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing, 'linear' for linear annealing. Default: 'cos'.
         three_phase (bool, optional): Whether to use three phase.
+
             If ``True``:
+
                 1. The learning rate will first increase from initial learning rate to maximum learning rate.
                 2. Then it will decrease to initial learning rate. Number of step in this phase is the same as the one in first phase.
                 3. Finally, it will decrease to minimum learning rate which is much less than initial learning rate.
+
             If ``False``:
+
                 1. The learning rate will increase to maximum learning rate.
                 2. Then it will directly decrease to minimum learning rate.
+
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
@@ -1727,6 +1736,7 @@ class OneCycleLR(LRScheduler):
                         },
                         fetch_list=loss.name)
                     scheduler.step()    # You should update learning rate each step
+
     """
 
     def __init__(

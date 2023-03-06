@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/params_quantization_mkldnn_pass.h"  // NOLINT
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -141,7 +141,7 @@ struct ConvProgramStrategy : public ProgramStrategy {
  protected:
   OpDesc* CreateBasicConvOp(const std::string conv_name = "Conv1") {
     auto op = program.MutableBlock(0)->AppendOp();
-    op->SetType("conv2d");
+    op->SetType("fused_conv2d");
     op->SetAttr("use_mkldnn", true);
     op->SetAttr("name", conv_name);
     op->SetAttr("mkldnn_data_type", std::string{"int8"});

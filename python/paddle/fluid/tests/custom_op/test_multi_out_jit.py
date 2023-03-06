@@ -14,14 +14,13 @@
 
 import os
 import unittest
+
 import numpy as np
+from utils import extra_cc_args, paddle_includes
 
 import paddle
-from paddle.utils.cpp_extension import load
-from paddle.utils.cpp_extension import load, get_build_directory
+from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import paddle_includes, extra_cc_args
-from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -89,7 +88,7 @@ class TestMultiOutputDtypes(unittest.TestCase):
                 self.check_multi_outputs(res)
         paddle.disable_static()
 
-    def func_dynamic(self):
+    def test_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 paddle.set_device(device)
@@ -99,11 +98,6 @@ class TestMultiOutputDtypes(unittest.TestCase):
 
                 self.assertTrue(len(outs) == 3)
                 self.check_multi_outputs(outs, True)
-
-    def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
-        self.func_dynamic()
 
 
 if __name__ == '__main__':

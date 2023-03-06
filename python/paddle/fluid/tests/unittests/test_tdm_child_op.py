@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
 import paddle.fluid as fluid
 
 
@@ -137,7 +140,9 @@ class TestCase4(TestTDMChildOp):
 
 class TestTDMChildShape(unittest.TestCase):
     def test_shape(self):
-        x = fluid.layers.data(name='x', shape=[1], dtype='int32', lod_level=1)
+        x = paddle.static.data(
+            name='x', shape=[-1, 1], dtype='int32', lod_level=1
+        )
         tdm_tree_info = create_tdm_tree()
         tree_info_np = np.array(tdm_tree_info).astype('int32')
 
@@ -146,9 +151,7 @@ class TestTDMChildShape(unittest.TestCase):
             node_nums=26,
             child_nums=2,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
-                    tree_info_np
-                )
+                initializer=paddle.nn.initializer.Assign(tree_info_np)
             ),
         )
 

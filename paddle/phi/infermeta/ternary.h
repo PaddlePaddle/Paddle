@@ -63,6 +63,14 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
                        MetaTensor* output_box,
                        MetaConfig config = MetaConfig());
 
+void FlashAttnInferMeta(const MetaTensor& q,
+                        const MetaTensor& k,
+                        const MetaTensor& v,
+                        MetaTensor* out,
+                        MetaTensor* softmax_lse,
+                        MetaTensor* softmax,
+                        MetaTensor* seed_offset);
+
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
                            const MetaTensor& bias,
@@ -87,7 +95,6 @@ void LayerNormInferMeta(const MetaTensor& x,
                         const MetaTensor& bias,
                         float epsilon,
                         int begin_norm_axis,
-                        bool is_test,
                         MetaTensor* out,
                         MetaTensor* mean,
                         MetaTensor* variance,

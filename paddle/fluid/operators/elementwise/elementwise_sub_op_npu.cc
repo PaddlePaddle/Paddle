@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename T>
 class ElementwiseSubNPUKernel : public framework::OpKernel<T> {
  public:
@@ -76,7 +74,7 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
         axes.push_back(i);
       }
       phi::DenseTensor* tmp_dout = const_cast<phi::DenseTensor*>(dout);
-      Tensor reduced_dout(dx->type());
+      phi::DenseTensor reduced_dout(dx->type());
       if (axes.size() != 0) {
         std::vector<int64_t> reduced_dout_dims;
         for (auto i = reduce_ndim; i < dout->dims().size(); ++i) {
@@ -124,8 +122,8 @@ class ElementwiseSubGradNPUKernel : public framework::OpKernel<T> {
         axes.push_back(i);
       }
       phi::DenseTensor* tmp_dout = const_cast<phi::DenseTensor*>(dout);
-      Tensor reduced_dy(dy->type());
-      Tensor reduced_dout(dy->type());
+      phi::DenseTensor reduced_dy(dy->type());
+      phi::DenseTensor reduced_dout(dy->type());
 
       if (axes.size() != 0) {
         std::vector<int64_t> reduced_dout_dims;

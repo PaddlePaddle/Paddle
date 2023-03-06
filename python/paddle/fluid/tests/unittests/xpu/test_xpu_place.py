@@ -12,12 +12,13 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-import unittest
 import os
+import unittest
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
 import paddle.static as static
+from paddle.fluid import core
 
 
 class Test_XPU_Places(unittest.TestCase):

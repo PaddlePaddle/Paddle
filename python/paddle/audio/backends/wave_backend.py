@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import wave
+from pathlib import Path
+from typing import Optional, Tuple, Union
+
+import numpy as np
+
 import paddle
 
-import wave
-import numpy as np
-from pathlib import Path
-
-from typing import Optional, Tuple, Union
 from .backend import AudioInfo
 
 
@@ -107,7 +108,7 @@ def load(
     Return:
         Tuple[paddle.Tensor, int]: (audio_content, sample rate)
 
-    Exampels:
+    Examples:
         .. code-block:: python
 
             import os

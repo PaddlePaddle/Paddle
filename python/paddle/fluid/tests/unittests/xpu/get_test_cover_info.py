@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import fcntl
 import inspect
 import os
-import fcntl
+
 import numpy as np
 
 import paddle
@@ -93,6 +94,8 @@ xpu_test_op_type_white_list = [
     "c_embedding_float32",  # unittests of collective ops do not using xpu testing framework
     "c_sync_comm_stream_float32",
     "c_sync_calc_stream_float32",
+    "reshape2_bool",
+    "reshape2_grad_bool",
 ]
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
@@ -225,7 +228,8 @@ def get_xpu_op_support_types(op_name, dev_id=0):
         op_name_type = op_name + "_" + stype
         if op_name_type in ops:
             support_types.append(stype)
-
+    if len(support_types) == 0:
+        print("WARNING: support_types is EMPTY for op", op_name)
     return support_types
 
 

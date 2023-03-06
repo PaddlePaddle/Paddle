@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import paddle
 import paddle.nn as nn
-import unittest
-from paddle.device.cuda.graphs import wrap_cuda_graph, is_cuda_graph_supported
+from paddle.device.cuda.graphs import is_cuda_graph_supported, wrap_cuda_graph
 
 paddle.enable_static()
 

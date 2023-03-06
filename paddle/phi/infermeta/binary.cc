@@ -86,7 +86,13 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaConfig config) {
   detail::BinarySameInputDimsCheck(x, y, config);
 
-  out->set_dims(phi::make_ddim({1}));
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() == 0 && y_dims.size() == 0) {
+    out->set_dims(phi::make_ddim({}));
+  } else {
+    out->set_dims(phi::make_ddim({1}));
+  }
   out->set_dtype(DataType::BOOL);
 }
 
@@ -136,6 +142,26 @@ void KLDivInferMeta(const MetaTensor& x,
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      y_dims.size(),
+      phi::errors::InvalidArgument("The rank (%d) of X shall be same as "
+                                   "rank (%d) of Y.",
+                                   x_dims.size(),
+                                   y_dims.size()));
+
+  if (x_dims.size() > 0)
+    PADDLE_ENFORCE_LE(x_dims[0],
+                      y_dims[0],
+                      phi::errors::InvalidArgument(
+                          "The count (%d) of elements of X shall not "
+                          "greater than count (%d) of elements of Y.",
+                          x_dims[0],
+                          y_dims[0]));
+
   out->share_meta(x);
   if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
       y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
@@ -195,10 +221,10 @@ void BincountInferMeta(const MetaTensor& x,
                                    "But the dimension of Input(X) is [%d]",
                                    input_dim.size()));
 
-  VLOG(1) << "####### CHECK weights";
+  VLOG(4) << "####### CHECK weights";
   if (weights) {
     auto weights_dim = weights.dims();
-    VLOG(1) << "##### weights_dim " << weights_dim;
+    VLOG(4) << "##### weights_dim " << weights_dim;
     PADDLE_ENFORCE_EQ(weights_dim.size(),
                       1,
                       phi::errors::InvalidArgument(
@@ -375,7 +401,11 @@ void CompareAllInferMeta(const MetaTensor& x,
       errors::InvalidArgument(
           "The size of dim_y should not be greater than dim_x's."));
   out->share_lod(x);
-  out->set_dims(make_ddim({1}));
+  if (!x.dims().size() || !y.dims().size()) {
+    out->set_dims(make_ddim({}));
+  } else {
+    out->set_dims(make_ddim({1}));
+  }
   out->set_dtype(DataType::BOOL);
 }
 
@@ -436,6 +466,13 @@ void ConvInferMeta(const MetaTensor& input,
   }
   const bool channel_last = (config.is_run_mkldnn_kernel == false) &&
                             (data_format == "NHWC" || data_format == "NDHWC");
+
+  for (int i = 0; i < 2; ++i) {
+    PADDLE_ENFORCE_NE(in_dims[i],
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of Op(Conv) inputs should not be 0."));
+  }
 
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5,
@@ -859,6 +896,7 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
   auto logits_dims = logits.dims();
   auto labels_dims = label.dims();
   auto logits_rank = logits_dims.size();
+  auto labels_rank = labels_dims.size();
   PADDLE_ENFORCE_GE(axis,
                     -logits_rank,
                     phi::errors::InvalidArgument(
@@ -890,6 +928,12 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
         phi::errors::InvalidArgument("Attr(axis) can only be -1 "
                                      "when not in numeric_stable_mode."));
   }
+
+  PADDLE_ENFORCE_EQ(
+      (logits_rank - 1 != labels_rank) && (logits_rank != labels_rank),
+      false,
+      phi::errors::InvalidArgument("Expected input_dims - 1 == label_dims "
+                                   "or input_dims == label_dims."));
 
   if (soft_label) {
     if (config.is_runtime || (logits_dims[axis] > 0 && labels_dims[axis] > 0)) {
@@ -1055,7 +1099,7 @@ void DropoutNdInferMeta(const MetaTensor& x,
       x_dims.size(),
       phi::errors::InvalidArgument(
           "The length of axis is expected to be less than or equal to the "
-          "dimension size of x. But recieved the length of axis is %d, the "
+          "dimension size of x. But received the length of axis is %d, the "
           "dimension size of x is %d, x's shape is {%s}.",
           axis.size(),
           x_dims.size(),
@@ -1067,7 +1111,7 @@ void DropoutNdInferMeta(const MetaTensor& x,
         phi::errors::InvalidArgument(
             "The %d-th value of axis is expected to be greater ot "
             "equal to 0 and less than the dimensions of x. But "
-            "recieved axis is {%s}, the dimension size of x is %d.",
+            "received axis is {%s}, the dimension size of x is %d.",
             i,
             phi::make_ddim(axis),
             x_dims.size()));
@@ -1268,37 +1312,90 @@ void GatherInferMeta(const MetaTensor& x,
             index_dims[1]));
   } else {
     PADDLE_ENFORCE_EQ(
-        index_dims.size(),
-        1,
+        index_dims.size() == 1 || index_dims.size() == 0,
+        true,
         phi::errors::InvalidArgument(
-            "The index should be 1D, when it is not 2D, but we get %d",
+            "The index should be 0D or 1D, when it is not 2D, but we get %d",
             index_dims.size()));
   }
 
   auto input_dim = x.dims();
   auto axis_v = axis.to<int>();
-  if (axis.FromTensor() || axis_v == 0) {
-    // if axis.FromTensor(), we can not obtain correct shape of output
-    int batch_size = index_dims[0];
-    phi::DDim output_dims(input_dim);
-    output_dims[0] = batch_size;
-    out->set_dims(output_dims);
-    out->set_dtype(x.dtype());
-    out->share_lod(x);
+  if (axis_v < 0) axis_v += input_dim.size();
+
+  PADDLE_ENFORCE_GE(
+      axis_v,
+      (0 - input_dim.size()),
+      phi::errors::OutOfRange(
+          "Attr(axis) is out of range, It's expected "
+          "to be in range of [%d, %d]. But received Attr(axis) = %d.",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          axis_v));
+  PADDLE_ENFORCE_LT(
+      axis_v,
+      input_dim.size(),
+      phi::errors::OutOfRange(
+          "Attr(axis) is out of range, It's expected "
+          "to be in range of [%d, %d]. But received Attr(axis) = %d.",
+          -input_dim.size(),
+          input_dim.size() - 1,
+          axis_v));
+
+  if (index_dims.size() == 0) {
+    // 0D index will decrease the dimension
+    if (input_dim.size() == 1) {
+      // the index is a 0D tensor and the x is a 1D tensor
+      out->set_dims(phi::DDim(phi::Dim<0>()));
+    } else {
+      if (axis.FromTensor() || axis_v == 0) {
+        // decrease the output dimension
+        std::vector<int> out_dim_vec;
+        for (int i = 1; i < input_dim.size(); ++i) {
+          out_dim_vec.emplace_back(input_dim[i]);
+        }
+        auto output_dims = phi::make_ddim(out_dim_vec);
+        out->set_dims(output_dims);
+        out->set_dtype(x.dtype());
+        out->share_lod(x);
+      } else {
+        std::vector<int> out_dim_vec;
+        for (int i = 0; i < axis_v; i++) {
+          out_dim_vec.push_back(input_dim[i]);
+        }
+        for (int i = axis_v + 1; i < input_dim.size(); i++) {
+          out_dim_vec.push_back(input_dim[i]);
+        }
+        auto output_dims = phi::make_ddim(out_dim_vec);
+        out->set_dims(output_dims);
+        out->set_dtype(x.dtype());
+        out->share_lod(x);
+      }
+    }
   } else {
-    int index_size = index_dims[0];
-    std::vector<int> out_dim_vec;
-    for (int i = 0; i < axis_v; i++) {
-      out_dim_vec.push_back(input_dim[i]);
+    if (axis.FromTensor() || axis_v == 0) {
+      // if axis.FromTensor(), we can not obtain correct shape of output
+      int batch_size = index_dims[0];
+      phi::DDim output_dims(input_dim);
+      output_dims[0] = batch_size;
+      out->set_dims(output_dims);
+      out->set_dtype(x.dtype());
+      out->share_lod(x);
+    } else {
+      int index_size = index_dims[0];
+      std::vector<int> out_dim_vec;
+      for (int i = 0; i < axis_v; i++) {
+        out_dim_vec.push_back(input_dim[i]);
+      }
+      out_dim_vec.push_back(index_size);
+      for (int i = axis_v + 1; i < input_dim.size(); i++) {
+        out_dim_vec.push_back(input_dim[i]);
+      }
+      auto output_dims = phi::make_ddim(out_dim_vec);
+      out->set_dims(output_dims);
+      out->set_dtype(x.dtype());
+      out->share_lod(x);
     }
-    out_dim_vec.push_back(index_size);
-    for (int i = axis_v + 1; i < input_dim.size(); i++) {
-      out_dim_vec.push_back(input_dim[i]);
-    }
-    auto output_dims = phi::make_ddim(out_dim_vec);
-    out->set_dims(output_dims);
-    out->set_dtype(x.dtype());
-    out->share_lod(x);
   }
 }
 

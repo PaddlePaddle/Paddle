@@ -319,7 +319,6 @@ template <typename T>
 class YoloBoxPostKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    using Tensor = phi::DenseTensor;
     // prepare inputs
     std::vector<const float*> boxes_input(3);
     std::vector<std::vector<int32_t>> boxes_input_dims(3);

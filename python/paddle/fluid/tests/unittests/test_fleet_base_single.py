@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import os
+
+import numpy as np
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 else:
     os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices.split(',')[0]
+import unittest
+
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
-import unittest
 import paddle.nn as nn
 
 
@@ -81,9 +83,11 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
         input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-        fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
-        prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
-        cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+        fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+        prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=input_y, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         fleet.init(is_collective=True)
@@ -120,9 +124,11 @@ class TestFleetBaseSingleRunPS(unittest.TestCase):
         input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-        fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
-        prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
-        cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+        fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+        prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=input_y, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         fleet.init()

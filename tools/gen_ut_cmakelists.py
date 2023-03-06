@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-import os
 import argparse
+import os
+import re
 
 # port range (21200, 23000) is reserved for dist-ops
 

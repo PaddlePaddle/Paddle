@@ -23,18 +23,16 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
-using LoDTensor = phi::DenseTensor;
 
 template <typename T>
-using Vector = framework::Vector<T>;
+using Vector = phi::Vector<T>;
 
 template <typename T>
 class FilterByInstagKernel : public framework::OpKernel<T> {
@@ -42,12 +40,12 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     // X1 is global FC output
     // Dim [batch size, embedding size]
-    auto* x1 = context.Input<LoDTensor>("Ins");
+    auto* x1 = context.Input<phi::DenseTensor>("Ins");
     bool is_x1_lod = context.Attr<bool>("is_lod");
     int64_t out_val_if_empty = context.Attr<int64_t>("out_val_if_empty");
     // X2 is ins tag list
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
-    auto* x2 = context.Input<LoDTensor>("Ins_tag");
+    auto* x2 = context.Input<phi::DenseTensor>("Ins_tag");
     // X3 is local fc tag list
     // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
     auto* x3 = context.Input<phi::DenseTensor>("Filter_tag");
@@ -107,9 +105,10 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // for those whose ins been dropout, set 0 for whole lines.
     // otherwise, copy whole line
     // Dim [local fc count, batch size, embedding size]
-    LoDTensor* out = context.Output<LoDTensor>("Out");
-    LoDTensor* map = context.Output<LoDTensor>("IndexMap");
-    LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
+    phi::DenseTensor* out = context.Output<phi::DenseTensor>("Out");
+    phi::DenseTensor* map = context.Output<phi::DenseTensor>("IndexMap");
+    phi::DenseTensor* loss_weight =
+        context.Output<phi::DenseTensor>("LossWeight");
     // expected auto = const T
     auto* x1_data = x1->data<T>();
     // expected auto = T
@@ -196,12 +195,14 @@ template <typename T>
 class FilterByInstagGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
-    auto* loss_weight = context.Input<LoDTensor>("LossWeight");
-    auto* mmap = context.Input<LoDTensor>("IndexMap");
-    auto* x1 = context.Input<LoDTensor>("Ins");
-    x1_grad->set_lod(context.Input<LoDTensor>("Ins")->lod());
+    auto* output_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x1_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Ins"));
+    auto* loss_weight = context.Input<phi::DenseTensor>("LossWeight");
+    auto* mmap = context.Input<phi::DenseTensor>("IndexMap");
+    auto* x1 = context.Input<phi::DenseTensor>("Ins");
+    x1_grad->set_lod(context.Input<phi::DenseTensor>("Ins")->lod());
     x1_grad->Resize(x1->dims());
     auto mmap_data = mmap->data<int64_t>();
     // expected auto = T

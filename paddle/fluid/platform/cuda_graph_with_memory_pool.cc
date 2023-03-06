@@ -15,18 +15,19 @@
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/context_pool.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
+DECLARE_bool(new_executor_use_cuda_graph);
 
 namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_CUDA
-void BeginCUDAGraphCapture(platform::CUDAPlace place,
+void BeginCUDAGraphCapture(phi::GPUPlace place,
                            cudaStreamCaptureMode mode,
                            int64_t pool_id) {
-  auto* mutable_dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
 
@@ -43,7 +44,10 @@ void BeginCUDAGraphCapture(platform::CUDAPlace place,
   auto stream = dev_ctx->stream();
   CUDAGraph::BeginCapture(place, stream, mode);
 
-  auto old_value = FLAGS_use_stream_safe_cuda_allocator;
+  // When using cuda graph in new executor, fast GC must be used.
+  // FLAGS_use_stream_safe_cuda_allocator should be true.
+  auto old_value = FLAGS_use_stream_safe_cuda_allocator &&
+                   !FLAGS_new_executor_use_cuda_graph;
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = false;
   }
@@ -64,7 +68,7 @@ void BeginCUDAGraphCapture(platform::CUDAPlace place,
 
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
   auto place = CUDAGraph::CapturingPlace();
-  auto* mutable_dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
   dev_ctx->SetCUDAGraphAllocator(nullptr);

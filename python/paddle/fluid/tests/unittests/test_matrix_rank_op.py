@@ -16,17 +16,17 @@ import unittest
 
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 paddle.enable_static()
 SEED = 2049
 np.random.seed(SEED)
 
 
-def matrix_rank_wraper(x, tol=None, use_default_tol=True, hermitian=False):
+def matrix_rank_wraper(x, tol=None, hermitian=False, use_default_tol=True):
     return paddle.linalg.matrix_rank(x, tol, hermitian)
 
 

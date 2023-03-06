@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from op_test import OpTest
-import unittest
+import copy
 import itertools
+import unittest
+
 import numpy as np
+import scipy
+import scipy.linalg
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import scipy
-import scipy.linalg
-import copy
 
 
 def scipy_lu_unpack(A):
@@ -193,6 +195,19 @@ class TestLU_UnpackOp3(TestLU_UnpackOp):
 
     def config(self):
         self.x_shape = [2, 10, 12]
+        self.unpack_ludata = True
+        self.unpack_pivots = True
+        self.dtype = "float64"
+
+
+# batchsize = 0
+class TestLU_UnpackOp4(TestLU_UnpackOp):
+    """
+    case 4
+    """
+
+    def config(self):
+        self.x_shape = [10, 12]
         self.unpack_ludata = True
         self.unpack_pivots = True
         self.dtype = "float64"

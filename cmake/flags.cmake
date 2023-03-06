@@ -149,6 +149,7 @@ if(NOT WIN32)
       -Wno-unused-parameter
       -Wno-unused-function
       -Wno-error=literal-suffix
+      -Wno-error=array-bounds #Warning in Eigen, gcc 12.2
       -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
       -Wno-error=terminate # Warning in PADDLE_ENFORCE
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
@@ -220,7 +221,8 @@ if(APPLE)
       -Werror=uninitialized
       -Werror=tautological-constant-out-of-range-compare
       -Werror=literal-conversion
-      -Werror=pragma-pack)
+      -Werror=pragma-pack
+      -Werror=c++17-extensions)
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)

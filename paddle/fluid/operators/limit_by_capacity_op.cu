@@ -22,14 +22,11 @@
 
 #include "paddle/fluid/operators/limit_by_capacity_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
-
-using LoDTensor = phi::DenseTensor;
-using Tensor = phi::DenseTensor;
 
 template <typename T>
 __global__ void limit_by_capacity_impl(
@@ -39,7 +36,7 @@ __global__ void limit_by_capacity_impl(
     wid = i / n_expert;
     eid = i % n_expert;
     auto proposal = expc[wid * n_expert + eid];
-    auto cap_left = paddle::platform::CudaAtomicAdd(cap + eid, proposal * (-1));
+    auto cap_left = phi::CudaAtomicAdd(cap + eid, proposal * (-1));
     if (cap_left >= proposal) {
       out[wid * n_expert + eid] = proposal;
     } else if (cap_left >= 0) {

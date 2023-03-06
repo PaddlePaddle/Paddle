@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-import math
-import paddle
-from op_test import OpTest
-from test_anchor_generator_op import anchor_generator_in_python
 import copy
+import math
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest
+from test_anchor_generator_op import anchor_generator_in_python
+
+import paddle
 
 
 def generate_proposals_in_python(
@@ -349,7 +351,8 @@ class TestGenerateProposalsOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def setUp(self):
         self.op_type = "generate_proposals"

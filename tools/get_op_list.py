@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import argparse
-import numpy as np
 import os
 import re
+
+import numpy as np
+
+import paddle
 from paddle.inference import _get_phi_kernel_name
 
 paddle.enable_static()

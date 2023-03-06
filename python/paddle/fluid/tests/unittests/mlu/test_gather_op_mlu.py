@@ -92,7 +92,7 @@ class API_TestDygraphGather(unittest.TestCase):
         index_1 = np.array([1, 2])
         input = paddle.to_tensor(input_1)
         index = paddle.to_tensor(index_1)
-        output = paddle.fluid.layers.gather(input, index)
+        output = paddle.gather(input, index)
         output_np = output.numpy()
         expected_output = np.array([[3, 4], [5, 6]]).astype('int32')
         np.testing.assert_allclose(output_np, expected_output)
@@ -167,12 +167,12 @@ class TestGathertError(unittest.TestCase):
             )
 
             def test_x_type():
-                paddle.fluid.layers.gather(x, index)
+                paddle.gather(x, index)
 
             self.assertRaises(TypeError, test_x_type)
 
             def test_index_type():
-                paddle.fluid.layers.gather(x, index_float)
+                paddle.gather(x, index_float)
 
             self.assertRaises(TypeError, test_index_type)
 

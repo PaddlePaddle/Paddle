@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -79,8 +80,8 @@ class TestCase1(TestBase):
 class TestCase2(TestBase):
     def set_feed(self):
         data = np.random.randint(0, 2, size=[4, 3, 2, 2])
-        self.feed_fp32 = {'x': data.astype(np.bool)}
-        self.feed_fp16 = {'x': data.astype(np.bool)}
+        self.feed_fp32 = {'x': data.astype(np.bool_)}
+        self.feed_fp16 = {'x': data.astype(np.bool_)}
 
 
 if __name__ == "__main__":

@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
+
+import paddle
 from paddle.distributed.models.moe import utils
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 
 
 def limit_by_capacity(expert_count, _capacity, n_worker):
@@ -86,7 +87,7 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
 
         assert all_close(self.out, res[0], self.n_worker)
 
-    def func_dygraph_api(self):
+    def test_dygraph_api(self):
         paddle.disable_static(self.place)
         capacity = paddle.to_tensor(self.capacity)
         expert_count_tensor = paddle.to_tensor(self.expert_count)
@@ -94,11 +95,6 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
             expert_count_tensor, capacity, self.n_worker
         )
         assert all_close(self.out, out.numpy(), self.n_worker)
-
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.func_dygraph_api()
-        self.func_dygraph_api()
 
 
 @unittest.skipIf(

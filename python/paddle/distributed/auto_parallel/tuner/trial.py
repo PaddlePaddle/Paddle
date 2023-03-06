@@ -19,8 +19,8 @@ import hashlib
 import random
 import time
 
-from .storable import Storable
 from .recorder import MetricsRecorder
+from .storable import Storable
 from .tunable_space import TunableSpace
 
 
@@ -147,7 +147,7 @@ class OptimizationTunerTrial(Trial):
 
         draws = border + "\n"
         draws += h1_format.format("")
-        draws += h1_format.format("Tuned Configuartions Overview")
+        draws += h1_format.format("Tuned Configurations Overview")
         draws += h1_format.format("")
 
         for name in self._changed_configs:

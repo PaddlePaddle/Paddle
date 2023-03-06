@@ -19,13 +19,12 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.distributed.fleet import auto
-
 from paddle import LazyGuard
+from paddle.distributed.auto_parallel.helper import ProgramHelper
+from paddle.distributed.fleet import auto
+from paddle.fluid.framework import _non_static_mode
 from paddle.io import Dataset
 from paddle.static import InputSpec
-from paddle.fluid.framework import _non_static_mode
-from paddle.distributed.auto_parallel.helper import ProgramHelper
 
 batch_size = 4
 batch_num = 30

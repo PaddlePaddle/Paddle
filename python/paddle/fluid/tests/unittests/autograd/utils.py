@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import typing
 import enum
 import sys
+import typing
+
 import numpy as np
+
 import paddle
 from paddle.incubate.autograd.utils import as_tensors
 

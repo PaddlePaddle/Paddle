@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import os
 import copy
+import os
 import subprocess
-import time
 import tempfile
+import time
+import unittest
 
 
 def start_local_trainers(
@@ -29,10 +29,10 @@ def start_local_trainers(
     log_dir=None,
 ):
     from paddle.distributed.utils.launch_utils import (  # noqa: F401
-        find_free_ports,
-        watch_local_trainers,
-        get_cluster,
         TrainerProc,
+        find_free_ports,
+        get_cluster,
+        watch_local_trainers,
     )
 
     current_env = copy.copy(os.environ.copy())
@@ -56,9 +56,6 @@ def start_local_trainers(
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_DISTRI_CUSTOM_DEVICE_TYPE": "custom_cpu",
         }
-
-        if not eager_mode:
-            proc_env["FLAGS_enable_eager_mode"] = "%d" % 0
 
         current_env.update(proc_env)
 
@@ -89,10 +86,10 @@ def start_local_trainers(
 
 def get_cluster_from_args(selected_gpus):
     from paddle.distributed.utils.launch_utils import (  # noqa: F401
-        find_free_ports,
-        watch_local_trainers,
-        get_cluster,
         TrainerProc,
+        find_free_ports,
+        get_cluster,
+        watch_local_trainers,
     )
 
     cluster_node_ips = '127.0.0.1'
@@ -117,10 +114,10 @@ def get_cluster_from_args(selected_gpus):
 class TestMultipleCustomCPU(unittest.TestCase):
     def run_mnist_2custom_cpu(self, target_file_name, eager_mode=True):
         from paddle.distributed.utils.launch_utils import (  # noqa: F401
-            find_free_ports,
-            watch_local_trainers,
-            get_cluster,
             TrainerProc,
+            find_free_ports,
+            get_cluster,
+            watch_local_trainers,
         )
 
         selected_devices = [0, 1]
@@ -179,10 +176,10 @@ class TestProcessGroup(TestMultipleCustomCPU):
 
     def test_process_group_xccl(self):
         from paddle.distributed.utils.launch_utils import (  # noqa: F401
-            find_free_ports,
-            watch_local_trainers,
-            get_cluster,
             TrainerProc,
+            find_free_ports,
+            get_cluster,
+            watch_local_trainers,
         )
 
         self.run_mnist_2custom_cpu('process_group_xccl.py')

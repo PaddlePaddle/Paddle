@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+
 from paddle.distributed.fleet import launch
 from paddle.distributed.fleet.launch_utils import run_with_coverage
 

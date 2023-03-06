@@ -12,20 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import textwrap
-from paddle.utils import gast
 import inspect
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+import textwrap
+import unittest
 
+import numpy as np
 from ifelse_simple_func import (
     dyfunc_with_if_else,
     dyfunc_with_if_else2,
     nested_if_else,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn.functional as F
+from paddle.jit.dy2static.utils import ast_to_func
+from paddle.utils import gast
 
 
 class TestAST2Func(unittest.TestCase):
@@ -59,14 +61,14 @@ class TestAST2Func(unittest.TestCase):
 
     def test_ast2func_static(self):
         def func(x):
-            y = fluid.layers.relu(x)
+            y = F.relu(x)
             loss = paddle.mean(y)
             return loss
 
         x_data = np.random.random([10, 16]).astype('float32')
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            x_v = fluid.layers.assign(x_data)
+            x_v = paddle.assign(x_data)
             true_ret = func(x_v)
             test_ret = self._ast2func(func)(x_v)
             exe = fluid.Executor(fluid.CPUPlace())

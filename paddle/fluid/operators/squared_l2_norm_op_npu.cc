@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-
 template <typename DeviceContext, typename T>
 class SquaredL2NormNPUKernel : public framework::OpKernel<T> {
  public:
@@ -65,7 +63,7 @@ class SquaredL2NormGradNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     // broadcast out_grad
-    Tensor broadcasted_out_grad;
+    phi::DenseTensor broadcasted_out_grad;
     broadcasted_out_grad.mutable_data<T>(x_grad->dims(), place);
     const auto &broadcast_runner =
         NpuOpRunner("BroadcastToD",
@@ -74,13 +72,13 @@ class SquaredL2NormGradNPUKernel : public framework::OpKernel<T> {
                     {{"shape", phi::vectorize(x_grad->dims())}});
     broadcast_runner.Run(stream);
     // mul x
-    Tensor tmp_x_grad;
+    phi::DenseTensor tmp_x_grad;
     tmp_x_grad.mutable_data<T>(x_grad->dims(), place);
     const auto &mul_x_runner =
         NpuOpRunner("Mul", {broadcasted_out_grad, *x}, {tmp_x_grad}, {});
     mul_x_runner.Run(stream);
     // mul coefficient:2
-    Tensor coefficient;
+    phi::DenseTensor coefficient;
     coefficient.mutable_data<T>({1}, place);
     FillNpuTensorWithConstant<T>(&coefficient, static_cast<T>(2.0));
     x_grad->mutable_data<T>(place);

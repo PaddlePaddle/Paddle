@@ -15,12 +15,12 @@
 import typing
 import unittest
 
+import config
 import numpy as np
+import parameterize as param
+
 import paddle
 from paddle.distribution import transform, variable
-
-import config
-import parameterize as param
 
 np.random.seed(2022)
 paddle.seed(2022)

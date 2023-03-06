@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from op_test import OpTest
-import unittest
+import copy
 import itertools
+import unittest
+
 import numpy as np
+import scipy
+import scipy.linalg
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import scipy
-import scipy.linalg
-import copy
 
 
 def scipy_lu(A, pivot):
@@ -299,6 +301,20 @@ class TestLUAPI(unittest.TestCase):
         dtypes = ["float32", "float64"]
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_static(tensor_shape, dtype)
+
+
+class TestLUAPIError(unittest.TestCase):
+    def test_errors(self):
+        with paddle.fluid.dygraph.guard():
+            # The size of input in lu should not be 0.
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [0, 0, 0]), dtype='float32'
+                )
+                paddle.linalg.lu(x, get_infos=True)
+
+            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == "__main__":

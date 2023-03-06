@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-import os
-import math
 import argparse
+import math
+import os
+import re
 from threading import Thread
 
 # some particular ops

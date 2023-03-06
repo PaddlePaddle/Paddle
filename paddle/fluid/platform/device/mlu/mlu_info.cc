@@ -226,11 +226,6 @@ size_t MLUInitAllocSize() { return MLUAllocSize(/* realloc = */ false); }
 
 size_t MLUReallocSize() { return MLUAllocSize(/* realloc = */ true); }
 
-size_t MLUMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 256 bytes.
-  return 1 << 8;
-}
-
 size_t MLUMaxChunkSize() {
   size_t max_chunk_size = MLUMaxAllocSize();
   VLOG(10) << "Max chunk size " << (max_chunk_size >> 20) << "M";

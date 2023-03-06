@@ -15,6 +15,7 @@
 import unittest
 
 from pass_test import PassTest
+
 import paddle
 
 
@@ -37,7 +38,7 @@ class PrelnResidualBiasFusePassTest(PassTest):
 
         self.fetch_list = [out, elementwise_out]
         self.pass_names = "preln_residual_bias_fuse_pass"
-        self.fused_op_type = "preln_residual_bias"
+        self.fused_op_type = "fused_bias_dropout_residual_layer_norm"
         self.num_fused_ops = 1
         # self.graph_attrs = {
         #     "embedding_eltwise_layernorm_fuse_pass_flag": True,
@@ -71,7 +72,7 @@ class PrelnResidualBiasFusePassNoBiasTest(PassTest):
 
         self.fetch_list = [out, elementwise_out]
         self.pass_names = "preln_residual_bias_fuse_pass"
-        self.fused_op_type = "preln_residual_bias"
+        self.fused_op_type = "fused_bias_dropout_residual_layer_norm"
         self.num_fused_ops = 1
 
     def test_check_program(self):

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import unittest
+
 import paddle
 from paddle.fluid.contrib.layers.nn import pow2_decay_with_linear_warmup
-from paddle.optimizer.lr import LinearWarmup
-from paddle.optimizer.lr import PolynomialDecay
-import unittest
-import sys
+from paddle.optimizer.lr import LinearWarmup, PolynomialDecay
 
 sys.path.append("..")
 

@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import os
-import sys
 import subprocess
-import unittest
+import sys
 import tempfile
+import unittest
+
 from paddle.fluid import core
 
 

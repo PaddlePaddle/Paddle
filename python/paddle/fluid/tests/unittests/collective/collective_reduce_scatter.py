@@ -14,8 +14,9 @@
 
 import unittest
 
-import paddle
 import numpy as np
+
+import paddle
 import paddle.distributed as dist
 from paddle.distributed.communication.reduce_scatter import _reduce_scatter_base
 
@@ -23,7 +24,6 @@ from paddle.distributed.communication.reduce_scatter import _reduce_scatter_base
 class TestCollectiveReduceScatter(unittest.TestCase):
     def setUp(self):
         dist.init_parallel_env()
-        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
     def test_collective_reduce_scatter_sum(self):
         rank = dist.get_rank()

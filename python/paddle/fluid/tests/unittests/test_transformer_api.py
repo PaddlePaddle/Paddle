@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 from paddle.nn.layer.transformer import (
     MultiHeadAttention,
-    TransformerEncoderLayer,
+    Transformer,
+    TransformerDecoder,
     TransformerDecoderLayer,
     TransformerEncoder,
-    TransformerDecoder,
-    Transformer,
+    TransformerEncoderLayer,
 )
-
-import unittest
 
 
 def generate_basic_params(mode="attn", self_attention=True):

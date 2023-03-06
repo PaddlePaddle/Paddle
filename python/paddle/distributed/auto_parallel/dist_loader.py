@@ -13,19 +13,20 @@
 # limitations under the License
 
 import abc
+
 import numpy as np
 
 import paddle
-from paddle.io import BatchSampler, IterableDataset
 from paddle.fluid.dataloader.batch_sampler import (
-    _InfiniteIterableSampler,
     DistributedBatchSampler,
+    _InfiniteIterableSampler,
 )
 from paddle.fluid.dataloader.dataloader_iter import (
     _DatasetKind,
     default_collate_fn,
     default_convert_fn,
 )
+from paddle.io import BatchSampler, IterableDataset
 
 
 class DistributedDataLoaderBase(metaclass=abc.ABCMeta):
@@ -134,7 +135,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
             raise StopIteration
 
     def _infer_steps(self):
-        if isinstance(self.steps_per_epoch, int) and self.steps_per_epoch > 1:
+        if isinstance(self.steps_per_epoch, int) and self.steps_per_epoch > 0:
             return self.steps_per_epoch
         try:
             if isinstance(self.dataset, IterableDataset):
@@ -145,7 +146,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                 steps_per_epoch = len(self.dataset) // self.batch_size
         except:
             raise ValueError(
-                "Pleace set `steps_per_epoch` or implement `__len__` methond in dataset class."
+                "Please set `steps_per_epoch` or implement `__len__` method in dataset class."
             )
         return steps_per_epoch
 

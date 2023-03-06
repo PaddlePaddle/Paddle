@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest
-from program_config import TensorConfig, ProgramConfig, OpConfig
 import math
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
 import unittest
+from functools import partial
 
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
+
+import paddle.inference as paddle_infer
 
 
 class TestLayernormShiftPartitionPass(PassAutoScanTest):

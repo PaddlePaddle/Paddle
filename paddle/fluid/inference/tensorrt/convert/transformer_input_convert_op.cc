@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/transformer_input_convert_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/transformer_input_output_convert_plugin.h"
 
 namespace paddle {
 namespace framework {

@@ -13,18 +13,16 @@
 # limitations under the License.
 
 import os
+import pickle
 import sys
 
 import numpy as np
-import pickle
+from dist_simnet_bow import DATA_MD5, DATA_URL, TestDistSimnetBow2x2
+from test_dist_base import RUN_STEP, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import io
-
-from test_dist_base import RUN_STEP, runtime_main
-from dist_simnet_bow import TestDistSimnetBow2x2, DATA_URL, DATA_MD5
+from paddle.fluid import core, io
 
 
 class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
@@ -178,7 +176,9 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                         fetch_list=[avg_cost.name], feed=feeder.feed(get_data())
                     )
                 if need_save and model_dir:
-                    io.save_persistables(startup_exe, model_dir, trainer_prog)
+                    paddle.distributed.io.save_persistables(
+                        startup_exe, model_dir, trainer_prog
+                    )
 
             var = np.array(
                 fluid.global_scope().find_var('__fc_b__').get_tensor()
@@ -199,7 +199,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                         and idx == skip_steps
                         and args.trainer_id == 0
                     ):
-                        io.save_persistables(
+                        paddle.distributed.io.save_persistables(
                             startup_exe, model_dir, trainer_prog
                         )
             else:

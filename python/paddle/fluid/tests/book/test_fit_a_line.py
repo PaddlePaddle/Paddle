@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+import math
+import os
+import struct
+import sys
+import tempfile
+import unittest
+
+import numpy
+
 import paddle
 import paddle.fluid as fluid
 import paddle.static.amp as amp
-
-import contextlib
-import numpy
-import unittest
-import math
-import sys
-import os
-import struct
-import tempfile
 
 paddle.enable_static()
 
@@ -48,23 +49,29 @@ def convert_float_to_uint16(in_list):
 
 
 def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
-    x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-    y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+    x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+    x.desc.set_need_check_feed(False)
+    y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
+    y.desc.set_need_check_feed(False)
 
     if use_bf16:
         if not pure_bf16:
             with amp.bf16.bf16_guard():
-                y_predict = fluid.layers.fc(input=x, size=1, act=None)
-            cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                y_predict = paddle.static.nn.fc(x=x, size=1, activation=None)
+            cost = paddle.nn.functional.square_error_cost(
+                input=y_predict, label=y
+            )
             avg_cost = paddle.mean(cost)
         else:
-            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            y_predict = paddle.static.nn.fc(x=x, size=1, activation=None)
             with amp.bf16.bf16_guard():
-                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                cost = paddle.nn.functional.square_error_cost(
+                    input=y_predict, label=y
+                )
                 avg_cost = paddle.mean(cost)
     else:
-        y_predict = fluid.layers.fc(input=x, size=1, act=None)
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        y_predict = paddle.static.nn.fc(x=x, size=1, activation=None)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
 
     lr = 5e-3 if use_bf16 else 1e-3
@@ -137,7 +144,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
         training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
-        t = fluid.DistributeTranspiler()
+        t = paddle.distributed.transpiler.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)

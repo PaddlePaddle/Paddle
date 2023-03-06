@@ -19,7 +19,9 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/autotune/cache_base.h"
-
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+#include "paddle/phi/kernels/autotune/cache_cudnn_frontend.h"
+#endif
 namespace phi {
 namespace autotune {
 
@@ -42,17 +44,32 @@ enum class AlgorithmType {
   kConvBackwardData = 2,
   kConvBackwardFilter = 3,
   kTranspose = 4,
-  kAlgorithmCount = 5
+  kMatmul = 5,
+#if !defined(PADDLE_WITH_CUDNN_FRONTEND)
+  kAlgorithmCount = 6
+#else
+  kConvForwardV8 = 6,
+  kConvBackwardDataV8 = 7,
+  kConvBackwardFilterV8 = 8,
+  kAlgorithmCount = 9
+#endif
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
-// (todo. hong) use cudnnConvolutionFwdAlgo_t
-using AlgorithmsCacheMap = AlgorithmsCache<size_t, int64_t>;
 // AlgorithmType -> AlgorithmsCache
+using AlgorithmsCacheMap = AlgorithmsCache<size_t, int64_t>;
 using AlgorithmsTypeMap = std::unordered_map<int64_t, AlgorithmsCacheMap>;
+
+// (todo. hong) use cudnnConvolutionFwdAlgo_t
 using ConvAlgorithmsCacheMap = ConvAlgorithmsCache<ConvAutoTuneResult>;
 using ConvAlgorithmsTypeMap =
     std::unordered_map<int64_t, ConvAlgorithmsCacheMap>;
+
+using MatmulAlgorithmsCacheMap = MatmulAlgorithmsCache<size_t, int64_t>;
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+using CudnnV8AlgorithmsTypeMap =
+    std::unordered_map<int64_t, CudnnFrontendPlanCache>;
+#endif
 
 class AutoTuneCache {
  public:
@@ -65,11 +82,17 @@ class AutoTuneCache {
     return auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
+  MatmulAlgorithmsCacheMap& GetMatmul() { return matmul_auto_tune_map_; }
+
   ConvAlgorithmsCacheMap& GetConv(const AlgorithmType& algo_type) {
     return conv_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
-  AlgorithmsCacheMap& GetTranspose() { return Get(AlgorithmType::kTranspose); }
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  CudnnFrontendPlanCache& GetConvV8(const AlgorithmType& algo_type) {
+    return cudnn_v8_auto_tune_map_[static_cast<int64_t>(algo_type)];
+  }
+#endif
 
   void Clean() {
     for (auto& v : auto_tune_map_) {
@@ -79,6 +102,12 @@ class AutoTuneCache {
     for (auto& v : conv_auto_tune_map_) {
       v.second.Clean();
     }
+
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+    for (auto& v : cudnn_v8_auto_tune_map_) {
+      v.second.Clean();
+    }
+#endif
   }
 
   void UpdateStatus();
@@ -117,6 +146,16 @@ class AutoTuneCache {
         ConvAlgorithmsCacheMap cache;
         conv_auto_tune_map_[key] = cache;
       }
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+    } else if (algo_type == AlgorithmType::kConvForwardV8 ||
+               algo_type == AlgorithmType::kConvBackwardDataV8 ||
+               algo_type == AlgorithmType::kConvBackwardFilterV8) {
+      int64_t key = static_cast<int64_t>(algo_type);
+      if (cudnn_v8_auto_tune_map_.find(key) == cudnn_v8_auto_tune_map_.end()) {
+        CudnnFrontendPlanCache cache;
+        cudnn_v8_auto_tune_map_[key] = cache;
+      }
+#endif
     } else {
       int64_t key = static_cast<int64_t>(algo_type);
       if (auto_tune_map_.find(key) == auto_tune_map_.end()) {
@@ -128,6 +167,10 @@ class AutoTuneCache {
 
   AlgorithmsTypeMap auto_tune_map_;
   ConvAlgorithmsTypeMap conv_auto_tune_map_;
+  MatmulAlgorithmsCacheMap matmul_auto_tune_map_;
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  CudnnV8AlgorithmsTypeMap cudnn_v8_auto_tune_map_;
+#endif
   std::shared_ptr<std::mutex> autotune_cache_mutex_;
   int64_t total_cache_hits_{0};
   int64_t total_cache_misses_{0};

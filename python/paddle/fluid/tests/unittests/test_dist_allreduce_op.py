@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 from test_dist_base import TestDistBase
+
 import paddle
 
 paddle.enable_static()
@@ -31,7 +33,9 @@ class TestDistMnistNCCL2(TestDistBase):
         import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_allreduce_op.py", delta=1e-5)
+            self.check_with_place(
+                "dist_allreduce_op.py", delta=1e-5, check_error_log=True
+            )
 
 
 if __name__ == '__main__':

@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from mkldnn_op_test import format_reorder
+
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from mkldnn_op_test import format_reorder
 
 
 class TestTransposeOp(OpTest):

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY
-from paddle.fluid import core
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.framework import core
 from paddle.static import Program
 
 
@@ -26,24 +26,24 @@ class TaskNode:
         self,
         rank,
         max_run_times,
-        max_slot_times,
         role=None,
         node_type=None,
         task_id=0,
         ops=None,
         program=None,
         lazy_initialize=False,
+        cond_var_name=None,
     ):
         """
         :param rank (int): Current rank of the task node.
         :param max_run_times (int): The max run times of the task node.
-        :param max_slot_times (int): The mas slot times of the task node.
         :param role (int): The role of the task node. (Will be removed in the future)
         :param node_type (str): The type of the task node.
         :param task_id (int): The id of task node.
         :param ops (list): A list of op.desc to init the task node. (Will be removed in the future)
         :param program (Program): An instance of Program to init the task node.
         :param lazy_initialize (bool): In user-defined task, the program may change adding feed/fetch op. As efficient consideration, the task node will have the C++ object later.
+        :param cond_var_name (string): Indicate the cond var name of while.
         """
         assert (ops is not None) ^ (
             program is not None
@@ -54,10 +54,10 @@ class TaskNode:
         self.id = int(task_id)
         self.rank = rank
         self.max_run_times = max_run_times
-        self.max_slot_times = max_slot_times
         self.node_type = node_type
         self.program = program
         self.lazy_initialize = lazy_initialize
+        self.cond_var_name = cond_var_name
         self.run_pre_steps = None
         self.run_at_offset = None
         self.node = None
@@ -69,11 +69,18 @@ class TaskNode:
                     role is not None and task_id is not None
                 ), "If init task node with ops, should provide `role` and `task_id`."
                 self.node = core.TaskNode(
-                    role, ops, rank, task_id, max_run_times, max_slot_times
+                    role,
+                    ops,
+                    rank,
+                    task_id,
+                    max_run_times,
                 )
             else:
                 self.node = core.TaskNode(
-                    program.desc, rank, self.id, max_run_times, max_slot_times
+                    program.desc,
+                    rank,
+                    self.id,
+                    max_run_times,
                 )
             if self.node_type:
                 self.node.set_type(self.node_type)
@@ -85,7 +92,6 @@ class TaskNode:
                 self.rank,
                 self.id,
                 self.max_run_times,
-                self.max_slot_times,
             )
             if self.node_type:
                 self.node.set_type(self.node_type)
@@ -93,10 +99,12 @@ class TaskNode:
                 self.node.set_run_pre_steps(self.run_pre_steps)
             if self.run_at_offset:
                 self.node.set_run_at_offset(self.run_at_offset)
+            if self.cond_var_name:
+                self.node.set_cond_var_name(self.cond_var_name)
             for up in self.upstreams:
-                self.node.add_upstream_task(up[0], up[1])
+                self.node.add_upstream_task(up[0], up[1], up[2])
             for down in self.downstreams:
-                self.node.add_downstream_task(down[0], down[1])
+                self.node.add_downstream_task(down[0], down[1], down[2])
             self.lazy_initialize = False
         return self.node
 
@@ -124,17 +132,21 @@ class TaskNode:
         else:
             self.node.set_run_at_offset(offset)
 
-    def add_upstream_task(self, upstream, buffer_size=2):
+    def add_upstream_task(
+        self, upstream, buffer_size=2, depend_type=core.DependType.NORMAL
+    ):
         if self.lazy_initialize:
-            self.upstreams.append((upstream, buffer_size))
+            self.upstreams.append((upstream, buffer_size, depend_type))
         else:
-            self.node.add_upstream_task(upstream, buffer_size)
+            self.node.add_upstream_task(upstream, buffer_size, depend_type)
 
-    def add_downstream_task(self, downstream, buffer_size=2):
+    def add_downstream_task(
+        self, downstream, buffer_size=2, depend_type=core.DependType.NORMAL
+    ):
         if self.lazy_initialize:
-            self.downstreams.append((downstream, buffer_size))
+            self.downstreams.append((downstream, buffer_size, depend_type))
         else:
-            self.node.add_downstream_task(downstream, buffer_size)
+            self.node.add_downstream_task(downstream, buffer_size, depend_type)
 
     def task_id(self):
         return self.id
@@ -309,33 +321,28 @@ class FleetExecutorUtils:
         return task_node_map
 
     def construct_task_nodes_1f1b(self, program_map):
-        max_slot_times = int(self.max_run_times - self.coord['pp_idx'])
         cur_start_id = int(self.rank * self.num_of_functionality)
         lr_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             program=program_map["lr"],
             task_id=cur_start_id,
         )
         fwd_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             program=program_map["fwd"],
             task_id=cur_start_id + 1,
         )
         bwd_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             program=program_map["bwd"],
             task_id=cur_start_id + 2,
         )
         opt_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             program=program_map["opt"],
             task_id=cur_start_id + 3,
         )
@@ -354,12 +361,10 @@ class FleetExecutorUtils:
         return task_id_to_rank
 
     def construct_task_nodes_1f1b_op_list(self, op_list_map):
-        max_slot_times = int(self.max_run_times - self.coord['pp_idx'])
         cur_start_id = int(self.rank * self.num_of_functionality)
         lr_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             role=int(OpRole.Optimize.LRSched),
             ops=op_list_map["lr"],
             task_id=cur_start_id,
@@ -369,7 +374,6 @@ class FleetExecutorUtils:
         fwd_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             role=int(OpRole.Forward),
             ops=op_list_map["fwd"],
             task_id=cur_start_id + 1,
@@ -378,7 +382,6 @@ class FleetExecutorUtils:
         bwd_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             role=int(OpRole.Backward),
             ops=op_list_map["bwd"],
             task_id=cur_start_id + 2,
@@ -387,7 +390,6 @@ class FleetExecutorUtils:
         opt_task_node = TaskNode(
             rank=self.rank,
             max_run_times=self.max_run_times,
-            max_slot_times=max_slot_times,
             role=int(OpRole.Optimize),
             ops=op_list_map["opt"],
             task_id=cur_start_id + 3,
@@ -471,7 +473,6 @@ def origin(program, rank):
         rank=rank,
         node_type="Compute",
         max_run_times=1,
-        max_slot_times=1,
     )
     task_id_to_rank = {task_node.task_id(): rank}
     return [task_node.task_node()], task_id_to_rank

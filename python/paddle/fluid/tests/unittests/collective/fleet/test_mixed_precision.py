@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.nn as nn
 import paddle.static as static
-import numpy as np
 
 paddle.enable_static()
 

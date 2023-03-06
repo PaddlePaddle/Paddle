@@ -12,23 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
-import math
 import copy
 import hashlib
 import itertools
+import math
+import time
 from collections import defaultdict
+
 import numpy as np
-from ..process_mesh import ProcessMesh
+
 from ..completion import Completer
-from ..parallelizer_v2 import Parallelizer
+from ..cost import CostEstimator
 from ..dist_context import _node_id
 from ..dist_op import DistributedOperator
 from ..operators.common import find_compatible_distributed_operator_impls
+from ..parallelizer_v2 import Parallelizer
+from ..process_mesh import ProcessMesh
 from .trial import Trial, TrialStatus
 from .tunable_space import TunableSpace
-from .tunable_variable import Boolean, IntRange
-from ..cost import CostEstimator
 from .tunable_variable import Boolean, IntRange
 
 
@@ -529,7 +530,7 @@ class ParallelTuner:
                 del self._concerned_dist_ops[op_id]
 
         print(
-            "Number of the concered dist ops",
+            "Number of the concerned dist ops",
             len(self._concerned_dist_ops),
             flush=True,
         )
@@ -630,7 +631,7 @@ class ParallelTuner:
                 direction = directions[i].random(self._seed)
                 size = sizes[i].random(self._seed)
                 if direction:
-                    # Substract 1 from size to avoid the overlapping of new starts
+                    # Subtract 1 from size to avoid the overlapping of new starts
                     new_start = start - (size - 1)
                 else:
                     new_start = start + size
@@ -688,15 +689,15 @@ class ParallelTuner:
             assert process_mesh.ndim == 2
             dim_of_one = None
             dim_of_other = None
-            if process_mesh.topology[0] == 1:
+            if process_mesh.shape[0] == 1:
                 dim_of_one = 0
                 dim_of_other = 1
-            elif process_mesh.topology[1] == 1:
+            elif process_mesh.shape[1] == 1:
                 dim_of_one = 1
                 dim_of_other = 0
 
             if dim_of_one is not None:
-                dist_attr.process_mesh = ProcessMesh(process_mesh.processes)
+                dist_attr.process_mesh = ProcessMesh(process_mesh.process_ids)
                 self._dist_context.add_process_mesh(dist_attr.process_mesh)
 
             for arg_name in dist_attr.inputs_dist_attrs.keys():
@@ -714,7 +715,7 @@ class ParallelTuner:
                 dims_mapping = dist_attr.get_input_dims_mapping(arg_name)
                 # dynamic_dims = dist_attr.get_input_dynamic_dims(arg_name)
                 process_mesh = dist_attr.process_mesh
-                process_shape = process_mesh.topology
+                process_shape = process_mesh.shape
                 tensor = dist_op.get_serial_input(arg_name)
                 if dims_mapping:
                     tensor_shape = tensor.shape
@@ -747,7 +748,7 @@ class ParallelTuner:
                 dims_mapping = dist_attr.get_output_dims_mapping(arg_name)
                 # dynamic_dims = dist_attr.get_output_dynamic_dims(arg_name)
                 process_mesh = dist_attr.process_mesh
-                process_shape = process_mesh.topology
+                process_shape = process_mesh.shape
 
                 tensor = dist_op.get_serial_output(arg_name)
                 if dims_mapping:
@@ -787,12 +788,12 @@ class ParallelTuner:
                 dist_op.dist_attr.impl_idx = 0
 
     def _check_fused_softmax_mask_upper_triangle(self, dist_op):
-        """The last_but_one dim shoule be equal to last dim."""
+        """The last_but_one dim should be equal to last dim."""
         input_name = dist_op.serial_op.input_arg_names[0]
         input_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
             input_name
         )
-        topology = dist_op.dist_attr.process_mesh.topology
+        topology = dist_op.dist_attr.process_mesh.shape
         input_tensor = dist_op.get_serial_input(input_name)
         last_but_one_dim = (
             input_tensor.shape[-2] // topology[input_dims_mapping[-2]]
@@ -866,7 +867,7 @@ class ParallelTuner:
             assert (
                 dist_op.dist_attr.impl_idx == op_id_to_dist_attr[op_id].impl_idx
             )
-            dist_op.dist_attr.process_mesh = process_mesh
+            dist_op.dist_attr.process_mesh = ProcessMesh(process_mesh)
         self._amend_dist_attr()
 
         self._completer._complete_tensor_dist_attr_by_op()
@@ -995,7 +996,7 @@ class ParallelTuner:
             self._dist_context.serial_main_program
         )
 
-        # Backup the intital parallel strategy
+        # Backup the initial parallel strategy
         self._init_parallel_strategy[0] = copy.deepcopy(
             self._dist_context._dist_tensors_for_program
         )
@@ -1040,7 +1041,6 @@ class ParallelTuner:
         # This store statement must follow the above backup statement
         self._store_init_parallel_strategy()
         init_time = self._estimate_trial()  # estimate_trial when init
-        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
         # We have to restore the distributed context, because the estimation of one trail need to
         # generate the backward and update parts. Since we will do the tuning process,
         # here we only need to reset all distributed information to the default one.

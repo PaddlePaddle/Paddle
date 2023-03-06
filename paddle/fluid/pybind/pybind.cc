@@ -13,6 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <algorithm>
 #include <cctype>
@@ -34,6 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -55,6 +60,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
+#include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
@@ -65,6 +71,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/prim/utils/utils.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
@@ -74,7 +81,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -87,12 +93,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/custom_device_py.h"
 #include "paddle/fluid/pybind/distributed_py.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/xpu_streams_py.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/utils/none.h"
@@ -188,8 +196,12 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
+#include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/api/include/operants_manager.h"
+#include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
@@ -282,6 +294,20 @@ bool IsCompiledWithNPU() {
 #endif
 }
 
+bool IsCompiledWithCustomDevice(std::string device_type) {
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+  return false;
+#else
+  std::vector<std::string> device_types;
+  device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  if (std::count(device_types.begin(), device_types.end(), device_type)) {
+    return true;
+  } else {
+    return false;
+  }
+#endif
+}
+
 bool IsCompiledWithIPU() {
 #ifndef PADDLE_WITH_IPU
   return false;
@@ -326,7 +352,7 @@ bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_core))
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
     return true;
   else
     return false;
@@ -337,7 +363,7 @@ bool SupportsBfloat16FastPerformance() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
-  if (platform::MayIUse(platform::cpu_isa_t::avx512_bf16))
+  if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_bf16))
     return true;
   else
     return false;
@@ -348,8 +374,8 @@ bool SupportsInt8() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
-  return (platform::MayIUse(platform::cpu_isa_t::avx2) ||
-          platform::MayIUse(platform::cpu_isa_t::avx512f));
+  return (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ||
+          phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512f));
 #endif
 }
 
@@ -357,7 +383,8 @@ bool SupportsVNNI() {
 #ifndef PADDLE_WITH_MKLDNN
   return false;
 #else
-  return platform::MayIUse(platform::cpu_isa_t::avx512_core_vnni);
+  return phi::backends::cpu::MayIUse(
+      phi::backends::cpu::cpu_isa_t::avx512_core_vnni);
 #endif
 }
 
@@ -612,9 +639,10 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCudaStream(&m);
   BindXpuStream(&m);
   BindJit(&m);
+  BindCustomDevicePy(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
-  paddle::platform::CpuTotalPhysicalMemory();
+  phi::backends::cpu::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
 
@@ -643,6 +671,22 @@ PYBIND11_MODULE(libpaddle, m) {
         return oss.str();
       });
 
+  m.def("__set_bwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetBwdPrimEnabled);
+  m.def("_is_bwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsBwdPrimEnabled);
+  m.def("__set_fwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetFwdPrimEnabled);
+  m.def("_is_fwd_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsFwdPrimEnabled);
+  m.def("__set_all_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetAllPrimEnabled);
+  m.def("_is_eager_prim_enabled",
+        &paddle::prim::PrimCommonUtils::IsEagerPrimEnabled);
+  m.def("__set_eager_prim_enabled",
+        &paddle::prim::PrimCommonUtils::SetEagerPrimEnabled);
+  m.def("_set_prim_target_grad_name",
+        &paddle::prim::PrimCommonUtils::SetTargetGradName);
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("disable_signal_handler", &DisableSignalHandler);
@@ -671,7 +715,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
 #ifdef PADDLE_WITH_CUDA
-  py::class_<platform::CUDAGraph>(m, "CUDAGraph")
+  py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
       .def_static("begin_capture",
                   [](platform::CUDAPlace place, int mode) {
                     platform::BeginCUDAGraphCapture(
@@ -679,10 +723,11 @@ PYBIND11_MODULE(libpaddle, m) {
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",
-                  &platform::CUDAGraph::UniqueMemoryPoolID)
-      .def("replay", &platform::CUDAGraph::Replay)
-      .def("reset", &platform::CUDAGraph::Reset)
-      .def("print_to_dot_files", &platform::CUDAGraph::PrintToDotFiles);
+                  &phi::backends::gpu::CUDAGraph::UniqueMemoryPoolID)
+      .def("replay", &phi::backends::gpu::CUDAGraph::Replay)
+      .def("reset", &phi::backends::gpu::CUDAGraph::Reset)
+      .def("print_to_dot_files",
+           &phi::backends::gpu::CUDAGraph::PrintToDotFiles);
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {
@@ -826,6 +871,58 @@ PYBIND11_MODULE(libpaddle, m) {
                lib[string]: the libarary, could be 'phi', 'fluid' and 'all'.
            )DOC");
 
+  m.def(
+      "_get_registered_phi_kernels",
+      [](const std::string &kernel_registered_type) {
+        std::unordered_map<std::string, std::vector<std::string>>
+            all_kernels_info;
+        auto phi_kernels = phi::KernelFactory::Instance().kernels();
+        for (auto &kernel_pair : phi_kernels) {
+          auto kernel_name = kernel_pair.first;
+          std::vector<std::string> kernel_keys;
+          for (auto &info_pair : kernel_pair.second) {
+            bool get_function_kernel =
+                kernel_registered_type == "function" &&
+                info_pair.second.GetKernelRegisteredType() ==
+                    phi::KernelRegisteredType::FUNCTION;
+            bool get_structure_kernel =
+                kernel_registered_type == "structure" &&
+                info_pair.second.GetKernelRegisteredType() ==
+                    phi::KernelRegisteredType::STRUCTURE;
+            if (kernel_registered_type == "all" || get_function_kernel ||
+                get_structure_kernel) {
+              std::ostringstream stream;
+              stream << info_pair.first;
+              std::string kernel_key_str = stream.str();
+              if (all_kernels_info.count(kernel_name)) {
+                bool kernel_exist =
+                    std::find(all_kernels_info[kernel_name].begin(),
+                              all_kernels_info[kernel_name].end(),
+                              kernel_key_str) !=
+                    all_kernels_info[kernel_name].end();
+                if (!kernel_exist) {
+                  all_kernels_info[kernel_name].emplace_back(kernel_key_str);
+                }
+              } else {
+                kernel_keys.emplace_back(kernel_key_str);
+              }
+            }
+          }
+          if (!kernel_keys.empty()) {
+            all_kernels_info.emplace(kernel_name, kernel_keys);
+          }
+        }
+
+        return all_kernels_info;
+      },
+      py::arg("kernel_registered_type") = "function",
+      R"DOC(
+           Return the registered kernels in phi.
+
+           Args:
+               kernel_registered_type[string]: the libarary, could be 'function', 'structure', and 'all'.
+           )DOC");
+
   // NOTE(Aganlengzi): KernelFactory static instance is initialized BEFORE
   // plugins are loaded for custom kernels, but de-initialized AFTER they are
   // unloaded. We need manually clear symbols(may contain plugins' symbols)
@@ -942,14 +1039,20 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("get_bytes",
            [](Variable &self) {
-             return py::bytes(*self.GetMutable<std::string>());
+             if (self.IsType<String>()) {
+               return py::bytes(*(self.GetMutable<String>()));
+             } else {
+               return py::bytes(
+                   *(self.GetMutable<RawTensor>()->GetMutable<std::string>()));
+             }
            })
       .def("set_string_list",
-           [](Variable &self, Strings str_list) {
+           [](Variable &self, std::vector<std::string> str_list) {
              *self.GetMutable<Strings>() = str_list;
            })
       .def("set_vocab",
-           [](Variable &self, Vocab vocab) {
+           [](Variable &self,
+              const std::unordered_map<std::wstring, std::int32_t> &vocab) {
              *self.GetMutable<Vocab>() = vocab;
            })
       .def(
@@ -1197,7 +1300,6 @@ All parameter, weight, gradient are variables in Paddle.
           -> const paddle::framework::AttributeMap & {
         return operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
       });
-
   m.def(
       "get_attrtibute_type",
       [](const std::string &op_type,
@@ -1208,16 +1310,68 @@ All parameter, weight, gradient are variables in Paddle.
         return static_cast<paddle::framework::proto::AttrType>(
             defalut_val.index() - 1);
       });
+  m.def("_add_skip_comp_ops", &paddle::prim::PrimCommonUtils::AddSkipCompOps);
+  m.def("_remove_skip_comp_ops",
+        &paddle::prim::PrimCommonUtils::RemoveSkipCompOps);
   m.def("get_grad_op_desc",
         [](const OpDesc &op_desc,
            const std::unordered_set<std::string> &no_grad_set,
            const std::vector<BlockDesc *> &grad_sub_block) {
           std::unordered_map<std::string, std::string> grad_to_var;
-          std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
-              framework::OpInfoMap::Instance()
-                  .Get(op_desc.Type())
-                  .GradOpMaker()(
-                      op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+
+          auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
+          auto grad_op_maker = op_info.GradOpMaker();
+          auto grad_comp_op_maker = op_info.CompGradOpMaker();
+
+          if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
+            // Normally, proto_ should not be null, except some special
+            // operators, such as LeaklyReluDoubleGrad op.
+            std::string type =
+                op_info.proto_ ? op_info.proto_->type() : "unknown";
+            PADDLE_THROW(platform::errors::NotFound(
+                "Neither operator %s's GradOpMaker nor CompGradOpMaker has "
+                "been registered.\nPlease check whether (%s) operator has "
+                "gradient operator.\nIf not, please set stop_gradient to be "
+                "True for its input and output variables using "
+                "var.stop_gradient=True.",
+                type.c_str(),
+                type.c_str()));
+          }
+
+          // In PrimEnabled mode, the priority of CompGradOpMaker is greater
+          // than GradCompMaker as we need split first-order grad operator into
+          // primitive operators for compiler. In PrimDisabled mode, the
+          // priority of CompGradOpMaker is less than GradCompMaker for better
+          // performance.
+          std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
+          auto need_skip =
+              paddle::prim::PrimCommonUtils::CheckSkipCompOps(op_desc.Type());
+          VLOG(3) << "need skip: " << need_skip << std::endl;
+          if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
+            if ((grad_comp_op_maker != nullptr) && (!need_skip)) {
+              VLOG(3) << "Runing composite fun for " << op_desc.Type();
+              grad_op_descs = grad_comp_op_maker(op_desc,
+                                                 no_grad_set,
+                                                 &grad_to_var,
+                                                 op_desc.Block(),
+                                                 grad_sub_block);
+            } else {
+              grad_op_descs = grad_op_maker(
+                  op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+            }
+          } else {
+            if (grad_op_maker != nullptr) {
+              grad_op_descs = grad_op_maker(
+                  op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+            } else {
+              grad_op_descs = grad_comp_op_maker(op_desc,
+                                                 no_grad_set,
+                                                 &grad_to_var,
+                                                 op_desc.Block(),
+                                                 grad_sub_block);
+            }
+          }
+
           std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
           std::transform(
               grad_op_descs.begin(),
@@ -1325,6 +1479,10 @@ All parameter, weight, gradient are variables in Paddle.
                         paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetZeroAllocator(place)
                             .get());
+                    context->SetHostZeroAllocator(
+                        paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(paddle::platform::CPUPlace())
+                            .get());
                     return context;
                   })
       .def_static(
@@ -1348,6 +1506,10 @@ All parameter, weight, gradient are variables in Paddle.
       context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
           .GetZeroAllocator(place)
+          .get());
+      context->SetHostZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(paddle::platform::CPUPlace())
           .get());
       return context;
 #endif
@@ -1409,6 +1571,10 @@ All parameter, weight, gradient are variables in Paddle.
       context->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
         .GetZeroAllocator(place)
+        .get());
+      context->SetHostZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+        .GetZeroAllocator(paddle::platform::CPUPlace())
         .get());
       context->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
@@ -1490,6 +1656,25 @@ All parameter, weight, gradient are variables in Paddle.
               "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
     return devices;
+  });
+  m.def("get_custom_device_count", [](const std::string &device_type) {
+    size_t device_count = 0;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    // TODO(duanyanhui): Optimize DeviceManager::GetDeviceCount to support
+    // returning default device when only one device is registered in
+    // DeviceManager.
+    device_count = phi::DeviceManager::GetDeviceCount(device_type);
+#else
+          VLOG(1) << string::Sprintf(
+              "Cannot use get_custom_device_count because you have "
+              "installed"
+              "CPU/GPU version PaddlePaddle.\n"
+              "If you want to use get_custom_device_count, please try to "
+              "install"
+              "CustomDevice version "
+              "PaddlePaddle by: pip install paddlepaddle\n");
+#endif
+    return device_count;
   });
 
   py::class_<OperatorBase>(m, "Operator")
@@ -1719,6 +1904,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
+  m.def("init_memory_method", framework::InitMemoryMethod);
   m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
     egr::Controller::Instance().MergeOpMetaInfoMap(
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
@@ -1733,11 +1919,21 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("init_default_kernel_signatures",
         []() { framework::InitDefaultKernelSignatureMap(); });
+  m.def("init_tensor_operants", []() {
+    paddle::OperantsManager::Instance().eager_operants.reset(
+        new paddle::prim::EagerTensorOperants());
+    paddle::OperantsManager::Instance().static_operants.reset(
+        new paddle::prim::StaticTensorOperants());
+    paddle::OperantsManager::Instance().phi_operants.reset(
+        new paddle::operants::PhiTensorOperants());
+    VLOG(4) << "Initialize tensor operants successfully";
+  });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
+  m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
@@ -1824,7 +2020,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const Strings &,
+            const std::vector<std::string> &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
@@ -1851,6 +2047,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGlobalValueGetterSetter(&m);
   BindFleetExecutor(&m);
   BindTCPStore(&m);
+  BindCommContextManager(&m);
   BindAutoParallel(&m);
   BindJitProperty(&m);
 
@@ -2249,6 +2446,9 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::HostPythonNode::input_shapes)
       .def_readwrite("dtypes", &paddle::platform::HostPythonNode::dtypes)
       .def_readwrite("callstack", &paddle::platform::HostPythonNode::callstack)
+      .def_readwrite("attributes",
+                     &paddle::platform::HostPythonNode::attributes)
+      .def_readwrite("op_id", &paddle::platform::HostPythonNode::op_id)
       .def_readwrite("children_node",
                      &paddle::platform::HostPythonNode::children_node_ptrs)
       .def_readwrite("runtime_node",
@@ -2322,16 +2522,14 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
-  m.def("enable_input_shape_recorder",
-        &paddle::platform::EnableInputShapeRecorder);
-  m.def("disable_input_shape_recorder",
-        &paddle::platform::DisableInputShapeRecorder);
+  m.def("enable_op_info_recorder", &phi::EnableOpInfoRecorder);
+  m.def("disable_op_info_recorder", &phi::DisableOpInfoRecorder);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
-  m.def("get_cublas_switch", platform::AllowTF32Cublas);
-  m.def("set_cudnn_switch", platform::SetAllowTF32Cudnn);
-  m.def("get_cudnn_switch", platform::AllowTF32Cudnn);
+  m.def("set_cublas_switch", phi::SetAllowTF32Cublas);
+  m.def("get_cublas_switch", phi::AllowTF32Cublas);
+  m.def("set_cudnn_switch", phi::SetAllowTF32Cudnn);
+  m.def("get_cudnn_switch", phi::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
   m.def("clear_executor_cache", []() {
     pybind11::gil_scoped_release release;
@@ -2524,6 +2722,20 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("update_autotune_status",
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
 
+  m.def("get_low_precision_op_list", [] {
+    py::dict op_list;
+    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
+    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
+      auto op_name = (iter->first).c_str();
+      auto counts = iter->second;
+      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
+                         std::to_string(counts.bf16_called_) + "," +
+                         std::to_string(counts.fp32_called_) + "," +
+                         std::to_string(counts.other_called_);
+    }
+    return op_list;
+  });
+
   m.def("autotune_status", [] {
     py::dict res;
     phi::autotune::AutoTuneCache::Instance().UpdateStatus();
@@ -2542,6 +2754,9 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("use_layout_autotune",
         [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
+  // Add the api for nan op debug
+  m.def("set_nan_inf_debug_path",
+        &paddle::framework::details::SetNanInfDebugPath);
 
   BindFleetWrapper(&m);
   BindIO(&m);

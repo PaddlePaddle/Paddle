@@ -12,22 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import math
 import numbers
-import collections
+from collections.abc import Iterable, Sequence
 
 import numpy as np
 
 import paddle
 from paddle.utils import try_import
-
-if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
-else:
-    Sequence = collections.abc.Sequence
-    Iterable = collections.abc.Iterable
 
 __all__ = []
 

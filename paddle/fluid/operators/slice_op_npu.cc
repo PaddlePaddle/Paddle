@@ -15,12 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 void UpdateAttr(const framework::DDim& in_dims,
@@ -78,15 +78,16 @@ class SliceNPUKernel : public framework::OpKernel<T> {
     auto starts_tensor_list =
         ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts =
-          GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("StartsTensor"));
+      starts = phi::GetVectorFromTensor<int>(
+          ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
     }
 
     auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("EndsTensor"));
+      ends = phi::GetVectorFromTensor<int>(
+          ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
     }
@@ -173,15 +174,16 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
     auto starts_tensor_list =
         ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts =
-          GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("StartsTensor"));
+      starts = phi::GetVectorFromTensor<int>(
+          ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
     }
 
     auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("EndsTensor"));
+      ends = phi::GetVectorFromTensor<int>(
+          ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
     }
@@ -199,7 +201,7 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
       paddings[i][1] = static_cast<int64_t>(in_dims[i] - size[i] - offsets[i]);
     }
 
-    Tensor tmp_dout;
+    phi::DenseTensor tmp_dout;
     tmp_dout.ShareDataWith(*dout);
     auto out_dims = dout->dims();
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");

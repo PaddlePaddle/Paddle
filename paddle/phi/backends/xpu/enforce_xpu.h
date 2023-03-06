@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/core/enforce.h"
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "xpu/bkcl.h"
 #endif
@@ -95,7 +95,7 @@ inline const char* xpuGetErrorString(int stat) {
     case XPUERR_INTERRUPTED:
       return "Execution interrupted by user";
     default:
-      return "unkonwn error";
+      return "unknown error";
   }
 }
 

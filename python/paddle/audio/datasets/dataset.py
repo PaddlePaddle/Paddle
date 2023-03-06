@@ -15,10 +15,7 @@ from typing import List
 
 import paddle
 
-from ..features import MelSpectrogram
-from ..features import Spectrogram
-from ..features import MFCC
-from ..features import LogMelSpectrogram
+from ..features import MFCC, LogMelSpectrogram, MelSpectrogram, Spectrogram
 
 feat_funcs = {
     'raw': None,

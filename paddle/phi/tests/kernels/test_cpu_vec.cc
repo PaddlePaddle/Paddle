@@ -106,42 +106,43 @@ void TestAndBench(const int n,
 }
 
 TEST(CpuVecTest, sigmoid) {
-  namespace platform = paddle::platform;
   using namespace phi::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestAndBench<float>(sz, vec_sigmoid<float>, ref_sigmoid<float>);
     TestAndBench<float>(
-        sz, vec_sigmoid<float, platform::avx>, ref_sigmoid<float>);
+        sz, vec_sigmoid<float, backends::cpu::avx>, ref_sigmoid<float>);
     TestAndBench<float>(
-        sz, vec_sigmoid<float, platform::avx2>, ref_sigmoid<float>);
+        sz, vec_sigmoid<float, backends::cpu::avx2>, ref_sigmoid<float>);
     TestAndBench<float>(
-        sz, vec_sigmoid<float, platform::avx512f>, ref_sigmoid<float>);
+        sz, vec_sigmoid<float, backends::cpu::avx512f>, ref_sigmoid<float>);
   }
   TestAndBench<double>(30, vec_sigmoid<double>, ref_sigmoid<double>);
 }
 
 TEST(CpuVecTest, tanh) {
-  namespace platform = paddle::platform;
   using namespace phi::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestAndBench<float>(sz, vec_tanh<float>, ref_tanh<float>);
-    TestAndBench<float>(sz, vec_tanh<float, platform::avx>, ref_tanh<float>);
-    TestAndBench<float>(sz, vec_tanh<float, platform::avx2>, ref_tanh<float>);
     TestAndBench<float>(
-        sz, vec_tanh<float, platform::avx512f>, ref_tanh<float>);
+        sz, vec_tanh<float, backends::cpu::avx>, ref_tanh<float>);
+    TestAndBench<float>(
+        sz, vec_tanh<float, backends::cpu::avx2>, ref_tanh<float>);
+    TestAndBench<float>(
+        sz, vec_tanh<float, backends::cpu::avx512f>, ref_tanh<float>);
   }
   TestAndBench<double>(30, vec_tanh<double>, ref_tanh<double>);
 }
 
 TEST(CpuVecTest, relu) {
-  namespace platform = paddle::platform;
   using namespace phi::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestAndBench<float>(sz, vec_relu<float>, ref_relu<float>);
-    TestAndBench<float>(sz, vec_relu<float, platform::avx>, ref_relu<float>);
-    TestAndBench<float>(sz, vec_relu<float, platform::avx2>, ref_relu<float>);
     TestAndBench<float>(
-        sz, vec_relu<float, platform::avx512f>, ref_relu<float>);
+        sz, vec_relu<float, backends::cpu::avx>, ref_relu<float>);
+    TestAndBench<float>(
+        sz, vec_relu<float, backends::cpu::avx2>, ref_relu<float>);
+    TestAndBench<float>(
+        sz, vec_relu<float, backends::cpu::avx512f>, ref_relu<float>);
   }
   TestAndBench<double>(30, vec_relu<double>, ref_relu<double>);
 }
@@ -161,14 +162,16 @@ void compare_sum(size_t n,
 }
 
 TEST(CpuVecTest, vec_sum) {
-  namespace platform = paddle::platform;
   using namespace phi::funcs;  // NOLINT
   for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
-    compare_sum<float>(sz, vec_sum<float>, vec_sum<float, platform::isa_any>);
     compare_sum<float>(
-        sz, vec_sum<float, platform::avx>, vec_sum<float, platform::isa_any>);
+        sz, vec_sum<float>, vec_sum<float, backends::cpu::isa_any>);
+    compare_sum<float>(sz,
+                       vec_sum<float, backends::cpu::avx>,
+                       vec_sum<float, backends::cpu::isa_any>);
   }
-  compare_sum<double>(30U, vec_sum<double>, vec_sum<double, platform::isa_any>);
+  compare_sum<double>(
+      30U, vec_sum<double>, vec_sum<double, backends::cpu::isa_any>);
 }
 
 template <typename T>
@@ -192,18 +195,17 @@ void compare_clip(
 }
 
 TEST(CpuVecTest, vec_clip) {
-  namespace platform = paddle::platform;
   using namespace phi::funcs;  // NOLINT
   for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     compare_clip<float>(
-        sz, -4.f, vec_clip<float>, vec_clip<float, platform::isa_any>);
+        sz, -4.f, vec_clip<float>, vec_clip<float, backends::cpu::isa_any>);
     compare_clip<float>(sz,
                         -1.1f,
-                        vec_clip<float, platform::avx>,
-                        vec_clip<float, platform::isa_any>);
+                        vec_clip<float, backends::cpu::avx>,
+                        vec_clip<float, backends::cpu::isa_any>);
   }
   compare_clip<double>(
-      30U, 1.0, vec_clip<double>, vec_clip<double, platform::isa_any>);
+      30U, 1.0, vec_clip<double>, vec_clip<double, backends::cpu::isa_any>);
 }
 
 template <typename T>
@@ -230,14 +232,16 @@ void compare_mul(
 }
 
 TEST(CpuVecTest, vec_mul) {
-  namespace platform = paddle::platform;
   using namespace phi::funcs;  // NOLINT
   for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
-    compare_mul<float>(sz, vec_mul<float>, vec_mul<float, platform::isa_any>);
     compare_mul<float>(
-        sz, vec_mul<float, platform::avx>, vec_mul<float, platform::isa_any>);
+        sz, vec_mul<float>, vec_mul<float, backends::cpu::isa_any>);
+    compare_mul<float>(sz,
+                       vec_mul<float, backends::cpu::avx>,
+                       vec_mul<float, backends::cpu::isa_any>);
   }
-  compare_mul<double>(30U, vec_mul<double>, vec_mul<double, platform::isa_any>);
+  compare_mul<double>(
+      30U, vec_mul<double>, vec_mul<double, backends::cpu::isa_any>);
 }
 
 template <typename T>
@@ -260,17 +264,18 @@ void compare_mul_reduce(
 }
 
 TEST(CpuVecTest, vec_mul_reduce) {
-  namespace platform = paddle::platform;
   using namespace phi::funcs;  // NOLINT
   for (size_t sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
-    compare_mul_reduce<float>(
-        sz, vec_mul_reduce<float>, vec_mul_reduce<float, platform::isa_any>);
     compare_mul_reduce<float>(sz,
-                              vec_mul_reduce<float, platform::avx>,
-                              vec_mul_reduce<float, platform::isa_any>);
+                              vec_mul_reduce<float>,
+                              vec_mul_reduce<float, backends::cpu::isa_any>);
+    compare_mul_reduce<float>(sz,
+                              vec_mul_reduce<float, backends::cpu::avx>,
+                              vec_mul_reduce<float, backends::cpu::isa_any>);
   }
-  compare_mul_reduce<double>(
-      30U, vec_mul_reduce<double>, vec_mul_reduce<double, platform::isa_any>);
+  compare_mul_reduce<double>(30U,
+                             vec_mul_reduce<double>,
+                             vec_mul_reduce<double, backends::cpu::isa_any>);
 }
 
 template <typename T>
@@ -296,40 +301,43 @@ void TestInplace(const int n,
 }
 
 TEST(CpuVecTest, inplace_sigmoid) {
-  namespace platform = paddle::platform;
   using namespace phi::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestInplace<float>(sz, vec_sigmoid<float>, ref_sigmoid<float>);
     TestInplace<float>(
-        sz, vec_sigmoid<float, platform::avx>, ref_sigmoid<float>);
+        sz, vec_sigmoid<float, backends::cpu::avx>, ref_sigmoid<float>);
     TestInplace<float>(
-        sz, vec_sigmoid<float, platform::avx2>, ref_sigmoid<float>);
+        sz, vec_sigmoid<float, backends::cpu::avx2>, ref_sigmoid<float>);
     TestInplace<float>(
-        sz, vec_sigmoid<float, platform::avx512f>, ref_sigmoid<float>);
+        sz, vec_sigmoid<float, backends::cpu::avx512f>, ref_sigmoid<float>);
   }
   TestInplace<double>(30, vec_sigmoid<double>, ref_sigmoid<double>);
 }
 
 TEST(CpuVecTest, inplace_tanh) {
-  namespace platform = paddle::platform;
   using namespace phi::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestInplace<float>(sz, vec_tanh<float>, ref_tanh<float>);
-    TestInplace<float>(sz, vec_tanh<float, platform::avx>, ref_tanh<float>);
-    TestInplace<float>(sz, vec_tanh<float, platform::avx2>, ref_tanh<float>);
-    TestInplace<float>(sz, vec_tanh<float, platform::avx512f>, ref_tanh<float>);
+    TestInplace<float>(
+        sz, vec_tanh<float, backends::cpu::avx>, ref_tanh<float>);
+    TestInplace<float>(
+        sz, vec_tanh<float, backends::cpu::avx2>, ref_tanh<float>);
+    TestInplace<float>(
+        sz, vec_tanh<float, backends::cpu::avx512f>, ref_tanh<float>);
   }
   TestInplace<double>(30, vec_tanh<double>, ref_tanh<double>);
 }
 
 TEST(CpuVecTest, inplace_relu) {
-  namespace platform = paddle::platform;
   using namespace phi::funcs;  // NOLINT
   for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestInplace<float>(sz, vec_relu<float>, ref_relu<float>);
-    TestInplace<float>(sz, vec_relu<float, platform::avx>, ref_relu<float>);
-    TestInplace<float>(sz, vec_relu<float, platform::avx2>, ref_relu<float>);
-    TestInplace<float>(sz, vec_relu<float, platform::avx512f>, ref_relu<float>);
+    TestInplace<float>(
+        sz, vec_relu<float, backends::cpu::avx>, ref_relu<float>);
+    TestInplace<float>(
+        sz, vec_relu<float, backends::cpu::avx2>, ref_relu<float>);
+    TestInplace<float>(
+        sz, vec_relu<float, backends::cpu::avx512f>, ref_relu<float>);
   }
   TestInplace<double>(30, vec_relu<double>, ref_relu<double>);
 }

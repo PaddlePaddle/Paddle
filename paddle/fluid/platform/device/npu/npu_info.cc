@@ -179,14 +179,6 @@ size_t NPUInitAllocSize() { return NPUAllocSize(/* realloc = */ false); }
 
 size_t NPUReallocSize() { return NPUAllocSize(/* realloc = */ true); }
 
-size_t NPUMinChunkSize() {
-  // NOTE(zhiqiu): It seems the min chunk size should be 512 on NPU,
-  // though no document specify that explicitly.
-  // See https://gitee.com/zhiqiuchen/Ascend/tree/master/test_reduce_sum_d for
-  // details.
-  return 1 << 9;
-}
-
 size_t NPUMaxChunkSize() {
   size_t max_chunk_size = NPUMaxAllocSize();
   VLOG(10) << "Max chunk size " << (max_chunk_size >> 20) << "M";

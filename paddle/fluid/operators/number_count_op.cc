@@ -28,7 +28,7 @@ class NumberCountOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     // the dtype of the numbers should be same as int64
     auto number_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "numbers");
@@ -37,7 +37,7 @@ class NumberCountOp : public framework::OperatorWithKernel {
                       framework::proto::VarType::INT64,
                       platform::errors::InvalidArgument(
                           "The dtype of the number_dtype should be int64"));
-    return framework::OpKernelType(number_dtype, ctx.GetPlace());
+    return phi::KernelKey(number_dtype, ctx.GetPlace());
   }
 };
 

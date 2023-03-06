@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/send_ue_recv_kernel.h"
 
 #include <thrust/device_vector.h>
+#include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 #include <algorithm>
 #include <vector>
@@ -89,7 +90,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
 
   thrust::device_vector<int64_t> x_bcastoff, e_bcastoff;
   if (bcast_info.use_bcast) {
-    CopyBCastOff(bcast_info, x_bcastoff, e_bcastoff);
+    CopyBCastOff(bcast_info, &x_bcastoff, &e_bcastoff);
   }
 
   int64_t out_len = bcast_info.out_len;

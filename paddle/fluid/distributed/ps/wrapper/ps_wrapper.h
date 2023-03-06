@@ -47,7 +47,6 @@ namespace distributed {
 
 class PSCore;
 
-using LoDTensor = phi::DenseTensor;
 using framework::Scope;
 using framework::Variable;
 using phi::SelectedRows;

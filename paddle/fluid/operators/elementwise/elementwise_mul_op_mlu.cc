@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using MLUDeviceContext = platform::MLUDeviceContext;
 
 template <typename T>
@@ -73,7 +72,7 @@ class ElementwiseMulGradMLUKernel : public framework::OpKernel<T> {
                           GetBasePtr(dx),
                           ToCnnlDataType<T>());
       } else {
-        Tensor dx_temp(x->dtype());
+        phi::DenseTensor dx_temp(x->dtype());
         dx_temp.Resize(dout->dims());
         dx_temp.mutable_data<T>(ctx.GetPlace());
         MLUCnnl::OpTensor(ctx,
@@ -121,7 +120,7 @@ class ElementwiseMulGradMLUKernel : public framework::OpKernel<T> {
                           GetBasePtr(dy),
                           ToCnnlDataType<T>());
       } else {
-        Tensor dy_temp(y->dtype());
+        phi::DenseTensor dy_temp(y->dtype());
         dy_temp.Resize(dout->dims());
         dy_temp.mutable_data<T>(ctx.GetPlace());
         MLUCnnl::OpTensor(ctx,

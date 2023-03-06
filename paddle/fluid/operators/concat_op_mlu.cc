@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +33,7 @@ class ConcatMLUKernel : public framework::OpKernel<T> {
     bool need_resize_out_dims = false;
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
-      axis = GetDataFromTensor<int>(axis_tensor)[0];
+      axis = phi::GetVectorFromTensor<int>(axis_tensor)[0];
       need_resize_out_dims = true;
     }
     axis = ComputeAxis(static_cast<int64_t>(axis),
@@ -97,7 +98,7 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
 
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
-      axis = GetDataFromTensor<int>(axis_tensor)[0];
+      axis = phi::GetVectorFromTensor<int>(axis_tensor)[0];
     }
 
     axis = ComputeAxis(static_cast<int64_t>(axis),
@@ -119,7 +120,7 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
             out_grad->dims().size()));
     // get output tensor that the name is not kEmptyVarName
     std::vector<void*> outputs_vec;
-    std::vector<Tensor> tmp_outputs_vec;
+    std::vector<phi::DenseTensor> tmp_outputs_vec;
     std::vector<MLUCnnlTensorDesc> output_descs;
     std::vector<cnnlTensorDescriptor_t> descs_vec;
     for (size_t j = 0; j < outs.size(); ++j) {
@@ -129,7 +130,7 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
         output_descs.emplace_back(MLUCnnlTensorDesc(*outs[j]));
         outputs_vec.push_back(GetBasePtr(outs[j]));
       } else {
-        Tensor tmp_tensor;
+        phi::DenseTensor tmp_tensor;
         tmp_tensor.mutable_data<T>(ins[j]->dims(), ctx.GetPlace());
         tmp_outputs_vec.push_back(tmp_tensor);
         output_descs.emplace_back(MLUCnnlTensorDesc(*ins[j]));

@@ -27,8 +27,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using Tensor = phi::DenseTensor;
-
 /* UNDERSTAND: utility function to adjust probability for unique sampling,
 return whatever as it is if not using unique samping */
 template <typename T>

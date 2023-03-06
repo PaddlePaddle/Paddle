@@ -14,12 +14,12 @@
 
 import unittest
 
-import numpy as np
-import paddle
-
 import config
 import mock_data as mock
+import numpy as np
 import parameterize
+
+import paddle
 
 np.random.seed(2022)
 

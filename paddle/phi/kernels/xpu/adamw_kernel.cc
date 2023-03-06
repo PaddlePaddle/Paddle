@@ -20,8 +20,6 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-// for TensorToVector
-#include "paddle/fluid/framework/tensor_util.h"
 
 namespace phi {
 
@@ -52,6 +50,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       DenseTensor* beta1_pow_out,
                       DenseTensor* beta2_pow_out,
                       DenseTensor* master_param_outs) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   bool skip_update_ = false;
   if (skip_update.is_initialized()) {
     PADDLE_ENFORCE_EQ(
@@ -60,7 +59,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   if (skip_update_) {
@@ -88,45 +87,43 @@ void AdamwDenseKernel(const Context& dev_ctx,
     beta1_pow_ptr = xpu_beta1_pow.template data<float>();
     beta2_pow_ptr = xpu_beta2_pow.template data<float>();
   }
-  if (with_decay) {
-    int r = xpu::adamw(dev_ctx.x_context(),
-                       grad.template data<T>(),
-                       moment1.template data<float>(),
-                       moment2.template data<float>(),
-                       param.template data<T>(),
-                       beta1_pow_ptr,
-                       beta2_pow_ptr,
-                       learning_rate.template data<float>(),
-                       dev_ctx.template Alloc<float>(moment1_out),
-                       dev_ctx.template Alloc<float>(moment2_out),
-                       dev_ctx.template Alloc<T>(param_out),
-                       beta1_,
-                       beta2_,
-                       epsilon_,
-                       coeff,
-                       param.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
-  } else {
-    int r = xpu::adam(dev_ctx.x_context(),
-                      grad.template data<T>(),
-                      moment1.template data<float>(),
-                      moment2.template data<float>(),
-                      param.template data<T>(),
-                      beta1_pow_ptr,
-                      beta2_pow_ptr,
-                      learning_rate.template data<float>(),
-                      dev_ctx.template Alloc<float>(moment1_out),
-                      dev_ctx.template Alloc<float>(moment2_out),
-                      dev_ctx.template Alloc<T>(param_out),
-                      beta1_,
-                      beta2_,
-                      epsilon_,
-                      param.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+  if (!with_decay) {
+    coeff = static_cast<float>(0.0);
   }
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  float* new_lr = RAII_GUARD.alloc_l3_or_gm<float>(learning_rate.numel());
+  PADDLE_ENFORCE_XDNN_NOT_NULL(new_lr);
+  int r = 0;
+  r = xpu::scale(dev_ctx.x_context(),
+                 learning_rate.template data<float>(),
+                 new_lr,
+                 learning_rate.numel(),
+                 false,
+                 lr_ratio,
+                 0.0f);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+
+  r = xpu::adamw(
+      dev_ctx.x_context(),
+      reinterpret_cast<const XPUType*>(grad.template data<T>()),
+      moment1.template data<float>(),
+      moment2.template data<float>(),
+      reinterpret_cast<const XPUType*>(param.template data<T>()),
+      beta1_pow_ptr,
+      beta2_pow_ptr,
+      new_lr,
+      dev_ctx.template Alloc<float>(moment1_out),
+      dev_ctx.template Alloc<float>(moment2_out),
+      reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(param_out)),
+      beta1_,
+      beta2_,
+      epsilon_,
+      coeff,
+      param.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
 
   if (!use_global_beta_pow) {
-    // update in cpu and then copy to xpu
+    // update in cpu
     if (beta1_pow.place() == CPUPlace() && beta2_pow.place() == CPUPlace()) {
       const float* beta1_pow_p = beta1_pow.template data<float>();
       dev_ctx.template HostAlloc<float>(beta1_pow_out)[0] =
@@ -135,7 +132,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
       dev_ctx.template HostAlloc<float>(beta2_pow_out)[0] =
           beta2_ * beta2_pow_p[0];
       xpu_wait(dev_ctx.x_context()->xpu_stream);
-    } else {
+    } else {  // update in  xpu
       float* beta1_pow_out_p = dev_ctx.template Alloc<float>(beta1_pow_out);
       float* beta2_pow_out_p = dev_ctx.template Alloc<float>(beta2_pow_out);
       int r = xpu::scale(dev_ctx.x_context(),
@@ -145,7 +142,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                          false,
                          beta1_,
                          0.0f);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
       r = xpu::scale(dev_ctx.x_context(),
                      beta2_pow_ptr,
                      beta2_pow_out_p,
@@ -153,14 +150,15 @@ void AdamwDenseKernel(const Context& dev_ctx,
                      false,
                      beta2_,
                      0.0f);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "adamw");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(adamw, XPU, ALL_LAYOUT, phi::AdamwDenseKernel, float) {
+PD_REGISTER_KERNEL(
+    adamw, XPU, ALL_LAYOUT, phi::AdamwDenseKernel, float, phi::dtype::float16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

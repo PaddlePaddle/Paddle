@@ -75,8 +75,8 @@ function(protobuf_generate_python SRCS)
     list(APPEND ${SRCS} "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}_pb2.py")
     add_custom_command(
       OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}_pb2.py"
-      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --python_out
-              ${CMAKE_CURRENT_BINARY_DIR} ${_protobuf_include_path} ${ABS_FIL}
+      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} --python_out ${PADDLE_BINARY_DIR}
+              -I${PADDLE_SOURCE_DIR} ${ABS_FIL}
       DEPENDS ${ABS_FIL} ${PROTOBUF_PROTOC_EXECUTABLE}
       COMMENT "Running Python protocol buffer compiler on ${FIL}"
       VERBATIM)
@@ -236,20 +236,31 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
 
   if(WITH_ASCEND AND NOT WITH_ASCEND_CXX11)
     set(PROTOBUF_REPOSITORY https://gitee.com/tianjianhe/protobuf.git)
-    set(PROTOBUF_TAG v3.8.0)
+    set(PROTOBUF_TAG v21.12)
   elseif(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
     set(PROTOBUF_REPOSITORY https://gitee.com/tianjianhe/protobuf.git)
-    set(PROTOBUF_TAG v3.8.0)
+    set(PROTOBUF_TAG v21.12)
   elseif(WITH_IPU)
     set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
-    set(PROTOBUF_TAG d750fbf648256c7c631f51ffdbf67d7c18b0114e)
+    set(PROTOBUF_TAG v21.12)
   elseif(WIN32)
     set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
     # Change the tag to support building with vs2019
     set(PROTOBUF_TAG 01a05a53f40ca2ac5f0af10c6cc0810bee39b792)
   else()
-    set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
-    set(PROTOBUF_TAG 9f75c5aa851cd877fb0d93ccc31b8567a6706546)
+    if(WITH_PSLIB)
+      set(PROTOBUF_REPOSITORY "https://github.com/google/protobuf.git")
+      set(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
+    else()
+      set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
+      set(PROTOBUF_TAG v21.12)
+    endif()
+    if(WITH_GPU)
+      if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0
+         AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
+        set(PROTOBUF_TAG v21.12)
+      endif()
+    endif()
   endif()
   if(WITH_ARM_BRPC)
     set(ARM_PROTOBUF_URL
@@ -292,7 +303,7 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
       DEPENDS zlib
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND} ${PROTOBUF_SOURCE_DIR}/cmake ${OPTIONAL_ARGS}
-        -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_SKIP_RPATH=ON
+        -G${CMAKE_GENERATOR} -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_SKIP_RPATH=ON
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
         -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
@@ -315,13 +326,22 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
 endfunction()
 
 if(WITH_ASCEND OR WITH_ASCEND_CL)
-  set(PROTOBUF_VERSION 3.8.0)
+  set(PROTOBUF_VERSION 21.12)
 elseif(WITH_IPU)
-  set(PROTOBUF_VERSION 3.6.1)
+  set(PROTOBUF_VERSION 21.12)
 elseif(WITH_ARM_BRPC)
-  set(PROTOBUF_VERSION 3.7.1-baidu-ee-common)
+  set(PROTOBUF_VERSION 21.12-baidu-ee-common)
+elseif(WIN32)
+  #Lower version prootbuf is used for widows
+  set(PROTOBUF_VERSION 3.2)
 else()
-  set(PROTOBUF_VERSION 3.1.0)
+  set(PROTOBUF_VERSION 21.12)
+  if(WITH_GPU)
+    if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0
+       AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 12.0)
+      set(PROTOBUF_VERSION 21.12)
+    endif()
+  endif()
 endif()
 
 if(NOT PROTOBUF_FOUND)

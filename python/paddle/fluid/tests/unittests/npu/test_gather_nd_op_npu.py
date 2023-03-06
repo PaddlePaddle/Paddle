@@ -270,7 +270,7 @@ class TestGatherNdAPI(unittest.TestCase):
         index_1 = np.array([[1]])
         input = fluid.dygraph.to_variable(input_1)
         index = fluid.dygraph.to_variable(index_1)
-        output = paddle.fluid.layers.gather(input, index)
+        output = paddle.gather(input, index)
         output_np = output.numpy()
         expected_output = np.array([3, 4])
         np.testing.assert_allclose(output_np[0], expected_output)

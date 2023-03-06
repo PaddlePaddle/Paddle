@@ -17,13 +17,13 @@ import unittest
 
 import config
 import numpy as np
+import scipy.stats
+from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+from test_distribution import DistributionNumpy
+
 import paddle
 from paddle import fluid
 from paddle.distribution import Normal
-from paddle.fluid import layers
-from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
-import scipy.stats
-from test_distribution import DistributionNumpy
 
 np.random.seed(2022)
 
@@ -116,8 +116,8 @@ class NormalTest(unittest.TestCase):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1], dtype='float32'
             )
 
     def compare_with_numpy(self, fetch_list, sample_shape=7, tolerance=1e-6):
@@ -236,8 +236,8 @@ class NormalTest3(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
 
 
@@ -265,8 +265,8 @@ class NormalTest4(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
 
 
@@ -301,8 +301,8 @@ class NormalTest5(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float64'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float64'
             )
 
 
@@ -333,20 +333,20 @@ class NormalTest6(NormalTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.static_loc = layers.data(
-                name='loc', shape=[dims], dtype='float32'
+            self.static_loc = paddle.static.data(
+                name='loc', shape=[-1, dims], dtype='float32'
             )
-            self.static_scale = layers.data(
-                name='scale', shape=[dims], dtype='float32'
+            self.static_scale = paddle.static.data(
+                name='scale', shape=[-1, dims], dtype='float32'
             )
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
-            self.static_other_loc = layers.data(
-                name='other_loc', shape=[dims], dtype='float32'
+            self.static_other_loc = paddle.static.data(
+                name='other_loc', shape=[-1, dims], dtype='float32'
             )
-            self.static_other_scale = layers.data(
-                name='other_scale', shape=[dims], dtype='float32'
+            self.static_other_scale = paddle.static.data(
+                name='other_scale', shape=[-1, dims], dtype='float32'
             )
 
 
@@ -381,20 +381,20 @@ class NormalTest7(NormalTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.static_loc = layers.data(
-                name='loc', shape=[dims], dtype='float64'
+            self.static_loc = paddle.static.data(
+                name='loc', shape=[-1, dims], dtype='float64'
             )
-            self.static_scale = layers.data(
-                name='scale', shape=[dims], dtype='float64'
+            self.static_scale = paddle.static.data(
+                name='scale', shape=[-1, dims], dtype='float64'
             )
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float64'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float64'
             )
-            self.static_other_loc = layers.data(
-                name='other_loc', shape=[dims], dtype='float64'
+            self.static_other_loc = paddle.static.data(
+                name='other_loc', shape=[-1, dims], dtype='float64'
             )
-            self.static_other_scale = layers.data(
-                name='other_scale', shape=[dims], dtype='float64'
+            self.static_other_scale = paddle.static.data(
+                name='other_scale', shape=[-1, dims], dtype='float64'
             )
 
 
@@ -429,20 +429,20 @@ class NormalTest8(NormalTest):
 
     def init_static_data(self, batch_size, dims):
         with fluid.program_guard(self.test_program):
-            self.static_loc = layers.data(
-                name='loc', shape=[dims], dtype='float64'
+            self.static_loc = paddle.static.data(
+                name='loc', shape=[-1, dims], dtype='float64'
             )
-            self.static_scale = layers.data(
-                name='scale', shape=[dims], dtype='float64'
+            self.static_scale = paddle.static.data(
+                name='scale', shape=[-1, dims], dtype='float64'
             )
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
-            self.static_other_loc = layers.data(
-                name='other_loc', shape=[dims], dtype='float64'
+            self.static_other_loc = paddle.static.data(
+                name='other_loc', shape=[-1, dims], dtype='float64'
             )
-            self.static_other_scale = layers.data(
-                name='other_scale', shape=[dims], dtype='float64'
+            self.static_other_scale = paddle.static.data(
+                name='other_scale', shape=[-1, dims], dtype='float64'
             )
 
 
@@ -476,8 +476,8 @@ class NormalTest9(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
 
 
@@ -511,8 +511,8 @@ class NormalTest10(NormalTest):
         self.static_other_loc = self.other_loc_np
         self.static_other_scale = self.other_scale_np
         with fluid.program_guard(self.test_program):
-            self.static_values = layers.data(
-                name='values', shape=[dims], dtype='float32'
+            self.static_values = paddle.static.data(
+                name='values', shape=[-1, dims], dtype='float32'
             )
 
 

@@ -12,22 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import sys
+import unittest
 
 sys.path.append("..")
 import numpy as np
 from op_test_xpu import XPUOpTest
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.contrib.mixed_precision.amp_nn as amp_nn
-
-from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
+import paddle.fluid as fluid
+import paddle.static.amp.amp_nn as amp_nn
 
 paddle.enable_static()
 

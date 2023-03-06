@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
 import unittest
-import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
 from typing import List
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertArgMaxTest(TrtLayerAutoScanTest):
@@ -57,6 +59,7 @@ class TrtConvertArgMaxTest(TrtLayerAutoScanTest):
                                     "flatten": flatten,
                                     "dtype": dtype,
                                 },
+                                "outputs_dtype": {"arg_max_out": np.int32},
                             }
                         ]
                         ops = self.generate_op_config(ops_config)

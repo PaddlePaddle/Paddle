@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
-from program_config import TensorConfig, ProgramConfig, OpConfig
 import unittest
 
 import hypothesis.strategies as st
+from auto_scan_test import IgnoreReasons, PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMapMatmulToMulPass(PassAutoScanTest):
@@ -92,12 +92,6 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
             alpha=alpha,
             trans_x=transpose_X,
             trans_y=transpose_Y,
-            fused_reshape_Out=[],
-            fused_transpose_Out=[],
-            fused_reshape_X=[],
-            fused_reshape_Y=[],
-            fused_transpose_X=[],
-            fused_transpose_Y=[],
         )
 
         ops = [

@@ -128,7 +128,7 @@ void InitTensorsOnClient(framework::Scope* scope,
                reinterpret_cast<void*>(x_ptr),
                platform::CPUPlace(),
                reinterpret_cast<void*>(x_vec_ptr),
-               x_var->numel() * framework::DataTypeSize(x_var->dtype()),
+               x_var->numel() * phi::SizeOf(x_var->dtype()),
                stream);
 
   // auto res_var = scope->Var("res")->GetMutable<phi::DenseTensor>();

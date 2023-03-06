@@ -17,17 +17,12 @@ or nested loop have been covered in file test_ifelse.py and test_loop.py"""
 
 import unittest
 
-from paddle.utils import gast
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import (
-    cmpop_node_to_str,
-)
-
-program_translator = ProgramTranslator()
+from paddle.jit.dy2static.logical_transformer import cmpop_node_to_str
+from paddle.utils import gast
 
 SEED = 2020
 np.random.seed(22)
@@ -188,7 +183,7 @@ class TestLogicalBase(unittest.TestCase):
         )
 
     def _run(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         with fluid.dygraph.guard(self.place):
             result = self.dygraph_func(self.input)
             return result.numpy()

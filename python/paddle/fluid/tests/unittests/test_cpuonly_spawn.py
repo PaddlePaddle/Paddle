@@ -15,9 +15,9 @@
 import unittest
 
 import paddle
+import paddle.distributed as dist
 import paddle.nn as nn
 import paddle.optimizer as opt
-import paddle.distributed as dist
 
 
 class LinearNet(nn.Layer):

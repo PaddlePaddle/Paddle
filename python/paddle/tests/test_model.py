@@ -12,31 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import os
-import numpy as np
 import shutil
 import tempfile
+import unittest
+
+import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle import to_tensor
-from paddle.nn import Conv2D, Linear, ReLU, Sequential
-
-from paddle import Model
-from paddle.static import InputSpec
-from paddle.nn.layer.loss import CrossEntropyLoss
+import paddle.jit as jit
+import paddle.vision.models as models
+from paddle import Model, fluid, to_tensor
+from paddle.hapi.model import prepare_distributed_context
+from paddle.io import Dataset, DistributedBatchSampler
 from paddle.metric import Accuracy
+from paddle.nn import Conv2D, Linear, ReLU, Sequential
+from paddle.nn.layer.loss import CrossEntropyLoss
+from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
-import paddle.vision.models as models
-import paddle.fluid.dygraph.jit as jit
-from paddle.io import DistributedBatchSampler, Dataset
-from paddle.hapi.model import prepare_distributed_context
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
-    ProgramTranslator,
-)
 
 
 class LeNetDygraph(paddle.nn.Layer):
@@ -46,10 +40,10 @@ class LeNetDygraph(paddle.nn.Layer):
         self.features = Sequential(
             Conv2D(1, 6, 3, stride=1, padding=1),
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
             Conv2D(6, 16, 5, stride=1, padding=0),
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
         )
 
         if num_classes > 0:
@@ -61,7 +55,7 @@ class LeNetDygraph(paddle.nn.Layer):
         x = self.features(inputs)
 
         if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
+            x = paddle.flatten(x, 1, -1)
             x = self.fc(x)
         return x
 
@@ -98,10 +92,10 @@ class LeNetListInput(paddle.nn.Layer):
         self.features = Sequential(
             self.cov,
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
             Conv2D(6, 16, 5, stride=1, padding=0),
             ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
         )
 
         if num_classes > 0:
@@ -163,7 +157,7 @@ def dynamic_train(model, dataloader):
     for inputs, labels in dataloader:
         outputs = model(inputs)
         loss = CrossEntropyLoss(reduction="sum")(outputs, labels)
-        avg_loss = fluid.layers.reduce_sum(loss)
+        avg_loss = paddle.sum(loss)
         avg_loss.backward()
         optim.minimize(avg_loss)
         model.clear_gradients()
@@ -233,7 +227,7 @@ class TestModel(unittest.TestCase):
         if not os.path.exists(cls.save_dir):
             os.makedirs(cls.save_dir)
         cls.weight_path = os.path.join(cls.save_dir, 'lenet')
-        fluid.dygraph.save_dygraph(dy_lenet.state_dict(), cls.weight_path)
+        paddle.save(dy_lenet.state_dict(), cls.weight_path + '.pdparams')
 
         fluid.disable_dygraph()
 
@@ -311,6 +305,8 @@ class TestModel(unittest.TestCase):
         result = model.evaluate(
             self.val_dataset, batch_size=64, num_iters=num_iters
         )
+
+        model.fit(self.train_dataset, batch_size=(64, 64), shuffle=False)
 
         train_sampler = DistributedBatchSampler(
             self.train_dataset,
@@ -508,7 +504,7 @@ class TestModelFunction(unittest.TestCase):
             m.train()
             output = m(to_tensor(data))
             loss = CrossEntropyLoss(reduction='sum')(output, to_tensor(label))
-            avg_loss = fluid.layers.reduce_sum(loss)
+            avg_loss = paddle.sum(loss)
             avg_loss.backward()
             optim.minimize(avg_loss)
             m.clear_gradients()
@@ -829,8 +825,8 @@ class TestModelFunction(unittest.TestCase):
 
         for dynamic in [True, False]:
             paddle.disable_static() if dynamic else None
-            prog_translator = ProgramTranslator()
-            prog_translator.enable(False) if not dynamic else None
+            paddle.jit.enable_to_static(False) if not dynamic else None
+
             net = LeNet()
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)

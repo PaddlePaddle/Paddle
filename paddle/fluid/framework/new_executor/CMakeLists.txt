@@ -3,7 +3,7 @@ add_subdirectory(interpreter)
 add_subdirectory(workqueue)
 
 set(STANDALONE_EXECUTOR_SRCS interpretercore.cc new_executor_defs.cc
-                             stream_analyzer.cc standalone_executor.cc)
+                             standalone_executor.cc)
 
 set(STANDALONE_EXECUTOR_DEPS interpreter interpretercore_garbage_collector
                              workqueue)
@@ -16,7 +16,7 @@ cc_library(
 cc_library(
   staticgraph_executor_statistics
   SRCS executor_statistics.cc
-  DEPS enforce glog os_info)
+  DEPS enforce glog phi_os_info)
 
 # skip win32 since wget is not installed by default on windows machine.
 if(WITH_GPU

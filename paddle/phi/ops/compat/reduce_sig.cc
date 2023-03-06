@@ -60,9 +60,9 @@ KernelSignature ReduceProdOpArgumentMapping(const ArgumentMappingContext& ctx) {
     // the "max_raw" KernelSignature
     if (ctx.IsForInferShape() || reduce_all) {
       return KernelSignature(
-          "prod_raw", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
+          "prod", {"X"}, {"dim", "keep_dim", "reduce_all"}, {"Out"});
     }
-    return KernelSignature("prod", {"X"}, {"dim", "keep_dim"}, {"Out"});
+    return KernelSignature("prod_infer", {"X"}, {"dim", "keep_dim"}, {"Out"});
   }
   return KernelSignature("unregistered", {}, {}, {});
 }

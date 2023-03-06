@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import numpy as np
 from paddle.fluid import Program, program_guard
 
 
@@ -80,26 +83,23 @@ class TestNpairLossOp(unittest.TestCase):
             l2_reg=reg_lambda,
         )
 
-        anc = fluid.layers.data(
+        anc = paddle.static.data(
             dtype='float32',
             name='anc',
             shape=embeddings_anchor.shape,
-            append_batch_size=False,
         )
-        pos = fluid.layers.data(
+        pos = paddle.static.data(
             dtype='float32',
             name='pos',
             shape=embeddings_positive.shape,
-            append_batch_size=False,
         )
-        lab = fluid.layers.data(
+        lab = paddle.static.data(
             dtype='float32',
             name='lab',
             shape=row_labels.shape,
-            append_batch_size=False,
         )
 
-        npair_loss_op = fluid.layers.npair_loss(
+        npair_loss_op = paddle.nn.functional.npair_loss(
             anchor=anc, positive=pos, labels=lab, l2_reg=reg_lambda
         )
         out_tensor = exe.run(
@@ -140,19 +140,19 @@ class TestNpairLossOpError(unittest.TestCase):
 
             def test_anchor_Variable():
                 # the anchor type must be Variable
-                fluid.layers.npair_loss(
+                paddle.nn.functional.npair_loss(
                     anchor=anchor_np, positive=positive_data, labels=labels_data
                 )
 
             def test_positive_Variable():
                 # the positive type must be Variable
-                fluid.layers.npair_loss(
+                paddle.nn.functional.npair_loss(
                     anchor=anchor_data, positive=positive_np, labels=labels_data
                 )
 
             def test_labels_Variable():
                 # the labels type must be Variable
-                fluid.layers.npair_loss(
+                paddle.nn.functional.npair_loss(
                     anchor=anchor_data, positive=positive_data, labels=labels_np
                 )
 
@@ -165,7 +165,7 @@ class TestNpairLossOpError(unittest.TestCase):
                 anchor_data1 = fluid.data(
                     name='anchor1', shape=[2, 4], dtype='int32'
                 )
-                fluid.layers.npair_loss(
+                paddle.nn.functional.npair_loss(
                     anchor=anchor_data, positive=positive_data, labels=labels_np
                 )
 
@@ -174,7 +174,7 @@ class TestNpairLossOpError(unittest.TestCase):
                 positive_data1 = fluid.data(
                     name='positive1', shape=[2, 4], dtype='int32'
                 )
-                fluid.layers.npair_loss(
+                paddle.nn.functional.npair_loss(
                     anchor=anchor_data,
                     positive=positive_data1,
                     labels=labels_np,
@@ -185,7 +185,7 @@ class TestNpairLossOpError(unittest.TestCase):
                 labels_data1 = fluid.data(
                     name='labels1', shape=[2], dtype='int32'
                 )
-                fluid.layers.npair_loss(
+                paddle.nn.functional.npair_loss(
                     anchor=anchor_data,
                     positive=positive_data,
                     labels=labels_data1,

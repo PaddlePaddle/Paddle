@@ -13,27 +13,25 @@
 # limitations under the License.
 
 import math
-import time
-import numpy as np
-import unittest
-
 import os
 import tempfile
+import time
+import unittest
+
+import numpy as np
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.framework import _non_static_mode
 from paddle import _legacy_C_ops
+from paddle.fluid.dygraph import to_variable
+from paddle.fluid.framework import _non_static_mode
+from paddle.jit.api import to_static
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
 
-program_translator = ProgramTranslator()
 # Add InputSpec to make unittest run faster.
 input_specs = [
     paddle.static.InputSpec([None, None], 'int64'),
@@ -57,13 +55,9 @@ class DynamicGRU(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self.gru_unit = GRUUnit(
+        self.gru_unit = paddle.nn.GRUCell(
             size * 3,
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            activation=candidate_activation,
-            gate_activation=gate_activation,
-            origin_mode=origin_mode,
+            size,
         )
 
         self.size = size
@@ -79,26 +73,20 @@ class DynamicGRU(fluid.dygraph.Layer):
         res = []
         for i in range(inputs.shape[1]):
             if self.is_reverse:
-                j = fluid.layers.shape(inputs)[1] - 1 - i
+                j = paddle.shape(inputs)[1] - 1 - i
             else:
                 j = i
 
             # input_ = inputs[:, j:j+1, :]  # original code
-            input_ = fluid.layers.slice(
-                inputs, axes=[1], starts=[j], ends=[j + 1]
-            )
-            input_ = fluid.layers.reshape(
-                input_, [-1, input_.shape[2]], inplace=False
-            )
+            input_ = paddle.slice(inputs, axes=[1], starts=[j], ends=[j + 1])
+            input_ = paddle.reshape(input_, [-1, input_.shape[2]])
             hidden, reset, gate = self.gru_unit(input_, hidden)
-            hidden_ = fluid.layers.reshape(
-                hidden, [-1, 1, hidden.shape[1]], inplace=False
-            )
+            hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
             res.append(hidden_)
 
         if self.is_reverse:
             res = res[::-1]
-        res = fluid.layers.concat(res, axis=1)
+        res = paddle.concat(res, axis=1)
         return res
 
 
@@ -106,11 +94,11 @@ class BiGRU(fluid.dygraph.Layer):
     def __init__(self, input_dim, grnn_hidden_dim, init_bound, h_0=None):
         super().__init__()
 
-        self.pre_gru = Linear(
-            input_dim=input_dim,
-            output_dim=grnn_hidden_dim * 3,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+        self.pre_gru = paddle.nn.Linear(
+            in_features=input_dim,
+            out_features=grnn_hidden_dim * 3,
+            weight_attr=fluid.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -123,7 +111,7 @@ class BiGRU(fluid.dygraph.Layer):
             size=grnn_hidden_dim,
             h_0=h_0,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -132,11 +120,11 @@ class BiGRU(fluid.dygraph.Layer):
             ),
         )
 
-        self.pre_gru_r = Linear(
-            input_dim=input_dim,
-            output_dim=grnn_hidden_dim * 3,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+        self.pre_gru_r = paddle.nn.Linear(
+            in_features=input_dim,
+            out_features=grnn_hidden_dim * 3,
+            weight_attr=fluid.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -150,7 +138,7 @@ class BiGRU(fluid.dygraph.Layer):
             is_reverse=True,
             h_0=h_0,
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -166,7 +154,7 @@ class BiGRU(fluid.dygraph.Layer):
         res_pre_gru_r = self.pre_gru_r(input_feature)
         res_gru_r = self.gru_r(res_pre_gru_r)
 
-        bi_merge = fluid.layers.concat(input=[res_gru, res_gru_r], axis=-1)
+        bi_merge = paddle.concat([res_gru, res_gru_r], axis=-1)
         return bi_merge
 
 
@@ -381,13 +369,13 @@ class LexNet(fluid.dygraph.Layer):
         self.bigru_num = args.bigru_num
         self.init_bound = 0.1
 
-        self.word_embedding = Embedding(
-            size=[self.vocab_size, self.word_emb_dim],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+        self.word_embedding = paddle.nn.Embedding(
+            self.vocab_size,
+            self.word_emb_dim,
+            weight_attr=fluid.ParamAttr(
                 learning_rate=self.emb_lr,
                 name="word_emb",
-                initializer=fluid.initializer.Uniform(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-self.init_bound, high=self.init_bound
                 ),
             ),
@@ -423,11 +411,11 @@ class LexNet(fluid.dygraph.Layer):
                     )
                 )
 
-        self.fc = Linear(
-            input_dim=self.grnn_hidden_dim * 2,
-            output_dim=self.num_labels,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
+        self.fc = paddle.nn.Linear(
+            in_features=self.grnn_hidden_dim * 2,
+            out_features=self.num_labels,
+            weight_attr=fluid.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-self.init_bound, high=self.init_bound
                 ),
                 regularizer=fluid.regularizer.L2DecayRegularizer(
@@ -450,7 +438,7 @@ class LexNet(fluid.dygraph.Layer):
         # share weight
         self.crf_decoding.weight = self.linear_chain_crf.weight
 
-    @declarative(input_spec=input_specs)
+    @to_static(input_spec=input_specs)
     def forward(self, word, target, length=None):
         """
         Configure the network
@@ -552,7 +540,7 @@ class TestLACModel(unittest.TestCase):
         self.dy_param_path = os.path.join(self.temp_dir.name, 'lac_dy_param')
 
     def train(self, args, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()
@@ -625,15 +613,15 @@ class TestLACModel(unittest.TestCase):
                     step += 1
             # save inference model
             if to_static:
-                fluid.dygraph.jit.save(
+                paddle.jit.save(
                     layer=model,
                     path=self.model_save_prefix,
                     input_spec=[input_specs[0], input_specs[-1]],
                     output_spec=[crf_decode],
                 )
             else:
-                fluid.dygraph.save_dygraph(
-                    model.state_dict(), self.dy_param_path
+                paddle.save(
+                    model.state_dict(), self.dy_param_path + '.pdparams'
                 )
 
             return np.array(loss_data)
@@ -666,11 +654,11 @@ class TestLACModel(unittest.TestCase):
 
     def predict_dygraph(self, batch):
         words, targets, length = batch
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(self.place):
             model = LexNet(self.args)
             # load dygraph trained parameters
-            model_dict, _ = fluid.load_dygraph(self.dy_param_path + ".pdparams")
+            model_dict = paddle.load(self.dy_param_path + ".pdparams")
             model.set_dict(model_dict)
             model.eval()
 
@@ -710,7 +698,7 @@ class TestLACModel(unittest.TestCase):
     def predict_dygraph_jit(self, batch):
         words, targets, length = batch
         with fluid.dygraph.guard(self.place):
-            model = fluid.dygraph.jit.load(self.model_save_prefix)
+            model = paddle.jit.load(self.model_save_prefix)
             model.eval()
 
             pred_res = model(to_variable(words), to_variable(length))
@@ -719,5 +707,4 @@ class TestLACModel(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

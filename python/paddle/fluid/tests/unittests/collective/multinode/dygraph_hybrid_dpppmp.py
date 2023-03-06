@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import numpy as np
-import paddle
-import paddle.distributed.fleet as fleet
 from test_collective_multi_nodes import (
     TestCollectiveAPIRunnerBase,
     runtime_main,
 )
+
+import paddle
+import paddle.distributed.fleet as fleet
 from paddle import nn
-import numpy as np
 
 
 def weight_init(mp, shape, col=True, seed=1024):
@@ -35,7 +35,7 @@ def weight_init(mp, shape, col=True, seed=1024):
         else:
             step = shape[0] // mp.nranks
             _w = w[mp.rank * step : mp.rank * step + step, :]
-    return paddle.fluid.initializer.NumpyArrayInitializer(_w)
+    return paddle.nn.initializer.Assign(_w)
 
 
 class Criterion(nn.Layer):
@@ -148,6 +148,7 @@ class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
     def check_pass(self, *args, **kwargs):
 
         from common import init_parallel_env
+
         import paddle
         from paddle.distributed import fleet
 

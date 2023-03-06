@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/lstm_compute.h"
 
@@ -202,15 +202,12 @@ __global__ void KeLstmBackward(Op op,
   if (is_batch) {
     if (value.prev_state_value) {
       if (grad.check_ig_grad)
-        paddle::platform::CudaAtomicAdd(grad.check_ig_grad + frame_idx,
-                                        r_checkIGrad);
+        phi::CudaAtomicAdd(grad.check_ig_grad + frame_idx, r_checkIGrad);
       if (grad.check_fg_grad)
-        paddle::platform::CudaAtomicAdd(grad.check_fg_grad + frame_idx,
-                                        r_checkFGrad);
+        phi::CudaAtomicAdd(grad.check_fg_grad + frame_idx, r_checkFGrad);
     }
     if (grad.check_og_grad)
-      paddle::platform::CudaAtomicAdd(grad.check_og_grad + frame_idx,
-                                      r_checkOGrad);
+      phi::CudaAtomicAdd(grad.check_og_grad + frame_idx, r_checkOGrad);
   } else {
     if (value.prev_state_value) {
       if (grad.check_ig_grad) grad.check_ig_grad[frame_idx] += r_checkIGrad;
@@ -221,7 +218,7 @@ __global__ void KeLstmBackward(Op op,
 }
 
 template <class T, class Op>
-void gpu_lstm_forward(const paddle::platform::DeviceContext& context,
+void gpu_lstm_forward(const phi::DeviceContext& context,
                       Op op,
                       phi::funcs::LstmMetaValue<T> value,
                       int frame_size,
@@ -272,7 +269,7 @@ void gpu_lstm_forward(const paddle::platform::DeviceContext& context,
 }
 
 template <class T, class Op>
-void gpu_lstm_backward(const paddle::platform::DeviceContext& context,
+void gpu_lstm_backward(const phi::DeviceContext& context,
                        Op op,
                        phi::funcs::LstmMetaValue<T> value,
                        phi::funcs::LstmMetaGrad<T> grad,

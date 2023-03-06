@@ -70,7 +70,7 @@ class TestAssignValueNPUOp3(TestAssignValueNPUOp):
 class TestAssignValueNPUOp4(TestAssignValueNPUOp):
     def init_data(self):
         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-            np.bool
+            np.bool_
         )
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
@@ -93,8 +93,8 @@ class TestAssignApi(unittest.TestCase):
     def test_assign(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            x = layers.create_tensor(dtype=self.dtype)
-            layers.assign(input=self.value, output=x)
+            x = paddle.tensor.create_tensor(dtype=self.dtype)
+            paddle.assign(self.value, output=x)
 
         exe = fluid.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
@@ -116,7 +116,7 @@ class TestAssignApi4(TestAssignApi):
     def setUp(self):
         self.init_dtype()
         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-            np.bool
+            np.bool_
         )
         self.place = (
             fluid.NPUPlace(0)

@@ -411,6 +411,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
   std::string input_name = "";
   if (quantized_op_type == "conv2d" ||
       quantized_op_type == "depthwise_conv2d" ||
+      quantized_op_type == "fused_conv2d" ||
       quantized_op_type == "conv2d_fusion" ||
       quantized_op_type == "conv2d_transpose") {
     weight_name = "Filter";
@@ -424,9 +425,10 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
     input_name = "Input";
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "QuantDequantFuse: We only support conv2d, conv2d_fusion, "
-        "conv2d_transpose, fc, mul, matmul, matmul_v2 for "
-        "now."));
+        "QuantDequantFuse: We only support conv2d, conv2d_fusion, fused_conv2d,"
+        "conv2d_transpose, fc, mul, matmul, matmul_v2 for now, but received: "
+        "%s.",
+        quantized_op_type));
   }
   const std::string pattern_name = "dequant_fuse";
   GraphPatternDetector gpd;
@@ -559,6 +561,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
           }
         }
       } else if (quantized_op_type == "conv2d" ||
+                 quantized_op_type == "fusd_conv2d" ||
                  quantized_op_type == "depthwise_conv2d") {
         PADDLE_ENFORCE_EQ(
             dequant_type,
@@ -642,6 +645,7 @@ void QuantDequantFusePass::FuseDequant(ir::Graph* graph,
     new_op_desc.SetType(quantized_op_type);
     new_op_desc.SetAttr("enable_int8", true);
     if (quantized_op_type == "conv2d" || quantized_op_type == "conv2d_fusion" ||
+        quantized_op_type == "fused_conv2d" ||
         quantized_op_type == "depthwise_conv2d" ||
         quantized_op_type == "conv2d_transpose") {
       new_op_desc.SetInput("Input", {new_input});
@@ -677,6 +681,7 @@ void QuantDequantFusePass::ApplyImpl(ir::Graph* graph) const {
       "fake_quantize_range_abs_max", "fake_quantize_moving_average_abs_max"};
   std::unordered_set<std::string> quantized_op_types = {
       "conv2d",
+      "fused_conv2d",
       "mul",
       "matmul",
       "depthwise_conv2d",

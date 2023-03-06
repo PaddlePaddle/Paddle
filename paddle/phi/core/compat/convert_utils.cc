@@ -46,7 +46,8 @@ Backend TransToPhiBackend(const phi::Place& place) {
     case AllocationType::CUSTOM:
       return static_cast<Backend>(
           static_cast<size_t>(Backend::NUM_BACKENDS) +
-          GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
+          phi::CustomRegisteredDeviceMap::Instance()
+              .GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
     default:
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Unsupported transform %s to phi Backend.", place));
@@ -91,7 +92,9 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
-      std::string device_type = phi::GetGlobalDeviceType(device_type_id_);
+      std::string device_type =
+          phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
+              device_type_id_);
       if (!device_type.empty()) {
         return phi::CustomPlace(
             device_type,
@@ -110,14 +113,11 @@ const std::string& TransToPhiKernelName(const std::string& fluid_op_name) {
 }
 
 const std::string& TransToFluidOpName(const std::string& phi_kernel_name) {
-  auto& base_kernel_name_map = OpUtilsMap::Instance().base_kernel_name_map();
-  auto it = std::find_if(base_kernel_name_map.begin(),
-                         base_kernel_name_map.end(),
-                         [&phi_kernel_name](const auto& pair) {
-                           return pair.second == phi_kernel_name;
-                         });
-  if (it != base_kernel_name_map.end()) {
-    return it->first;
+  const auto& phi_kernel_to_fluid_op =
+      OpUtilsMap::Instance().phi_kernel_to_fluid_op();
+  auto it = phi_kernel_to_fluid_op.find(phi_kernel_name);
+  if (it != phi_kernel_to_fluid_op.end()) {
+    return it->second;
   }
   return phi_kernel_name;
 }

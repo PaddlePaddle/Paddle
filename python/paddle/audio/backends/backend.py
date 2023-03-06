@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import paddle
-
 from pathlib import Path
 from typing import Optional, Tuple, Union
+
+import paddle
 
 
 class AudioInfo:
@@ -89,7 +89,7 @@ def load(
     Return:
         Tuple[paddle.Tensor, int]: (audio_content, sample rate)
 
-    Exampels:
+    Examples:
         .. code-block:: python
 
             import os
@@ -126,7 +126,7 @@ def save(
         filepath: saved path
         src: the audio tensor
         sample_rate: the number of samples of audio per second.
-        channels_first: src channel infomation
+        channels_first: src channel information
             if True, means input tensor is (channels, time)
             if False, means input tensor is (time, channels)
         encoding:encoding format, wave_backend only support PCM16 now.

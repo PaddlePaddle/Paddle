@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import random
 import unittest
+
 import numpy as np
 
 import paddle
 from paddle.distributed.fleet.utils import recompute
-import random
 from paddle.incubate.distributed.fleet import recompute_sequential
 
 
@@ -271,7 +272,7 @@ class TestPyLayer(unittest.TestCase):
     def test_recompute_kwargs(self):
         paddle.set_device("gpu")
         kwargs = {"is_test": False}
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             loss_ref, param_ref, grad_ref = run_model(
                 recompute_block=[2], recompute_kwargs=kwargs
             )

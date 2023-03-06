@@ -14,8 +14,9 @@
 
 import unittest
 
-import paddle
 import numpy as np
+
+import paddle
 import paddle.distributed as dist
 import paddle.fluid as fluid
 from paddle.nn import Linear

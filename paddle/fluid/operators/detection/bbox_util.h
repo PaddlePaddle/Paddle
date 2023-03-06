@@ -153,7 +153,7 @@ static void AppendProposals(phi::DenseTensor* dst,
                             const phi::DenseTensor& src) {
   auto* out_data = dst->data();
   auto* to_add_data = src.data();
-  size_t size_of_t = framework::DataTypeSize(src.dtype());
+  size_t size_of_t = phi::SizeOf(src.dtype());
   offset *= size_of_t;
   std::memcpy(
       reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(out_data) + offset),

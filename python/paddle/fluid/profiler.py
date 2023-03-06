@@ -88,7 +88,7 @@ def npu_profiler(output_file, config=None):
             epoc = 8
             dshape = [4, 3, 28, 28]
             data = fluid.data(name='data', shape=[None, 3, 28, 28], dtype='float32')
-            conv = fluid.layers.conv2d(data, 20, 3, stride=[1, 1], padding=[1, 1])
+            conv = paddle.static.nn.conv2d(data, 20, 3, stride=[1, 1], padding=[1, 1])
 
             place = fluid.NPUPlace(0)
             exe = fluid.Executor(place)
@@ -338,7 +338,7 @@ def profiler(
             epoc = 8
             dshape = [4, 3, 28, 28]
             data = fluid.data(name='data', shape=[None, 3, 28, 28], dtype='float32')
-            conv = fluid.layers.conv2d(data, 20, 3, stride=[1, 1], padding=[1, 1])
+            conv = paddle.static.nn.conv2d(data, 20, 3, stride=[1, 1], padding=[1, 1])
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)

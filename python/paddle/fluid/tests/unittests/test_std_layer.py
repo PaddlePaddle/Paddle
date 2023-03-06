@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 
 
@@ -115,6 +117,31 @@ class TestStdError(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [2, 3, 4], 'int32')
             self.assertRaises(TypeError, paddle.std, x)
+
+
+class Testfp16Std(unittest.TestCase):
+    def test_fp16_with_gpu(self):
+        paddle.enable_static()
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([12, 14]).astype("float16")
+                x = paddle.static.data(
+                    name="x", shape=[12, 14], dtype="float16"
+                )
+
+                y = paddle.std(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
 
 
 if __name__ == '__main__':

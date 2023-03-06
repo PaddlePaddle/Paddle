@@ -47,7 +47,6 @@ struct ScalarMul {
 };
 
 using framework::LoD;
-using LoDTensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class LinearChainCRFOpKernel : public framework::OpKernel<T> {
@@ -114,7 +113,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       phi::funcs::set_constant(ctx.device_context(), emission_exps, 0.0);
       phi::funcs::set_constant(ctx.device_context(), alpha, 0.0);
     } else {
-      in_lod = ctx.Input<LoDTensor>("Label")->lod();
+      in_lod = ctx.Input<phi::DenseTensor>("Label")->lod();
       PADDLE_ENFORCE_NE(in_lod.size(),
                         0,
                         platform::errors::InvalidArgument(
@@ -286,7 +285,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       emission_exps_tmp.Resize(
           {emission_dims[0] * emission_dims[1], emission_dims[2]});
     } else {
-      in_lod = ctx.Input<LoDTensor>("Label")->lod();
+      in_lod = ctx.Input<phi::DenseTensor>("Label")->lod();
       PADDLE_ENFORCE_NE(in_lod.size(),
                         0,
                         platform::errors::InvalidArgument(

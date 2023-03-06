@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import op_test
 import unittest
+
 import numpy
 import numpy as np
+import op_test
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -39,15 +41,10 @@ def create_test_class(op_type, typename, callback):
         def test_errors(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
-                x = fluid.layers.data(name='x', shape=[2], dtype='int32')
-                y = fluid.layers.data(name='y', shape=[2], dtype='int32')
-                a = fluid.layers.data(name='a', shape=[2], dtype='int16')
-                if self.op_type == "less_than":
-                    self.assertRaises(
-                        TypeError, fluid.layers.less_than, x=x, y=y, force_cpu=1
-                    )
-                op = eval("fluid.layers.%s" % self.op_type)
-                self.assertRaises(TypeError, op, x=x, y=y, cond=1)
+                x = paddle.static.data(name='x', shape=[-1, 2], dtype='int32')
+                y = paddle.static.data(name='y', shape=[-1, 2], dtype='int32')
+                a = paddle.static.data(name='a', shape=[-1, 2], dtype='int16')
+                op = eval("paddle.%s" % self.op_type)
                 self.assertRaises(TypeError, op, x=x, y=a)
                 self.assertRaises(TypeError, op, x=a, y=y)
 
@@ -418,8 +415,8 @@ def create_paddle_case(op_type, callback):
         def test_attr_name(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
-                x = fluid.layers.data(name='x', shape=[4], dtype='int32')
-                y = fluid.layers.data(name='y', shape=[4], dtype='int32')
+                x = paddle.static.data(name='x', shape=[-1, 4], dtype='int32')
+                y = paddle.static.data(name='y', shape=[-1, 4], dtype='int32')
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x=x, y=y, name="name_%s" % (self.op_type))
             self.assertEqual("name_%s" % (self.op_type) in out.name, True)
@@ -442,19 +439,19 @@ class TestCompareOpError(unittest.TestCase):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input x and y of compare_op must be Variable.
-            x = fluid.layers.data(name='x', shape=[1], dtype="float32")
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype="float32")
             y = fluid.create_lod_tensor(
                 numpy.array([[-1]]), [[1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.greater_equal, x, y)
+            self.assertRaises(TypeError, paddle.greater_equal, x, y)
 
 
 class API_TestElementwise_Equal(unittest.TestCase):
     def test_api(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
-            limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
+            label = paddle.assign(np.array([3, 3], dtype="int32"))
+            limit = paddle.assign(np.array([3, 2], dtype="int32"))
             out = paddle.equal(x=label, y=limit)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -462,13 +459,41 @@ class API_TestElementwise_Equal(unittest.TestCase):
         self.assertEqual((res == np.array([True, False])).all(), True)
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
-            limit = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+            label = paddle.assign(np.array([3, 3], dtype="int32"))
+            limit = paddle.assign(np.array([3, 3], dtype="int32"))
             out = paddle.equal(x=label, y=limit)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([True, True])).all(), True)
+
+    def test_api_fp16(self):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            label = paddle.to_tensor([3, 3], dtype="float16")
+            limit = paddle.to_tensor([3, 2], dtype="float16")
+            out = paddle.equal(x=label, y=limit)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = fluid.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
+                self.assertEqual((res == np.array([True, False])).all(), True)
+
+
+class API_TestElementwise_Greater_Than(unittest.TestCase):
+    def test_api_fp16(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            label = paddle.to_tensor([3, 3], dtype="float16")
+            limit = paddle.to_tensor([3, 2], dtype="float16")
+            out = paddle.greater_than(x=label, y=limit)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
+                self.assertEqual((res == np.array([False, True])).all(), True)
 
 
 class TestCompareOpPlace(unittest.TestCase):
@@ -477,9 +502,9 @@ class TestCompareOpPlace(unittest.TestCase):
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
-        label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
-        limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
-        out = fluid.layers.less_than(label, limit, force_cpu=True)
+        label = paddle.assign(np.array([3, 3], dtype="int32"))
+        limit = paddle.assign(np.array([3, 2], dtype="int32"))
+        out = paddle.less_than(label, limit)
         exe = fluid.Executor(place)
         (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([False, False])).all(), True)

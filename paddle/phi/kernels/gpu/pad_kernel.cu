@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/pad_kernel.h"
 
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/pad_kernel_impl.h"
 

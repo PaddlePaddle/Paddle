@@ -13,11 +13,11 @@
 # limitations under the License.
 import collections
 import os
-from typing import List
-from typing import Tuple
+from typing import List, Tuple
 
-from paddle.utils import download
 from paddle.dataset.common import DATA_HOME
+from paddle.utils import download
+
 from .dataset import AudioClassificationDataset
 
 __all__ = []
@@ -37,7 +37,7 @@ class ESC50(AudioClassificationDataset):
     Args:
        mode (str, optional): It identifies the dataset mode (train or dev). Default:train.
        split (int, optional): It specify the fold of dev dataset. Default:1.
-       feat_type (str, optional): It identifies the feature type that user wants to extrace of an audio file. Default:raw.
+       feat_type (str, optional): It identifies the feature type that user wants to extract of an audio file. Default:raw.
        archive(dict, optional): it tells where to download the audio archive. Default:None.
 
     Returns:

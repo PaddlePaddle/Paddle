@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import copy
+import unittest
 
 import paddle
 from paddle.distributed.fleet import auto
@@ -58,15 +58,15 @@ def make_program():
         )
         where_1 = paddle.where(y > 1, y, out1)
 
-        paddle.fluid.layers.assign(where_1, where_0)
+        paddle.assign(where_1, where_0)
 
     return main_program, start_program
 
 
 def parallelizer(program_func, rank):
     from paddle.distributed.auto_parallel.completion import Completer
-    from paddle.distributed.auto_parallel.partitioner import Partitioner
     from paddle.distributed.auto_parallel.dist_context import DistributedContext
+    from paddle.distributed.auto_parallel.partitioner import Partitioner
 
     main_program, start_program = program_func()
 

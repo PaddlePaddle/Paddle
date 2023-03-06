@@ -14,13 +14,14 @@
 
 import math
 import random
-import numpy as np
-import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph import declarative
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.jit.api import to_static
+from paddle.nn import Embedding
 
 
 def fake_text():
@@ -225,11 +226,11 @@ class SkipGram(fluid.dygraph.Layer):
         self.embedding_size = embedding_size
 
         self.embedding = Embedding(
-            size=[self.vocab_size, self.embedding_size],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+            self.vocab_size,
+            self.embedding_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
                     high=0.5 / self.embedding_size,
                 ),
@@ -237,33 +238,33 @@ class SkipGram(fluid.dygraph.Layer):
         )
 
         self.embedding_out = Embedding(
-            size=[self.vocab_size, self.embedding_size],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+            self.vocab_size,
+            self.embedding_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_out_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
                     high=0.5 / self.embedding_size,
                 ),
             ),
         )
 
-    @declarative
+    @to_static
     def forward(self, center_words, target_words, label):
         center_words_emb = self.embedding(center_words)
         target_words_emb = self.embedding_out(target_words)
 
         # center_words_emb = [batch_size, embedding_size]
         # target_words_emb = [batch_size, embedding_size]
-        word_sim = fluid.layers.elementwise_mul(
-            center_words_emb, target_words_emb
+        word_sim = paddle.multiply(center_words_emb, target_words_emb)
+        word_sim = paddle.sum(word_sim, axis=-1)
+
+        pred = paddle.nn.functional.sigmoid(word_sim)
+
+        loss = paddle.nn.functional.binary_cross_entropy_with_logits(
+            word_sim, label
         )
-        word_sim = fluid.layers.reduce_sum(word_sim, dim=-1)
-
-        pred = fluid.layers.sigmoid(word_sim)
-
-        loss = fluid.layers.sigmoid_cross_entropy_with_logits(word_sim, label)
-        loss = fluid.layers.reduce_mean(loss)
+        loss = paddle.mean(loss)
 
         return pred, loss
 
@@ -276,8 +277,7 @@ total_steps = len(dataset) * epoch_num // batch_size
 
 
 def train(to_static):
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     random.seed(0)
     np.random.seed(0)
@@ -330,5 +330,4 @@ class TestWord2Vec(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

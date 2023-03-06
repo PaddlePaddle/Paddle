@@ -13,13 +13,12 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 static int get_seed(const framework::ExecutionContext& context) {
   int user_seed = context.Attr<int>("seed");
@@ -37,7 +36,7 @@ static int get_seed(const framework::ExecutionContext& context) {
     }
   } else {
     std::string name = context.Attr<std::string>("rng_name");
-    auto rng = framework::GetRandomSeedGenerator(name);
+    auto rng = phi::GetRandomSeedGenerator(name);
     do {  // NOTE(wangxi): cpu dropout will use random seed if seed == 0
       seed = static_cast<int>(rng->Random64());
     } while (seed == 0);

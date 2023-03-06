@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
+from op_test_ipu import IPUOpTest
+
 import paddle
 import paddle.static
-from op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):

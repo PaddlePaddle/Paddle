@@ -580,44 +580,43 @@ class TestStridedSliceAPI(unittest.TestCase):
         input = np.random.random([3, 4, 5, 6]).astype("float64")
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
         minus_3 = fluid.layers.fill_constant([1], "int32", -3)
-        starts = fluid.layers.data(
-            name='starts', shape=[3], dtype='int32', append_batch_size=False
+        starts = paddle.static.data(
+            name='starts', shape=[3], dtype='int32'
         )
-        ends = fluid.layers.data(
-            name='ends', shape=[3], dtype='int32', append_batch_size=False
+        ends = paddle.static.data(
+            name='ends', shape=[3], dtype='int32'
         )
-        strides = fluid.layers.data(
-            name='strides', shape=[3], dtype='int32', append_batch_size=False
+        strides = paddle.static.data(
+            name='strides', shape=[3], dtype='int32'
         )
 
-        x = fluid.layers.data(
+        x = paddle.static.data(
             name="x",
             shape=[3, 4, 5, 6],
-            append_batch_size=False,
             dtype="float64",
         )
-        out_1 = fluid.layers.strided_slice(
+        out_1 = paddle.strided_slice(
             x,
             axes=[0, 1, 2],
             starts=[-3, 0, 2],
             ends=[3, 100, -1],
             strides=[1, 1, 1],
         )
-        out_2 = fluid.layers.strided_slice(
+        out_2 = paddle.strided_slice(
             x,
             axes=[0, 1, 3],
             starts=[minus_3, 0, 2],
             ends=[3, 100, -1],
             strides=[1, 1, 1],
         )
-        out_3 = fluid.layers.strided_slice(
+        out_3 = paddle.strided_slice(
             x,
             axes=[0, 1, 3],
             starts=[minus_3, 0, 2],
             ends=[3, 100, minus_1],
             strides=[1, 1, 1],
         )
-        out_4 = fluid.layers.strided_slice(
+        out_4 = paddle.strided_slice(
             x, axes=[0, 1, 2], starts=starts, ends=ends, strides=strides
         )
 

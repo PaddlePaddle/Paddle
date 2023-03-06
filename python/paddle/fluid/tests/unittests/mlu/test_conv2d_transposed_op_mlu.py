@@ -493,27 +493,27 @@ class TestConv2DTransposeAPI(unittest.TestCase):
         self.place = paddle.device.MLUPlace(0)
 
     def test_case1(self):
-        data1 = fluid.layers.data(
-            name='data1', shape=[3, 5, 5], dtype='float32'
+        data1 = paddle.static.data(
+            name='data1', shape=[-1, 3, 5, 5], dtype='float32'
         )
-        data2 = fluid.layers.data(
-            name='data2', shape=[5, 5, 3], dtype='float32'
+        data2 = paddle.static.data(
+            name='data2', shape=[-1, 5, 5, 3], dtype='float32'
         )
-        out1 = fluid.layers.conv2d_transpose(
+        out1 = paddle.static.nn.conv2d_transpose(
             input=data1,
             groups=1,
             num_filters=6,
             filter_size=3,
             data_format='NCHW',
         )
-        out2 = fluid.layers.conv2d_transpose(
+        out2 = paddle.static.nn.conv2d_transpose(
             input=data2,
             groups=1,
             num_filters=6,
             filter_size=3,
             data_format='NHWC',
         )
-        out3 = fluid.layers.conv2d_transpose(
+        out3 = paddle.static.nn.conv2d_transpose(
             input=data1,
             groups=1,
             num_filters=6,
@@ -521,7 +521,7 @@ class TestConv2DTransposeAPI(unittest.TestCase):
             padding=[[0, 0], [1, 1], [1, 1], [0, 0]],
             data_format='NHWC',
         )
-        out4 = fluid.layers.conv2d_transpose(
+        out4 = paddle.static.nn.conv2d_transpose(
             input=data1,
             groups=3,
             num_filters=6,
@@ -529,7 +529,7 @@ class TestConv2DTransposeAPI(unittest.TestCase):
             padding=[[0, 0], [0, 0], [2, 1], [0, 0]],
             data_format='NCHW',
         )
-        out5 = fluid.layers.conv2d_transpose(
+        out5 = paddle.static.nn.conv2d_transpose(
             input=data2,
             groups=1,
             num_filters=6,
@@ -537,7 +537,7 @@ class TestConv2DTransposeAPI(unittest.TestCase):
             padding='SAME',
             data_format='NCHW',
         )
-        out6 = fluid.layers.conv2d_transpose(
+        out6 = paddle.static.nn.conv2d_transpose(
             input=data1,
             groups=1,
             num_filters=6,
@@ -545,7 +545,7 @@ class TestConv2DTransposeAPI(unittest.TestCase):
             padding='VALID',
             data_format='NHWC',
         )
-        out7 = fluid.layers.conv2d_transpose(
+        out7 = paddle.static.nn.conv2d_transpose(
             input=data1,
             groups=1,
             num_filters=6,
@@ -583,10 +583,10 @@ class TestConv2DTransposeOpException(unittest.TestCase):
         self.place = paddle.device.MLUPlace(0)
 
     def test_exception(self):
-        data = fluid.layers.data(name='data', shape=[3, 5, 5], dtype="float32")
+        data = paddle.static.data(name='data', shape=[-1, 3, 5, 5], dtype="float32")
 
         def attr_data_format():
-            out = fluid.layers.conv2d_transpose(
+            out = paddle.static.nn.conv2d_transpose(
                 input=data,
                 groups=1,
                 num_filters=6,
@@ -597,7 +597,7 @@ class TestConv2DTransposeOpException(unittest.TestCase):
         self.assertRaises(ValueError, attr_data_format)
 
         def attr_padding_str():
-            out = fluid.layers.conv2d_transpose(
+            out = paddle.static.nn.conv2d_transpose(
                 input=data,
                 groups=1,
                 num_filters=6,
@@ -608,7 +608,7 @@ class TestConv2DTransposeOpException(unittest.TestCase):
         self.assertRaises(ValueError, attr_padding_str)
 
         def attr_padding_list():
-            out = fluid.layers.conv2d_transpose(
+            out = paddle.static.nn.conv2d_transpose(
                 input=data,
                 groups=1,
                 num_filters=6,
@@ -619,7 +619,7 @@ class TestConv2DTransposeOpException(unittest.TestCase):
         self.assertRaises(ValueError, attr_padding_list)
 
         def attr_padding_with_data_format():
-            out = fluid.layers.conv2d_transpose(
+            out = paddle.static.nn.conv2d_transpose(
                 input=data,
                 groups=1,
                 num_filters=6,
@@ -630,19 +630,19 @@ class TestConv2DTransposeOpException(unittest.TestCase):
 
         self.assertRaises(ValueError, attr_padding_with_data_format)
 
-        error_input = fluid.layers.data(
-            name='error_data', shape=[1], dtype="float32"
+        error_input = paddle.static.data(
+            name='error_data', shape=[-1, 1], dtype="float32"
         )
 
         def error_input_size():
-            out = fluid.layers.conv2d_transpose(
+            out = paddle.static.nn.conv2d_transpose(
                 input=error_input, groups=1, num_filters=6, filter_size=3
             )
 
         self.assertRaises(ValueError, error_input_size)
 
         def error_groups():
-            out = fluid.layers.conv2d_transpose(
+            out = paddle.static.nn.conv2d_transpose(
                 input=data,
                 groups=0,
                 num_filters=6,

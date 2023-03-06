@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
 
 os.environ[str("FLAGS_check_nan_inf")] = str("1")
 os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 
-import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -45,27 +46,27 @@ def generator():
 
 
 def net():
-    x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-    y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+    x = paddle.static.data(name="x", shape=[-1, 3], dtype='float32')
+    y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
     # test int64 value
     zero = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
 
     # test float16 value
-    fp16_zero = fluid.layers.cast(zero, dtype='float16')
+    fp16_zero = paddle.cast(zero, dtype='float16')
 
     y = y + zero
 
     hidden = x
 
     for i in range(2):
-        hidden = fluid.layers.fc(input=hidden, size=400, act="sigmoid")
+        hidden = paddle.static.nn.fc(x=hidden, size=400, activation="sigmoid")
 
-    hidden = fluid.layers.fc(input=hidden, size=3, act=None)
-    cost, y_predict = fluid.layers.softmax_with_cross_entropy(
+    hidden = paddle.static.nn.fc(x=hidden, size=3)
+    cost, y_predict = paddle.nn.functional.softmax_with_cross_entropy(
         hidden, y, return_softmax=True
     )
-    acc_top1 = fluid.layers.accuracy(input=y_predict, label=y, k=1)
+    acc_top1 = paddle.static.accuracy(input=y_predict, label=y, k=1)
     avg_cost = paddle.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.05)

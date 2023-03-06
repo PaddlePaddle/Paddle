@@ -12,15 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .common import DistributedOperatorImplContainer
-from .common import DistributedOperatorImpl
-from .common import register_distributed_operator_impl_container
-from .common import register_distributed_operator_impl
-from ..utils import is_dim_shard, is_dim_replicate
-from ..utils import compute_compatible_and_update_dim_mapping
-from .dist_default import DistributedDefaultImpl0
-from ..utils import _get_comm_group, _get_corresponding_rank
 from ..process_group import new_process_group
+from ..utils import (
+    _get_comm_group,
+    _get_corresponding_rank,
+    compute_compatible_and_update_dim_mapping,
+    is_dim_replicate,
+    is_dim_shard,
+)
+from .common import (
+    DistributedOperatorImpl,
+    DistributedOperatorImplContainer,
+    register_distributed_operator_impl,
+    register_distributed_operator_impl_container,
+)
+from .dist_default import DistributedDefaultImpl0
 
 
 class DistributedFusedFeedForward(DistributedOperatorImplContainer):
@@ -129,6 +135,12 @@ class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
                 )
                 if dim_changed:
                     changed = True
+                    op_dist_attr.set_output_dims_mapping(
+                        out_name, out_dims_mapping
+                    )
+
+        if changed:
+            op_dist_attr.set_input_dims_mapping(x_name, x_dims_mapping)
 
         return changed
 
@@ -142,7 +154,7 @@ class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
         rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
 
-        if rank_id not in op_dist_attr.process_mesh.processes:
+        if rank_id not in op_dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, op_dist_attr.process_mesh, rank_id
             )
@@ -157,8 +169,8 @@ class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
         ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             linear1_weight_col_dim_mapping
         )
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
 
         parallel_axis = linear1_weight_col_dim_mapping
         group_ranks = _get_comm_group(
@@ -184,7 +196,7 @@ class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
         rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
 
-        if rank_id not in op_dist_attr.process_mesh.processes:
+        if rank_id not in op_dist_attr.process_mesh.process_ids:
             rank_id = _get_corresponding_rank(
                 ctx, op_dist_attr.process_mesh, rank_id
             )
@@ -199,8 +211,8 @@ class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
         ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             linear2_weight_col_dim_mapping
         )
-        process_mesh_shape = op_dist_attr.process_mesh.topology
-        process_mesh_group = op_dist_attr.process_mesh.processes
+        process_mesh_shape = op_dist_attr.process_mesh.shape
+        process_mesh_group = op_dist_attr.process_mesh.process_ids
 
         parallel_axis = linear2_weight_col_dim_mapping
         group_ranks = _get_comm_group(

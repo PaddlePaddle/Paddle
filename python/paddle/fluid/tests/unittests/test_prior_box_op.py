@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import math
+import unittest
+
+import numpy as np
 from op_test import OpTest
+
 import paddle
 
 
@@ -34,7 +36,7 @@ def python_prior_box(
     min_max_aspect_ratios_order=False,
     name=None,
 ):
-    return paddle.fluid.layers.detection.prior_box(
+    return paddle.vision.ops.prior_box(
         input,
         image,
         min_sizes=min_sizes,

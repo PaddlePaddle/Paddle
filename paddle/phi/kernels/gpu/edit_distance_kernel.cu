@@ -17,15 +17,15 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void FillFirstRow(T* dist, const int N) {
@@ -87,8 +87,8 @@ void EditDistanceKernel(const Context& ctx,
 
   auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
 
-  paddle::framework::Vector<size_t> hyp_lod(batch_size + 1);
-  paddle::framework::Vector<size_t> ref_lod(batch_size + 1);
+  phi::Vector<size_t> hyp_lod(batch_size + 1);
+  phi::Vector<size_t> ref_lod(batch_size + 1);
 
   bool use_length = hypslength.get_ptr() != nullptr;
 
@@ -136,12 +136,12 @@ void EditDistanceKernel(const Context& ctx,
       if (normalized) {
         distance = distance / n;
       }
-      paddle::memory::Copy(ctx.GetPlace(),
-                           out_data + num,
-                           CPUPlace(),
-                           &distance,
-                           sizeof(T),
-                           stream);
+      memory_utils::Copy(ctx.GetPlace(),
+                         out_data + num,
+                         CPUPlace(),
+                         &distance,
+                         sizeof(T),
+                         stream);
     } else {
       DenseTensor dist_t;
       dist_t.Resize({m + 1, n + 1});

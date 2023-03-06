@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import os
-import unittest
-from multiprocessing import Process, Queue
-import subprocess
 import socket
+import subprocess
+import unittest
 from contextlib import closing
+from multiprocessing import Process, Queue
+
+import numpy as np
 
 import paddle.distributed as dist
-import numpy as np
 
 
 def worker_name(rank):

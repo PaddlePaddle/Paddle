@@ -97,7 +97,7 @@ class TestExpandNet(unittest.TestCase):
                 name="label", shape=[32, 1], dtype='int64'
             )
 
-            res = paddle.fluid.layers.expand(a, [1, 32])
+            res = paddle.expand(a, [-1, 32])
             loss = res.sum()
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)

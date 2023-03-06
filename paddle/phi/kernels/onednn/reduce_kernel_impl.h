@@ -46,6 +46,7 @@ void ReduceKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DenseTensor* out,
                   dnnl::algorithm reduction_type) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto x_tz = vectorize(x.dims());
   auto out_tz =
@@ -116,6 +117,7 @@ void ReduceGradKernel(const Context& dev_ctx,
                       dnnl::algorithm reduction_type,
                       float scale_x,
                       float scale_y) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   const auto& onednn_engine = dev_ctx.GetEngine();
   auto out_grad_tz = CalculateReducedDims(
       x_grad, &out_grad, dims.GetData(), reduce_all, keep_dim);

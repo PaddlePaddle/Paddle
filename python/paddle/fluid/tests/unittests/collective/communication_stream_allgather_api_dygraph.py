@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import os
+
 import numpy as np
+import test_collective_api_base as test_collective_base
+
 import paddle
 import paddle.distributed as dist
-import test_collective_api_base as test_collective_base
 
 
 class StreamAllgatherTestCase:
@@ -57,7 +59,7 @@ class StreamAllgatherTestCase:
         )
         if not self._sync_op:
             task.wait()
-        assert np.allclose(
+        np.testing.assert_allclose(
             empty_tensor_list, test_data_list, rtol=1e-05, atol=1e-05
         )
 
@@ -71,7 +73,7 @@ class StreamAllgatherTestCase:
         )
         if not self._sync_op:
             task.wait()
-        assert np.allclose(
+        np.testing.assert_allclose(
             full_tensor_list, test_data_list, rtol=1e-05, atol=1e-05
         )
 
@@ -88,7 +90,9 @@ class StreamAllgatherTestCase:
         )
         if not self._sync_op:
             task.wait()
-        assert np.allclose(out_tensor, result_tensor, rtol=1e-05, atol=1e-05)
+        np.testing.assert_allclose(
+            out_tensor, result_tensor, rtol=1e-05, atol=1e-05
+        )
 
 
 if __name__ == "__main__":

@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
@@ -50,7 +50,8 @@ class MLUUniformRandomKernel : public framework::OpKernel<T> {
       if (!new_shape.empty()) tensor->Resize(phi::make_ddim(new_shape));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Output(out) in uniform_random_op must be Tensor, "
+          "Expected type of Output(out) in uniform_random_op must be "
+          "phi::DenseTensor, "
           "SelectedRows. But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
@@ -59,7 +60,7 @@ class MLUUniformRandomKernel : public framework::OpKernel<T> {
     tensor->mutable_data<T>(ctx.GetPlace());
     int64_t size = tensor->numel();
 
-    Tensor cpu_tensor(tensor->dtype());
+    phi::DenseTensor cpu_tensor(tensor->dtype());
     cpu_tensor.Resize(tensor->dims());
     T *data_cpu = cpu_tensor.mutable_data<T>(platform::CPUPlace());
 
@@ -67,7 +68,7 @@ class MLUUniformRandomKernel : public framework::OpKernel<T> {
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
+    auto engine = phi::GetCPURandomEngine(seed);
 
     for (int64_t i = 0; i < size; ++i) {
       data_cpu[i] = dist(*engine);

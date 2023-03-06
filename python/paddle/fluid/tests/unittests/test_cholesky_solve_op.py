@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.w
 
+import sys
 import unittest
+
 import numpy as np
 import scipy
 import scipy.linalg
 
-import sys
-
 sys.path.append("..")
+from eager_op_test import OpTest
+
 import paddle
-from op_test import OpTest
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard, core
+from paddle.fluid import Program, core, program_guard
 
 paddle.enable_static()
 
@@ -120,6 +121,7 @@ class TestCholeskySolveOp(OpTest):
 
     def setUp(self):
         self.op_type = "cholesky_solve"
+        self.python_api = paddle.tensor.cholesky_solve
         self.config()
 
         if self.upper:
@@ -191,7 +193,7 @@ class TestCholeskySolveAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], z_np, rtol=1e-05)
 
-    # test in static mode
+    # test in static graph mode
     def test_static(self):
         for place in self.place:
             self.check_static_result(place=place)

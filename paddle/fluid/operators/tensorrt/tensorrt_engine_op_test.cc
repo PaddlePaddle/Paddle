@@ -92,6 +92,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({4, 6}));
   AddTensorToBlockDesc(block_, "y0", std::vector<int64_t>({6, 8}));
   AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 6}));
+  AddTensorToBlockDesc(block_, "z0", std::vector<int64_t>({8, 1, 1}));
 
   // It is wired, need to copy manually.
   *block_->add_ops() = *fc0->Proto();
@@ -104,6 +105,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetType("tensorrt_engine");
   engine_op_desc.SetInput("Xs", std::vector<std::string>({"x"}));
   engine_op_desc.SetOutput("Ys", std::vector<std::string>({"z0"}));
+  engine_op_desc.SetAttr("origin_outputs_dtype", std::vector<int>{5});
 
   engine_op_desc.SetBlockAttr("sub_block", &block_desc);
   engine_op_desc.SetAttr("max_batch_size", static_cast<int>(2));
@@ -119,7 +121,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetAttr("use_calib_mode", static_cast<bool>(false));
   engine_op_desc.SetAttr("output_name_mapping",
                          std::vector<std::string>({"z0"}));
-  engine_op_desc.SetAttr("origin_output_dims", std::vector<int>({2}));
+  engine_op_desc.SetAttr("origin_output_rank", std::vector<int>({2}));
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
   int device_id = 0;
@@ -274,7 +276,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   engine_op_desc.SetAttr("use_calib_mode", static_cast<bool>(false));
   engine_op_desc.SetAttr("output_name_mapping",
                          std::vector<std::string>({"z3"}));
-  engine_op_desc.SetAttr("origin_output_dims", std::vector<int>({2}));
+  engine_op_desc.SetAttr("origin_output_rank", std::vector<int>({2}));
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
   int device_id = 0;

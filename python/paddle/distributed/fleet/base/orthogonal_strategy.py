@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
 import collections
 import functools
+import itertools
+
 import paddle.distributed as dist
 from paddle.distributed.fleet.base.strategy_group import StrategyGroupBase
 

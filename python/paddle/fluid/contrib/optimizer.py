@@ -53,7 +53,7 @@ class Momentum(Optimizer):
         momentum (float): Momentum factor
         parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         use_nesterov (bool, optional): Enables Nesterov momentum, default is false.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
@@ -78,7 +78,6 @@ class Momentum(Optimizer):
             import numpy as np
 
             paddle.enable_static()
-
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
@@ -144,7 +143,7 @@ class Momentum(Optimizer):
 
         var_name = param.name + "_fp32_master"
         var_name = unique_name.generate(var_name)
-        var = layers.create_global_var(
+        var = paddle.static.create_global_var(
             name=var_name,
             shape=param.shape,
             value=0,

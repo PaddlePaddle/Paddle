@@ -67,7 +67,8 @@ class MatMulOpConverter : public OpConverter {
     if (op_desc.HasAttr("support_int8") &&
         PADDLE_GET_CONST(bool, op_desc.GetAttr("support_int8")) &&
         engine_->precision() == AnalysisConfig::Precision::kInt8 &&
-        platform::GetGPUComputeCapability(0) >= 75) {
+        platform::GetGPUComputeCapability(platform::GetCurrentDeviceId()) >=
+            75) {
       if (engine_->with_dynamic_shape()) {
         VLOG(3) << "Convert a fluid matmul_op_int8_dynamic to TensorRT "
                    "MatmulPluginLayer";

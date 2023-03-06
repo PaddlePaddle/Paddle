@@ -28,7 +28,6 @@ from ..multiprocess_utils import (
 from ..framework import _non_static_mode, _in_eager_without_dygraph_check
 from .flat import _flatten_batch
 
-# NOTE: queue has a different name in python2 and python3
 import queue
 
 __all__ = ['get_worker_info']
@@ -276,6 +275,7 @@ def _worker_loop(
     num_workers,
     use_shared_memory,
     base_seed,
+    shm_cahce_size=0,
 ):
     try:
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
@@ -286,6 +286,8 @@ def _worker_loop(
 
         # set signal handler
         core._set_process_signal_handler()
+
+        core._set_max_memory_map_allocation_pool_size(shm_cahce_size)
 
         # set different numpy seed for each worker
         try:
@@ -373,21 +375,19 @@ def _worker_loop(
                     out_queue.put((idx, batch, None))
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:
-                    # NOTE: In eager mode, Tensor._share_memory has no
-                    # effect, fall back to _array_to_share_memory_tensor
-                    def tensor_share_memory(tensor):
-                        if _in_eager_without_dygraph_check():
-                            return core._array_to_share_memory_tensor(tensor)
-                        return tensor._share_memory()
+
+                    def numpy2lodtensor(arr):
+                        lodtensor = core.Tensor()
+                        lodtensor.set(arr, core.CPUPlace())
+                        return lodtensor
 
                     tensor_list = [
-                        core._array_to_share_memory_tensor(b)
+                        numpy2lodtensor(b)
                         if isinstance(b, np.ndarray)
-                        else tensor_share_memory(b)
+                        else b.value().get_tensor()
                         for b in batch
                     ]
                     out_queue.put((idx, tensor_list, structure))
-                    core._remove_tensor_list_mmap_fds(tensor_list)
                 else:
                     out_queue.put((idx, batch, structure))
     except KeyboardInterrupt:

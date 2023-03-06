@@ -59,6 +59,9 @@ enum class Backend : uint8_t {
   // paddle kernel primitives backend
   KPS,
 
+  // custom device reference
+  CUSTOM,
+
   // end of backend types
   NUM_BACKENDS,
 
@@ -134,7 +137,9 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
-      std::string device_type = phi::GetGlobalDeviceType(device_type_id_);
+      std::string device_type =
+          phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
+              device_type_id_);
       if (!device_type.empty()) {
         os << device_type;
       } else {
@@ -178,7 +183,48 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::IPU;
   } else {
     return static_cast<Backend>(static_cast<size_t>(Backend::NUM_BACKENDS) +
-                                phi::GetOrRegisterGlobalDeviceTypeId(s));
+                                phi::CustomRegisteredDeviceMap::Instance()
+                                    .GetOrRegisterGlobalDeviceTypeId(s));
+  }
+}
+
+inline std::string BackendToString(const Backend& backend) {
+  switch (backend) {
+    case Backend::UNDEFINED:
+      return "Undefined(ALL_BACKEND)";
+    case Backend::CPU:
+      return "CPU";
+    case Backend::GPU:
+      return "GPU";
+    case Backend::XPU:
+      return "XPU";
+    case Backend::NPU:
+      return "NPU";
+    case Backend::MLU:
+      return "MLU";
+    case Backend::ONEDNN:
+      return "ONEDNN";
+    case Backend::GPUDNN:
+      return "GPUDNN";
+    case Backend::KPS:
+      return "KPS";
+    case Backend::IPU:
+      return "IPU";
+    case Backend::CUSTOM:
+      return "CUSTOM";
+    default: {
+      size_t device_type_id_ = static_cast<size_t>(backend) -
+                               static_cast<size_t>(Backend::NUM_BACKENDS);
+      std::string device_type =
+          phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
+              device_type_id_);
+      if (!device_type.empty()) {
+        return device_type;
+      } else {
+        PD_THROW(
+            "Invalid enum backend type `", static_cast<int>(backend), "`.");
+      }
+    }
   }
 }
 

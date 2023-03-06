@@ -13,11 +13,11 @@
 # limitations under the License.
 import unittest
 
-import numpy as np
-import paddle
-
 import config
+import numpy as np
 import parameterize as param
+
+import paddle
 
 np.random.seed(2022)
 paddle.enable_static()

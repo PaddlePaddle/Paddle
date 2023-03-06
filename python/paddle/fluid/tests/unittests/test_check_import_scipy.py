@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import builtins
-from paddle.check_import_scipy import check_import_scipy
 import unittest
+
+from paddle.check_import_scipy import check_import_scipy
 
 
 def my_import(name, globals=None, locals=None, fromlist=(), level=0):

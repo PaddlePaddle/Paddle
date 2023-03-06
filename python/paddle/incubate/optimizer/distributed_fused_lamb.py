@@ -13,15 +13,14 @@
 # limitations under the License.
 
 import os
+
 import paddle
-from paddle.fluid import framework, core, layers, unique_name
-from paddle.fluid.framework import Variable
-from paddle.fluid.clip import ClipGradByGlobalNorm
+from paddle.fluid import core, framework, unique_name
+from paddle.fluid.executor import global_scope
+from paddle.fluid.framework import Variable, name_scope
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.optimizer import Optimizer
-from paddle.fluid.executor import global_scope
-from paddle.fluid.framework import name_scope
-from paddle.fluid import core, unique_name
+from paddle.nn import ClipGradByGlobalNorm
 
 
 def init_communicator(block, rank, ranks, ring_id):
@@ -35,17 +34,30 @@ def init_communicator(block, rank, ranks, ring_id):
     comm_id_var = block.create_var(
         name=comm_var_name, persistable=True, type=core.VarDesc.VarType.RAW
     )
-    block.append_op(
-        type='c_gen_nccl_id',
-        inputs={},
-        outputs={'Out': comm_id_var},
-        attrs={
-            'rank': local_rank,
-            'endpoint': cur_ep,
-            'other_endpoints': other_eps,
-            'ring_id': ring_id,
-        },
-    )
+    if core.is_compiled_with_cuda():
+        block.append_op(
+            type='c_gen_nccl_id',
+            inputs={},
+            outputs={'Out': comm_id_var},
+            attrs={
+                'rank': local_rank,
+                'endpoint': cur_ep,
+                'other_endpoints': other_eps,
+                'ring_id': ring_id,
+            },
+        )
+    elif core.is_compiled_with_xpu():
+        block.append_op(
+            type='c_gen_bkcl_id',
+            inputs={},
+            outputs={'Out': comm_id_var},
+            attrs={
+                'rank': local_rank,
+                'endpoint': cur_ep,
+                'other_endpoints': other_eps,
+                'ring_id': ring_id,
+            },
+        )
     block.append_op(
         type='c_comm_init',
         inputs={'X': comm_id_var},
@@ -173,7 +185,7 @@ class DistributedFusedLamb(Optimizer):
 
     def _create_scale_from_constant(self, value):
         name = unique_name.generate('global_scale')
-        return layers.create_global_var(
+        return paddle.static.create_global_var(
             name=name,
             shape=[1],
             dtype='float32',
@@ -467,7 +479,7 @@ class DistributedFusedLamb(Optimizer):
                 'clip_after_allreduce': self._clip_after_allreduce,
                 'rank': rank,
                 'nranks': nranks,
-                'ring_id': ring_ids,
+                'ring_ids': ring_ids,
                 'use_master_param_norm': self._use_master_param_norm,
                 'is_grad_scaled_by_nranks': self._is_grad_scaled_by_nranks,
                 'acc_steps': self._gradient_accumulation_steps,

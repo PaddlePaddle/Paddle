@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #endif
 
 namespace paddle {
@@ -96,7 +96,7 @@ DEVICE void PrRoIPoolingDistributeDiff(T* diff,
                                        const T coeff) {
   bool overflow = (h < 0) || (w < 0) || (h >= height) || (w >= width);
   if (!overflow) {
-    paddle::platform::CudaAtomicAdd(diff + h * width + w, top_diff * coeff);
+    phi::CudaAtomicAdd(diff + h * width + w, top_diff * coeff);
   }
 }
 #else
@@ -166,7 +166,7 @@ HOSTDEVICE void PrRoIPoolingMatDistributeDiff(T* diff,
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
 DEVICE void AccumulateRois(T* offset, T data) {
-  paddle::platform::CudaAtomicAdd(offset, data);
+  phi::CudaAtomicAdd(offset, data);
 }
 #else
 template <typename T>

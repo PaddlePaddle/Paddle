@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig, ProgramConfig
-import numpy as np
-import paddle.inference as paddle_infer
+import unittest
 from functools import partial
 from typing import Any, Dict, List
-import unittest
+
+import numpy as np
+from program_config import ProgramConfig, TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+
+import paddle.inference as paddle_infer
 
 
 class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
@@ -144,11 +146,25 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            return 1, 4
+            if dynamic_shape:
+                return 1, 4
+            else:
+                return 0, 5
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
+
+        # for static_shape, fall back to fluid fused op
+        clear_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False
+        ), 1e-2  # atol=1e-2 while rtol is 1e-8
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False
+        ), 1e-2  # atol=1e-2 while rtol is 1e-8
 
         # just support dynamic_shape
         generate_dynamic_shape(attrs)

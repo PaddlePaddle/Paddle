@@ -18,10 +18,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/macros.h"  // import FLT_MAX
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/core/macros.h"  // import FLT_MAX
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -371,6 +371,13 @@ inline int PoolOutputSize(int input_size,
                           int padding_2,
                           int stride,
                           bool ceil_mode) {
+  PADDLE_ENFORCE_NE(
+      stride,
+      0,
+      phi::errors::InvalidArgument(
+          "The stride of PoolOutputSize shall not be 0, but received %d.",
+          stride));
+
   int output_size;
   if (!ceil_mode) {
     output_size =
@@ -402,6 +409,11 @@ inline int MaxPoolOutputSize(int input_size,
                              int filter_size,
                              int padding,
                              int stride) {
+  PADDLE_ENFORCE_NE(
+      stride,
+      0,
+      phi::errors::InvalidArgument(
+          "The stride of MaxPool shall not be 0, but received %d.", stride));
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
   return output_size;
 }

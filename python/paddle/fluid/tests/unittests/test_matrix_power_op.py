@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle
-from op_test import OpTest
 
 paddle.enable_static()
 
@@ -30,6 +32,7 @@ class TestMatrixPowerOp(OpTest):
 
     def setUp(self):
         self.op_type = "matrix_power"
+        self.python_api = paddle.tensor.matrix_power
         self.config()
 
         np.random.seed(123)
@@ -309,6 +312,16 @@ class TestMatrixPowerAPIError(unittest.TestCase):
         # The inner-most 2 dimensions of input should be equal to each other
         input = fluid.data(name="input_3", shape=[4, 5], dtype="float32")
         self.assertRaises(ValueError, paddle.linalg.matrix_power, input, 2)
+
+        # The size of input should not be 0
+        input = fluid.data(name="input_4", shape=[1, 1, 0, 0], dtype="float32")
+        self.assertRaises(ValueError, paddle.linalg.matrix_power, input, 2)
+
+        # The size of input should not be 0
+        input = fluid.data(name="input_5", shape=[0, 0], dtype="float32")
+        self.assertRaises(
+            ValueError, paddle.linalg.matrix_power, input, -956301312
+        )
 
 
 class TestMatrixPowerSingularAPI(unittest.TestCase):

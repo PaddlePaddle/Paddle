@@ -31,7 +31,7 @@ TEST(Analyzer, analysis_without_tensorrt) {
   Argument argument;
   argument.SetDisableLogs(false);
   argument.SetModelDir(FLAGS_inference_model_dir);
-  argument.SetEnableAnalysisOptim(false);
+  argument.SetEnableIrOptim(false);
   argument.SetUseGPU(false);
   argument.SetAnalysisPasses({"ir_graph_build_pass",
                               "ir_analysis_pass",
@@ -44,7 +44,7 @@ TEST(Analyzer, analysis_without_tensorrt) {
 TEST(Analyzer, analysis_with_tensorrt) {
   Argument argument;
   argument.SetDisableLogs(false);
-  argument.SetEnableAnalysisOptim(false);
+  argument.SetEnableIrOptim(false);
   argument.SetTensorRtMaxBatchSize(3);
   argument.SetTensorRtWorkspaceSize(1 << 20);
   argument.SetModelDir(FLAGS_inference_model_dir);

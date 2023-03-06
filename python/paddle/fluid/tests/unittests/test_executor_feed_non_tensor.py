@@ -15,6 +15,7 @@
 import unittest
 
 import numpy
+
 import paddle
 import paddle.fluid as fluid
 
@@ -24,9 +25,9 @@ class TestExecutor(unittest.TestCase):
         lr = fluid.data(name="lr", shape=[1], dtype='float32')
         x = fluid.data(name="x", shape=[None, 1], dtype='float32')
         y = fluid.data(name="y", shape=[None, 1], dtype='float32')
-        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        y_predict = paddle.static.nn.fc(x, size=1)
 
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
 
         opt = fluid.optimizer.Adam(learning_rate=lr)
@@ -118,9 +119,7 @@ class TestExecutor(unittest.TestCase):
                 cpu = fluid.CPUPlace()
                 exe = fluid.Executor(cpu)
                 exe.run(startup_program)
-                compiled_prog = fluid.CompiledProgram(
-                    main_program
-                ).with_data_parallel(loss_name=cost.name)
+                compiled_prog = fluid.CompiledProgram(main_program)
                 train_data = numpy.array([[1.0], [2.0], [3.0], [4.0]]).astype(
                     'float32'
                 )

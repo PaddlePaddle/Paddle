@@ -12,14 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid.core as core
-from paddle.static import program_guard, Program
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
+import paddle.fluid.core as core
+import paddle.framework.dtype as dtypes
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from paddle.fluid.framework import _test_eager_guard
+from paddle.static import Program, program_guard
+
+
+def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
+    if isinstance(out_dtype, int):
+        tmp_dtype = dtypes.dtype(out_dtype)
+    elif out_dtype == np.complex64:
+        raise ValueError("Not supported dtype %s" % out_dtype)
+    else:
+        tmp_dtype = out_dtype
+    return paddle.full_like(x, value, tmp_dtype, name)
 
 
 class TestFullOp(unittest.TestCase):
@@ -99,8 +111,10 @@ class TestFullLikeOp1(OpTest):
     # test basic
     def setUp(self):
         self.op_type = "fill_any_like"
-        self.python_api = paddle.full_like
+        self.prim_op_type = "comp"
+        self.python_api = fill_any_like_wrapper
         self.init_data()
+        self.skip_cinn()
 
         x = np.zeros(self.shape)
         out = np.full_like(x, self.fill_value, self.dtype)
@@ -118,7 +132,10 @@ class TestFullLikeOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_prim=True)
+
+    def skip_cinn(self):
+        pass
 
 
 class TestFullLikeOp2(TestFullLikeOp1):
@@ -127,12 +144,18 @@ class TestFullLikeOp2(TestFullLikeOp1):
         self.shape = [1024, 1024]
         self.dtype = np.float64
 
+    def skip_cinn(self):
+        self.enable_cinn = True
+
 
 class TestFullLikeOp3(TestFullLikeOp1):
     def init_data(self):
         self.fill_value = 8888
         self.shape = [5000, 5000]
         self.dtype = np.int64
+
+    def skip_cinn(self):
+        self.enable_cinn = True
 
 
 @unittest.skipIf(
@@ -141,14 +164,13 @@ class TestFullLikeOp3(TestFullLikeOp1):
 class TestFullLikeOp4(unittest.TestCase):
     def test_skip_data_transform(self):
         paddle.disable_static()
-        with _test_eager_guard():
-            x = paddle.to_tensor(
-                [1.0, 2.0, 3.0, 4.0], place=paddle.CUDAPinnedPlace()
-            )
-            out = paddle.full_like(x, 1.0)
-            self.assertTrue(
-                (out.numpy() == np.ones([4]).astype(np.float32)).all(), True
-            )
+        x = paddle.to_tensor(
+            [1.0, 2.0, 3.0, 4.0], place=paddle.CUDAPinnedPlace()
+        )
+        out = paddle.full_like(x, 1.0)
+        self.assertTrue(
+            (out.numpy() == np.ones([4]).astype(np.float32)).all(), True
+        )
         paddle.enable_static()
 
 

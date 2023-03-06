@@ -67,7 +67,6 @@ template <typename T>
 class YoloBoxHeadKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    using Tensor = phi::DenseTensor;
     auto* x = context.Input<phi::DenseTensor>("X");
     auto* out = context.Output<phi::DenseTensor>("Out");
     auto anchors = context.Attr<std::vector<int>>("anchors");

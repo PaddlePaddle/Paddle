@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import numpy as np
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
-from paddle.fluid.framework import Variable
+
+from paddle import _C_ops
 from paddle.fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
-from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import Variable, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 from .utils import (
     convert_out_size_to_list,
@@ -118,68 +118,61 @@ def send_u_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if _in_legacy_dygraph():
-        out_size = convert_out_size_to_list(out_size)
-        out, tmp = _legacy_C_ops.graph_send_recv(
-            x,
-            src_index,
-            dst_index,
-            None,
-            'reduce_op',
-            reduce_op.upper(),
-            'out_size',
-            out_size,
-        )
-        return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
         return _C_ops.send_u_recv(
             x, src_index, dst_index, reduce_op.upper(), out_size
         )
-
-    check_variable_and_dtype(
-        x,
-        "X",
-        ("float32", "float64", "int32", "int64", "float16"),
-        "graph_send_recv",
-    )
-    check_variable_and_dtype(
-        src_index, "Src_index", ("int32", "int64"), "graph_send_recv"
-    )
-    check_variable_and_dtype(
-        dst_index, "Dst_index", ("int32", "int64"), "graph_send_recv"
-    )
-    if out_size:
-        check_type(
-            out_size,
-            'out_size',
-            (int, np.int32, np.int64, Variable),
-            'graph_send_recv',
+    else:
+        check_variable_and_dtype(
+            x,
+            "X",
+            ("float32", "float64", "int32", "int64", "float16"),
+            "graph_send_recv",
         )
-    if isinstance(out_size, Variable):
-        check_dtype(
-            out_size.dtype, 'out_size', ['int32', 'int64'], 'graph_send_recv'
+        check_variable_and_dtype(
+            src_index, "Src_index", ("int32", "int64"), "graph_send_recv"
+        )
+        check_variable_and_dtype(
+            dst_index, "Dst_index", ("int32", "int64"), "graph_send_recv"
+        )
+        if out_size:
+            check_type(
+                out_size,
+                'out_size',
+                (int, np.int32, np.int64, Variable),
+                'graph_send_recv',
+            )
+        if isinstance(out_size, Variable):
+            check_dtype(
+                out_size.dtype,
+                'out_size',
+                ['int32', 'int64'],
+                'graph_send_recv',
+            )
+
+        helper = LayerHelper("send_u_recv", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        dst_count = helper.create_variable_for_type_inference(
+            dtype="int32", stop_gradient=True
         )
 
-    helper = LayerHelper("send_u_recv", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    dst_count = helper.create_variable_for_type_inference(
-        dtype="int32", stop_gradient=True
-    )
+        inputs = {"X": x, "Src_index": src_index, "Dst_index": dst_index}
+        attrs = {"reduce_op": reduce_op.upper()}
+        get_out_size_tensor_inputs(
+            inputs=inputs,
+            attrs=attrs,
+            out_size=out_size,
+            op_type='graph_send_recv',
+        )
 
-    inputs = {"X": x, "Src_index": src_index, "Dst_index": dst_index}
-    attrs = {"reduce_op": reduce_op.upper()}
-    get_out_size_tensor_inputs(
-        inputs=inputs, attrs=attrs, out_size=out_size, op_type='graph_send_recv'
-    )
-
-    helper.append_op(
-        type="graph_send_recv",
-        inputs=inputs,
-        outputs={"Out": out, "Dst_count": dst_count},
-        attrs=attrs,
-    )
-    return out
+        helper.append_op(
+            type="graph_send_recv",
+            inputs=inputs,
+            outputs={"Out": out, "Dst_count": dst_count},
+            attrs=attrs,
+        )
+        return out
 
 
 def send_ue_recv(
@@ -236,13 +229,13 @@ def send_ue_recv(
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
         dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`.
                             The available data type is int32, int64.
-        message_op (str): Different message ops for x and e, including `add`, `sub`, `mul`, `div`.
-        reduce_op (str): Different reduce ops, including `sum`, `mean`, `max`, `min`.
+        message_op (str, optional): Different message ops for x and e, including `add`, `sub`, `mul`, `div`.
+        reduce_op (str, optional): Different reduce ops, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
-        out_size (int|Tensor|None): We can set `out_size` to get necessary output shape. If not set or
+        out_size (int|Tensor, optional): We can set `out_size` to get necessary output shape. If not set or
                                     out_size is smaller or equal to 0, then this input will not be used.
                                     Otherwise, `out_size` should be equal with or larger than
-                                    max(dst_index) + 1.
+                                    max(dst_index) + 1. Default value is `None`.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
@@ -302,22 +295,6 @@ def send_ue_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if _in_legacy_dygraph():
-        out_size = convert_out_size_to_list(out_size)
-        out, tmp = _legacy_C_ops.graph_send_ue_recv(
-            x,
-            y,
-            src_index,
-            dst_index,
-            None,
-            'message_op',
-            message_op.upper(),
-            'reduce_op',
-            reduce_op.upper(),
-            'out_size',
-            out_size,
-        )
-        return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
         return _C_ops.send_ue_recv(
@@ -329,59 +306,70 @@ def send_ue_recv(
             reduce_op.upper(),
             out_size,
         )
-
-    check_variable_and_dtype(
-        x,
-        "X",
-        ("float32", "float64", "int32", "int64", "float16"),
-        "graph_send_ue_recv",
-    )
-    check_variable_and_dtype(
-        y,
-        "Y",
-        ("float32", "float64", "int32", "int64", "float16"),
-        "graph_send_ue_recv",
-    )
-    check_variable_and_dtype(
-        src_index, "Src_index", ("int32", "int64"), "graph_send_ue_recv"
-    )
-    check_variable_and_dtype(
-        dst_index, "Dst_index", ("int32", "int64"), "graph_send_ue_recv"
-    )
-    if out_size:
-        check_type(
-            out_size,
-            'out_size',
-            (int, np.int32, np.int64, Variable),
-            'graph_send_ue_recv',
+    else:
+        check_variable_and_dtype(
+            x,
+            "X",
+            ("float32", "float64", "int32", "int64", "float16"),
+            "graph_send_ue_recv",
         )
-    if isinstance(out_size, Variable):
-        check_dtype(
-            out_size.dtype, 'out_size', ['int32', 'int64'], 'graph_send_ue_recv'
+        check_variable_and_dtype(
+            y,
+            "Y",
+            ("float32", "float64", "int32", "int64", "float16"),
+            "graph_send_ue_recv",
+        )
+        check_variable_and_dtype(
+            src_index, "Src_index", ("int32", "int64"), "graph_send_ue_recv"
+        )
+        check_variable_and_dtype(
+            dst_index, "Dst_index", ("int32", "int64"), "graph_send_ue_recv"
+        )
+        if out_size:
+            check_type(
+                out_size,
+                'out_size',
+                (int, np.int32, np.int64, Variable),
+                'graph_send_ue_recv',
+            )
+        if isinstance(out_size, Variable):
+            check_dtype(
+                out_size.dtype,
+                'out_size',
+                ['int32', 'int64'],
+                'graph_send_ue_recv',
+            )
+
+        helper = LayerHelper("send_ue_recv", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        dst_count = helper.create_variable_for_type_inference(
+            dtype="int32", stop_gradient=True
         )
 
-    helper = LayerHelper("send_ue_recv", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    dst_count = helper.create_variable_for_type_inference(
-        dtype="int32", stop_gradient=True
-    )
+        inputs = {
+            "X": x,
+            "Y": y,
+            "Src_index": src_index,
+            "Dst_index": dst_index,
+        }
+        attrs = {
+            "message_op": message_op.upper(),
+            "reduce_op": reduce_op.upper(),
+        }
+        get_out_size_tensor_inputs(
+            inputs=inputs,
+            attrs=attrs,
+            out_size=out_size,
+            op_type='graph_send_ue_recv',
+        )
 
-    inputs = {"X": x, "Y": y, "Src_index": src_index, "Dst_index": dst_index}
-    attrs = {"message_op": message_op.upper(), "reduce_op": reduce_op.upper()}
-    get_out_size_tensor_inputs(
-        inputs=inputs,
-        attrs=attrs,
-        out_size=out_size,
-        op_type='graph_send_ue_recv',
-    )
-
-    helper.append_op(
-        type="graph_send_ue_recv",
-        inputs=inputs,
-        outputs={"Out": out, "Dst_count": dst_count},
-        attrs=attrs,
-    )
-    return out
+        helper.append_op(
+            type="graph_send_ue_recv",
+            inputs=inputs,
+            outputs={"Out": out, "Dst_count": dst_count},
+            attrs=attrs,
+        )
+        return out
 
 
 def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
@@ -466,43 +454,39 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
     if in_dygraph_mode():
         return _C_ops.send_uv(x, y, src_index, dst_index, message_op.upper())
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.graph_send_uv(
-                x, y, src_index, dst_index, "message_op", message_op.upper()
-            )
-        else:
-            helper = LayerHelper("graph_send_uv", **locals())
-            check_variable_and_dtype(
-                x,
-                'x',
-                ['int32', 'int64', 'float32', 'float64', 'float16'],
-                'graph_send_uv',
-            )
-            check_variable_and_dtype(
-                y,
-                'y',
-                ['int32', 'int64', 'float32', 'float64', 'float16'],
-                'graph_send_uv',
-            )
-            check_variable_and_dtype(
-                src_index, 'src_index', ['int32', 'int64'], 'graph_send_uv'
-            )
-            check_variable_and_dtype(
-                dst_index, 'dst_index', ['int32', 'int64'], 'graph_send_uv'
-            )
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-            inputs = {
-                'x': x,
-                'y': y,
-                'src_index': src_index,
-                'dst_index': dst_index,
-            }
-            attrs = {'message_op': message_op.upper()}
-            helper.append_op(
-                type="graph_send_uv",
-                inputs=inputs,
-                attrs=attrs,
-                outputs={"out": out},
-            )
-            return out
+        helper = LayerHelper("graph_send_uv", **locals())
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['int32', 'int64', 'float32', 'float64', 'float16'],
+            'graph_send_uv',
+        )
+        check_variable_and_dtype(
+            y,
+            'y',
+            ['int32', 'int64', 'float32', 'float64', 'float16'],
+            'graph_send_uv',
+        )
+        check_variable_and_dtype(
+            src_index, 'src_index', ['int32', 'int64'], 'graph_send_uv'
+        )
+        check_variable_and_dtype(
+            dst_index, 'dst_index', ['int32', 'int64'], 'graph_send_uv'
+        )
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+        inputs = {
+            'x': x,
+            'y': y,
+            'src_index': src_index,
+            'dst_index': dst_index,
+        }
+        attrs = {'message_op': message_op.upper()}
+        helper.append_op(
+            type="graph_send_uv",
+            inputs=inputs,
+            attrs=attrs,
+            outputs={"out": out},
+        )
+        return out

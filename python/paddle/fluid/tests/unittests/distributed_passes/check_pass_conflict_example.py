@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 from dist_pass_test_base import PassConflictChecker
-from paddle.distributed.passes import new_pass
 from model_zoo import resnet_model
+
+from paddle.distributed.passes import new_pass
 
 
 class CheckPassConflictTest1(PassConflictChecker):

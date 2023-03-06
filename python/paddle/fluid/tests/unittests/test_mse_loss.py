@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 
 
@@ -32,7 +33,7 @@ class TestMseLoss(unittest.TestCase):
         input_var = fluid.data(name="input", shape=[-1, 3], dtype="float32")
         label_var = fluid.data(name="label", shape=[-1, 3], dtype="float32")
 
-        output = layers.mse_loss(input=input_var, label=label_var)
+        output = paddle.nn.functional.mse_loss(input=input_var, label=label_var)
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
@@ -52,14 +53,14 @@ class TestMseInvalidInput(unittest.TestCase):
         def test_invalid_input():
             input = [256, 3]
             label = fluid.data(name='label1', shape=[None, 3], dtype='float32')
-            loss = fluid.layers.mse_loss(input, label)
+            loss = paddle.nn.functional.mse_loss(input, label)
 
         self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_label():
             input = fluid.data(name='input1', shape=[None, 3], dtype='float32')
             label = [256, 3]
-            loss = fluid.layers.mse_loss(input, label)
+            loss = paddle.nn.functional.mse_loss(input, label)
 
         self.assertRaises(TypeError, test_invalid_label)
 
@@ -78,12 +79,14 @@ class TestNNMseLoss(unittest.TestCase):
                 else fluid.CPUPlace()
             )
             with fluid.program_guard(prog, startup_prog):
-                input = fluid.layers.data(
-                    name='input', shape=dim, dtype='float32'
+                input = paddle.static.data(
+                    name='input', shape=[-1] + dim, dtype='float32'
                 )
-                label = fluid.layers.data(
-                    name='label', shape=dim, dtype='float32'
+                input.desc.set_need_check_feed(False)
+                label = paddle.static.data(
+                    name='label', shape=[-1] + dim, dtype='float32'
                 )
+                label.desc.set_need_check_feed(False)
                 mse_loss = paddle.nn.loss.MSELoss()
                 ret = mse_loss(input, label)
 
@@ -122,12 +125,14 @@ class TestNNMseLoss(unittest.TestCase):
                 else fluid.CPUPlace()
             )
             with fluid.program_guard(prog, startup_prog):
-                input = fluid.layers.data(
-                    name='input', shape=dim, dtype='float32'
+                input = paddle.static.data(
+                    name='input', shape=[-1] + dim, dtype='float32'
                 )
-                label = fluid.layers.data(
-                    name='label', shape=dim, dtype='float32'
+                input.desc.set_need_check_feed(False)
+                label = paddle.static.data(
+                    name='label', shape=[-1] + dim, dtype='float32'
                 )
+                label.desc.set_need_check_feed(False)
                 mse_loss = paddle.nn.loss.MSELoss(reduction='sum')
                 ret = mse_loss(input, label)
 
@@ -166,12 +171,14 @@ class TestNNMseLoss(unittest.TestCase):
                 else fluid.CPUPlace()
             )
             with fluid.program_guard(prog, startup_prog):
-                input = fluid.layers.data(
-                    name='input', shape=dim, dtype='float32'
+                input = paddle.static.data(
+                    name='input', shape=[-1] + dim, dtype='float32'
                 )
-                label = fluid.layers.data(
-                    name='label', shape=dim, dtype='float32'
+                input.desc.set_need_check_feed(False)
+                label = paddle.static.data(
+                    name='label', shape=[-1] + dim, dtype='float32'
                 )
+                label.desc.set_need_check_feed(False)
                 mse_loss = paddle.nn.loss.MSELoss(reduction='none')
                 ret = mse_loss(input, label)
 

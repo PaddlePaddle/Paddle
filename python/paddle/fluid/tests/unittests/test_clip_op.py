@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestClipOp(OpTest):
@@ -127,15 +128,9 @@ class TestClipOpError(unittest.TestCase):
             input_data = np.random.random((2, 4)).astype("float32")
 
             def test_Variable():
-                fluid.layers.clip(x=input_data, min=-1.0, max=1.0)
+                paddle.clip(x=input_data, min=-1.0, max=1.0)
 
             self.assertRaises(TypeError, test_Variable)
-
-            def test_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
-                fluid.layers.clip(x=x2, min=-1.0, max=1.0)
-
-            self.assertRaises(TypeError, test_dtype)
         paddle.disable_static()
 
 
@@ -229,7 +224,7 @@ class TestClipAPI(unittest.TestCase):
         )
         paddle.disable_static()
 
-    def func_clip_dygraph(self):
+    def test_clip_dygraph(self):
         paddle.disable_static()
         place = (
             fluid.CUDAPlace(0)
@@ -277,20 +272,14 @@ class TestClipAPI(unittest.TestCase):
             out_6.numpy(), data.clip(0.2, 0.8), rtol=1e-05
         )
 
-    def test_clip_dygraph(self):
-        with _test_eager_guard():
-            self.func_clip_dygraph()
-        self.func_clip_dygraph()
-
     def test_clip_dygraph_default_max(self):
         paddle.disable_static()
-        with _test_eager_guard():
-            x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
-            x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
-            x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
-            egr_out1 = paddle.clip(x_int32, min=1)
-            egr_out2 = paddle.clip(x_int64, min=1)
-            egr_out3 = paddle.clip(x_f32, min=1)
+        x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
+        x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
+        x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
+        egr_out1 = paddle.clip(x_int32, min=1)
+        egr_out2 = paddle.clip(x_int64, min=1)
+        egr_out3 = paddle.clip(x_f32, min=1)
         x_int32 = paddle.to_tensor([1, 2, 3], dtype="int32")
         x_int64 = paddle.to_tensor([1, 2, 3], dtype="int64")
         x_f32 = paddle.to_tensor([1, 2, 3], dtype="float32")
@@ -307,6 +296,33 @@ class TestClipAPI(unittest.TestCase):
         x2 = fluid.data(name='x2', shape=[1], dtype="int8")
         self.assertRaises(TypeError, paddle.clip, x=x1, min=0.2, max=0.8)
         self.assertRaises(TypeError, paddle.clip, x=x2, min=0.2, max=0.8)
+        paddle.disable_static()
+
+
+class TestClipOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        paddle.enable_static()
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('float16')
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            images = paddle.static.data(
+                name='image1', shape=data_shape, dtype='float16'
+            )
+            min = paddle.static.data(name='min1', shape=[1], dtype='float16')
+            max = paddle.static.data(name='max1', shape=[1], dtype='float16')
+            out = paddle.clip(images, min, max)
+            if fluid.core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                res1 = exe.run(
+                    feed={
+                        "image1": data,
+                        "min1": np.array([0.2]).astype('float16'),
+                        "max1": np.array([0.8]).astype('float16'),
+                    },
+                    fetch_list=[out],
+                )
         paddle.disable_static()
 
 

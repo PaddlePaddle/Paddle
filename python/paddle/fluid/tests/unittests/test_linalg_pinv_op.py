@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -276,6 +278,28 @@ class LinalgPinvTestCaseHermitianFP32(LinalgPinvTestCase):
         self.dtype = 'float32'
         self.rcond = 1e-15
         self.hermitian = True
+
+
+class TestDivByZero(unittest.TestCase):
+    def pinv_zero_input_static(self):
+
+        paddle.enable_static()
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
+        paddle.linalg.pinv(x)
+
+    def pinv_zero_input_dynamic(self):
+
+        paddle.disable_static()
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
+        paddle.linalg.pinv(x)
+
+    def test_div_by_zero(self):
+
+        with self.assertRaises(ValueError):
+            self.pinv_zero_input_dynamic()
+            self.pinv_zero_input_static()
 
 
 if __name__ == '__main__':

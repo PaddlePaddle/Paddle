@@ -51,9 +51,9 @@ class DistributedPushSparseOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
@@ -63,22 +63,23 @@ class DistributedPushSparseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids",
-             "(LoDTensor) Ids's type should be LoDTensor"
+             "(phi::DenseTensor) Ids's type should be phi::DenseTensor"
              "THe ids to be looked up in W.")
         .AsDuplicable();
 
     AddInput("Shows",
-             "(LoDTensor) Shows's type should be LoDTensor"
+             "(phi::DenseTensor) Shows's type should be phi::DenseTensor"
              "THe shows default to be 1.")
         .AsDuplicable();
 
     AddInput("Clicks",
-             "(LoDTensor) Clicks's type should be LoDTensor"
+             "(phi::DenseTensor) Clicks's type should be phi::DenseTensor"
              "THe clicks usually equal to label.")
         .AsDuplicable();
 
-    AddOutput("Outputs",
-              "(LoDTensor) The lookup results, which have the same type as W.")
+    AddOutput(
+        "Outputs",
+        "(phi::DenseTensor) The lookup results, which have the same type as W.")
         .AsDuplicable();
 
     AddAttr<int>("table_id", "sparse table id").SetDefault(0);

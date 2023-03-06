@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
@@ -55,7 +56,7 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
-        x = paddle.fluid.layers.conv2d(x, **self.attrs)
+        x = paddle.static.nn.conv2d(x, **self.attrs)
         self.fetch_list = [x.name]
 
     def run_model(self, exec_mode):

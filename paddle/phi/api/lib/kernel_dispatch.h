@@ -90,6 +90,7 @@ struct ArgsIterator {
 
 struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   KernelKeySet key_set;
+  bool disable_gpudnn = false;
   // this dtype_set is used for cache multi-inputs dtype and used for
   // data_promote
   DataTypeSet dtype_set{DataType::UNDEFINED};
@@ -97,11 +98,19 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
-    key_set.backend_set =
-        key_set.backend_set | detail::GetTensorBackendSet(tensor);
+    // assign Backend
+    BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
+    key_set.backend_set = key_set.backend_set | tensor_backend_set;
+    // tensor's attribute use_gpudnn=False, explicitly disable gpudnn kernel
+    if (tensor_backend_set == BackendSet(Backend::GPU) || disable_gpudnn) {
+      disable_gpudnn = true;
+      key_set.backend_set = key_set.backend_set - BackendSet(Backend::GPUDNN);
+    }
+    // assign DataLayout
     phi::DataLayout tensor_layout = tensor.layout();
     key_set.layout =
         tensor_layout > key_set.layout ? tensor_layout : key_set.layout;
+    // assign DataType
     key_set.dtype = tensor.dtype();
     dtype_set = dtype_set | DataTypeSet(key_set.dtype);
     auto promote_result = PromoteTypes(dtype_set);

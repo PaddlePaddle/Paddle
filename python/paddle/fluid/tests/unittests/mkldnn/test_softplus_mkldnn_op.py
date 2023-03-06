@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
+import paddle
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
 )
-import paddle
 
 
 def ref_softplus(x, beta, threshold):

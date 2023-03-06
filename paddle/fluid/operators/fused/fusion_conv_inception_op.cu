@@ -20,7 +20,6 @@ namespace paddle {
 namespace operators {
 
 #if CUDNN_VERSION >= 7100
-using Tensor = phi::DenseTensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
@@ -166,7 +165,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
           conv_desc[i], CUDNN_DEFAULT_MATH));
 #if CUDA_VERSION >= 11000 && CUDNN_VERSION >= 8000
-      if (!platform::allow_tf32_cudnn) {
+      if (!phi::allow_tf32_cudnn) {
         PADDLE_ENFORCE_GPU_SUCCESS(
             platform::dynload::cudnnSetConvolutionMathType(conv_desc[i],
                                                            CUDNN_FMA_MATH));

@@ -12,13 +12,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/row_conv_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
-
-using LoDTensor = phi::DenseTensor;
 
 namespace {
 
@@ -242,7 +240,7 @@ __global__ void RowConvGradFilterImproved(const T *in,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += platform::CudaShuffleDownSync(mask, val, offset);
+          val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
         }
         __syncthreads();
 
@@ -307,7 +305,7 @@ __global__ void RowConvGradFilter(const T *in,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += platform::CudaShuffleDownSync(mask, val, offset);
+          val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
         }
         __syncthreads();
 
@@ -325,9 +323,9 @@ template <typename T>
 class RowConvKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<LoDTensor>("X");
+    auto *X = context.Input<phi::DenseTensor>("X");
     auto *Filter = context.Input<phi::DenseTensor>("Filter");
-    auto *Out = context.Output<LoDTensor>("Out");
+    auto *Out = context.Output<phi::DenseTensor>("Out");
 
     const T *in = X->data<T>();
     const T *weight = Filter->data<T>();
@@ -340,7 +338,7 @@ class RowConvKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
       batch_size = X->lod()[0].size() - 1;
     }
     int input_dim = 0;
-    framework::Vector<size_t> batch_indices(batch_size + 1);
+    phi::Vector<size_t> batch_indices(batch_size + 1);
     int timesteps = X->dims()[1];
     if (is_tensor) {
       for (int i = 0; i < batch_size + 1; i++) {
@@ -354,7 +352,7 @@ class RowConvKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    paddle::framework::MixVector<size_t> mix_vector(&batch_indices);
+    phi::MixVector<size_t> mix_vector(&batch_indices);
     size_t *idx = mix_vector.CUDAMutableData(context.GetPlace());
     auto stream = context.cuda_device_context().stream();
 
@@ -379,15 +377,15 @@ template <typename T>
 class RowConvGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<LoDTensor>("X");
+    auto *X = context.Input<phi::DenseTensor>("X");
     auto *Filter = context.Input<phi::DenseTensor>("Filter");
-    auto *dOut = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto *dOut = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     const T *in = X->data<T>();
     const T *weights = Filter->data<T>();
     const T *dout = dOut->data<T>();
 
     phi::DenseTensor *dX =
-        context.Output<LoDTensor>(framework::GradVarName("X"));
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     phi::DenseTensor *dFilter =
         context.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
     int batch_size = 0;
@@ -399,7 +397,7 @@ class RowConvGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     }
 
     int input_dim = 0;
-    framework::Vector<size_t> batch_indices(batch_size + 1);
+    phi::Vector<size_t> batch_indices(batch_size + 1);
     int timesteps = X->dims()[1];
     if (is_tensor) {
       for (int i = 0; i < batch_size + 1; i++) {
@@ -413,7 +411,7 @@ class RowConvGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     // int input_dim = X->dims()[1];
     int num_sequence = batch_indices.size() - 1;
     int future_context = Filter->dims()[0];
-    paddle::framework::MixVector<size_t> mixv_batch_indices(&batch_indices);
+    phi::MixVector<size_t> mixv_batch_indices(&batch_indices);
     size_t *idx = mixv_batch_indices.CUDAMutableData(context.GetPlace());
 
     auto &device_ctx = context.cuda_device_context();

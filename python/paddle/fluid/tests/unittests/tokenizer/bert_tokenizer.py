@@ -16,13 +16,13 @@
 import os
 import unicodedata
 
-from tokenizer_utils import PretrainedTokenizer
 from tokenizer_utils import (
-    convert_to_unicode,
-    whitespace_tokenize,
-    _is_whitespace,
+    PretrainedTokenizer,
     _is_control,
     _is_punctuation,
+    _is_whitespace,
+    convert_to_unicode,
+    whitespace_tokenize,
 )
 
 

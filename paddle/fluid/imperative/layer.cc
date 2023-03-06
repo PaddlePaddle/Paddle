@@ -519,8 +519,8 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    */
   auto prepared_op =
       PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
-  auto tmp_ins_ptr =
-      PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
+  auto tmp_ins_ptr = PrepareData<VarType>(
+      *op_kernel, ins, prepared_op.kernel_key(), prepared_op.place());
   if (tmp_ins_ptr == nullptr) {
     prepared_op.Run(ins, outs, attrs, default_attrs);
   } else {

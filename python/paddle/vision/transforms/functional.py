@@ -17,10 +17,12 @@ import numbers
 
 import numpy as np
 from PIL import Image
+
 import paddle
 
-from . import functional_pil as F_pil
+from ...fluid.framework import Variable
 from . import functional_cv2 as F_cv2
+from . import functional_pil as F_pil
 from . import functional_tensor as F_t
 
 __all__ = []
@@ -31,7 +33,10 @@ def _is_pil_image(img):
 
 
 def _is_tensor_image(img):
-    return isinstance(img, paddle.Tensor)
+    """
+    Return True if img is a Tensor for dynamic mode or Variable for static graph mode.
+    """
+    return isinstance(img, (paddle.Tensor, Variable))
 
 
 def _is_numpy_image(img):
@@ -41,7 +46,18 @@ def _is_numpy_image(img):
 def to_tensor(pic, data_format='CHW'):
     """Converts a ``PIL.Image`` or ``numpy.ndarray`` to paddle.Tensor.
 
-    See ``ToTensor`` for more details.
+    Converts a PIL.Image or numpy.ndarray (H x W x C) to a paddle.Tensor of shape (C x H x W).
+
+    If input is a grayscale image (H x W), it will be converted to an image of shape (H x W x 1).
+    And the shape of output tensor will be (1 x H x W).
+
+    If you want to keep the shape of output tensor as (H x W x C), you can set data_format = ``HWC`` .
+
+    Converts a PIL.Image or numpy.ndarray in the range [0, 255] to a paddle.Tensor in the
+    range [0.0, 1.0] if the PIL Image belongs to one of the modes (L, LA, P, I, F, RGB, YCbCr,
+    RGBA, CMYK, 1) or if the numpy.ndarray has dtype = np.uint8.
+
+    In the other cases, tensors are returned without scaling.
 
     Args:
         pic (PIL.Image|np.ndarray): Image to be converted to tensor.
@@ -269,18 +285,18 @@ def center_crop(img, output_size):
         PIL.Image or np.array: Cropped image.
 
     Examples:
-    .. code-block:: python
+        .. code-block:: python
 
-        import numpy as np
-        from PIL import Image
-        from paddle.vision.transforms import functional as F
+            import numpy as np
+            from PIL import Image
+            from paddle.vision.transforms import functional as F
 
-        fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
 
-        fake_img = Image.fromarray(fake_img)
+            fake_img = Image.fromarray(fake_img)
 
-        cropped_img = F.center_crop(fake_img, (150, 100))
-        print(cropped_img.size)
+            cropped_img = F.center_crop(fake_img, (150, 100))
+            print(cropped_img.size)
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -424,7 +440,7 @@ def adjust_brightness(img, brightness_factor):
     if _is_pil_image(img):
         return F_pil.adjust_brightness(img, brightness_factor)
     elif _is_numpy_image(img):
-        return F_cv2.adjust_brightness(img, brightness_factor)
+        return F_cv2.adjust_brightness(img.astype(np.uint8), brightness_factor)
     else:
         return F_t.adjust_brightness(img, brightness_factor)
 
@@ -763,8 +779,8 @@ def rotate(
         center (2-list|2-tuple, optional): Optional center of rotation.
             Origin is the upper left corner.
             Default is the center of the image.
-        fill (3-list|3-tuple or int): RGB pixel fill value for area outside the rotated image.
-            If int, it is used for all channels respectively.
+        fill (3-list|3-tuple or int, optional): RGB pixel fill value for area outside the rotated image.
+            If int, it is used for all channels respectively. Default value is 0.
 
 
     Returns:
@@ -919,7 +935,8 @@ def to_grayscale(img, num_output_channels=1):
 
     Args:
         img (PIL.Image|np.array): Image to be converted to grayscale.
-
+        num_output_channels (int, optional): The number of channels for the output
+            image. Single channel. Default: 1.
     Returns:
         PIL.Image or np.array: Grayscale version of the image.
             if num_output_channels = 1 : returned image is single channel

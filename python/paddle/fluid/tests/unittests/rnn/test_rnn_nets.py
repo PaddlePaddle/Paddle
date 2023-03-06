@@ -15,15 +15,13 @@
 import paddle
 
 paddle.set_default_dtype("float64")
-from paddle.fluid.layers import sequence_mask
-
 import os
-import numpy as np
-import unittest
 import tempfile
+import unittest
 
+import numpy as np
 from convert import convert_params_for_net
-from rnn_numpy import SimpleRNN, LSTM, GRU
+from rnn_numpy import GRU, LSTM, SimpleRNN
 
 bidirectional_list = ["bidirectional", "bidirect"]
 
@@ -91,7 +89,9 @@ class TestSimpleRNN(unittest.TestCase):
         y1, h1 = rnn1(x, sequence_length=sequence_length)
 
         seq_len = paddle.to_tensor(sequence_length)
-        mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
+        mask = paddle.static.nn.sequence_lod.sequence_mask(
+            seq_len, dtype=paddle.get_default_dtype()
+        )
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
@@ -174,7 +174,9 @@ class TestGRU(unittest.TestCase):
         y1, h1 = rnn1(x, sequence_length=sequence_length)
 
         seq_len = paddle.to_tensor(sequence_length)
-        mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
+        mask = paddle.static.nn.sequence_lod.sequence_mask(
+            seq_len, dtype=paddle.get_default_dtype()
+        )
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, h2 = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
@@ -263,7 +265,9 @@ class TestLSTM(unittest.TestCase):
         y1, (h1, c1) = rnn1(x, sequence_length=sequence_length)
 
         seq_len = paddle.to_tensor(sequence_length)
-        mask = sequence_mask(seq_len, dtype=paddle.get_default_dtype())
+        mask = paddle.static.nn.sequence_lod.sequence_mask(
+            seq_len, dtype=paddle.get_default_dtype()
+        )
         if self.time_major:
             mask = paddle.transpose(mask, [1, 0])
         y2, (h2, c2) = rnn2(paddle.to_tensor(x), sequence_length=seq_len)
@@ -303,7 +307,9 @@ def predict_test_util(place, mode, stop_gradient=True):
     x = paddle.randn((4, 10, 16))
     x.stop_gradient = stop_gradient
     seq_len = paddle.to_tensor(np.array([10, 6, 8, 5]))
-    mask = sequence_mask(seq_len, maxlen=10, dtype=x.dtype)
+    mask = paddle.static.nn.sequence_lod.sequence_mask(
+        seq_len, maxlen=10, dtype=x.dtype
+    )
     mask = paddle.unsqueeze(mask, [2])
     rnn = Net()
     y, _ = rnn(x)

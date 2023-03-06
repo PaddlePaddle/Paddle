@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+import copy
 
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
 # TODO: check influence on autograd
 import sys
-import warnings
-import copy
 import threading
-from multiprocessing.util import register_after_fork
-from multiprocessing.reduction import ForkingPickler
-
 from collections import OrderedDict
+from multiprocessing.reduction import ForkingPickler
+from multiprocessing.util import register_after_fork
+
+import paddle
 
 
 def _supported_check():
@@ -32,14 +31,6 @@ def _supported_check():
         # warnings.warn("`paddle.multiprocessing` only support linux for now, "
         #               " import this will not take any effect !")
 
-        return False
-
-    if not sys.version_info >= (3, 4):
-        warnings.warn(
-            "Use `paddle.multiprocessing` to share paddle tensor "
-            "requires python version greater than 3.4 ."
-            " `paddle.multiprocessing` will not take any effect !!!"
-        )
         return False
 
     return True

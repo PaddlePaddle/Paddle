@@ -15,16 +15,17 @@
 import os
 
 os.environ['FLAGS_use_stream_safe_cuda_allocator'] = "true"
-import sys
-import shutil
-import unittest
-import paddle
 import json
+import shutil
+import sys
+import unittest
+
+import numpy as np
+
+import paddle
 from paddle.fluid import core, framework
 from paddle.fluid.core import StandaloneExecutor
 from paddle.profiler import profiler
-
-import numpy as np
 
 paddle.enable_static()
 
@@ -234,9 +235,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         exe.run(startup_program)
 
         if use_compiled:
-            main_program = paddle.static.CompiledProgram(
-                main_program
-            ).with_data_parallel(fetch_vars[0].name, places=[self.place])
+            main_program = paddle.static.CompiledProgram(main_program)
 
         if use_str:  # test for fetch name
             fetch_vars = [x.name for x in fetch_vars]

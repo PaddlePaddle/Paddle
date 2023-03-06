@@ -21,7 +21,7 @@
 #include <hip/hip_fp16.h>
 #endif
 
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/common/float16.h"
 
 namespace phi {
@@ -52,6 +52,12 @@ class MPTypeTrait<phi::dtype::float16> {
   using Type = float;
 };
 
+template <>
+class MPTypeTrait<phi::dtype::bfloat16> {
+ public:
+  using Type = float;
+};
+
 /**
  * @brief Will be used in BlockYReduce, get the index of reduce_num in shared
  * memory.
@@ -65,7 +71,7 @@ __device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int stride = details::kWarpSize / 2; stride > 0; stride >>= 1) {
-    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
+    T temp = phi::backends::gpu::CudaShuffleDownSync(mask, val, stride);
     val = reducer(val, temp);
   }
   return val;
@@ -110,7 +116,7 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int stride = 1; stride < block_dim_x; stride <<= 1) {
-    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
+    T temp = phi::backends::gpu::CudaShuffleDownSync(mask, val, stride);
     val = reducer(val, temp);
   }
   __syncthreads();

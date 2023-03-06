@@ -14,11 +14,14 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
-#include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/core/mixed_vector.h"
+
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/operators/mkldnn/axpy_handler.h"
+#include "paddle/phi/backends/onednn/axpy_handler.h"
 #endif
 
 namespace phi {
@@ -73,35 +76,35 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
             out_value->numel() / out_rows.size()));
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto out_place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(out_place),
+    PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
     auto* out_data = out_value->data<T>();
     auto* in1_data = in1_value.data<T>();
-    paddle::memory::Copy(out_place,
-                         out_data,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T));
+    memory_utils::Copy(out_place,
+                       out_data,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T));
 
     auto* in2_data = in2_value.data<T>();
-    paddle::memory::Copy(out_place,
-                         out_data + in1_value.numel(),
-                         in2_place,
-                         in2_data,
-                         in2_value.numel() * sizeof(T));
+    memory_utils::Copy(out_place,
+                       out_data + in1_value.numel(),
+                       in2_place,
+                       in2_data,
+                       in2_value.numel() * sizeof(T));
   }
 };
 
@@ -200,27 +203,27 @@ struct SelectedRowsAddTo<phi::CPUContext, T> {
     auto* in2_value = input2->mutable_value();
 
     // concat rows
-    paddle::framework::MixVector<int64_t> mixv_in2_rows(&in2_rows);
+    phi::MixVector<int64_t> mixv_in2_rows(&in2_rows);
     mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    paddle::memory::Copy(in2_place,
-                         in2_data + input2_offset,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T));
+    memory_utils::Copy(in2_place,
+                       in2_data + input2_offset,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T));
   }
 };
 
@@ -254,7 +257,7 @@ struct SelectedRowsSumTo<phi::CPUContext, T> {
     std::vector<int64_t> in2_rows;
     in2_rows.reserve(in2_rows.size() + size);
     for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
-      const paddle::framework::Vector<int64_t>& in_rows = (*iter)->rows();
+      const phi::Vector<int64_t>& in_rows = (*iter)->rows();
       in2_rows.insert(in2_rows.end(), in_rows.begin(), in_rows.end());
     }
     input2->set_rows(in2_rows);
@@ -320,11 +323,75 @@ struct SelectedRowsAddToTensor<phi::CPUContext, T> {
   }
 };
 
+#ifdef PADDLE_WITH_XPU
+template <typename T>
+struct SelectedRowsAddToTensor<phi::XPUContext, T> {
+  void operator()(const phi::XPUContext& context,
+                  const phi::SelectedRows& input1,
+                  phi::DenseTensor* input2) {
+    if (UNLIKELY(input1.rows().size() == 0)) {
+      LOG(WARNING) << "input selected rows is empty!";
+      return;
+    }
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    auto in1_height = input1.height();
+    const auto& in2_dims = input2->dims();
+    PADDLE_ENFORCE_EQ(
+        in1_height,
+        in2_dims[0],
+        phi::errors::InvalidArgument("The two inputs height must be equal."
+                                     "But received first input height = "
+                                     "[%d], second input height = [%d]",
+                                     in1_height,
+                                     in2_dims[0]));
+
+    auto& in1_value = input1.value();
+    auto& in1_rows = input1.rows();
+    int64_t* in1_rows_data = nullptr;
+    xpu::VectorParam<int64_t> in1_rows_vec{
+        in1_rows.data(), static_cast<int>(in1_rows.size()), in1_rows_data};
+
+    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    PADDLE_ENFORCE_EQ(
+        in1_row_numel,
+        input2->numel() / in1_height,
+        phi::errors::InvalidArgument(
+            "The two inputs width must be equal."
+            "But received first input width = [%d], second input width = [%d]",
+            in1_row_numel,
+            input2->numel() / in1_height));
+
+    auto* in1_data = in1_value.data<T>();
+    auto* out_data = input2->data<T>();
+
+    int h = in1_rows.size();
+    int w = in1_row_numel;
+    const std::vector<int> xshape{h, w};
+
+    int r = xpu::scatter<XPUType, int64_t>(
+        context.x_context(),
+        nullptr,
+        reinterpret_cast<const XPUType*>(in1_data),
+        reinterpret_cast<XPUType*>(out_data),
+        in1_rows_vec,
+        xshape,
+        0,
+        false);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scatter");
+  }
+};
+
+#endif
+
 template struct SelectedRowsAddToTensor<phi::CPUContext, float>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::bfloat16>;
+
+#ifdef PADDLE_WITH_XPU
+template struct SelectedRowsAddToTensor<phi::XPUContext, float>;
+#endif
 // This is a separated namespace for manipulate SelectedRows typed
 // data. Like merge duplicated rows, adding two SelectedRows etc.
 //
@@ -371,7 +438,9 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
     auto& input_rows = input->rows();
 
 #ifdef PADDLE_WITH_MKLDNN
-    paddle::operators::OneDNNAXPYHandler<T> axpy_handler(input_width, T(1.f));
+    OneDNNContext onednn_context(context.GetPlace());
+    funcs::OneDNNAXPYHandler<T> axpy_handler(
+        input_width, T(1.f), onednn_context.GetEngine());
     for (size_t i = 0; i < input_rows.size(); i++) {
       size_t out_i = rows_to_id.at(input_rows[i]);
       axpy_handler(&input_data[i * input_width],
@@ -476,11 +545,10 @@ struct MergeAddImpl {
     }
 
     out.set_height(input_height);
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim(
-            {static_cast<int64_t>(merged_row_set.size()), input_width}),
-        context.GetPlace());
-    auto* out_data = out.mutable_value()->data<T>();
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(phi::make_ddim(
+        {static_cast<int64_t>(merged_row_set.size()), input_width}));
+    auto* out_data = context.template Alloc<T>(out_tensor);
 
     if (merged_row_set.size() == row_num && !sorted_result) {
       // no duplicated ids, just concat the result together
@@ -498,11 +566,11 @@ struct MergeAddImpl {
       for (auto* in : inputs) {
         auto* in_data = in->value().data<T>();
         auto in_numel = in->rows().size() * input_width;
-        paddle::memory::Copy(out_place,
-                             out_data + copied_numel,
-                             in_place,
-                             in_data,
-                             in_numel * sizeof(T));
+        memory_utils::Copy(out_place,
+                           out_data + copied_numel,
+                           in_place,
+                           in_data,
+                           in_numel * sizeof(T));
         copied_numel += in_numel;
       }
     } else {
@@ -581,7 +649,7 @@ struct MergeAdd<phi::XPUContext, T> {
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output,
                   const bool sorted_result = false) {
-    paddle::framework::Vector<int64_t> input_rows(input.rows());
+    phi::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }
@@ -593,9 +661,10 @@ struct MergeAdd<phi::XPUContext, T> {
 
     out.set_rows(merge_rows);
     out.set_height(input.height());
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}),
-        context.GetPlace());
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(
+        phi::make_ddim({static_cast<int64_t>(merge_rows.size()), input_width}));
+    context.template Alloc<T>(out_tensor);
 
     std::unordered_map<int64_t, size_t> rows_to_id;
     for (size_t i = 0; i < merge_rows.size(); ++i) {
@@ -611,16 +680,16 @@ struct MergeAdd<phi::XPUContext, T> {
     xpu::ctx_guard RAII_GUARD(context.x_context());
     int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
     int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-    paddle::memory::Copy(context.GetPlace(),
-                         y_rows_data,
-                         phi::CPUPlace(),
-                         merge_rows.data(),
-                         ym * sizeof(int64_t));
-    paddle::memory::Copy(context.GetPlace(),
-                         x_rows_data,
-                         phi::CPUPlace(),
-                         input_rows.data(),
-                         xm * sizeof(int64_t));
+    memory_utils::Copy(context.GetPlace(),
+                       y_rows_data,
+                       phi::CPUPlace(),
+                       merge_rows.data(),
+                       ym * sizeof(int64_t));
+    memory_utils::Copy(context.GetPlace(),
+                       x_rows_data,
+                       phi::CPUPlace(),
+                       input_rows.data(),
+                       xm * sizeof(int64_t));
     int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
                                             x_data,
                                             y_data,
@@ -682,12 +751,13 @@ struct MergeAdd<phi::XPUContext, T> {
 
     out.set_rows(merge_rows);
     out.set_height(input_height);
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim(
-            {static_cast<int64_t>(merged_row_set.size()), input_width}),
-        context.GetPlace());
 
-    float* y_data = reinterpret_cast<float*>(out.mutable_value()->data<T>());
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(phi::make_ddim(
+        {static_cast<int64_t>(merged_row_set.size()), input_width}));
+    context.template Alloc<T>(out_tensor);
+
+    float* y_data = reinterpret_cast<float*>(out_tensor->data<T>());
 
     std::unordered_map<int64_t, size_t> rows_to_id;
     for (size_t i = 0; i < merge_rows.size(); ++i) {
@@ -708,16 +778,16 @@ struct MergeAdd<phi::XPUContext, T> {
       xpu::ctx_guard RAII_GUARD(context.x_context());
       int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
       int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-      paddle::memory::Copy(context.GetPlace(),
-                           y_rows_data,
-                           phi::CPUPlace(),
-                           merge_rows.data(),
-                           ym * sizeof(int64_t));
-      paddle::memory::Copy(context.GetPlace(),
-                           x_rows_data,
-                           phi::CPUPlace(),
-                           input_rows.data(),
-                           xm * sizeof(int64_t));
+      memory_utils::Copy(context.GetPlace(),
+                         y_rows_data,
+                         phi::CPUPlace(),
+                         merge_rows.data(),
+                         ym * sizeof(int64_t));
+      memory_utils::Copy(context.GetPlace(),
+                         x_rows_data,
+                         phi::CPUPlace(),
+                         input_rows.data(),
+                         xm * sizeof(int64_t));
       int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
                                               x_data,
                                               y_data,
@@ -790,11 +860,11 @@ struct MergeAverage<phi::CPUContext, T> {
     }
 
     out.set_height(input_height);
-    out.mutable_value()->mutable_data<T>(
-        phi::make_ddim(
-            {static_cast<int64_t>(merged_row_set.size()), input_width}),
-        context.GetPlace());
-    auto* out_data = out.mutable_value()->data<T>();
+
+    DenseTensor* out_tensor = out.mutable_value();
+    out_tensor->Resize(phi::make_ddim(
+        {static_cast<int64_t>(merged_row_set.size()), input_width}));
+    auto* out_data = context.template Alloc<T>(out_tensor);
 
     std::vector<int64_t> merge_rows(merged_row_set.begin(),
                                     merged_row_set.end());
@@ -869,11 +939,11 @@ struct UpdateToTensor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2->numel() / in1_height,
-        phi::errors::InvalidArgument(
-            "The two inputs width must be equal."
-            "But received first input width = [%d], second input width = [%d]",
-            in1_row_numel,
-            input2->numel() / in1_height));
+        phi::errors::InvalidArgument("The two inputs width must be equal."
+                                     "But received first input width = [%d], "
+                                     "second input width = [%d]",
+                                     in1_row_numel,
+                                     input2->numel() / in1_height));
 
     auto* in1_data = in1_value.data<T>();
     auto* input2_data = input2->data<T>();

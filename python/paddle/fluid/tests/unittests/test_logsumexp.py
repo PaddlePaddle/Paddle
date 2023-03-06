@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
 from op_test import OpTest
+
+import paddle
+import paddle.fluid.core as core
 
 
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
@@ -234,6 +236,21 @@ class TestLogsumexpAPI(unittest.TestCase):
         for out in [out1, out2, out3]:
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
+
+
+# Test logsumexp bug
+class TestLogZeroError(unittest.TestCase):
+    def test_errors(self):
+        with paddle.fluid.dygraph.guard():
+
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [0, 0, 0]), dtype='float32'
+                )
+                paddle.logsumexp(x, axis=1)
+
+            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == '__main__':

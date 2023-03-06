@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.jit import declarative
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 
 SEED = 2020
 np.random.seed(SEED)
@@ -55,7 +56,7 @@ class TestTransformWhileLoop(unittest.TestCase):
             # Set the input of dyfunc to VarBase
             tensor_x = fluid.dygraph.to_variable(self.x, zero_copy=False)
             if to_static:
-                ret = declarative(self.dyfunc)(tensor_x)
+                ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
             else:
                 ret = self.dyfunc(tensor_x)
             if hasattr(ret, "numpy"):
@@ -76,5 +77,4 @@ class TestTypeHint(TestTransformWhileLoop):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

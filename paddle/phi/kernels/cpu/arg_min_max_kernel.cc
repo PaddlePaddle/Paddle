@@ -96,6 +96,12 @@ struct VisitDataArgMinMaxFunctor {
       if (axis < 0) new_axis = axis + x_dims.size();
     }
 
+    // For 0D Tensor
+    if (x.dims().size() == 0) {
+      phi::funcs::set_constant(dev_ctx, out, 0);
+      return;
+    }
+
 #define CALL_ARG_MINMAX_FUNCTOR(rank)                                         \
   ArgMinMaxFunctor<Context, T, Tout, rank, EnumArgMinMaxValue> functor##rank; \
   functor##rank(dev_ctx, x, out, x_dims, new_axis, new_keepdims)
@@ -149,7 +155,7 @@ void ArgMinMaxKernel(const Context& dev_ctx,
     return;
   }
   phi::VisitDataTypeTiny(
-      var_type_map[dtype],
+      phi::TransToPhiDataType(dtype),
       VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
@@ -180,7 +186,7 @@ void ArgMaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(arg_min,
+PD_REGISTER_KERNEL(argmin,
                    CPU,
                    ALL_LAYOUT,
                    phi::ArgMinKernel,
@@ -191,7 +197,7 @@ PD_REGISTER_KERNEL(arg_min,
                    int16_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(arg_max,
+PD_REGISTER_KERNEL(argmax,
                    CPU,
                    ALL_LAYOUT,
                    phi::ArgMaxKernel,

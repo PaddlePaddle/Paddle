@@ -66,6 +66,11 @@ void TopkGradKernel(const Context& dev_ctx,
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
 
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
+  if (in_dims.size() == 0) {
+    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    return;
+  }
+
   if (axis + 1 == in_dims.size()) {
     // allocate the memory for the input_grad
 
@@ -141,7 +146,7 @@ void TopkGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(top_k_grad,
+PD_REGISTER_KERNEL(topk_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::TopkGradKernel,

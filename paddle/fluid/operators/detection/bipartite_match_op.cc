@@ -18,9 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
-using LoDTensor = phi::DenseTensor;
-
 class BipartiteMatchOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -53,9 +50,9 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "DistMat"),
         platform::CPUPlace());
   }
@@ -196,7 +193,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dist_mat = context.Input<LoDTensor>("DistMat");
+    auto* dist_mat = context.Input<phi::DenseTensor>("DistMat");
     auto* match_indices =
         context.Output<phi::DenseTensor>("ColToRowMatchIndices");
     auto* match_dist = context.Output<phi::DenseTensor>("ColToRowMatchDist");
@@ -235,7 +232,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
       auto lod = dist_mat->lod().back();
       for (size_t i = 0; i < lod.size() - 1; ++i) {
         if (lod[i + 1] > lod[i]) {
-          Tensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
+          phi::DenseTensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
           BipartiteMatch(one_ins, indices + i * col, dist + i * col);
           if (type == "per_prediction") {
             ArgMaxMatch(one_ins, indices + i * col, dist + i * col, threshold);
@@ -251,7 +248,8 @@ class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "DistMat",
-        "(LoDTensor or Tensor) this input is a 2-D LoDTensor with shape "
+        "(phi::DenseTensor or Tensor) this input is a 2-D phi::DenseTensor "
+        "with shape "
         "[K, M]. It is pair-wise distance matrix between the entities "
         "represented by each row and each column. For example, assumed one "
         "entity is A with shape [K], another entity is B with shape [M]. The "
@@ -302,8 +300,8 @@ row entity to the column entity and the matched indices are not duplicated
 in each row of ColToRowMatchIndices. If the column entity is not matched
 any row entity, set -1 in ColToRowMatchIndices.
 
-Please note that the input DistMat can be LoDTensor (with LoD) or Tensor.
-If LoDTensor with LoD, the height of ColToRowMatchIndices is batch size.
+Please note that the input DistMat can be phi::DenseTensor (with LoD) or Tensor.
+If phi::DenseTensor with LoD, the height of ColToRowMatchIndices is batch size.
 If Tensor, the height of ColToRowMatchIndices is 1.
 
 )DOC");

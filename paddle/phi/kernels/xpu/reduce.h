@@ -33,6 +33,8 @@ int XPUReduce(const Context& dev_ctx,
                                 T*,
                                 const std::vector<int>&,
                                 const std::vector<int>&)> func) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   dev_ctx.template Alloc<T>(out);
 
   const auto* x_data = x.data<T>();
@@ -69,8 +71,10 @@ int XPUReduce(const Context& dev_ctx,
 
   int r = xpu::SUCCESS;
   if (reduce_dims.size() == 0) {
-    r = xpu::copy<T>(
-        dev_ctx.x_context(), x_data, y_data, x.numel() * sizeof(T));
+    r = xpu::copy<XPUType>(dev_ctx.x_context(),
+                           reinterpret_cast<const XPUType*>(x_data),
+                           reinterpret_cast<XPUType*>(y_data),
+                           x.numel() * sizeof(T));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
     r = func(dev_ctx.x_context(), x_data, y_data, xdims, reduce_dims);

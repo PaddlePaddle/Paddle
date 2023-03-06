@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 from test_dist_base import TestDistBase
+
 import paddle
 
 paddle.enable_static()
@@ -34,7 +36,6 @@ class TestDistMnistNCCL2(TestDistBase):
                 "dist_mnist.py",
                 delta=1,
                 need_envs={
-                    "FLAGS_enable_parallel_graph": "1",
                     "FLAGS_sync_nccl_allreduce": "1",
                 },
             )

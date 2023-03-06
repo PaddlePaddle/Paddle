@@ -13,10 +13,14 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid import program_guard, layers, default_main_program
-from paddle.fluid import default_startup_program
+from paddle.static import (
+    default_main_program,
+    default_startup_program,
+    program_guard,
+)
+
+from .common import OP_ROLE_KEY, CollectiveHelper, OpRole
 from .meta_optimizer_base import MetaOptimizerBase
-from .common import CollectiveHelper, OP_ROLE_KEY, OpRole
 
 __all__ = []
 
@@ -83,7 +87,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
     def init_snapshot_vars(self, startup_program, param2snapshot):
         with program_guard(startup_program):
             for param, snapshot in param2snapshot:
-                layers.assign(param, snapshot)
+                paddle.assign(param, snapshot)
 
     def minimize_impl(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None
@@ -109,8 +113,8 @@ class LocalSGDOptimizer(MetaOptimizerBase):
 
         p2s = self.create_snapshot_vars(main_block.program)
         with program_guard(main_block.program, startup_program):
-            step = layers.autoincreased_step_counter(begin=1)
-            k_steps = layers.create_global_var(
+            step = paddle.fluid.layers.autoincreased_step_counter(begin=1)
+            k_steps = paddle.static.create_global_var(
                 name="k_steps",
                 shape=[1],
                 value=k_steps_value,
@@ -118,7 +122,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                 persistable=True,
             )
 
-            begin_step = layers.create_global_var(
+            begin_step = paddle.static.create_global_var(
                 name="begin_step",
                 shape=[1],
                 value=begin_step_value,
@@ -126,7 +130,7 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                 persistable=True,
             )
 
-            last_step = layers.create_global_var(
+            last_step = paddle.static.create_global_var(
                 name="last_step",
                 shape=[1],
                 value=begin_step_value,
@@ -194,12 +198,14 @@ class LocalSGDOptimizer(MetaOptimizerBase):
                         outputs={'Out': [snapshot]},
                         attrs={OP_ROLE_KEY: OpRole.Optimize},
                     )
-                layers.assign(step, last_step)
+                paddle.assign(step, last_step)
 
             def begin_localsgd():
-                layers.cond(step - last_step == k_steps, communicate)
+                paddle.static.nn.cond(step - last_step == k_steps, communicate)
 
-            layers.cond(step > begin_step, begin_localsgd, communicate)
+            paddle.static.nn.cond(
+                step > begin_step, begin_localsgd, communicate
+            )
         return minimized
 
 
@@ -225,7 +231,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
             return False
 
         return (
-            isinstance(self.inner_opt, paddle.optimizer.momentum.Momentum)
+            isinstance(self.inner_opt, paddle.optimizer.Momentum)
             or isinstance(self.inner_opt, paddle.fluid.optimizer.Momentum)
             or isinstance(self.inner_opt, paddle.optimizer.sgd.SGD)
             or isinstance(self.inner_opt, paddle.fluid.optimizer.SGD)
@@ -268,7 +274,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
     def init_snapshot_vars(self, startup_program, param2snapshot):
         with program_guard(startup_program):
             for param, snapshot in param2snapshot:
-                layers.assign(param, snapshot)
+                paddle.assign(param, snapshot)
 
     def _generate_avg_loss(self, program_block, loss, avg_loss):
         program_block.append_op(
@@ -324,9 +330,9 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
 
         p2s = self.create_snapshot_vars(main_block.program)
         with program_guard(main_block.program, startup_program):
-            step = layers.autoincreased_step_counter(begin=1)
+            step = paddle.fluid.layers.autoincreased_step_counter(begin=1)
 
-            k_steps = layers.create_global_var(
+            k_steps = paddle.static.create_global_var(
                 name="k_steps",
                 shape=[1],
                 value=int(init_k_steps),
@@ -334,7 +340,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 persistable=True,
             )
 
-            begin_step = layers.create_global_var(
+            begin_step = paddle.static.create_global_var(
                 name="begin_step",
                 shape=[1],
                 value=int(begin_step_value),
@@ -342,7 +348,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 persistable=True,
             )
 
-            last_step = layers.create_global_var(
+            last_step = paddle.static.create_global_var(
                 name="last_step",
                 shape=[1],
                 value=int(0),
@@ -350,7 +356,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 persistable=True,
             )
 
-            avg_loss = layers.create_global_var(
+            avg_loss = paddle.static.create_global_var(
                 name="avg_loss",
                 shape=[1],
                 value=float(0),
@@ -358,7 +364,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 persistable=True,
             )
 
-            lr_0 = layers.create_global_var(
+            lr_0 = paddle.static.create_global_var(
                 name="lr_0",
                 shape=[1],
                 value=float(0),
@@ -366,7 +372,7 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                 persistable=True,
             )
 
-            loss_0 = layers.create_global_var(
+            loss_0 = paddle.static.create_global_var(
                 name="loss_0",
                 shape=[1],
                 value=float(0),
@@ -378,10 +384,10 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
 
             def initialize():
                 self._generate_avg_loss(main_block, loss, avg_loss)
-                layers.assign(avg_loss, loss_0)
-                layers.assign(global_lr, lr_0)
+                paddle.assign(avg_loss, loss_0)
+                paddle.assign(global_lr, lr_0)
 
-            layers.cond(step == 1, initialize)
+            paddle.static.nn.cond(step == 1, initialize)
 
             def communicate():
                 sub_block = default_main_program().current_block()
@@ -443,14 +449,15 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                         outputs={'Out': [snapshot]},
                         attrs={OP_ROLE_KEY: OpRole.Optimize},
                     )
-                layers.assign(step, last_step)
+                paddle.assign(step, last_step)
 
             def communicate_avg_loss():
                 communicate()
                 self._generate_avg_loss(main_block, loss, avg_loss)
-                next_local_steps = layers.cast(
-                    layers.ceil(
-                        layers.sqrt(
+
+                next_local_steps = paddle.cast(
+                    paddle.ceil(
+                        paddle.sqrt(
                             lr_0
                             * avg_loss
                             / (global_lr * loss_0)
@@ -459,23 +466,27 @@ class AdaptiveLocalSGDOptimizer(MetaOptimizerBase):
                     ),
                     dtype='int64',
                 )
-                max_local_steps = layers.fill_constant(
-                    shape=[1], dtype='int64', value=16
+                max_local_steps = paddle.full(
+                    shape=[1], dtype='int64', fill_value=16
                 )
-                min_local_steps = layers.fill_constant(
-                    shape=[1], dtype='int64', value=1
+                min_local_steps = paddle.full(
+                    shape=[1], dtype='int64', fill_value=1
                 )
-                next_local_steps = layers.elementwise_min(
+                next_local_steps = paddle.minimum(
                     next_local_steps, max_local_steps
                 )
-                next_local_steps = layers.elementwise_max(
+                next_local_steps = paddle.maximum(
                     next_local_steps, min_local_steps
                 )
-                layers.assign(next_local_steps, k_steps)
+                paddle.assign(next_local_steps, k_steps)
 
             def begin_localsgd():
-                layers.cond(step - last_step == k_steps, communicate_avg_loss)
+                paddle.static.nn.cond(
+                    step - last_step == k_steps, communicate_avg_loss
+                )
 
-            layers.cond(step > begin_step, begin_localsgd, communicate)
+            paddle.static.nn.cond(
+                step > begin_step, begin_localsgd, communicate
+            )
 
         return minimized

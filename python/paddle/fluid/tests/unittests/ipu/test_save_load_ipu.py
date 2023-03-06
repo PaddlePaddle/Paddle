@@ -17,6 +17,7 @@ import unittest
 from functools import partial
 
 import numpy as np
+
 import paddle
 import paddle.optimizer
 import paddle.static

@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/selected_rows/hsigmoid_loss_grad_kernel.h"
 
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/cpu/hsigmoid_loss_grad.h"
 
 namespace phi {
@@ -47,10 +47,6 @@ void HSigmoidLossGradKernel(const Context& ctx,
                             const DenseTensor& out_grad,
                             int num_classes,
                             bool remote_prefetch,
-                            int trainer_id,
-                            const std::vector<int64_t>& height_sections,
-                            const std::vector<std::string>& epmap,
-                            const std::vector<std::string>& table_names,
                             bool is_sparse,
                             DenseTensor* x_grad,
                             SelectedRows* w_grad,
@@ -58,7 +54,7 @@ void HSigmoidLossGradKernel(const Context& ctx,
   PADDLE_ENFORCE_NOT_NULL(
       path.get_ptr(),
       errors::NotFound("Custom tree must be set for sparse mode!"));
-  paddle::framework::Vector<int64_t> real_rows = PathToRows(*path);
+  phi::Vector<int64_t> real_rows = PathToRows(*path);
   w_grad->set_rows(real_rows);
   // Build a map of id -> row_index to speed up finding the index of one id
   w_grad->set_height(w.dims()[0]);
@@ -77,10 +73,6 @@ void HSigmoidLossGradKernel(const Context& ctx,
                                      out_grad,
                                      num_classes,
                                      remote_prefetch,
-                                     trainer_id,
-                                     height_sections,
-                                     epmap,
-                                     table_names,
                                      is_sparse,
                                      x_grad,
                                      w_grad_value,

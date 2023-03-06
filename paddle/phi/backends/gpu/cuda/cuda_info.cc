@@ -14,8 +14,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-// TODO(phi): remove fluid headers.
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
@@ -195,6 +194,13 @@ std::array<int, 3> GetGpuMaxGridDimSize(int id) {
   PADDLE_ENFORCE_GPU_SUCCESS(error_code_z);
   ret[2] = size;
   return ret;
+}
+
+std::pair<int, int> GetGpuStreamPriorityRange() {
+  int least_priority, greatest_priority;
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+  return std::make_pair(least_priority, greatest_priority);
 }
 
 const gpuDeviceProp &GetDeviceProperties(int id) {

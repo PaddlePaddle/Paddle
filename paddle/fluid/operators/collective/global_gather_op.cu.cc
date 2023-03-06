@@ -82,8 +82,8 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+      // should ExecutionContext for calc stream.
+      stream = ctx.cuda_device_context().stream();
     } else {
       stream = comm->stream();
     }
@@ -226,15 +226,19 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
         int idx = i + j * n_expert;
         if (cpu_global_count_data[idx]) {
           phi::DenseTensor tmp = *x;
-          pg->Send_Partial(
-              tmp, j, send_ptr * in_feat, cpu_global_count_data[idx] * in_feat);
+          pg->Send(tmp,
+                   j,
+                   send_ptr * in_feat,
+                   cpu_global_count_data[idx] * in_feat,
+                   /*sync_op*/ true);
           send_ptr += cpu_global_count_data[idx];
         }
         if (cpu_local_count_data[idx]) {
-          pg->Recv_Partial(*out,
-                           j,
-                           expert_ptr[idx] * in_feat,
-                           cpu_local_count_data[idx] * in_feat);
+          pg->Recv(out,
+                   j,
+                   expert_ptr[idx] * in_feat,
+                   cpu_local_count_data[idx] * in_feat,
+                   /*sync_op*/ true);
         }
       }
       PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());

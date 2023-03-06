@@ -107,7 +107,7 @@ class API_NormTest(unittest.TestCase):
 
             def test_norm_x_type():
                 data = fluid.data(name="x", shape=[3, 3], dtype="float64")
-                out = fluid.layers.l2_normalize(data)
+                out = paddle.nn.functional.normalize(data)
 
             self.assertRaises(TypeError, test_norm_x_type)
 

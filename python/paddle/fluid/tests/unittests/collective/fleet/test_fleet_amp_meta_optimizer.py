@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet.meta_optimizers import AMPOptimizer
+
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+
+import paddle
+import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
+from paddle.distributed.fleet.meta_optimizers import AMPOptimizer
 
 paddle.enable_static()
 

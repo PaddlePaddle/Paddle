@@ -15,14 +15,13 @@ limitations under the License. */
 #include <random>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 template <typename T>
 class NPUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
@@ -32,7 +31,7 @@ class NPUGaussianRandomKernel : public framework::OpKernel<T> {
     auto* tensor = context.Output<phi::DenseTensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
-    Tensor cpu_tensor(tensor->dtype());
+    phi::DenseTensor cpu_tensor(tensor->dtype());
     cpu_tensor.Resize(tensor->dims());
     T* cpu_data = cpu_tensor.mutable_data<T>(platform::CPUPlace());
     std::normal_distribution<T> dist(mean, std);
@@ -40,7 +39,7 @@ class NPUGaussianRandomKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
+    auto engine = phi::GetCPURandomEngine(seed);
     for (int64_t i = 0; i < size; ++i) {
       cpu_data[i] = dist(*engine);
     }

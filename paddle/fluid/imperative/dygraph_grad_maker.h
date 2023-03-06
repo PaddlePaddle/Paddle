@@ -237,7 +237,7 @@ class TracedGradOp {
 
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
-        VLOG(6) << "SetIutput var name: " << var->Name();
+        VLOG(6) << "SetInput var name: " << var->Name();
         if (var && !var->OverridedStopGradient()) {
           var->SetGraphIsFreed(false);
           auto dirty_grad_node = var->GradNode();
@@ -351,7 +351,7 @@ class TracedGradOp {
 
   // Get a snapshot of VariableWrapper at a certain inplace version.
   // The inplace version number of VariableWrapper is used for inplace
-  // detection in gradient compution.
+  // detection in gradient computation.
   static const std::shared_ptr<VariableWrapper> SnapshotVarWrapper(
       const std::shared_ptr<VariableWrapper>& var_wrapper) {
     // NOTE(liym27):

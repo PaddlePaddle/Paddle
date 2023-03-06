@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.layers import ops, tensor
+from paddle.fluid.layers import tensor
 from paddle.tensor import multinomial
 
 
@@ -111,7 +112,7 @@ class Categorical(distribution.Distribution):
                 self.dtype = logits.dtype
             self.logits = self._to_tensor(logits)[0]
             if self.dtype != convert_dtype(self.logits.dtype):
-                self.logits = tensor.cast(self.logits, dtype=self.dtype)
+                self.logits = paddle.cast(self.logits, dtype=self.dtype)
         dist_sum = paddle.sum(self.logits, axis=-1, keepdim=True)
         self._prob = self.logits / dist_sum
 
@@ -214,8 +215,8 @@ class Categorical(distribution.Distribution):
         other_logits = other.logits - paddle.max(
             other.logits, axis=-1, keepdim=True
         )
-        e_logits = ops.exp(logits)
-        other_e_logits = ops.exp(other_logits)
+        e_logits = paddle.exp(logits)
+        other_e_logits = paddle.exp(other_logits)
         z = paddle.sum(e_logits, axis=-1, keepdim=True)
         other_z = paddle.sum(other_e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
@@ -255,7 +256,7 @@ class Categorical(distribution.Distribution):
         """
         name = self.name + '_entropy'
         logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)
-        e_logits = ops.exp(logits)
+        e_logits = paddle.exp(logits)
         z = paddle.sum(e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
 

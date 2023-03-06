@@ -19,10 +19,11 @@ http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
 into paddle reader creators.
 """
 
-import paddle.dataset.common
-import paddle.utils.deprecated as deprecated
 import collections
 import tarfile
+
+import paddle.dataset.common
+import paddle.utils.deprecated as deprecated
 
 __all__ = []
 
@@ -107,7 +108,7 @@ def reader_creator(filename, word_idx, n, data_type):
                         continue
                     yield src_seq, trg_seq
                 else:
-                    assert False, 'Unknow data type'
+                    assert False, 'Unknown data type'
 
     return reader
 

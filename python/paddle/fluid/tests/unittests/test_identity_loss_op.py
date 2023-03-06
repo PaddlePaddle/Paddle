@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from op_test import OpTest
 
 
 class TestIdentityLossOp(OpTest):
@@ -101,7 +103,7 @@ class TestIdentityLossOpError(unittest.TestCase):
             self.assertRaises(Exception, test_string)
 
             def test_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
+                x2 = paddle.static.data(name='x2', shape=[-1, 1], dtype='int32')
                 paddle.incubate.identity_loss(x=x2, reduction=1)
 
             self.assertRaises(TypeError, test_dtype)

@@ -70,7 +70,7 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
   paddle::framework::OpKernelType op_kernel_type_mkldnn(
       paddle::framework::proto::VarType::FP32,
       paddle::platform::CPUPlace(),
-      phi::DataLayout::kMKLDNN,
+      phi::DataLayout::ONEDNN,
       paddle::framework::LibraryType::kMKLDNN);
   auto kernel_key_mkldnn =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type_mkldnn);

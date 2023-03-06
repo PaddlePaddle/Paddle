@@ -22,7 +22,7 @@
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/random.h>
 
-#include "paddle/fluid/framework/generator.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
@@ -30,7 +30,6 @@
 
 namespace paddle {
 namespace operators {
-using Tensor = phi::DenseTensor;
 
 inline std::vector<int64_t> GetNewDataFromShapeTensor(
     const phi::DenseTensor* new_data_tensor) {
@@ -165,7 +164,7 @@ void UniformRandom(const framework::ExecutionContext& context,
 
   if (seed == 0) {
     // Use global Generator seed
-    using MT = typename details::MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     phi::funcs::uniform_distribution<MT> dist;
     phi::funcs::uniform_real_transform<MT> trans(min, max);
     phi::funcs::distribution_and_transform<T>(dev_cxt, tensor, dist, trans);

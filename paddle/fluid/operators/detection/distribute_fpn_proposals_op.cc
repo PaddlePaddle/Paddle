@@ -27,22 +27,24 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "FpnRois");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
 class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("FpnRois", "(LoDTensor) The RoIs at all levels in shape (-1, 4)");
+    AddInput("FpnRois",
+             "(phi::DenseTensor) The RoIs at all levels in shape (-1, 4)");
     AddInput("RoisNum",
              "(Tensor) The number of RoIs in shape (B),"
              "B is the number of images")
         .AsDispensable();
-    AddOutput("MultiFpnRois", "(LoDTensor) Output with distribute operator")
+    AddOutput("MultiFpnRois",
+              "(phi::DenseTensor) Output with distribute operator")
         .AsDuplicable();
     AddOutput("RestoreIndex",
               "(Tensor) An array of positive number which is "

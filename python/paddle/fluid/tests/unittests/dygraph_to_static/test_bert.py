@@ -13,22 +13,20 @@
 # limitations under the License.
 
 import os
-import time
 import tempfile
+import time
 import unittest
+
 import numpy as np
+from bert_dygraph_model import PretrainModelLayer
+from bert_utils import get_bert_config, get_feed_data_reader
+from predictor_utils import PredictorTools
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.fluid import core
+from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
-from bert_dygraph_model import PretrainModelLayer
-from bert_utils import get_bert_config, get_feed_data_reader
-
-from predictor_utils import PredictorTools
-
-program_translator = ProgramTranslator()
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
@@ -118,20 +116,21 @@ class TestBert(unittest.TestCase):
                 step_idx += 1
                 if step_idx == STEP_NUM:
                     if to_static:
-                        fluid.dygraph.jit.save(bert, self.model_save_prefix)
+                        paddle.jit.save(bert, self.model_save_prefix)
                     else:
-                        fluid.dygraph.save_dygraph(
-                            bert.state_dict(), self.dy_state_dict_save_path
+                        paddle.save(
+                            bert.state_dict(),
+                            self.dy_state_dict_save_path + '.pdparams',
                         )
                     break
             return loss, ppl
 
     def train_dygraph(self, bert_config, data_reader):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         return self.train(bert_config, data_reader, False)
 
     def train_static(self, bert_config, data_reader):
-        program_translator.enable(True)
+        paddle.jit.enable_to_static(True)
         return self.train(bert_config, data_reader, True)
 
     def predict_static(self, data):
@@ -157,14 +156,12 @@ class TestBert(unittest.TestCase):
         return pred_res
 
     def predict_dygraph(self, bert_config, data):
-        program_translator.enable(False)
+        paddle.jit.enable_to_static(False)
         with fluid.dygraph.guard(place):
             bert = PretrainModelLayer(
                 config=bert_config, weight_sharing=False, use_fp16=False
             )
-            model_dict, _ = fluid.dygraph.load_dygraph(
-                self.dy_state_dict_save_path
-            )
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
 
             bert.set_dict(model_dict)
             bert.eval()
@@ -194,7 +191,7 @@ class TestBert(unittest.TestCase):
 
     def predict_dygraph_jit(self, data):
         with fluid.dygraph.guard(place):
-            bert = fluid.dygraph.jit.load(self.model_save_prefix)
+            bert = paddle.jit.load(self.model_save_prefix)
             bert.eval()
 
             (
@@ -237,6 +234,18 @@ class TestBert(unittest.TestCase):
         np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
         self.verify_predict()
+
+    def test_train_composite(self):
+        core._set_prim_backward_enabled(True)
+        static_loss, static_ppl = self.train_static(
+            self.bert_config, self.data_reader
+        )
+        core._set_prim_backward_enabled(False)
+        dygraph_loss, dygraph_ppl = self.train_dygraph(
+            self.bert_config, self.data_reader
+        )
+        np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
+        np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
     def verify_predict(self):
         for data in self.data_reader.data_generator()():
@@ -282,5 +291,4 @@ class TestBert(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

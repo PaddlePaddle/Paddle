@@ -13,29 +13,30 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-from op_test import OpTest, OpTestTool
-import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from test_sum_op import TestReduceOPTensorAxisBase
+
 import gradient_checker
+import numpy as np
 from decorator_helper import prog_scope
-import paddle.fluid.layers as layers
+from op_test import OpTest, OpTestTool
+from test_sum_op import TestReduceOPTensorAxisBase
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
 
 
 def mean_wrapper(x, axis=None, keepdim=False, reduce_all=False):
     if reduce_all:
-        return paddle.mean(x, range(len(x.shape)), keepdim)
+        return paddle.mean(x, list(range(len(x.shape))), keepdim)
     return paddle.mean(x, axis, keepdim)
 
 
 def reduce_mean_wrapper(x, axis=0, keepdim=False, reduce_all=False):
     if reduce_all:
-        return paddle.mean(x, range(len(x.shape)), keepdim)
+        return paddle.mean(x, list(range(len(x.shape))), keepdim)
     return paddle.mean(x, axis, keepdim)
 
 
@@ -80,14 +81,14 @@ class TestMeanOpError(unittest.TestCase):
             input1 = 12
             self.assertRaises(TypeError, paddle.mean, input1)
             # The input dtype of mean_op must be float16, float32, float64.
-            input2 = fluid.layers.data(
-                name='input2', shape=[12, 10], dtype="int32"
+            input2 = paddle.static.data(
+                name='input2', shape=[-1, 12, 10], dtype="int32"
             )
             self.assertRaises(TypeError, paddle.mean, input2)
-            input3 = fluid.layers.data(
-                name='input3', shape=[4], dtype="float16"
+            input3 = paddle.static.data(
+                name='input3', shape=[-1, 4], dtype="float16"
             )
-            fluid.layers.softmax(input3)
+            paddle.nn.functional.softmax(input3)
 
 
 @unittest.skipIf(
@@ -381,7 +382,7 @@ class TestMeanAPI(unittest.TestCase):
     def test_fluid_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             x = fluid.data("x", shape=[10, 10], dtype="float32")
-            out = fluid.layers.reduce_mean(input=x, dim=1)
+            out = paddle.mean(x=x, axis=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             x_np = np.random.rand(10, 10).astype(np.float32)
@@ -391,7 +392,7 @@ class TestMeanAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             x_np = np.random.rand(10, 10).astype(np.float32)
             x = fluid.dygraph.to_variable(x_np)
-            out = fluid.layers.reduce_mean(input=x, dim=1)
+            out = paddle.mean(x=x, axis=1)
         np.testing.assert_allclose(
             out.numpy(), np.mean(x_np, axis=1), rtol=1e-05
         )
@@ -440,7 +441,7 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 4, 5], False, dtype)
+        data = paddle.static.data('data', [3, 4, 5], dtype)
         data.persistable = True
         out = paddle.mean(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -448,7 +449,6 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.mean_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -472,7 +472,7 @@ class TestMeanTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 4, 5], False, dtype)
+        data = paddle.static.data('data', [3, 4, 5], dtype)
         data.persistable = True
         out = paddle.mean(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -480,7 +480,6 @@ class TestMeanTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.mean_wrapper, [data], out, x_init=[data_arr], place=place
         )

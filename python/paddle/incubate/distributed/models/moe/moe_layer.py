@@ -20,15 +20,17 @@
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
 import numpy as np
+
 import paddle
 import paddle.nn as nn
-from paddle.distributed.utils.moe_utils import global_scatter, global_gather
-
 from paddle.autograd import PyLayer
-from .gate import NaiveGate, GShardGate, SwitchGate, BaseGate
-from .utils import count_by_gate
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.distributed.utils.moe_utils import global_gather, global_scatter
+from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
+from paddle.framework import in_dygraph_mode
 from paddle.incubate.distributed.fleet import recompute_hybrid
+
+from .gate import BaseGate, GShardGate, NaiveGate, SwitchGate
+from .utils import count_by_gate
 
 
 def _local_scatter(inp, pos):
@@ -349,6 +351,9 @@ class MoELayer(nn.Layer):
         self.recompute_interval = recompute_interval
         assert experts is not None
         self.experts = experts
+
+        if self.world_size > 1:
+            check_nccl_version_for_p2p()
 
         self.mp_group = mp_group
         self.d_model = d_model

@@ -14,14 +14,14 @@
 
 import os
 import unittest
+
 import numpy as np
+from utils import extra_cc_args, extra_nvcc_args, paddle_includes
 
 import paddle
 import paddle.static as static
-from paddle.utils.cpp_extension import load, get_build_directory
+from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from utils import paddle_includes, extra_cc_args, extra_nvcc_args
-from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
@@ -121,7 +121,7 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
             ),
         )
 
-    def func_dynamic(self):
+    def test_dynamic(self):
         for dtype in self.dtypes:
             for axis in self.axises:
                 out, grad_inputs = concat_dynamic(
@@ -134,11 +134,6 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
                 self.check_output(out, pd_out, "out")
                 for x_grad, pd_x_grad in zip(grad_inputs, pd_grad_inputs):
                     self.check_output(x_grad, pd_x_grad, "x_grad")
-
-    def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
-        self.func_dynamic()
 
     def test_static(self):
         for dtype in self.dtypes:
@@ -154,7 +149,7 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
                 self.check_output(x1_grad, pd_x1_grad, "x1_grad")
                 self.check_output(x2_grad, pd_x2_grad, "x2_grad")
 
-    def func_dynamic_with_attr(self):
+    def test_dynamic_with_attr(self):
         for dtype in self.dtypes:
             for axis in self.axises:
                 out, grad_inputs = concat_dynamic(
@@ -171,11 +166,6 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
                 self.check_output(out, pd_out, "out")
                 for x_grad, pd_x_grad in zip(grad_inputs, pd_grad_inputs):
                     self.check_output(x_grad, pd_x_grad, "x_grad")
-
-    def test_dynamic_with_attr(self):
-        with _test_eager_guard():
-            self.func_dynamic_with_attr()
-        self.func_dynamic_with_attr()
 
     def test_static_with_attr(self):
         for dtype in self.dtypes:

@@ -324,6 +324,11 @@ class CompiledProgram:
         if self._places is not None:
             if not isinstance(self._places, (list, tuple)):
                 self._places = [self._places]
+        if self._places is not None and len(self._places) > 1:
+            raise NotImplementedError(
+                "If you need to train with multi-gpus, please use `fleet` instead of `with_data_parallel`."
+                "This will be removed soon in develop version."
+            )
 
         return self
 
@@ -412,12 +417,6 @@ class CompiledProgram:
             )
             self._exec_strategy.num_threads = 1
 
-        if self._build_strategy.num_trainers > 1:
-            assert self._is_data_parallel, (
-                "If you use multi-trainer to train the model, you should use "
-                "the data parallel model, i.e. calling with_data_parallel function."
-            )
-
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
         # TODO(gongwb): let user to set them once.
@@ -484,6 +483,10 @@ class CompiledProgram:
         self._persistable_vars = list(set(self._persistable_vars))
         self._persistable_vars.sort()
 
+        if core.is_cuda_graph_capturing():
+            raise RuntimeError(
+                "CUDA Graph is not allowed to capture when running the first batch."
+            )
         return core.ParallelExecutor(
             places,
             self._persistable_vars,
@@ -586,7 +589,6 @@ class IpuDynamicPatcher:
         """
         from ..fluid.dygraph.base import switch_to_static_graph
         from ..fluid import backward
-        from ..fluid.initializer import Constant
         from ..fluid.framework import device_guard
         import paddle
 
@@ -645,7 +647,10 @@ class IpuDynamicPatcher:
                     device = optimizer._get_device_for_param(param_name)
                     with device_guard(device):
                         optimizer.helper.set_variable_initializer(
-                            var, initializer=Constant(value=0.0)
+                            var,
+                            initializer=paddle.nn.initializer.Constant(
+                                value=0.0
+                            ),
                         )
                     param_or_lr_tensor = scope.find_var(
                         var_tmp.name
@@ -691,17 +696,13 @@ class IpuDynamicPatcher:
         Returns:
             None
         """
-        from ..fluid.dygraph.dygraph_to_static.program_translator import (
-            ProgramCache,
-        )
-        from ..fluid.dygraph.dygraph_to_static.program_translator import (
+        from paddle.jit.dy2static.program_translator import (
             CacheKey,
-        )
-        from ..fluid.dygraph.dygraph_to_static import logging_utils
-        from ..fluid.dygraph.dygraph_to_static.program_translator import (
+            ProgramCache,
             MAX_TRACED_PROGRAM_COUNT,
         )
-        from ..fluid.dygraph.dygraph_to_static.partial_program import (
+        from paddle.jit.dy2static import logging_utils
+        from paddle.jit.dy2static.partial_program import (
             partial_program_from,
         )
 
@@ -755,7 +756,7 @@ class IpuDynamicPatcher:
     def patch_lr_scheduler(ipu_strategy):
         from paddle.optimizer.lr import LRScheduler
 
-        # For IPU dynamic graph usage, lr_var is not synced in executor as static mode do.
+        # For IPU dynamic graph usage, lr_var is not synced in executor as static graph mode do.
         # Manually set lr to ipu_strategy to update the lr.
         old_step = LRScheduler.step
 

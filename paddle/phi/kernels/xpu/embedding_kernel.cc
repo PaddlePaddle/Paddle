@@ -25,6 +25,8 @@ void EmbeddingKernel(const Context &ctx,
                      const DenseTensor &weight,
                      int64_t padding_idx,
                      DenseTensor *out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
   auto *ids_t = &inputx;  // int
   auto *output_t = out;   // float
   PADDLE_ENFORCE_EQ(
@@ -42,7 +44,17 @@ void EmbeddingKernel(const Context &ctx,
   auto *table = table_t->data<T>();
   auto *output = dev_ctx.template Alloc<T>(output_t);
 
-  const int64_t *ids = ids_t->data<int64_t>();
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  const int64_t *ids;
+  if (ids_t->dtype() == phi::DataType::INT64) {
+    ids = ids_t->data<int64_t>();
+  } else {
+    int64_t *ids_tt = RAII_GUARD.alloc_l3_or_gm<int64_t>(ids_t->numel());
+    int r = xpu::cast<int32_t, int64_t>(
+        ctx.x_context(), ids_t->data<int>(), ids_tt, ids_t->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    ids = reinterpret_cast<const int64_t *>(ids_tt);
+  }
 
   PADDLE_ENFORCE_EQ(
       ids_numel <= std::numeric_limits<int32_t>::max(),
@@ -56,18 +68,23 @@ void EmbeddingKernel(const Context &ctx,
   size_t xm = table_t->dims()[0];
   size_t n = table_t->dims()[1];
 
-  int r = xpu::embedding<T, int64_t>(dev_ctx.x_context(),
-                                     table,
-                                     ids,
-                                     output,
-                                     xm,
-                                     n,
-                                     ym,
-                                     static_cast<int>(padding_idx));
+  int r = xpu::embedding<XPUType>(dev_ctx.x_context(),
+                                  reinterpret_cast<const XPUType *>(table),
+                                  ids,
+                                  reinterpret_cast<XPUType *>(output),
+                                  xm,
+                                  n,
+                                  ym,
+                                  padding_idx);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(embedding, XPU, ALL_LAYOUT, phi::EmbeddingKernel, float) {}
+PD_REGISTER_KERNEL(embedding,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::EmbeddingKernel,
+                   float,
+                   phi::dtype::float16) {}

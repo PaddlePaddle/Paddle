@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-import numpy as np
 from time import time
-from test_mnist import MNIST, TestMNIST, SEED
+
+import numpy as np
+from test_mnist import MNIST, SEED, TestMNIST
+
+import paddle
 from paddle.fluid.optimizer import AdamOptimizer
 
 if paddle.fluid.is_compiled_with_cuda():
@@ -104,5 +106,4 @@ class TestAMP(TestMNIST):
 
 
 if __name__ == '__main__':
-    with paddle.fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

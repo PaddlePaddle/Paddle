@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import time
 import random
-import tempfile
 import shutil
+import tempfile
+import time
+import unittest
+
 import numpy as np
 
 from paddle import Model
-from paddle.static import InputSpec
-from paddle.vision.models import LeNet
 from paddle.hapi.callbacks import config_callbacks
+from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
+from paddle.vision.models import LeNet
 
 
 class MnistDataset(MNIST):

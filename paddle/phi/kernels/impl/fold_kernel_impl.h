@@ -16,9 +16,9 @@
 
 #include <vector>
 
-#include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
@@ -36,9 +36,7 @@ void FoldKernel(const Context& ctx,
   const int batch_size = static_cast<int>(x.dims()[0]);
   ctx.template Alloc<T>(out);
 
-  paddle::operators::math::
-      Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-          col2im;
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
   const auto& x_dims = x.dims();
 
   int output_height = (output_sizes[0] + 2 * paddings[0] -
@@ -56,11 +54,8 @@ void FoldKernel(const Context& ctx,
   DDim output_shape =
       make_ddim({n_output_plane, output_sizes[0], output_sizes[1]});
 
-  DDim input_matrix_shape = make_ddim({x_dims[0],
-                                       kernel_sizes[0],
-                                       kernel_sizes[1],
-                                       output_height,
-                                       output_width});
+  DDim input_matrix_shape = make_ddim(
+      {1, kernel_sizes[0], kernel_sizes[1], output_height, output_width});
 
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(ctx, out, static_cast<T>(0));
@@ -68,6 +63,7 @@ void FoldKernel(const Context& ctx,
   for (int i = 0; i < batch_size; i++) {
     DenseTensor out_batch =
         out->Slice(i, i + 1).Resize(output_shape);  // im size=3
+
     DenseTensor in_batch =
         x.Slice(i, i + 1).Resize(input_matrix_shape);  // col size=5
     col2im(ctx, in_batch, dilations, strides, paddings, &out_batch);

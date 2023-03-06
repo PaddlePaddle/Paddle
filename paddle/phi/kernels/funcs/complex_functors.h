@@ -111,53 +111,6 @@ struct AbsFunctor<T, NoComplex<T, dtype::Real<T>>> {
 };
 
 template <typename T>
-struct AbsGradCUDAFunctor {
-  HOSTDEVICE inline AbsGradCUDAFunctor() {}
-
-  HOSTDEVICE inline T operator()(const T x, const T dout) const {
-    T output;
-    if (x == T(0)) {
-      output = T(0);
-    } else {
-      output = T(dout) * (x / T(std::abs(x)));
-    }
-    return output;
-  }
-};
-
-template <>
-struct AbsGradCUDAFunctor<phi::dtype::complex<float>> {
-  HOSTDEVICE inline AbsGradCUDAFunctor() {}
-  HOSTDEVICE inline phi::dtype::complex<float> operator()(
-      const phi::dtype::complex<float> x, const float dout) const {
-    phi::dtype::complex<float> output;
-    if (x == phi::dtype::complex<float>(0)) {
-      output = phi::dtype::complex<float>(0);
-    } else {
-      output = phi::dtype::complex<float>(dout) *
-               (x / phi::dtype::complex<float>(abs(x)));
-    }
-    return output;
-  }
-};
-
-template <>
-struct AbsGradCUDAFunctor<phi::dtype::complex<double>> {
-  HOSTDEVICE inline AbsGradCUDAFunctor() {}
-  HOSTDEVICE inline phi::dtype::complex<double> operator()(
-      const phi::dtype::complex<double> x, const double dout) const {
-    phi::dtype::complex<double> output;
-    if (x == phi::dtype::complex<double>(0)) {
-      output = phi::dtype::complex<double>(0);
-    } else {
-      output = phi::dtype::complex<double>(dout) *
-               (x / phi::dtype::complex<double>(abs(x)));
-    }
-    return output;
-  }
-};
-
-template <typename T>
 struct AbsGradFunctor {
   AbsGradFunctor(const dtype::Real<T>* dout,
                  const T* x,
@@ -176,6 +129,28 @@ struct AbsGradFunctor {
   const dtype::Real<T>* dout_;
   const T* x_;
   T* output_;
+  int64_t numel_;
+};
+
+template <>
+struct AbsGradFunctor<phi::dtype::bfloat16> {
+  AbsGradFunctor(const dtype::Real<phi::dtype::bfloat16>* dout,
+                 const phi::dtype::bfloat16* x,
+                 phi::dtype::bfloat16* output,
+                 int64_t numel)
+      : dout_(dout), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == static_cast<phi::dtype::bfloat16>(0)) {
+      output_[idx] = static_cast<phi::dtype::bfloat16>(0);
+    } else {
+      output_[idx] = dout_[idx] * (x_[idx] / (abs(x_[idx])));
+    }
+  }
+
+  const dtype::Real<phi::dtype::bfloat16>* dout_;
+  const phi::dtype::bfloat16* x_;
+  phi::dtype::bfloat16* output_;
   int64_t numel_;
 };
 

@@ -61,11 +61,13 @@ struct XPUContext::Impl {
   ~Impl() {
     if (owned_ && context_ != nullptr) {
       backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
-      // manually destroy XPUStream here until xpu::api integrates this work
-      // into Context dtor
       xpu_wait(context_->xpu_stream);
-      PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(context_->xpu_stream));
-      context_->xpu_stream = nullptr;
+      if (context_->xpu_stream) {
+        // manually destroy XPUStream here until xpu::api integrates this work
+        // into Context dtor
+        xpu_stream_destroy(context_->xpu_stream);
+        context_->xpu_stream = nullptr;
+      }
       xpu::destroy_context(context_);
       context_ = nullptr;
     }
@@ -73,11 +75,7 @@ struct XPUContext::Impl {
 
   const Place& GetPlace() const { return place_; }
 
-  XPUStream stream() const {
-    auto s = context_->xpu_stream;
-    PD_CHECK(s != nullptr, "the xpu stream is nullptr.");
-    return s;
-  }
+  XPUStream stream() const { return context_->xpu_stream; }
 
   xpu::Context* GetXContext() const {
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
@@ -103,12 +101,19 @@ struct XPUContext::Impl {
     context_ = xpu::create_context();
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache();
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
   }
 
   void SetXContext(xpu::Context* context) { context_ = context; }
 
   void SetBkclContext(xpu::BKCLContext_t context) { bkcl_context_ = context; }
+
+  void CreateStream() {
+    if (context_->xpu_stream) {
+      VLOG(3) << "xpu stream is already created for current context";
+      return;
+    }
+    PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
+  }
 
   bool owned_{false};
   Place place_;
@@ -120,10 +125,14 @@ struct XPUContext::Impl {
   xpu::BKCLContext_t bkcl_context_{nullptr};
 };
 
-XPUContext::XPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {}
+XPUContext::XPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {
+  impl_->Init();
+}
 
 XPUContext::XPUContext(const XPUPlace& place)
-    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {}
+    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
+  impl_->Init();
+}
 
 XPUContext::~XPUContext() = default;
 
@@ -152,6 +161,8 @@ void XPUContext::SetL3Cache(int l3_size) { impl_->SetL3Cache(l3_size); }
 void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
   impl_->SetBkclContext(context);
 }
+
+void XPUContext::CreateStream() { impl_->CreateStream(); }
 
 void XPUContext::Init() { impl_->Init(); }
 

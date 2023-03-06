@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 from paddle.incubate.autograd.primx import prim2orig
 from paddle.incubate.autograd.utils import (

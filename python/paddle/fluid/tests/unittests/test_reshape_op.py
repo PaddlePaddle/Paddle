@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
-from op_test import OpTest, convert_float_to_uint16
+import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
+
 import paddle
 import paddle.fluid as fluid
 from paddle.static import Program, program_guard
@@ -26,6 +27,8 @@ class TestReshapeOp(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
         self.attrs = {"shape": self.new_shape}
         self.outputs = {
@@ -48,20 +51,20 @@ class TestReshapeOp(OpTest):
 class TestReshapeOp_ZeroDim1(OpTest):
     def init_data(self):
         self.ori_shape = ()
-        self.new_shape = 1
-        self.infered_shape = 1
+        self.new_shape = (1,)
+        self.infered_shape = (1,)
 
 
 class TestReshapeOp_ZeroDim2(OpTest):
     def init_data(self):
         self.ori_shape = ()
-        self.new_shape = -1
-        self.infered_shape = 1
+        self.new_shape = (-1,)
+        self.infered_shape = (1,)
 
 
 class TestReshapeOp_ZeroDim3(OpTest):
     def init_data(self):
-        self.ori_shape = 1
+        self.ori_shape = (1,)
         self.new_shape = ()
         self.infered_shape = ()
 
@@ -70,6 +73,8 @@ class TestReshapeBF16Op(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
         self.dtype = np.uint16
         x = np.random.random(self.ori_shape).astype("float32")
         out = x.reshape(self.infered_shape)
@@ -113,6 +118,8 @@ class TestReshapeOpWithInputShape(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
 
         self.inputs = {
             "X": np.random.random(self.ori_shape).astype("float32"),
@@ -141,6 +148,8 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
 
         shape_tensor = []
         for index, ele in enumerate(self.new_shape):
@@ -192,6 +201,8 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
 
         self.inputs = {
             "X": np.random.random(self.ori_shape).astype("float32"),
@@ -239,6 +250,8 @@ class TestReshapeInt8Op(OpTest):
         self.use_mkldnn = True
         self._cpu_only = True
         self.op_type = "reshape2"
+        self.python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
         input = np.random.randint(0, 127, self.ori_shape).astype(self.dtype)
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
         self.attrs = {
@@ -260,7 +273,9 @@ class TestReshapeInt8Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            fluid.core.CPUPlace(), atol=1e-5, no_check_set=['XShape']
+            fluid.core.CPUPlace(),
+            atol=1e-5,
+            no_check_set=['XShape'],
         )
 
     def test_check_grad(self):
@@ -277,6 +292,8 @@ class TestReshapeOpBool(TestReshapeOp):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
         self.inputs = {
             "X": np.random.choice([True, False], size=self.ori_shape)
         }
@@ -301,11 +318,6 @@ class TestReshapeAPI(unittest.TestCase):
     def _executed_api(self):
         self.reshape = paddle.reshape
 
-    def _set_fluid_api(self):
-        self.fill_constant = fluid.layers.fill_constant
-        self.data = paddle.static.data
-        self.reshape = fluid.layers.reshape
-
     def _test_api(self):
         paddle.enable_static()
         input = np.random.random([2, 25]).astype("float32")
@@ -317,18 +329,16 @@ class TestReshapeAPI(unittest.TestCase):
 
             actual_shape = self.data(name="shape", shape=[3], dtype="int32")
 
-            # situation 1: have shape( list, no tensor), no actual shape(Tensor)
+            # situation 1: have shape( list, no tensor)
             out_1 = self.reshape(x, shape)
 
-            # situation 2: have shape(list, no tensor), have actual shape(Tensor)
-            out_2 = fluid.layers.reshape(
-                x, shape=shape, actual_shape=actual_shape
-            )
+            # situation 2: have shape(list, no tensor)
+            out_2 = paddle.reshape(x, actual_shape)
 
-            # Situation 3: have shape(list, have tensor), no actual shape(Tensor)
+            # Situation 3: have shape(list, have tensor)
             out_3 = self.reshape(x, shape=[positive_five, 10])
 
-            # Situation 4: have shape(Tensor), no actual shape(Tensor)
+            # Situation 4: have shape(Tensor)
             out_4 = self.reshape(x, shape=actual_shape)
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
@@ -345,10 +355,6 @@ class TestReshapeAPI(unittest.TestCase):
 
     def test_paddle_api(self):
         self._set_paddle_api()
-        self._test_api()
-
-    def test_fluid_api(self):
-        self._set_fluid_api()
         self._test_api()
 
     def test_imperative(self):
@@ -401,10 +407,6 @@ class TestReshapeOpError(unittest.TestCase):
         self.data = paddle.static.data
         self.reshape = paddle.reshape
 
-    def _set_fluid_api(self):
-        self.data = fluid.data
-        self.reshape = fluid.layers.reshape
-
     def _test_errors(self):
         with program_guard(Program(), Program()):
             # The x type of reshape_op must be Variable.
@@ -439,12 +441,6 @@ class TestReshapeOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_shape_type)
 
-            # The argument actual_shape's type of reshape_op must be Variable or None.
-            def test_actual_shape_type():
-                self.reshape(x3, shape=[25, 2], actual_shape=1)
-
-            self.assertRaises(TypeError, test_actual_shape_type)
-
             # The argument shape have more than one -1.
             def test_shape_1():
                 self.reshape(x3, shape=[-1, -1, 5])
@@ -465,10 +461,6 @@ class TestReshapeOpError(unittest.TestCase):
 
     def test_paddle_api_error(self):
         self._set_paddle_api()
-        self._test_errors()
-
-    def test_fluid_api_error(self):
-        self._set_fluid_api()
         self._test_errors()
 
 
@@ -529,17 +521,18 @@ class TestReshapeZeroTensor(unittest.TestCase):
 class TestReshapeAPI_ZeroDim(unittest.TestCase):
     def test_dygraph(self):
         paddle.disable_static()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         x = paddle.rand([])
         x.stop_gradient = False
 
         out = paddle.reshape(x, [1])
+        out.retain_grads()
         out.backward()
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.shape, [1])
         self.assertEqual(out.grad.shape, [1])
 
         out = paddle.reshape(x, [-1, 1])
+        out.retain_grads()
         out.backward()
         self.assertEqual(x.grad.shape, [])
         self.assertEqual(out.shape, [1, 1])
@@ -548,6 +541,7 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
         x = paddle.rand([1])
         x.stop_gradient = False
         out = paddle.reshape(x, [])
+        out.retain_grads()
         out.backward()
         self.assertEqual(x.grad.shape, [1])
         self.assertEqual(out.shape, [])

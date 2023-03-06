@@ -28,6 +28,7 @@ void ReduceAMaxGradKernel(const Context& dev_ctx,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   ReduceGradKernel<Context, T, funcs::AMaxOrAMinGradFunctor>(
       dev_ctx, x, out, out_grad, dims, keep_dim, reduce_all, x_grad);
 }

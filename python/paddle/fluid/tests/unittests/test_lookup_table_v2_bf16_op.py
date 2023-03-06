@@ -13,18 +13,20 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
 from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
-    _lookup,
     TestLookupTableBF16Op,
     TestLookupTableBF16OpIds4D,
     TestLookupTableBF16OpWIsSelectedRows,
     TestLookupTableBF16OpWIsSelectedRows4DIds,
+    _lookup,
 )
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 
 
 class TestLookupTableV2BF16Op(TestLookupTableBF16Op):
@@ -82,7 +84,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
     """
 
     def set_initializer(self):
-        self.initializer = fluid.initializer.Constant(value=self.value)
+        self.initializer = paddle.nn.initializer.Constant(value=self.value)
 
     def setUp(self):
         self.op_type = "lookup_table_v2"
@@ -100,8 +102,10 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         self.set_initializer()
 
         with fluid.program_guard(self.prog, self.startup_prog):
-            x = fluid.layers.data(name='x', shape=self.ids_shape, dtype='int64')
-            self.emb = fluid.input.embedding(
+            x = paddle.static.data(
+                name='x', shape=[-1] + self.ids_shape, dtype='int64'
+            )
+            self.emb = paddle.static.nn.embedding(
                 input=x,
                 size=self.w_shape,
                 param_attr=fluid.ParamAttr(

@@ -62,7 +62,8 @@ class SparseCsrTensor : public TensorBase,
   /// \brief This function is not recommended
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0) override;
+                     size_t requested_size = 0,
+                     bool fake_alloc = false) override;
 
  public:
   /// \brief Returns the name of the class for type traits.

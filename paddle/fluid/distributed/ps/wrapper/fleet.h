@@ -47,7 +47,6 @@ namespace distributed {
 
 class PSCore;
 
-using LoDTensor = phi::DenseTensor;
 using framework::Scope;
 using framework::Variable;
 using phi::SelectedRows;
@@ -111,13 +110,14 @@ class FleetWrapper {
   // is_training is true means training, false means inference, the behavior is
   // different on pserver
 
-  void PullSparseToTensorSync(const uint64_t table_id,
-                              int fea_dim,
-                              uint64_t padding_id,
-                              platform::Place place,
-                              bool is_training,
-                              std::vector<const LoDTensor*>* inputs,  // NOLINT
-                              std::vector<LoDTensor*>* outputs);      // NOLINT
+  void PullSparseToTensorSync(
+      const uint64_t table_id,
+      int fea_dim,
+      uint64_t padding_id,
+      platform::Place place,
+      bool is_training,
+      std::vector<const phi::DenseTensor*>* inputs,  // NOLINT
+      std::vector<phi::DenseTensor*>* outputs);      // NOLINT
 
   // pull dense variables from server in sync mod
   // Param<in>: scope, table_id, var_names
@@ -188,18 +188,18 @@ class FleetWrapper {
       const std::string& click_name,
       platform::Place place,
       const std::vector<std::string>& input_names,
-      std::vector<const LoDTensor*>* inputs,    // NOLINT
-      std::vector<const LoDTensor*>* outputs);  // NOLINT
+      std::vector<const phi::DenseTensor*>* inputs,    // NOLINT
+      std::vector<const phi::DenseTensor*>* outputs);  // NOLINT
 
   void PushSparseFromTensorAsync(const uint64_t table_id,
                                  int fea_dim,
                                  uint64_t padding_id,
                                  platform::Place place,
-                                 std::vector<const LoDTensor*>* inputs,
+                                 std::vector<const phi::DenseTensor*>* inputs,
                                  std::vector<int>& slots,  // NOLINT
-                                 const LoDTensor* shows,
-                                 const LoDTensor* clicks,
-                                 std::vector<LoDTensor*>* outputs,
+                                 const phi::DenseTensor* shows,
+                                 const phi::DenseTensor* clicks,
+                                 std::vector<phi::DenseTensor*>* outputs,
                                  bool use_cvm_op = false);
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
@@ -242,6 +242,9 @@ class FleetWrapper {
   void BarrierWithTable(uint32_t barrier_type);
 
   void PrintTableStat(const uint64_t table_id);
+  void SaveCacheTable(const uint64_t table_id,
+                      uint16_t pass_id,
+                      size_t threshold);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);
@@ -283,6 +286,12 @@ class FleetWrapper {
                                              int to_client_id,
                                              const std::string& msg);
 
+  std::string GetDistDesc() const {
+    CHECK(is_initialized_ == true)
+        << "fleetwrapper should be initialized first!!!";
+    return dist_desc_;
+  }
+
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
     if (NULL == s_instance_) {
@@ -318,6 +327,7 @@ class FleetWrapper {
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
+  std::string dist_desc_;
   paddle::distributed::PaddlePSEnvironment ps_env_;
   size_t GetAbsoluteSum(size_t start,
                         size_t end,

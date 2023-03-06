@@ -12,8 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
+import paddle
+from paddle import _C_ops
+
+from ..fluid import core, framework, unique_name
+from ..fluid.framework import in_dygraph_mode
+from ..fluid.layer_helper import LayerHelper
 from .optimizer import Optimizer
-from ..fluid import framework
 
 __all__ = []
 
@@ -83,7 +90,7 @@ class RMSProp(Optimizer):
           different parameter groups such as the learning rate, weight decay, etc,
           then the parameters are list of dict. Note that the learning_rate in paramter groups
           represents the scale of base learning_rate.
-          The default value is None in static mode, at this time all parameters will be updated.
+          The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
           It canbe a float value as coeff of L2 regularization or \
           :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
@@ -181,12 +188,70 @@ class RMSProp(Optimizer):
         self._epsilon = epsilon
         self._momentum = momentum
         self._centered = centered
+        self._multi_precision = False
+        self._master_weights = {}
         self._default_dict = {
             'rho': rho,
             'epsilon': epsilon,
             'momentum': momentum,
             'centered': centered,
         }
+
+    def _create_master_weight(self, param):
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
+
+            var_name = param.name + "_fp32_master"
+            var_name = unique_name.generate(var_name)
+            var = paddle.static.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True,
+            )
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            self._master_weights[param.name] = var
+        return var
+
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = (
+            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
+        target_name = target_param.name
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name
+                )
+            )
+        return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
@@ -196,6 +261,20 @@ class RMSProp(Optimizer):
             parameters = parameters.get('params')
 
         for p in parameters:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._momentum_acc_str, master_p)
+                self._add_accumulator(self._mean_square_acc_str, master_p)
+                self._add_accumulator(self._mean_grad_acc_str, master_p)
+                continue
+            if (
+                p.dtype == core.VarDesc.VarType.FP16
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Lars optimizer."
+                )
             self._add_accumulator(self._momentum_acc_str, p)
             self._add_accumulator(self._mean_square_acc_str, p)
             self._add_accumulator(self._mean_grad_acc_str, p)
@@ -216,32 +295,66 @@ class RMSProp(Optimizer):
         mean_grad_acc = self._get_accumulator(
             self._mean_grad_acc_str, param_and_grad[0]
         )
-        rmsprop_op = block.append_op(
-            type=self.type,
-            inputs={
+        find_master = (
+            self._multi_precision
+            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
+
+        if in_dygraph_mode():
+            _C_ops.rmsprop_(
+                param_and_grad[0],
+                mean_square_acc,
+                param_and_grad[1],
+                momentum_acc,
+                self._create_param_lr(param_and_grad),
+                mean_grad_acc,
+                master_weight,
+                self._epsilon,
+                self._rho,
+                self._momentum,
+                self._centered,
+                find_master,
+            )
+            return None
+        else:
+            inputs = {
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
                 "Moment": momentum_acc,
                 "MeanSquare": mean_square_acc,
                 "MeanGrad": mean_grad_acc,
                 "LearningRate": self._create_param_lr(param_and_grad),
-            },
-            outputs={
+            }
+
+            outputs = {
                 "ParamOut": param_and_grad[0],
                 "MomentOut": momentum_acc,
                 "MeanSquareOut": mean_square_acc,
                 "MeanGradOut": mean_grad_acc,
-            },
-            attrs={
-                "epsilon": self._epsilon,
-                "decay": self._rho,
-                "momentum": self._momentum,
-                "centered": self._centered,
-            },
-            stop_gradient=True,
-        )
+            }
 
-        return rmsprop_op
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+            rmsprop_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs={
+                    "epsilon": self._epsilon,
+                    "decay": self._rho,
+                    "momentum": self._momentum,
+                    "centered": self._centered,
+                },
+                stop_gradient=True,
+            )
+
+            return rmsprop_op
 
     def _update_param_group(self, parameters):
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])

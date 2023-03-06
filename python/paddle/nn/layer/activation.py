@@ -14,10 +14,11 @@
 
 # TODO: define activation functions of neural network
 
-from ..initializer import Constant
 from paddle.framework import get_default_dtype
-from .. import functional as F
 from paddle.nn import Layer
+
+from .. import functional as F
+from ..initializer import Constant
 
 __all__ = []
 
@@ -355,11 +356,15 @@ class Hardtanh(Layer):
 
 class PReLU(Layer):
     """
-    PReLU Activation.
+    PReLU Activation. The calculation formula is follows:
+
+    If approximate calculation is used:
 
     .. math::
 
         PReLU(x) = max(0, x) + weight * min(0, x)
+
+    x is input Tensor.
 
     Parameters:
         num_parameters (int, optional): Number of `weight` to learn. The supported values are:
@@ -478,8 +483,8 @@ class RReLU(Layer):
     :math:`lower` and :math:`upper` are the bounds of uniform distribution.
 
     Parameters:
-        lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
-        upper (float, optional): The upper bound of uniform distribution. Default: 0.333.
+        lower (float, optional): The lower bound of uniform distribution. Default: 1.0/8.0.
+        upper (float, optional): The upper bound of uniform distribution. Default: 1.0/3.0.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -530,11 +535,13 @@ class RReLU(Layer):
 
 class ReLU(Layer):
     """
-    ReLU Activation.
+    ReLU Activation. The calculation formula is follows:
 
     .. math::
 
         ReLU(x) = max(x, 0)
+
+    x is input Tensor.
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -575,6 +582,8 @@ class ReLU6(Layer):
     .. math::
 
         ReLU6(x) = min(max(0,x), 6)
+
+    x is input Tensor.
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -623,8 +632,8 @@ class SELU(Layer):
             \right.
 
     Parameters:
-        scale (float, optional): The value of scale(must be greater than 1.0) for SELU. Default is 1.0507009873554804934193349852946
-        alpha (float, optional): The value of alpha(must be no less than zero) for SELU. Default is 1.6732632423543772848170429916717
+        scale (float, optional): The value of scale(must be greater than 1.0) for SELU. Default is 1.0507009873554804934193349852946.
+        alpha (float, optional): The value of alpha(must be no less than zero) for SELU. Default is 1.6732632423543772848170429916717.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1400,7 +1409,7 @@ class Maxout(Layer):
         \end{array}
 
     Parameters:
-        groups (int, optional): The groups number of maxout. `groups` specifies the
+        groups (int): The groups number of maxout. `groups` specifies the
             index of channel dimension where maxout will be performed. This must be
             a factor of number of features. Default is 1.
         axis (int, optional): The axis along which to perform maxout calculations.
@@ -1449,15 +1458,16 @@ class Maxout(Layer):
 
 class Softmax2D(Layer):
     r"""
+
     Softmax2D Activation.
     Given a Tensor with shape (B, C, H, W) or (C, H, W), it will apply Softmax to each location (C, h_i, w_j).
     The sum of result in each location (C, H_i, W_j) will be one.
 
     Shape:
         - Input: :math:`(B, C, H, W)` or :math:`(C, H, W)`
-        - Output: :math:`(B, C, H, W)` or :math:`(C, H, W)`(same as input)
+        - Output: :math:`(B, C, H, W)` or :math:`(C, H, W)` (same as input)
 
-    Return:
+    Returns:
         A Tensor of the same shape and dtype as input with value in range [0, 1].
 
     Examples:
@@ -1482,6 +1492,7 @@ class Softmax2D(Layer):
             #   [[0.42368975 0.51082766 0.47752273 0.5258871 ]
             #    [0.66754097 0.47182566 0.5187628  0.5402329 ]
             #    [0.49014282 0.46369177 0.50340754 0.5289428 ]]]]
+
     """
 
     def __init__(self, name=None):

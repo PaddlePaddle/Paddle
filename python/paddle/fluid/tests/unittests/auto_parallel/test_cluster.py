@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+import os
 import tempfile
 import unittest
-import os
-import json
 
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cluster import get_default_cluster
+from paddle.distributed.auto_parallel.cluster import (
+    Cluster,
+    get_default_cluster,
+)
 
 cluster_json = """
 {

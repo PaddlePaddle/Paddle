@@ -113,11 +113,10 @@ class NCEOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          platform::CPUPlace());
   }
 };
 
@@ -279,11 +278,10 @@ class NCEOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          platform::CPUPlace());
   }
 };
 
@@ -300,7 +298,7 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
       ctx->SetOutputType(weight_grad, framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "nce_op_grad op " << weight_grad << " and "
-              << " is set to LoDTensor";
+              << " is set to phi::DenseTensor";
       ctx->SetOutputType(weight_grad, framework::proto::VarType::LOD_TENSOR);
     }
     ctx->SetOutputDataType(weight_grad, ctx->GetInputDataType("Input"));

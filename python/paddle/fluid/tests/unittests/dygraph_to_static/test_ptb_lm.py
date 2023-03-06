@@ -17,18 +17,15 @@ import time
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.optimizer import SGDOptimizer
+from paddle.jit.api import to_static
 
 PRINT_STEP = 20
 SEED = 2020
-
-program_translator = ProgramTranslator()
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -52,26 +49,26 @@ class SimpleLSTMRNN(fluid.Layer):
         for i in range(self._num_layers):
             weight_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 2, self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-self._init_scale, high=self._init_scale
                 ),
             )
             self.weight_1_arr.append(self.add_parameter('w_%d' % i, weight_1))
             bias_1 = self.create_parameter(
                 attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.UniformInitializer(
+                    initializer=paddle.nn.initializer.Uniform(
                         low=-self._init_scale, high=self._init_scale
                     )
                 ),
                 shape=[self._hidden_size * 4],
                 dtype="float32",
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             self.bias_arr.append(self.add_parameter('b_%d' % i, bias_1))
 
@@ -92,42 +89,42 @@ class SimpleLSTMRNN(fluid.Layer):
                 weight_1 = self.weight_1_arr[k]
                 bias = self.bias_arr[k]
 
-                nn = fluid.layers.concat([step_input, pre_hidden], 1)
-                gate_input = fluid.layers.matmul(x=nn, y=weight_1)
+                nn = paddle.concat([step_input, pre_hidden], 1)
+                gate_input = paddle.matmul(x=nn, y=weight_1)
 
-                gate_input = fluid.layers.elementwise_add(gate_input, bias)
-                i, j, f, o = fluid.layers.split(
-                    gate_input, num_or_sections=4, dim=-1
+                gate_input = paddle.add(gate_input, bias)
+                i, j, f, o = paddle.split(
+                    gate_input, num_or_sections=4, axis=-1
                 )
-                c = pre_cell * fluid.layers.sigmoid(f) + fluid.layers.sigmoid(
-                    i
-                ) * fluid.layers.tanh(j)
-                m = fluid.layers.tanh(c) * fluid.layers.sigmoid(o)
+                c = pre_cell * paddle.nn.functional.sigmoid(
+                    f
+                ) + paddle.nn.functional.sigmoid(i) * paddle.tanh(j)
+                m = paddle.tanh(c) * paddle.nn.functional.sigmoid(o)
                 hidden_array[k] = m
                 cell_array[k] = c
                 step_input = m
 
                 if self._dropout is not None and self._dropout > 0.0:
-                    step_input = fluid.layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         step_input,
-                        dropout_prob=self._dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self._dropout,
+                        mode='upscale_in_train',
                     )
             res.append(step_input)
-        real_res = fluid.layers.concat(res, 1)
-        real_res = fluid.layers.reshape(
+        real_res = paddle.concat(res, 1)
+        real_res = paddle.reshape(
             real_res, [-1, self._num_steps, self._hidden_size]
         )
-        last_hidden = fluid.layers.concat(hidden_array, 1)
-        last_hidden = fluid.layers.reshape(
+        last_hidden = paddle.concat(hidden_array, 1)
+        last_hidden = paddle.reshape(
             last_hidden, shape=[-1, self._num_layers, self._hidden_size]
         )
-        last_hidden = fluid.layers.transpose(x=last_hidden, perm=[1, 0, 2])
-        last_cell = fluid.layers.concat(cell_array, 1)
-        last_cell = fluid.layers.reshape(
+        last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
+        last_cell = paddle.concat(cell_array, 1)
+        last_cell = paddle.reshape(
             last_cell, shape=[-1, self._num_layers, self._hidden_size]
         )
-        last_cell = fluid.layers.transpose(x=last_cell, perm=[1, 0, 2])
+        last_cell = paddle.transpose(x=last_cell, perm=[1, 0, 2])
         return real_res, last_hidden, last_cell
 
 
@@ -155,13 +152,13 @@ class PtbModel(fluid.Layer):
             init_scale=init_scale,
             dropout=dropout,
         )
-        self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype='float32',
-            is_sparse=False,
-            param_attr=fluid.ParamAttr(
+        self.embedding = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            sparse=False,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             ),
@@ -170,7 +167,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -178,7 +175,7 @@ class PtbModel(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.vocab_size],
             dtype="float32",
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -186,41 +183,41 @@ class PtbModel(fluid.Layer):
     def build_once(self, input, label, init_hidden, init_cell):
         pass
 
-    @declarative
+    @to_static
     def forward(self, input, label, init_hidden, init_cell):
 
-        init_h = fluid.layers.reshape(
+        init_h = paddle.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size]
         )
 
-        init_c = fluid.layers.reshape(
+        init_c = paddle.reshape(
             init_cell, shape=[self.num_layers, -1, self.hidden_size]
         )
 
         x_emb = self.embedding(input)
 
-        x_emb = fluid.layers.reshape(
+        x_emb = paddle.reshape(
             x_emb, shape=[-1, self.num_steps, self.hidden_size]
         )
         if self.dropout is not None and self.dropout > 0.0:
-            x_emb = fluid.layers.dropout(
+            x_emb = paddle.nn.functional.dropout(
                 x_emb,
-                dropout_prob=self.dropout,
-                dropout_implementation='upscale_in_train',
+                p=self.dropout,
+                mode='upscale_in_train',
             )
         rnn_out, last_hidden, last_cell = self.simple_lstm_rnn(
             x_emb, init_h, init_c
         )
 
-        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
-        projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
+        projection = paddle.matmul(rnn_out, self.softmax_weight)
+        projection = paddle.add(projection, self.softmax_bias)
 
-        loss = fluid.layers.softmax_with_cross_entropy(
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
-        loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.reshape(loss, shape=[-1, self.num_steps])
+        loss = paddle.mean(loss, axis=[0])
+        loss = paddle.sum(loss)
 
         return loss, last_hidden, last_cell
 
@@ -319,12 +316,12 @@ def train(place):
 
 
 def train_dygraph(place):
-    program_translator.enable(False)
+    paddle.jit.enable_to_static(False)
     return train(place)
 
 
 def train_static(place):
-    program_translator.enable(True)
+    paddle.jit.enable_to_static(True)
     return train(place)
 
 
@@ -346,6 +343,4 @@ class TestPtb(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

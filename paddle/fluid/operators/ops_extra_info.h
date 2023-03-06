@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ enum class ExtraAttrProperty : uint8_t {
   SCHEDULE,
   // The attributes for ONEDNN only, can be saved in OneDNNContext
   ONEDNN,
-  // The attributes for ONEDNN only, can be saved in GPUContext
+  // The attributes for GPUDNN only, can be saved in GPUContext
   GPUDNN,
   // Add necessary properties as needed
 };
@@ -88,7 +88,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"use_cudnn", ExtraAttrProperty::SCHEDULE},
         {"use_mkldnn", ExtraAttrProperty::SCHEDULE},
         // ONEDNN dedicated attributes
-        {"Bias", ExtraAttrProperty::ONEDNN},
         {"data_format", ExtraAttrProperty::ONEDNN},
         {"force_fp32_output", ExtraAttrProperty::ONEDNN},
         {"fuse_activation", ExtraAttrProperty::ONEDNN},
@@ -96,19 +95,14 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fuse_activation_alpha", ExtraAttrProperty::ONEDNN},
         {"fuse_activation_beta", ExtraAttrProperty::ONEDNN},
         {"fuse_activation_scale", ExtraAttrProperty::ONEDNN},
+        {"fused_output_scale", ExtraAttrProperty::ONEDNN},
         {"fuse_alpha", ExtraAttrProperty::ONEDNN},
         {"fuse_beta", ExtraAttrProperty::ONEDNN},
         {"fuse_relu", ExtraAttrProperty::ONEDNN},
+        {"fused_output_scale", ExtraAttrProperty::ONEDNN},
         {"fuse_residual_connection", ExtraAttrProperty::ONEDNN},
         {"fuse_with_relu", ExtraAttrProperty::ONEDNN},
-        {"fused_reshape_Out", ExtraAttrProperty::ONEDNN},
-        {"fused_transpose_Out", ExtraAttrProperty::ONEDNN},
-        {"fused_reshape_X", ExtraAttrProperty::ONEDNN},
-        {"fused_reshape_Y", ExtraAttrProperty::ONEDNN},
-        {"fused_transpose_X", ExtraAttrProperty::ONEDNN},
-        {"fused_transpose_Y", ExtraAttrProperty::ONEDNN},
         {"mkldnn_data_type", ExtraAttrProperty::ONEDNN},
-        {"ResidualData", ExtraAttrProperty::ONEDNN},
         {"scale_x", ExtraAttrProperty::ONEDNN},
         {"scale_y", ExtraAttrProperty::ONEDNN},
         {"scale_out", ExtraAttrProperty::ONEDNN},
@@ -120,11 +114,17 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"Scale_weights", ExtraAttrProperty::ONEDNN},
         {"x_data_format", ExtraAttrProperty::ONEDNN},
         {"y_data_format", ExtraAttrProperty::ONEDNN},
+        {"fused_squeeze2_axes", ExtraAttrProperty::ONEDNN},
+        {"fused_unsqueeze2_axes", ExtraAttrProperty::ONEDNN},
+        {"fused_reshape2_shape", ExtraAttrProperty::ONEDNN},
         // ONEDNN pass dedicated attributes
         {"Activation_scale", ExtraAttrProperty::ONEDNN},
         {"Bias_scales", ExtraAttrProperty::ONEDNN},
         {"Output_shift_scale", ExtraAttrProperty::ONEDNN},
         {"Sum_scale", ExtraAttrProperty::ONEDNN},
+        {"scale", ExtraAttrProperty::ONEDNN},
+        {"shift", ExtraAttrProperty::ONEDNN},
+        {"output_data_type", ExtraAttrProperty::ONEDNN},
         // GPUDNN dedicated attributes
         {"exhaustive_search", ExtraAttrProperty::GPUDNN},
         {"fuse_relu_before_depthwise_conv", ExtraAttrProperty::GPUDNN},
@@ -136,7 +136,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
              ExtraAttrPropertySet(ExtraAttrProperty::GPUDNN)},
 };
 
-inline ExtraAttrPropertySet GetExtraAttrPropertys(
+inline ExtraAttrPropertySet GetExtraAttrProperties(
     const std::string& attr_name) {
   auto iter = extra_attr_properties.find(attr_name);
   if (iter != extra_attr_properties.end()) {
@@ -221,8 +221,7 @@ class ExtraInfoUtils {
 
   // TODO(chenweihang): move these extra inputs into op_compat.yaml
   std::unordered_map<std::string, std::vector<std::string>>
-      g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
-                                  {"conv2d_grad", {"Bias"}}};
+      g_extra_input_names_map_ = {{"conv2d_transpose", {"Bias"}}};
   std::vector<std::string> empty_extra_input_names_;
 };
 

@@ -14,12 +14,11 @@
 
 import unittest
 
-import paddle
-import paddle.nn as nn
-import paddle.fluid as fluid
-
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn as nn
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
@@ -29,10 +28,10 @@ class LeNetDygraph(fluid.dygraph.Layer):
         self.features = nn.Sequential(
             nn.Conv2D(1, 6, 3, stride=1, padding=1),
             nn.ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
             nn.Conv2D(6, 16, 5, stride=1, padding=0),
             nn.ReLU(),
-            paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+            paddle.nn.MaxPool2D(2, 2),
         )
 
         if num_classes > 0:
@@ -47,7 +46,7 @@ class LeNetDygraph(fluid.dygraph.Layer):
         x = self.features(inputs)
 
         if self.num_classes > 0:
-            x = fluid.layers.flatten(x, 1)
+            x = paddle.flatten(x, 1, -1)
             x = self.fc(x)
         return x
 
@@ -74,7 +73,7 @@ def init_weights(layer):
 
 
 class TestLayerApply(unittest.TestCase):
-    def func_apply_init_weight(self):
+    def test_apply_init_weight(self):
         with fluid.dygraph.guard():
             net = LeNetDygraph()
 
@@ -87,11 +86,6 @@ class TestLayerApply(unittest.TestCase):
                 elif type(layer) == nn.Conv2D:
                     np.testing.assert_allclose(layer.weight.numpy(), 0.7)
                     np.testing.assert_allclose(layer.bias.numpy(), -0.2)
-
-    def test_apply_init_weight(self):
-        with _test_eager_guard():
-            self.func_apply_init_weight()
-        self.func_apply_init_weight()
 
 
 if __name__ == '__main__':

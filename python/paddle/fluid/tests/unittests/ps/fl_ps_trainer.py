@@ -14,6 +14,7 @@
 
 import os
 import time
+
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
@@ -51,8 +52,8 @@ def fl_ps_train():
 
     # 1. load yaml-config to dict-config
     from ps_dnn_trainer import (
-        YamlHelper,
         StaticModel,
+        YamlHelper,
         get_user_defined_strategy,
     )
 

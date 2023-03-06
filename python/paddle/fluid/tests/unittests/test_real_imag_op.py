@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.static as static
-from op_test import OpTest
 
 numpy_apis = {
     "real": np.real,
@@ -144,7 +145,7 @@ class TestRealAPI(unittest.TestCase):
             self.assertTrue("real_res" in out.name)
 
     def test_dtype_error(self):
-        # in static mode
+        # in static graph mode
         with self.assertRaises(TypeError):
             with static.program_guard(static.Program()):
                 x = static.data(name="x", shape=self._shape, dtype="float32")

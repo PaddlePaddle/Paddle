@@ -20,7 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
@@ -65,7 +64,7 @@ class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides(4, 1);
     std::vector<int> dilations(4, 1);
 
-    Tensor input_tensor, output_tensor;
+    phi::DenseTensor input_tensor, output_tensor;
     input_tensor.ShareDataWith(*input);
     output_tensor.ShareDataWith(*output);
 
@@ -148,7 +147,7 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides_vec(4, 1);
     std::vector<int> dilations_vec(4, 1);
 
-    Tensor input_tensor, output_grad_tensor;
+    phi::DenseTensor input_tensor, output_grad_tensor;
     input_tensor.ShareDataWith(*input);
     output_grad_tensor.ShareDataWith(*output_grad);
     if (channel_last) {
@@ -182,7 +181,7 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     }
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
-      Tensor input_grad_tensor;
+      phi::DenseTensor input_grad_tensor;
       input_grad_tensor.ShareDataWith(*input_grad);
       if (channel_last) {
         input_grad_tensor.set_layout(DataLayout::kNHWC);
@@ -248,7 +247,7 @@ class Conv3DTransposeNPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides(5, 1);
     std::vector<int> dilations(5, 1);
 
-    Tensor input_tensor, output_tensor, filter_tensor;
+    phi::DenseTensor input_tensor, output_tensor, filter_tensor;
     input_tensor.Resize(input->dims());
     input_tensor.ShareDataWith(*input);
     output_tensor.Resize(output->dims());

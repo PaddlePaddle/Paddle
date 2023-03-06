@@ -16,7 +16,6 @@ namespace paddle {
 namespace operators {
 
 using DDim = framework::DDim;
-using Tensor = phi::DenseTensor;
 
 void CheckAxis(int axis, int rank) {
   // check the axis is in [-rank, rank-1]

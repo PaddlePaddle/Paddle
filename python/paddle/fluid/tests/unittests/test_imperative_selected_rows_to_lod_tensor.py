@@ -13,16 +13,17 @@
 # limitations under the License.
 
 import unittest
+
+import numpy as np
+from test_imperative_base import new_program_scope
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-import numpy as np
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.optimizer import SGDOptimizer
+from paddle.nn import Embedding
 
 
 class SimpleNet(fluid.Layer):
@@ -40,13 +41,14 @@ class SimpleNet(fluid.Layer):
         self.vocab_size = vocab_size
         self.init_scale = init_scale
         self.num_steps = num_steps
+        paddle.set_default_dtype(dtype)
         self.embedding = Embedding(
-            size=[vocab_size, hidden_size],
-            dtype=dtype,
-            is_sparse=is_sparse,
-            param_attr=fluid.ParamAttr(
+            vocab_size,
+            hidden_size,
+            sparse=is_sparse,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             ),
@@ -55,7 +57,7 @@ class SimpleNet(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.hidden_size],
             dtype=dtype,
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
@@ -63,44 +65,37 @@ class SimpleNet(fluid.Layer):
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size],
             dtype=dtype,
-            default_initializer=fluid.initializer.UniformInitializer(
+            default_initializer=paddle.nn.initializer.Uniform(
                 low=-self.init_scale, high=self.init_scale
             ),
         )
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
-        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
-        fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
-        projection = fluid.layers.matmul(
-            fc, fluid.layers.transpose(self.embedding.weight, perm=[1, 0])
+        fc = paddle.matmul(x_emb, self.softmax_weight)
+        fc = paddle.add(fc, self.softmax_bias)
+        projection = paddle.matmul(
+            fc, paddle.transpose(self.embedding.weight, perm=[1, 0])
         )
-        projection = fluid.layers.reshape(
-            projection, shape=[-1, self.vocab_size]
-        )
-        loss = fluid.layers.softmax_with_cross_entropy(
+        projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
-        loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
-        loss = fluid.layers.reduce_mean(loss, dim=[0])
-        loss = fluid.layers.reduce_sum(loss)
+        loss = paddle.reshape(loss, shape=[-1, self.num_steps])
+        loss = paddle.mean(loss, axis=[0])
+        loss = paddle.sum(loss)
 
         return loss
 
 
 class TestDygraphSimpleNet(unittest.TestCase):
-    def func_simple_net(self):
+    def test_simple_net(self):
         for is_sparse in [True, False]:
             dtype_list = ["float32"]
             if not core.is_compiled_with_rocm():
                 dtype_list.append("float64")
             for dtype in dtype_list:
                 self.simple_net_float(is_sparse, dtype)
-
-    def test_simple_net(self):
-        with _test_eager_guard():
-            self.func_simple_net()
-        self.func_simple_net()
 
     def simple_net_float(self, is_sparse, dtype):
         places = [fluid.CPUPlace()]
@@ -178,11 +173,12 @@ class TestDygraphSimpleNet(unittest.TestCase):
 
                     exe = fluid.Executor(place)
                     sgd = SGDOptimizer(learning_rate=1e-3)
-                    x = fluid.layers.data(
+                    x = paddle.static.data(
                         name="x", shape=[-1, num_steps], dtype='int64'
                     )
-                    y = fluid.layers.data(name="y", shape=[-1, 1], dtype=dtype)
-
+                    x.desc.set_need_check_feed(False)
+                    y = paddle.static.data(name="y", shape=[-1, 1], dtype=dtype)
+                    y.desc.set_need_check_feed(False)
                     static_loss = simple_net(x, y)
                     sgd.minimize(static_loss)
                     static_param_updated = dict()

@@ -13,20 +13,20 @@
 # limitations under the License.
 
 import numpy as np
+from op_test import OpTest
+from testsuite import append_loss_ops, create_op, set_input
+from white_list import no_grad_set_white_list, op_threshold_white_list
+from xpu.get_test_cover_info import (
+    get_xpu_op_support_types,
+    is_empty_grad_op_type,
+    type_dict_str_to_numpy,
+)
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, convert_np_dtype_to_dtype_
-from testsuite import append_loss_ops, create_op, set_input
-from white_list import op_threshold_white_list, no_grad_set_white_list
-from op_test import OpTest
-from xpu.get_test_cover_info import (
-    is_empty_grad_op_type,
-    get_xpu_op_support_types,
-    type_dict_str_to_numpy,
-)
 
 
 class XPUOpTest(OpTest):
@@ -35,6 +35,7 @@ class XPUOpTest(OpTest):
         '''Fix random seeds to remove randomness from tests'''
         cls.use_xpu = True
         cls.use_mkldnn = False
+        cls.epsilon_xpu2xpu = 0.00000001
         super().setUpClass()
 
     @classmethod
@@ -212,7 +213,11 @@ class XPUOpTest(OpTest):
             user_defined_grad_outputs=user_defined_grad_outputs,
         )
         self._assert_is_close(
-            a1, a2, inputs_to_check, 0.00000001, "Gradient Check On two xpu"
+            a1,
+            a2,
+            inputs_to_check,
+            self.epsilon_xpu2xpu,
+            "Gradient Check On two xpu",
         )
         self._assert_is_close(
             a1,

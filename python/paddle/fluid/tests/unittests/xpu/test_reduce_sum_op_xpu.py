@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,19 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 
-import paddle
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
-    XPUOpTestWrapper,
 )
+
+import paddle
 
 paddle.enable_static()
 
@@ -45,8 +47,9 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
                 'use_xpu': True,
                 'reduce_all': self.reduce_all,
                 'keep_dim': self.keep_dim,
+                'dim': self.axis,
             }
-            self.inputs = {'X': np.random.random(self.shape).astype("float32")}
+            self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
             if self.attrs['reduce_all']:
                 self.outputs = {'Out': self.inputs['X'].sum()}
             else:
@@ -61,6 +64,7 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.axis = (0,)
             self.reduce_all = False
             self.keep_dim = False
+            self.dtype = self.in_type
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
@@ -73,7 +77,42 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.shape = (5, 6, 10)
             self.axis = (0,)
             self.reduce_all = False
+            self.keep_dim = False
+
+    class XPUTestReduceSumCase2(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (0,)
+            self.reduce_all = False
             self.keep_dim = True
+
+    class XPUTestReduceSumCase3(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (0,)
+            self.reduce_all = True
+            self.keep_dim = False
+
+    class XPUTestReduceSumCase4(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (1,)
+            self.reduce_all = False
+            self.keep_dim = False
+
+    class XPUTestReduceSumCase5(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (1,)
+            self.reduce_all = False
+            self.keep_dim = True
+
+    class XPUTestReduceSumCase6(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (1,)
+            self.reduce_all = True
+            self.keep_dim = False
 
 
 support_types = get_xpu_op_support_types('reduce_sum')

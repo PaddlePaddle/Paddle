@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import unittest
 
 paddle.disable_static()
 SEED = 2020
@@ -30,7 +32,7 @@ class Generator(fluid.dygraph.Layer):
 
     def forward(self, x):
         x = self.conv1(x)
-        x = fluid.layers.tanh(x)
+        x = paddle.tanh(x)
         return x
 
 
@@ -148,15 +150,10 @@ class TestRetainGraph(unittest.TestCase):
         loss_g.backward()
         optim_g.minimize(loss_g)
 
-    def func_retain(self):
+    def test_retain(self):
         self.run_retain(need_retain=True)
         if not fluid.framework.in_dygraph_mode():
             self.assertRaises(RuntimeError, self.run_retain, need_retain=False)
-
-    def test_retain(self):
-        with fluid.framework._test_eager_guard():
-            self.func_retain()
-        self.func_retain()
 
 
 if __name__ == '__main__':
