@@ -93,25 +93,38 @@ class TestInstanceNormOp(OpTest):
         self.python_api = paddle.nn.functional.instance_norm
         self.init_test_case()
         self.init_dtype()
-        x = np.random.random(self.shape).astype(self.dtype)
-        mean, var = _cal_mean_variance(x, self.epsilon, self.shape[:2])
-        y, _mean, _var = _reference_instance_norm_naive(
-            x, np.full((3), 0.5), np.full((3), 0.5), self.epsilon, mean, var
+        x_np = np.random.random(self.shape).astype(self.dtype)
+        mean_np, var_np = _cal_mean_variance(x_np, self.epsilon, self.shape[:2])
+        y, mean, var = _reference_instance_norm_naive(
+            x_np, self.scale, self.bias, self.epsilon, mean_np, var_np
         )
-        self.inputs = {'X': x, 'scale': self.scale, 'bias': self.bias}
+        self.inputs = {'X': x_np, 'scale': self.scale, 'bias': self.bias}
         self.attrs = {'epsilon': self.epsilon}
-        self.outputs = {'Out': y, 'saved_mean': _mean, 'saved_variance': _var}
+        self.outputs = {'Out': y, 'saved_mean': mean, 'saved_variance': var}
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        if hasattr(self, 'attrs'):
+            self.check_output(check_eager=False, check_prim=True)
+        else:
+            self.check_output(check_eager=True, check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'scale', 'bias'], 'Out', check_prim=True)
+        if hasattr(self, 'attrs'):
+            self.check_grad(
+                ['X', 'scale', 'bias'],
+                'Out',
+                check_eager=False,
+                check_prim=True,
+            )
+        else:
+            self.check_grad(
+                ['X', 'scale', 'bias'], 'Out', check_eager=True, check_prim=True
+            )
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
-        self.scale = paddle.full([3], 0.5)
-        self.bias = paddle.full([3], 0.5)
+        self.scale = np.full([3], 0.5)
+        self.bias = np.full([3], 0.5)
         self.epsilon = 1e-8
 
     def init_dtype(self):
