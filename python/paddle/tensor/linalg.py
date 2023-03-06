@@ -101,6 +101,7 @@ def transpose(x, perm, name=None):
                 'int64',
                 'complex64',
                 'complex128',
+                'uint16',
             ],
             'transpose',
         )

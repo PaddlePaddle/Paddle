@@ -1216,7 +1216,9 @@ set(TEST_CINN_OPS
     test_elementwise_sub_op
     test_elementwise_div_op
     test_elementwise_mul_op
-    test_gather_nd_op)
+    test_gather_nd_op
+    test_reshape_op
+    test_transpose_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
