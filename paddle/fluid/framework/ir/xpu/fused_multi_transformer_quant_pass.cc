@@ -270,7 +270,7 @@ void FusedMultiTransformerQuantPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
-  VLOG(3) << "DEBUG: iin FusedMultiTransformerQuantPass::ApplyImpl";
+  VLOG(3) << "DEBUG: in FusedMultiTransformerQuantPass::ApplyImpl";
 
   int found_subgraph_count = 0;
   // TODO(mayang02):
@@ -372,9 +372,13 @@ int FusedMultiTransformerQuantPass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(fused_mt);
     auto* block = fused_mt->Op()->Block();
     auto* scope = param_scope();
-    VLOG(3) << "DEBUG: x->Name()=" << x->Name();
+    VLOG(3) << "DEBUG: x->Name()=" << x->Name()
+            << ", input_name.size=" << fused_mt->Op()->Input("X").size() << ", "
+            << fused_mt->Op()->Input("X")[0];
     VLOG(3) << "DEBUG: " << get_input_names(fused_mt)
             << " --> fused_multi_transformer";
+    VLOG(3) << "DEBUG: fused_multi_transformer --> "
+            << get_output_names(fused_mt);
 
     // quant weight nodes
     // w_nodes_vec: [QKVW, OutLinearW, FFN1Weight, FFN2Weight]
@@ -525,105 +529,42 @@ int FusedMultiTransformerQuantPass::ApplyImpl(ir::Graph* graph,
     }
     get_nodes_func("CacheKVOut", &cache_kv_out_nodes);
 
-    // Generate fused_multi_transformer_xpu op
-    framework::OpDesc fused_mt_xpu_op_desc(block);
-    fused_mt_xpu_op_desc.SetType("fused_multi_transformer_xpu");
-    fused_mt_xpu_op_desc.SetInput("x", {x->Name()});
-    fused_mt_xpu_op_desc.SetInput("ln_scale", fused_mt->Op()->Input("LnScale"));
-    fused_mt_xpu_op_desc.SetInput("ln_bias", fused_mt->Op()->Input("LnBias"));
-    fused_mt_xpu_op_desc.SetInput("qkvw", w_int16_names_vec[0]);
-    fused_mt_xpu_op_desc.SetInput("qkvw_max", w_max_names_vec[0]);
-    fused_mt_xpu_op_desc.SetInput("qkv_bias", fused_mt->Op()->Input("QKVBias"));
-    fused_mt_xpu_op_desc.SetInput("out_linear_w", w_int16_names_vec[1]);
-    fused_mt_xpu_op_desc.SetInput("out_linear_w_max", w_max_names_vec[1]);
-    fused_mt_xpu_op_desc.SetInput("out_linear_bias",
-                                  fused_mt->Op()->Input("OutLinearBias"));
-    fused_mt_xpu_op_desc.SetInput("ffn_ln_scale",
-                                  fused_mt->Op()->Input("FFNLnScale"));
-    fused_mt_xpu_op_desc.SetInput("ffn_ln_bias",
-                                  fused_mt->Op()->Input("FFNLnBias"));
-    fused_mt_xpu_op_desc.SetInput("ffn1_weight", w_int16_names_vec[2]);
-    fused_mt_xpu_op_desc.SetInput("ffn1_weight_max", w_max_names_vec[2]);
-    fused_mt_xpu_op_desc.SetInput("ffn1_bias",
-                                  fused_mt->Op()->Input("FFN1Bias"));
-    fused_mt_xpu_op_desc.SetInput("ffn2_weight", w_int16_names_vec[3]);
-    fused_mt_xpu_op_desc.SetInput("ffn2_weight_max", w_max_names_vec[3]);
-    fused_mt_xpu_op_desc.SetInput("ffn2_bias",
-                                  fused_mt->Op()->Input("FFN2Bias"));
-    if (cache_kv) {
-      fused_mt_xpu_op_desc.SetInput("cache_kv",
-                                    fused_mt->Op()->Input("CacheKV"));
+    // Generate fused_multi_transformer_xpu op inplace
+    fused_mt->RenameOp("fused_multi_transformer_xpu");
+    framework::OpDesc* fused_mt_xpu_op_desc = fused_mt->Op();
+    fused_mt_xpu_op_desc->SetType("fused_multi_transformer_xpu");
+    fused_mt_xpu_op_desc->SetInput("qkvw", w_int16_names_vec[0]);
+    fused_mt_xpu_op_desc->SetInput("qkvw_max", w_max_names_vec[0]);
+    fused_mt_xpu_op_desc->SetInput("out_linear_w", w_int16_names_vec[1]);
+    fused_mt_xpu_op_desc->SetInput("out_linear_w_max", w_max_names_vec[1]);
+    fused_mt_xpu_op_desc->SetInput("ffn1_weight", w_int16_names_vec[2]);
+    fused_mt_xpu_op_desc->SetInput("ffn1_weight_max", w_max_names_vec[2]);
+    fused_mt_xpu_op_desc->SetInput("ffn2_weight", w_int16_names_vec[3]);
+    fused_mt_xpu_op_desc->SetInput("ffn2_weight_max", w_max_names_vec[3]);
+    // unlink QKVW/OutLinearW/FFN1Weight/FFN2Weight from fused_mt_xpu
+    for (auto nodes : w_nodes_vec) {
+      for (auto node : nodes) {
+        IR_NODE_UNLINK(node, fused_mt);
+      }
     }
-    if (pre_caches) {
-      fused_mt_xpu_op_desc.SetInput("pre_caches",
-                                    fused_mt->Op()->Input("PreCaches"));
-    }
-    if (rotary_pos_emb) {
-      fused_mt_xpu_op_desc.SetInput("rotary_pos_emb", {rotary_pos_emb->Name()});
-    }
-    if (time_step) {
-      fused_mt_xpu_op_desc.SetInput("time_step", {time_step->Name()});
-    }
-    if (seq_lengths) {
-      fused_mt_xpu_op_desc.SetInput("seq_lengths", {seq_lengths->Name()});
-    }
-    if (src_mask) {
-      fused_mt_xpu_op_desc.SetInput("src_mask", {src_mask->Name()});
-    }
-    fused_mt_xpu_op_desc.SetOutput("cache_kv_out",
-                                   fused_mt->Op()->Output("CacheKVOut"));
-    fused_mt_xpu_op_desc.SetOutput("out", {out->Name()});
-    fused_mt_xpu_op_desc.SetAttr(
-        "pre_layer_norm",
-        PADDLE_GET_CONST(bool, fused_mt->Op()->GetAttr("pre_layer_norm")));
-    fused_mt_xpu_op_desc.SetAttr(
-        "epsilon", PADDLE_GET_CONST(float, fused_mt->Op()->GetAttr("epsilon")));
-    fused_mt_xpu_op_desc.SetAttr(
-        "act_method",
-        PADDLE_GET_CONST(std::string, fused_mt->Op()->GetAttr("act_method")));
-    fused_mt_xpu_op_desc.SetAttr(
-        "trans_qkvw",
-        PADDLE_GET_CONST(bool, fused_mt->Op()->GetAttr("trans_qkvw")));
-    auto* fused_mt_xpu = graph->CreateOpNode(&fused_mt_xpu_op_desc);
-    // link X/RotaryPosEmb/TimeStep/SeqLengths/SrcMask to fused_mt_xpu
-    IR_NODE_LINK_TO(x, fused_mt_xpu);
-    SAFE_IR_NODE_LINK_TO(rotary_pos_emb, fused_mt_xpu);
-    SAFE_IR_NODE_LINK_TO(time_step, fused_mt_xpu);
-    SAFE_IR_NODE_LINK_TO(seq_lengths, fused_mt_xpu);
-    SAFE_IR_NODE_LINK_TO(src_mask, fused_mt_xpu);
-    // link
-    // LnScale/LnBias/QKVBias/OutLinearBias/FFNLnScale/FFNLnBias/FFN1Bias/FFN2Bias
-    // to fused_mt_xpu
-    for (auto node : fp32_nodes) {
-      IR_NODE_LINK_TO(node, fused_mt_xpu);
-    }
-    // link CacheKV/PreCaches to fused_mt_xpu
-    for (auto node : optional_nodes) {
-      IR_NODE_LINK_TO(node, fused_mt_xpu);
-    }
-    // link QKVW/OutLinearW/FFN1Weight/FFN2Weight to fused_mt_xpu
+    // link int16 format of QKVW/OutLinearW/FFN1Weight/FFN2Weight to
+    // fused_mt_xpu
     for (auto nodes : w_int16_nodes_vec) {
       for (auto node : nodes) {
-        IR_NODE_LINK_TO(node, fused_mt_xpu);
+        IR_NODE_LINK_TO(node, fused_mt);
       }
     }
     // link QKVWMax/OutLinearWMax/FFN1WeightMax/FFN2WeightMax to fused_mt_xpu
     for (auto nodes : w_max_nodes_vec) {
       for (auto node : nodes) {
-        IR_NODE_LINK_TO(node, fused_mt_xpu);
+        IR_NODE_LINK_TO(node, fused_mt);
       }
     }
-    IR_NODE_LINK_TO(fused_mt_xpu, out);
-    for (auto node : cache_kv_out_nodes) {
-      IR_NODE_LINK_TO(fused_mt_xpu, node);
-    }
-    // TODO(mayang02): Do we need unlink X/LnScale/LnBias/... from fused_mt?
-    //  delete useless node
-    std::unordered_set<const Node*> delete_nodes = {fused_mt};
-    GraphSafeRemoveNodes(graph, delete_nodes);
 
-    VLOG(3) << "DEBUG: after" << get_input_names(fused_mt_xpu)
+    VLOG(3) << "DEBUG: after" << get_input_names(fused_mt)
             << " --> fused_multi_transformer_xpu";
+    VLOG(3) << "DEBUG: after fused_multi_transformer_xpu --> "
+            << get_output_names(fused_mt);
     found_subgraph_count++;
   };
 
