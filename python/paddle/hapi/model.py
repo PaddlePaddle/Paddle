@@ -35,7 +35,6 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import _get_paddle_place, _non_static_mode
 from paddle.fluid.io import is_belong_to_optimizer
-from paddle.fluid.layers import collective
 from paddle.fluid.layers.utils import flatten
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -93,9 +92,9 @@ def extract_args(func):
 
 
 def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
-    return collective._c_allgather(
-        x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream
-    )
+    output = []
+    dist.all_gather(output, x)
+    return output
 
 
 def wait_server_ready(endpoints):
