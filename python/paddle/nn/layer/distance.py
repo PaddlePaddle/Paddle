@@ -40,7 +40,7 @@ class PairwiseDistance(Layer):
 
     Shape:
         - x: :math:`[N, D]` or :math:`[D]`, where :math:`N` is batch size, :math:`D`
-          is the dimension of the data. Available data type is float32, float64.
+          is the dimension of the data. Available data type is float16, float32, float64.
         - y: :math:`[N, D]` or :math:`[D]`, y have the same dtype as x.
         - output: The same dtype as input tensor.
             - If :attr:`keepdim` is True, the output shape is :math:`[N, 1]` or :math:`[1]`,

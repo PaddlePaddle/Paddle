@@ -18,12 +18,14 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.incubate.distributed.fleet.role_maker as role_maker
-from paddle.fluid.transpiler.distribute_transpiler import (
+from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,
 )
-from paddle.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+    fleet,
+)
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
     StrategyFactory,
 )
 

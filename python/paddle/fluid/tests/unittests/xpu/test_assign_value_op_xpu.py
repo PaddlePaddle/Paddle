@@ -55,7 +55,7 @@ class XPUTestAssignValueOp(XPUOpTestWrapper):
             self.outputs = {"Out": self.value}
 
         def init_data(self):
-            self.value = np.random.random(size=(2, 5)).astype(self.dtype)
+            self.value = np.random.random(size=(2, 5)).astype(np.float32)
             self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
 
         def test_forward(self):

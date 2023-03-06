@@ -1137,11 +1137,6 @@ cc_test_old(
   glog)
 
 cc_library(
-  generator
-  SRCS generator.cc
-  DEPS enforce place)
-
-cc_library(
   infershape_utils
   SRCS infershape_utils.cc
   DEPS lod_tensor
