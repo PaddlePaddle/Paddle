@@ -17,12 +17,10 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 namespace funcs {
