@@ -43,12 +43,6 @@ void TopkKernel(const Context& dev_ctx,
       errors::External(
           "XPU API does not support unsorted topk operation currently."
           " Operator will be supported in future update."));
-  PADDLE_ENFORCE_EQ(
-      largest,
-      true,
-      errors::External(
-          "XPU API does not support smallest topk operation currently."
-          " Operator will be supported in future update."));
   if (in_dims.size() == 0) {
     int r = xpu::copy<XPUType>(dev_ctx.x_context(),
                                reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -77,7 +71,8 @@ void TopkKernel(const Context& dev_ctx,
                                       indices_int_data,
                                       row,
                                       col,
-                                      k);
+                                      k,
+                                      largest);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_topk");
 
     r = xpu::cast<int32_t, int64_t>(dev_ctx.x_context(),
@@ -140,7 +135,8 @@ void TopkKernel(const Context& dev_ctx,
         trans_idx_int32_data,
         row,
         col,
-        k);
+        k,
+        largest);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_topk");
 
     r = xpu::cast<int32_t, int64_t>(dev_ctx.x_context(),

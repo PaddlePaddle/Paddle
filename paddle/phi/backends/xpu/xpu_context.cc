@@ -125,10 +125,14 @@ struct XPUContext::Impl {
   xpu::BKCLContext_t bkcl_context_{nullptr};
 };
 
-XPUContext::XPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {}
+XPUContext::XPUContext() : DeviceContext(), impl_(std::make_unique<Impl>()) {
+  impl_->Init();
+}
 
 XPUContext::XPUContext(const XPUPlace& place)
-    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {}
+    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
+  impl_->Init();
+}
 
 XPUContext::~XPUContext() = default;
 
