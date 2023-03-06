@@ -20,7 +20,6 @@
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
-#include "paddle/phi/common/bfloat16.h"
 
 PD_REGISTER_KERNEL(
-    isclose, GPU, ALL_LAYOUT, phi::IscloseKernel, float, double, phi::dtype::bfloat16, phi::dtype::float16) {}
+    isclose, GPU, ALL_LAYOUT, phi::IscloseKernel, float, double, phi::dtype::float16) {}
