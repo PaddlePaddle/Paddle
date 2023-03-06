@@ -389,8 +389,8 @@ void SelectKernel(const KPDevice &dev_ctx,
   using CT = int64_t;  // set Count_data Type
   const int t_size = sizeof(CT);
 
-  const paddle::platform::CUDAPlace &cuda_place = dev_ctx.GetPlace();
-  paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
+  const phi::GPUPlace &cuda_place = dev_ctx.GetPlace();
+  phi::CPUPlace cpu_place = phi::CPUPlace();
 
   // 1.1 get stored data num of per block
   const int kVecSize = 4;

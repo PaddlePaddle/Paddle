@@ -17,6 +17,7 @@ from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
+import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
 
 paddle.enable_static()
@@ -109,13 +110,11 @@ class TestDistMnist2x2(TestDistRunnerBase):
             opt.minimize(avg_cost)
         else:
             # multi device or distributed multi device
-            params_grads = opt.backward(avg_cost)
-            data_parallel_param_grads = []
-            for p, g in params_grads:
-                # NOTE: scale will be done on loss scale in multi_devices_graph_pass using nranks.
-                grad_reduce = fluid.layers.collective._allreduce(g)
-                data_parallel_param_grads.append([p, grad_reduce])
-            opt.apply_gradients(data_parallel_param_grads)
+            strategy = fleet.DistributedStrategy()
+            strategy.without_graph_optimization = True
+            fleet.init(strategy=strategy)
+            optimizer = fleet.distributed_optimizer(opt)
+            optimizer.minimize(avg_cost)
 
         return (
             inference_program,
@@ -128,4 +127,5 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
+
     runtime_main(TestDistMnist2x2)

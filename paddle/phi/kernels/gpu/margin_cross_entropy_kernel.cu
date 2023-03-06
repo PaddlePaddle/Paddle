@@ -85,11 +85,10 @@ void GetClassInterval(const gpuStream_t& stream,
         paddle::platform::NCCLCommContext::Instance().Get(rid, place);
     // use global calculate stream
     const auto calcu_stream =
-        static_cast<GPUContext*>(
-            paddle::platform::DeviceContextPool::Instance().Get(place))
+        static_cast<GPUContext*>(phi::DeviceContextPool::Instance().Get(place))
             ->stream();
 
-    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         num_classes_per_device_ptr,
         num_classes_per_device_ptr,
         num_classes_per_device.numel(),
@@ -247,7 +246,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
       // use global calculate stream
       stream = static_cast<GPUContext*>(
-                   paddle::platform::DeviceContextPool::Instance().Get(place))
+                   phi::DeviceContextPool::Instance().Get(place))
                    ->stream();
     }
   }
@@ -358,7 +357,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           logits_max_buff,
           logits_max_buff,
           logits_max.numel(),
@@ -400,7 +399,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           sum_exp_logits_buff,
           sum_exp_logits_buff,
           sum_exp_logits.numel(),
@@ -459,7 +458,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           loss_ptr,
           loss_ptr,
           loss->numel(),
