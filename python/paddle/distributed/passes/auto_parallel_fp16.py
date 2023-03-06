@@ -731,6 +731,9 @@ class FP16Pass(AMPPass):
     def _apply_single_impl(self, main_program, startup_program, context):
         self.dist_context = self.get_attr("dist_context")
         params_grads = self.get_attr("params_grads")
+        self.use_optimizer_fp16 = self.get_attr("use_optimizer_fp16", None)
+        if self.use_optimizer_fp16 is None:
+            self.use_optimizer_fp16 = self.get_attr("level", None) == "o3"
 
         amp_list = AutoMixedPrecisionLists(
             set(self.get_attr("custom_white_list")),
@@ -864,7 +867,7 @@ class FP16Pass(AMPPass):
             # modify optimizer
             base_opt = self.get_attr("base_opt")
             base_opt._multi_precision = True
-            if self.get_attr("use_optimizer_fp16"):
+            if self.use_optimizer_fp16:
                 base_opt._multi_precision = False
             if isinstance(
                 base_opt,
