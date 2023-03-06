@@ -194,7 +194,7 @@ def _get_args_values(op, phi_name):
                     raise ValueError(
                         f'No value found for {arg_name} of {arg_type} type for operator {op.type}.'
                     )
-                for item in ("tensor_name", "tensor_name"):
+                for item in ("tensor_name", "tensors_name"):
                     # name of intarray may differ from operator arg_name
                     arg_name_new = tensor_content.get(item)
                     if (
