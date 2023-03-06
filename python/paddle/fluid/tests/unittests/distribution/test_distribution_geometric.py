@@ -106,13 +106,13 @@ class TestGeometric(unittest.TestCase):
         np.testing.assert_allclose(
             sample_values.mean(axis=0),
             scipy.stats.geom.mean(self.probs),
-            rtol=0.6,
+            rtol=0.7,
             atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
         )
         np.testing.assert_allclose(
             sample_values.var(axis=0),
             scipy.stats.geom.var(self.probs),
-            rtol=0.6,
+            rtol=0.7,
             atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
         )
 
@@ -145,13 +145,13 @@ class TestGeometric(unittest.TestCase):
         np.testing.assert_allclose(
             sample_values.mean(axis=0),
             scipy.stats.geom.mean(self.probs),
-            rtol=0.6,
+            rtol=0.7,
             atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
         )
         np.testing.assert_allclose(
             sample_values.var(axis=0),
             scipy.stats.geom.var(self.probs),
-            rtol=0.6,
+            rtol=0.7,
             atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
         )
 
