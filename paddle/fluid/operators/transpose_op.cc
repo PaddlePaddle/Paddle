@@ -18,6 +18,8 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/operators/transpose_op.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -30,58 +32,56 @@ void TransposeOp::InferShape(framework::InferShapeContext *ctx) const {
   auto x_dims = ctx->GetInputDim("X");
   std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
 
-  size_t x_rank = x_dims.size();
-  size_t axis_size = axis.size();
-
   int x_rank = x_dims.size();
   int axis_size = axis.size();
 
+  // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
+  // axis_size
+  PADDLE_ENFORCE_GE(x_rank,
+                    axis_size,
+                    platform::errors::InvalidArgument(
+                        "The input tensor's dimension "
+                        "should be equal to or greater than the axis's size. "
+                        "But received input tensor's dimension is %d, "
+                        "axis's size is %d",
+                        x_rank,
+                        axis_size));
+
+  std::vector<int> formated_axis = axis;
   std::vector<int> count(axis_size, 0);
-  for (size_t i = 0; i < axis_size; i++) {
+  for (int i = 0; i < axis_size; i++) {
+    PADDLE_ENFORCE_LT(axis[i],
+                      axis_size,
+                      platform::errors::InvalidArgument(
+                          "The reduce dim index %d should be in the "
+                          "range [ -dimension(X), dimension(X) ) "
+                          "which dimesion = %d. But received dim index = %d.",
+                          i,
+                          axis_size,
+                          axis[i]));
     PADDLE_ENFORCE_GE(axis[i],
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The axis should be greater than or equal to 0."
-                          "But received %d of axis[%d]",
-                          axis[i],
-                          i));
+                      -axis_size,
+                      platform::errors::InvalidArgument(
+                          "The reduce dim index %d should be in the "
+                          "range [ -dimension(X), dimension(X) )  "
+                          "which dimesion = %d. But received dim index = %d.",
+                          i,
+                          axis_size,
+                          axis[i]));
 
-    std::vector<int> formated_axis = axis;
-    std::vector<int> count(axis_size, 0);
-    for (int i = 0; i < axis_size; i++) {
-      PADDLE_ENFORCE_LT(axis[i],
-                        axis_size,
-                        platform::errors::InvalidArgument(
-                            "The reduce dim index %d should be in the "
-                            "range [ -dimension(X), dimension(X) ) "
-                            "which dimesion = %d. But received dim index = %d.",
-                            i,
-                            axis_size,
-                            axis[i]));
-      PADDLE_ENFORCE_GE(axis[i],
-                        -axis_size,
-                        platform::errors::InvalidArgument(
-                            "The reduce dim index %d should be in the "
-                            "range [ -dimension(X), dimension(X) )  "
-                            "which dimesion = %d. But received dim index = %d.",
-                            i,
-                            axis_size,
-                            axis[i]));
-
-      if (axis[i] < 0) {
-        formated_axis[i] = axis[i] + axis_size;
-      }
-      PADDLE_ENFORCE_EQ(++count[formated_axis[i]],
-                        1,
-                        platform::errors::InvalidArgument(
-                            "Each element of axis should be unique. but "
-                            "axis[%d] is %d appear not only once",
-                            i,
-                            axis[i]));
+    if (axis[i] < 0) {
+      formated_axis[i] = axis[i] + axis_size;
     }
+    PADDLE_ENFORCE_EQ(++count[formated_axis[i]],
+                      1,
+                      platform::errors::InvalidArgument(
+                          "Each element of axis should be unique. but "
+                          "axis[%d] is %d appear not only once",
+                          i,
+                          axis[i]));
   }
 
-  framework::DDim out_dims(x_dims);
+  phi::DDim out_dims(x_dims);
 #ifdef PADDLE_WITH_MKLDNN
   // Here we need to match dims to paddle layout
   // as we are producing non-oneDNN result
@@ -95,7 +95,7 @@ void TransposeOp::InferShape(framework::InferShapeContext *ctx) const {
         << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
   }
 #endif
-  for (size_t i = 0; i < axis_size; i++) {
+  for (int i = 0; i < axis_size; i++) {
     out_dims[i] = x_dims[formated_axis[i]];
   }
   ctx->SetOutputDim("Out", out_dims);

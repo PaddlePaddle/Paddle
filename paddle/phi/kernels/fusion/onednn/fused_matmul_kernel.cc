@@ -114,7 +114,7 @@ class FusedMatmulOneDNNHandler
     // TODO(jczaja): Why not for int8??
     if (!funcs::is_int8<OT>() && is_output_fused) {
       std::vector<int> transpose_axis = {0, 2, 1, 3};
-      out_strides = funcs::FakeTransposeStrides(out_ddims, transpose_axis);
+      out_strides = phi::funcs::FakeTransposeStrides(out_ddims, transpose_axis);
     }
 
     auto x_md = memory::desc(x_dims, funcs::OneDNNGetDataType<XT>(), x_strides);

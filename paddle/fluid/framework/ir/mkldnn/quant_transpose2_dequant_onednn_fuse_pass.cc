@@ -143,7 +143,7 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
             ? PADDLE_GET_CONST(float, dequant_op->Op()->GetAttr("Shift"))
             : 0;
 
-    transpose_op->Op()->SetType("fused_transpose");
+    ConvertToFusedOp(transpose_op->Op());
     transpose_op->Op()->SetAttr("scale", reorder_scale);
     transpose_op->Op()->SetAttr("shift", shift);
     transpose_op->Op()->SetAttr("output_data_type", std::string("fp32"));
