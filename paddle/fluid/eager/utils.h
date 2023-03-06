@@ -158,9 +158,9 @@ class EagerUtils {
                            const AutogradMeta* autograd_meta,
                            bool require_any_grad,
                            std::string op_name = "op_name") {
-    paddle::experimental::Tensor& xx =
-        const_cast<paddle::experimental::Tensor&>(target);
     if (target.is_dense_tensor()) {
+      paddle::experimental::Tensor& xx =
+          const_cast<paddle::experimental::Tensor&>(target);
       auto dense_tensor_ =
           std::dynamic_pointer_cast<phi::DenseTensor>(xx.impl());
       if (dense_tensor_->can_not_uses->size() > 0) {
