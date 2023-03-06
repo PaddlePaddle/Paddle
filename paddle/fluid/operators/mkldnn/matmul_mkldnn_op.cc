@@ -137,9 +137,9 @@ class MatMulV1OneDNNHandler
         out_ddims, phi::funcs::OneDNNGetDataType<OT>(), out_strides);
 
     dnnl::primitive_attr matmul_attrs;
-    float scale_out = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
-    if (scale_out != 1.0f) {
-      matmul_attrs.set_output_scales(0, {scale_out});
+    const float alpha = ctx.Attr<float>("alpha");
+    if (alpha != 1.0f) {
+      matmul_attrs.set_output_scales(0, {alpha});
     }
 
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
@@ -195,10 +195,10 @@ class MatMulOneDNNHandler
     memory::dims out_dims = {out_bs, M, N};
 
     memory::dims x_strides =
-        !trans_x ? memory::dims{M * K, K, 1} : memory::dims{M * K, 1, M};
+        trans_x ? memory::dims{M * K, 1, M} : memory::dims{M * K, K, 1};
 
     memory::dims y_strides =
-        !trans_y ? memory::dims{N * K, N, 1} : memory::dims{N * K, 1, K};
+        trans_y ? memory::dims{N * K, 1, K} : memory::dims{N * K, N, 1};
     memory::dims out_strides = memory::dims{M * N, N, 1};
 
     auto x_md = memory::desc(x_dims, OneDNNGetDataType<XT>(), x_strides);
@@ -340,10 +340,8 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto *x = ctx.Input<phi::DenseTensor>("X");
     auto *y = ctx.Input<phi::DenseTensor>("Y");
     auto *out = ctx.Output<phi::DenseTensor>("Out");
-    bool trans_x = ctx.HasAttr("trans_x") ? ctx.Attr<bool>("trans_x")
-                                          : ctx.Attr<bool>("transpose_X");
-    bool trans_y = ctx.HasAttr("trans_y") ? ctx.Attr<bool>("trans_y")
-                                          : ctx.Attr<bool>("transpose_Y");
+    bool trans_x = ctx.Attr<bool>("transpose_X");
+    bool trans_y = ctx.Attr<bool>("transpose_Y");
 
     auto x_dims = vectorize(x->dims());
     auto y_dims = vectorize(y->dims());
@@ -465,12 +463,8 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto *dy =
         ctx.Output<phi::DenseTensor>(paddle::framework::GradVarName("Y"));
 
-    bool transpose_x = ctx.HasAttr("transpose_X")
-                           ? ctx.Attr<bool>("transpose_X")
-                           : ctx.Attr<bool>("trans_x");
-    bool transpose_y = ctx.HasAttr("transpose_Y")
-                           ? ctx.Attr<bool>("transpose_Y")
-                           : ctx.Attr<bool>("trans_y");
+    bool transpose_x = ctx.Attr<bool>("transpose_X");
+    bool transpose_y = ctx.Attr<bool>("transpose_Y");
 
     ReshapeXYOutToMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
 
@@ -574,14 +568,14 @@ class MatMulGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
                         out->dims().size() == 2;
 
     phi::DenseTensor x_combined, y_combined;
-    if (!need_combine) {
-      x_combined = *x;
-      y_combined = *y;
-    } else {
+    if (need_combine) {
       x_combined = is_fold_init_dims_x ? FoldOuterDims(*x)
                                        : FoldFirstAndLastDims<T>(dev_ctx, x);
       y_combined = is_fold_init_dims_y ? FoldOuterDims(*y)
                                        : FoldFirstAndLastDims<T>(dev_ctx, y);
+    } else {
+      x_combined = *x;
+      y_combined = *y;
     }
 
     MatMulOneDNNHandler<T, T, T> handler(engine,

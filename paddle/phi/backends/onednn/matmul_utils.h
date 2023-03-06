@@ -168,27 +168,6 @@ inline void ExecuteMatmul(const OneDNNContext& dev_ctx,
                           bool trans_x,
                           bool trans_y,
                           DenseTensor* out) {
-  auto shape_x = dev_ctx.HasDnnAttr("fused_reshape_X")
-                     ? PADDLE_GET_CONST(std::vector<int>,
-                                        dev_ctx.GetDnnAttr("fused_reshape_X"))
-                     : std::vector<int>();
-  auto axis_x = dev_ctx.HasDnnAttr("fused_transpose_X")
-                    ? PADDLE_GET_CONST(std::vector<int>,
-                                       dev_ctx.GetDnnAttr("fused_transpose_X"))
-                    : std::vector<int>();
-  auto shape_y = dev_ctx.HasDnnAttr("fused_reshape_Y")
-                     ? PADDLE_GET_CONST(std::vector<int>,
-                                        dev_ctx.GetDnnAttr("fused_reshape_Y"))
-                     : std::vector<int>();
-  auto axis_y = dev_ctx.HasDnnAttr("fused_transpose_Y")
-                    ? PADDLE_GET_CONST(std::vector<int>,
-                                       dev_ctx.GetDnnAttr("fused_transpose_Y"))
-                    : std::vector<int>();
-
-  auto x_strides_override =
-      GetInputStrides("X", x.dims(), trans_x, shape_x, shape_x);
-  auto y_strides_override =
-      GetInputStrides("Y", y.dims(), trans_y, shape_y, axis_y);
   MatmulOneDNNHandler<T, T, T_out> handler(
       dev_ctx, x_dims, y_dims, trans_x, trans_y);
 
