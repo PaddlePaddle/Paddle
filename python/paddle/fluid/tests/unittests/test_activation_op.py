@@ -2638,9 +2638,7 @@ class TestLog(TestActivation):
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
         in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
-        in3 = paddle.static.data(
-                name='in3', shape=[11, 17], dtype="float16"
-        )
+        in3 = paddle.static.data(name='in3', shape=[11, 17], dtype="float16")
 
         self.assertRaises(TypeError, paddle.log, in1)
         self.assertRaises(TypeError, paddle.log, in2)
@@ -2793,13 +2791,12 @@ class TestLog1p(TestActivation):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_eager=True)
-    
+
     def test_error(self):
-        input1 = paddle.static.data(
-                name='in3', shape=[11, 17], dtype="float16"
-        )
-        
+        input1 = paddle.static.data(name='input1', shape=[11, 17], dtype="float16")
+
         self.assertRaises(TypeError, paddle.log1p, input1)
+
 
 class TestLog1p_ZeroDim(TestLog1p):
     def init_shape(self):
