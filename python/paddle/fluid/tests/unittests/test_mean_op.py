@@ -247,14 +247,10 @@ class TestReduceMeanBF16Op(OpTest):
         pass
 
     def test_check_output(self):
-        if not core.is_compiled_with_cuda():
-            return
         place = paddle.CUDAPlace(0)
         self.check_output_with_place(place)
 
     def test_check_grad(self):
-        if not core.is_compiled_with_cuda():
-            return
         place = paddle.CUDAPlace(0)
         self.check_grad_with_place(
             place, ['X'], ['Out'], numeric_grad_delta=0.05
