@@ -27,28 +27,6 @@ from paddle.distributed import fleet
 batch_size = 32
 
 
-class Net(nn.Layer):
-    """
-    A simple exmaple for Regression Model.
-    """
-
-    def __init__(self, in_dim, out_dim, use_custom_op=False):
-        super().__init__()
-        self.fc1 = nn.Linear(in_dim, in_dim)
-        self.fc2 = nn.Linear(in_dim, out_dim)
-        self.relu_act = custom_relu if use_custom_op else nn.functional.relu
-
-    def forward(self, x):
-        out = self.fc1(x)
-        out = self.relu_act(out)
-        out = self.fc2(out)
-        out = self.relu_act(out)
-
-        out = paddle.mean(out, axis=-1)
-
-        return out
-
-
 def get_program(args):
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
@@ -60,15 +38,26 @@ def get_program(args):
         y = paddle.static.data(shape=[batch_size, 1], name='y', dtype='int64')
         y = paddle.cast(y, dtype='float32')
 
-        net = Net(784, 10, args.use_custom_op)
-        out = net(x)
+        in_dim = 784
+        out_dim = 10
+
+        fc1 = nn.Linear(in_dim, in_dim)
+        fc2 = nn.Linear(in_dim, out_dim)
+        relu_act = custom_relu if args.use_custom_op else nn.functional.relu
+
+        out = fc1(x)
+        relu_out1 = relu_act(out)
+        out = fc2(relu_out1)
+        relu_out2 = relu_act(out)
+
+        out = paddle.mean(relu_out2, axis=-1)
 
         loss = nn.functional.mse_loss(out, y)
         if args.train_mode:
             sgd = paddle.optimizer.SGD(learning_rate=0.01)
             opt = fleet.distributed_optimizer(sgd)
             opt.minimize(loss)
-    return main_program, startup_program, loss
+    return main_program, startup_program, [loss, relu_out1, relu_out2]
 
 
 def get_dataloader(mode='train'):
@@ -89,25 +78,33 @@ def get_dataloader(mode='train'):
 
 
 def train(args):
-    main_program, startup_program, loss = get_program(args)
+    main_program, startup_program, fetch_list = get_program(args)
     exe = paddle.static.Executor()
     exe.run(startup_program)
 
     losses = []
+    relu_out1_list = []
+    relu_out2_list = []
     for x_data, y_data in get_dataloader():
-        res = exe.run(
+        loss, relu_out1, relu_out2 = exe.run(
             main_program,
             feed={'x': x_data, 'y': y_data},
-            fetch_list=[loss],
+            fetch_list=fetch_list,
         )
-        losses.append(res)
+        losses.append(loss)
+        relu_out1_list.append(relu_out1)
+        relu_out2_list.append(relu_out2)
     losses = np.array(losses)
+    relu_out1_list = np.array(relu_out1_list)
+    relu_out2_list = np.array(relu_out2_list)
     rank = paddle.distributed.get_rank()
-    np.save(
+    np.savez(
         os.path.join(
-            args.output_dir, 'train_{}_{}.npy'.format(rank, args.use_custom_op)
+            args.output_dir, 'train_{}_{}.npz'.format(rank, args.use_custom_op)
         ),
-        losses,
+        losses=losses,
+        relu_out1_list=relu_out1_list,
+        relu_out2_list=relu_out2_list,
     )
     if rank != 0:
         model_path = os.path.join(args.model_dir, str(args.use_custom_op))
@@ -115,27 +112,36 @@ def train(args):
 
 
 def eval(args):
-    main_program, startup_program, loss = get_program(args)
+    main_program, startup_program, fetch_list = get_program(args)
     exe = paddle.static.Executor()
     exe.run(startup_program)
     model_path = os.path.join(args.model_dir, str(args.use_custom_op))
     paddle.static.load(main_program, model_path, exe)
 
     losses = []
-    for x_data, y_data in get_dataloader(mode='test'):
-        res = exe.run(
+    relu_out1_list = []
+    relu_out2_list = []
+    for x_data, y_data in get_dataloader():
+        loss, relu_out1, relu_out2 = exe.run(
             main_program,
             feed={'x': x_data, 'y': y_data},
-            fetch_list=[loss],
+            fetch_list=fetch_list,
         )
-        losses.append(res)
+        losses.append(loss)
+        relu_out1_list.append(relu_out1)
+        relu_out2_list.append(relu_out2)
     losses = np.array(losses)
+    relu_out1_list = np.array(relu_out1_list)
+    relu_out2_list = np.array(relu_out2_list)
+
     rank = paddle.distributed.get_rank()
-    np.save(
+    np.savez(
         os.path.join(
-            args.output_dir, 'eval_{}_{}.npy'.format(rank, args.use_custom_op)
+            args.output_dir, 'eval_{}_{}.npz'.format(rank, args.use_custom_op)
         ),
-        losses,
+        losses=losses,
+        relu_out1_list=relu_out1_list,
+        relu_out2_list=relu_out2_list,
     )
 
 

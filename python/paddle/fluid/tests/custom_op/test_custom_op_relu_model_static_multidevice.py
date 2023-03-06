@@ -91,31 +91,47 @@ class TestCustomOpReluModelStaticMultiDevice(unittest.TestCase):
         for id in range(count):
             loss_custom = np.load(
                 os.path.join(
-                    self.output_log_dir.name, 'train_{}_{}.npy'.format(id, True)
+                    self.output_log_dir.name, 'train_{}_{}.npz'.format(id, True)
                 )
             )
             loss_origin = np.load(
                 os.path.join(
                     self.output_log_dir.name,
-                    'train_{}_{}.npy'.format(id, False),
+                    'train_{}_{}.npz'.format(id, False),
                 )
             )
-            np.testing.assert_array_equal(loss_custom, loss_origin)
+            np.testing.assert_array_equal(
+                loss_custom['losses'], loss_origin['losses']
+            )
+            np.testing.assert_array_equal(
+                loss_custom['relu_out1_list'], loss_origin['relu_out1_list']
+            )
+            np.testing.assert_array_equal(
+                loss_custom['relu_out2_list'], loss_origin['relu_out2_list']
+            )
 
         self.eval(use_custom_op=True)
         self.eval(use_custom_op=False)
         for id in range(count):
             loss_custom = np.load(
                 os.path.join(
-                    self.output_log_dir.name, 'eval_{}_{}.npy'.format(id, True)
+                    self.output_log_dir.name, 'eval_{}_{}.npz'.format(id, True)
                 )
             )
             loss_origin = np.load(
                 os.path.join(
-                    self.output_log_dir.name, 'eval_{}_{}.npy'.format(id, False)
+                    self.output_log_dir.name, 'eval_{}_{}.npz'.format(id, False)
                 )
             )
-            np.testing.assert_array_equal(loss_custom, loss_origin)
+            np.testing.assert_array_equal(
+                loss_custom['losses'], loss_origin['losses']
+            )
+            np.testing.assert_array_equal(
+                loss_custom['relu_out1_list'], loss_origin['relu_out1_list']
+            )
+            np.testing.assert_array_equal(
+                loss_custom['relu_out2_list'], loss_origin['relu_out2_list']
+            )
 
 
 if __name__ == '__main__':
