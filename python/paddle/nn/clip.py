@@ -771,10 +771,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 + len(sum_square_list_fp16)
                 + len(sum_square_list_fp32)
                 == 0
-            ):
-                return params_grads
-
-            if (
+            ) and (
                 len(sum_square_list)
                 + len(sum_square_list_bf16)
                 + len(sum_square_list_fp32)
