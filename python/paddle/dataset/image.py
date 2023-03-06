@@ -29,35 +29,12 @@ the image layout as follows.
   formats can be used for training. Noted that, the format should
   be keep consistent between the training and inference period.
 """
-
-import os
-
-# FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
-# https://github.com/numpy/numpy/issues/12497
-import subprocess
-import sys
-
 import numpy as np
 
-interpreter = sys.executable
-# Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
-# will be the C++ executable on Windows
-if sys.platform == 'win32' and 'python.exe' not in interpreter:
-    interpreter = sys.exec_prefix + os.sep + 'python.exe'
-import_cv2_proc = subprocess.Popen(
-    [interpreter, "-c", "import cv2"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-)
-out, err = import_cv2_proc.communicate()
-retcode = import_cv2_proc.poll()
-if retcode != 0:
+try:
+    import cv2
+except ImportError:
     cv2 = None
-else:
-    try:
-        import cv2
-    except ImportError:
-        cv2 = None
 
 import os
 import pickle
