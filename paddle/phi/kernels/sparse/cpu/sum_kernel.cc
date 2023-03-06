@@ -123,10 +123,10 @@ void SumCsrKernel(const Context& dev_ctx,
                   bool keep_dim,
                   SparseCsrTensor* out) {
   size_t n_dim = axis.size();
-  const DenseTensor& x_crows = x.crows();
-  const DenseTensor& x_values = x.values();
+  const auto& x_crows = x.crows();
+  const auto& x_values = x.values();
   const auto* x_crows_data = x_crows.data<int64_t>();
-  const T* x_values_data = x_values.data<T>();
+  const auto* x_values_data = x_values.data<T>();
 
   DenseTensor out_crows, out_cols, out_values;
   DDim out_dims;
