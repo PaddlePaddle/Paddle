@@ -286,7 +286,7 @@ class Kernel {
     return kernel_registered_type_;
   }
 
-  GetKernelTypeForVarFn infer_var_kernel_fn_{nullptr};
+  GetKernelTypeForVarFn get_kerneltype_forvar_fn_{nullptr};
 
  private:
   KernelFn fn_{nullptr};
