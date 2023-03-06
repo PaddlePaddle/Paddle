@@ -85,9 +85,9 @@ class Geometric(Distribution):
         if probs is None:
             raise ValueError("`Probs` must be specified.")
         if isinstance(probs, numbers.Real) or isinstance(probs, list):
-             probs = paddle.full(
+            probs = paddle.full(
                 shape=(), fill_value=probs, dtype=paddle.float32
-             )
+            )
 
         if isinstance(probs, (paddle.Tensor, framework.Variable)):
             if probs.dtype != paddle.float32:

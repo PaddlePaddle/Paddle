@@ -135,7 +135,7 @@ class TestGeometric(unittest.TestCase):
         ('mult-dim', xrand((2, 2, 2), dtype='float32', min=0.0, max=1.0), 5),
     ],
 )
-class TestGumbelPMF(unittest.TestCase):
+class TestGeometricPMF(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
@@ -197,7 +197,7 @@ class TestGumbelPMF(unittest.TestCase):
         (
             'one-dim',
             xrand((2,), dtype='float32', min=0.0, max=1.0),
-            xrand((2,), dtype='float32', min=0.0, max=1.0)
+            xrand((2,), dtype='float32', min=0.0, max=1.0),
         ),
         (
             'multi-dim',
