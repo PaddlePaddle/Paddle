@@ -24,6 +24,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
+import paddle.static as static
 from paddle.fluid import Program, program_guard
 from paddle.fluid.layer_helper import LayerHelper
 
@@ -2601,6 +2602,21 @@ class TestLog(TestActivation):
         self.assertRaises(TypeError, paddle.log, in2)
 
 
+class Test_Log_Op_Fp16(unittest.TestCase):
+    def test_api_fp16(self):
+        paddle.enable_static()
+        with static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = [[2, 3, 4], [7, 8, 9]]
+            x = paddle.to_tensor(x, dtype='float16')
+            out = paddle.log(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
+
+
 class TestLog_ZeroDim(TestLog):
     def init_shape(self):
         self.shape = []
@@ -2749,6 +2765,21 @@ class TestLog1p(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', check_eager=True)
+
+
+class Test_Log1p_Op_Fp16(unittest.TestCase):
+    def test_api_fp16(self):
+        paddle.enable_static()
+        with static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = [[2, 3, 4], [7, 8, 9]]
+            x = paddle.to_tensor(x, dtype='float16')
+            out = paddle.log1p(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
 
 
 class TestLog1p_ZeroDim(TestLog1p):

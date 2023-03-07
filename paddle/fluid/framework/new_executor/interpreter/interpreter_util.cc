@@ -118,7 +118,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "sgd",
     "svd",
     "sync_batch_norm_grad",
-    "top_k",
     "unique",
     "unique_consecutive_flattened_tensor",
     "unique_raw",
