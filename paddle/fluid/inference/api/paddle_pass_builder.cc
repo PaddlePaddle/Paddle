@@ -519,6 +519,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "identity_scale_op_clean_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
+      // TODO(mayang02): recover it
       //      "multi_encoder_xpu_fuse_pass",
       //      "multi_encoder_xpu_slice_fuse_pass",
       "fused_multi_transformer_quant_pass",
@@ -527,7 +528,6 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_op_device_pass",
       "delete_isolated_node_pass",
   });
-
   use_xpu_ = true;
 }
 
