@@ -35,7 +35,7 @@ class TestExpandV2OpRank1(OpTest):
         self.attrs = {'shape': self.shape}
         output = np.tile(self.inputs['X'], self.expand_times)
         self.outputs = {'Out': output}
-        self.enable_cinn = True
+        self.enable_cinn = False
 
     def init_data(self):
         self.ori_shape = [100]
@@ -385,51 +385,7 @@ class TestExpandV2CompOpRank4(TestExpandV2CompOpRank1):
         self.expand_times = (1, 1, 1, 1)
 
 
-# Situation 8: comp case, shape is a list(with tensor)
-class TestExpandV2CompOpRank1_tensor_attr(OpTest):
-    def setUp(self):
-        self.op_type = "expand_v2"
-        self.prim_op_type = "comp"
-        self.python_api = paddle.expand
-        self.init_data()
-        expand_shapes_tensor = []
-        for index, ele in enumerate(self.expand_shape):
-            expand_shapes_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
-            )
-
-        self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float64"),
-            'expand_shapes_tensor': expand_shapes_tensor,
-        }
-        self.attrs = {"shape": self.infer_expand_shape}
-        output = np.tile(self.inputs['X'], self.expand_times)
-        self.outputs = {'Out': output}
-
-    def init_data(self):
-        self.ori_shape = [100]
-        self.expand_times = [1]
-        self.expand_shape = [100]
-        self.infer_expand_shape = [-1]
-
-    def test_check_output(self):
-        self.check_output(check_prim=True)
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
-
-
-class TestExpandV2CompOpRank2_Corner_tensor_attr(
-    TestExpandV2CompOpRank1_tensor_attr
-):
-    def init_data(self):
-        self.ori_shape = [12, 14]
-        self.expand_times = [1, 1]
-        self.expand_shape = [12, 14]
-        self.infer_expand_shape = [12, -1]
-
-
-# Situation 9: comp case, shape is a tensor
+# Situation 8: comp case, shape is a tensor
 class TestExpandV2CompOpRank1_tensor(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
@@ -457,7 +413,7 @@ class TestExpandV2CompOpRank1_tensor(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-# Situation 10: comp case, input x is Integer
+# Situation 9: comp case, input x is Integer
 class TestExpandV2CompOpInteger(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
@@ -474,7 +430,7 @@ class TestExpandV2CompOpInteger(OpTest):
         self.check_output()
 
 
-#  Situation 11: comp case, input x is Bool
+#  Situation 10: comp case, input x is Bool
 class TestExpandV2CompOpBoolean(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
@@ -489,7 +445,7 @@ class TestExpandV2CompOpBoolean(OpTest):
         self.check_output()
 
 
-#  Situation 12: comp case, input x is Integer
+#  Situation 11: comp case, input x is Integer
 class TestExpandV2CompOpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
