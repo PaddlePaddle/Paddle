@@ -38,11 +38,6 @@ def adam_wrapper(
     epsilon=1e-4,
     lazy_mode=False,
 ):
-    # beta1 = 0.78
-    # beta2 = 0.836
-    # epsilon = 1e-4
-    # lazy_mode = False
-    # assert False, print([param.shape, grad.shape, moment1.shape, moment2.shape, LearningRate.shape, beta1_pow.shape, beta2_pow.shape])
     _, _, _, _, _, _ = paddle._C_ops.adam_(
         param,
         grad,
