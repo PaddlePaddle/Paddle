@@ -52,7 +52,7 @@ class TestCastGradComp(unittest.TestCase):
         cls.cotangent = cls.cotangent.astype(cls.src_dtype)
 
     def test_cast_grad_comp(self):
-        core._set_prim_backward_enabled(True)
+        core.set_prim_eager_enabled(True)
 
         def actual(primal, cotangent):
             x = paddle.to_tensor(primal)
@@ -78,7 +78,7 @@ class TestCastGradComp(unittest.TestCase):
             rtol=1e-6,
             atol=0,
         )
-        core._set_prim_backward_enabled(False)
+        core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':

@@ -118,7 +118,7 @@ cc_library(
 cc_library(
   mixed_vector
   SRCS mixed_vector.cc
-  DEPS device_context place memory)
+  DEPS phi_backends place memory)
 
 cc_library(
   generator
@@ -135,24 +135,20 @@ if(WITH_GPU)
   nv_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS phi_backends dense_tensor selected_rows memcpy device_context
-         memory_utils)
+    DEPS phi_backends dense_tensor selected_rows memcpy memory_utils)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS phi_backends dense_tensor selected_rows memcpy device_context
-         memory_utils)
+    DEPS phi_backends dense_tensor selected_rows memcpy memory_utils)
 elseif(WITH_XPU_KP)
   xpu_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS phi_backends dense_tensor selected_rows memcpy device_context
-         memory_utils)
+    DEPS phi_backends dense_tensor selected_rows memcpy memory_utils)
 else()
   cc_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS dense_tensor selected_rows memcpy device_context phi_backends
-         memory_utils)
+    DEPS dense_tensor selected_rows memcpy phi_backends memory_utils)
 endif()
