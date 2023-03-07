@@ -1305,10 +1305,11 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
     def visit_Subscript(self, node):
         self.generic_visit(node)
         write_context = (gast.Store, gast.AugStore, gast.Del)
-        if isinstance(node.ctx, write_context) and isinstance(
-            node.value, gast.Name
-        ):
-            self._current_name_scope().w_vars.add(node.value.id)
+        if isinstance(node.ctx, write_context):
+            while isinstance(node.value, gast.Subscript):
+                node = node.value
+            if isinstance(node.value, gast.Name):
+                self._current_name_scope().w_vars.add(node.value.id)
 
     def visit_Call(self, node):
         self.generic_visit(node)
