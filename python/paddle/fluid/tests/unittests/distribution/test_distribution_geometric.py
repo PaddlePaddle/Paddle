@@ -288,12 +288,12 @@ class TestGeometricKL(unittest.TestCase):
         np.testing.assert_allclose(
             kl_divergence(self._geometric1, self._geometric2),
             self._kl(),
-            rtol=0.3,
+            rtol=RTOL.get(str(self._geometric1.probs.numpy().dtype)),
             atol=ATOL.get(str(self._geometric1.probs.numpy().dtype)),
         )
 
     def _kl(self):
-        temp = np.log(self.probs1, self.probs2)
+        temp = np.log(self.probs1 / self.probs2)
         kl_diff = self.probs1 * np.abs(temp)
 
         return np.sum(kl_diff, axis=-1)
