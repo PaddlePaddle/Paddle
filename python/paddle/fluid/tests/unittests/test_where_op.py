@@ -83,18 +83,15 @@ class TestWhereOpBFloat16(OpTest):
         self.check_output_with_place(place, check_eager=False)
 
     def test_check_grad(self):
-        print("inputs", self.inputs)
-        print("outputs", self.outputs)
-        print("cond", self.cond)
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', check_eager=False, max_relative_error=1e-2
-        )
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out', 
+        check_eager=False, 
+        numeric_grad_delta=0.05)
 
     def init_config(self):
-        self.x = np.random.uniform((-5), 5, (2, 2)).astype(np.float32)
-        self.y = np.random.uniform((-5), 5, (2, 2)).astype(np.float32)
-        self.cond = np.random.randint(2, size=(2, 2)).astype('bool')
+        self.x = np.random.uniform((-5), 5, (60, 2)).astype(np.float32)
+        self.y = np.random.uniform((-5), 5, (60, 2)).astype(np.float32)
+        self.cond = np.random.randint(2 size=(60, 2)).astype('bool')
 
 
 class TestWhereOp3(TestWhereOp):
