@@ -105,8 +105,8 @@ class Geometric(Distribution):
                 shape=probs.shape, fill_value=False, dtype=bool
             )
 
-            lessthen_0 = probs > all_ones
-            morethen_1 = probs <= all_zeros
+            lessthen_0 = probs <= all_zeros
+            morethen_1 = probs > all_ones
 
             if paddle.equal_all(lessthen_0, all_false) and paddle.equal_all(
                 morethen_1, all_false
