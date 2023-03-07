@@ -327,18 +327,6 @@ if [ -n "${approval_line}" ]; then
   fi
 fi
 
-function clone_and_collect_op_info {
-  LOG "[INFO] Clone benchmark repo ..."
-  git clone https://github.com/PaddlePaddle/benchmark.git
-  [ $? -ne 0 ] && LOG "[FATAL] Clone benchmark repo fail." && exit -1
-  LOG "[INFO] Collect api info ..."
-  python benchmark/api/deploy/collect_api_info.py \
-      --test_module_name tests                    \
-      --info_file api_info.txt >& 2
-  [ $? -ne 0 ] && LOG "[FATAL] Collect api info fail." && exit -1
-  [ ! -f benchmark/ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
-}
-
 case $1 in
   run_op_benchmark)
     prepare_env
