@@ -159,10 +159,6 @@ class TestNormTestOp(OpTest):
         self.epsilon = 1e-8
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA and not support the bfloat16",
-)
 class TestNormBF16Op(OpTest):
     def setUp(self):
         self.op_type = "norm"
