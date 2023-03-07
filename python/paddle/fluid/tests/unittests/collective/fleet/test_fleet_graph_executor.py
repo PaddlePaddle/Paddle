@@ -82,7 +82,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
             "http_proxy": "",
             "https_proxy": "",
-            "FLAGS_selected_gpus": "0",
+            "FLAGS_selected_gpus": "1",
         }
 
         # rank 1
