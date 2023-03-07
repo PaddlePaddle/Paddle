@@ -202,6 +202,26 @@ void InterpreterCore::RunImpl() {
   // auto* cuda_graph_dev_ctx = stream_analyzer_.CreateCUDAGraphDeviceContext();
   if (platform::IsCUDAGraphCapturing()) {
     auto dev_ctxs = stream_analyzer_.GetAllDeviceContexts();
+    VLOG(4) << "yoki2";
+    for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
+      VLOG(4) << "yoki3";
+      auto* stream_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
+      VLOG(4) << "yoki4";
+      auto stream = stream_dev_ctx->stream();
+      VLOG(4) << "yoki5";
+      if (!stream_dev_ctx->IsCUDAGraphAllocatorValid()) {
+        VLOG(4) << "yoki6";
+        stream_dev_ctx->SetCUDAGraphAllocator(
+            memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(place_, stream)
+                .get());
+        VLOG(4) << "set CUDAGraphAllocator. dev_ctx: " << stream_dev_ctx
+                << "  stream: " << stream;
+      } else {
+        VLOG(4) << "CUDAGraphAllocator is not nullptr.";
+      }
+    }
+    VLOG(4) << "yoki7";
     auto* cuda_graph_dev_ctx = platform::CUDAGraph::CapturingDeviceContext();
     std::shared_ptr<platform::DeviceEvent> cuda_graph_event =
         std::make_shared<platform::DeviceEvent>(
@@ -710,6 +730,45 @@ void InterpreterCore::Convert(
       }
       stream_analyzer_.InsertDeviceContext(dev_ctx_);
     }
+  }
+
+  if (FLAGS_new_executor_use_cuda_graph) {
+    VLOG(4) << "yoki1";
+    auto dev_ctxs = stream_analyzer_.GetAllDeviceContexts();
+    VLOG(4) << "yoki2";
+    for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
+      VLOG(4) << "yoki3";
+      auto* stream_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
+      VLOG(4) << "yoki4";
+      stream_dev_ctx->cudnn_workspace_handle().ResetWorkspace();
+      VLOG(4) << "yoki2";
+      // After PR(#43206), cudnn related initializations will change to lazy
+      // mode. It will only be initialized when op calls them. But cuda graph
+      // not support capture such kind of init, need to init all these handle
+      // before cuda graph.
+      stream_dev_ctx->cublas_handle();
+      VLOG(4) << "yoki3";
+#if CUDA_VERSION >= 11060
+      stream_dev_ctx->cublaslt_handle();
+      VLOG(4) << "yoki4";
+#endif
+      stream_dev_ctx->cudnn_handle();
+      VLOG(4) << "yoki5";
+      stream_dev_ctx->cusolver_dn_handle();
+      VLOG(4) << "yoki6";
+      /*auto stream = stream_dev_ctx->stream();
+      VLOG(4) << "yoki5";
+      if (!stream_dev_ctx->IsCUDAGraphAllocatorValid()) {
+        VLOG(4) << "yoki6";
+        stream_dev_ctx->c(memory::allocation::AllocatorFacade::Instance()
+                                      .GetAllocator(place_, stream)
+                                      .get());
+        VLOG(4) << "set CUDAGraphAllocator. dev_ctx: " << stream_dev_ctx << "
+      stream: " << stream; } else { VLOG(4) << "CUDAGraphAllocator is not
+      nullptr.";
+      }*/
+    }
+    VLOG(4) << "yoki7";
   }
 
   BuildOperatorDependences();
