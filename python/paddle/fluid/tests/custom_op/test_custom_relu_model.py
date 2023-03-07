@@ -213,7 +213,7 @@ class TestStaticModel(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
         self.model_path_template = os.path.join(
-            self.model_save_dir, 'custom_relu_static_model_{}_{}'
+            self.model_save_dir, 'custom_relu_static_model_{}'
         )
 
         paddle.enable_static()
