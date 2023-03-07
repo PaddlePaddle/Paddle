@@ -19,7 +19,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/logsumexp_kernel_impl.h"
 
-using float16 = phi::dtype::float16;
-
-PD_REGISTER_KERNEL(
-    logsumexp, GPU, ALL_LAYOUT, phi::LogsumexpKernel, float, double, float16) {}
+PD_REGISTER_KERNEL(logsumexp,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogsumexpKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
