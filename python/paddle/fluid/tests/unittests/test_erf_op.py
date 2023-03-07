@@ -46,6 +46,52 @@ class TestErfOp(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
+class TestErfOpFp16(OpTest):
+    def setUp(self):
+        self.op_type = "erf"
+        self.prim_op_type = "prim"
+        self.enable_cinn = True
+        self.python_api = paddle.erf
+        self.dtype = self._init_dtype()
+        self.x_shape = [11, 17]
+        x = np.random.uniform(-1, 1, size=self.x_shape).astype(self.dtype)
+        y_ref = erf(x).astype(self.dtype)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': y_ref}
+
+    def _init_dtype(self):
+        return "float16"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestErfOpFp32(OpTest):
+    def setUp(self):
+        self.op_type = "erf"
+        self.prim_op_type = "prim"
+        self.enable_cinn = True
+        self.python_api = paddle.erf
+        self.dtype = self._init_dtype()
+        self.x_shape = [11, 17]
+        x = np.random.uniform(-1, 1, size=self.x_shape).astype(self.dtype)
+        y_ref = erf(x).astype(self.dtype)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': y_ref}
+
+    def _init_dtype(self):
+        return "float32"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
 class TestErfLayer(unittest.TestCase):
     def _test_case(self, place):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float64)
