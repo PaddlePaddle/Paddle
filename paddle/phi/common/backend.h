@@ -134,6 +134,9 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::IPU:
       os << "IPU";
       break;
+    case Backend::CUSTOM:
+      os << "CUSTOM";
+      break;
     default: {
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
