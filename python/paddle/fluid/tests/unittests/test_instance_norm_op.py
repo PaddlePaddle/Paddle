@@ -93,12 +93,17 @@ class TestInstanceNormOp(OpTest):
         self.python_api = paddle.nn.functional.instance_norm
         self.init_test_case()
         self.init_dtype()
-        x_np = np.random.random(self.shape).astype(self.dtype)
-        mean_np, var_np = _cal_mean_variance(x_np, self.epsilon, self.shape[:2])
+        scale_shape = [self.c]
+        mean_shape = [self.n * self.c]
+        np.random.seed()
+        x_np = np.random.random_sample(self.shape).astype(self.dtype)
+        scale_np = np.random.random_sample(scale_shape).astype(self.dtype)
+        bias_np = np.random.random_sample(scale_shape).astype(self.dtype)
+        mean_np, var_np = _cal_mean_variance(x_np, self.epsilon, mean_shape)
         y, mean, var = _reference_instance_norm_naive(
-            x_np, self.scale, self.bias, self.epsilon, mean_np, var_np
+            x_np, scale_np, bias_np, self.epsilon, mean_np, var_np
         )
-        self.inputs = {'X': x_np, 'scale': self.scale, 'bias': self.bias}
+        self.inputs = {'X': x_np, 'scale': scale_np, 'bias': bias_np}
         self.attrs = {'epsilon': self.epsilon}
         self.outputs = {'Out': y, 'saved_mean': mean, 'saved_variance': var}
 
@@ -123,12 +128,14 @@ class TestInstanceNormOp(OpTest):
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
-        self.scale = np.full([3], 0.5)
-        self.bias = np.full([3], 0.5)
+        self.n = self.shape[0]
+        self.c = self.shape[1]
+        self.h = self.shape[2]
+        self.w = self.shape[3]
         self.epsilon = 1e-8
 
     def init_dtype(self):
-        self.dtype = "float64"
+        self.dtype = np.float32
 
 
 class TestInstanceNormOpTraining(unittest.TestCase):
