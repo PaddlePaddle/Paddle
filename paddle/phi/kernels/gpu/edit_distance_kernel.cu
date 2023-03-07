@@ -183,4 +183,6 @@ void EditDistanceKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    edit_distance, GPU, ALL_LAYOUT, phi::EditDistanceKernel, float) {}
+    edit_distance, GPU, ALL_LAYOUT, phi::EditDistanceKernel, float) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}
