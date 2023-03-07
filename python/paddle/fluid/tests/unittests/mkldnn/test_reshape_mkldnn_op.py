@@ -44,6 +44,11 @@ class TestReshape2OneDNNOp(OpTest):
         self.set_additional_inputs()
         self.set_outputs()
 
+    def init_data(self):
+        self.ori_shape = (2, 60)
+        self.new_shape = (12, 10)
+        self.infered_shape = (12, 10)
+
     def init_dtype(self):
         self.dtype = np.float32
 
