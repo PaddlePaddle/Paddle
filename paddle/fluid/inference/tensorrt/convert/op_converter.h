@@ -74,9 +74,9 @@ class OpConverter {
         }
         if (op_desc.Type().find("elementwise") != std::string::npos) {
           static std::unordered_set<std::string> add_tensor_op_set{
-              "add", "mul", "sub", "div", "max", "min", "pow"};
+              "add", "mul", "sub", "div", "max", "min", "pow", "mod"};
           static std::unordered_set<std::string> add_weight_op_set{
-              "add", "mul", "sub", "div", "max", "min", "pow"};
+              "add", "mul", "sub", "div", "max", "min", "pow", "mod"};
           PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
                             1UL,
                             platform::errors::InvalidArgument(

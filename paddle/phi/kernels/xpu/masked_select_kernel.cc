@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 
@@ -49,11 +49,11 @@ void MaskedSelectKernel(const Context& dev_ctx,
       xpu::nonzero_count(
           dev_ctx.x_context(), mask_data, out_size, mask.numel()),
       "nonzero_count ");
-  paddle::memory::Copy(phi::CPUPlace(),
-                       static_cast<void*>(&out_size_cpu),
-                       mask.place(),
-                       static_cast<void*>(out_size),
-                       sizeof(int32_t));
+  memory_utils::Copy(phi::CPUPlace(),
+                     static_cast<void*>(&out_size_cpu),
+                     mask.place(),
+                     static_cast<void*>(out_size),
+                     sizeof(int32_t));
 
   DDim out_dim{out_size_cpu};
   out->Resize(out_dim);

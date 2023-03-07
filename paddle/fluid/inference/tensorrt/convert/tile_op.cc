@@ -1,8 +1,11 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,64 +15,116 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-/*
- * ReshapeOp
- */
 class TileOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(7000)
-    VLOG(4) << "convert a fluid tile op to tensorrt tile layer";
+    VLOG(4) << "convert a tile op to tensorrt tile layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    nvinfer1::Dims input_shape = input->getDimensions();
-    std::vector<int> repeat_times =
-        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("repeat_times"));
+    auto inputs = op_desc.Inputs();
+    auto input_shape = input->getDimensions();
+    auto rank = input_shape.nbDims;
+    auto output_name = op_desc.Output("Out")[0];
 
-    nvinfer1::Dims output_dim = input_shape;
-    nvinfer1::Dims output_stride;
-    // If input_dims.nbDims + 1 < repeat_times.size() means we
-    // should expand 1 on batchsize. trt doesn't support this behavior.
-    PADDLE_ENFORCE_GE(input_shape.nbDims + 1,
-                      repeat_times.size(),
-                      platform::errors::InvalidArgument(
-                          "Can't change batchsize, please check repeat_times"));
-    int diff = input_shape.nbDims + 1 - repeat_times.size();
-    if (diff > 0) repeat_times.insert(repeat_times.begin(), diff, 1);
+    if (engine_->with_dynamic_shape()) {
+      std::vector<int32_t> start(rank, 0);
+      std::vector<int32_t> stride(rank, 1);
+      auto start_tensor =
+          Add1DConstantLayer(start, output_name + "start_tensor");
+      auto stride_tensor =
+          Add1DConstantLayer(stride, output_name + "stride_tensor");
+      auto input_shape_tensor = Shape(input);
 
-    // Can't expand on batchsize
-    PADDLE_ENFORCE_EQ(
-        repeat_times[0],
-        1,
-        platform::errors::InvalidArgument(
-            "Can't expand on batchsize, please check repeat_times"));
-    output_stride.nbDims = input_shape.nbDims;
-    for (int i = 0; i < input_shape.nbDims; i++) {
-      output_dim.d[i] = output_dim.d[i] * repeat_times[i + 1];
-      output_stride.d[i] = 1;
+      nvinfer1::ITensor* repeat_tensor = nullptr;
+      int32_t repeat_rank = 0;
+      if (inputs.find("RepeatTimes") != inputs.end() &&
+          op_desc.Input("RepeatTimes").size() >= 1) {
+        repeat_tensor = engine_->GetITensor(op_desc.Input("RepeatTimes")[0]);
+        repeat_rank = repeat_tensor->getDimensions().d[0];
+      } else if (inputs.find("repeat_times_tensor") != inputs.end() &&
+                 op_desc.Input("repeat_times_tensor").size() >= 1) {
+        int32_t repeat_size = op_desc.Input("repeat_times_tensor").size();
+        std::vector<nvinfer1::ITensor*> repeat_tensors;
+        for (int32_t i = 0; i < repeat_size; ++i) {
+          repeat_tensors.push_back(
+              engine_->GetITensor(op_desc.Input("repeat_times_tensor")[i]));
+        }
+        repeat_tensor = Concat(repeat_tensors);
+        repeat_rank = repeat_size;
+      } else {
+        std::vector<int32_t> repeat_times = PADDLE_GET_CONST(
+            std::vector<int32_t>, op_desc.GetAttr("repeat_times"));
+        repeat_tensor =
+            Add1DConstantLayer(repeat_times, output_name + "_shape_tensor_");
+        repeat_rank = repeat_times.size();
+      }
+
+      nvinfer1::ITensor* repeat_expand_tensor;
+      if (rank > repeat_rank) {
+        auto* one_rank_tensor =
+            Add1DConstantLayer(std::vector<int32_t>(rank - repeat_rank, 1),
+                               output_name + "_one_rank_tensor_");
+        std::vector<nvinfer1::ITensor*> itensors;
+        itensors.push_back(one_rank_tensor);
+        itensors.push_back(repeat_tensor);
+        repeat_expand_tensor = Concat(itensors);
+      } else {
+        repeat_expand_tensor = repeat_tensor;
+      }
+      auto output_shape_tensor = Prod(input_shape_tensor, repeat_expand_tensor);
+      auto layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                        Slice,
+                                        *input,
+                                        nvinfer1::Dims{},
+                                        nvinfer1::Dims{},
+                                        nvinfer1::Dims{});
+
+      layer->setInput(1, *start_tensor);
+      layer->setInput(2, *output_shape_tensor);
+      layer->setInput(3, *stride_tensor);
+      layer->setMode(nvinfer1::SliceMode::kWRAP);
+      RreplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
+
+    } else {
+      std::vector<int> repeat_times =
+          PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("repeat_times"));
+      auto output_dim = input_shape;
+      auto output_stride = input_shape;
+      // If input_dims.nbDims + 1 < repeat_times.size() means we
+      // should expand 1 on batchsize. trt doesn't support this behavior.
+      PADDLE_ENFORCE_GE(
+          rank + 1,
+          repeat_times.size(),
+          platform::errors::InvalidArgument(
+              "Can't change batchsize, please check repeat_times"));
+      int32_t diff = rank + 1 - repeat_times.size();
+      if (diff > 0) repeat_times.insert(repeat_times.begin(), diff, 1);
+
+      // Can't expand on batchsize
+      PADDLE_ENFORCE_EQ(
+          repeat_times[0],
+          1,
+          platform::errors::InvalidArgument(
+              "Can't expand on batchsize, please check repeat_times"));
+      output_stride.nbDims = rank;
+      for (int32_t i = 0; i < rank; i++) {
+        output_dim.d[i] = output_dim.d[i] * repeat_times[i + 1];
+        output_stride.d[i] = 1;
+      }
+      auto layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Slice, *input, input_shape, output_dim, output_stride);
+      layer->setMode(nvinfer1::SliceMode::kWRAP);
+      RreplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
     }
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Slice, *input, input_shape, output_dim, output_stride);
-    layer->setMode(nvinfer1::SliceMode::kWRAP);
-    auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
 #endif
   }
 };
