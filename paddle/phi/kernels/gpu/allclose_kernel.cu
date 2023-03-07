@@ -21,7 +21,6 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-
 namespace phi {
 
 template <typename T>
@@ -98,11 +97,11 @@ void AllCloseKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(allclose,
-                  GPU,
-                  ALL_LAYOUT,
-                  phi::AllCloseKernel,
-                  float,
-                  double,
-                  phi::dtype::float16){
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::AllCloseKernel,
+                   float,
+                   double,
+                   phi::dtype::float16){
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
