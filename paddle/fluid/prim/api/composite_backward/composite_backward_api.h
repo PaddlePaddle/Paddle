@@ -919,6 +919,20 @@ void batch_norm_grad(const Tensor& x,
                      Tensor* bias_grad) {
   std::cout << "bn vjp in ************************* x.dtype " << x.dtype()
             << std::endl;
+  std::cout << "bn vjp in ************************* scale.dtype "
+            << scale.dtype() << std::endl;
+  std::cout << "bn vjp in ************************* bias.dtype " << bias.dtype()
+            << std::endl;
+  std::cout << "bn vjp in ************************* mean_out.dtype "
+            << mean_out.dtype() << std::endl;
+  std::cout << "bn vjp in ************************* saved_variance.dtype "
+            << saved_variance.dtype() << std::endl;
+  std::cout << "bn vjp in ************************* out_grad.dtype "
+            << out_grad.dtype() << std::endl;
+  std::cout << "bn vjp in ************************* momentum " << momentum
+            << std::endl;
+  std::cout << "bn vjp in ************************* epsilon " << epsilon
+            << std::endl;
 
   use_global_stats = is_test || use_global_stats;
 
