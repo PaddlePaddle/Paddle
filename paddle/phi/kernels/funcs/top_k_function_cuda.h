@@ -910,21 +910,18 @@ __global__ void AssignGradWithAxis(const T* grad_out,
                                    int post,
                                    int raw_height,
                                    int k) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType gox = static_cast<MPType>(grad_out);
-  MPType gix = static_cast<MPType>(grad_in);
   // raw_height is the length of topk axis
   for (int i = blockIdx.x; i < pre; i += gridDim.x) {
     int base_index = i * post * k;
     int base_grad = i * post * raw_height;
     for (int j = threadIdx.x; j < raw_height * post; j += blockDim.x) {
-      gix[base_grad + j] = static_cast<MPType>(0);
+      grad_in[base_grad + j] = static_cast<T>(0);
     }
     __syncthreads();
     for (int j = threadIdx.x; j < k * post; j += blockDim.x) {
       int64_t idx_ij = indices[base_index + j];
       int64_t in_ij = base_grad + (idx_ij * post) + (j % post);
-      gix[in_ij] = gox[base_index + j];
+      grad_in[in_ij] = grad_out[base_index + j];
     }
   }
 }

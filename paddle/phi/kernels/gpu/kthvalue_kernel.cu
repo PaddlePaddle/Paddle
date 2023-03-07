@@ -44,7 +44,6 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                   const int k,
                   DenseTensor* out_tensor,
                   DenseTensor* indices_tensor) {
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   auto cu_stream = dev_ctx.stream();
   DenseTensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
@@ -68,7 +67,6 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   int64_t* sorted_indices_ptr;
   DenseTensor temp_values, temp_indices;
   const T* input = input_tensor->data<T>();
-  MPType minput = static_cast<MPType>(input);
   T* values = out_tensor->data<T>();
   int64_t* indices = dev_ctx.template Alloc<int64_t>(indices_tensor);
   temp_values.Resize(dim);
@@ -78,7 +76,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
   auto err =
       cub::DeviceSegmentedRadixSort::SortPairs(nullptr,
                                                temp_storage_bytes,
-                                               minput,
+                                               input,
                                                sorted_values_ptr,
                                                input_indices.data<int64_t>(),
                                                sorted_indices_ptr,
