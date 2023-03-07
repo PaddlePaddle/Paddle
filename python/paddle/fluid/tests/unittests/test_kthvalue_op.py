@@ -208,11 +208,6 @@ class TestModeOpInStatic(unittest.TestCase):
             np.testing.assert_allclose(paddle_result, expect_value, rtol=1e-05)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and not support the bfloat16",
-)
 class TestKthvalueOpBP16(unittest.TestCase):
     def testkthvaluebp16(OpTest):
         def setUp(self):
