@@ -30,8 +30,24 @@ np.random.seed(2023)
 @parameterize_cls(
     (TEST_CASE_NAME, 'probs'),
     [
-        ('one-dim', xrand((2,), dtype='float32', min=np.finfo(dtype='float32').tiny, max=1.0)),
-        ('multi-dim', xrand((2, 3), dtype='float32', min=np.finfo(dtype='float32').tiny, max=1.0)),
+        (
+            'one-dim',
+            xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+                max=1.0,
+            ),
+        ),
+        (
+            'multi-dim',
+            xrand(
+                (2, 3),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+                max=1.0,
+            ),
+        ),
     ],
 )
 class TestGeometric(unittest.TestCase):
@@ -160,8 +176,26 @@ class TestGeometric(unittest.TestCase):
 @parameterize_cls(
     (TEST_CASE_NAME, 'probs', 'value'),
     [
-        ('one-dim', xrand((2,), dtype='float32', min=np.finfo(dtype='float32').tiny, max=1.0), 5),
-        ('mult-dim', xrand((2, 2), dtype='float32', min=np.finfo(dtype='float32').tiny, max=1.0), 5),
+        (
+            'one-dim',
+            xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+                max=1.0,
+            ),
+            5,
+        ),
+        (
+            'mult-dim',
+            xrand(
+                (2, 2),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+                max=1.0,
+            ),
+            5,
+        ),
         ('mult-dim', xrand((2, 2, 2), dtype='float32', min=np.finfo(dtype='float32').tiny, max=1.0), 5),
     ],
 )
@@ -205,13 +239,33 @@ class TestGumbelPMF(unittest.TestCase):
     [
         (
             'one-dim',
-            xrand((2,), dtype='float32', min=np.finfo(dtype='float32').tiny, max=1.0),
-            xrand((2,), dtype='float32', min=np.finfo(dtype='float32').tiny, max=1.0),
+            xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+                max=1.0,
+            ),
+            xrand(
+                (2,),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+                max=1.0,
+            ),
         ),
         (
             'multi-dim',
-            xrand((2, 2), dtype='float32', min=np.finfo(dtype='float32').tiny, max=1.0),
-            xrand((2, 2), dtype='float32', min=np.finfo(dtype='float32').tiny, max=1.0),
+            xrand(
+                (2, 2),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+                max=1.0,
+            ),
+            xrand(
+                (2, 2),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+                max=1.0,
+            ),
         ),
     ],
 )
