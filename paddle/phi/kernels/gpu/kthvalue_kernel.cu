@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/kthvalue_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -43,6 +43,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                   const int k,
                   DenseTensor* out_tensor,
                   DenseTensor* indices_tensor) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   auto cu_stream = dev_ctx.stream();
   DenseTensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
@@ -62,15 +63,15 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                               phi::funcs::SegmentOffsetIter,
                               cub::CountingInputIterator<int64_t>>
       segment_offsets_t(counting_iter, phi::funcs::SegmentOffsetIter(num_cols));
-  T* sorted_values_ptr;
+  MT* sorted_values_ptr;
   int64_t* sorted_indices_ptr;
   DenseTensor temp_values, temp_indices;
-  const T* input = input_tensor->data<T>();
-  T* values = out_tensor->data<T>();
+  const MT* input = input_tensor->data<MT>();
+  MT* values = out_tensor->data<T>();
   int64_t* indices = dev_ctx.template Alloc<int64_t>(indices_tensor);
   temp_values.Resize(dim);
   temp_indices.Resize(dim);
-  sorted_values_ptr = dev_ctx.template Alloc<T>(&temp_values);
+  sorted_values_ptr = dev_ctx.template Alloc<MT>(&temp_values);
   sorted_indices_ptr = dev_ctx.template Alloc<int64_t>(&temp_indices);
   auto err =
       cub::DeviceSegmentedRadixSort::SortPairs(nullptr,
@@ -84,7 +85,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                                                segment_offsets_t,
                                                segment_offsets_t + 1,
                                                0,
-                                               sizeof(T) * 8,
+                                               sizeof(MT) * 8,
                                                cu_stream);
 #ifdef __HIPCC__
   if (err != hipSuccess) {
@@ -116,7 +117,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                                                  segment_offsets_t,
                                                  segment_offsets_t + 1,
                                                  0,
-                                                 sizeof(T) * 8,
+                                                 sizeof(MT) * 8,
                                                  cu_stream);
 #ifdef __HIPCC__
   if (err != hipSuccess) {
@@ -141,13 +142,13 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
       EigenMatrix<int64_t>::From(static_cast<const DenseTensor>(temp_indices));
   std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(1)};
   dim = phi::make_ddim(odims);
-  auto e_values = EigenMatrix<T>::From(*out_tensor, dim);
+  auto e_values = EigenMatrix<MT>::From(*out_tensor, dim);
   auto e_tmp_values =
-      EigenMatrix<T>::From(static_cast<const DenseTensor>(temp_values));
+      EigenMatrix<MT>::From(static_cast<const DenseTensor>(temp_values));
 
   funcs::EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
       dev, e_indices, e_tmp_indices, slice_indices, slice_sizes);
-  funcs::EigenSlice<std::decay_t<decltype(dev)>, T, 2>::Eval(
+  funcs::EigenSlice<std::decay_t<decltype(dev)>, MT, 2>::Eval(
       dev, e_values, e_tmp_values, slice_indices, slice_sizes);
   return true;
 }
@@ -160,11 +161,12 @@ void KthvalueKernel(const Context& dev_ctx,
                     bool keepdim,
                     DenseTensor* output,
                     DenseTensor* indices) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
   auto out_dims = output->dims();
-  const T* input_data = x.data<T>();
-  T* output_data = dev_ctx.template Alloc<T>(output);
+  const MT* input_data = x.data<MT>();
+  MT* output_data = dev_ctx.template Alloc<MT>(output);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
   // For 0D Tensor
@@ -185,7 +187,7 @@ void KthvalueKernel(const Context& dev_ctx,
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
     PADDLE_ENFORCE_EQ(
-        SortKthvalue<T>(
+        SortKthvalue<MT>(
             dev_ctx, &x, input_width, input_height, k, output, indices),
         true,
         phi::errors::External("KthvalueOP: Error when use cub sorting"));
@@ -222,31 +224,31 @@ void KthvalueKernel(const Context& dev_ctx,
     trans_out_dims[in_dims.size() - 1] = 1;
     DenseTensor trans_input;
     trans_input.Resize(trans_dims);
-    dev_ctx.template Alloc<T>(&trans_input);
+    dev_ctx.template Alloc<MT>(&trans_input);
     int ndims = trans.size();
-    funcs::TransCompute<phi::GPUContext, T>(
+    funcs::TransCompute<phi::GPUContext, MT>(
         ndims, dev_ctx, x, &trans_input, trans);
     DenseTensor trans_ind, trans_out;
     trans_ind.Resize(trans_out_dims);
     trans_out.Resize(trans_out_dims);
     dev_ctx.template Alloc<int64_t>(&trans_ind);
-    dev_ctx.template Alloc<T>(&trans_out);
+    dev_ctx.template Alloc<MT>(&trans_out);
     const int64_t input_height =
         phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
     PADDLE_ENFORCE_EQ(
-        SortKthvalue<T>(dev_ctx,
-                        &trans_input,
-                        input_width,
-                        input_height,
-                        k,
-                        &trans_out,
-                        &trans_ind),
+        SortKthvalue<MT>(dev_ctx,
+                         &trans_input,
+                         input_width,
+                         input_height,
+                         k,
+                         &trans_out,
+                         &trans_ind),
         true,
         phi::errors::External("KthvalueOP: Error when use cub sorting"));
     funcs::TransCompute<phi::GPUContext, int64_t>(
         ndims, dev_ctx, trans_ind, indices, trans);
-    funcs::TransCompute<phi::GPUContext, T>(
+    funcs::TransCompute<phi::GPUContext, MT>(
         ndims, dev_ctx, trans_out, output, trans);
     if (!keepdim) {
       output->Resize(out_dims);
@@ -263,4 +265,5 @@ PD_REGISTER_KERNEL(kthvalue,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16) {}
