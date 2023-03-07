@@ -123,7 +123,6 @@ void LaunchMultiHeadAttentionBackwardKernel(LaunchParams params,
                                     kBlockSizeI_,
                                     kBlockSizeJ_,
                                     kMaxK_>;
-
   typename AttentionBackward::Params p;
   {  // set parameters
     p.query_ptr = const_cast<T*>(reinterpret_cast<const T*>(params.query_ptr));
@@ -191,11 +190,15 @@ void LaunchMultiHeadAttentionBackwardKernel(LaunchParams params,
     p.workspace = const_cast<float*>(reinterpret_cast<const float*>(params.workspace));
   }
 
+  VLOG(3)<<"attention_kernel_backward_batched is setting";
   constexpr auto kernel_fn = attention_kernel_backward_batched<AttentionBackward>;
   int smem_bytes = sizeof(typename AttentionBackward::SharedStorage);
+  VLOG(3)<<"AttentionBackward sharedstorage has been set";
+
   if (smem_bytes > 0xc000) {
     cudaFuncSetAttribute(
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_bytes);
+    VLOG(3)<<"smem_bytes has been added";
   }
 
   if (!AttentionBackward::check_supported(p)) {
@@ -204,10 +207,14 @@ void LaunchMultiHeadAttentionBackwardKernel(LaunchParams params,
                                    "fused multihead attention backward. "));
     return;
   }
+  VLOG(3)<<"attention_kernel_backward_batched is launching";
+  VLOG(3)<<"p.getBlocksGrid(): "<<p.getBlocksGrid() <<"; p.getThreadsGrid(): "<<p.getThreadsGrid()
+          <<"; smem_bytes: "<<smem_bytes<<"; ctx.stream(): "<<ctx.stream();
   kernel_fn<<<p.getBlocksGrid(),
               p.getThreadsGrid(),
               smem_bytes,
               ctx.stream()>>>(p);
+  VLOG(3)<<"attention_kernel_backward_batched has been launched";
 }
 
 template <typename ArchTag_,
@@ -235,7 +242,7 @@ template <typename ArchTag_,
           bool kApplyDropout_,
           bool kPreloadMmas_>
 void DispatchFMHABlockSize(LaunchParams params, const phi::GPUContext& ctx) {
-    DispatchKMaxK<ArchTag_, scalar_t_, kIsAligned_, kApplyDropout_, kPreloadMmas_, 128, 64>
+    DispatchKMaxK<ArchTag_, scalar_t_, kIsAligned_, kApplyDropout_, kPreloadMmas_, 64, 64>
                                                 (params, ctx);
 }
 
@@ -289,33 +296,38 @@ void DispatchFMHAIsAligned(LaunchParams params, const phi::GPUContext& ctx) {
   }
 }
 
-template <typename ArchTag_>
-void DispatchFusedMultiheadAttentionKernel(LaunchParams params,
-                                           const phi::GPUContext& ctx) {
-  if (params.datatype == DataType::FLOAT16) {
-    return DispatchFMHAIsAligned<ArchTag_, cutlass::half_t>(params, ctx);
-  } 
-  else if (params.datatype == DataType::BFLOAT16) {
-    return DispatchFMHAIsAligned<ArchTag_, cutlass::bfloat16_t>(params, ctx);
-  } 
-  else {
-    return DispatchFMHAIsAligned<ArchTag_, float>(params, ctx);
-  }
-}
-
 void DispatchFMHAArchTag(LaunchParams params, const phi::GPUContext& ctx) {
   const int compute_capability = ctx.GetComputeCapability();
-  if (compute_capability == 80) {
-    DispatchFusedMultiheadAttentionKernel<cutlass::arch::Sm80>(params, ctx);
-  // } else if (compute_capability == 75) {
-  //   DispatchFusedMultiheadAttentionKernel<cutlass::arch::Sm75>(params, ctx);
-  // } else if (compute_capability == 70) {
-  //   DispatchFusedMultiheadAttentionKernel<cutlass::arch::Sm70>(params, ctx);
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "Currently cutlass fused multihead attention kernel "
-        "only support arch: SM80, SM75, SM70"));
-    return;
+  if (params.datatype == DataType::FLOAT16) {
+    if (compute_capability == 80) {
+      DispatchFMHAIsAligned<cutlass::arch::Sm80, cutlass::half_t>(params, ctx);
+    } else if (compute_capability == 75) {
+      DispatchFMHAIsAligned<cutlass::arch::Sm75, cutlass::half_t>(params, ctx);
+    } else if (compute_capability == 70) {
+      DispatchFMHAIsAligned<cutlass::arch::Sm70, cutlass::half_t>(params, ctx);
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Currently cutlass fused multihead attention kernel "
+          "only support arch: SM80, SM75, SM70"));
+      return;
+    }
+  } 
+  else if (params.datatype == DataType::FLOAT32) {
+    if (compute_capability == 80) {
+      DispatchFMHAIsAligned<cutlass::arch::Sm80, float>(params, ctx);
+    } else if (compute_capability == 75) {
+      DispatchFMHAIsAligned<cutlass::arch::Sm75, float>(params, ctx);
+    } else if (compute_capability == 70) {
+      DispatchFMHAIsAligned<cutlass::arch::Sm70, float>(params, ctx);
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Currently cutlass fused multihead attention kernel "
+          "only support arch: SM80, SM75, SM70"));
+      return;
+    }
+  }
+  else if(params.datatype == DataType::BFLOAT16 && compute_capability == 80){
+    DispatchFMHAIsAligned<cutlass::arch::Sm80, cutlass::bfloat16_t>(params, ctx);
   }
 }
 
@@ -327,8 +339,8 @@ void MultiHeadAttentionBackwardKernel(const Context& ctx,
                                      const DenseTensor& seed_and_offset,
                                      const DenseTensor& out,
                                      const DenseTensor& out_grad,
-                                     const bool causal,
                                      const float scale,
+                                     const bool causal,
                                      const float dropout_p,
                                      DenseTensor* query_grad,
                                      DenseTensor* key_grad,
@@ -338,6 +350,7 @@ void MultiHeadAttentionBackwardKernel(const Context& ctx,
   ctx.template Alloc<T>(value_grad);
   LaunchParams params{};
 
+  VLOG(3)<<"run into MultiHeadAttentionBackwardKernel";
   bool is_half = query.dtype()==paddle::experimental::DataType::FLOAT16 
                                 || query.dtype()==paddle::experimental::DataType::BFLOAT16;
   bool sm_range = ctx.GetComputeCapability() == 80;
@@ -348,15 +361,19 @@ void MultiHeadAttentionBackwardKernel(const Context& ctx,
   params.key_ptr = key.data();
   params.value_ptr = value.data();
   params.bias_ptr = nullptr; //@TODO zhangdanyang: insert bias or not
+  VLOG(3)<<"params.datatype"<<params.datatype;
+  VLOG(3)<<"params.datatype"<<params.datatype;
 
   // TODO(zhengzekang): currently we only used in inference. Maybe add a bool
   // flag to save it ?
   params.logsumexp_ptr = nullptr;
   params.output_ptr = out.data();
   params.grad_output_ptr = out_grad.data();
+  VLOG(3)<<"params.output_ptr: " <<params.output_ptr;
 
   auto delta = phi::Empty<float, Context>(ctx, {query.dims()[0], query.dims()[2], query.dims()[1]});
   params.delta_ptr = reinterpret_cast<float*>(delta.data());
+  VLOG(3)<<"params.delta_ptr: " <<params.delta_ptr;
 
   params.cu_seqlens_q_ptr = nullptr;
   params.cu_seqlens_k_ptr = nullptr;
@@ -393,20 +410,15 @@ void MultiHeadAttentionBackwardKernel(const Context& ctx,
   
   params.dropout_prob = dropout_p;
   params.workspace = nullptr;
+  VLOG(3)<<"params.dropout_prob: " <<params.dropout_prob;
 
   DispatchFMHAArchTag(params, ctx);
+  VLOG(3)<<"DispatchFMHAArchTag have been set";
 }
 
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi
-
-// PD_REGISTER_KERNEL(
-//     fused_multihead_attention_grad,
-//     GPU,
-//     ALL_LAYOUT,
-//     phi::fusion::cutlass_internal::MultiHeadAttentionBackwardKernel,
-//     phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(
     fused_multihead_attention_grad,
@@ -414,10 +426,3 @@ PD_REGISTER_KERNEL(
     ALL_LAYOUT,
     phi::fusion::cutlass_internal::MultiHeadAttentionBackwardKernel,
     float) {}
-
-// PD_REGISTER_KERNEL(
-//     fused_multihead_attention_grad,
-//     GPU,
-//     ALL_LAYOUT,
-//     phi::fusion::cutlass_internal::MultiHeadAttentionBackwardKernel,
-//     phi::dtype::bfloat16) {}

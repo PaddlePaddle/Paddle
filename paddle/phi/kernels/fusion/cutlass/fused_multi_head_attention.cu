@@ -350,7 +350,8 @@ void DispatchFMHAArchTag(LaunchParams params, const phi::GPUContext& ctx) {
     DispatchFMHAIsAligned<T, cutlass::arch::Sm80>(params, ctx);
   } else if (compute_capability == 75) {
     DispatchFMHAIsAligned<T, cutlass::arch::Sm75>(params, ctx);
-  } else if (compute_capability == 70) {
+  } else 
+  if (compute_capability == 70) {
     DispatchFMHAIsAligned<T, cutlass::arch::Sm70>(params, ctx);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -362,7 +363,8 @@ void DispatchFMHAArchTag(LaunchParams params, const phi::GPUContext& ctx) {
 
 void DispatchFusedMultiheadAttentionKernel(LaunchParams params,
                                            const phi::GPUContext& ctx) {
-  if (params.datatype == DataType::FLOAT16) {
+  if (params.datatype == DataType::FLOAT16 || 
+      params.datatype == DataType::FLOAT32) {
     return DispatchFMHAArchTag<cutlass::half_t>(params, ctx);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
@@ -397,13 +399,19 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
 
   params.seed_and_offset = const_cast<uint64_t*>(reinterpret_cast<const uint64_t*>(seed_and_offset->data()));
 
+  VLOG(3) << "output"<<output;
+  VLOG(3) << "params.output_ptr "<<params.output_ptr ;
+  VLOG(3) << "gen is generating";
   auto gen = ctx.GetGenerator();
   uint64_t inc = query.dims()[0] * query.dims()[2] * 32;
   auto seed_offset_pair = gen->IncrementOffset(inc);
-  auto seed = seed_offset_pair.first;
-  auto seed_offset = seed_offset_pair.second;
+  auto seed = (uint64_t)(seed_offset_pair.first);
+  auto seed_offset = (uint64_t)(seed_offset_pair.second);
+  VLOG(3) << "seed and offset have been generated";
+  params.seed_and_offset = (uint64_t*) std::malloc (2*sizeof(uint64_t));
   params.seed_and_offset[0] = seed;
   params.seed_and_offset[1] = seed_offset;
+  VLOG(3) << "seed and offset have been set";
 
   params.output_accum_ptr = nullptr;
 
@@ -450,7 +458,9 @@ void MultiHeadAttentionForwardKernel(const Context& ctx,
 
   }
 
+  VLOG(3) << "fused multihead attention kernel is dispatching";
   DispatchFusedMultiheadAttentionKernel(params, ctx);
+  VLOG(3) << "fused multihead attention kernel has been dispatched";
 }
 
 }  // namespace cutlass_internal

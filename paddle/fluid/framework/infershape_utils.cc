@@ -759,6 +759,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       default:
         if (attr_ptr) {
           auto& attr = *attr_ptr;
+          VLOG(6) << "attr_name is "<<attr_name;
           switch (attr_defs[i].type_index) {
             case phi::AttributeType::FLOAT32:
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(float, attr));
@@ -771,6 +772,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(int, attr));
               break;
             case phi::AttributeType::BOOL:
+              VLOG(6) << "attr_name is "<<attr_name;
               infer_meta_context.EmplaceBackAttr(PADDLE_GET_CONST(bool, attr));
               break;
             case phi::AttributeType::INT64:

@@ -12,12 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from asyncio.windows_events import NULL
+
+import copy
 import math
 import os
-from turtle import forward
+# from turtle import forward
 import unittest
-from Paddle.python.paddle.tensor.math import scale
+from paddle.nn.functional import loss
+import paddle
+
+from paddle.tensor.math import scale
+import paddle.fluid.core as core
 
 import numpy as np
 from op_test import OpTest
@@ -29,32 +34,195 @@ import paddle
 import paddle.nn.functional as F
 import paddle.nn as nn
 from paddle.fluid.framework import default_main_program
-from paddle.incubate.nn.functional import cutlass_fused_multi_head_attention
+from paddle.incubate.nn.functional import cutlass_fused_multi_head_attention, cutlass_fused_multi_head_attention_grad 
 
 default_main_program().random_seed = 42
 
-class PaddleFMHAOp(nn.Layer):
-    def __init__(
-        self,
-        scale,
-        add_mask,
-        mask,
-        use_dropout,
-        dropout_p
-    ) -> None:
-        super().__init__()
-        self.scale = scale
-        self.add_mask = add_mask
-        self.mask = mask
-        self.use_dropout = use_dropout
-        self.dropout_p = dropout_p
-    
-    def forward(self, q, k, v):
+class TestCutlassFMHAOp(OpTest):
+    def setUp(self):
+        self.config()
+        self.rtol = 1e-3
+        self.atol = 1e-4
+        self.paddle_dtype = paddle.float32
+        if self.x_type == np.float16:
+            self.paddle_dtype = paddle.float16
+
+        paddle.seed(2021)
+
+        paddle.set_default_dtype(self.x_type)
+        self.__class__.op_type = "cutlass_fused_multihead_attention"
+        # Since it's only used in inference.
+        self.__class__.no_need_check_grad = False
+
+        if (self.paddle_dtype == paddle.float32):
+            self.query_static = np.random.uniform(
+                    low=-0.1,
+                    high=0.1,
+                    size=[
+                        self.batch,
+                        self.query_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ],
+                ).astype('float32')
+            self.query = paddle.to_tensor(
+                self.query_static,
+                dtype=self.paddle_dtype,
+            )
+
+            self.key_static = np.random.uniform(
+                    low=-0.1,
+                    high=0.1,
+                    size=[
+                        self.batch,
+                        self.kv_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ],
+                ).astype('float32')
+            self.key = paddle.to_tensor(
+                self.key_static,
+                dtype=self.paddle_dtype,
+            )
+
+            self.value_static = np.random.uniform(
+                    low=-0.1,
+                    high=0.1,
+                    size=[
+                        self.batch,
+                        self.kv_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ],
+                ).astype('float32')
+            self.value = paddle.to_tensor(
+                self.value_static,
+                dtype=self.paddle_dtype,
+            )
+
+            self.mask_static = np.random.uniform(
+                    low=-0.1, 
+                    high=0.1, 
+                    size=self.mask_shape,
+                    ).astype('float32')
+            self.mask = paddle.to_tensor(
+                self.mask_static,
+                dtype=self.paddle_dtype,
+            )
+
+            self.predect_static = np.random.uniform(
+                    low=-0.1,
+                    high=0.1,
+                    size=[
+                        self.batch,
+                        self.kv_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ],
+                ).astype('float32')
+            self.predect = paddle.to_tensor(
+                self.predect_static,
+                dtype=self.paddle_dtype,)
+
+        elif (self.paddle_dtype == paddle.float16):
+            self.query_static = np.random.uniform(
+                    low=-0.1,
+                    high=0.1,
+                    size=[
+                        self.batch,
+                        self.query_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ],
+                ).astype('float16')
+            self.query = paddle.to_tensor(
+                self.query_static,
+                dtype=self.paddle_dtype,
+            )
+
+            self.key_static = np.random.uniform(
+                    low=-0.1,
+                    high=0.1,
+                    size=[
+                        self.batch,
+                        self.kv_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ],
+                ).astype('float16')
+            self.key = paddle.to_tensor(
+                self.key_static,
+                dtype=self.paddle_dtype,
+            )
+
+            self.value_static = np.random.uniform(
+                    low=-0.1,
+                    high=0.1,
+                    size=[
+                        self.batch,
+                        self.kv_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ],
+                ).astype('float16')
+            self.value = paddle.to_tensor(
+                self.value_static,
+                dtype=self.paddle_dtype,
+            )
+
+            self.mask_static = np.random.uniform(
+                    low=-0.1, 
+                    high=0.1, 
+                    size=self.mask_shape,
+                    ).astype('float32')
+            self.mask = paddle.to_tensor(
+                self.mask_static,
+                dtype=self.paddle_dtype,
+            )
+
+            self.predect_static = np.random.uniform(
+                    low=-0.1,
+                    high=0.1,
+                    size=[
+                        self.batch,
+                        self.kv_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ],
+                ).astype('float16')
+            self.predect = paddle.to_tensor(
+                self.predect_static,
+                dtype=self.paddle_dtype,)
+        else:
+            assert("paddle_dtype type is not supported")
+
+        self.query.stop_gradient = False
+        self.key.stop_gradient = False
+        self.value.stop_gradient = False
+
+
+    def config(self):
+        self.x_type = np.float16
+        self.batch = 1
+        self.num_head = 8
+        self.query_seq_len = 128
+        self.kv_seq_len = 128
+        self.head_size = 32
+        self.scale = float(1.0 / math.sqrt(self.head_size))
+        self.causal = True
+        self.mask_shape = [1, 1, 1, self.kv_seq_len]
+        self.dropout_p = 0.0
+
+    def GetBaselineOut(self):
         paddle.disable_static()
-        # Transpose to (batch, num_head, seq_len, head_size)
-        query = paddle.transpose(q, [0, 2, 1, 3])
-        key = paddle.transpose(k, [0, 2, 1, 3])
-        value = paddle.transpose(v, [0, 2, 1, 3])
+
+        self.add_mask = isinstance(self.mask, paddle.Tensor)
+        self.use_dropout = self.dropout_p!=0.0
+
+        assert(isinstance(self.query,paddle.Tensor))
+        query = paddle.transpose(self.query, [0, 2, 1, 3])
+        key = paddle.transpose(self.key, [0, 2, 1, 3])
+        value = paddle.transpose(self.value, [0, 2, 1, 3])
 
         qk_res = paddle.matmul(query, key, transpose_y=True)
         attention = qk_res * self.scale
@@ -66,142 +234,13 @@ class PaddleFMHAOp(nn.Layer):
         if (self.use_dropout):
             result = F.dropout(softmax_result, self.dropout_p)
         result = paddle.transpose(result, [0, 2, 1, 3])
-        return result
-        
-        
-
-class TestCutlassFMHAOp(OpTest):
-    def setUp(self):
-        self.config()
-        self.use_dropout = False
-        self.rtol = 1e-3
-        self.atol = 1e-4
-
-        paddle.set_default_dtype(self.x_type)
-        self.__class__.op_type = "cutlass_fused_multihead_attention"
-        # Since it's only used in inference.
-        self.__class__.no_need_check_grad = True
-
-        self.query = paddle.to_tensor(
-            np.random.uniform(
-                low=-0.01,
-                high=0.01,
-                size=[
-                    self.batch,
-                    self.query_seq_len,
-                    self.num_head,
-                    self.head_size,
-                ],
-            ),
-            dtype=self.datatype,
-        )
-        self.key = paddle.to_tensor(
-            np.random.uniform(
-                low=-0.01,
-                high=0.01,
-                size=[
-                    self.batch,
-                    self.kv_seq_len,
-                    self.num_head,
-                    self.head_size,
-                ],
-            ),
-            dtype=self.datatype,
-        )
-        self.value = paddle.to_tensor(
-            np.random.uniform(
-                low=-0.01,
-                high=0.01,
-                size=[
-                    self.batch,
-                    self.kv_seq_len,
-                    self.num_head,
-                    self.head_size,
-                ],
-            ),
-            dtype=self.datatype,
-        )
-        self.mask = paddle.to_tensor(
-            np.random.uniform(low=-0.01, high=0.01, size=self.mask_shape),
-            dtype=self.datatype,
-        )
-
-        self.query.stop_gradient = False
-        self.key.stop_gradient = False
-        self.value.stop_gradient = False
-
-        self.out_delt = paddle.to_tensor(
-            np.random.uniform(
-                low=-0.01,
-                high=0.01,
-                size=[
-                    self.batch,
-                    self.query_seq_len,
-                    self.num_head,
-                    self.head_size,
-                ],
-            ),
-            dtype=self.datatype,
-        )
-
-        self.out_grad = paddle.to_tensor(
-            np.random.uniform(
-                low=-0.01,
-                high=0.01,
-                size=[
-                    self.batch,
-                    self.query_seq_len,
-                    self.num_head,
-                    self.head_size,
-                ],
-            ),
-            dtype=self.datatype,
-        )
-
-    def config(self):
-        self.x_type = np.float16
-        self.datatype = paddle.float32
-        self.batch = 1
-        self.num_head = 8
-        self.query_seq_len = 1024
-        self.kv_seq_len = 1024
-        self.head_size = 32
-        self.scale = float(1.0 / math.sqrt(self.head_size))
-        self.add_mask = True
-        self.dropout_p = 0.5
-        self.mask_shape = [
-            self.batch,
-            self.num_head,
-            self.query_seq_len,
-            self.kv_seq_len,
-        ]
-        self.out_delt = 1e-5
-
-    def GetBaselineOut(self):
-        paddle.disable_static()
-        baselinefmha = PaddleFMHAOp(
-            self.scale,
-            self.add_mask,
-            self.mask,
-            self.use_dropout,
-            self.dropout_p
-        )
-
-        query = self.query
-        key = self.key
-        value = self.value
 
         query.stop_gradient = False
         key.stop_gradient = False
         value.stop_gradient = False
-
-        result = baselinefmha.forward(
-            query,
-            key,
-            value)    
-        result.stop_gradient = False
-
-        paddle.autograd.backward(result, self.out_grad, create_graph=True)
+        loss = paddle.mean(result - self.predect)
+        loss.stop_gradient = False
+        loss.backward()
 
         g_q_base = query.grad
         g_k_base = key.grad
@@ -210,43 +249,95 @@ class TestCutlassFMHAOp(OpTest):
         return result, g_q_base, g_k_base, g_v_base
 
     def GetFusedMultiheadAttentionOut(self):
+
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+
+        print("GetFusedMultiheadAttentionOut program constructing:")
+        with paddle.static.program_guard(main_prog):
+            query = paddle.static.data(name='query', dtype='float32', shape=[
+                        self.batch,
+                        self.query_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ])
+            key = paddle.static.data(name='key', dtype='float32', shape=[
+                        self.batch,
+                        self.kv_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ])
+            value = paddle.static.data(name='value', dtype='float32', shape=[
+                        self.batch,
+                        self.kv_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ])
+            predect = paddle.static.data(name='predect', dtype='float32', shape=[
+                        self.batch,
+                        self.kv_seq_len,
+                        self.num_head,
+                        self.head_size,
+                    ])
+            mask = paddle.static.data(name='mask', dtype='float32', shape=[
+                1, 1, 1, self.kv_seq_len])
+
+            scale = paddle.static.data(name='scale', dtype='float32', shape=[1])
+            causal = paddle.static.data(name='causal', dtype='bool', shape=[1])
+            dropout_p = paddle.static.data(name='dropout_p', dtype='float32', shape=[1])
+
+            query.stop_gradient = False
+            key.stop_gradient = False
+            value.stop_gradient = False
+
+            scale.stop_gradient = True
+            causal.stop_gradient = True
+            dropout_p.stop_gradient = True
+
+            out, seed_and_offset= cutlass_fused_multi_head_attention(
+                query,
+                key,
+                value,
+                mask,
+                self.scale,
+                self.causal,
+                self.dropout_p
+            )        
+
+            # import pdb; pdb.set_trace()
+            loss = paddle.mean(out-predect)
+            paddle.static.append_backward(loss)
+                
+            fetch_list = [out.name,
+                            "query_grad",
+                            "key_grad", 
+                            "value_grad"]
+            # fetch_list = [fused_out]
+                        
+            place = paddle.CUDAPlace(0)
+            exe = paddle.static.Executor(place)
+            fused_out, q_g, k_g, v_g = exe.run(main_prog, 
+                feed = {"query" : self.query_static,
+                        "key" : self.key_static,
+                        "value" : self.value_static,
+                        "predect" : self.predect_static,
+                        "mask" : self.mask_static,
+                        "scale" : self.scale,
+                        "causal" : self.causal,
+                        "dropout_p" : self.dropout_p},
+                fetch_list=fetch_list)
+        
+        print("GetFusedMultiheadAttentionOut program has been constructed")
         paddle.disable_static()
 
-        if (self.use_dropout): 
-            dropout_p = self.dropout_p     
-        else:
-            dropout_p = NULL
-      
-        fused_out, seed_and_offset = cutlass_fused_multi_head_attention(
-            self.query,
-            self.key,
-            self.value,
-            self.mask if self.add_mask else None,
-            self.scale,
-            dropout_p,
-        )
+        return fused_out, q_g, k_g, v_g
 
-        g_q, g_k, g_v = cutlass_fused_multi_head_attention_grad(
-            self.query,
-            self.key,
-            self.value,
-            seed_and_offset,
-            fused_out,
-            self.out_delt,
-            self.out_grad,
-            self.add_mask,
-            self.scale,
-            dropout_p,
-        )
-
-        return fused_out, g_q, g_k, g_v
-
-    def test_fused_multihead_attention_op(self):
+    def test_baseline_op(self):
+        self.setUp()
+        fused_out_ref, g_q_ref, g_k_ref, g_v_ref = self.GetBaselineOut()
         fused_out, g_q, g_k, g_v = self.GetFusedMultiheadAttentionOut()
-        final_out_ref, g_q_ref, g_k_ref, g_v_ref = self.GetBaselineOut()
-
         np.testing.assert_allclose(
-            final_out_ref, fused_out, rtol=self.rtol, atol=self.atol
+            fused_out_ref, fused_out, rtol=self.rtol, atol=self.atol
         )
         np.testing.assert_allclose(
             g_q, g_q_ref, rtol=self.rtol, atol=self.atol
@@ -258,64 +349,38 @@ class TestCutlassFMHAOp(OpTest):
             g_v, g_v_ref, rtol=self.rtol, atol=self.atol
         )
 
-
-class TestCutlassFMHAOpFp16(TestCutlassFMHAOp):
-    def config(self):
-        super().config()
-        self.x_type = np.float16
-        self.batch = 4
-        self.num_head = 8
-        self.query_seq_len = 256
-        self.kv_seq_len = 256
-        self.head_size = 64
-        self.scale = float(1.0 / math.sqrt(self.head_size))
-        self.add_mask = True
-        self.dropout_p = 0.5
-        self.mask_shape = [
-            self.batch,
-            self.num_head,
-            self.query_seq_len,
-            self.kv_seq_len,
-        ]
-        self.out_delt = 1e-5
-
-
-class TestCutlassFMHAMaskOpFp16(TestCutlassFMHAOp):
-    def config(self):
-        super().config()
-        self.x_type = np.float16
-        self.batch = 1
-        self.num_head = 8
-        self.query_seq_len = 900
-        self.kv_seq_len = 6000
-        self.head_size = 32
-        self.scale = float(1.0 / math.sqrt(self.head_size))
-        self.add_mask = True
-        self.dropout_p = 0.5
-        self.mask_shape = [1, 1, 1, self.kv_seq_len]
-        self.out_delt = 1e-5
-
-
-class TestCutlassFMHAOpFp32(TestCutlassFMHAOp):
+class TestCutlassFMHAMaskOpDatatype(TestCutlassFMHAOp):
     def config(self):
         super().config()
         self.x_type = np.float32
-        self.batch = 8
-        self.num_head = 8
-        self.query_seq_len = 128
-        self.kv_seq_len = 128
-        self.head_size = 32
-        self.scale = float(1.0 / math.sqrt(self.head_size))
-        self.add_mask = True
-        self.dropout_p = 0.5
-        self.mask_shape = [
-            self.batch,
-            self.num_head,
-            self.query_seq_len,
-            self.kv_seq_len,
-        ]
-        self.out_delt = 1e-5
-
+        if (self.x_type == np.float16):
+            self.batch = 8
+            self.num_head = 8
+            self.query_seq_len = 128
+            self.kv_seq_len = 128
+            self.head_size = 32
+            self.scale = float(1.0 / math.sqrt(self.head_size))
+            self.causal = True
+            self.mask_shape = [1, 1, 1, self.kv_seq_len]
+            self.dropout_p = 0.0
+        elif (self.x_type == np.float32):
+            self.batch = 1
+            self.num_head = 8
+            self.query_seq_len = 128
+            self.kv_seq_len = 128
+            self.head_size = 32
+            self.scale = float(1.0 / math.sqrt(self.head_size))
+            self.causal = True
+            self.mask_shape = [1, 1, 1, self.kv_seq_len]
+            # self.mask_shape = [
+            #     self.batch,
+            #     self.num_head,
+            #     self.query_seq_len,
+            #     self.kv_seq_len,
+            # ]
+            self.dropout_p = 0.0
+        else :
+            assert(f"this type ({self.x_type}) is not supported")
 
 if __name__ == "__main__":
     unittest.main()

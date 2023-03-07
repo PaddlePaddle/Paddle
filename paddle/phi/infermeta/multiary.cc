@@ -3022,6 +3022,13 @@ void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
       phi::errors::InvalidArgument("Value should be a 4-D tensor"
                                    "But received Value dimension(%s)",
                                    value.dims().size()));
+  // PADDLE_ENFORCE_EQ(
+  //     SizeOf(scale.dtype()),
+  //     4,
+  //     phi::errors::InvalidArgument("scale should be a flpat tensor"
+  //                                  "But received Value dimension(%s)",
+  //                                  scale.dtype()));
+
   const int64_t query_batch_size = query.dims()[0];
   const int64_t query_seq_length = query.dims()[1];
   const int64_t query_num_head = query.dims()[2];
@@ -3094,12 +3101,10 @@ void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
   std::vector<int64_t> out_dims(
       {query_batch_size, query_seq_length, query_num_head, value_head_size});
 
-
   out->set_dims(phi::make_ddim(out_dims));
   out->share_lod(query);
   out->set_dtype(query.dtype());
   out->set_layout(query.layout());
-
 }
 
 void FusedMultiHeadAttentionGradInferMeta(
@@ -3129,6 +3134,42 @@ void FusedMultiHeadAttentionGradInferMeta(
                                    "But received Key dimension(%s)",
                                    out_grad.dims().size()));
 
+  const int64_t query_batch_size = query.dims()[0];
+  const int64_t query_seq_length = query.dims()[1];
+  const int64_t query_num_head = query.dims()[2];
+  const int64_t query_head_size = query.dims()[3];
+
+  const int64_t key_batch_size = key.dims()[0];
+  const int64_t key_seq_length = key.dims()[1];
+  const int64_t key_num_head = key.dims()[2];
+  const int64_t key_head_size = key.dims()[3];
+
+  const int64_t value_batch_size = value.dims()[0];
+  const int64_t value_seq_length = value.dims()[1];
+  const int64_t value_num_head = value.dims()[2];
+  const int64_t value_head_size = value.dims()[3];
+
+  std::vector<int64_t> query_grad_dims(
+      {query_batch_size, query_seq_length, query_num_head, query_head_size});
+  std::vector<int64_t> key_grad_dims(
+      {key_batch_size, key_seq_length, key_num_head, key_head_size});
+  std::vector<int64_t> value_grad_dims(
+      {value_batch_size, value_seq_length, value_num_head, value_head_size});
+
+  query_grad->set_dims(phi::make_ddim(query_grad_dims));
+  query_grad->share_lod(query);
+  query_grad->set_dtype(query.dtype());
+  query_grad->set_layout(query.layout());
+
+  key_grad->set_dims(phi::make_ddim(key_grad_dims));
+  key_grad->share_lod(key);
+  key_grad->set_dtype(key.dtype());
+  key_grad->set_layout(key.layout());
+
+  value_grad->set_dims(phi::make_ddim(value_grad_dims));
+  value_grad->share_lod(value);
+  value_grad->set_dtype(value.dtype());
+  value_grad->set_layout(value.layout());
 
 }  // namespace phi
 

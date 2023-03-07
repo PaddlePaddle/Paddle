@@ -1,0 +1,4127 @@
+grep: warning: GREP_OPTIONS is deprecated; please use an alias or script
+W0306 10:57:08.794291 33118 gpu_resources.cc:85] Please NOTE: device: 0, GPU Compute Capability: 7.0, Driver API Version: 11.2, Runtime API Version: 11.2
+W0306 10:57:08.798496 33118 gpu_resources.cc:115] device: 0, cuDNN Version: 8.2.
+I0306 10:57:09.761286 33118 interpretercore.cc:279] New Executor is Running.
+I0306 10:57:09.762084 33118 interpreter_util.cc:619] Standalone Executor is Used.
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+run into attention kernel!
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+Computes (dO*out).sum(-1) and writes it to `p.delta_pt
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed is setting
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+seed has been set
+terminate called after throwing an instance of 'phi::enforce::EnforceNotMet'
+  what():  (External) CUDA error(700), an illegal memory access was encountered. 
+  [Hint: Please search for the error code(700) on website (https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html#group__CUDART__TYPES_1g3f51e3575c2178246db0a94a430e0038) to get Nvidia's official solution and advice about CUDA Error.] (at /paddlepaddle/Paddle/paddle/fluid/platform/device/gpu/gpu_info.cc:284)
+
+
+
+--------------------------------------
+C++ Traceback (most recent call last):
+--------------------------------------
+0   paddle::framework::StandaloneExecutor::Run(paddle::framework::Scope*, std::vector<std::string, std::allocator<std::string > > const&, std::vector<std::string, std::allocator<std::string > > const&)
+1   paddle::framework::InterpreterCore::Run(std::vector<std::string, std::allocator<std::string > > const&, bool)
+2   paddle::framework::interpreter::BuildOpFuncList(phi::Place const&, paddle::framework::BlockDesc const&, std::set<std::string, std::less<std::string >, std::allocator<std::string > > const&, std::vector<paddle::framework::OpFuncNode, std::allocator<paddle::framework::OpFuncNode> >*, paddle::framework::VariableScope*, paddle::framework::interpreter::ExecutionConfig const&, bool)
+3   phi::KernelImpl<void (*)(phi::GPUContext const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, float, bool, float, phi::DenseTensor*, phi::DenseTensor*, phi::DenseTensor*), &(void phi::fusion::cutlass_internal::MultiHeadAttentionBackwardKernel<float, phi::GPUContext>(phi::GPUContext const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, float, bool, float, phi::DenseTensor*, phi::DenseTensor*, phi::DenseTensor*))>::Compute(phi::KernelContext*)
+4   void phi::fusion::cutlass_internal::MultiHeadAttentionBackwardKernel<float, phi::GPUContext>(phi::GPUContext const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, phi::DenseTensor const&, float, bool, float, phi::DenseTensor*, phi::DenseTensor*, phi::DenseTensor*)
+5   phi::DenseTensor::~DenseTensor()
+6   std::_Sp_counted_deleter<phi::Allocation*, std::function<void (phi::Allocation*)>, std::allocator<void>, (__gnu_cxx::_Lock_policy)2>::_M_dispose()
+7   paddle::memory::allocation::CUDAAllocator::FreeImpl(phi::Allocation*)
+8   paddle::platform::RecordedGpuMallocHelper::Free(void*, unsigned long)
+
+----------------------
+Error Message Summary:
+----------------------
+FatalError: `Process abort signal` is detected by the operating system.
+  [TimeInfo: *** Aborted at 1678100229 (unix time) try "date -d @1678100229" if you are using GNU date ***]
+  [SignalInfo: *** SIGABRT (@0x815e) received by PID 33118 (TID 0x7fbace152740) from PID 33118 ***]
+

@@ -8,6 +8,7 @@
 # Kernels are ordered (see `sort_index`), and when dispatching,
 # we select the first kernel in the list that supports the inputs
 
+from cgi import print_form
 import collections
 import itertools
 from dataclasses import dataclass, field
@@ -186,9 +187,7 @@ class FwdKernel:
         # return kernels
 
 
-
-SM = [70, 75, 80]
-
+# SM = [80]
 @dataclass(order=True)
 class BwdKernel:
     sort_index: Tuple[int, ...] = field(init=False, repr=False)
@@ -211,6 +210,8 @@ class BwdKernel:
             0 if self.aligned else 1,
             # Take a kernel without dropout if possible
             1 if self.apply_dropout else 0,
+            # # Take a kernel without dropout if possible
+            # 1 if self.preload_mmas else 0,
             # Then take the smallest maxK
             self.max_k,
             # .. and the highest block_i
@@ -222,8 +223,12 @@ class BwdKernel:
         return "aligned" if self.aligned else "notaligned"
 
     @property
+    def _sm_suffix(self) -> str:
+        return self.sm_range[0]
+
+    @property
     def name(self) -> str:
-        # dropout_suffix = "_dropout" if self.apply_dropout else ""
+        dropout_suffix = "_dropout" if self.apply_dropout else ""
         # return (
         #     f"fmha_cutlassB_{self.dtype}_{self._aligned_suffix}"
         #     f"_{self.block_i}x{self.block_j}_k{self.max_k}{dropout_suffix}_sm{self.sm_range[0]}"
@@ -250,7 +255,7 @@ class BwdKernel:
     def impl_group(self) -> str:
         # Maps to file which will contain the implementation
         dropout_suffix = "_dropout" if self.apply_dropout else ""
-        return f"{self.dtype}_{self._aligned_suffix}_k{self.max_k}{dropout_suffix}"
+        return f"{self.dtype}_{self._aligned_suffix}_k{self.max_k}{dropout_suffix}_{self._sm_suffix}"
 
     @property
     def cpp_impl(self) -> str:
@@ -266,65 +271,63 @@ class BwdKernel:
         kernels: List[BwdKernel] = []
         for aligned, dtype, (sm, sm_max), apply_dropout, max_k, preload_mmas in itertools.product(
             [True, False],
-            # [True],
             DTYPES.keys(),
-            zip(SM, SM[0:] + [90]),
-            # (70, 90),
+            zip(SM, SM[1:] + [90]),
             [True, False],
-            # [32, 64, 128, 2**16],
             [128],
             [True, False],
         ):
             if dtype == "bf16" and sm < 80:
                 continue
-            # if not aligned and sm >= 80:
-            #     continue
-            # is_half = dtype in ["bf16", "f16"]
-            is_half = dtype in []
+            if not aligned and sm >= 80:
+                continue
+            is_half = dtype in ["bf16", "f16"]
+            # is_half = dtype in []
 
-            bi_values = []
+            # bi_values = []
             # Some architectures have more shmem and can use 128
             # We still need fallback to 64 for GPUs with less shmem
             # (Sm75, Sm86 ...)
-            if sm >= 80 or (sm >= 70 and is_half):
-                if max_k > 64:
-                    bi_values.append(128)
-            for bi in bi_values:
-                # output_in_rf = is_half and max_k <= bi
-                # preload_mmas = is_half and sm >= 80 and output_in_rf
-                # bj = 128 if (preload_mmas and max_k > 64) else 64
-                bj = 64
-                kernels.append(
-                    cls(
-                        aligned=aligned,
-                        dtype=dtype,
-                        sm_range=(sm, sm_max),
-                        apply_dropout=apply_dropout,
-                        preload_mmas=preload_mmas,
-                        block_i=bi,
-                        block_j=bj,
-                        max_k=max_k,
-                    )
-                )
-        # Add some specialized kernels for stable diffusion BW (K=80)
-        # This is the only kernel that can keep the outputs on RF on
-        # Sm86/Sm89, so it's much faster than the 64x64 one
-        # for dtype in ["f16", "bf16"]:
-        for dtype in []:
+            # if sm >= 80 or (sm >= 70 and is_half):
+            # if max_k > 64:
+            #     bi_values.append(64)
+            # for bi in bi_values:
+            bi = 64
+            # output_in_rf = is_half and max_k <= bi
+            # preload_mmas = is_half and sm >= 80 and output_in_rf
+            # bj = 128 if (preload_mmas and max_k > 64) else 64
+            bj = 64
             kernels.append(
                 cls(
-                    aligned=True,
+                    aligned=aligned,
                     dtype=dtype,
-                    sm_range=(80, 90),
-                    apply_dropout=False,
-                    preload_mmas=True,
-                    block_i=128,
-                    block_j=64,
-                    max_k=96,
-                    # Sm80 has a faster kernel for this case
-                    dispatch_cond="cc == 86 || cc == 89",
+                    sm_range=(sm, sm_max),
+                    apply_dropout=apply_dropout,
+                    preload_mmas=preload_mmas,
+                    block_i=bi,
+                    block_j=bj,
+                    max_k=max_k,
                 )
             )
+        # # Add some specialized kernels for stable diffusion BW (K=80)
+        # # This is the only kernel that can keep the outputs on RF on
+        # # Sm86/Sm89, so it's much faster than the 64x64 one
+        # for dtype in ["f16", "bf16"]:
+        # # for dtype in []:
+        #     kernels.append(
+        #         cls(
+        #             aligned=True,
+        #             dtype=dtype,
+        #             sm_range=(80, 90),
+        #             apply_dropout=False,
+        #             preload_mmas=True,
+        #             block_i=128,
+        #             block_j=64,
+        #             max_k=96,
+        #             # Sm80 has a faster kernel for this case
+        #             dispatch_cond="cc == 86 || cc == 89",
+        #         )
+        #     )
         return kernels
 
 

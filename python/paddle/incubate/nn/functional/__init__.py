@@ -20,6 +20,7 @@ from .fused_transformer import fused_bias_dropout_residual_layer_norm
 from .fused_ec_moe import fused_ec_moe
 from .cutlass_fused_multi_head_attention import (
     cutlass_fused_multi_head_attention,
+    cutlass_fused_multi_head_attention_grad,
 )
 
 
@@ -32,4 +33,5 @@ __all__ = [
     'fused_bias_dropout_residual_layer_norm',
     'fused_ec_moe',
     'cutlass_fused_multi_head_attention',
+    'cutlass_fused_multi_head_attention_grad',
 ]
