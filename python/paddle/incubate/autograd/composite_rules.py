@@ -286,6 +286,15 @@ def hard_swish_composite(x):
     return res
 
 
+@REGISTER_COMPOSITE('index_select')
+def index_select_composite(x, index, axis=0):
+    """define composite rule of op index_select."""
+    if axis < 0:
+        axis = len(x.shape) + axis
+    res = gather(x, index, axis=axis)
+    return res
+
+
 @REGISTER_COMPOSITE('sigmoid')
 def sigmoid_composite(x):
     """
