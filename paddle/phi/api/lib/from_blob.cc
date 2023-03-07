@@ -20,7 +20,7 @@ namespace experimental {
 
 using AllocationDeleter = void (*)(phi::Allocation*);
 
-static Deleter g_deleter = nullptr;
+static thread_local Deleter g_deleter = nullptr;
 
 Tensor from_blob(void* data,
                  const phi::DDim& shape,
