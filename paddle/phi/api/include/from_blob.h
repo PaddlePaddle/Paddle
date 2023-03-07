@@ -27,15 +27,15 @@ using Deleter = std::function<void(void*)>;
 /**
  * @brief Construct a Tensor from a buffer pointed to by `data`
  *
- * @param data, The pointer to the memory buffer.
- * @param shape, The dims of the tensor.
- * @param dtype, The DataType of the tensor.
- * @param place, The Place where `data` is located.
- * @param layout, The DataLayout of the tensor.
- * @param storage_offset, The offset (in bytes) of the tensor data from the
- * beginning of `data`.
- * @param deleter, A function or function object that will be called to free the
- * memory buffer.
+ * @param data The pointer to the memory buffer.
+ * @param shape The dims of the tensor.
+ * @param dtype The DataType of the tensor.
+ * @param place The Place where `data` is located.
+ * @param layout The DataLayout of the tensor.
+ * @param storage_offset The offset (in bytes) of the tensor data from the
+ *                       beginning of `data`.
+ * @param deleter A function or function object that will be called to free the
+ *                memory buffer.
  *
  * @return A Tensor object constructed from the buffer
  */
