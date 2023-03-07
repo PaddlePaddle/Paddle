@@ -19,20 +19,22 @@
 
 namespace phi {
 
-template <template <typename> class H, typename T, typename Context>
+template <template <typename T, typename TO> class H,
+          typename T,
+          typename T_out,
+          typename Context>
 void SoftmaxExecute(bool is_inplace,
-                    H<T>* handler,
+                    H<T, T_out>* handler,
                     const DenseTensor& x,
                     DenseTensor* out,
                     const Context& dev_ctx) {
   auto src_memory_p = handler->AcquireSrcMemory(&x);
-
   std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
   if (is_inplace) {
     dst_memory_p = src_memory_p;
-    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T_out>(out);
   } else {
-    dst_memory_p = handler->AcquireDstMemory(out);
+    dst_memory_p = handler->AcquireDstMemory(dev_ctx, out);
   }
 
   auto softmax_p = handler->AcquireForwardPrimitive();
@@ -59,13 +61,14 @@ void SoftmaxKernel(const Context& dev_ctx,
                    int axis,
                    DenseTensor* out) {
   bool is_inplace = x.IsSharedBufferWith(*out);
+  using T_out = std::conditional_t<phi::funcs::is_int8<T>(), uint8_t, T>;
 
-  if (phi::funcs::is_int8<T>()) {
-    funcs::SoftmaxV2OneDNNHandler<T> handler(
+  if (funcs::is_int8<T>()) {
+    funcs::SoftmaxV2OneDNNHandler<T, T_out> handler(
         dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out);
     SoftmaxExecute(is_inplace, &handler, x, out, dev_ctx);
   } else {
-    funcs::SoftmaxOneDNNHandler<T> handler(
+    funcs::SoftmaxOneDNNHandler<T, T_out> handler(
         dev_ctx.GetEngine(), dev_ctx.GetPlace(), axis, &x, out);
     SoftmaxExecute(is_inplace, &handler, x, out, dev_ctx);
   }

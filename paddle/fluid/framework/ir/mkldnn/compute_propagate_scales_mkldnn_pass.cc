@@ -443,7 +443,7 @@ void ComputePropagateScalesMkldnnPass::UpdateReluOutputScales(
     bool is_unsigned = false;
     std::string output_name = "Out";
     std::string act_name;
-    if (op->Type() == "relu") {
+    if (op->Type() == "relu" || op->Type() == "softmax") {
       is_unsigned = true;
     } else {
       if (op->Type() == "conv2d" || op->Type() == "fused_conv2d") {

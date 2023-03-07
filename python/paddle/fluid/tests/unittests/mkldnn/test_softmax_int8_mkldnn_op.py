@@ -32,6 +32,7 @@ def stable_softmax(x, clip):
 class TestSoftmaxMKLDNNOpInt8(OpTest):
     def init_data_type(self):
         self.dtype = np.int8
+        self.out_dtype = np.uint8
         self.mkldnn_data_type = 'int8'
 
     def get_shape(self):
@@ -41,11 +42,11 @@ class TestSoftmaxMKLDNNOpInt8(OpTest):
         return -1
 
     def get_input(self):
-        return np.random.randint(1, 127, self.shape).astype(self.dtype)
+        return np.random.randint(-128, 127, self.shape).astype(self.dtype)
 
     def get_output(self):
         out = np.apply_along_axis(stable_softmax, self.axis, self.x, -32)
-        return np.round(out * 127).astype(self.dtype)
+        return np.round(out * 255).astype(self.out_dtype)
 
     def setUp(self):
         self.op_type = 'softmax'
@@ -55,7 +56,7 @@ class TestSoftmaxMKLDNNOpInt8(OpTest):
         self.shape = self.get_shape()
         self.axis = self.get_axis()
         self.python_api = F.softmax
-        np.random.seed(0)
+        np.random.seed(43)
 
         self.x = self.get_input()
         self.out = self.get_output()

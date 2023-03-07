@@ -730,9 +730,9 @@ class ActivationOneDNNHandler
   }
 };
 
-template <typename T>
+template <typename XT, typename OT>
 class SoftmaxOneDNNHandler
-    : public OneDNNHandlerNoCachingT<T,
+    : public OneDNNHandlerNoCachingT<XT,
                                      dnnl::softmax_forward,
                                      dnnl::softmax_backward> {
  public:
@@ -741,7 +741,7 @@ class SoftmaxOneDNNHandler
                        int axis,
                        const DenseTensor* x,
                        DenseTensor* out)
-      : OneDNNHandlerNoCachingT<T,
+      : OneDNNHandlerNoCachingT<XT,
                                 dnnl::softmax_forward,
                                 dnnl::softmax_backward>(onednn_engine,
                                                         cpu_place) {
@@ -761,7 +761,7 @@ class SoftmaxOneDNNHandler
                        int axis,
                        const DenseTensor* out,
                        const DenseTensor* out_grad)
-      : OneDNNHandlerNoCachingT<T,
+      : OneDNNHandlerNoCachingT<XT,
                                 dnnl::softmax_forward,
                                 dnnl::softmax_backward>(onednn_engine,
                                                         cpu_place) {
@@ -772,11 +772,26 @@ class SoftmaxOneDNNHandler
     this->AcquireBackwardPrimitiveDescriptor(
         out_grad->mem_desc(), out->mem_desc(), canonical_axis);
   }
+
+  template <typename T_out = OT>
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(const OneDNNContext& dev_ctx,
+                                                 DenseTensor* output) {
+    T_out* ptr = output->mutable_data<T_out>(
+        this->place_, this->fwd_pd_->dst_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
+  }
+
+  template <typename T_out = OT>
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(const DenseTensor* output) {
+    const T_out* output_data = output->data<T_out>();
+    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->dst_desc(),
+                                            to_void_cast<T_out>(output_data));
+  }
 };
 
-template <typename T>
+template <typename XT, typename OT>
 class SoftmaxV2OneDNNHandler
-    : public OneDNNHandlerNoCachingT<T,
+    : public OneDNNHandlerNoCachingT<XT,
                                      dnnl::softmax_v2_forward,
                                      dnnl::softmax_v2_backward> {
  public:
@@ -785,7 +800,7 @@ class SoftmaxV2OneDNNHandler
                          int axis,
                          const DenseTensor* x,
                          DenseTensor* out)
-      : OneDNNHandlerNoCachingT<T,
+      : OneDNNHandlerNoCachingT<XT,
                                 dnnl::softmax_v2_forward,
                                 dnnl::softmax_v2_backward>(onednn_engine,
                                                            cpu_place) {
@@ -795,12 +810,14 @@ class SoftmaxV2OneDNNHandler
         errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
-    out->set_mem_desc(x->mem_desc());
-    const float output_scale =
-        x->dtype() == DataType::INT8 ? 126.9999f : 255.0f;
+    auto out_md = dnnl::memory::desc(
+        vectorize(x->dims()),
+        funcs::ToOneDNNDataType(DataType::UINT8),
+        funcs::GetPlainOneDNNFormat(vectorize(x->dims()).size()));
+    out->set_mem_desc(out_md);
 
     dnnl::primitive_attr attrs = {};
-    attrs.set_output_scales(0, {output_scale});
+    attrs.set_output_scales(0, {255});
 
     const int canonical_axis = funcs::CanonicalAxis(axis, x->dims().size());
     this->AcquireForwardPrimitiveDescriptor(attrs,
@@ -816,7 +833,7 @@ class SoftmaxV2OneDNNHandler
                          int axis,
                          const DenseTensor* out,
                          const DenseTensor* out_grad)
-      : OneDNNHandlerNoCachingT<T,
+      : OneDNNHandlerNoCachingT<XT,
                                 dnnl::softmax_v2_forward,
                                 dnnl::softmax_v2_backward>(onednn_engine,
                                                            cpu_place) {
@@ -832,6 +849,21 @@ class SoftmaxV2OneDNNHandler
                                              out_grad->mem_desc(),
                                              out->mem_desc(),
                                              canonical_axis);
+  }
+
+  template <typename T_out = OT>
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(const OneDNNContext& dev_ctx,
+                                                 DenseTensor* output) {
+    T_out* ptr = output->mutable_data<T_out>(
+        this->place_, this->fwd_pd_->dst_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
+  }
+
+  template <typename T_out = OT>
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(const DenseTensor* output) {
+    const T_out* output_data = output->data<T_out>();
+    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->dst_desc(),
+                                            to_void_cast<T_out>(output_data));
   }
 };
 

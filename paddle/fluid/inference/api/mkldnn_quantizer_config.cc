@@ -36,7 +36,7 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["pool2d"]["Out"] = ScaleAlgo::KL;
 
   rules_["softmax"]["X"] = ScaleAlgo::KL;
-  rules_["softmax"]["Out"] = ScaleAlgo::NONE;
+  rules_["softmax"]["Out"] = ScaleAlgo::KL;
 
   rules_["concat"]["X"] = ScaleAlgo::KL;
   rules_["concat"]["Out"] = ScaleAlgo::KL;
