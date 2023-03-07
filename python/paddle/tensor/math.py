@@ -5223,10 +5223,10 @@ def trapezoid(y, x=None, dx=None, axis=-1):
 
             y = paddle.arange(6).reshape((2, 3)).astype('float32')
 
-            print(trapezoid(y, axis=0))
+            print(paddle.trapezoid(y, axis=0))
             # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [1.50000000, 2.50000000, 3.50000000])
-            print(trapezoid(a, axis=1))
+            print(paddle.trapezoid(a, axis=1))
             # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [2., 8.])
     """
@@ -5281,10 +5281,10 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1):
 
             y = paddle.arange(6).reshape((2, 3)).astype('float32')
 
-            print(cumulative_trapezoid(y, axis=0))
+            print(paddle.cumulative_trapezoid(y, axis=0))
             # Tensor(shape=[1, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [[1.50000000, 2.50000000, 3.50000000]])
-            print(cumulative_trapezoid(y, axis=1))
+            print(paddle.cumulative_trapezoid(y, axis=1))
             # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [[0.50000000, 2.        ],
             #         [3.50000000, 8.        ]])
