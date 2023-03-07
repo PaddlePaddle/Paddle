@@ -2105,6 +2105,7 @@ class OpTest(unittest.TestCase):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker, custom_place=None):
+        self.__class__.op_type = self.op_type
         places = self._get_places()
         if custom_place:
             places.append(custom_place)
