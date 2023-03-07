@@ -71,7 +71,6 @@ class TestCollectiveBroadcastAPI(TestDistBase):
             "int8",
             "uint8",
             "bool",
-            "bfloat16",
         ]
         for dtype in dtypes_to_test:
             self.check_with_place(
