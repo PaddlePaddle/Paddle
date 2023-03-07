@@ -196,7 +196,16 @@ class TestGeometric(unittest.TestCase):
             ),
             5,
         ),
-        ('mult-dim', xrand((2, 2, 2), dtype='float32', min=np.finfo(dtype='float32').tiny, max=1.0), 5),
+        (
+            'mult-dim',
+            xrand(
+                (2, 2, 2),
+                dtype='float32',
+                min=np.finfo(dtype='float32').tiny,
+                max=1.0,
+            ),
+            5,
+        ),
     ],
 )
 class TestGumbelPMF(unittest.TestCase):

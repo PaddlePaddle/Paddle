@@ -36,7 +36,8 @@ paddle.enable_static()
                 (2,),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
-                max=1.0),
+                max=1.0,
+            ),
         ),
         (
             'multi-dim',
@@ -44,7 +45,8 @@ paddle.enable_static()
                 (2, 3),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
-                max=1.0),
+                max=1.0,
+            ),
         ),
     ],
 )
