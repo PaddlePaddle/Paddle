@@ -5119,13 +5119,11 @@ def _trapezoid(y, x=None, dx=None, axis=-1, sum_mode='sum'):
             It's data type should be float32, float64.If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
             default is None.
-        dx (float, optional): The spacing between sample points when x is None.
-        If neither x nor dx is provided then the default is dx = 1
+        dx (float, optional): The spacing between sample points when x is None.If neither x nor dx is provided then the default is dx = 1
         axis (int, optional): The axis along which to integrate.The default is -1.
-        sum_mode (str):
-            use a different summation.
+        sum_mode (str): use a different summation.
     Returns:
-        Tensor: Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
+        Tensor, Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
     """
     if sum_mode == 'sum':
         sum = paddle.sum
@@ -5186,11 +5184,11 @@ def trapezoid(y, x=None, dx=None, axis=-1):
             It's data type should be float32, float64.If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
             default is None.
-        dx (float, optional): The spacing between sample points when x is None.
-        If neither x nor dx is provided then the default is dx = 1
+        dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1
         axis (int, optional): The axis along which to integrate.The default is -1.
     Returns:
-        Tensor: Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
+        Tensor, Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
+
     Examples:
         .. code-block:: python
 
@@ -5245,11 +5243,11 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1):
             It's data type should be float32, float64.If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
             default is None.
-        dx (float, optional): The spacing between sample points when x is None.
-        If neither x nor dx is provided then the default is dx = 1
+        dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1
         axis (int, optional): The axis along which to integrate.The default is -1.
     Returns:
-        Tensor: Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
+        Tensor, Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
+
     Examples:
         .. code-block:: python
 
