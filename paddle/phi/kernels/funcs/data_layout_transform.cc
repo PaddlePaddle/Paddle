@@ -16,7 +16,7 @@
 
 #include "glog/logging.h"
 
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/layout.h"

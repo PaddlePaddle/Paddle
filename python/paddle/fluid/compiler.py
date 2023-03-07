@@ -417,12 +417,6 @@ class CompiledProgram:
             )
             self._exec_strategy.num_threads = 1
 
-        if self._build_strategy.num_trainers > 1:
-            assert self._is_data_parallel, (
-                "If you use multi-trainer to train the model, you should use "
-                "the data parallel model, i.e. calling with_data_parallel function."
-            )
-
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
         # TODO(gongwb): let user to set them once.
