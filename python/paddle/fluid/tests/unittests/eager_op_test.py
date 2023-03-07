@@ -1400,6 +1400,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
     ):
         core._set_prim_all_enabled(False)
+        core.set_prim_eager_enabled(False)
 
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
@@ -1992,6 +1993,7 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
     ):
         core._set_prim_all_enabled(False)
+        core.set_prim_eager_enabled(False)
         if check_prim:
             prim_grad_checker = PrimGradChecker(
                 self,
