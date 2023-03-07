@@ -27,11 +27,16 @@ using Deleter = std::function<void(void*)>;
 /**
  * @brief Construct a Tensor from a buffer pointed to by `data`
  *
+ * @note `from_blob` doesn’t copy or move data, Modifying the constructed tensor
+ *       is equivalent to modifying the original data.
+ *
  * @param data The pointer to the memory buffer.
  * @param shape The dims of the tensor.
- * @param dtype The DataType of the tensor.
- * @param place The Place where `data` is located.
- * @param layout The DataLayout of the tensor.
+ * @param dtype The data type of the tensor, should correspond to data type of
+ * `data`. See PD_FOR_EACH_DATA_TYPE in paddle/phi/common/data_type.h
+ * @param place The place where the tensor is located, Should correspond to
+ * place of `data`.
+ * @param layout The data layout of the tensor.
  * @param storage_offset The offset (in bytes) of the tensor data from the
  *                       beginning of `data`.
  * @param deleter A function or function object that will be called to free the

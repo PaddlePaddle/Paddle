@@ -37,9 +37,9 @@ Tensor from_blob(void* data,
   size_t size =
       SizeOf(dtype) * (meta.is_scalar ? 1 : product(shape)) + storage_offset;
 
-  g_deleter = deleter;
   AllocationDeleter alloc_deleter = nullptr;
-  if (g_deleter) {
+  if (deleter) {
+    g_deleter = deleter;
     alloc_deleter = [](phi::Allocation* p) { g_deleter(p->ptr()); };
   }
 
