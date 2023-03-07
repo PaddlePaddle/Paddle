@@ -114,7 +114,7 @@ class Geometric(Distribution):
                 batch_shape = tuple(probs.shape)
             else:
                 raise ValueError(
-                    "Expected parameter probs of distribution Geometric to satisfy the "
+                    "Expected parameter probs of distribution Geometric to satisfy the"
                     "constraint Interval(lower_bound=0.0, upper_bound=1.0)"
                 )
         else:
