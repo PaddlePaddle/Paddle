@@ -22,19 +22,19 @@ namespace egr {
 // Backward():
 // tensors corresponds to those lived in the backward graph
 // each grad_tensors[i] keeps the value for its corresponding tensors[i]
-void Backward(const std::vector<paddle::experimental::Tensor>& tensors,
-              const std::vector<paddle::experimental::Tensor>& grad_tensors,
+void Backward(const std::vector<paddle::Tensor>& tensors,
+              const std::vector<paddle::Tensor>& grad_tensors,
               bool retain_graph = false);
 
-std::vector<paddle::experimental::Tensor> Grad(
-    const std::vector<paddle::experimental::Tensor>& tensors,
-    const std::vector<paddle::experimental::Tensor>& inputs,
-    const std::vector<paddle::experimental::Tensor>& grad_tensors = {},
+std::vector<paddle::Tensor> Grad(
+    const std::vector<paddle::Tensor>& tensors,
+    const std::vector<paddle::Tensor>& inputs,
+    const std::vector<paddle::Tensor>& grad_tensors = {},
     bool retain_graph = false,
     bool create_graph = false,
     bool only_inputs = false,
     bool allow_unused = false,
-    const std::vector<paddle::experimental::Tensor>& no_grad_vars = {});
+    const std::vector<paddle::Tensor>& no_grad_vars = {});
 
 // Reserved for gradient()
 
