@@ -104,4 +104,7 @@ PD_REGISTER_KERNEL(eig,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}

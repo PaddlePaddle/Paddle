@@ -69,7 +69,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "conv3d_coo",
     "distribute_fpn_proposals",
     "edit_distance",
-    "eig",
     "eig_grad",
     "eigh",
     "eigvals",
