@@ -917,51 +917,14 @@ void batch_norm_grad(const Tensor& x,
                      Tensor* x_grad,
                      Tensor* scale_grad,
                      Tensor* bias_grad) {
-  // std::cout << "x =****  " <<
-  // *(dynamic_cast<phi::DenseTensor*>(x.impl().get())) << std::endl; std::cout
-  // << "scale =**** " << *(dynamic_cast<phi::DenseTensor*>(scale.impl().get()))
-  // << std::endl; std::cout << "bias =**** " <<
-  // *(dynamic_cast<phi::DenseTensor*>(bias.impl().get())) << std::endl;
-  // std::cout << "mean_out =**** " <<
-  // *(dynamic_cast<phi::DenseTensor*>(mean_out.get().impl().get())) <<
-  // std::endl; std::cout << "variance_out =**** " <<
-  // *(dynamic_cast<phi::DenseTensor*>(variance_out.get().impl().get())) <<
-  // std::endl;
-  // // std::cout << "saved_mean =**** " <<
-  // *(dynamic_cast<phi::DenseTensor*>(saved_mean.impl().get())) << std::endl;
-  // // std::cout << "saved_variance =**** " <<
-  // *(dynamic_cast<phi::DenseTensor*>(saved_variance.impl().get())) <<
-  // std::endl; std::cout << "out_grad =**** " <<
-  // *(dynamic_cast<phi::DenseTensor*>(out_grad.impl().get())) << std::endl;
-
-  // std::cout << "momentum =**** " << momentum << std::endl;
-  // std::cout << "epsilon =**** " << epsilon << std::endl;
-  // std::cout << "data_layout =**** " << data_layout
-  //           << std::endl;
-  // std::cout << "is_test =**** " << is_test << std::endl;
-  // std::cout << "use_global_stats =**** " << use_global_stats
-  //           << std::endl;
-  // std::cout << "trainable_statistics =**** "
-  //           << trainable_statistics << std::endl;
+  std::cout << "bn vjp in ************************* x.dtype " << x.dtype()
+            << std::endl;
 
   use_global_stats = is_test || use_global_stats;
 
-  // if ( !use_global_stats ) {
-  //   std::cout << "saved_mean =**** " <<
-  //   *(dynamic_cast<phi::DenseTensor*>(saved_mean.impl().get())) << std::endl;
-  //   std::cout << "saved_variance =**** " <<
-  //   *(dynamic_cast<phi::DenseTensor*>(saved_variance.impl().get())) <<
-  //   std::endl;
-  // }
   DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
 
-  // std::cout << "00 x =======================
-  // "<<*(std::dynamic_pointer_cast<phi::DenseTensor>(x.impl()).get())
-  // <<std::endl; if (saved_mean) {
-  //   std::cout << "00 ======================= "<<std::endl;
-  // }
   auto x_dims = x.dims();
-  const int N = x_dims[0];
   const int C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
                                                    : x_dims[x_dims.size() - 1]);
   int nume = 1;
@@ -969,14 +932,11 @@ void batch_norm_grad(const Tensor& x,
     nume = nume * x_dims[i];
   }
 
-  const int sample_size = nume / N / C;
   const int nhw = nume / C;
-  std::cout << "h*w ======================= " << sample_size << std::endl;
 
   if (x_dims.size() == 2 && data_layout_ == DataLayout::kNCHW) {
     data_layout_ = DataLayout::kNHWC;
   }
-  std::cout << "1 ======================= " << std::endl;
 
   auto run_var = variance_out.get();
   auto run_mean = mean_out.get();
@@ -994,12 +954,6 @@ void batch_norm_grad(const Tensor& x,
     rsqrt_var = saved_variance;
   }
 
-  // std::cout << "rsqrt_var =**** " <<
-  // *(dynamic_cast<phi::DenseTensor*>(rsqrt_var.impl().get())) << std::endl;
-  // std::cout << "2 ======================= "<<std::endl;
-
-  std::cout << "3 ======================= " << std::endl;
-
   // inv_var = 1 / sqrt(var + eps)
   // reduce_axis = [0, 2, 3] (NCHW) [0, 1, 2] (NHWC)
   //
@@ -1016,22 +970,16 @@ void batch_norm_grad(const Tensor& x,
 
   std::vector<int> nchw_to_nhwc_dim = {0, 2, 3, 1};
   std::vector<int> nhwc_to_nchw_dim = {0, 3, 1, 2};
-  // auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0, y.dtype());
   auto reduce_axis = IntArray(std::vector<int>{0, 1, 2});
   auto dtype = x.dtype();
-  std::cout << "4 ======================= " << std::endl;
 
   switch (data_layout_) {
     case DataLayout::kNCHW: {
       auto nhwc_x = transpose<T>(x, nchw_to_nhwc_dim);
       auto nhwc_out_grad = transpose<T>(out_grad, nchw_to_nhwc_dim);
-      std::cout << "4.5 ======================= " << std::endl;
 
       auto x_sub_mean = nhwc_x - mean_data;
-      // std::cout << "save_mean = " <<
-      // *(dynamic_cast<phi::DenseTensor*>(saved_mean.impl().get())) <<
-      // std::endl; std::cout << "5 ======================= x_dims "<<x_dims
-      // <<std::endl;
+
       if (x_grad) {
         if (use_global_stats) {
           auto nhwc_x_grad = scale * rsqrt_var * nhwc_out_grad;
@@ -1039,25 +987,15 @@ void batch_norm_grad(const Tensor& x,
           set_output<T>(nchw_x_grad, x_grad);
         } else {
           auto part1 = scale * 1.0 / nhw * rsqrt_var;
-          std::cout << "6 ======================= " << std::endl;
           auto sum_temp1 = sum<T>(nhwc_out_grad, reduce_axis, dtype, false);
-          std::cout << "7 ======================= " << std::endl;
           auto sum_temp2 =
               sum<T>(nhwc_out_grad * x_sub_mean, reduce_axis, dtype, false);
-          std::cout << "8 ======================= " << std::endl;
           auto part2 = nhw * nhwc_out_grad - sum_temp1 -
                        x_sub_mean * sum_temp2 * (rsqrt_var * rsqrt_var);
-          std::cout << "9 ======================= " << std::endl;
-          // std::cout << "part1 =**** " <<
-          // *(dynamic_cast<phi::DenseTensor*>(part1.impl().get())) <<
-          // std::endl; std::cout << "part2 =**** " <<
-          // *(dynamic_cast<phi::DenseTensor*>(part2.impl().get())) <<
-          // std::endl;
-          auto tmp_x_grad = part1 * part2;
-          auto nchw_x_grad = transpose<T>(tmp_x_grad, nhwc_to_nchw_dim);
-          std::cout << "10 ======================= " << std::endl;
+
+          auto x_grad_data = part1 * part2;
+          auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
           set_output<T>(nchw_x_grad, x_grad);
-          std::cout << "11 ======================= " << std::endl;
         }
       }
       if (scale_grad) {
@@ -1074,31 +1012,19 @@ void batch_norm_grad(const Tensor& x,
     case DataLayout::kNHWC: {
       if (x_grad) {
         auto x_sub_mean = x - mean_data;
-        // std::cout << "5 ======================= x_dims "<<x_dims <<std::endl;
         if (x_grad) {
           if (use_global_stats) {
             auto x_grad_data = scale * rsqrt_var * out_grad;
             set_output<T>(x_grad_data, x_grad);
           } else {
             auto part1 = scale * 1.0 / nhw * rsqrt_var;
-            std::cout << "6 ======================= " << std::endl;
             auto sum_temp1 = sum<T>(out_grad, reduce_axis, dtype, false);
-            std::cout << "7 ======================= " << std::endl;
             auto sum_temp2 =
                 sum<T>(out_grad * x_sub_mean, reduce_axis, dtype, false);
-            std::cout << "8 ======================= " << std::endl;
             auto part2 = nhw * out_grad - sum_temp1 -
                          x_sub_mean * sum_temp2 * (rsqrt_var * rsqrt_var);
-            std::cout << "9 ======================= " << std::endl;
-            // std::cout << "part1 =**** " <<
-            // *(dynamic_cast<phi::DenseTensor*>(part1.impl().get())) <<
-            // std::endl; std::cout << "part2 =**** " <<
-            // *(dynamic_cast<phi::DenseTensor*>(part2.impl().get())) <<
-            // std::endl;
             auto x_grad_data = part1 * part2;
-            std::cout << "10 ======================= " << std::endl;
             set_output<T>(x_grad_data, x_grad);
-            std::cout << "11 ======================= " << std::endl;
           }
         }
         if (scale_grad) {
