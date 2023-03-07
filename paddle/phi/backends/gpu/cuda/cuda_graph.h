@@ -16,6 +16,7 @@
 
 #include <atomic>
 #include <functional>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -24,6 +25,7 @@
 #include "cuda.h"          // NOLINT
 #include "cuda_runtime.h"  // NOLINT
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
@@ -53,7 +55,7 @@ class CUDAGraphContextManager {
 
     DeviceContextMap &ctxs = cuda_graph_ctx_pool_[pool_id];
     if (ctxs.find(place) == ctxs.end()) {
-      platform::EmplaceDeviceContexts(
+      phi::EmplaceDeviceContexts(
           &ctxs,
           {place},
           /*disable_setting_default_stream_for_allocator=*/true,
@@ -179,7 +181,7 @@ class CUDAGraph {
 
   static phi::GPUPlace CapturingPlace() { return capturing_graph_->place_; }
 
-  static void SetCapturingDeviceContext(
+  /*static void SetCapturingDeviceContext(
       std::unique_ptr<phi::DeviceContext> dev_ctx) {
     capturing_graph_->dev_ctx_ = std::move(dev_ctx);
   }
@@ -187,15 +189,15 @@ class CUDAGraph {
   static phi::GPUContext *CapturingDeviceContext() {
     return reinterpret_cast<phi::GPUContext *>(
         (capturing_graph_->dev_ctx_).get());
-  }
+  }*/
 
-  /*static void SetCapturingDeviceContext(phi::GPUContext *dev_ctx) {
+  static void SetCapturingDeviceContext(phi::GPUContext *dev_ctx) {
     capturing_graph_->dev_ctx_ = dev_ctx;
   }
 
   static phi::GPUContext *CapturingDeviceContext() {
     return capturing_graph_->dev_ctx_;
-  }*/
+  }
 
   static void SetCreateCUDAGraphStream(bool create_cuda_graph_stream) {
     capturing_graph_->create_cuda_graph_stream_ = create_cuda_graph_stream;
@@ -246,8 +248,8 @@ class CUDAGraph {
   cudaStreamCaptureMode capture_mode_;
 #endif
   cudaStream_t stream_{nullptr};
-  // phi::GPUContext *dev_ctx_;
-  std::unique_ptr<phi::DeviceContext> dev_ctx_;
+  phi::GPUContext *dev_ctx_;
+  // std::unique_ptr<phi::DeviceContext> dev_ctx_;
   phi::GPUPlace place_;
   CUDAGraphID id_;
   int64_t pool_id_{kInvalidPoolID};

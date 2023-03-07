@@ -38,7 +38,7 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   } else {
     mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   }
-  dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
 
   /*std::unique_ptr<phi::DeviceContext> dev_ctx_unique_ptr;
   // std::map<phi::Place,
@@ -70,6 +70,7 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   CUDAGraph::BeginCapture(place, stream, mode);
   CUDAGraph::SetCreateCUDAGraphStream(create_cuda_graph_stream);
   // CUDAGraph::SetCapturingDeviceContext(std::move(dev_ctx_unique_ptr));
+  CUDAGraph::SetCapturingDeviceContext(dev_ctx);
 
   // When using cuda graph in new executor, fast GC must be used.
   // FLAGS_use_stream_safe_cuda_allocator should be true.
@@ -100,15 +101,17 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
   //  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   phi::DeviceContext* mutable_dev_ctx;
   auto place = CUDAGraph::CapturingPlace();
+  bool create_cuda_graph_stream = CUDAGraph::CreateCUDAGraphStream();
+  int64_t pool_id = CUDAGraph::CapturingPoolID();
   if (create_cuda_graph_stream) {
     mutable_dev_ctx = phi::backends::gpu::CUDAGraphContextManager::Instance()
-                          .Get(CUDAGraph::PoolID(), place, 0)
+                          .Get(pool_id, place, 0)
                           .get()
                           .get();
   } else {
     mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   }
-  dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
   dev_ctx->SetCUDAGraphAllocator(nullptr);
   return CUDAGraph::EndCapture();

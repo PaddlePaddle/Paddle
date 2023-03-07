@@ -234,7 +234,7 @@ class TestCustomStream(unittest.TestCase):
 
                 if batch_id == 1 and use_cuda_graph:
                     cuda_graph = CUDAGraph(place, mode="global")
-                    cuda_graph.capture_begin()
+                    cuda_graph.capture_begin(create_cuda_graph_stream=True)
                     # exe.run(compiled_program)
                     exe.run(main)
                     cuda_graph.capture_end()
