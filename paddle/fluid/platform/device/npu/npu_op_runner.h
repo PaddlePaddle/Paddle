@@ -163,8 +163,7 @@ void FillNpuTensorWithConstant(phi::DenseTensor *tensor, T val) {
     auto npu_pinned_allocator =
         static_cast<paddle::memory::allocation::NPUPinnedAllocator *>(
             paddle::memory::allocation::AllocatorFacade::Instance()
-                .GetAllocator(npu_pinned_place)
-                .get());
+                .GetAllocator(npu_pinned_place));
     phi::Allocation *allocation = npu_pinned_tensor.Holder().get();
 
     npu_pinned_allocator->RecordEvent(allocation, GetCurrentNPUStream());

@@ -27,25 +27,21 @@ class TensorRTEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ctx_ = new phi::GPUContext(platform::CUDAPlace(0));
-    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(platform::CUDAPlace(0), ctx_->stream())
-                           .get());
+    ctx_->SetAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            platform::CUDAPlace(0), ctx_->stream()));
     ctx_->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
-            .get());
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            paddle::platform::CPUPlace()));
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(platform::CUDAPlace(0))
-            .get());
+            .GetZeroAllocator(platform::CUDAPlace(0)));
     ctx_->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(paddle::platform::CPUPlace())
-            .get());
+            .GetZeroAllocator(paddle::platform::CPUPlace()));
     ctx_->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
-            .get());
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            paddle::platform::CUDAPinnedPlace()));
     ctx_->PartialInitWithAllocator();
 
     engine_ = new TensorRTEngine(10, 1 << 10);

@@ -59,9 +59,9 @@ class NCCLTester : public ::testing::Test {
     for (size_t i = 0; i < gpu_list_.size(); ++i) {
       p::CUDAPlace place(i);
       auto *ctx = new phi::GPUContext(place);
-      ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(place, ctx->stream())
-                            .get());
+      ctx->SetAllocator(
+          paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+              place, ctx->stream()));
       ctx->PartialInitWithAllocator();
       dev_ctxs_.emplace_back(ctx);
     }

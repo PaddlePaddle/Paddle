@@ -309,21 +309,18 @@ class TestFeedForward {
     output_size_ = 3 * num_head_ * dim_head_;
     input_size_ = dim_embed_;
     ctx_ = new phi::GPUContext(place_);
-    ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                           .GetAllocator(place_, ctx_->stream())
-                           .get());
+    ctx_->SetAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            place_, ctx_->stream()));
     ctx_->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
-            .get());
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            paddle::platform::CPUPlace()));
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(place_)
-            .get());
+            .GetZeroAllocator(place_));
     ctx_->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
-            .get());
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            paddle::platform::CUDAPinnedPlace()));
     ctx_->PartialInitWithAllocator();
 
     size_src_ = bsz_seq_ * dim_embed_;         // src: [bs, seq_len, em_dim]

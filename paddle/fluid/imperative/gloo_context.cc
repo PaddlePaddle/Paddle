@@ -48,17 +48,15 @@ void GLOOParallelContext::Init() {
   gloo_wrapper->Init();
   device_ = std::unique_ptr<phi::CPUContext>(
       new phi::CPUContext(platform::CPUPlace()));
-  device_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                            .GetAllocator(platform::CPUPlace())
-                            .get());
+  device_->SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+          platform::CPUPlace()));
   device_->SetHostAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(paddle::platform::CPUPlace())
-          .get());
+      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+          paddle::platform::CPUPlace()));
   device_->SetZeroAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(platform::CPUPlace())
-          .get());
+      paddle::memory::allocation::AllocatorFacade::Instance().GetZeroAllocator(
+          platform::CPUPlace()));
 }
 
 void GLOOParallelContext::InitWithRingID(int ring_id) {

@@ -113,6 +113,9 @@ struct MemoryInterface {
    */
   int64_t (*device_memory_stat_current_value)(const std::string& stat_type,
                                               int dev_id);
+
+  // allocator_facade_ is used for getting allocators
+  phi::AllocatorFacadeInterface* allocator_facade_ = nullptr;
 };
 
 class MemoryUtils {
@@ -242,6 +245,21 @@ class MemoryUtils {
                                  "initiazed yet. You need init it first."));
   }
 
+  void SetAllocatorFacade(phi::AllocatorFacadeInterface* allocator_facade) {
+    CheckMemoryMethod();
+    memory_method_->allocator_facade_ = allocator_facade;
+  }
+
+  phi::AllocatorFacadeInterface* GetAllocatorFacade() {
+    CheckMemoryMethod();
+    PADDLE_ENFORCE_NE(
+        memory_method_->allocator_facade_,
+        nullptr,
+        phi::errors::Unavailable("allocator_facade_ is not initialized yet, "
+                                 "you need init it first."));
+    return memory_method_->allocator_facade_;
+  }
+
  private:
   MemoryUtils() = default;
 
@@ -289,6 +307,44 @@ void Copy(const Place& dst_place,
           const void* src,
           size_t num);
 int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
+
+class Buffer {
+ public:
+  explicit Buffer(const phi::Place& place) : place_(place) {}
+
+  template <typename T>
+  T* Alloc(size_t size) {
+    using AllocT = typename std::
+        conditional<std::is_same<T, void>::value, uint8_t, T>::type;
+    if (UNLIKELY(size == 0)) return nullptr;
+    size *= sizeof(AllocT);
+    if (allocation_ == nullptr || allocation_->size() < size) {
+      allocation_ = memory_utils::Alloc(place_, size);
+    }
+    return reinterpret_cast<T*>(allocation_->ptr());
+  }
+
+  template <typename T>
+  const T* Get() const {
+    return reinterpret_cast<const T*>(
+        allocation_ && allocation_->size() > 0 ? allocation_->ptr() : nullptr);
+  }
+
+  template <typename T>
+  T* GetMutable() {
+    return reinterpret_cast<T*>(
+        allocation_ && allocation_->size() > 0 ? allocation_->ptr() : nullptr);
+  }
+
+  size_t Size() const { return allocation_ ? allocation_->size() : 0; }
+
+  phi::Place GetPlace() const { return place_; }
+
+ private:
+  Allocator::AllocationPtr allocation_;
+  phi::Place place_;
+};
+
 }  // namespace memory_utils
 
 }  // namespace phi

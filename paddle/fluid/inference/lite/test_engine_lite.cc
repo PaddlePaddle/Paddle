@@ -75,9 +75,9 @@ void make_fake_model(std::string* model, std::string* param) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::CUDAPlace place;
   phi::GPUContext ctx(place);
-  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                       .GetAllocator(place, ctx.stream())
-                       .get());
+  ctx.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+          place, ctx.stream()));
   ctx.PartialInitWithAllocator();
 #else
   platform::CPUPlace place;

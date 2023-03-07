@@ -55,6 +55,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
@@ -468,6 +469,8 @@ void InitMemoryMethod() {
     memory_method->copy = paddle::memory::Copy<phi::Place, phi::Place>;
     memory_method->device_memory_stat_current_value =
         paddle::memory::DeviceMemoryStatCurrentValue;
+    memory_method->allocator_facade_ =
+        (&(paddle::memory::allocation::AllocatorFacade::Instance()));
     memory_utils.Init(std::move(memory_method));
   });
 }

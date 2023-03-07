@@ -14,7 +14,6 @@
 
 #include <cmath>
 
-#include "paddle/fluid/memory/buffer.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_op.h"
@@ -22,6 +21,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/tensor_to_string.h"
@@ -191,7 +191,7 @@ static void MultiTensorL2Norm(const platform::CUDAPlace &place,
           << " , tensor_num = " << n;
 
   using MT = MasterT<InT>;
-  memory::Buffer tmp_out(place);
+  phi::memory_utils::Buffer tmp_out(place);
   auto *tmp_out_ptr = tmp_out.Alloc<MT>(n * max_chunk_num);
   FillZeroWithPtr(tmp_out_ptr, n * max_chunk_num, stream);
 
@@ -950,7 +950,7 @@ static void NCCLSumWithScaleBase(const T *sendbuff,
       std::is_same<T, float>::value ? ncclFloat32 : ncclFloat16;
   bool should_destroy_op =
       scale && CreatePreMulScaleOpIfSupported(dtype, comm, scale, &op);
-  memory::Buffer buffer(dev_ctx.GetPlace());
+  phi::memory_utils::Buffer buffer(dev_ctx.GetPlace());
   if (scale && !should_destroy_op) {
     T *new_sendbuff = buffer.Alloc<T>(numel);
     LaunchScaleKernel(dev_ctx, sendbuff, scale, new_sendbuff, numel, stream);
@@ -1012,7 +1012,7 @@ static void CubDeviceReduce(InputIteratorT d_in,
                             ReduceOpT reduction_op,
                             T init,
                             gpuStream_t stream,
-                            memory::Buffer *buffer) {
+                            phi::memory_utils::Buffer *buffer) {
   void *d_temp_storage = nullptr;
   size_t temp_storage_bytes = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::Reduce(d_temp_storage,
@@ -1041,7 +1041,7 @@ static void GetSquareGradNormImpl(const T *grad,
                                   int n,
                                   float *square_norm,
                                   gpuStream_t stream,
-                                  memory::Buffer *cub_tmp_buffer) {
+                                  phi::memory_utils::Buffer *cub_tmp_buffer) {
   using Iterator =
       cub::TransformInputIterator<float, SquareFunctor<T>, const T *>;
   Iterator iter(grad, SquareFunctor<T>());
@@ -1061,7 +1061,7 @@ static void GetSquareGradNorm(const float *fp32_grad,
                               int fp16_numel,
                               float *square_norm,
                               gpuStream_t stream,
-                              memory::Buffer *cub_tmp_buffer) {
+                              phi::memory_utils::Buffer *cub_tmp_buffer) {
   VLOG(10) << "GetSquareGradNorm starts, fp32_numel = " << fp32_numel
            << " , fp16_numel = " << fp16_numel;
   if (fp32_numel > 0) {
@@ -1108,11 +1108,11 @@ static std::string GetMinMaxStr(const T *x,
       platform::DeviceContextPool::Instance().Get(place));
   auto stream = dev_ctx->stream();
 
-  memory::Buffer ret_buffer(place);
+  phi::memory_utils::Buffer ret_buffer(place);
   T *ret = ret_buffer.Alloc<T>(2);
 
   if (n > 0) {
-    memory::Buffer cub_buffer(place);
+    phi::memory_utils::Buffer cub_buffer(place);
     CubDeviceReduce(x,
                     ret,
                     n,
@@ -1197,8 +1197,8 @@ static bool HasNanInf(const phi::GPUContext &dev_ctx, const T *x, int numel) {
   if (numel <= 0) return false;
   cub::TransformInputIterator<bool, IsNanInfFunctor<T>, const T *> iter(
       x, IsNanInfFunctor<T>());
-  memory::Buffer buffer(dev_ctx.GetPlace());
-  memory::Buffer out(dev_ctx.GetPlace());
+  phi::memory_utils::Buffer buffer(dev_ctx.GetPlace());
+  phi::memory_utils::Buffer out(dev_ctx.GetPlace());
   CubDeviceReduce(iter,
                   out.Alloc<bool>(1),
                   numel,
@@ -1230,7 +1230,7 @@ static void CheckHasNanInfGrad(const float *fp32_grad,
                                int fp16_numel,
                                float *nan_inf_flag,
                                gpuStream_t stream,
-                               memory::Buffer *cub_tmp_buffer) {
+                               phi::memory_utils::Buffer *cub_tmp_buffer) {
   bool *fp32_has_nan_inf = nullptr;
   bool *fp16_has_nan_inf = nullptr;
   if (fp32_numel > 0) {
@@ -1683,11 +1683,11 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
       }
     }
 
-    memory::Buffer grad_norm_square_buffer(place);
+    phi::memory_utils::Buffer grad_norm_square_buffer(place);
     auto *fp32_square_grad_norm = grad_norm_square_buffer.Alloc<float>(2);
-    memory::Buffer cub_tmp_buffer(place);
+    phi::memory_utils::Buffer cub_tmp_buffer(place);
 
-    memory::Buffer sum_grad_buffer(place);
+    phi::memory_utils::Buffer sum_grad_buffer(place);
     float *fp32_sum_grad;
     platform::float16 *fp16_sum_grad;
     auto fp32_numel_each_device = fp32_numel / num_devices;
@@ -2086,7 +2086,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
                                fp16_partial_fused_offsets_t->numel(),
                                fp16_partial_fused_offsets_t->place());
 
-    memory::Buffer trust_ratio_div_buffer(place);
+    phi::memory_utils::Buffer trust_ratio_div_buffer(place);
     auto *trust_ratio_div = trust_ratio_div_buffer.Alloc<float>(partial_numel);
     auto fp32_offset = local_rank * fp32_numel_each_device;
     auto fp16_offset = local_rank * fp16_numel_each_device;
@@ -2149,7 +2149,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
     VLOG(10) << "Update Moment and TrustRatioDiv done hehahaha";
 
     // Step 8: calculate L2-Norm square of parameter and trust_ratio_div
-    memory::Buffer square_norm_buffer(place);
+    phi::memory_utils::Buffer square_norm_buffer(place);
     auto *param_square_norm = square_norm_buffer.Alloc<float>(2 * param_num);
     auto *trust_ratio_div_square_norm = param_square_norm + param_num;
     if (num_devices > 1) {

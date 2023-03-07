@@ -421,25 +421,20 @@ void AnalysisPredictor::InitDeviceContexts() {
               ResourceManager::Instance().GetGPUResource(predictor_stream_);
           auto *gpu_context = new InferGPUContext(place_);
           gpu_context->SetAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(place_, gpu_resource->GetStream())
-                  .get());
+              memory::allocation::AllocatorFacade::Instance().GetAllocator(
+                  place_, gpu_resource->GetStream()));
           gpu_context->SetPinnedAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(paddle::platform::CUDAPinnedPlace())
-                  .get());
+              memory::allocation::AllocatorFacade::Instance().GetAllocator(
+                  paddle::platform::CUDAPinnedPlace()));
           gpu_context->SetHostAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetAllocator(platform::CPUPlace())
-                  .get());
+              memory::allocation::AllocatorFacade::Instance().GetAllocator(
+                  platform::CPUPlace()));
           gpu_context->SetZeroAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetZeroAllocator(place_)
-                  .get());
+              memory::allocation::AllocatorFacade::Instance().GetZeroAllocator(
+                  place_));
           gpu_context->SetHostZeroAllocator(
-              memory::allocation::AllocatorFacade::Instance()
-                  .GetZeroAllocator(platform::CPUPlace())
-                  .get());
+              memory::allocation::AllocatorFacade::Instance().GetZeroAllocator(
+                  platform::CPUPlace()));
           gpu_context->SetGenerator(
               phi::DefaultCUDAGenerator(place_.GetDeviceId()).get());
           gpu_context->SetHostGenerator(phi::DefaultCPUGenerator().get());
@@ -472,8 +467,7 @@ void AnalysisPredictor::InitDeviceContexts() {
                   << ", allotor ptr is "
                   << reinterpret_cast<void *>(
                          memory::allocation::AllocatorFacade::Instance()
-                             .GetAllocator(place_, gpu_resource->GetStream())
-                             .get());
+                             .GetAllocator(place_, gpu_resource->GetStream()));
           return std::unique_ptr<phi::DeviceContext>(gpu_context);
         }));
   }

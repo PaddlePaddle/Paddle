@@ -117,21 +117,18 @@ TEST(Malloc, GPUContextMultiStream) {
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
     auto ctx = std::unique_ptr<phi::GPUContext>(new phi::GPUContext(place));
-    ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                          .GetAllocator(place, ctx->stream())
-                          .get());
+    ctx->SetAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            place, ctx->stream()));
     ctx->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
-            .get());
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            paddle::platform::CPUPlace()));
     ctx->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(place)
-            .get());
+            .GetZeroAllocator(place));
     ctx->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
-            .get());
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            paddle::platform::CUDAPinnedPlace()));
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(std::move(ctx));
     MultiStreamCompute(&data[i], &second_data[i], *dev_ctx[i]);
@@ -172,25 +169,21 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
     auto ctx = std::unique_ptr<phi::GPUContext>(new phi::GPUContext(place));
-    ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                          .GetAllocator(place, ctx->stream())
-                          .get());
+    ctx->SetAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            place, ctx->stream()));
     ctx->SetHostAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CPUPlace())
-            .get());
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            paddle::platform::CPUPlace()));
     ctx->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(place)
-            .get());
+            .GetZeroAllocator(place));
     ctx->SetHostZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetZeroAllocator(paddle::platform::CPUPlace())
-            .get());
+            .GetZeroAllocator(paddle::platform::CPUPlace()));
     ctx->SetPinnedAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(paddle::platform::CUDAPinnedPlace())
-            .get());
+        paddle::memory::allocation::AllocatorFacade::Instance().GetAllocator(
+            paddle::platform::CUDAPinnedPlace()));
     ctx->PartialInitWithAllocator();
     dev_ctx.emplace_back(std::move(ctx));
     threads.push_back(std::thread(

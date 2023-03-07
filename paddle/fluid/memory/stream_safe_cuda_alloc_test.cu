@@ -91,7 +91,7 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
   allocation_implicit_stream.reset();
 
   auto &instance = allocation::AllocatorFacade::Instance();
-  const std::shared_ptr<Allocator> &allocator = instance.GetAllocator(place);
+  auto allocator = instance.GetAllocator(place);
 
   allocation::AllocationPtr allocation_from_allocator =
       allocator->Allocate(alloc_size);
@@ -106,15 +106,13 @@ TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorInterfaceTest) {
 TEST(StreamSafeCUDAAllocInterfaceTest, GetAllocatorWithDefaultStreamTest) {
   auto &instance = allocation::AllocatorFacade::Instance();
   platform::CUDAPlace place = platform::CUDAPlace();
-  const std::shared_ptr<Allocator> allocator_implicit_stream =
-      instance.GetAllocator(place);
-  const std::shared_ptr<Allocator> allocator_default_stream =
-      instance.GetAllocator(
-          place,
-          static_cast<phi::GPUContext *>(
-              platform::DeviceContextPool::Instance().Get(place))
-              ->stream());
-  EXPECT_EQ(allocator_implicit_stream.get(), allocator_default_stream.get());
+  auto allocator_implicit_stream = instance.GetAllocator(place);
+  auto allocator_default_stream = instance.GetAllocator(
+      place,
+      static_cast<phi::GPUContext *>(
+          platform::DeviceContextPool::Instance().Get(place))
+          ->stream());
+  EXPECT_EQ(allocator_implicit_stream, allocator_default_stream);
 }
 
 TEST(StreamSafeCUDAAllocInterfaceTest, ZeroSizeRecordStreamTest) {

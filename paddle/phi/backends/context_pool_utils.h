@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/all_context.h"
 
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/generator.h"
 
 namespace phi {
@@ -51,7 +51,7 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
   using PtrType = std::unique_ptr<DeviceContext>;
 
   DevCtx* dev_ctx = ConstructDevCtx<DevCtx>(p, stream_priority);
-
+  auto& instance = *(MemoryUtils::Instance().GetAllocatorFacade());
   if (p.GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto* cuda_ctx = dynamic_cast<phi::GPUContext*>(dev_ctx);
@@ -60,45 +60,28 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
         phi::errors::InvalidArgument(
             "Failed to dynamic_cast dev_ctx into phi::GPUContext."));
 
-    auto& instance = paddle::memory::allocation::AllocatorFacade::Instance();
     if (!disable_setting_default_stream_for_allocator) {
       instance.SetDefaultStream(GPUPlace(p.GetDeviceId()), cuda_ctx->stream());
     }
-    dev_ctx->SetAllocator(instance.GetAllocator(p, cuda_ctx->stream()).get());
-    dev_ctx->SetPinnedAllocator(
-        instance.GetAllocator(phi::GPUPinnedPlace()).get());
+    dev_ctx->SetAllocator(instance.GetAllocator(p, cuda_ctx->stream()));
+    dev_ctx->SetPinnedAllocator(instance.GetAllocator(phi::GPUPinnedPlace()));
 
     cuda_ctx->PartialInitWithAllocator();
     dev_ctx->SetGenerator(phi::DefaultCUDAGenerator(p.GetDeviceId()).get());
 #endif
   } else if (p.GetType() == phi::AllocationType::XPU) {
 #if defined(PADDLE_WITH_XPU)
-    dev_ctx->SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(p)
-            .get());
+    dev_ctx->SetAllocator(instance.GetAllocator(p));
     dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
 #endif
   } else {
-    dev_ctx->SetAllocator(
-        paddle::memory::allocation::AllocatorFacade::Instance()
-            .GetAllocator(p)
-            .get());
+    dev_ctx->SetAllocator(instance.GetAllocator(p));
     dev_ctx->SetGenerator(phi::DefaultCPUGenerator().get());
   }
   dev_ctx->SetHostGenerator(phi::DefaultCPUGenerator().get());
-  dev_ctx->SetHostAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetAllocator(phi::CPUPlace())
-          .get());
-  dev_ctx->SetZeroAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(p)
-          .get());
-  dev_ctx->SetHostZeroAllocator(
-      paddle::memory::allocation::AllocatorFacade::Instance()
-          .GetZeroAllocator(phi::CPUPlace())
-          .get());
+  dev_ctx->SetHostAllocator(instance.GetAllocator(phi::CPUPlace()));
+  dev_ctx->SetZeroAllocator(instance.GetZeroAllocator(p));
+  dev_ctx->SetHostZeroAllocator(instance.GetZeroAllocator(phi::CPUPlace()));
   return PtrType(dev_ctx);
 }
 
