@@ -129,8 +129,8 @@ class TemporalShiftOpConverter : public OpConverter {
     slice_layer->setMode(nvinfer1::SliceMode::kFILL);
 
     // Slice Padded Tensor
-    int slice_c = int(C * shift_ratio);
-    int slice_c2 = int(C * shift_ratio * 2);
+    int slice_c = static_cast<int>(C * shift_ratio);
+    int slice_c2 = static_cast<int>(C * shift_ratio * 2);
     auto slice_start1 = nvinfer1::Dims{5, { 0, 0, 0, 0, 0 }};
     auto slice_start2 = nvinfer1::Dims{5, { 0, 2, slice_c, 0, 0 }};
     auto slice_start3 = nvinfer1::Dims{5, { 0, 1, slice_c2, 0, 0 }};
@@ -138,12 +138,24 @@ class TemporalShiftOpConverter : public OpConverter {
     auto slice_size2 = nvinfer1::Dims{5, { N, T, C - slice_c2, H, W }};
     auto slice_stride = nvinfer1::Dims{5, { 1, 1, 1, 1, 1 }};
 
-    auto* slice1_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Slice, *slice_layer->getOutput(0), slice_start1, slice_size, slice_stride);
-    auto* slice2_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Slice, *slice_layer->getOutput(0), slice_start2, slice_size, slice_stride);
-    auto* slice3_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Slice, *slice_layer->getOutput(0), slice_start3, slice_size2, slice_stride);
+    auto* slice1_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                              Slice,
+                                              *slice_layer->getOutput(0),
+                                              slice_start1,
+                                              slice_size,
+                                              slice_stride);
+    auto* slice2_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                              Slice,
+                                              *slice_layer->getOutput(0),
+                                              slice_start2,
+                                              slice_size,
+                                              slice_stride);
+    auto* slice3_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                              Slice,
+                                              *slice_layer->getOutput(0),
+                                              slice_start3,
+                                              slice_size2,
+                                              slice_stride);
 
     // Concatenate slices along the third dimension (C)
     nvinfer1::IConcatenationLayer* concat_layer;

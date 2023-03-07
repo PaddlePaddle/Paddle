@@ -35,7 +35,14 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
         for shift_value in [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.49]:
             for T in range(2, 5):
                 for data_format in ["NCHW", "NHWC"]:
-                    dics = [{"shift_ratio": shift_value, "seg_num": T, "data_format": data_format}, {}]
+                    dics = [
+                        {
+                            "shift_ratio": shift_value,
+                            "seg_num": T,
+                            "data_format": data_format,
+                        },
+                        {},
+                    ]
                     ops_config = [
                         {
                             "op_type": "temporal_shift",
@@ -61,18 +68,14 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
                     yield program_config
 
     def sample_predictor_configs(
-            self, program_config
+        self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": [6, 10, 64, 64]
-            }
+            self.dynamic_shape.min_input_shape = {"input_data": [6, 10, 64, 64]}
             self.dynamic_shape.max_input_shape = {
                 "input_data": [20, 10, 64, 64]
             }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [6, 10, 64, 64]
-            }
+            self.dynamic_shape.opt_input_shape = {"input_data": [6, 10, 64, 64]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
