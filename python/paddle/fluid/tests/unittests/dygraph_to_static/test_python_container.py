@@ -25,6 +25,30 @@ def func_dict(x):
     return res
 
 
+def func_list(x):
+    res = [1]
+    t = paddle.shape(x)[0]
+    for i in range(t):
+        res[0] = i
+    return res
+
+
+def func_nest_dict_list(x):
+    res = {"a": [1]}
+    t = paddle.shape(x)[0]
+    for i in range(t):
+        res["a"][0] = i
+    return res
+
+
+def func_nest_list_dict(x):
+    res = [{"a": 1}]
+    t = paddle.shape(x)[0]
+    for i in range(t):
+        res[0]["a"] = i
+    return res
+
+
 class TestWriteContainer(unittest.TestCase):
     def setUp(self):
         self.set_func()
@@ -38,7 +62,19 @@ class TestWriteContainer(unittest.TestCase):
         func_static(x)
 
 
-# TODO: test list, nested list and dict...
+class TestWriteContainerList(TestWriteContainer):
+    def set_func(self):
+        self.func = func_list
+
+
+class TestWriteContainerNestDictList(TestWriteContainer):
+    def set_func(self):
+        self.func = func_nest_dict_list
+
+
+class TestWriteContainerNestListDict(TestWriteContainer):
+    def set_func(self):
+        self.func = func_nest_list_dict
 
 
 if __name__ == '__main__':
