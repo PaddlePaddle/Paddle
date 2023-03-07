@@ -181,8 +181,8 @@ class TestNormBF16Op(OpTest):
         self.python_out_sig = ["out"]
 
     def test_check_output(self):
-        # dynamic graph just supports float tensor
-        self.check_output(check_dygraph=True)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(core.CUDAPlace(0))
 
     def test_check_grad(self):
         pass
