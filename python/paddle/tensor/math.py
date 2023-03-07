@@ -5151,7 +5151,7 @@ def vander(x, N=None, increasing=False, name=None):
             real = paddle.to_tensor([2., 4.])
             imag = paddle.to_tensor([1., 3.])
             complex = paddle.complex(real, imag)
-            out3 = vander(complex)
+            out3 = paddle.vander(complex)
             print(out3.numpy())
             # [[2.+1.j, 1.+0.j],
             #  [4.+3.j, 1.+0.j]]
