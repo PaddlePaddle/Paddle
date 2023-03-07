@@ -73,7 +73,6 @@ from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
 from ..fluid.optimizer import Optimizer  # noqa: F401
 from ..fluid.optimizer import Adam  # noqa: F401
 from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
-from ..fluid.io import batch  # noqa: F401
 
 from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
 from ..fluid.layers import exponential_decay  # noqa: F401
