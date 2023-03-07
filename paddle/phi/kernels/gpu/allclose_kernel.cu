@@ -102,6 +102,6 @@ PD_REGISTER_KERNEL(allclose,
                    phi::AllCloseKernel,
                    float,
                    double,
-                   phi::dtype::float16){
+                   phi::dtype::float16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
