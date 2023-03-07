@@ -2611,9 +2611,14 @@ class TestLog(TestActivation):
     def setUp(self):
         self.op_type = "log"
         self.check_eager = True
+        self.prim_op_type = "prim"
         self.python_api = paddle.log
         self.init_dtype()
         self.init_shape()
+
+        if len(self.shape) == 0:
+            # for 0-D tensor, skip cinn testing
+            self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -2625,7 +2630,7 @@ class TestLog(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -3834,7 +3839,7 @@ create_test_act_fp16_class(TestSoftRelu, grad_atol=0.85)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestCELU)
 create_test_act_fp16_class(TestReciprocal)
-create_test_act_fp16_class(TestLog)
+create_test_act_fp16_class(TestLog, check_prim=True)
 if core.is_compiled_with_rocm():
     create_test_act_fp16_class(TestLog2, atol=5e-2, grad_atol=0.85)
 else:

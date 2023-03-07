@@ -386,6 +386,14 @@ void expand_grad(const Tensor& x,
 }
 
 template <typename T>
+void log_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    // dx = dout / x
+    set_output<T>(out_grad / x, x_grad);
+  }
+}
+
+template <typename T>
 void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     set_output<T>(out_grad * out, x_grad);
