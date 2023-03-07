@@ -572,9 +572,9 @@ class BF16Pass(PassBase):
         super().__init__()
         self.set_attr("loss", None)
         self.set_attr("dist_context", None)
-        self.set_attr("custom_bf16_list", None)
-        self.set_attr("custom_fp32_list", None)
-        self.set_attr("custom_fp32_varnames", None)
+        self.set_attr("custom_white_list", None)
+        self.set_attr("custom_black_list", None)
+        self.set_attr("custom_black_varnames", None)
         self.set_attr("input_data", [])
         self.set_attr("params_grads", [])
         self._loss = None
@@ -592,9 +592,9 @@ class BF16Pass(PassBase):
         params_grads = self.get_attr("params_grads")
 
         amp_lists = AutoMixedPrecisionListsBF16(
-            set(self.get_attr("custom_bf16_list")),
-            set(self.get_attr("custom_fp32_list")),
-            set(self.get_attr("custom_fp32_varnames")),
+            set(self.get_attr("custom_white_list")),
+            set(self.get_attr("custom_black_list")),
+            set(self.get_attr("custom_black_varnames")),
         )
 
         with paddle.static.program_guard(main_program, startup_program):
@@ -608,7 +608,7 @@ class BF16Pass(PassBase):
                 amp_state.cast_backward_program(params_grads, self.dist_context)
                 self._scale_loss()
 
-    def _scale_loss(self):
+    def _cast_loss(self):
 
         main_block = paddle.static.default_main_program().global_block()
         main_block._sync_with_cpp()
@@ -686,6 +686,7 @@ class BF16Pass(PassBase):
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 cast_grad_op, ref_mesh, [-1], self.dist_context
             )
+            loss_op = cast_op
             loss = cast_loss
         self._loss = loss
         main_block._sync_with_cpp()

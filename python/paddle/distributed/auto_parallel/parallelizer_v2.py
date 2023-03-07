@@ -221,46 +221,25 @@ class Parallelizer:
                 + self._dist_context.serial_feed_vars["labels"]
             )
             self._logger.info(
-                "Applying AMP / [{}] / [{}] ...".format(
+                "Applying AMP-{}-{} ...".format(
                     config["dtype"], config['level']
                 ),
             )
-            if config["dtype"] == "bfloat16":
-                if config['level'] == "o1":
-                    auto_parallel_bf16_pass = new_pass(
-                        "auto_parallel_bf16", config
-                    )
-                    auto_parallel_bf16_pass.apply(
-                        [main_program], [startup_program], self._pass_context
-                    )
-                    loss = auto_parallel_bf16_pass.get_loss()
-                elif config['level'] == "o2":
-                    pass
-                else:
-                    raise ValueError("AMP/BF16 level should be one of o1, o2")
-
-            elif config["dtype"] == "float16":
-                if config['level'] == "o1":
-                    auto_parallel_amp_pass = new_pass(
-                        "auto_parallel_amp", config
-                    )
-                    auto_parallel_amp_pass.apply(
-                        [main_program], [startup_program], self._pass_context
-                    )
-                    loss = auto_parallel_amp_pass.get_loss()
-                elif config['level'] in ['o2', 'o3']:
-                    config["base_opt"] = optimizer
-                    auto_parallel_fp16_pass = new_pass(
-                        "auto_parallel_fp16", config
-                    )
-                    auto_parallel_fp16_pass.apply(
-                        [main_program], [startup_program], self._pass_context
-                    )
-                    loss = auto_parallel_fp16_pass.get_loss()
-                else:
-                    raise ValueError(
-                        "AMP/FP16 level should be one of o1, o2, o3"
-                    )
+            if config['level'] == "o1":
+                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
+                auto_parallel_amp_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
+                loss = auto_parallel_amp_pass.get_loss()
+            elif config['level'] in ['o2', 'o3']:
+                config["base_opt"] = optimizer
+                auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
+                auto_parallel_fp16_pass.apply(
+                    [main_program], [startup_program], self._pass_context
+                )
+                loss = auto_parallel_fp16_pass.get_loss()
+            else:
+                raise ValueError("AMP level should be one of o1, o2, o3")
 
         # apply quantization pass
         # The pass can be applied when mode must be 'train'
