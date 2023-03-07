@@ -91,7 +91,6 @@ class TestMKLDNNElementwiseDivOp4(TestMKLDNNElementwiseDivOp):
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
         self.out = np.divide(self.x, self.y)
 
-    # TODO(piotrekobiIntel): Enable when grad is ready
     def test_check_grad_normal(self):
         pass
 
@@ -105,7 +104,6 @@ class TestMKLDNNElementwiseDivOp5(TestMKLDNNElementwiseDivOp):
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
         self.out = np.divide(self.x, self.y)
 
-    # TODO(piotrekobiIntel): Enable when grad is ready
     def test_check_grad_normal(self):
         pass
 

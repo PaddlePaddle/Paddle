@@ -163,6 +163,25 @@ class ElementwiseTensorOpConverter : public OpConverter {
                                          nvinfer1::ElementWiseOperation::kOR);
 
       RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+    } else if (op_type_ == "mod") {
+      auto* div_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               ElementWise,
+                               *X,
+                               *reshape_y_tensor,
+                               nvinfer1::ElementWiseOperation::kFLOOR_DIV);
+      auto* mul_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               ElementWise,
+                               *(div_layer->getOutput(0)),
+                               *reshape_y_tensor,
+                               nvinfer1::ElementWiseOperation::kPROD);
+      auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                         ElementWise,
+                                         *X,
+                                         *(mul_layer->getOutput(0)),
+                                         nvinfer1::ElementWiseOperation::kSUB);
+      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
     } else {
       auto op_pair = ops.find(op_type_);
       PADDLE_ENFORCE_NE(
@@ -271,6 +290,10 @@ class ElementwiseTensorLessEqualOpConverter
  public:
   ElementwiseTensorLessEqualOpConverter() { op_type_ = "less_equal"; }
 };
+class ElementwiseTensorModOpConverter : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorModOpConverter() { op_type_ = "mod"; }
+};
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -291,6 +314,8 @@ REGISTER_TRT_OP_CONVERTER(elementwise_pow_weight,
                           ElementwiseTensorPowOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_weight,
                           ElementwiseTensorFloorDivOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_mod_weight,
+                          ElementwiseTensorModOpConverter);
 
 REGISTER_TRT_OP_CONVERTER(elementwise_add_tensor,
                           ElementwiseTensorAddOpConverter);
@@ -308,6 +333,8 @@ REGISTER_TRT_OP_CONVERTER(elementwise_pow_tensor,
                           ElementwiseTensorPowOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_tensor,
                           ElementwiseTensorFloorDivOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_mod_tensor,
+                          ElementwiseTensorModOpConverter);
 REGISTER_TRT_OP_CONVERTER(less_than, ElementwiseTensorLessThanOpConverter);
 REGISTER_TRT_OP_CONVERTER(greater_than,
                           ElementwiseTensorGreaterThanOpConverter);
