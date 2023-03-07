@@ -26,9 +26,8 @@
 #include "paddle/phi/core/ddim.h"
 namespace paddle {
 namespace prim {
-using Tensor = paddle::experimental::Tensor;
-using IntArray =
-    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+using Tensor = paddle::Tensor;
+using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
