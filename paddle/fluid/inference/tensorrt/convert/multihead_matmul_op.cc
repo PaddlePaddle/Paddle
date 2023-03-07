@@ -674,6 +674,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
           // return
           layer = reshape_after_mha_layer;
+          RreplenishLayerAndOutput(
+              layer, "multihead_matmul", {output_name}, test_mode);
         } else {
           PADDLE_ENFORCE_EQ(
               input->getDimensions().nbDims,

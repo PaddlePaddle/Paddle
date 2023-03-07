@@ -16,7 +16,7 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -80,8 +80,7 @@ TEST(AutoTune, sum) {
   size_t size = sizeof(float) * N;
 
   const auto alloc_cpu =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   auto in1 = std::make_shared<phi::DenseTensor>(
       alloc_cpu.get(),
       phi::DenseTensorMeta(
@@ -99,10 +98,9 @@ TEST(AutoTune, sum) {
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const auto alloc_cuda =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CUDAPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::GPUPlace());
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-  auto place = paddle::platform::CUDAPlace();
+  auto place = phi::GPUPlace();
   auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.GetByPlace(place));
   auto stream = dev_ctx->stream();
 
