@@ -137,19 +137,15 @@ class TestElementwiseBF16Op(OpTest):
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
-            self.check_grad(
-                ['X', 'Y'], 'Out', check_eager=False, check_prim=True
-            )
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
         else:
-            self.check_grad(
-                ['X', 'Y'], 'Out', check_eager=True, check_prim=True
-            )
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_prim=True)
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_prim=True)
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 @skip_check_grad_ci(
@@ -197,6 +193,28 @@ class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
             )
         }
 
+    def test_check_grad_normal(self):
+        if hasattr(self, 'attrs'):
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        else:
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+        )
+
 
 class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
@@ -217,6 +235,28 @@ class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
             )
         }
 
+    def test_check_grad_normal(self):
+        if hasattr(self, 'attrs'):
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        else:
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+        )
+
 
 class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
@@ -235,6 +275,28 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
                 self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
             )
         }
+
+    def test_check_grad_normal(self):
+        if hasattr(self, 'attrs'):
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        else:
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+        )
 
 
 class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
@@ -256,6 +318,28 @@ class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
             )
         }
 
+    def test_check_grad_normal(self):
+        if hasattr(self, 'attrs'):
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        else:
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+        )
+
 
 class TestElementwiseMaxOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
@@ -268,6 +352,28 @@ class TestElementwiseMaxOp_broadcast_4(TestElementwiseOp):
         self.inputs = {'X': x, 'Y': y}
 
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_grad_normal(self):
+        if hasattr(self, 'attrs'):
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        else:
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+        )
 
 
 if __name__ == '__main__':
