@@ -2404,6 +2404,5 @@ def polar(abs, angle, name=None):
         angle, 'angle', ['float32', 'float64'], 'paddle.polar'
     )
 
-    return paddle.multiply(
-        abs, paddle.complex(paddle.cos(angle), paddle.sin(angle))
-    )
+    return paddle.complex(abs * paddle.cos(angle), abs * paddle.sin(angle))
+    
