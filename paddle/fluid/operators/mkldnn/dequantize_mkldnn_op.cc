@@ -59,10 +59,10 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
 
     const float reorder_scale = 1. / quantization_scale;
     //    attrs.set_output_scales(mask, {reorder_scale});
-    attrs.set_scales_mask(DNNL_ARG_SRC, mask);
+    attrs.set_scales_mask(DNNL_ARG_DST, mask);
 
     if (with_shift) {
-      attrs.set_zero_points_mask(DNNL_ARG_DST, mask);
+      attrs.set_zero_points_mask(DNNL_ARG_SRC, mask);
     }
 
     phi::funcs::ReorderOneDNNHandler reorder_handler(
@@ -94,10 +94,10 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     std::unordered_map<int, dnnl::memory> reorder_args;
     reorder_args.insert({DNNL_ARG_SRC, *reorder_src_memory_p});
     reorder_args.insert({DNNL_ARG_DST, *reorder_dst_memory_p});
-    reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scales_mem});
+    reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scales_mem});
     if (with_shift) {
       reorder_args.insert(
-          {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_DST, zero_points_mem});
+          {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, zero_points_mem});
     }
     reorder_p->execute(astream, reorder_args);
     astream.wait();
