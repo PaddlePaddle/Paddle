@@ -49,6 +49,7 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
   }
 }
 
+
 template <typename T, typename Context>
 void AllCloseKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -96,7 +97,11 @@ void AllCloseKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    allclose, GPU, ALL_LAYOUT, phi::AllCloseKernel, float, double, phi::dtype::float16) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
+PD_REGISTER_KERNEL(allclose,
+                    GPU,
+                    ALL_LAYOUT,
+                    phi::AllCloseKernel,
+                    float,
+                    double,
+                    phi::dtype::float16)
+                    {kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);}
