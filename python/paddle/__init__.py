@@ -41,7 +41,6 @@ from .fluid.dataset import *  # noqa: F401, F403
 from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
-from .framework.dtype import finfo  # noqa: F401
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
@@ -295,6 +294,7 @@ from .tensor.math import frac  # noqa: F401
 from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
+from .tensor.math import ldexp  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -401,7 +401,6 @@ if is_compiled_with_cinn():
 disable_static()
 __all__ = [  # noqa
     'iinfo',
-    'finfo',
     'dtype',
     'uint8',
     'int8',
@@ -685,4 +684,5 @@ __all__ = [  # noqa
     'triu_indices',
     'take',
     'frexp',
+    'ldexp',
 ]

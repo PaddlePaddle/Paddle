@@ -135,7 +135,7 @@ def log(x, name=None):
         Out = \ln(x)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
         name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
@@ -156,9 +156,7 @@ def log(x, name=None):
     if in_dygraph_mode():
         return _C_ops.log(x)
     else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log"
-        )
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
         inputs = {'X': [x]}
         helper = LayerHelper('log', **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -749,9 +747,6 @@ def floor_divide(x, y, name=None):
 
     .. math::
         out = trunc(x / y)
-
-    - :math:`x`: Multidimensional Tensor.
-    - :math:`y`: Multidimensional Tensor.
 
     Note:
         ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
@@ -2132,7 +2127,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
        logsumexp(x) = \log\sum exp(x)
 
     Args:
-        x (Tensor): The input Tensor with data type float16, float32 or float64, which
+        x (Tensor): The input Tensor with data type float32 or float64, which
             have no more than 4 dimensions.
         axis (int|list|tuple, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
@@ -2171,9 +2166,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'logsumexp'
-        )
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'logsumexp')
 
         helper = LayerHelper('logsumexp', **locals())
         attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all': reduce_all}
@@ -2655,7 +2648,7 @@ def log1p(x, name=None):
         Out = \ln(x+1)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2674,9 +2667,7 @@ def log1p(x, name=None):
     if in_dygraph_mode():
         return _C_ops.log1p(x)
     else:
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], "log1p"
-        )
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
         inputs = {'X': [x]}
         helper = LayerHelper('log1p', **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -5116,3 +5107,75 @@ def frexp(x, name=None):
 
     mantissa = paddle.where((x < 0), mantissa * -1, mantissa)
     return mantissa, exponent
+
+
+def ldexp(input, other, name=None):
+    """
+    Multiplies input by 2**:attr:other.. The equation is:
+
+    .. math::
+        out = input * 2^{other}
+
+    Note:
+        ``paddle.ldexp`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensors
+
+
+    Args:
+        input (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        other (int|Tensor):  Its data type is int32 or int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor or scalar. The result of input * 2**other. This is a scalar if both input and other are scalars.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1, 2, 3], dtype='float64')
+
+            # example 1: y is a int
+            res = paddle.ldexp(x, 2)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
+
+            # example 2: y is a Tensor
+            y = paddle.to_tensor([2], dtype='int64')
+            res = paddle.ldexp(x, y)
+            print(res)
+            # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [1., 4., 9.])
+
+    """
+    check_variable_and_dtype(
+        input,
+        'input',
+        [
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+        ],
+        "ldexp",
+    )
+    if isinstance(other, (int)):
+        return input * paddle.pow(paddle.to_tensor([2], dtype='int64'), other)
+    elif isinstance(other, (paddle.Tensor, Variable)):
+        if other.dtype == "int64":
+            return input * paddle.pow(
+                paddle.to_tensor([2], dtype='int64'), other
+            )
+        elif other.dtype == "int32":
+            return input * paddle.pow(
+                paddle.to_tensor([2], dtype='int32'), other
+            )
+    else:
+        raise TypeError(
+            'other must be scalar or tensor type, but received: %s '
+            % (other.dtype)
+        )
