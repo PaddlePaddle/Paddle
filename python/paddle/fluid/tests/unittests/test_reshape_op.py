@@ -27,6 +27,7 @@ class TestReshapeOp(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
@@ -45,24 +46,38 @@ class TestReshapeOp(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_prim=True)
 
 
-class TestReshapeOp_ZeroDim1(OpTest):
+class TestReshapeOp_ZeroDim1(TestReshapeOp):
+    def setUp(self):
+        self.init_data()
+        self.op_type = "reshape2"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        self.python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.attrs = {"shape": self.new_shape}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype("float32"),
+        }
+
     def init_data(self):
         self.ori_shape = ()
         self.new_shape = (1,)
         self.infered_shape = (1,)
 
 
-class TestReshapeOp_ZeroDim2(OpTest):
+class TestReshapeOp_ZeroDim2(TestReshapeOp_ZeroDim1):
     def init_data(self):
         self.ori_shape = ()
         self.new_shape = (-1,)
         self.infered_shape = (1,)
 
 
-class TestReshapeOp_ZeroDim3(OpTest):
+class TestReshapeOp_ZeroDim3(TestReshapeOp_ZeroDim1):
     def init_data(self):
         self.ori_shape = (1,)
         self.new_shape = ()
@@ -73,6 +88,8 @@ class TestReshapeBF16Op(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
         self.dtype = np.uint16
@@ -96,7 +113,7 @@ class TestReshapeBF16Op(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_prim=True)
 
 
 class TestReshapeOpDimInfer1(TestReshapeOp):
@@ -118,6 +135,7 @@ class TestReshapeOpWithInputShape(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
 
@@ -140,7 +158,7 @@ class TestReshapeOpWithInputShape(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_prim=True)
 
 
 # Situation 3: have shape(list, have tensor), no actual shape(Tensor)
@@ -148,6 +166,7 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
 
@@ -177,7 +196,7 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_prim=True)
 
 
 class TestReshapeOpDimInfer1_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor):
@@ -201,6 +220,7 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
 
@@ -223,7 +243,7 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_prim=True)
 
 
 class TestReshapeOpDimInfer1_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
