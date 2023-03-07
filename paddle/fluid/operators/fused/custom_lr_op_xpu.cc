@@ -33,17 +33,22 @@ class CustomLrXPUKernel : public framework::OpKernel<T> {
     // PADDLE_THROW(platform::errors::Unimplemented(
     // "The custom_lr operator does not support XPU yet."));
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
+    xpu::Context* xpu_ctx = dev_ctx.x_context();
 
     const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
 
     phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
 
+    float* out_ptr = out->mutable_data<float>(ctx.GetPlace());
     bool base_lr = ctx.Attr<float>("base_lr");
     bool max_step = ctx.Attr<int64_t>("max_step");
 
+    int r = xpu::constant<float>(xpu_ctx, out_ptr, 1, 0.1);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+
     (void)dev_ctx;
     (void)x;
-    (void)out;
+    (void)out_ptr;
     (void)base_lr;
     (void)max_step;
 

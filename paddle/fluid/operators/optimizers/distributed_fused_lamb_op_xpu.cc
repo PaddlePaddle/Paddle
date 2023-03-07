@@ -16,240 +16,132 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/buffer.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_op.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-
 #include "paddle/phi/kernels/funcs/tensor_to_string.h"
 
 namespace paddle {
 namespace operators {
 
-// template <typename T>
-// using MasterT = typename details::MPTypeTrait<T>::Type;
+template <typename T>
+using MasterT = typename details::MPTypeTrait<T>::Type;
 
 using phi::funcs::FlattenToString;
 using phi::funcs::ToVector;
 
-// template <typename T>
-// static void FillZeroWithPtr(T *x, size_t n, gpuStream_t stream) {
-//   static_assert(!std::is_same<T, void>::value, "T cannot be void.");
-// #ifdef PADDLE_WITH_HIP
-//   PADDLE_ENFORCE_GPU_SUCCESS(hipMemsetAsync(x, 0, n * sizeof(T), stream));
-// #else
-//   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(x, 0, n * sizeof(T), stream));
-// #endif
-// }
-
-// template <typename T, int BlockDim, int VecSize>
-// struct L2NormFunctor {
-//   DEVICE void operator()(int tensor_id,
-//                          int chunk_id,
-//                          int offset,
-//                          int size,
-//                          const T *x,
-//                          MasterT<T> *y,
-//                          int max_chunk_num) const {
-//     using MT = MasterT<T>;
-//     const T *ptr = x + offset;
-
-//     using BlockReduce = cub::BlockReduce<MT, BlockDim>;
-//     __shared__ typename BlockReduce::TempStorage storage;
-
-//     MT square_sum = static_cast<MT>(0);
-//     int i;
-//     for (i = threadIdx.x * VecSize; i + VecSize <= size;
-//          i += (BlockDim * VecSize)) {
-//       phi::AlignedVector<T, VecSize> tmp_vec;
-//       phi::Load(ptr + i, &tmp_vec);
-// #pragma unroll
-//       for (int j = 0; j < VecSize; ++j) {
-//         auto tmp = static_cast<MT>(tmp_vec[j]);
-//         square_sum += (tmp * tmp);
-//       }
-//     }
-
-//     for (; i < size; ++i) {
-//       auto tmp = static_cast<MT>(ptr[i]);
-//       square_sum += (tmp * tmp);
-//     }
-
-//     square_sum = BlockReduce(storage).Reduce(square_sum, cub::Sum());
-//     if (threadIdx.x == 0) {
-//       y[tensor_id * max_chunk_num + chunk_id] = square_sum;
-//     }
-//   }
-// };
-
-// template <typename InT, typename OutT, int BlockDim>
-// static __global__ void MultiTensorL2NormReduceAgainCUDAKernel(
-//     const InT *x, OutT *y, int max_chunk_num) {
-//   int tensor_id = blockIdx.x;
-//   x += (tensor_id * max_chunk_num);
-//   using BlockReduce = cub::BlockReduce<InT, BlockDim>;
-//   __shared__ typename BlockReduce::TempStorage storage;
-//   InT sum = static_cast<InT>(0);
-//   for (int i = threadIdx.x; i < max_chunk_num; i += BlockDim) {
-//     sum += x[i];
-//   }
-//   sum = BlockReduce(storage).Reduce(sum, cub::Sum());
-//   if (threadIdx.x == 0) {
-//     y[blockIdx.x] = static_cast<OutT>(sum);
-//   }
-// }
-
-// template <typename T>
-// static int GetChunkedVecSize(const T *ptr, int chunk_size) {
-//   static_assert(!std::is_same<T, void>::value, "T cannot be void.");
-
-//   constexpr int max_load_bits = 128;
-//   int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
-//   auto address = reinterpret_cast<uintptr_t>(ptr);
-//   constexpr int vec8 = alignof(phi::AlignedVector<T, 8>);
-//   constexpr int vec4 = alignof(phi::AlignedVector<T, 4>);
-//   constexpr int vec2 = alignof(phi::AlignedVector<T, 2>);
-//   chunk_size *= sizeof(T);
-//   if (address % vec8 == 0 && chunk_size % vec8 == 0) {
-//     return std::min(8, valid_vec_size);
-//   } else if (address % vec4 == 0 && chunk_size % vec4 == 0) {
-//     return std::min(4, valid_vec_size);
-//   } else if (address % vec2 == 0 && chunk_size % vec2 == 0) {
-//     return std::min(2, valid_vec_size);
-//   } else {
-//     return 1;
-//   }
-// }
-
-#if 0
-#define PD_VEC_LAUNCH_KERNEL_CASE(__vec_size, ...) \
-  case __vec_size: {                               \
-    constexpr int kVecSize = __vec_size;           \
-    __VA_ARGS__;                                   \
-    break;                                         \
-  }
-
-#define PD_VEC_LAUNCH_KERNEL(__vec_size, ...)    \
-  do {                                           \
-    switch (__vec_size) {                        \
-      PD_VEC_LAUNCH_KERNEL_CASE(8, __VA_ARGS__); \
-      PD_VEC_LAUNCH_KERNEL_CASE(4, __VA_ARGS__); \
-      PD_VEC_LAUNCH_KERNEL_CASE(2, __VA_ARGS__); \
-      PD_VEC_LAUNCH_KERNEL_CASE(1, __VA_ARGS__); \
-    }                                            \
-  } while (0)
-#endif
-
-// // TODO(zengjinle): which chunk_size is better?
-template <typename InT,
-          typename OutT,
-          int MaxTensorNumPerLaunch = 160,
-          int MaxChunkNumPerLaunch = 780>
-static void MultiTensorL2Norm(const platform::CUDAPlace &place,
-                              //   gpuStream_t stream,
-                              const InT *x,
+template <typename T>
+static void MultiTensorL2Norm(const phi::XPUContext &dev_ctx,
+                              const T *x,
                               const int *offsets,
                               int n,
-                              OutT *y,
-                              int chunk_size = 65536) {
-  //   if (n <= 0) return;
+                              float *y) {
+  // 求和不开方，最后统一开方
+  for (int i = 0; i < n; i++) {
+    auto length = offsets[i + 1] - offsets[i];
+    int r = xpu::square_reduce_sum<T>(
+        dev_ctx.x_context(), x + offsets[i], y + i, length, false);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "square_reduce_sum");
+  }
+}
 
-  //   constexpr int kNumTensor = MaxTensorNumPerLaunch;
-  //   constexpr int kNumChunk = MaxChunkNumPerLaunch;
-  // #ifdef PADDLE_WITH_HIP
-  //   constexpr int kBlockDim = 256;
-  // #else
-  //   constexpr int kBlockDim = 512;
-  // #endif
+template <typename ParamT, typename MasterT>
+static void MultiTensorUpdateLambParamAndBetaPows(
+    const phi::XPUContext &dev_ctx,
+    const int *offsets,
+    int n,
+    const MasterT *trust_ratio_div,
+    float lr,
+    const MasterT *param_square_norm,
+    const MasterT *trust_ratio_div_square_norm,
+    ParamT *param,
+    MasterT *master_param,
+    float *beta1pow,
+    float *beta2pow,
+    float beta1,
+    float beta2,
+    bool kHasMasterParam) {
+  using xpu_fp16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+  //   constexpr bool kHasMasterParam =
+  //         !(std::is_same<ParamT, MasterT>::value);
+  bool has_beta_pow = (beta1pow != nullptr);
+  if (has_beta_pow) {
+    PADDLE_ENFORCE_NOT_NULL(
+        beta2pow,
+        platform::errors::InvalidArgument("Beta2Pow should not be nullptr."));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        beta2pow,
+        nullptr,
+        platform::errors::InvalidArgument("Beta2Pow should be nullptr."));
+  }
 
-  //   int max_chunk_num = -1;
-  //   int vec_size = 8;
-  //   int total_chunk_num = 0;
-  //   for (int i = 0; i < n; ++i) {
-  //     vec_size = std::min(
-  //         vec_size, GetChunkedVecSize(x + offsets[i] - offsets[0],
-  //         chunk_size));
-  //     int length = offsets[i + 1] - offsets[i];
-  //     auto tmp_chunk_num = (length + chunk_size - 1) / chunk_size;
-  //     max_chunk_num = std::max(max_chunk_num, tmp_chunk_num);
-  //     total_chunk_num += tmp_chunk_num;
-  //   }
+  if (kHasMasterParam) {
+    PADDLE_ENFORCE_NOT_NULL(master_param,
+                            platform::errors::InvalidArgument(
+                                "master_param should not be nullptr."));
 
-  //   VLOG(1) << "MultiTensorL2Norm max_chunk_num = " << max_chunk_num
-  //           << " , total_chunk_num = " << total_chunk_num
-  //           << " , tensor_num = " << n;
+    for (int i = 0; i < n; i++) {
+      auto length = offsets[i + 1] - offsets[i];
+      int r = xpu::update_lamb_param_and_beta_pows<ParamT>(
+          dev_ctx.x_context(),
+          param + offsets[i],
+          trust_ratio_div + offsets[i],
+          param_square_norm + i,
+          trust_ratio_div_square_norm + i,
+          param + offsets[i],
+          master_param + offsets[i],
+          lr,
+          length);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "update_lamb_param_and_beta_pows");
+    }
+  } else {
+    for (int i = 0; i < n; i++) {
+      auto length = offsets[i + 1] - offsets[i];
+      int r = xpu::update_lamb_param_and_beta_pows<ParamT>(
+          dev_ctx.x_context(),
+          param + offsets[i],
+          trust_ratio_div + offsets[i],
+          param_square_norm + i,
+          trust_ratio_div_square_norm + i,
+          param + offsets[i],
+          nullptr,
+          lr,
+          length);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "update_lamb_param_and_beta_pows");
+    }
+  }
 
-  //   using MT = MasterT<InT>;
-  //   memory::Buffer tmp_out(place);
-  //   auto *tmp_out_ptr = tmp_out.Alloc<MT>(n * max_chunk_num);
-  //   FillZeroWithPtr(tmp_out_ptr, n * max_chunk_num, stream);
-
-#if 0
-#define PD_LAUNCH_MULTI_TENSOR_APPLY_L2_NORM_KERNEL                   \
-  do {                                                                \
-    using FunctorT = L2NormFunctor<InT, kBlockDim, kVecSize>;         \
-    VLOG(10) << __func__ << " " << typeid(InT).name()                 \
-             << " VecSize = " << kVecSize;                            \
-    MultiTensorApply<FunctorT, kNumTensor, kNumChunk>(FunctorT(),     \
-                                                      stream,         \
-                                                      offsets,        \
-                                                      n,              \
-                                                      chunk_size,     \
-                                                      kBlockDim,      \
-                                                      x,              \
-                                                      tmp_out_ptr,    \
-                                                      max_chunk_num); \
-  } while (0)
-#endif
-
-  //   PD_VEC_LAUNCH_KERNEL(vec_size,
-  //   PD_LAUNCH_MULTI_TENSOR_APPLY_L2_NORM_KERNEL);
-  // #undef PD_LAUNCH_MULTI_TENSOR_APPLY_L2_NORM_KERNEL
-
-  //   MultiTensorL2NormReduceAgainCUDAKernel<MT, OutT, kBlockDim>
-  //       <<<n, kBlockDim, 0, stream>>>(tmp_out_ptr, y, max_chunk_num);
+  if (has_beta_pow) {
+    // beta1pow_[0] *= beta1_;
+    // beta2pow_[0] *= beta2_;
+    // Todo: 变成cpu tensor
+    int r = xpu::scale(dev_ctx.x_context(),
+                       beta1pow,
+                       beta1pow,
+                       1,
+                       false,  // bias_after_scale
+                       beta1,  // scale,
+                       0);     // bias
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+    r = xpu::scale(dev_ctx.x_context(),
+                   beta2pow,
+                   beta2pow,
+                   1,
+                   false,  // bias_after_scale
+                   beta2,  // scale,
+                   0);     // bias
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+  }
 }
 
 template <int LogLevel>
 static void LogParamAndTrustRatioDivSquareNorm(
     const framework::ExecutionContext &ctx,
     const float *param_square_norm,
-    const float *trust_ratio_div_square_norm) {
-  //   if (!VLOG_IS_ON(LogLevel)) return;
-
-  //   auto tensors = ctx.MultiInput<phi::DenseTensor>("Param");
-  //   if (tensors.empty()) return;
-
-  //   const auto *order =
-  //   ctx.Input<phi::DenseTensor>("ParamOrder")->data<int>();
-
-  //   size_t n = tensors.size();
-  //   auto place = tensors[0]->place();
-
-  //   auto pn_vec = ToVector(param_square_norm, n, place);
-  //   auto tn_vec = ToVector(trust_ratio_div_square_norm, n, place);
-
-  //   const auto &names = ctx.GetOp().Inputs("Param");
-  //   for (size_t i = 0; i < n; ++i) {
-  //     auto idx = order[i];
-  //     VLOG(LogLevel) << "Param " << tensors[idx]->dtype() << " " <<
-  //     names[idx]
-  //                    << " pn = " << pn_vec[i] << " , tn = " << tn_vec[i];
-  //   }
-}
+    const float *trust_ratio_div_square_norm) {}
 
 static bool IsFinite(const phi::XPUContext &dev_ctx, const float *ptr) {
-  //   auto stream = dev_ctx.stream();
-  //   float cpu_value;
-  // #ifdef PADDLE_WITH_HIP
-  //   PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(
-  //       &cpu_value, ptr, sizeof(float), hipMemcpyDeviceToHost, stream));
-  //   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
-  // #else
-  //   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-  //       &cpu_value, ptr, sizeof(float), cudaMemcpyDeviceToHost, stream));
-  //   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-  // #endif
-  //   LOG(INFO) << "NAN_INF indicator value: " << cpu_value;
-  //   return isfinite(cpu_value);
   return false;
 }
 
@@ -305,934 +197,8 @@ static T *GetSameInOutTensorPtr(const framework::ExecutionContext &ctx,
   return out_data;
 }
 
-// template <typename T>
-// struct SquareFunctor {
-//   HOSTDEVICE MasterT<T> operator()(T x) const {
-//     auto y = static_cast<MasterT<T>>(x);
-//     return y * y;
-//   }
-// };
-
-// template <typename T>
-// struct IsNanInfFunctor {
-//   HOSTDEVICE bool operator()(T x) const { return !isfinite(x); }
-// };
-
-// struct OrFunctor {
-//   HOSTDEVICE bool operator()(bool x, bool y) const { return x || y; }
-// };
-
-// struct AndFunctor {
-//   HOSTDEVICE bool operator()(bool x, bool y) const { return x && y; }
-// };
-
-// template <typename T1, typename T2, int VecSize>
-// static __global__ void ScaleCUDAKernel(const T1 *__restrict__ x,
-//                                        const T2 *__restrict__ scale,
-//                                        T1 *__restrict__ y,
-//                                        int num) {
-//   static_assert(sizeof(T1) <= sizeof(T2),
-//                 "sizeof(T1) must be not greater than sizeof(T2).");
-//   T2 s = scale[0];
-
-//   int i = (threadIdx.x + blockIdx.x * blockDim.x) * VecSize;
-//   int stride = blockDim.x * gridDim.x * VecSize;
-
-//   for (; i + VecSize <= num; i += stride) {
-//     phi::AlignedVector<T1, VecSize> x_vec;
-//     phi::AlignedVector<T1, VecSize> y_vec;
-
-//     phi::Load(x + i, &x_vec);
-// #pragma unroll
-//     for (int j = 0; j < VecSize; ++j) {
-//       y_vec[j] = static_cast<T1>(static_cast<T2>(x_vec[j]) * s);
-//     }
-//     phi::Store(y_vec, y + i);
-//   }
-
-//   for (; i < num; ++i) {
-//     y[i] = static_cast<T1>(static_cast<T2>(x[i]) * s);
-//   }
-// }
-
-// template <typename T>
-// static __global__ void AddToCUDAKernel(const T *__restrict__ x,
-//                                        T *__restrict__ y) {
-//   y[0] += x[0];
-// }
-
-// // If clip before allreduce,
-// // coeff = global_scale * max_global_grad_norm / (1e-6 +
-// sqrt(square_grad_norm)
-// // * rescale_grad)
-// // if coeff >= 1 or coeff is Nan/Inf, scale = 1.0
-// // else scale = coeff
-// template <typename T1, typename T2>
-// static __global__ void CalcGradNormClipBeforeAllReduceScale(
-//     const T1 *__restrict__ global_scale,
-//     T1 max_global_grad_norm,
-//     const T1 *__restrict__ square_grad_norm,
-//     T1 *__restrict__ out1,
-//     T2 *__restrict__ out2,
-//     T1 clip_rescale_grad) {
-//   T1 grad_norm = static_cast<T1>(sqrtf(*square_grad_norm)) *
-//   clip_rescale_grad; T1 scale = global_scale[0] * max_global_grad_norm /
-//   (1e-6 + grad_norm); bool found_nan_inf = !isfinite(scale); if (scale >= 1
-//   || found_nan_inf) {
-//     scale = static_cast<T1>(1.0);
-//   }
-
-//   if (out1) {
-//     *out1 = scale;
-//   }
-//   if (out2) {
-//     *out2 = static_cast<T2>(scale);
-//   }
-// }
-
-// static __global__ void SetNanInfValueCUDAKernelOneFlag(const bool *in_flag_p,
-//                                                        float *out_p) {
-//   *out_p = (*in_flag_p) ? __int_as_float(0x7fffffffU) : 0.0f;
-// }
-
-// static __global__ void SetNanInfValueCUDAKernelTwoFlag(const bool
-// *in_flag_p_1,
-//                                                        const bool
-//                                                        *in_flag_p_2, float
-//                                                        *out_p) {
-//   *out_p =
-//       ((*in_flag_p_1) || (*in_flag_p_2)) ? __int_as_float(0x7fffffffU) :
-//       0.0f;
-// }
-
-// template <typename T, typename GradT, int VecSize>
-// static __global__ void UpdateLambMomentAndTrustRatioDivCUDAKernel(
-//     const T *__restrict__ param_p,
-//     const GradT *__restrict__ grad_p,
-//     const T *__restrict__ square_grad_norm_p,
-//     const T *__restrict__ global_scale,
-//     const T *__restrict__ beta1pow_p,
-//     const T *__restrict__ beta2pow_p,
-//     T *__restrict__ mom1_p,
-//     T *__restrict__ mom2_p,
-//     T *__restrict__ trust_ratio_div_p,
-//     bool *__restrict__ found_inf,
-//     int64_t *__restrict__ step,
-//     T weight_decay,
-//     int weight_decay_end_numel,
-//     T beta1,
-//     T beta2,
-//     T epsilon,
-//     T max_global_grad_norm,
-//     int num,
-//     T rescale_grad) {
-//   T square_grad_norm = *square_grad_norm_p;
-//   bool need_update_found_inf =
-//       (found_inf && threadIdx.x == 0 && blockIdx.x == 0);
-//   if (!isfinite(square_grad_norm)) {
-//     if (need_update_found_inf) *found_inf = true;
-//     return;
-//   } else if (need_update_found_inf) {
-//     *found_inf = false;
-//     ++(*step);
-//   }
-
-//   T scale = rescale_grad / global_scale[0];
-//   if (max_global_grad_norm > 0) {
-//     T clip_scale =
-//         max_global_grad_norm / (sqrtf(square_grad_norm) * scale + 1e-6);
-//     if (clip_scale < static_cast<T>(1)) {
-//       scale *= clip_scale;
-//     }
-//   }
-
-//   T one_minus_beta1pow = 1 - beta1pow_p[0];
-//   T one_minus_beta2pow = 1 - beta2pow_p[0];
-
-//   int i = (threadIdx.x + blockIdx.x * blockDim.x) * VecSize;
-//   int stride = blockDim.x * gridDim.x * VecSize;
-
-//   for (; i + VecSize <= num; i += stride) {
-//     phi::AlignedVector<T, VecSize> param_vec;
-//     phi::AlignedVector<GradT, VecSize> grad_vec;
-//     phi::AlignedVector<T, VecSize> mom1_vec;
-//     phi::AlignedVector<T, VecSize> mom2_vec;
-//     phi::AlignedVector<T, VecSize> trust_ratio_div_vec;
-
-//     T cur_weight_decay = (i < weight_decay_end_numel) * weight_decay;
-//     if (cur_weight_decay != static_cast<T>(0.0)) {
-//       phi::Load(param_p + i, &param_vec);
-//     } else {
-// #pragma unroll
-//       for (int j = 0; j < VecSize; ++j) {
-//         param_vec[j] = static_cast<T>(0);
-//       }
-//     }
-//     phi::Load(grad_p + i, &grad_vec);
-//     phi::Load(mom1_p + i, &mom1_vec);
-//     phi::Load(mom2_p + i, &mom2_vec);
-
-#if 0
-#define PD_LAMB_MOM_TRUST_RATIO_DIV_UPDATE(                                    \
-    __param, __grad, __mom1, __mom2, __trust_ratio_div, __idx)                 \
-  T p = __param[__idx];                                                        \
-  T g = static_cast<T>(__grad[__idx]) * scale;                                 \
-  T mom1 = __mom1[__idx];                                                      \
-  T mom2 = __mom2[__idx];                                                      \
-  mom1 = beta1 * mom1 + (1 - beta1) * g;                                       \
-  mom2 = beta2 * mom2 + (1 - beta2) * g * g;                                   \
-  T mom1_unbiased = mom1 / one_minus_beta1pow;                                 \
-  T mom2_unbiased = mom2 / one_minus_beta2pow;                                 \
-  __trust_ratio_div[__idx] =                                                   \
-      mom1_unbiased / (sqrtf(mom2_unbiased) + epsilon) + cur_weight_decay * p; \
-  __mom1[__idx] = mom1;                                                        \
-  __mom2[__idx] = mom2;
-#endif
-
-// #pragma unroll
-//     for (int j = 0; j < VecSize; ++j) {
-//       PD_LAMB_MOM_TRUST_RATIO_DIV_UPDATE(
-//           param_vec, grad_vec, mom1_vec, mom2_vec, trust_ratio_div_vec, j);
-//     }
-
-//     phi::Store(mom1_vec, mom1_p + i);
-//     phi::Store(mom2_vec, mom2_p + i);
-//     phi::Store(trust_ratio_div_vec, trust_ratio_div_p + i);
-//   }
-
-//   for (; i < num; ++i) {
-//     T cur_weight_decay = (i < weight_decay_end_numel) * weight_decay;
-//     PD_LAMB_MOM_TRUST_RATIO_DIV_UPDATE(
-//         param_p, grad_p, mom1_p, mom2_p, trust_ratio_div_p, i);
-//   }
-// }
-
-// template <typename T, typename GradT>
-// static void MultiTensorUpdateLambMomentAndTrustRatioDiv(
-//     const phi::GPUContext &dev_ctx,
-//     const int *offsets,
-//     int n,
-//     const T *param_p,
-//     const GradT *grad_p,
-//     const T *square_grad_norm_p,
-//     const T *global_scale,
-//     const T *beta1pow_p,
-//     const T *beta2pow_p,
-//     T *mom1_p,
-//     T *mom2_p,
-//     T *trust_ratio_div_p,
-//     bool *found_inf_p,
-//     int64_t *step,
-//     T weight_decay,
-//     int weight_decay_end_idx,
-//     T beta1,
-//     T beta2,
-//     T epsilon,
-//     T max_global_grad_norm,
-//     T rescale_grad) {
-//   if (n <= 0) return;
-//   int numel = offsets[n] - offsets[0];
-//   PADDLE_ENFORCE_GE(weight_decay_end_idx,
-//                     0,
-//                     platform::errors::InvalidArgument(
-//                         "The weight decay end index should be >= 0."));
-//   PADDLE_ENFORCE_LE(weight_decay_end_idx,
-//                     n,
-//                     platform::errors::InvalidArgument(
-//                         "The weight decay end index should be < %d.", n));
-//   auto weight_decay_end_numel = offsets[weight_decay_end_idx] - offsets[0];
-
-//   int vec_size = GetChunkedVecSize(param_p, 0);
-//   vec_size = std::min(vec_size, GetChunkedVecSize(grad_p, 0));
-//   vec_size = std::min(vec_size, GetChunkedVecSize(mom1_p, 0));
-//   vec_size = std::min(vec_size, GetChunkedVecSize(mom2_p, 0));
-//   vec_size = std::min(vec_size, GetChunkedVecSize(trust_ratio_div_p, 0));
-//   for (int i = 0; i < n; ++i) {
-//     auto length = offsets[i + 1] - offsets[i];
-//     while (length % vec_size != 0) {
-//       vec_size /= 2;
-//     }
-//   }
-
-//   VLOG(1) << __func__ << " VecSize = " << vec_size;
-
-//   auto stream = dev_ctx.stream();
-//   auto config = platform::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
-//   if (found_inf_p == nullptr) {
-//     PADDLE_ENFORCE_EQ(
-//         step,
-//         nullptr,
-//         platform::errors::InvalidArgument(
-//             "Output(Step) cannot be updated twice in one mini-batch."));
-//   } else {
-//     PADDLE_ENFORCE_NOT_NULL(
-//         step,
-//         platform::errors::InvalidArgument("Output(Step) cannot be
-//         nullptr."));
-//   }
-
-#if 0
-#define PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL                        \
-  do {                                                                   \
-    UpdateLambMomentAndTrustRatioDivCUDAKernel<T, GradT, kVecSize>       \
-        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>( \
-            param_p,                                                     \
-            grad_p,                                                      \
-            square_grad_norm_p,                                          \
-            global_scale,                                                \
-            beta1pow_p,                                                  \
-            beta2pow_p,                                                  \
-            mom1_p,                                                      \
-            mom2_p,                                                      \
-            trust_ratio_div_p,                                           \
-            found_inf_p,                                                 \
-            step,                                                        \
-            weight_decay,                                                \
-            weight_decay_end_numel,                                      \
-            beta1,                                                       \
-            beta2,                                                       \
-            epsilon,                                                     \
-            max_global_grad_norm,                                        \
-            numel,                                                       \
-            rescale_grad);                                               \
-  } while (0)
-#endif
-
-//   PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL);
-// #undef PD_LAUNCH_LAMB_MOM_TRUST_RATIO_DIV_KERNEL
-// }
-
-// template <typename T, bool NeedUpdate /*=true*/>
-// struct LambBetaPowUpdateOnceHelper {
-//   LambBetaPowUpdateOnceHelper(T *beta1pow, T *beta2pow, T beta1, T beta2) {
-//     PADDLE_ENFORCE_NOT_NULL(beta1pow,
-//                             platform::errors::InvalidArgument(
-//                                 "The beta1pow should not be nullptr."));
-//     PADDLE_ENFORCE_NOT_NULL(beta2pow,
-//                             platform::errors::InvalidArgument(
-//                                 "The beta2pow should not be nullptr."));
-//     beta1pow_ = beta1pow;
-//     beta2pow_ = beta2pow;
-//     beta1_ = beta1;
-//     beta2_ = beta2;
-//   }
-
-//   HOSTDEVICE void UpdateBetaPows() const {
-//     beta1pow_[0] *= beta1_;
-//     beta2pow_[0] *= beta2_;
-//   }
-
-//  private:
-//   T *__restrict__ beta1pow_;
-//   T *__restrict__ beta2pow_;
-//   T beta1_;
-//   T beta2_;
-// };
-
-// template <typename T>
-// struct LambBetaPowUpdateOnceHelper<T, false> {
-//   LambBetaPowUpdateOnceHelper(T *beta1pow, T *beta2pow, T beta1, T beta2) {
-//     PADDLE_ENFORCE_EQ(
-//         beta1pow,
-//         nullptr,
-//         platform::errors::InvalidArgument("The beta1pow should be
-//         nullptr."));
-//     PADDLE_ENFORCE_EQ(
-//         beta2pow,
-//         nullptr,
-//         platform::errors::InvalidArgument("The beta2pow should be
-//         nullptr."));
-//   }
-
-//   HOSTDEVICE void UpdateBetaPows() const {}
-// };
-
-// template <typename T, bool HasMasterParam /*=true*/>
-// struct LambParamHelper {
-//   LambParamHelper(T *param, MasterT<T> *master_param) {
-//     constexpr bool kIsSameType = std::is_same<T, MasterT<T>>::value;
-//     PADDLE_ENFORCE_EQ(kIsSameType,
-//                       false,
-//                       platform::errors::InvalidArgument(
-//                           "T must not be the same with MasterT<T>."));
-//     PADDLE_ENFORCE_NOT_NULL(master_param,
-//                             platform::errors::InvalidArgument(
-//                                 "Master parameter must be provided."));
-//     param_ = param;
-//     master_param_ = master_param;
-//   }
-
-//   HOSTDEVICE T *__restrict__ ParamPtr() { return param_; }
-
-//   HOSTDEVICE MasterT<T> *__restrict__ MasterParamPtr() { return
-//   master_param_; }
-
-//  private:
-//   T *__restrict__ param_;
-//   MasterT<T> *__restrict__ master_param_;
-// };
-
-// template <typename T>
-// struct LambParamHelper<T, false> {
-//   LambParamHelper(T *param, MasterT<T> *master_param) {
-//     constexpr bool kIsSameType = std::is_same<T, MasterT<T>>::value;
-//     PADDLE_ENFORCE_EQ(kIsSameType,
-//                       true,
-//                       platform::errors::InvalidArgument(
-//                           "T must be the same with MasterT<T>."));
-//     if (master_param != nullptr) {
-//       PADDLE_ENFORCE_EQ(static_cast<void *>(param),
-//                         static_cast<void *>(master_param),
-//                         platform::errors::InvalidArgument(
-//                             "Master parameter must be nullptr or the same as
-//                             " "non-master parameter."));
-//     }
-//     param_ = param;
-//   }
-
-//   HOSTDEVICE T *__restrict__ ParamPtr() { return param_; }
-
-//   HOSTDEVICE constexpr MasterT<T> *MasterParamPtr() { return nullptr; }
-
-//  private:
-//   T *__restrict__ param_;
-// };
-
-// template <typename ParamT,
-//           bool HasMasterParam,
-//           bool NeedUpdateBetaPow,
-//           int VecSize>
-// struct LambUpdateParamAndBetaPowsFunctor {
-//   DEVICE void operator()(
-//       int tensor_id,
-//       int chunk_id,
-//       int offset,
-//       int size,
-//       LambParamHelper<ParamT, HasMasterParam> param_helper,
-//       const MasterT<ParamT> *trust_ratio_div,
-//       const MasterT<ParamT> *lr,
-//       const MasterT<ParamT> *param_square_norm,
-//       const MasterT<ParamT> *trust_ratio_div_square_norm,
-//       const bool *found_inf,
-//       LambBetaPowUpdateOnceHelper<MasterT<ParamT>, NeedUpdateBetaPow>
-//           betapow_helper) const {
-//     if (*found_inf) return;
-
-//     using MT = MasterT<ParamT>;
-
-//     MT p_square_norm = param_square_norm[tensor_id];
-//     MT t_square_norm = trust_ratio_div_square_norm[tensor_id];
-//     MT lr_value = *lr;
-//     MT ratio = (p_square_norm != static_cast<MT>(0) &&
-//                         t_square_norm != static_cast<MT>(0)
-//                     ? lr_value * sqrtf(p_square_norm / t_square_norm)
-//                     : lr_value);
-
-//     int i;
-//     int stride = blockDim.x * VecSize;
-
-//     ParamT *param = param_helper.ParamPtr() + offset;
-//     MT *master_param = HasMasterParam ? param_helper.MasterParamPtr() +
-//     offset
-//                                       : param_helper.MasterParamPtr();
-//     trust_ratio_div += offset;
-
-//     for (i = threadIdx.x * VecSize; i + VecSize <= size; i += stride) {
-//       phi::AlignedVector<MT, VecSize> trust_ratio_div_vec;
-//       phi::Load(trust_ratio_div + i, &trust_ratio_div_vec);
-//       if (HasMasterParam) {
-//         phi::AlignedVector<MT, VecSize> master_param_vec;
-//         phi::Load(master_param + i, &master_param_vec);
-//         phi::AlignedVector<ParamT, VecSize> param_vec;
-// #pragma unroll
-//         for (int j = 0; j < VecSize; ++j) {
-//           MT p = master_param_vec[j] - ratio * trust_ratio_div_vec[j];
-//           master_param_vec[j] = p;
-//           param_vec[j] = static_cast<ParamT>(p);
-//         }
-//         phi::Store(master_param_vec, master_param + i);
-//         phi::Store(param_vec, param + i);
-//       } else {
-//         phi::AlignedVector<ParamT, VecSize> param_vec;
-//         phi::Load(param + i, &param_vec);
-// #pragma unroll
-//         for (int j = 0; j < VecSize; ++j) {
-//           MT p = static_cast<MT>(param_vec[j]) - ratio *
-//           trust_ratio_div_vec[j]; param_vec[j] = static_cast<ParamT>(p);
-//         }
-//         phi::Store(param_vec, param + i);
-//       }
-//     }
-
-//     for (; i < size; ++i) {
-//       if (HasMasterParam) {
-//         MT p = master_param[i] - ratio * trust_ratio_div[i];
-//         master_param[i] = p;
-//         param[i] = static_cast<ParamT>(p);
-//       } else {
-//         MT p = static_cast<MT>(param[i]) - ratio * trust_ratio_div[i];
-//         param[i] = static_cast<ParamT>(p);
-//       }
-//     }
-
-//     if (NeedUpdateBetaPow && threadIdx.x == 0 && blockIdx.x == 0) {
-//       betapow_helper.UpdateBetaPows();
-//     }
-//   }
-// };
-
-// // TODO(zengjinle): which block_dim and chunk_size would be better?
-// template <typename ParamT,
-//           int MaxTensorNumPerLaunch = 160,
-//           int MaxChunkNumPerLaunch = 780>
-// static void MultiTensorUpdateLambParamAndBetaPows(
-//     const phi::GPUContext &dev_ctx,
-//     const int *offsets,
-//     int n,
-//     const MasterT<ParamT> *trust_ratio_div,
-//     const MasterT<ParamT> *lr,
-//     const MasterT<ParamT> *param_square_norm,
-//     const MasterT<ParamT> *trust_ratio_div_square_norm,
-//     const bool *found_inf,
-//     ParamT *param,
-//     MasterT<ParamT> *master_param,
-//     MasterT<ParamT> *beta1pow,
-//     MasterT<ParamT> *beta2pow,
-//     MasterT<ParamT> beta1,
-//     MasterT<ParamT> beta2,
-//     int chunk_size = 65536) {
-//   constexpr bool kHasMasterParam =
-//       !(std::is_same<ParamT, MasterT<ParamT>>::value);
-
-//   bool has_beta_pow = (beta1pow != nullptr);
-//   if (has_beta_pow) {
-//     PADDLE_ENFORCE_NOT_NULL(
-//         beta2pow,
-//         platform::errors::InvalidArgument("Beta2Pow should not be
-//         nullptr."));
-//   } else {
-//     PADDLE_ENFORCE_EQ(
-//         beta2pow,
-//         nullptr,
-//         platform::errors::InvalidArgument("Beta2Pow should be nullptr."));
-//   }
-
-// #ifdef PADDLE_WITH_HIP
-//   const int block_dim = 256;
-// #else
-//   const int block_dim = 512;
-// #endif
-
-//   int vec_size = 8;
-//   for (int i = 0; i < n; ++i) {
-//     int offset = offsets[i] - offsets[0];
-//     vec_size =
-//         std::min(vec_size, GetChunkedVecSize(param + offset, chunk_size));
-//     if (kHasMasterParam) {
-//       vec_size = std::min(vec_size,
-//                           GetChunkedVecSize(master_param + offset,
-//                           chunk_size));
-//     }
-//     vec_size = std::min(
-//         vec_size, GetChunkedVecSize(trust_ratio_div + offset, chunk_size));
-//   }
-
-//   VLOG(1) << __func__ << " VecSize = " << vec_size;
-
-//   constexpr auto kNumTensor = MaxTensorNumPerLaunch;
-//   constexpr auto kNumChunk = MaxChunkNumPerLaunch;
-
-//   auto stream = dev_ctx.stream();
-#define PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW(__has_beta_pow)      \
-  do {                                                                   \
-    using FunctorT = LambUpdateParamAndBetaPowsFunctor<ParamT,           \
-                                                       kHasMasterParam,  \
-                                                       __has_beta_pow,   \
-                                                       kVecSize>;        \
-    LambParamHelper<ParamT, kHasMasterParam> param_helper(param,         \
-                                                          master_param); \
-    LambBetaPowUpdateOnceHelper<MasterT<ParamT>, __has_beta_pow>         \
-        betapow_helper(beta1pow, beta2pow, beta1, beta2);                \
-    launcher.Launch(FunctorT(),                                          \
-                    param_helper,                                        \
-                    trust_ratio_div,                                     \
-                    lr,                                                  \
-                    param_square_norm,                                   \
-                    trust_ratio_div_square_norm,                         \
-                    found_inf,                                           \
-                    betapow_helper);                                     \
-  } while (0)
-
-#define PD_LAUNCH_VEC_MULTI_TENSOR_UPDATE_PARAM_BETAPOW_CASE            \
-  do {                                                                  \
-    auto callback =                                                     \
-        [&](const MultiTensorLauncher<kNumTensor, kNumChunk> &launcher, \
-            int launch_n) {                                             \
-          if (has_beta_pow && launch_n == 0) {                          \
-            PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW(true);          \
-            beta1pow = nullptr;                                         \
-            beta2pow = nullptr;                                         \
-          } else {                                                      \
-            PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW(false);         \
-          }                                                             \
-        };                                                              \
-    MultiTensorApplyWithCallback<kNumTensor, kNumChunk>(                \
-        stream, offsets, n, chunk_size, block_dim, callback);           \
-  } while (0)
-
-//   PD_VEC_LAUNCH_KERNEL(vec_size,
-//                        PD_LAUNCH_VEC_MULTI_TENSOR_UPDATE_PARAM_BETAPOW_CASE);
-
-// #undef PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW
-// #undef PD_LAUNCH_VEC_MULTI_TENSOR_UPDATE_PARAM_BETAPOW_CASE
-// }
-
-// #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-// static bool CreatePreMulScaleOpIfSupported(ncclDataType_t dtype,
-//                                            ncclComm_t comm,
-//                                            const void *scale,
-//                                            ncclRedOp_t *op) {
-// #if NCCL_VERSION_CODE >= 21100
-//   int ver;
-//   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGetVersion(&ver));
-//   if (ver >= 21100) {
-//     VLOG(10) << "ncclRedOpCreatePreMulSum is supported.";
-//     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRedOpCreatePreMulSum(
-//         op, const_cast<void *>(scale), dtype, ncclScalarDevice, comm));
-//     return true;
-//   }
-// #endif
-//   VLOG(10) << "ncclRedOpCreatePreMulSum is not supported.";
-//   return false;
-// }
-
-// template <typename T1, typename T2>
-// static void LaunchScaleKernel(const phi::GPUContext &dev_ctx,
-//                               const T1 *x,
-//                               const T2 *scale,
-//                               T1 *y,
-//                               int n,
-//                               gpuStream_t stream) {
-//   int vec_size = std::min(GetChunkedVecSize(x, 0), GetChunkedVecSize(y, 0));
-//   auto config = platform::GetGpuLaunchConfig1D(dev_ctx, n, vec_size);
-
-#define PD_LAMB_VEC_SCALE_KERNEL_CASE                                    \
-  do {                                                                   \
-    ScaleCUDAKernel<T1, T2, kVecSize>                                    \
-        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>( \
-            x, scale, y, n);                                             \
-  } while (0)
-
-//   PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAMB_VEC_SCALE_KERNEL_CASE);
-// #undef PD_LAMB_VEC_SCALE_KERNEL_CASE
-// }
-
-// template <typename T, bool UseReduceScatter>
-// static void NCCLSumWithScaleBase(const T *sendbuff,
-//                                  T *recvbuff,
-//                                  size_t recvcount,
-//                                  size_t nranks,
-//                                  ncclComm_t comm,
-//                                  gpuStream_t stream,
-//                                  const phi::GPUContext &dev_ctx,
-//                                  const T *scale = nullptr) {
-//   static_assert(std::is_same<T, float>::value ||
-//                     std::is_same<T, float16>::value,
-//                 "T must be either float32 or float16.");
-//   if (recvcount == 0) return;
-
-//   auto numel = UseReduceScatter ? (recvcount * nranks) : recvcount;
-//   if (comm == nullptr) {
-//     if (scale != nullptr) {
-//       PADDLE_ENFORCE_EQ(nranks,
-//                         1,
-//                         platform::errors::InvalidArgument(
-//                             "nranks must be 1 when scale != nullptr."));
-//       LaunchScaleKernel(dev_ctx, sendbuff, scale, recvbuff, numel, stream);
-//     }
-//     return;
-//   }
-
-//   ncclRedOp_t op = ncclSum;
-//   ncclDataType_t dtype =
-//       std::is_same<T, float>::value ? ncclFloat32 : ncclFloat16;
-//   bool should_destroy_op =
-//       scale && CreatePreMulScaleOpIfSupported(dtype, comm, scale, &op);
-//   memory::Buffer buffer(dev_ctx.GetPlace());
-//   if (scale && !should_destroy_op) {
-//     T *new_sendbuff = buffer.Alloc<T>(numel);
-//     LaunchScaleKernel(dev_ctx, sendbuff, scale, new_sendbuff, numel, stream);
-//     sendbuff = new_sendbuff;
-//   }
-
-//   if (UseReduceScatter) {
-//     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
-//         sendbuff, recvbuff, recvcount, dtype, op, comm, stream));
-//   } else {
-//     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-//         sendbuff, recvbuff, recvcount, dtype, op, comm, stream));
-//   }
-
-// #if NCCL_VERSION_CODE >= 21100
-//   if (should_destroy_op) {
-//     VLOG(10) << "ncclRedOpDestroy starts";
-//     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRedOpDestroy(op,
-//     comm)); VLOG(10) << "ncclRedOpDestroy ends";
-//   }
-// #endif
-// }
-
-// template <typename T>
-// static void NCCLReduceScatterWithScale(const T *sendbuff,
-//                                        T *recvbuff,
-//                                        size_t recvcount,
-//                                        size_t nranks,
-//                                        ncclComm_t comm,
-//                                        gpuStream_t stream,
-//                                        const phi::GPUContext &dev_ctx,
-//                                        const T *scale = nullptr) {
-//   NCCLSumWithScaleBase<T, true>(
-//       sendbuff, recvbuff, recvcount, nranks, comm, stream, dev_ctx, scale);
-// }
-
-// template <typename T>
-// static void NCCLAllReduceWithScale(const T *sendbuff,
-//                                    T *recvbuff,
-//                                    size_t recvcount,
-//                                    size_t nranks,
-//                                    ncclComm_t comm,
-//                                    gpuStream_t stream,
-//                                    const phi::GPUContext &dev_ctx,
-//                                    const T *scale = nullptr) {
-//   NCCLSumWithScaleBase<T, false>(
-//       sendbuff, recvbuff, recvcount, nranks, comm, stream, dev_ctx, scale);
-// }
-
-// #endif
-
-// template <typename InputIteratorT,
-//           typename OutputIteratorT,
-//           typename ReduceOpT,
-//           typename T>
-// static void CubDeviceReduce(InputIteratorT d_in,
-//                             OutputIteratorT d_out,
-//                             int num_items,
-//                             ReduceOpT reduction_op,
-//                             T init,
-//                             gpuStream_t stream,
-//                             memory::Buffer *buffer) {
-//   void *d_temp_storage = nullptr;
-//   size_t temp_storage_bytes = 0;
-//   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::Reduce(d_temp_storage,
-//                                                        temp_storage_bytes,
-//                                                        d_in,
-//                                                        d_out,
-//                                                        num_items,
-//                                                        reduction_op,
-//                                                        init,
-//                                                        stream));
-//   d_temp_storage = buffer->Alloc<void>(temp_storage_bytes);
-//   VLOG(10) << "cub::DeviceReduce::Reduce needs " << temp_storage_bytes
-//            << " byte(s), ptr = " << d_temp_storage;
-//   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceReduce::Reduce(d_temp_storage,
-//                                                        temp_storage_bytes,
-//                                                        d_in,
-//                                                        d_out,
-//                                                        num_items,
-//                                                        reduction_op,
-//                                                        init,
-//                                                        stream));
-// }
-
-// template <typename T>
-// static void GetSquareGradNormImpl(const T *grad,
-//                                   int n,
-//                                   float *square_norm,
-//                                   gpuStream_t stream,
-//                                   memory::Buffer *cub_tmp_buffer) {
-//   using Iterator =
-//       cub::TransformInputIterator<float, SquareFunctor<T>, const T *>;
-//   Iterator iter(grad, SquareFunctor<T>());
-//   CubDeviceReduce(iter,
-//                   square_norm,
-//                   n,
-//                   cub::Sum(),
-//                   static_cast<float>(0),
-//                   stream,
-//                   cub_tmp_buffer);
-// }
-
-// // square_norm is of length 2 at least
-// static void GetSquareGradNorm(const float *fp32_grad,
-//                               int fp32_numel,
-//                               const float16 *fp16_grad,
-//                               int fp16_numel,
-//                               float *square_norm,
-//                               gpuStream_t stream,
-//                               memory::Buffer *cub_tmp_buffer) {
-//   VLOG(10) << "GetSquareGradNorm starts, fp32_numel = " << fp32_numel
-//            << " , fp16_numel = " << fp16_numel;
-//   if (fp32_numel > 0) {
-//     GetSquareGradNormImpl(
-//         fp32_grad, fp32_numel, square_norm, stream, cub_tmp_buffer);
-//     VLOG(10) << "FP32 square L2-Norm: "
-//              << FlattenToString(square_norm, 1, cub_tmp_buffer->GetPlace());
-//   }
-
-//   if (fp16_numel > 0) {
-//     float *fp16_square_norm = fp32_numel > 0 ? square_norm + 1 : square_norm;
-//     GetSquareGradNormImpl(
-//         fp16_grad, fp16_numel, fp16_square_norm, stream, cub_tmp_buffer);
-//     VLOG(10) << "FP16 square L2-Norm: "
-//              << FlattenToString(
-//                     fp16_square_norm, 1, cub_tmp_buffer->GetPlace());
-//     if (fp32_numel > 0) {
-//       AddToCUDAKernel<<<1, 1, 0, stream>>>(fp16_square_norm, square_norm);
-//       VLOG(10) << "FP32+FP16 square L2-Norm: "
-//                << FlattenToString(square_norm, 1,
-//                cub_tmp_buffer->GetPlace());
-//     }
-//   }
-//   VLOG(10) << "GetSquareGradNorm ends, fp32_numel = " << fp32_numel
-//            << " , fp16_numel = " << fp16_numel;
-// }
-
-// template <typename T>
-// std::string NumToString(T x) {
-//   std::stringstream ss;
-//   ss << x;
-//   return ss.str();
-// }
-
-// template <typename T>
-// static std::string GetMinMaxStr(const T *x,
-//                                 size_t n,
-//                                 const platform::Place &place) {
-//   PADDLE_ENFORCE_EQ(
-//       platform::is_gpu_place(place),
-//       true,
-//       platform::errors::InvalidArgument("Only support CUDAPlace
-//       currently."));
-
-//   auto *dev_ctx = static_cast<phi::GPUContext *>(
-//       platform::DeviceContextPool::Instance().Get(place));
-//   auto stream = dev_ctx->stream();
-
-//   memory::Buffer ret_buffer(place);
-//   T *ret = ret_buffer.Alloc<T>(2);
-
-//   if (n > 0) {
-//     memory::Buffer cub_buffer(place);
-//     CubDeviceReduce(x,
-//                     ret,
-//                     n,
-//                     cub::Min(),
-//                     std::numeric_limits<T>::max(),
-//                     stream,
-//                     &cub_buffer);
-//     CubDeviceReduce(x,
-//                     ret + 1,
-//                     n,
-//                     cub::Max(),
-//                     std::numeric_limits<T>::lowest(),
-//                     stream,
-//                     &cub_buffer);
-//     T ret_cpu[2];
-// #ifdef PADDLE_WITH_HIP
-//     PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(
-//         &ret_cpu[0], ret, 2 * sizeof(T), hipMemcpyDeviceToHost, stream));
-//     PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(stream));
-// #else
-//     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-//         &ret_cpu[0], ret, 2 * sizeof(T), cudaMemcpyDeviceToHost, stream));
-//     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-// #endif
-//     return std::string("{\"min\": ") + NumToString(ret_cpu[0]) +
-//            " , \"max\": " + NumToString(ret_cpu[1]) + "}";
-//   } else {
-//     return "{\"min\": null, \"max\": null}";
-//   }
-// }
-
-// struct VisitDTypeFunctor {
-//   VisitDTypeFunctor(const phi::DenseTensor *x, std::string *s) : x_(x), s_(s)
-//   {}
-
-//   template <typename T>
-//   void apply() const {
-//     *s_ = GetMinMaxStr<T>(x_->template data<T>(), x_->numel(), x_->place());
-//   }
-
-//  private:
-//   const phi::DenseTensor *x_;
-//   std::string *s_;
-// };
-
-// static std::string GetMinMaxStr(const phi::DenseTensor *x) {
-//   if (x == nullptr) return "null";
-//   if (!x->IsInitialized()) return "not_inited";
-//   if (!platform::is_gpu_place(x->place())) return "CPUTensor";
-//   std::string str;
-//   VisitDTypeFunctor functor(x, &str);
-//   phi::VisitDataType(x->dtype(), functor);
-//   return str;
-// }
-
-// static void PrintAllMinMaxRange(const framework::ExecutionContext &ctx,
-//                                 bool only_inputs) {
-//   if (!VLOG_IS_ON(1)) return;
-//   for (const auto &pair : ctx.GetOp().Inputs()) {
-//     const auto &key = pair.first;
-//     const auto tensors = ctx.MultiInput<phi::DenseTensor>(key);
-//     size_t n = tensors.size();
-//     for (size_t i = 0; i < n; ++i) {
-//       VLOG(1) << "Input(" << key + ")[" << i << "] = " << pair.second[i]
-//               << " , " << GetMinMaxStr(tensors[i]);
-//     }
-//   }
-
-//   if (only_inputs) return;
-//   for (const auto &pair : ctx.GetOp().Outputs()) {
-//     const auto &key = pair.first;
-//     const auto tensors = ctx.MultiOutput<phi::DenseTensor>(key);
-//     size_t n = tensors.size();
-//     for (size_t i = 0; i < n; ++i) {
-//       VLOG(1) << "Output(" << key + ")[" << i << "] = " << pair.second[i]
-//               << " , " << GetMinMaxStr(tensors[i]);
-//     }
-//   }
-// }
-
 template <typename T>
 static bool HasNanInf(const phi::XPUContext &dev_ctx, const T *x, int numel) {
-  //   if (numel <= 0) return false;
-  //   cub::TransformInputIterator<bool, IsNanInfFunctor<T>, const T *> iter(
-  //       x, IsNanInfFunctor<T>());
-  //   memory::Buffer buffer(dev_ctx.GetPlace());
-  //   memory::Buffer out(dev_ctx.GetPlace());
-  //   CubDeviceReduce(iter,
-  //                   out.Alloc<bool>(1),
-  //                   numel,
-  //                   OrFunctor(),
-  //                   false,
-  //                   dev_ctx.stream(),
-  //                   &buffer);
-  //   bool flag;
-  // #ifdef PADDLE_WITH_HIP
-  //   PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(&flag,
-  //                                             out.Get<bool>(),
-  //                                             sizeof(flag),
-  //                                             hipMemcpyDeviceToHost,
-  //                                             dev_ctx.stream()));
-  // #else
-  //   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&flag,
-  //                                              out.Get<bool>(),
-  //                                              sizeof(flag),
-  //                                              cudaMemcpyDeviceToHost,
-  //                                              dev_ctx.stream()));
-  // #endif
-  //   dev_ctx.Wait();
-  //   return flag;
   return false;
 }
 
@@ -1242,107 +208,7 @@ static void CheckHasNanInfGrad(const float *fp32_grad,
                                int fp16_numel,
                                float *nan_inf_flag,
                                //    gpuStream_t stream,
-                               memory::Buffer *cub_tmp_buffer) {
-  //   bool *fp32_has_nan_inf = nullptr;
-  //   bool *fp16_has_nan_inf = nullptr;
-  //   if (fp32_numel > 0) {
-  //     fp32_has_nan_inf = reinterpret_cast<bool *>(nan_inf_flag + 1);
-  //     cub::TransformInputIterator<bool, IsNanInfFunctor<float>, const float
-  //     *>
-  //         iter(fp32_grad, IsNanInfFunctor<float>());
-  //     CubDeviceReduce(iter,
-  //                     fp32_has_nan_inf,
-  //                     fp32_numel,
-  //                     OrFunctor(),
-  //                     false,
-  //                     stream,
-  //                     cub_tmp_buffer);
-  //   }
-
-  //   if (fp16_numel > 0) {
-  //     fp16_has_nan_inf = reinterpret_cast<bool *>(nan_inf_flag + 1) + 1;
-  //     cub::TransformInputIterator<bool,
-  //                                 IsNanInfFunctor<float16>,
-  //                                 const float16 *>
-  //         iter(fp16_grad, IsNanInfFunctor<float16>());
-  //     CubDeviceReduce(iter,
-  //                     fp16_has_nan_inf,
-  //                     fp16_numel,
-  //                     OrFunctor(),
-  //                     false,
-  //                     stream,
-  //                     cub_tmp_buffer);
-  //   }
-
-  //   if (fp32_has_nan_inf && fp16_has_nan_inf) {
-  //     SetNanInfValueCUDAKernelTwoFlag<<<1, 1, 0, stream>>>(
-  //         fp32_has_nan_inf, fp16_has_nan_inf, nan_inf_flag);
-  //   } else if (fp32_has_nan_inf) {
-  //     SetNanInfValueCUDAKernelOneFlag<<<1, 1, 0, stream>>>(fp32_has_nan_inf,
-  //                                                          nan_inf_flag);
-  //   } else {
-  //     SetNanInfValueCUDAKernelOneFlag<<<1, 1, 0, stream>>>(fp16_has_nan_inf,
-  //                                                          nan_inf_flag);
-  //   }
-  // }
-
-  // template <typename T1, typename T2, typename T3, int VecSize>
-  // static __global__ void ElementwiseAddWithCastCUDAKernel(const T1 *x,
-  //                                                         const T2 *y,
-  //                                                         T3 *z,
-  //                                                         int n) {
-  //   static_assert(sizeof(T1) <= sizeof(T2),
-  //                 "sizeof(T1) must be smaller than sizeof(T2).");
-  //   using MT = MasterT<T2>;
-
-  //   int i = (threadIdx.x + blockIdx.x * blockDim.x) * VecSize;
-  //   int stride = (blockDim.x * gridDim.x) * VecSize;
-  //   for (; i + VecSize <= n; i += stride) {
-  //     phi::AlignedVector<T1, VecSize> x_vec;
-  //     phi::AlignedVector<T2, VecSize> y_vec;
-  //     phi::AlignedVector<T3, VecSize> z_vec;
-  //     phi::Load(x + i, &x_vec);
-  //     phi::Load(y + i, &y_vec);
-  // #pragma unroll
-  //     for (int j = 0; j < VecSize; ++j) {
-  //       auto x_tmp = static_cast<MT>(x_vec[j]);
-  //       auto y_tmp = static_cast<MT>(y_vec[j]);
-  //       z_vec[j] = static_cast<T3>(x_tmp + y_tmp);
-  //     }
-  //     phi::Store(z_vec, z + i);
-  //   }
-
-  //   for (; i < n; ++i) {
-  //     auto x_tmp = static_cast<MT>(x[i]);
-  //     auto y_tmp = static_cast<MT>(y[i]);
-  //     z[i] = static_cast<T3>(x_tmp + y_tmp);
-  //   }
-  // }
-
-  // template <typename T1, typename T2, typename T3>
-  // static void LaunchElementwiseAddWithCastKernel(const phi::GPUContext
-  // &dev_ctx,
-  //                                                const T1 *x,
-  //                                                const T2 *y,
-  //                                                T3 *z,
-  //                                                int n,
-  //                                                gpuStream_t stream) {
-  //   int vec_size =
-  //       std::min(std::min(GetChunkedVecSize(x, 0), GetChunkedVecSize(y, 0)),
-  //                GetChunkedVecSize(z, 0));
-  //   auto config = platform::GetGpuLaunchConfig1D(dev_ctx, n, vec_size);
-
-#define PD_LAUNCH_ELEMENTWISE_ADD_WITH_CAST_KERNEL                       \
-  do {                                                                   \
-    ElementwiseAddWithCastCUDAKernel<T1, T2, T3, kVecSize>               \
-        <<<config.block_per_grid, config.thread_per_block, 0, stream>>>( \
-            x, y, z, n);                                                 \
-  } while (0)
-
-  //   PD_VEC_LAUNCH_KERNEL(vec_size,
-  //   PD_LAUNCH_ELEMENTWISE_ADD_WITH_CAST_KERNEL);
-  // #undef PD_LAUNCH_ELEMENTWISE_ADD_WITH_CAST_KERNEL
-}
+                               memory::Buffer *cub_tmp_buffer) {}
 
 void xpu2cpu(const phi::XPUContext &dev_ctx,
              const void *xpu_data,
@@ -1367,13 +233,14 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
     auto &dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
     auto place = ctx.GetPlace();
     xpu::Context *xpu_ctx = dev_ctx.x_context();
+    xpu::ctx_guard RAII_GUARD(xpu_ctx);
 
     auto *found_inf_t = ctx.Output<phi::DenseTensor>("FoundInf");
     found_inf_t->Resize({1});
 
     // Step 1: Get fp16 param and grad tensors
     int64_t fp16_numel;
-    auto *fp16_param = reinterpret_cast<const xpu_fp16 *>(
+    auto *fp16_param = reinterpret_cast<xpu_fp16 *>(
         GetSameInOutTensorPtr<platform::float16, true>(
             ctx, place, "FP16FusedParam", "FP16FusedParamOut", &fp16_numel));
     bool has_fp16_param = (fp16_numel > 0);
@@ -1426,6 +293,8 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
         1,
         platform::errors::InvalidArgument(
             "The gradient accumulation steps should be not less than 1."));
+
+    // 梯度累计大于 1
     if (acc_steps > 1) {
       assert(0);
       auto *step_t = ctx.Output<phi::DenseTensor>("AccStep");
@@ -1468,7 +337,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
       (void)master_acc_grad;
       bool use_master_acc_grad = false;
       if (has_fp16_param) {
-        // True, fp16参数也用 fp32 更新 ？
+        // True, 梯度累积用 float类型
         use_master_acc_grad = ctx.Attr<bool>("use_master_acc_grad");
         auto *fp16_acc_grad_t =
             ctx.Output<phi::DenseTensor>("FP16AccFusedGrad");
@@ -1478,6 +347,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
                 "Output(FP16AccFusedGrad) cannot be nullptr "
                 "when Attr(acc_steps) > 1."));
         if (!fp16_acc_grad_t->IsInitialized()) {
+          /* use_master_acc_grad = true, fp16 grad acc 备份一份 fp32数据 */
           auto acc_grad_size =
               use_master_acc_grad ? (3 * fp16_numel) : fp16_numel;
           fp16_acc_grad_t->Resize({static_cast<int64_t>(acc_grad_size)});
@@ -1496,12 +366,11 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
       // Inplace addto
       if (has_fp32_param) {
         if (rounded_step == 1) {
-          //   memory::Copy(place,
-          //                fp32_acc_grad,
-          //                place,
-          //                fp32_grad,
-          //                fp32_numel * sizeof(float)
-          //                stream);
+          memory::Copy(place,
+                       fp32_acc_grad,
+                       place,
+                       fp32_grad,
+                       fp32_numel * sizeof(float));
         } else {
           //   LaunchElementwiseAddWithCastKernel(dev_ctx,
           //                                      fp32_grad,
@@ -1510,6 +379,13 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
           //                                      fp32_numel,
           //                                      stream);
           // Todo:
+          int r = xpu::broadcast_add(xpu_ctx,
+                                     fp32_grad,
+                                     fp32_acc_grad,
+                                     fp32_acc_grad,
+                                     {fp32_numel},
+                                     {fp32_numel});
+          PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
         }
       }
 
@@ -1523,15 +399,22 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
             //                                    fp16_numel,
             //                                    stream);
             // Todo:
+            int r = xpu::broadcast_add<xpu_fp16>(xpu_ctx,
+                                                 fp16_grad,
+                                                 fp16_acc_grad,
+                                                 fp16_acc_grad,
+                                                 {fp16_numel},
+                                                 {fp16_numel});
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
           } else {
-            // memory::Copy(place,
-            //              fp16_acc_grad,
-            //              place,
-            //              fp16_grad,
-            //              fp16_numel * sizeof(float16),
-            //              stream);
+            memory::Copy(place,
+                         fp16_acc_grad,
+                         place,
+                         fp16_grad,
+                         fp16_numel * sizeof(float16));
           }
         } else {  // acc_steps >= 3
+          float *fp32_acc_grad_tmp = RAII_GUARD.alloc<float>(fp16_numel);
           if (rounded_step == 0) {
             // LaunchElementwiseAddWithCastKernel(dev_ctx,
             //                                    fp16_grad,
@@ -1540,13 +423,28 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
             //                                    fp16_numel,
             //                                    stream);
             // Todo:
+            int r = xpu::cast<xpu_fp16, float>(
+                xpu_ctx, fp16_grad, fp32_acc_grad_tmp, fp16_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+            r = xpu::broadcast_add<float>(xpu_ctx,
+                                          fp32_acc_grad_tmp,
+                                          master_acc_grad,
+                                          master_acc_grad,
+                                          {fp16_numel},
+                                          {fp16_numel});
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+            r = xpu::cast<float, xpu_fp16>(
+                xpu_ctx, master_acc_grad, fp16_acc_grad, fp16_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
           } else if (rounded_step == 1) {
             // memory::Copy(place,
             //              fp16_acc_grad,
             //              place,
             //              fp16_grad,
-            //              fp16_numel * sizeof(float16),
-            //              stream);
+            //              fp16_numel * sizeof(float16));
+            int r = xpu::cast<xpu_fp16, float>(
+                xpu_ctx, fp16_grad, master_acc_grad, fp16_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
           } else if (rounded_step == 2) {
             // LaunchElementwiseAddWithCastKernel(dev_ctx,
             //                                    fp16_grad,
@@ -1555,6 +453,16 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
             //                                    fp16_numel,
             //                                    stream);
             // Todo:
+            int r = xpu::cast<xpu_fp16, float>(
+                xpu_ctx, fp16_grad, fp32_acc_grad_tmp, fp16_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+            r = xpu::broadcast_add<float>(xpu_ctx,
+                                          fp32_acc_grad_tmp,
+                                          master_acc_grad,
+                                          master_acc_grad,
+                                          {fp16_numel},
+                                          {fp16_numel});
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
           } else {
             // LaunchElementwiseAddWithCastKernel(dev_ctx,
             //                                    fp16_grad,
@@ -1563,6 +471,16 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
             //                                    fp16_numel,
             //                                    stream);
             // Todo:
+            int r = xpu::cast<xpu_fp16, float>(
+                xpu_ctx, fp16_grad, fp32_acc_grad_tmp, fp16_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+            r = xpu::broadcast_add<float>(xpu_ctx,
+                                          fp32_acc_grad_tmp,
+                                          master_acc_grad,
+                                          master_acc_grad,
+                                          {fp16_numel},
+                                          {fp16_numel});
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
           }
         }
       }
@@ -1590,6 +508,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
       }
       (void)found_inf_cpu;
     }
+    // 梯度累计结束
 
     // Step 3: Get ParamInfo
     const auto *param_info_tensor = GetInputTensorPtr<int>(ctx, "ParamInfo");
@@ -1626,9 +545,12 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
     auto *moment1 = GetSameInOutTensorPtr<float>(
         ctx, place, "Moment1", "Moment1Out", &partial_numel);
 
-    float cpu_global_scale;
+    // loss scalling value
+    float cpu_global_scale, cpu_lr;
     xpu2cpu(dev_ctx, global_scale, &cpu_global_scale, sizeof(float));
     printf("===> cpu_global_scale: %f\n", cpu_global_scale);
+    xpu2cpu(dev_ctx, lr, &cpu_lr, sizeof(float));
+    printf("===> cpu_lr: %f\n", cpu_lr);
 
     PADDLE_ENFORCE_EQ(numel % partial_numel,
                       0,
@@ -1681,7 +603,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
     auto epsilon = ctx.Attr<float>("epsilon");
     // args.max_grad_norm: 默认1
     auto max_global_grad_norm = ctx.Attr<float>("max_global_grad_norm");
-    // fc: False
+    // python，配置为 False
     auto clip_after_allreduce = ctx.Attr<bool>("clip_after_allreduce");
     auto nranks = ctx.Attr<int64_t>("nranks");
     PADDLE_ENFORCE_GE(nranks,
@@ -1701,7 +623,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
 
     const auto &ring_ids = ctx.Attr<std::vector<int>>("ring_id");
     (void)ring_ids;
-    // fc: True
+    // // python，配置为 True
     auto use_master_param_norm = ctx.Attr<bool>("use_master_param_norm");
     auto is_grad_scaled_by_nranks = ctx.Attr<bool>("is_grad_scaled_by_nranks");
     auto use_hierarchical_allreduce =
@@ -1745,6 +667,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
     memory::Buffer cub_tmp_buffer(place);
 
     memory::Buffer sum_grad_buffer(place);
+    // norm clip 后的 grad
     float *fp32_sum_grad;
     (void)fp32_sum_grad;
     xpu_fp16 *fp16_sum_grad;
@@ -1787,7 +710,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
 
     int fp32_nums_inf_nans = 0;
     int fp16_nums_inf_nans = 0;
-#if 1
+
     if (max_global_grad_norm > 0) {
       if (clip_after_allreduce) {
         assert(0);
@@ -1815,9 +738,6 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
           int r = xpu::square_reduce_sum<xpu_fp16>(
               xpu_ctx, fp16_grad, fp16_square_norm, fp16_numel, false);
           PADDLE_ENFORCE_XDNN_SUCCESS(r, "square_reduce_sum");
-          // r = xpu::cast<xpu_fp16, float>(xpu_ctx, (xpu_fp16
-          // *)fp16_square_norm, fp16_square_norm, 1);
-          // PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 
           float cpu_fp16_square_norm = 0.0f;
           xpu2cpu(
@@ -1831,7 +751,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
                                 fp32_square_grad_norm,
                                 fp32_square_grad_norm,
                                 1);
-            PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
           }
         }
 
@@ -1854,6 +774,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
         (void)fp16_scale;
 
         float clip_scale = 1.0f;
+        // python，配置为 False
         if (is_grad_scaled_by_nranks) {
           clip_scale *= nranks;
         }
@@ -1876,21 +797,13 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
         cpu_fp32_scale =
             cpu_global_scale * max_global_grad_norm / (1e-6 + grad_norm);
         bool found_nan_inf = !isfinite(cpu_fp32_scale);
+        // grad_norm 很大的话, cpu_fp32_scale 较小
         if (cpu_fp32_scale >= 1 || found_nan_inf) {
           cpu_fp32_scale = 1.0f;
         }
 
         printf("===> fp32_scale: %f\n", cpu_fp32_scale);
 
-        if (fp32_scale) {
-          // 1
-          //   VLOG(0) << "Grad scale: " << FlattenToString(fp32_scale, 1,
-          //   place);
-        } else {
-          // 1
-          //   VLOG(0) << "Grad scale: " << FlattenToString(fp16_scale, 1,
-          //   place);
-        }
         // (3) Do ReduceScatter with scale
         VLOG(1) << "FP32 HasNanInf before all reduce: "
                 << HasNanInf(dev_ctx, fp32_grad, fp32_numel);
@@ -1983,38 +896,10 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
         max_global_grad_norm = 0;
       }
     } else {
-      if (local_shard) {
-        assert(0);
-      } else {
-        // NCCLReduceScatterWithScale(fp32_grad,
-        //                            fp32_sum_grad,
-        //                            fp32_numel_each_device,
-        //                            num_devices,
-        //                            global_comm,
-        //                            stream,
-        //                            dev_ctx);
-        // NCCLReduceScatterWithScale(fp16_grad,
-        //                            fp16_sum_grad,
-        //                            fp16_numel_each_device,
-        //                            num_devices,
-        //                            global_comm,
-        //                            stream,
-        //                            dev_ctx);
-      }
-      // ======>
-      //   CheckHasNanInfGrad(fp32_sum_grad,
-      //                      fp32_numel_each_device,
-      //                      fp16_sum_grad,
-      //                      fp16_numel_each_device,
-      //                      fp32_square_grad_norm,
-      //                      &cub_tmp_buffer);
-      if (num_devices > 1) {
-        assert(0);
-      }
+      assert(0);
       max_global_grad_norm = 0;
     }
     VLOG(10) << "ReduceScatter done";
-#endif
 
     // Step 7: update the moment1, moment2. Calcuate the trust_ratio_div
     auto *fused_offsets_t = ctx.Input<phi::DenseTensor>("FusedParamOffsets");
@@ -2076,6 +961,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
     //     }
     // }
 
+    // Todo: 哪里用？ step 改为 GPU 变量
     if (fp32_nums_inf_nans > 0 || fp16_nums_inf_nans > 0) {
       // *found_inf = true;
       int r = xpu::constant(xpu_ctx, found_inf, 1, true);
@@ -2092,7 +978,7 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
                      false,  // bias_after_scale
                      1.0,    // *fp32_scale,
                      1.0);   // bias
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
       int64_t cpu_step;
       xpu2cpu(dev_ctx, step, &cpu_step, sizeof(int64_t));
@@ -2100,18 +986,22 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
     }
 
     float update_scale = rescale_grad / cpu_global_scale;
-    if (max_global_grad_norm > 0) {
-      float clip_scale =
-          // max_global_grad_norm / (sqrtf(square_grad_norm) * scale + 1e-6);
-          max_global_grad_norm / (sqrtf(0.0f) * update_scale + 1e-6);
-      if (clip_scale < static_cast<T>(1)) {
-        update_scale *= clip_scale;
-      }
-    }
+    // Todo: 以下逻辑在 MultiTensorUpdateLambMomentAndTrustRatioDiv
+    // if (max_global_grad_norm > 0) {
+    //   float clip_scale =
+    //       // max_global_grad_norm / (sqrtf(square_grad_norm) * scale + 1e-6);
+    //       max_global_grad_norm / (sqrtf(0.0f) * update_scale + 1e-6);
+    //   if (clip_scale < static_cast<T>(1)) {
+    //     update_scale *= clip_scale;
+    //   }
+    // }
 
     printf("==> update_scale: %f\n", update_scale);
 
-    if (has_fp32_param || fp32_nums_inf_nans == 0) {
+    // fp16_sum_grad cast to fp32
+    // float* fp16_sum_grad_tmp = nullptr;
+
+    if (has_fp32_param && (fp32_nums_inf_nans == 0)) {
       //   VLOG(10) << "Update FP32 Moment and TrustRatioDiv starts";
       //   MultiTensorUpdateLambMomentAndTrustRatioDiv(dev_ctx,
       //                                               fp32_partial_fused_offsets,
@@ -2139,29 +1029,37 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
 
       int numel = fp32_partial_fused_offsets[fp32_local_param_num] -
                   fp32_partial_fused_offsets[0];
-      printf("fp32 num: %d, fp32_local_param_num: %d\n",
-             numel,
-             fp32_local_param_num);
+      int weight_decay_end_numel =
+          fp32_partial_fused_offsets[fp32_weight_decay_end_idx] -
+          fp32_partial_fused_offsets[0];
+      printf(
+          "fp32 num: %d, fp32_local_param_num: %d, weight_decay_end_numel: "
+          "%d\n",
+          numel,
+          fp32_local_param_num,
+          weight_decay_end_numel);
 
-      update_lamb_mom_and_trust_ratio_div(xpu_ctx,
-                                          fp32_param + fp32_offset,
-                                          fp32_sum_grad,
-                                          moment1,
-                                          moment2,
-                                          trust_ratio_div,
-                                          1 - beta1pow_cpu,
-                                          1 - beta2pow_cpu,
-                                          weight_decay,
-                                          fp32_weight_decay_end_idx,
-                                          beta1,
-                                          beta2,
-                                          epsilon,
-                                          update_scale,
-                                          numel);
+      int r = xpu::update_lamb_mom_and_trust_ratio_div<float, float>(
+          xpu_ctx,
+          fp32_param + fp32_offset,
+          fp32_sum_grad,
+          moment1,
+          moment2,
+          trust_ratio_div,
+          1 - beta1pow_cpu,
+          1 - beta2pow_cpu,
+          weight_decay,
+          weight_decay_end_numel,
+          beta1,
+          beta2,
+          epsilon,
+          update_scale,
+          numel);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "update_lamb_mom_and_trust_ratio_div");
     }
     float *master_param = nullptr;
     master_param = fp32_param + fp32_numel;
-    if (has_fp16_param && fp16_nums_inf_nans == 0) {
+    if (has_fp16_param && (fp16_nums_inf_nans == 0)) {
       //   master_param = fp32_param + fp32_numel;
       //   VLOG(10) << "Update FP16 Moment and TrustRatioDiv starts";
       //   auto tmp_found_inf = has_fp32_param ? nullptr : found_inf;
@@ -2192,13 +1090,43 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
 
       int numel = fp16_partial_fused_offsets[fp16_local_param_num] -
                   fp16_partial_fused_offsets[0];
+      int weight_decay_end_numel =
+          fp16_partial_fused_offsets[fp16_weight_decay_end_idx] -
+          fp16_partial_fused_offsets[0];
       printf("fp16 num: %d, fp16_local_param_num: %d\n",
              numel,
              fp16_local_param_num);
 
-      update_lamb_mom_and_trust_ratio_div(
+      //   int r = xpu::update_lamb_mom_and_trust_ratio_div<xpu_fp16>(
+      //       xpu_ctx,
+      //       reinterpret_cast<xpu_fp16 *>(master_param + fp16_offset),
+      //       fp16_sum_grad,
+      //       moment1 + fp32_numel_each_device,
+      //       moment2 + fp32_numel_each_device,
+      //       trust_ratio_div + fp32_numel_each_device,
+      //       1 - beta1pow_cpu,
+      //       1 - beta2pow_cpu,
+      //       weight_decay,
+      //       weight_decay_end_numel,
+      //       beta1,
+      //       beta2,
+      //       epsilon,
+      //       update_scale,
+      //       numel);
+
+#if 0
+      // 正确: 应该用 fp16 grad，fp32 param算 fp32 param
+      fp16_sum_grad_tmp = RAII_GUARD.alloc_l3_or_gm<float>(numel);
+      int r = xpu::cast<xpu_fp16, float>(
+            xpu_ctx,
+            fp16_sum_grad,
+            fp16_sum_grad_tmp,
+            numel);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+#endif
+      int r = xpu::update_lamb_mom_and_trust_ratio_div<float, xpu_fp16>(
           xpu_ctx,
-          reinterpret_cast<xpu_fp16 *>(master_param + fp16_offset),
+          master_param + fp16_offset,
           fp16_sum_grad,
           moment1 + fp32_numel_each_device,
           moment2 + fp32_numel_each_device,
@@ -2206,12 +1134,14 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
           1 - beta1pow_cpu,
           1 - beta2pow_cpu,
           weight_decay,
-          fp16_weight_decay_end_idx,
+          weight_decay_end_numel,
           beta1,
           beta2,
           epsilon,
           update_scale,
           numel);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "update_lamb_param_and_beta_pows");
+
       VLOG(10) << "Update FP16 Moment and TrustRatioDiv done";
     }
 
@@ -2224,16 +1154,13 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
     if (num_devices > 1) {
       assert(0);
     }
-    // MultiTensorL2Norm(place,
-    //                   stream,
-    //                   fp32_param,
-    //                   fused_offsets,
-    //                   fp32_global_param_num,
-    //                   param_square_norm);
+    // 求和不开方，最后统一开方
+    MultiTensorL2Norm<float>(dev_ctx,
+                             fp32_param,
+                             fused_offsets,
+                             fp32_global_param_num,
+                             param_square_norm);
 
-    int r = xpu::square_reduce_sum<float>(
-        xpu_ctx, fp32_param, param_square_norm, fp32_global_param_num, true);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "square_reduce_sum");
     if (use_master_param_norm) {
       //   MultiTensorL2Norm(place,
       //                     stream,
@@ -2241,44 +1168,28 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
       //                     fp16_partial_fused_offsets,
       //                     fp16_local_param_num,
       //                     param_square_norm + fp16_local_start_idx);
-      int r = xpu::square_reduce_sum<xpu_fp16>(
-          xpu_ctx,
-          reinterpret_cast<xpu_fp16 *>(master_param + fp16_offset),
-          param_square_norm + fp16_local_start_idx,
-          fp16_local_param_num,
-          true);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "square_reduce_sum");
+
+      MultiTensorL2Norm<float>(dev_ctx,
+                               master_param + fp16_offset,
+                               fp16_partial_fused_offsets,
+                               fp16_local_param_num,
+                               param_square_norm + fp16_local_start_idx);
     } else {
       assert(0);
     }
 
-    // MultiTensorL2Norm(place,
-    //                   trust_ratio_div,
-    //                   fp32_partial_fused_offsets,
-    //                   fp32_local_param_num,
-    //                   trust_ratio_div_square_norm + fp32_local_start_idx);
-    // MultiTensorL2Norm(place,
-    //                   trust_ratio_div + fp32_numel_each_device,
-    //                   fp16_partial_fused_offsets,
-    //                   fp16_local_param_num,
-    //                   trust_ratio_div_square_norm + fp16_local_start_idx);
-
-    r = xpu::square_reduce_sum<float>(
-        xpu_ctx,
+    MultiTensorL2Norm<float>(
+        dev_ctx,
         trust_ratio_div,
-        trust_ratio_div_square_norm + fp32_local_start_idx,
+        fp32_partial_fused_offsets,
         fp32_local_param_num,
-        true);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "square_reduce_sum");
-
-    r = xpu::square_reduce_sum<xpu_fp16>(
-        xpu_ctx,
-        reinterpret_cast<xpu_fp16 *>(trust_ratio_div + fp32_numel_each_device +
-                                     fp16_offset),
-        param_square_norm + fp16_local_start_idx,
+        trust_ratio_div_square_norm + fp32_local_start_idx);
+    MultiTensorL2Norm<float>(
+        dev_ctx,
+        trust_ratio_div + fp32_numel_each_device,
+        fp16_partial_fused_offsets,
         fp16_local_param_num,
-        true);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "square_reduce_sum");
+        trust_ratio_div_square_norm + fp16_local_start_idx);
 
     // VLOG(1) << "TrustRatioDiv L2-Norm before allreduce: "
     //         << FlattenToString(trust_ratio_div_square_norm, param_num,
@@ -2316,16 +1227,32 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
              fp32_local_param_num,
              lr);
 
-      update_lamb_param_and_beta_pows(
-          xpu_ctx,
-          fp32_param + fp32_offset,
+      //   int r = xpu::update_lamb_param_and_beta_pows<float>(
+      //       xpu_ctx,
+      //       fp32_param + fp32_offset,
+      //       trust_ratio_div,
+      //       param_square_norm + fp32_local_start_idx,
+      //       trust_ratio_div_square_norm + fp32_local_start_idx,
+      //       fp32_param + fp32_offset,
+      //       // *lr, //Todo: null
+      //       1.0,
+      //       numel);
+      //   PADDLE_ENFORCE_XDNN_SUCCESS(r, "update_lamb_param_and_beta_pows");
+      MultiTensorUpdateLambParamAndBetaPows<float, float>(
+          dev_ctx,
+          fp32_partial_fused_offsets,
+          fp32_local_param_num,
           trust_ratio_div,
+          cpu_lr,
           param_square_norm + fp32_local_start_idx,
           trust_ratio_div_square_norm + fp32_local_start_idx,
           fp32_param + fp32_offset,
-          // *lr, //Todo: null
-          1.0,
-          numel);
+          nullptr,
+          beta1pow,
+          beta2pow,
+          beta1,
+          beta2,
+          false);
 
       if (num_devices > 1) {
         assert(0);
@@ -2356,28 +1283,36 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
              numel,
              fp16_local_param_num);
 
-      update_lamb_param_and_beta_pows(
-          xpu_ctx,
-          fp16_param + fp16_offset,
+      // 正确应该是: 用 fp32 的param, 更新到 fp16_param, 和 master_param
+      MultiTensorUpdateLambParamAndBetaPows<xpu_fp16, float>(
+          dev_ctx,
+          fp16_partial_fused_offsets,
+          fp16_local_param_num,
           trust_ratio_div + fp32_numel_each_device,
+          cpu_lr,
           param_square_norm + fp16_local_start_idx,
           trust_ratio_div_square_norm + fp16_local_start_idx,
-          reinterpret_cast<xpu_fp16 *>(master_param + fp16_offset),
-          // *lr,
-          1.0,
-          numel);
+          fp16_sum_grad + fp16_offset,
+          master_param + fp16_offset,
+          beta1pow,
+          beta2pow,
+          beta1,
+          beta2,
+          use_master_param_norm);
 
       if (num_devices > 1) {
         assert(0);
       }
     }
+    // Todo: update beta
+
     VLOG(10) << "Update Param done";
 
     VLOG(1) << "IsFinite: " << IsFinite(dev_ctx, fp32_square_grad_norm);
 
-    (void)dev_ctx;
-    (void)place;
-    (void)xpu_ctx;
+    // (void)dev_ctx;
+    // (void)place;
+    // (void)xpu_ctx;
 
     (void)fp16_param;
 
