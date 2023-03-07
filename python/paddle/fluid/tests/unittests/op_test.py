@@ -1492,6 +1492,7 @@ class OpTest(unittest.TestCase):
         self,
         place,
         atol=0,
+        rtol=0,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
@@ -1499,6 +1500,7 @@ class OpTest(unittest.TestCase):
         check_eager=False,
         check_prim=False,
     ):
+
         core._set_prim_all_enabled(False)
         if check_prim:
             prim_checker = PrimForwardChecker(self, place)
@@ -1509,7 +1511,6 @@ class OpTest(unittest.TestCase):
             if prim_checker.is_only_check_prim():
                 self.only_prim = True
                 return
-
         # disable legacy dygraph check when check_eager is True
         if check_eager:
             check_dygraph = False
@@ -1609,7 +1610,7 @@ class OpTest(unittest.TestCase):
                         actual_np,
                         expect_np,
                         atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                     ),
                     "Output ("
@@ -1820,7 +1821,7 @@ class OpTest(unittest.TestCase):
                             actual_np,
                             expect_np,
                             atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                         ),
                         "Output ("
@@ -2056,6 +2057,7 @@ class OpTest(unittest.TestCase):
     def check_output(
         self,
         atol=1e-5,
+        rtol=1e-5,
         no_check_set=None,
         equal_nan=False,
         check_dygraph=True,
@@ -2063,7 +2065,6 @@ class OpTest(unittest.TestCase):
         check_eager=False,
         check_prim=False,
     ):
-
         # disable legacy dygraph check when check_eager is True
         if check_eager:
             check_dygraph = False
@@ -2080,6 +2081,7 @@ class OpTest(unittest.TestCase):
             res = self.check_output_with_place(
                 place,
                 atol,
+                rtol,
                 no_check_set,
                 equal_nan,
                 check_dygraph,
@@ -2103,7 +2105,6 @@ class OpTest(unittest.TestCase):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker, custom_place=None):
-        self.__class__.op_type = self.op_type
         places = self._get_places()
         if custom_place:
             places.append(custom_place)

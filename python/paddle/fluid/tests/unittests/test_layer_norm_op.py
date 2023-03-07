@@ -17,7 +17,7 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
-from op_test import _set_use_system_allocator
+from op_test import OpTest, _set_use_system_allocator
 
 import paddle
 import paddle.fluid as fluid
@@ -110,6 +110,88 @@ def _reference_layer_norm_grad(
     if scale is not None:
         scale.shape = scale_shape
     return grad_x, d_scale, d_bias
+
+
+def layer_norm_wrapper(x, scale, bias, epsilon, begin_norm_axis):
+    input_shape = list(x.shape)
+    normalized_shape = input_shape[begin_norm_axis:]
+    return paddle.nn.functional.layer_norm(
+        x, normalized_shape, weight=scale, bias=bias, epsilon=epsilon
+    )
+
+
+class TestLayerNormOpByOpTest(OpTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper
+        self.op_type = "layer_norm"
+        self.prim_op_type = "comp"
+        self.python_out_sig = ["Y"]
+        self.rev_comp_atol = 1e-6
+        self.rev_comp_rtol = 1e-6
+        self.fw_comp_atol = 1e-6
+        self.fw_comp_rtol = 1e-6
+        self.cinn_atol = 1e-6
+        self.cinn_rtol = 1e-6
+        self.initTestCase()
+
+    def test_check_output(self):
+        self.check_output(
+            no_check_set=["Mean", "Variance"],
+            atol=1e-4,
+            rtol=1e-4,
+            check_eager=True,
+            check_prim=True,
+        )
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Scale', 'Bias'],
+            ['Y'],
+            max_relative_error=1e-3,
+            check_eager=True,
+            check_prim=True,
+        )
+
+    def initTestCase(self):
+        self.dtype = "float64"
+        x_shape = [2, 2, 2, 3]
+        epsilon = 0.00001
+        begin_norm_axis = 1
+        D = reduce(mul, x_shape[begin_norm_axis : len(x_shape)], 1)
+        scale_shape = [D]
+        has_scale = True
+        has_bias = True
+
+        np.random.seed(123)
+        x = np.random.random(x_shape).astype(self.dtype)
+        scale = (
+            np.random.random(scale_shape).astype(self.dtype)
+            if has_scale
+            else None
+        )
+        bias = (
+            np.random.random(scale_shape).astype(self.dtype)
+            if has_bias
+            else None
+        )
+
+        self.inputs = {
+            "X": x,
+            "Scale": scale,
+            "Bias": bias,
+        }
+        self.attrs = {
+            "epsilon": epsilon,
+            "begin_norm_axis": begin_norm_axis,
+        }
+        y, mean, variance = _reference_layer_norm_naive(
+            x, scale, bias, epsilon, begin_norm_axis
+        )
+        self.outputs = {
+            "Y": y,
+            "Mean": mean,
+            "Variance": variance,
+        }
 
 
 class TestLayerNormOp(unittest.TestCase):
