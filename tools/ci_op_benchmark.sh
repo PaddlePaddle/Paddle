@@ -34,6 +34,12 @@ function LOG {
   echo "[$0:${BASH_LINENO[0]}] $*" >&2
 }
 
+function collect_kernel_registry_info {
+  LOG "[INFO] Collect kernel registry info ..."
+  python ${PADDLE_ROOT}/tools/parse_kernel_info.py
+  [ $? -ne 0 ] && LOG "[FATAL] Collect kernel registry info fail."
+}
+
 # Limit cu file directory
 function match_cu_file_directory {
   LOG "[INFO] run function match_cu_file_directory"
@@ -200,6 +206,9 @@ function run_op_benchmark_test {
     pip uninstall -y paddlepaddle paddlepaddle_gpu
     LOG "[INFO] Install Paddle ..."
     pip install build/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
+    if [ "$branch_name" = "pr_whl"]; then
+      collect_kernel_registry_info
+    fi
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
     pushd benchmark/api > /dev/null
@@ -317,6 +326,18 @@ if [ -n "${approval_line}" ]; then
     exit 0
   fi
 fi
+
+function clone_and_collect_op_info {
+  LOG "[INFO] Clone benchmark repo ..."
+  git clone https://github.com/PaddlePaddle/benchmark.git
+  [ $? -ne 0 ] && LOG "[FATAL] Clone benchmark repo fail." && exit -1
+  LOG "[INFO] Collect api info ..."
+  python benchmark/api/deploy/collect_api_info.py \
+      --test_module_name tests                    \
+      --info_file api_info.txt >& 2
+  [ $? -ne 0 ] && LOG "[FATAL] Collect api info fail." && exit -1
+  [ ! -f benchmark/ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
+}
 
 case $1 in
   run_op_benchmark)
