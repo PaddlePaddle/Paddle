@@ -190,7 +190,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
                 attrs.use_global_stats,
             )
             blocks = main_program.blocks
-            # paddle.incubate.autograd.to_prim(blocks)
+            paddle.incubate.autograd.to_prim(blocks)
 
             z = paddle.static.gradients([y], [x1])
 
