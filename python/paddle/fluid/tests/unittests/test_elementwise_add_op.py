@@ -37,7 +37,6 @@ class TestElementwiseAddOp(OpTest):
         self.init_input_output()
         self.init_kernel_type()
         self.init_axis()
-        self.only_prim()
         self.if_check_prim()
         self.if_skip_cinn()
 
@@ -103,9 +102,6 @@ class TestElementwiseAddOp(OpTest):
     def init_axis(self):
         self.axis = -1
 
-    def only_prim(self):
-        pass
-
     def if_check_prim(self):
         self.check_prim = self.axis == -1
 
@@ -155,41 +151,6 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
                     check_dygraph=self.check_dygraph(),
                     check_prim=self.check_prim,
                 )
-
-    def test_check_grad_normal(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['X', 'Y'],
-                'Out',
-                check_dygraph=self.check_dygraph(),
-                check_prim=self.check_prim,
-            )
-
-    def test_check_grad_ingore_x(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['Y'],
-                'Out',
-                no_grad_set=set("X"),
-                check_dygraph=self.check_dygraph(),
-                check_prim=self.check_prim,
-            )
-
-    def test_check_grad_ingore_y(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                ['X'],
-                'Out',
-                no_grad_set=set('Y'),
-                check_dygraph=self.check_dygraph(),
-                check_prim=self.check_prim,
-            )
 
 
 @unittest.skipIf(
@@ -265,9 +226,6 @@ class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
         self.out = self.x + self.y
-
-    def only_prim(self):
-        self.only_prim = True
 
 
 @skip_check_grad_ci(
@@ -519,9 +477,12 @@ class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
 
 class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(100, 1).astype(self.dtype)
-        self.y = np.random.rand(1).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 1)
+        self.x = np.random.rand(10, 100, 1).astype(self.dtype)
+        self.y = np.random.rand(100, 1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 100, 1)
+
+    def if_skip_cinn(self):
+        self.enable_cinn = False
 
 
 class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
