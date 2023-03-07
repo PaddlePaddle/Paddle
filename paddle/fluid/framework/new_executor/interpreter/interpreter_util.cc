@@ -60,7 +60,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "arg_sort",
     "argmax",
     "argmin",
-    "as_real",
     "atan2",
     "auc",
     "bincount",
