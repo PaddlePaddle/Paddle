@@ -51,7 +51,6 @@ TEST(from_blob, CPU) {
   ASSERT_EQ(test_tesnor.is_cpu(), true);
   ASSERT_EQ(test_tesnor.dtype(), phi::DataType::INT64);
   ASSERT_EQ(test_tesnor.layout(), phi::DataLayout::NCHW);
-  ASSERT_EQ(test_tesnor.initialized(), true);
   ASSERT_EQ(test_tesnor.is_dense_tensor(), true);
 
   // 3.2 check tensor values

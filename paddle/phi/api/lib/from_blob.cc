@@ -20,7 +20,7 @@ namespace experimental {
 
 using AllocationDeleter = void (*)(phi::Allocation*);
 
-static Deleter g_deleter;
+static Deleter g_deleter = nullptr;
 
 Tensor from_blob(void* data,
                  const phi::DDim& shape,
@@ -28,18 +28,21 @@ Tensor from_blob(void* data,
                  const Place& place,
                  DataLayout layout,
                  size_t storage_offset,
-                 Deleter deleter) {
+                 const Deleter& deleter) {
   PADDLE_ENFORCE_NOT_NULL(
       data, phi::errors::InvalidArgument("data can not be nullptr"));
 
   auto meta = phi::DenseTensorMeta(dtype, shape, layout, storage_offset);
+
   size_t size =
       SizeOf(dtype) * (meta.is_scalar ? 1 : product(shape)) + storage_offset;
+
   g_deleter = deleter;
   AllocationDeleter alloc_deleter = nullptr;
   if (g_deleter) {
     alloc_deleter = [](phi::Allocation* p) { g_deleter(p->ptr()); };
   }
+
   auto alloc =
       std::make_shared<phi::Allocation>(data, size, alloc_deleter, place);
 

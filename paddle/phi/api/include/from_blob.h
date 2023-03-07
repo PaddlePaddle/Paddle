@@ -24,13 +24,35 @@ namespace experimental {
 
 using Deleter = std::function<void(void*)>;
 
-Tensor from_blob(void* data,
-                 const phi::DDim& shape,
-                 DataType dtype,
-                 const Place& place,
-                 DataLayout layout = DataLayout::NCHW,
-                 size_t storage_offset = 0,
-                 Deleter deleter = nullptr);
+/**
+ * @brief Construct a Tensor from a buffer pointed to by `data`
+ *
+ * @param data, The pointer to the memory buffer.
+ * @param shape, The dims of the tensor.
+ * @param dtype, The DataType of the tensor.
+ * @param place, The Place where `data` is located.
+ * @param layout, The DataLayout of the tensor.
+ * @param storage_offset, The offset (in bytes) of the tensor data from the
+ * beginning of `data`.
+ * @param deleter, A function or function object that will be called to free the
+ * memory buffer.
+ *
+ * @return A Tensor object constructed from the buffer
+ */
+PADDLE_API Tensor from_blob(void* data,
+                            const phi::DDim& shape,
+                            DataType dtype,
+                            const Place& place,
+                            DataLayout layout,
+                            size_t storage_offset,
+                            const Deleter& deleter);
+
+inline Tensor from_blob(void* data,
+                        const phi::DDim& shape,
+                        DataType dtype,
+                        const Place& place) {
+  return from_blob(data, shape, dtype, place, DataLayout::NCHW, 0, nullptr);
+}
 
 }  // namespace experimental
 }  // namespace paddle
