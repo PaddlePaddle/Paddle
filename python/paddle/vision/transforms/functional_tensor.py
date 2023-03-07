@@ -457,7 +457,7 @@ def rotate(
         nh = npos[0][1]
 
         if paddle.in_dynamic_mode():
-            ow, oh = int(nw.numpy()[0]), int(nh.numpy()[0])
+            ow, oh = int(nw), int(nh)
         else:
             ow, oh = nw.astype("int32"), nh.astype("int32")
 

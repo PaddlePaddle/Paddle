@@ -2896,11 +2896,15 @@ class TestSundryAPIStatic(unittest.TestCase):
             [(), (), (), ()],
             [(), (64, 64), (), (64, 64)],
             [(64, 64), (), (), (64, 64)],
+            [(64, 64), (), 0.5, (64, 64)],
         ]
         for shape in shapes:
             x = paddle.rand(shape[0])
             y = paddle.rand(shape[1])
-            w = paddle.rand(shape[2])
+            if isinstance(shape[2], float):
+                w = shape[2]
+            else:
+                w = paddle.rand(shape[2])
 
             x.stop_gradient = False
             y.stop_gradient = False
