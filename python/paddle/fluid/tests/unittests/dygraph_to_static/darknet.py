@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 from paddle.nn import BatchNorm
@@ -41,7 +40,7 @@ class ConvBNLayer(paddle.nn.Layer):
             padding=padding,
             groups=groups,
             weight_attr=ParamAttr(
-                initializer=fluid.initializer.Normal(0.0, 0.02)
+                initializer=paddle.nn.initializer.Normal(0.0, 0.02)
             ),
             bias_attr=False,
         )
@@ -49,11 +48,11 @@ class ConvBNLayer(paddle.nn.Layer):
             num_channels=ch_out,
             is_test=is_test,
             param_attr=ParamAttr(
-                initializer=fluid.initializer.Normal(0.0, 0.02),
+                initializer=paddle.nn.initializer.Normal(0.0, 0.02),
                 regularizer=L2Decay(0.0),
             ),
             bias_attr=ParamAttr(
-                initializer=fluid.initializer.Constant(0.0),
+                initializer=paddle.nn.initializer.Constant(0.0),
                 regularizer=L2Decay(0.0),
             ),
         )

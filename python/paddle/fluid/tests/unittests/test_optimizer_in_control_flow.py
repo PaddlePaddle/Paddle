@@ -51,10 +51,10 @@ def static(
                 size=FC_SIZE,
                 activation='relu',
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.99)
+                    initializer=paddle.nn.initializer.Constant(value=0.99)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.5)
+                    initializer=paddle.nn.initializer.Constant(value=0.5)
                 ),
                 name="hidden",
             )
@@ -64,10 +64,10 @@ def static(
                 size=CLASS_NUM,
                 activation='softmax',
                 weight_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=1.2)
+                    initializer=paddle.nn.initializer.Constant(value=1.2)
                 ),
                 bias_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.8)
+                    initializer=paddle.nn.initializer.Constant(value=0.8)
                 ),
                 name="prediction",
             )

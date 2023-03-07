@@ -34,7 +34,6 @@ from ..framework import (
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
-from .parallel import scale_loss
 from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
@@ -281,6 +280,8 @@ def monkey_patch_varbase():
                 # 4: [5000.]
 
         """
+        from paddle.distributed.parallel import scale_loss
+
         if framework._non_static_mode():
             if in_profiler_mode():
                 record_event = profiler.RecordEvent(
@@ -1079,7 +1080,7 @@ def monkey_patch_varbase():
         # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
         # So, we need to overwrite it to a more readable one.
         # See details in https://github.com/pybind/pybind11/issues/2537.
-        origin = getattr(core.VarDesc.VarType, "__repr__")
+        origin = getattr(core.VarDesc.VarType, "__str__")
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
@@ -1092,7 +1093,7 @@ def monkey_patch_varbase():
                 # for example, paddle.fluid.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)
 
-        setattr(core.VarDesc.VarType, "__repr__", dtype_str)
+        setattr(core.VarDesc.VarType, "__str__", dtype_str)
         _already_patch_repr = True
 
     # patch math methods for varbase

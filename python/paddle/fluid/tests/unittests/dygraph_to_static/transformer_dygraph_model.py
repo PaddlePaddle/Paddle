@@ -62,10 +62,10 @@ class PrePostProcessLayer(Layer):
                         paddle.nn.LayerNorm(
                             normalized_shape=d_model,
                             weight_attr=fluid.ParamAttr(
-                                initializer=fluid.initializer.Constant(1.0)
+                                initializer=paddle.nn.initializer.Constant(1.0)
                             ),
                             bias_attr=fluid.ParamAttr(
-                                initializer=fluid.initializer.Constant(0.0)
+                                initializer=paddle.nn.initializer.Constant(0.0)
                             ),
                         ),
                     )
@@ -146,8 +146,8 @@ class MultiHeadAttention(Layer):
 
         if cache is not None:
             cache_k, cache_v = cache["k"], cache["v"]
-            k = layers.concat([cache_k, k], axis=2)
-            v = layers.concat([cache_v, v], axis=2)
+            k = paddle.concat([cache_k, k], axis=2)
+            v = paddle.concat([cache_v, v], axis=2)
             cache["k"], cache["v"] = k, v
         # scale dot product attention
         product = paddle.matmul(x=q, y=k, transpose_y=True)
@@ -295,7 +295,7 @@ class Embedder(Layer):
             vocab_size,
             emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Normal(0.0, emb_dim**-0.5)
+                initializer=paddle.nn.initializer.Normal(0.0, emb_dim**-0.5)
             ),
         )
 
@@ -330,7 +330,7 @@ class WrapEncoder(Layer):
             max_length,
             self.emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
                 trainable=False,
@@ -522,7 +522,7 @@ class WrapDecoder(Layer):
             max_length,
             self.emb_dim,
             weight_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     position_encoding_init(max_length, self.emb_dim)
                 ),
                 trainable=False,
@@ -774,7 +774,7 @@ class Transformer(Layer):
             return res
 
         def mask_probs(probs, finished, noend_mask_tensor):
-            finished = layers.cast(finished, dtype=probs.dtype)
+            finished = paddle.cast(finished, dtype=probs.dtype)
             probs = paddle.multiply(
                 paddle.expand(
                     paddle.unsqueeze(finished, [2]),

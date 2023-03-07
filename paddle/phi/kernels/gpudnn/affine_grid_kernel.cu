@@ -15,7 +15,6 @@
 #ifndef PADDLE_WITH_HIP
 
 #include "paddle/phi/kernels/affine_grid_kernel.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
@@ -35,7 +34,7 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
                            bool align_corners,
                            DenseTensor* output) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
       phi::errors::InvalidArgument(
           "Only support for CUDAPlace.Please switch your context from "
@@ -56,12 +55,11 @@ void AffineGridCudnnKernel(const Context& dev_ctx,
   cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
       st_desc.descriptor<T>(4, h_size_data);
 
-  PADDLE_ENFORCE_EQ(
-      paddle::platform::dynload::cudnnSpatialTfGridGeneratorForward(
-          handle, cudnn_st_desc, theta_data, output_data),
-      0,
-      phi::errors::Fatal("Some errors has occurred "
-                         "during forward computation in cudnn."));
+  PADDLE_ENFORCE_EQ(phi::dynload::cudnnSpatialTfGridGeneratorForward(
+                        handle, cudnn_st_desc, theta_data, output_data),
+                    0,
+                    phi::errors::Fatal("Some errors has occurred "
+                                       "during forward computation in cudnn."));
 }
 
 }  // namespace phi

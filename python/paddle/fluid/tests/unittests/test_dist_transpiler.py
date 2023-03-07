@@ -81,7 +81,11 @@ class TranspilerTest(unittest.TestCase):
     def _transpiler_instance(self, config=None, sync_mode=True):
         if not self.transpiler:
             main = self.get_main_program()
-            self.transpiler = fluid.DistributeTranspiler(config=config)
+            self.transpiler = (
+                paddle.distributed.transpiler.DistributeTranspiler(
+                    config=config
+                )
+            )
             self.transpiler.transpile(
                 self.trainer_id,
                 program=main,
@@ -202,7 +206,7 @@ class TestBasicModel(TranspilerTest):
 
 class TestBasicModelWithLargeBlockSize(TranspilerTest):
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.min_block_size = 1048576
 
         pserver, startup = self.get_pserver(self.pserver1_ep, config)
@@ -276,7 +280,7 @@ class TestNoSliceVar(TranspilerTest):
         super().setUp()
 
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.slice_var_up = False
 
         _, startup = self.get_pserver(self.pserver1_ep, config)
@@ -356,7 +360,9 @@ class TestFakeInit(TranspilerTest):
             size=[dict_size, embedding_size],
             param_attr=fluid.ParamAttr(
                 name='emb',
-                initializer=fluid.initializer.Uniform(-init_width, init_width),
+                initializer=paddle.nn.initializer.Uniform(
+                    -init_width, init_width
+                ),
             ),
         )
 
@@ -365,7 +371,8 @@ class TestFakeInit(TranspilerTest):
             is_sparse=True,
             size=[dict_size, embedding_size],
             param_attr=fluid.ParamAttr(
-                name='emb_w', initializer=fluid.initializer.Constant(value=0.0)
+                name='emb_w',
+                initializer=paddle.nn.initializer.Constant(value=0.0),
             ),
         )
 
@@ -374,7 +381,8 @@ class TestFakeInit(TranspilerTest):
             is_sparse=True,
             size=[dict_size, 1],
             param_attr=fluid.ParamAttr(
-                name='emb_b', initializer=fluid.initializer.Constant(value=0.0)
+                name='emb_b',
+                initializer=paddle.nn.initializer.Constant(value=0.0),
             ),
         )
 
@@ -688,7 +696,7 @@ class TestEmptyPserverOptimizeBlocks(TranspilerTest):
         sgd_optimizer.minimize(avg_cost)
 
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.slice_var_up = False
 
         pserver, startup = self.get_pserver(ep=self.pserver2_ep, config=config)
@@ -712,7 +720,9 @@ class TestDistLookupTableBase(TranspilerTest):
                 is_sparse=is_sparse,
                 is_distributed=is_distributed,
             )
-            pool = fluid.layers.sequence_pool(input=emb, pool_type='average')
+            pool = paddle.static.nn.sequence_lod.sequence_pool(
+                input=emb, pool_type='average'
+            )
             return pool
 
         title_ids = paddle.static.data(
@@ -727,9 +737,7 @@ class TestDistLookupTableBase(TranspilerTest):
         title_emb = emb_pool(title_ids, self.lookup_table_name, is_distributed)
         brand_emb = emb_pool(brand_ids, self.lookup_table_name, is_distributed)
         profile_emb = emb_pool(profile_ids, "profile_emb", False)
-        fc0 = fluid.layers.concat(
-            input=[title_emb, brand_emb, profile_emb], axis=1
-        )
+        fc0 = paddle.concat([title_emb, brand_emb, profile_emb], axis=1)
         predict = paddle.static.nn.fc(
             x=fc0,
             size=2,
@@ -920,7 +928,7 @@ class TestAsyncLocalLookupTable(TestDistLookupTableBase):
         self.network_with_table(is_sparse=True, is_distributed=False)
 
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         pserver1, startup1 = self.get_pserver(self.pserver1_ep, config, False)
 
         self.assertEqual(len(pserver1.blocks), 4)
@@ -987,7 +995,7 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
         self.network_with_table(is_sparse=True, is_distributed=True)
 
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
 
         pserver1, startup1 = self.get_pserver(self.pserver1_ep, config, False)
 
@@ -1085,7 +1093,7 @@ class TestDistLookupTableSliceSize(TestDistLookupTableBase):
         self.network_with_table(is_sparse=True, is_distributed=True)
 
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         pserver1, _ = self.get_pserver(self.pserver1_ep, config)
 
         self.assertTrue(self.transpiler.has_distributed_lookup_table)
@@ -1216,10 +1224,12 @@ class TestNCCL2Transpile(TranspilerTest):
             with fluid.program_guard(main, startup):
                 self.net_conf()
 
-            config = fluid.DistributeTranspilerConfig()
+            config = paddle.distributed.transpiler.DistributeTranspilerConfig()
             config.mode = "nccl2"
             config.wait_port = False
-            t = fluid.DistributeTranspiler(config=config)
+            t = paddle.distributed.transpiler.DistributeTranspiler(
+                config=config
+            )
             t.transpile(
                 0,
                 trainers="127.0.0.1:6174,127.0.0.1:6175",
@@ -1327,7 +1337,7 @@ class TestRemoteNce(TestDistLookupTableBase):
                 shape=[num_total_classes, 10],
                 dtype='float32',
                 name='nce_w',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
         b_param = (
@@ -1337,7 +1347,7 @@ class TestRemoteNce(TestDistLookupTableBase):
                 shape=[num_total_classes, 1],
                 dtype='float32',
                 name='nce_b',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
 
@@ -1405,7 +1415,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
                 shape=[num_total_classes, 10],
                 dtype='float32',
                 name='hs_w',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
         b_param = (
@@ -1415,7 +1425,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
                 shape=[3, 1],
                 dtype='float32',
                 name='hs_b',
-                initializer=fluid.initializer.ConstantInitializer(),
+                initializer=paddle.nn.initializer.Constant(),
             )
         )
 
@@ -1424,7 +1434,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
             is_sparse=is_sparse,
             size=[3, 3],
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Normal(
+                initializer=paddle.nn.initializer.Normal(
                     scale=1 / math.sqrt(num_total_classes)
                 )
             ),

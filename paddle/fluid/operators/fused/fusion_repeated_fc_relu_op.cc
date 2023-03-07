@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -122,14 +122,17 @@ void FusionRepeatedFCReluOpMaker::Make() {
 }
 
 template <typename T>
-static void fc_relu(
-    const T* x, const T* w, const T* b, T* y, const jit::matmul_attr_t& attr) {
-  auto matmul =
-      jit::KernelFuncs<jit::MatMulTuple<T>, platform::CPUPlace>::Cache().At(
-          attr);
-  auto addbias_relu =
-      jit::KernelFuncs<jit::VAddReluTuple<T>, platform::CPUPlace>::Cache().At(
-          attr.n);
+static void fc_relu(const T* x,
+                    const T* w,
+                    const T* b,
+                    T* y,
+                    const phi::jit::matmul_attr_t& attr) {
+  auto matmul = phi::jit::KernelFuncs<phi::jit::MatMulTuple<T>,
+                                      platform::CPUPlace>::Cache()
+                    .At(attr);
+  auto addbias_relu = phi::jit::KernelFuncs<phi::jit::VAddReluTuple<T>,
+                                            platform::CPUPlace>::Cache()
+                          .At(attr.n);
   matmul(x, w, y, &attr);
   T* dst = y;
   for (int i = 0; i < attr.m; ++i) {
@@ -152,7 +155,7 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
 
     auto i_dims = in->dims();
     const auto& w_dims = weights[0]->dims();
-    jit::matmul_attr_t attr;
+    phi::jit::matmul_attr_t attr;
     attr.m = i_dims[0];
     attr.n = w_dims[1];
     attr.k = w_dims[0];

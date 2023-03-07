@@ -37,11 +37,11 @@ class TestFuseBatchNormActPass(unittest.TestCase):
             )
             param_attr = fluid.ParamAttr(
                 name='batch_norm_w',
-                initializer=fluid.initializer.Constant(value=1.0),
+                initializer=paddle.nn.initializer.Constant(value=1.0),
             )
             bias_attr = fluid.ParamAttr(
                 name='batch_norm_b',
-                initializer=fluid.initializer.Constant(value=0.0),
+                initializer=paddle.nn.initializer.Constant(value=0.0),
             )
             hidden2 = paddle.static.nn.batch_norm(
                 input=hidden1,
@@ -83,8 +83,8 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         # close fused_bn_act_ops
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_bn_act_ops = False
-        binary = fluid.CompiledProgram(main_program).with_data_parallel(
-            loss_name=loss.name, build_strategy=build_strategy
+        binary = fluid.CompiledProgram(
+            main_program, build_strategy=build_strategy
         )
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size
@@ -103,8 +103,8 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         # open fused_bn_act_ops
         build_strategy_fused = fluid.BuildStrategy()
         build_strategy_fused.fuse_bn_act_ops = True
-        binary_fused = fluid.CompiledProgram(main_program).with_data_parallel(
-            loss_name=loss.name, build_strategy=build_strategy_fused
+        binary_fused = fluid.CompiledProgram(
+            main_program, build_strategy=build_strategy_fused
         )
         train_reader_fused = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size

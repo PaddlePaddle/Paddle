@@ -62,7 +62,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                         paddle::framework::DataTypeToString(
                             paddle::framework::proto::VarType::INT64)));
 
-  paddle::platform::DeviceContextPool::Instance().Get(repeats_tensor.place());
+  phi::DeviceContextPool::Instance().Get(repeats_tensor.place());
   if (index_type == paddle::framework::proto::VarType::INT32) {
     phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
         ctx, repeats_tensor, &index);
@@ -94,7 +94,7 @@ void RepeatInterleaveGradKernel(const Context& ctx,
     std::fill_n(index_vec.begin() + i * repeats, repeats, i);
   }
   index.Resize(phi::make_ddim({index_size}));
-  paddle::framework::TensorFromVector<int>(index_vec, &index);
+  phi::TensorFromVector<int>(index_vec, ctx, &index);
   const DenseTensor index_copy = index;
   IndexSelectGradInner<Context, T, int>(ctx, out_grad, index_copy, x_grad, dim);
 }

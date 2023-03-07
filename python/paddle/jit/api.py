@@ -42,7 +42,6 @@ from paddle.fluid.dygraph.base import (
 from .dy2static import logging_utils
 from .dy2static.convert_call_func import (
     ConversionOptions,
-    CONVERSION_OPTIONS,
     add_ignore_module,
 )
 from .dy2static.program_translator import (
@@ -348,7 +347,7 @@ def not_to_static(func=None):
         return not_to_static
 
     options = ConversionOptions(not_convert=True)
-    setattr(func, CONVERSION_OPTIONS, options)
+    options.attach(func)
     return func
 
 

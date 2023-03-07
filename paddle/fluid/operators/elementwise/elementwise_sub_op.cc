@@ -15,7 +15,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 namespace paddle {
@@ -54,9 +54,9 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
   }
 };
 
-class ElementwiseSubGradCompositeOpMaker
-    : public prim::GradCompositeOpMakerBase {
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+class ElementwiseSubCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
  public:
   void Apply() override {
@@ -70,7 +70,13 @@ class ElementwiseSubGradCompositeOpMaker
     auto dy_ptr = this->GetOutputPtr(&dy);
     std::string dy_name = this->GetOutputName(dy);
     int axis = static_cast<int>(this->Attr<int>("axis"));
-    VLOG(3) << "Runing sub_grad composite func";
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite sub_grad but we got: ",
+            axis));
+    VLOG(6) << "Runing sub_grad composite func";
     prim::subtract_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);
     this->RecoverOutputName(dy, dy_name);
@@ -109,7 +115,7 @@ REGISTER_OPERATOR(elementwise_sub,
                   ::paddle::operators::ElementwiseOpInferVarType,
                   elementwise_subGradMaker<::paddle::framework::OpDesc>,
                   elementwise_subGradMaker<::paddle::imperative::OpBase>,
-                  ::paddle::operators::ElementwiseSubGradCompositeOpMaker,
+                  ::paddle::operators::ElementwiseSubCompositeGradOpMaker,
                   ::paddle::operators::ElementwiseOpInplaceInferer);
 
 REGISTER_OPERATOR(

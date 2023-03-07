@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/uniform_real_distribution.h"
 
@@ -67,11 +67,11 @@ void UniformRawKernel(const Context &dev_ctx,
     }
   }
 
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       data,
-                       phi::CPUPlace(),
-                       reinterpret_cast<void *>(data_cpu.get()),
-                       size * sizeof(T));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     data,
+                     phi::CPUPlace(),
+                     reinterpret_cast<void *>(data_cpu.get()),
+                     size * sizeof(T));
 }
 
 }  // namespace phi

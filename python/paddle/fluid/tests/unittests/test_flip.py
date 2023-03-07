@@ -152,7 +152,6 @@ class TestFlipDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.double_grad_check_for_dygraph(
             self.flip_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -184,7 +183,6 @@ class TestFlipTripleGradCheck(unittest.TestCase):
         gradient_checker.triple_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
             self.flip_wrapper, [data], out, x_init=[data_arr], place=place
         )
@@ -196,6 +194,23 @@ class TestFlipTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestFlipError(unittest.TestCase):
+    def test_axis(self):
+        paddle.enable_static()
+
+        def test_axis_rank():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.flip(input, axis=[[0]])
+
+        self.assertRaises(TypeError, test_axis_rank)
+
+        def test_axis_rank2():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.flip(input, axis=[[0, 0], [1, 1]])
+
+        self.assertRaises(TypeError, test_axis_rank2)
 
 
 if __name__ == "__main__":

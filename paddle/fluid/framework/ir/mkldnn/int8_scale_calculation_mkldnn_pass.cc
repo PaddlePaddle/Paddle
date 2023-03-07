@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/int8_scale_calculation_mkldnn_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/phi/core/enforce.h"
@@ -124,7 +125,7 @@ void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
     }
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
     if (conv_op->Op()->Type() == "conv2d") {
-      conv_op->Op()->SetType("fused_conv2d");
+      ConvertToFusedOp(conv_op->Op());
     }
 
     if (!platform::HasOpINT8DataType(conv_op->Op()) ||

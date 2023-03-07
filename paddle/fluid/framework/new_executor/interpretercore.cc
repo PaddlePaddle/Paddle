@@ -38,6 +38,10 @@ PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
     false,
     "Enable serial execution for standalone executor, used for debug.");
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_static_build,
+    false,
+    "Build the interpreterCore statically without running kernels.");
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
                             "Use inplace in new executor");
@@ -106,31 +110,27 @@ inline void SetDeviceId(const platform::Place& place) {
   }
 }
 
-// TODO(Ruibiao): Pass skip_gc_vars, used_for_jit, and other config messages by
-// constructing an interpreter::ExecutionConfig
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
-                                 const std::set<std::string>& skip_gc_vars,
                                  framework::Scope* scope,
-                                 bool used_for_jit,
-                                 bool used_for_control_flow_op,
-                                 bool used_for_cinn)
+                                 const ExecutionConfig& execution_config)
     : place_(place),
       block_(block),
-      execution_config_(place, block.OpSize()),
       stream_analyzer_(place),
+      execution_config_(execution_config),
       var_scope_(scope) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place_;
+
+  static_build_ = FLAGS_new_executor_static_build &&
+                  interpreter::BlockCanBeStaticBuilt(block);
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
 
-  execution_config_.used_for_jit = used_for_jit;
-  execution_config_.used_for_control_flow_op = used_for_control_flow_op;
-  execution_config_.create_local_scope =
-      !used_for_jit && FLAGS_new_executor_use_local_scope &&
-      !used_for_control_flow_op && !used_for_cinn;
-  execution_config_.skip_gc_vars = skip_gc_vars;
+  if (!FLAGS_new_executor_use_local_scope) {
+    execution_config_.create_local_scope = false;
+  }
+  execution_config_.AnalyzeThreadPoolConfig(place, block.OpSize());
   execution_config_.Log(/*log_level=*/8);
 
   if (execution_config_.create_local_scope) {
@@ -139,13 +139,15 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   }
   var_scope_.SetLocalScope(local_scope_);
 
-  instruction_prority_less = [this](size_t lhs, size_t rhs) {
-    Priority lhs_prority = vec_instruction_[lhs].GetPriority();
-    Priority rhs_prority = vec_instruction_[rhs].GetPriority();
-    if (lhs_prority == rhs_prority) {
+  instruction_scheduling_priority_less = [this](size_t lhs, size_t rhs) {
+    SchedulingPriority lhs_scheduling_priority =
+        vec_instruction_[lhs].GetSchedulingPriority();
+    SchedulingPriority rhs_scheduling_priority =
+        vec_instruction_[rhs].GetSchedulingPriority();
+    if (lhs_scheduling_priority == rhs_scheduling_priority) {
       return lhs < rhs;
     }
-    return lhs_prority > rhs_prority;
+    return lhs_scheduling_priority > rhs_scheduling_priority;
   };
 
   PrepareForCUDAGraphCapture();
@@ -197,20 +199,21 @@ interpreter::CostInfo InterpreterCore::DryRun(
 }
 
 void InterpreterCore::RunImpl() {
-  // For the program that only run once, it is no need to
-  // create work_queue, so the async_work_queue_ is created
-  // until the second step run.
-  async_work_queue_ = GetWorkQueue();
-
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
   }
 
-  if (execution_config_.used_for_jit && (sync_op_num_ == 0)) {
+  if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
+      (sync_op_num_ == 0)) {
     VLOG(4) << "Tracing Instruction List";
     TraceInstructionList(vec_instruction_);
   } else {
+    VLOG(4) << "Non-tracing";
+    // For the program that only run once, it is no need to
+    // create work_queue, so the async_work_queue_ is created
+    // until the second step run.
+    async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
   }
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -276,23 +279,24 @@ paddle::framework::FetchList InterpreterCore::Run(
   if (!is_build_) {
     LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
     paddle::framework::interpreter::BuildVariableScope(
-        block_, &var_scope_, HasLocalScope());
+        block_, execution_config_, &var_scope_);
 
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
+    paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
         execution_config_,
-        HasLocalScope());
+        HasLocalScope(),
+        static_build_);
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     is_build_ = true;
     UpdateSyncOpNum();
-    if (skip_run) {
+    if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }
@@ -406,8 +410,8 @@ std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
   if (async_work_queue_ == nullptr) {
     async_work_queue_ = std::make_shared<interpreter::AsyncWorkQueue>(
         execution_config_.host_num_threads,
-        execution_config_.deivce_num_threads,
-        &main_thread_blocker_);
+        execution_config_.device_num_threads,
+        nullptr);
   }
   return async_work_queue_;
 }
@@ -535,11 +539,6 @@ void InterpreterCore::BuildInplace() {
 void InterpreterCore::PrepareForCUDAGraphCapture() {
   if (!FLAGS_new_executor_use_cuda_graph) return;
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_EQ(
-      platform::IsCUDAGraphCapturing(),
-      false,
-      platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
-                                         "when running the first batch."));
   PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
                     true,
                     platform::errors::InvalidArgument(
@@ -552,14 +551,23 @@ void InterpreterCore::PrepareForCUDAGraphCapture() {
                         "FLAGS_sync_nccl_allreduce must be False to support "
                         "CUDA Graph capturing."));
 
-  // All output vars of coalesce_tensor op should not be gc.
+  // All output vars of coalesce_tensor op should be persistable.
   // If fused output var of coalesce_tensor is gc, it will cause accuracy
   // problem. The specific reasons need to be analyzed.
   for (auto& op_desc : block_.AllOps()) {
     if (op_desc->Type() == kCoalesceTensor) {
       for (auto& out_var_name : op_desc->OutputArgumentNames()) {
-        execution_config_.skip_gc_vars.insert(out_var_name);
-        VLOG(4) << "Insert Var(" << out_var_name << ") into skip_gc_vars.";
+        // The fused var needs to be set to persistable, not just added to
+        // skip_gc_vars.
+        // In the case where the feed fetch var is changed, StandaloneExecutor
+        // will be newly constructed. If the fused var is not persistable,
+        // these vars will be recreated and initialized, resulting in
+        // precision problems.
+        auto* out_var = op_desc->Block()->FindVarRecursive(out_var_name);
+        if (out_var) {
+          out_var->SetPersistable(true);
+          VLOG(4) << "Mark Var(" << out_var_name << ") as Persistable.";
+        }
       }
     }
   }
@@ -856,8 +864,6 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
                                        : var_scope_.GetMutableScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
-  SetDeviceId(place);
-
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place)) {
     // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the
@@ -987,6 +993,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   platform::RecordEvent instruction_event(
       op->Type(), platform::TracerEventType::Operator, 1);
 
+  SetDeviceId(instr_node.DeviceContext().GetPlace());
+
   try {
     instr_node.WaitEvent(place_);
 
@@ -1089,7 +1097,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
   // scheduling, the priority order involved cross-thread scheduling is not
   // guaranteed. Only Ops scheduled by the same AddTask call have the guarantee
   // of priority order.
-  SchedulingQueue ready_ops(instruction_prority_less);
+  SchedulingQueue ready_ops(instruction_scheduling_priority_less);
   ready_ops.push(instr_id);
   while (!ready_ops.empty()) {
     instr_id = ready_ops.top();
@@ -1267,23 +1275,24 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
 
   if (!is_build_) {
     paddle::framework::interpreter::BuildVariableScope(
-        block_, &var_scope_, HasLocalScope());
+        block_, execution_config_, &var_scope_);
     FeedInput();
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
-    auto skip_run = paddle::framework::interpreter::BuildOpFuncList(
+    paddle::framework::interpreter::BuildOpFuncList(
         place_,
         block_,
         execution_config_.skip_gc_vars,
         &op_func_nodes,
         &var_scope_,
         execution_config_,
-        HasLocalScope());
+        HasLocalScope(),
+        static_build_);
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
     UpdateSyncOpNum();
     is_build_ = true;
-    if (skip_run) {
+    if (static_build_) {
       VLOG(4) << "RUN impl";
       RunImpl();
     }
@@ -1304,24 +1313,6 @@ void InterpreterCore::SetFeedVarsInplaceSkip(
 }
 
 bool InterpreterCore::HasLocalScope() const { return local_scope_ != nullptr; }
-
-std::shared_ptr<InterpreterCore> CreateInterpreterCore(
-    const platform::Place& place,
-    const ProgramDesc& prog,
-    Scope* scope,
-    const std::vector<std::string>& fetch_names,
-    const std::set<std::string>& skip_gc_vars) {
-  std::shared_ptr<InterpreterCore> core = nullptr;
-  // NOTE(Aurelius84): `AddFetch` will modify BlockDesc, so we should copy
-  // a new program.
-  auto new_prog = std::make_shared<framework::ProgramDesc>(prog);
-  auto* block = new_prog->MutableBlock(0);
-  interpreter::AddFetch(fetch_names, block);
-
-  core = std::make_shared<InterpreterCore>(place, *block, skip_gc_vars, scope);
-  core->SetCopyProgram(new_prog);
-  return core;
-}
 
 // Note(zhangbo):
 // (1) What is "Trace"?
@@ -1427,7 +1418,7 @@ void InterpreterCore::AnalyseExecuteOrderForTrace() {
   };
 
   std::vector<size_t> trace_order;
-  SchedulingQueue ready_ops(instruction_prority_less);
+  SchedulingQueue ready_ops(instruction_scheduling_priority_less);
 
   for (size_t instr_id = 0; instr_id < dependecy_count_.size(); ++instr_id) {
     if (dependecy_count_[instr_id] == 0) {
@@ -1456,6 +1447,25 @@ void InterpreterCore::AnalyseExecuteOrderForTrace() {
           "trace_order size should be equal to dependecy_count_."));
 
   trace_execute_order_ = trace_order;
+}
+
+std::shared_ptr<InterpreterCore> CreateInterpreterCore(
+    const platform::Place& place,
+    const ProgramDesc& prog,
+    Scope* scope,
+    const std::vector<std::string>& fetch_names,
+    const interpreter::ExecutionConfig& execution_config) {
+  std::shared_ptr<InterpreterCore> core = nullptr;
+  // NOTE(Aurelius84): `AddFetch` will modify BlockDesc, so we should copy
+  // a new program.
+  auto new_prog = std::make_shared<framework::ProgramDesc>(prog);
+  auto* block = new_prog->MutableBlock(0);
+  interpreter::AddFetch(fetch_names, block);
+
+  core =
+      std::make_shared<InterpreterCore>(place, *block, scope, execution_config);
+  core->SetCopyProgram(new_prog);
+  return core;
 }
 
 }  // namespace framework

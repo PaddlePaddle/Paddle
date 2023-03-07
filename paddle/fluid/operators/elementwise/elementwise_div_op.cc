@@ -19,7 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 namespace paddle {
@@ -67,9 +67,9 @@ class ElementwiseDivGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class ElementwiseDivGradCompositeOpMaker
-    : public prim::GradCompositeOpMakerBase {
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+class ElementwiseDivCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
  public:
   void Apply() override {
@@ -84,7 +84,12 @@ class ElementwiseDivGradCompositeOpMaker
     auto dy_ptr = this->GetOutputPtr(&dy);
     std::string dy_name = this->GetOutputName(dy);
     int axis = static_cast<int>(this->Attr<int>("axis"));
-    VLOG(3) << "Runing div_grad composite func";
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite div but we got: ", axis));
+    VLOG(6) << "Runing div_grad composite func";
     prim::divide_grad<prim::DescTensor>(
         x, y, out, out_grad, axis, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);
@@ -123,7 +128,7 @@ REGISTER_OPERATOR(elementwise_div,
                   ops::ElementwiseOp,
                   ops::ElementwiseDivOpMaker,
                   ops::ElementwiseOpInferVarType,
-                  ops::ElementwiseDivGradCompositeOpMaker,
+                  ops::ElementwiseDivCompositeGradOpMaker,
                   ops::ElementwiseDivGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseDivGradOpMaker<paddle::imperative::OpBase>);
 

@@ -28,6 +28,7 @@
 
 namespace paddle {
 namespace prim {
+
 class UniqueNameGenerator {
  public:
   explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}
@@ -64,19 +65,50 @@ class StaticCompositeContext {
 
   bool IsFwdPrimEnabled() { return enable_fwd_prim_; }
 
+  void SetEagerPrimEnabled(bool enable_prim) {
+    enable_eager_prim_ = enable_prim;
+  }
+
+  bool IsEagerPrimEnabled() { return enable_eager_prim_; }
+
   void SetAllPrimEnabled(bool enable_prim) {
     enable_fwd_prim_ = enable_prim;
     enable_bwd_prim_ = enable_prim;
   }
 
+  size_t CheckSkipCompOps(const std::string& op_type) const {
+    return skip_comp_ops_.count(op_type);
+  }
+
+  void AddSkipCompOps(const std::string& op_type) {
+    skip_comp_ops_.insert(op_type);
+  }
+
+  void RemoveSkipCompOps(const std::string& op_type) {
+    skip_comp_ops_.erase(op_type);
+  }
+
+  void SetTargetGradName(const std::map<std::string, std::string>& m) {
+    target_grad_name_ = m;
+  }
+
+  std::map<std::string, std::string> GetTargetGradName() {
+    return target_grad_name_;
+  }
+
  private:
   StaticCompositeContext()
-      : current_block_desc_(nullptr), generator_(new UniqueNameGenerator()) {}
-
+      : current_block_desc_(nullptr),
+        generator_(new UniqueNameGenerator()),
+        skip_comp_ops_({"matmul_v2"}) {}
+  // TODO(Ruting) test cases when fix static backward
   framework::BlockDesc* current_block_desc_;
   std::unique_ptr<UniqueNameGenerator> generator_;
+  std::unordered_set<std::string> skip_comp_ops_;
+  std::map<std::string, std::string> target_grad_name_;
   static thread_local bool enable_bwd_prim_;
   static thread_local bool enable_fwd_prim_;
+  static thread_local bool enable_eager_prim_;
   static StaticCompositeContext* static_composite_context_;
   DISABLE_COPY_AND_ASSIGN(StaticCompositeContext);
 };

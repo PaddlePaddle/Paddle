@@ -24,20 +24,21 @@ import numpy as np
 import paddle
 import paddle.profiler as profiler
 import paddle.utils.deprecated as deprecated
-from paddle.fluid import core, framework, unique_name
+from paddle.fluid import core, framework
 from paddle.fluid.core import VarDesc
-from paddle.fluid.dygraph import no_grad, parallel_helper
-from paddle.fluid.dygraph.base import (
-    _convert_into_variable,
-    in_declarative_mode,
-    program_desc_tracing_guard,
-)
+from paddle.fluid.dygraph import no_grad
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import Program
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode
 from paddle.profiler.utils import in_profiler_mode
 
+from .. import unique_name
+from .base import (
+    _convert_into_variable,
+    in_declarative_mode,
+    program_desc_tracing_guard,
+)
 from .layer_hooks import (
     LayerOpsRecoder,
     record_program_ops_pre_hook,
@@ -57,7 +58,7 @@ def _scope_dist2single(dist_scope):
         "column_parallel_linear": "linear",
         "vocab_parallel_embedding": "embedding",
         # "parallel_cross_entropy": "cross_entropy", while mp_layer has parallel_cross_entropy,
-        # but there is no parameters so the mapping of parallel_cross_entropy is not neccessary.
+        # but there is no parameters so the mapping of parallel_cross_entropy is not necessary.
     }
     return mapping.get(dist_scope, dist_scope)
 
@@ -958,6 +959,8 @@ class Layer:
         pass
 
     def _dygraph_call_func(self, *inputs, **kwargs):
+        from paddle.distributed import parallel_helper
+
         for forward_pre_hook in self._forward_pre_hooks.values():
             hook_result = forward_pre_hook(self, inputs)
             if hook_result is not None:

@@ -122,7 +122,7 @@ class TestDygraphDataLoader(unittest.TestCase):
 
     def test_main(self):
         # dynamic graph do not run with_data_parallel
-        for p in prepare_places(False):
+        for p in prepare_places():
             for persistent_workers in [False, True]:
                 results = []
                 for num_workers in [0, 2]:

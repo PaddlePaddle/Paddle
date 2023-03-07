@@ -125,6 +125,42 @@
   kernel :
     func : bernoulli
 
+- op : bitwise_and
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_and
+    backend : x
+
+- op : bitwise_not
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : bitwise_not
+    backend : x
+
+- op : bitwise_or
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_or
+    backend : x
+
+- op : bitwise_xor
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_xor
+    backend : x
+
 - op : bmm
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -133,6 +169,16 @@
   kernel :
     func : bmm
   backward : bmm_grad
+
+- op : broadcast_tensors
+  args: (Tensor[] input)
+  output: Tensor[]{input.size()}
+  infer_meta:
+    func: BroadcastTensorsInferMeta
+  kernel:
+    func: broadcast_tensors
+    data_type : input
+  backward: broadcast_tensors_grad
 
 - op : ceil
   args : (Tensor x)
@@ -436,6 +482,16 @@
   inplace : (x -> out)
   backward : fill_diagonal_tensor_grad
 
+- op : flash_attn
+  args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false)
+  output : Tensor(out), Tensor(softmax_lse), Tensor(softmax), Tensor(seed_offset)
+  infer_meta :
+    func : FlashAttnInferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn
+  backward : flash_attn_grad
+
 - op : flip
   args : (Tensor x, int[] axis)
   output : Tensor (out)
@@ -623,7 +679,7 @@
     func : IsfiniteInferMeta
   kernel :
     func : isfinite {dense -> dense},
-           infinite_sr {selected_rows -> selected_rows}
+           isfinite_sr {selected_rows -> selected_rows}
 
 - op : isinf
   args : (Tensor x)
@@ -642,6 +698,15 @@
   kernel :
     func : isnan {dense -> dense},
            isnan_sr {selected_rows -> selected_rows}
+
+- op : kron
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : KronInferMeta
+  kernel :
+    func : kron
+  backward : kron_grad
 
 - op : kthvalue
   args : (Tensor x, int k = 1, int axis = -1, bool keepdim = false)
@@ -911,6 +976,17 @@
     func : poisson
   backward : poisson_grad
 
+- op : pow
+  args : (Tensor x, Scalar y=1.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : pow
+    data_type : x
+  backward : pow_grad
+
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign")
   output : Tensor(out)
@@ -1001,6 +1077,19 @@
   inplace : (x -> out)
   backward : rsqrt_grad
 
+- op : scale
+  args : (Tensor x, Scalar scale=1.0, float bias=0.0, bool bias_after_scale=true)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : scale {dense -> dense},
+           scale_sr {selected_rows -> selected_rows}
+    data_type : x
+  inplace : (x -> out)
+  backward : scale_grad
+
 - op : scatter
   args : (Tensor x, Tensor index, Tensor updates, bool overwrite=true)
   output : Tensor(out)
@@ -1089,6 +1178,15 @@
   kernel :
     func : sigmoid
   backward : sigmoid_grad
+
+- op : sign
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : sign
+  backward : sign_grad
 
 - op : silu
   args : (Tensor x)

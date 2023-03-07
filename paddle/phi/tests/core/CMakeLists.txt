@@ -70,3 +70,20 @@ cc_test(
   test_tensor_array
   SRCS test_tensor_array.cc
   DEPS tensor_array)
+
+if(WITH_GPU)
+  nv_test(
+    test_mixed_vector
+    SRCS test_mixed_vector.cc test_mixed_vector.cu
+    DEPS mixed_vector place memory phi_backends tensor)
+elseif(WITH_ROCM)
+  hip_test(
+    test_mixed_vector
+    SRCS test_mixed_vector.cc test_mixed_vector.cu
+    DEPS mixed_vector place memory phi_backends tensor)
+else()
+  cc_test(
+    test_mixed_vector
+    SRCS test_mixed_vector.cc
+    DEPS mixed_vector place memory phi_backends tensor)
+endif()

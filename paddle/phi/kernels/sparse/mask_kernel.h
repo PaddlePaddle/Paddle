@@ -21,16 +21,16 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void SparseMaskKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const SparseCooTensor& mask,
-                      SparseCooTensor* out);
+void MaskCooKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const SparseCooTensor& mask,
+                   SparseCooTensor* out);
 
 template <typename T, typename Context>
-void SparseMaskHelperKernel(const Context& dev_ctx,
-                            const SparseCooTensor& x,
-                            const DenseTensor& mask_indices,
-                            DenseTensor* out);
+void MaskHelperCooKernel(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         const DenseTensor& mask_indices,
+                         DenseTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

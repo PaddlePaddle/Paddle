@@ -399,10 +399,10 @@ class PrePostProcessLayer(Layer):
                 self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
                     weight_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(1.0)
+                        initializer=paddle.nn.initializer.Constant(1.0)
                     ),
                     bias_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(0.0)
+                        initializer=paddle.nn.initializer.Constant(0.0)
                     ),
                 )
 
@@ -662,7 +662,9 @@ class PrepareEncoderDecoderLayer(Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.Normal(0.0, src_emb_dim**-0.5),
+                initializer=paddle.nn.initializer.Normal(
+                    0.0, src_emb_dim**-0.5
+                ),
             ),
         )
 
@@ -676,7 +678,7 @@ class PrepareEncoderDecoderLayer(Layer):
             sparse=is_sparse,
             weight_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
-                initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
+                initializer=paddle.nn.initializer.Assign(pos_inp),
                 trainable=False,
             ),
         )

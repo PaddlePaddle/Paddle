@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 
 sys.path.append("../")
 from op_test import OpTest
@@ -101,16 +100,17 @@ class TestSequenceReverseOpError(unittest.TestCase):
         def test_variable():
             # the input type must be Variable
             x_data = np.random.random((2, 4)).astype("float32")
-            fluid.layers.sequence_reverse(x=x_data)
+            paddle.static.nn.sequence_lod.sequence_reverse(x=x_data)
 
         self.assertRaises(TypeError, test_variable)
 
         def test_dtype():
             # dtype must be 'float32', 'float64', 'int8', 'int32', 'int64'
+
             x2_data = paddle.static.data(
                 name='x2', shape=[-1, 4], dtype='float16'
             )
-            fluid.layers.sequence_reverse(x=x2_data)
+            paddle.static.nn.sequence_lod.sequence_reverse(x=x2_data)
 
         self.assertRaises(TypeError, test_dtype)
 

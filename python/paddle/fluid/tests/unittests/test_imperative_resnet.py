@@ -226,7 +226,7 @@ class ResNet(fluid.Layer):
             self.pool2d_avg_output,
             class_dim,
             weight_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 

@@ -30,6 +30,7 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/phi/common/complex.h"
 
@@ -70,7 +71,8 @@ bool PyObject_CheckLongOrToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj)) ||
       PyObject_IsInstance(*obj, (PyObject*)g_vartype_pytype) ||  // NOLINT
       PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
-      PyObject_IsInstance(*obj, (PyObject*)p_tensor_type)) {     // NOLINT
+      (PyObject_IsInstance(*obj, (PyObject*)p_tensor_type) &&    // NOLINT
+       (((TensorObject*)(*obj))->tensor.numel() == 1))) {        // NOLINT
     return true;
   }
 
@@ -90,7 +92,8 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
   // sometimes users provide PyLong or numpy.int64 but attr is float
   if (PyFloat_Check(*obj) || PyLong_Check(*obj) ||
       PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
-      PyObject_IsInstance(*obj, (PyObject*)p_tensor_type)) {     // NOLINT
+      (PyObject_IsInstance(*obj, (PyObject*)p_tensor_type) &&    // NOLINT
+       (((TensorObject*)(*obj))->tensor.numel() == 1))) {        // NOLINT
     return true;
   }
   if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
@@ -182,6 +185,12 @@ void CastPyArg2AttrLong(PyObject* obj,
                         const std::string& op_type,
                         ssize_t arg_pos) {
   attrs[key] = CastPyArg2Long(obj, op_type, arg_pos);
+}
+
+float16 CastPyArg2Float16(PyObject* obj,
+                          const std::string& op_type,
+                          ssize_t arg_pos) {
+  return static_cast<float16>(CastPyArg2Double(obj, op_type, arg_pos));
 }
 
 float CastPyArg2Float(PyObject* obj,
