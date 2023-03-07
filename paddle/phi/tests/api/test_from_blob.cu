@@ -63,7 +63,7 @@ TEST(from_blob, CPU) {
   ASSERT_EQ(data, test_tensor_data);
 
   // 3.4 test other API
-  auto test_tensor_pow = pow(test_tesnor, 2);
+  auto test_tensor_pow = experimental::pow(test_tesnor, 2);
   auto* test_tensor_pow_data = test_tensor_pow.template data<int64_t>();
   for (int64_t i = 0; i < 4; i++) {
     ASSERT_EQ(test_tensor_pow_data[i],
@@ -119,7 +119,7 @@ TEST(from_blob, GPU) {
   ASSERT_EQ(gpu_data, gpu_tesnor_data);
 
   // 3.4 test other API
-  auto gpu_tesnor_pow = pow(gpu_tesnor, 2);
+  auto gpu_tesnor_pow = experimental::pow(gpu_tesnor, 2);
   auto* gpu_tesnor_pow_data = gpu_tesnor_pow.template data<float>();
   float gpu_tesnor_pow_data_cpu[6];
   Copy(phi::CPUPlace(),
@@ -178,7 +178,7 @@ TEST(from_blob, Option) {
     ASSERT_EQ(data + 4, test_tensor_data);
 
     // test other API
-    auto test_tensor_pow = pow(test_tesnor, 2);
+    auto test_tensor_pow = experimental::pow(test_tesnor, 2);
     auto* test_tensor_pow_data = test_tensor_pow.template data<int64_t>();
     for (int64_t i = 0; i < 4; i++) {
       ASSERT_EQ(test_tensor_pow_data[i],
