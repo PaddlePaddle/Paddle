@@ -100,12 +100,16 @@ class TestInstanceNormOp(OpTest):
         scale_np = np.random.random_sample(scale_shape).astype(self.dtype)
         bias_np = np.random.random_sample(scale_shape).astype(self.dtype)
         mean_np, var_np = _cal_mean_variance(x_np, self.epsilon, mean_shape)
-        y, mean, var = _reference_instance_norm_naive(
+        ref_y_np, ref_mean_np, ref_var_np = _reference_instance_norm_naive(
             x_np, scale_np, bias_np, self.epsilon, mean_np, var_np
         )
-        self.inputs = {'X': x_np, 'scale': scale_np, 'bias': bias_np}
+        self.inputs = {'X': x_np, 'Scale': scale_np, 'Bias': bias_np}
         self.attrs = {'epsilon': self.epsilon}
-        self.outputs = {'Out': y, 'saved_mean': mean, 'saved_variance': var}
+        self.outputs = {
+            'Y': ref_y_np,
+            'SavedMean': ref_mean_np,
+            'SavedVariance': ref_var_np,
+        }
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
