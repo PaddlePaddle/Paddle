@@ -22,8 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
@@ -41,12 +40,12 @@ void CopyToCPUHelper(std::vector<T> *cpu_,
   auto stream = dev_ctx->stream();
   void *src = (*gpu_)->ptr();
   void *dst = cpu_->data();
-  paddle::memory::Copy(phi::CPUPlace(),
-                       dst,
-                       OptionalCUDAPlace(*gpu_).get(),
-                       src,
-                       *gpu_memory_size_,
-                       stream);
+  memory_utils::Copy(phi::CPUPlace(),
+                     dst,
+                     OptionalCUDAPlace(*gpu_).get(),
+                     src,
+                     *gpu_memory_size_,
+                     stream);
   dev_ctx->Wait();
 #endif
 }
@@ -64,12 +63,12 @@ void CopyCPUDataToCUDAHelper(std::vector<T> *cpu_,
   auto *dev_ctx = static_cast<phi::GPUContext *>(
       phi::DeviceContextPool::Instance().Get(place));
   auto stream = dev_ctx->stream();
-  paddle::memory::Copy(OptionalCUDAPlace(*gpu_).get(),
-                       dst,
-                       phi::CPUPlace(),
-                       src,
-                       *gpu_memory_size_,
-                       stream);
+  memory_utils::Copy(OptionalCUDAPlace(*gpu_).get(),
+                     dst,
+                     phi::CPUPlace(),
+                     src,
+                     *gpu_memory_size_,
+                     stream);
   dev_ctx->Wait();
 #endif
 }

@@ -373,7 +373,7 @@ struct numeric_limits<phi::dtype::bfloat16> {
   static const bool tinyness_before = false;
 
   HOSTDEVICE static phi::dtype::bfloat16(min)() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x007f);
+    return phi::dtype::raw_uint16_to_bfloat16(0x0080);
   }
   HOSTDEVICE static phi::dtype::bfloat16 lowest() {
     return phi::dtype::raw_uint16_to_bfloat16(0xff7f);
@@ -382,7 +382,7 @@ struct numeric_limits<phi::dtype::bfloat16> {
     return phi::dtype::raw_uint16_to_bfloat16(0x7f7f);
   }
   HOSTDEVICE static phi::dtype::bfloat16 epsilon() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x3400);
+    return phi::dtype::raw_uint16_to_bfloat16(0x3C00);
   }
   HOSTDEVICE static phi::dtype::bfloat16 round_error() {
     return phi::dtype::bfloat16(0.5);

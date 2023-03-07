@@ -200,6 +200,20 @@ class TestSumOp5(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestSumOp6(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.attrs = {'axis': -1, 'flatten': True}
+        self.inputs = {'X': np.random.random((5, 6, 5)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].cumsum()}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestSumOp7(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
