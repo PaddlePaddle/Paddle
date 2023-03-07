@@ -15,19 +15,20 @@
 #include "paddle/ir/builtin_type.h"
 
 namespace ir {
-ir::Type& DenseTensorType::dtype() { return storage()->dtype_; }
+const ir::Type& DenseTensorType::dtype() const { return storage()->dtype_; }
 
-ir::DenseTensorTypeStorage::Dim& DenseTensorType::dim() {
+const ir::DenseTensorTypeStorage::Dim& DenseTensorType::dim() const {
   return storage()->dims_;
 }
 
-ir::DenseTensorTypeStorage::DataLayout& DenseTensorType::data_layout() {
+const ir::DenseTensorTypeStorage::DataLayout& DenseTensorType::data_layout()
+    const {
   return storage()->layout_;
 }
 
-ir::DenseTensorTypeStorage::LoD& DenseTensorType::lod() {
+const ir::DenseTensorTypeStorage::LoD& DenseTensorType::lod() const {
   return storage()->lod_;
 }
 
-size_t& DenseTensorType::offset() { return storage()->offset_; }
+const size_t& DenseTensorType::offset() const { return storage()->offset_; }
 }  // namespace ir
