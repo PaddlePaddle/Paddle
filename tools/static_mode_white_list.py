@@ -197,7 +197,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_fc_op',
     'test_feed_data_check_shape_type',
     'test_fetch_lod_tensor_array',
-    'test_fetch_unmerged',
     'test_fetch_var',
     'test_fill_any_like_op',
     'test_fill_constant_op',
