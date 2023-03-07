@@ -97,7 +97,10 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
         begin_norm_axis = draw(st.sampled_from([2, 1, -1, -2]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
         dim0 = draw(st.integers(min_value=1, max_value=96))
-        dim1 = 96 / dim0
+        dim1 = int(96 / dim0)
+        weight_len = dim1
+        if begin_norm_axis == 1 or begin_norm_axis == -2:
+            weight_len *= dim0
 
         def generate_input(attrs):
             return np.random.random(
@@ -105,9 +108,7 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
             ).astype(np.float32)
 
         def generate_weight(attrs):
-            return np.random.random(attrs[1]['input_dim'][-1]).astype(
-                np.float32
-            )
+            return np.random.random(weight_len).astype(np.float32)
 
         attrs = [
             {
