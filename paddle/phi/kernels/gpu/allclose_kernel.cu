@@ -35,8 +35,8 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
   bool val;
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const MPType a = static_cast<MPType>in_data[i];
-    const MPType b = static_cast<MPType>other_data[i];
+    const MPType a = static_cast<MPType>(in_data[i]);
+    const MPType b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
