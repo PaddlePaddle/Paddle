@@ -22,12 +22,14 @@
 
 class PhiKernelTuner {
  public:
-  PhiKernelTuner(phi::KernelContext* ctx) : ctx_(ctx) {}
+  explicit PhiKernelTuner(phi::KernelContext* ctx) : ctx_(ctx) {}
   virtual ~PhiKernelTuner() {}
 
-  void AddPhiKernel(phi::Kernel* kernel) { kernels_.push_back(kernel); }
+  void AddPhiKernel(std::unique_ptr<phi::Kernel>&& kernel) {
+    kernels_.push_back(std::forward<std::unique_ptr<phi::Kernel>>(kernel));
+  }
 
-  std::pair<phi::Kernel*, int> Run() {
+  std::unique_ptr<phi::Kernel> Run() {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
@@ -45,17 +47,17 @@ class PhiKernelTuner {
 
     // Time cost test estabulished in default stream.
     for (size_t i = 0; i < kernels_.size(); ++i) {
-      auto time = RunAndMeasureKernel(kernels_[i], ctx_);
+      auto time = RunAndMeasureKernel(kernels_[i].get(), ctx_);
       if (time < min_time) {
         min_time = time;
         best_idx = i;
       }
     }
-    return std::pair<phi::Kernel*, int>(kernels_[best_idx], best_idx);
+    return std::move(kernels_[best_idx]);
   }
 
  private:
-  std::vector<phi::Kernel*> kernels_;
+  std::vector<std::unique_ptr<phi::Kernel>> kernels_;
   phi::KernelContext* ctx_;
   mutable std::mutex mutex_;
 

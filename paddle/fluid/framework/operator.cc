@@ -1816,7 +1816,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
               phi_kernel_name, phi_kernel_key)));
 
-      LOG(INFO) << "JZZ Phi kernel: " << phi_kernel_.get();
+      LOG(INFO) << "JZZ Phi kernel: " << phi_kernel_name << ", "
+                << phi_kernel_key << ", " << phi_kernel_.get();
 
       if (phi_kernel_->IsValid()) {
         VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
@@ -2047,54 +2048,58 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
         LOG(INFO) << "JZZ 1";
 
-        phi::KernelKey phi_kernel_key_cutlass;
-        std::unique_ptr<phi::Kernel> phi_kernel_cutlass;
-        // Judge whether need to tune between cudnn and cutlass
-        if (kernel_type_.get()->library_type_ == LibraryType::kCUDNN) {
-          // Try to get cutlass kernel
-          OpKernelType kernel_type_cutlass(
-              std::move(InnerGetExpectedKernelType(exe_ctx, true)));
+        {
+          phi::KernelKey phi_kernel_key_cutlass;
+          std::unique_ptr<phi::Kernel> phi_kernel_cutlass;
+          // Judge whether need to tune between cudnn and cutlass
+          if (kernel_type_.get()->library_type_ == LibraryType::kCUDNN) {
+            // Try to get cutlass kernel
+            OpKernelType kernel_type_cutlass(
+                std::move(InnerGetExpectedKernelType(exe_ctx, true)));
 
-          LOG(INFO) << "JZZ 1.1";
+            LOG(INFO) << "JZZ 1.1";
 
-          if (kernel_type_cutlass.library_type_ == LibraryType::kCUTLASS) {
-            phi_kernel_key_cutlass =
-                TransOpKernelTypeToPhiKernelKey(kernel_type_cutlass);
+            if (kernel_type_cutlass.library_type_ == LibraryType::kCUTLASS) {
+              phi_kernel_key_cutlass =
+                  TransOpKernelTypeToPhiKernelKey(kernel_type_cutlass);
 
-            LOG(INFO) << "JZZ 1.2";
+              LOG(INFO) << "JZZ 1.2";
 
-            phi_kernel_cutlass.reset(
-                new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-                    phi_kernel_name, phi_kernel_key_cutlass)));
+              phi_kernel_cutlass.reset(
+                  new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
+                      phi_kernel_name, phi_kernel_key_cutlass)));
 
-            LOG(INFO) << "JZZ 1.3";
+              LOG(INFO) << "JZZ 1.3";
 
-            if (phi_kernel_cutlass->IsValid()) {
-              PhiKernelTuner tuner(impl_->getKernelContext());
-              tuner.AddPhiKernel(phi_kernel_.get());
-              tuner.AddPhiKernel(phi_kernel_cutlass.get());
-              std::pair<phi::Kernel*, int> best_kernel(tuner.Run());
-              phi_kernel_.reset(best_kernel.first);
-              LOG(INFO) << "JZZ address0:" << phi_kernel_.get();
-              LOG(INFO) << phi_kernel_->args_def().input_defs().size();
-              if (best_kernel.second == 1) {
-                kernel_type_.reset(new OpKernelType(
-                    std::move(InnerGetExpectedKernelType(exe_ctx, true))));
+              if (phi_kernel_cutlass->IsValid()) {
+                PhiKernelTuner tuner(impl_->getKernelContext());
+                tuner.AddPhiKernel(std::move(phi_kernel_));
+                tuner.AddPhiKernel(std::move(phi_kernel_cutlass));
+                // std::pair<phi::Kernel*, int> best_kernel(tuner.Run());
+                phi_kernel_ = std::move(tuner.Run());
+                LOG(INFO) << "JZZ address0:" << phi_kernel_.get();
+                LOG(INFO) << phi_kernel_->args_def().input_defs().size();
+                // if (best_kernel.second == 1) {
+                //   kernel_type_.reset(new OpKernelType(
+                //       std::move(InnerGetExpectedKernelType(exe_ctx, true))));
+                // }
               }
             }
           }
+
+          LOG(INFO) << "JZZ address2:" << phi_kernel_.get();
+          LOG(INFO) << phi_kernel_->args_def().input_defs().size();
+
+          LOG(INFO) << "JZZ 2";
+
+          (*phi_kernel_)(impl_->getKernelContext());
+
+          LOG(INFO) << "JZZ address3:" << phi_kernel_.get();
+          LOG(INFO) << phi_kernel_->args_def().input_defs().size();
         }
-
-        LOG(INFO) << "JZZ address2:" << phi_kernel_.get();
+        LOG(INFO) << "JZZ address4";
+        LOG(INFO) << phi_kernel_.get();
         LOG(INFO) << phi_kernel_->args_def().input_defs().size();
-
-        LOG(INFO) << "JZZ 2";
-
-        (*phi_kernel_)(impl_->getKernelContext());
-
-        LOG(INFO) << "JZZ address3:" << phi_kernel_.get();
-        LOG(INFO) << phi_kernel_->args_def().input_defs().size();
-
       } else {
         phi::KernelContext phi_kernel_context;
         // Do data transform before building KernelContext
