@@ -1855,7 +1855,14 @@ def stack(x, axis=0, name=None):
                 check_variable_and_dtype(
                     i,
                     'x',
-                    ['float16', 'float32', 'float64', 'int32', 'int64'],
+                    [
+                        'float16',
+                        'float32',
+                        'float64',
+                        'int32',
+                        'int64',
+                        'uint16',
+                    ],
                     'stack',
                 )
 
