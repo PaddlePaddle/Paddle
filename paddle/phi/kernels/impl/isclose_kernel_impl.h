@@ -18,10 +18,11 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/common/amp_type_traits.h"
+
 
 // TODO(xiongkun): remove the header when decouple the memcpy function in phi.
 #include "paddle/phi/common/memory_utils.h"
