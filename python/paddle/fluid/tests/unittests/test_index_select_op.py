@@ -79,7 +79,7 @@ class TestIndexSelectOpFp16(TestIndexSelectOp):
         self.x_type = np.float16
 
 
-class testIndexSelectOpCase2fp16(TestIndexSelectOpCase2):
+class TestIndexSelectOpCase2fp16(TestIndexSelectOpCase2):
     def init_dtype_type(self):
         super().init_dtype_type()
         self.x_type = np.float16
