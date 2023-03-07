@@ -2,6 +2,10 @@
 - subtract
 - multiply
 - divide
+- bitwise_and
+- bitwise_not
+- bitwise_or
+- bitwise_xor
 - unsqueeze
 - exp
 - scale
@@ -25,3 +29,5 @@
 - tile
 - transpose
 - pad
+- cumsum
+- put_along_axis

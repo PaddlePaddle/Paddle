@@ -76,6 +76,7 @@ FcXPUPattern::FcXPUPattern(PDPattern* pattern,
   auto* mul_w = pattern->NewNode(mul_w_repr())
                     ->assert_is_op_input(mul_type_, "Y")
                     ->assert_is_persistable_var()
+                    ->assert_has_n_outputs(1)
                     ->assert_more([](Node* node) {
                       return node->Var()->GetShape().size() == 2;
                     });
@@ -243,6 +244,12 @@ void FcXPUFusePass::ApplyImpl(ir::Graph* graph,
         transpose_w = PADDLE_GET_CONST(bool, mul->Op()->GetAttr("trans_y"));
       }
       QuantWeight<int16_t>(mul_w_tensor, mul_w_max_tensor, !transpose_w);
+    }
+
+    if (bias != nullptr) {
+      auto* bias_tensor =
+          scope->Var(bias->Name())->GetMutable<phi::DenseTensor>();
+      CastToFp32(bias_tensor);
     }
 
     std::string fc_out_name;

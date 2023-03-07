@@ -490,16 +490,36 @@ def _elementwise_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(original_op_type)
     assert y is not None, 'y cannot be None in {}'.format(original_op_type)
+    bf16_and_complex_supported_ops = [
+        "elementwise_add",
+        "elementwise_sub",
+        "elementwise_mul",
+        "elementwise_div",
+    ]
+    if original_op_type in bf16_and_complex_supported_ops:
+        data_type = [
+            'uint16',
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'complex64',
+            'complex128',
+        ]
+    else:
+        data_type = ['float16', 'float32', 'float64', 'int32', 'int64', 'bool']
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        data_type,
         original_op_type,
     )
     check_variable_and_dtype(
         y,
         'y',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        data_type,
         original_op_type,
     )
 
@@ -3208,6 +3228,12 @@ def cumsum(x, axis=None, dtype=None, name=None):
             axis = -1
         return _C_ops.cumsum(x, axis, flatten, False, False)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'cumsum',
+        )
         check_type(x, 'x', (Variable), 'cumsum')
         locals_var = locals().copy()
         kwargs = dict()

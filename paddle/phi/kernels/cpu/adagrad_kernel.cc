@@ -29,6 +29,42 @@ size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
 }  // namespace
 
 template <typename T>
+struct DenseAdagradFunctor<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& ctx,
+                  const DenseTensor& param_t,
+                  const DenseTensor& grad_t,
+                  const DenseTensor& moment_t,
+                  const DenseTensor& learning_rate,
+                  const paddle::optional<DenseTensor>& master_param,
+                  float epsilon_t,
+                  bool multi_precision,
+                  DenseTensor* param_out_tensor,
+                  DenseTensor* moment_out_tensor,
+                  DenseTensor* master_param_outs) {
+    ctx.template Alloc<T>(param_out_tensor);
+    ctx.template Alloc<T>(moment_out_tensor);
+
+    T epsilon = static_cast<T>(epsilon_t);
+
+    auto param = EigenVector<T>::Flatten(param_t);
+
+    auto grad = EigenVector<T>::Flatten(grad_t);
+
+    auto moment = EigenVector<T>::Flatten(moment_t);
+
+    auto param_out = EigenVector<T>::Flatten(*param_out_tensor);
+    auto moment_out = EigenVector<T>::Flatten(*moment_out_tensor);
+    auto place = *ctx.eigen_device();
+
+    moment_out.device(place) = moment + grad * grad;
+    Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
+    auto* lr = learning_rate.data<T>();
+    param_out.device(place) =
+        param - lr[0] * grad / (moment_out.sqrt() + epsilon);
+  }
+};
+
+template <typename T>
 struct SparseAdagradFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
                   const phi::SelectedRows& grad,
@@ -67,6 +103,8 @@ struct SparseAdagradFunctor<phi::CPUContext, T> {
 
 template struct SparseAdagradFunctor<phi::CPUContext, float>;
 template struct SparseAdagradFunctor<phi::CPUContext, double>;
+template struct DenseAdagradFunctor<phi::CPUContext, float>;
+template struct DenseAdagradFunctor<phi::CPUContext, double>;
 
 }  // namespace phi
 

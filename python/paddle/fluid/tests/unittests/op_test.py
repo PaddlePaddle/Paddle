@@ -1018,7 +1018,7 @@ class OpTest(unittest.TestCase):
         enable_inplace=None,
         for_inplace_test=None,
     ):
-        with paddle.static.program_guard(paddle.static.Program()):
+        with paddle.fluid.framework._static_guard():
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -1347,7 +1347,7 @@ class OpTest(unittest.TestCase):
         Returns:
             res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given grad_op_desc.
         """
-        with paddle.static.program_guard(paddle.static.Program()):
+        with paddle.fluid.framework._static_guard():
             (
                 fwd_outs,
                 fwd_fetch_list,
@@ -1509,6 +1509,7 @@ class OpTest(unittest.TestCase):
             if prim_checker.is_only_check_prim():
                 self.only_prim = True
                 return
+
         # disable legacy dygraph check when check_eager is True
         if check_eager:
             check_dygraph = False
@@ -1856,7 +1857,7 @@ class OpTest(unittest.TestCase):
                         ref_eager_dygraph_outs = (
                             self.op_test._calc_python_api_output(place)
                         )
-                        if eager_dygraph_outs is None:
+                        if ref_eager_dygraph_outs is None:
                             self.is_python_api_test = False
                             ref_eager_dygraph_outs = (
                                 self.op_test._calc_dygraph_output(
@@ -2102,6 +2103,7 @@ class OpTest(unittest.TestCase):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker, custom_place=None):
+        self.__class__.op_type = self.op_type
         places = self._get_places()
         if custom_place:
             places.append(custom_place)
@@ -2164,7 +2166,10 @@ class OpTest(unittest.TestCase):
                 else:
                     abs_a = 1 if abs_a < 1e-3 else abs_a
 
-            diff_mat = np.abs(a - b) / abs_a
+            if self.dtype == np.bool:
+                diff_mat = np.abs(a ^ b) / abs_a
+            else:
+                diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
 
             def err_msg():
@@ -2666,7 +2671,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         parallel=False,
     ):
-        with paddle.static.program_guard(paddle.static.Program()):
+        with paddle.fluid.framework._static_guard():
             prog = Program()
             scope = core.Scope()
             block = prog.global_block()
