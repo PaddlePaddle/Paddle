@@ -55,6 +55,67 @@ def remove_useless_file(rootPath):
         print("remove_useless_file ut_file_map success!!")
 
 
+def handle_related_ut_file(rootPath):
+    all_file_paddle_list = get_all_paddle_file(rootPath)
+    ut_map_path = "%s/build/ut_map" % rootPath
+    files = os.listdir(ut_map_path)
+    for ut in files:
+        coverage_info = '%s/%s/fnda.tmp' % (ut_map_path, ut)
+        if os.path.exists(coverage_info):
+            related_filename = '%s/%s/related_%s.txt' % (ut_map_path, ut, ut)
+            try:
+                f = open(related_filename)
+                print("oepn %s succesfully" % related_filename)
+            except FileNotFoundError:
+                print("%s is not found." % related_filename)
+                return
+            related_file_list = []
+            for line in f.readlines():
+                file_name = line.replace('\n', '').strip()
+                if file_name == '':
+                    continue
+                else:
+                    related_file_list.append(file_name)
+            f = open(related_filename)
+            for line in f.readlines():
+                file_name = line.replace('\n', '').strip()
+                if file_name.endswith(".cc"):
+                    if file_name.replace('.cc', '.h') not in related_file_list and file_name.replace('.cc', '.h') in all_file_paddle_list:
+                        os.system(
+                            'echo %s >> %s'
+                            % (
+                                file_name.replace('.cc', '.h'),
+                                related_filename,
+                            )
+                        )
+                elif file_name.endswith(".cu"):
+                    if '/gpu/' in file_name:
+                        file_name = file_name.replace("/gpu", '')
+                        if (
+                            file_name.replace('.cu', '.h')
+                            not in related_file_list
+                        ):
+                            os.system(
+                                'echo %s >> %s'
+                                % (
+                                    file_name.replace('.cc', '.h'),
+                                    related_filename,
+                                )
+                            )
+                    else:
+                        if (
+                            file_name.replace('.cu', '.h')
+                            not in related_file_list
+                        ):
+                            os.system(
+                                'echo %s >> %s'
+                                % (
+                                    file_name.replace('.cc', '.h'),
+                                    related_filename,
+                                )
+                            )
+
+
 def handle_ut_file_map(rootPath):
     utNotSuccess_list = []
     ut_map_path = "%s/build/ut_map" % rootPath
@@ -181,12 +242,18 @@ def ut_file_map_supplement(rootPath):
     precision_test_map_store_dir = "/precision_test_map_store"
     os.system('mkdir %s' % precision_test_map_store_dir)
     os.system(
-        'cd %s && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/tmp_test/ut_file_map.json --no-check-certificate'
+        'cd %s && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/new_precise_test_map/ut_file_map.json --no-check-certificate'
         % precision_test_map_store_dir
     )
     ut_file_map_old = "%s/ut_file_map.json" % precision_test_map_store_dir
+    with open(ut_file_map_old, 'r') as f:
+        load_dict_old = json.load(f)
     with open(ut_file_map_new, 'r') as load_f:
         load_dict_new = json.load(load_f)
+
+    for filename in load_dict_old:
+        if filename not in load_dict_new:
+            load_dict_new[filename] = load_dict_old[filename]
 
     all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
 
@@ -236,6 +303,7 @@ if __name__ == "__main__":
         notsuccessfuc(rootPath)
     elif func == 'get_ut_map':
         rootPath = sys.argv[2]
+        handle_related_ut_file(rootPath)
         handle_ut_file_map(rootPath)
         remove_useless_file(rootPath)
         ut_file_map_supplement(rootPath)
