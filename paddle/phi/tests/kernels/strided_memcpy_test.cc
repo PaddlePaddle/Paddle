@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 #include "gtest/gtest.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 namespace phi {
 namespace tests {
