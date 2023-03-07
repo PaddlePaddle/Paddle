@@ -427,6 +427,8 @@ class TestResnet(unittest.TestCase):
 
     def test_resnet_composite(self):
         core._set_prim_backward_enabled(True)
+        # TODO(jiabin): We partially support custom vjp, disable softmax backward make sure this doesn't work util custom vjp enabled
+        core._add_skip_comp_ops("softmax")
         static_loss = self.train(to_static=True)
         core._set_prim_backward_enabled(False)
         dygraph_loss = self.train(to_static=False)
