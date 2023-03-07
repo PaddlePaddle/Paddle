@@ -328,7 +328,7 @@ class TestMKLDNNSwishDim4(TestSwish):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_dygrap=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
