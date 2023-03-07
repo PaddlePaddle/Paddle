@@ -80,6 +80,11 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_cutlass_fused_multihead_attention)
 endif()
 
+# These tests are available when build WITH_CUTLASS
+if(NOT WITH_CUTLASS)
+  list(REMOVE_ITEM TEST_OPS test_cutlass_fused_multihead_attention)
+endif()
+
 list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
