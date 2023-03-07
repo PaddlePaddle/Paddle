@@ -56,6 +56,7 @@ from paddle.tensor import subtract  # noqa: F401
 from paddle.tensor import sum  # noqa: F401
 from paddle.tensor import tan  # noqa: F401
 from paddle.tensor import tanh  # noqa: F401
+from paddle.tensor import tile  # noqa: F401
 from paddle.tensor import uniform  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
 from paddle.tensor.creation import assign  # noqa: F401
@@ -122,6 +123,7 @@ others = [
     'fill_constant',
     'reshape',
     'full',
+    'tile',
     'uniform',
     'greater_equal',
 ]
