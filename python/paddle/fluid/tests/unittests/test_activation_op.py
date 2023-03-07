@@ -167,10 +167,7 @@ class TestExpm1(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out')
 
     def test_check_output(self):
         self.check_output()
@@ -1149,10 +1146,7 @@ class TestSoftshrink(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out')
 
 
 class TestSoftshrink_ZeroDim(TestSoftshrink):
@@ -1238,10 +1232,7 @@ class TestSqrt(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out')
 
     def test_check_output(self):
         self.check_output()
@@ -1330,11 +1321,7 @@ class TestSqrtBF16(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-        )
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 class TestRsqrt(TestActivation):
@@ -1357,11 +1344,7 @@ class TestRsqrt(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.0005,
-        )
+        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
 
 
 '''
@@ -2208,10 +2191,7 @@ class TestRelu6(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out')
 
 
 class TestRelu6_ZeroDim(TestRelu6):
@@ -2615,10 +2595,7 @@ class TestCELU(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out')
 
 
 class TestCELU_ZeroDim(TestCELU):
@@ -2713,11 +2690,7 @@ class TestReciprocal(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.01,
-        )
+        self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
     def test_check_output(self):
         self.check_output()
@@ -2745,10 +2718,7 @@ class TestLog(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out')
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -2779,10 +2749,7 @@ class TestLog2(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out')
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -2842,10 +2809,7 @@ class TestLog10(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out')
 
 
 class TestLog10_ZeroDim(TestLog10):
@@ -2908,10 +2872,7 @@ class TestLog1p(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out')
 
 
 class TestLog1p_ZeroDim(TestLog1p):
@@ -3011,12 +2972,7 @@ class TestSquareBF16(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-            numeric_grad_delta=0.5,
-        )
+        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.5)
 
 
 class TestPow(TestActivation):
@@ -3378,10 +3334,7 @@ class TestSoftsign(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out')
 
 
 class TestSoftsign_ZeroDim(TestSoftsign):
@@ -3777,10 +3730,7 @@ class TestMish(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-        )
+        self.check_grad(['X'], 'Out')
 
 
 class TestMish_ZeroDim(TestMish):
