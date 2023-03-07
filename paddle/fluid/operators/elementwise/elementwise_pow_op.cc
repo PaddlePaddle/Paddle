@@ -96,10 +96,11 @@ REGISTER_OPERATOR(elementwise_pow,
                   ops::ElementwiseOp,
                   ops::ElementwisePowOpMaker,
                   ops::ElementwiseOpInferVarType,
-                  ops::ElementwisePowCompositeGradOpMaker,
                   ops::ElementwisePowOpGradMaker<paddle::framework::OpDesc>,
                   ops::ElementwisePowOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(elementwise_pow_grad, ops::ElementwiseOpGrad);
+REGISTER_OPERATOR(elementwise_pow_grad,
+                  ops::ElementwiseOpGrad,
+                  ops::ElementwisePowCompositeGradOpMaker);
 
 REGISTER_OP_VERSION(elementwise_pow)
     .AddCheckpoint(
