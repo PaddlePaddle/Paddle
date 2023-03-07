@@ -57,7 +57,8 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     dnnl::primitive_attr attrs;
     static constexpr int32_t mask = 0;  // same shift and scale for whole tensor
 
-    const float reorder_scale = 1. / quantization_scale;
+    //    const float reorder_scale = 1. / quantization_scale;
+    const float reorder_scale = quantization_scale;
     //    attrs.set_output_scales(mask, {reorder_scale});
     attrs.set_scales_mask(DNNL_ARG_DST, mask);
 
