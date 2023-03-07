@@ -224,27 +224,36 @@ void InterpreterCore::RunImpl() {
     VLOG(4) << "yoki7";*/
     auto dev_ctxs = phi::backends::gpu::CUDAGraphContextManager::Instance()
                         .GetAllDeviceContexts();
-    auto* cuda_graph_dev_ctx = platform::CUDAGraph::CapturingDeviceContext();
-    /*bool create_cuda_graph_stream =
-    platform::CUDAGraph::CreateCUDAGraphStream(); int64_t pool_id =
-    platform::CUDAGraph::CapturingPoolID(); if (create_cuda_graph_stream) {
+    // auto* cuda_graph_dev_ctx_tmp =
+    // platform::CUDAGraph::CapturingDeviceContext(); VLOG(4) << "yoki:
+    // cuda_graph_dev_ctx_tmp: " << cuda_graph_dev_ctx_tmp;
+    bool create_cuda_graph_stream =
+        platform::CUDAGraph::CreateCUDAGraphStream();
+    int64_t pool_id = platform::CUDAGraph::CapturingPoolID();
+    if (create_cuda_graph_stream) {
+      VLOG(4) << "yoki: pool_id: " << pool_id;
       auto* mutable_dev_ctx =
-    phi::backends::gpu::CUDAGraphContextManager::Instance() .Get(pool_id,
-    place_, 0) .get() .get(); auto* cuda_graph_dev_ctx =
-    reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);*/
-    std::shared_ptr<platform::DeviceEvent> cuda_graph_event =
-        std::make_shared<platform::DeviceEvent>(
-            cuda_graph_dev_ctx->GetPlace(),
-            platform::GenerateDeviceEventFlag());
-    cuda_graph_event->Record(cuda_graph_dev_ctx);
-    for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
-      auto* stream_dev_ctx = *iter;
-      VLOG(4) << "yoki4: stream_dev_ctx: " << stream_dev_ctx;
-      cuda_graph_event->Wait(platform::kCUDA, stream_dev_ctx);
-      VLOG(4) << "CUDA Graph stream eventWait. stream: " << stream_dev_ctx
-              << " wait for cuda graph stream: " << cuda_graph_dev_ctx;
+          phi::backends::gpu::CUDAGraphContextManager::Instance()
+              .Get(pool_id, place_, 0)
+              .get()
+              .get();
+      auto* cuda_graph_dev_ctx =
+          reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+      // auto* cuda_graph_dev_ctx = cuda_graph_dev_ctx_tmp;
+      VLOG(4) << "yoki: cuda_graph_dev_ctx: " << cuda_graph_dev_ctx;
+      std::shared_ptr<platform::DeviceEvent> cuda_graph_event =
+          std::make_shared<platform::DeviceEvent>(
+              cuda_graph_dev_ctx->GetPlace(),
+              platform::GenerateDeviceEventFlag());
+      cuda_graph_event->Record(cuda_graph_dev_ctx);
+      for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
+        auto* stream_dev_ctx = *iter;
+        VLOG(4) << "yoki4: stream_dev_ctx: " << stream_dev_ctx;
+        cuda_graph_event->Wait(platform::kCUDA, stream_dev_ctx);
+        VLOG(4) << "CUDA Graph stream eventWait. stream: " << stream_dev_ctx
+                << " wait for cuda graph stream: " << cuda_graph_dev_ctx;
+      }
     }
-    //}
   }
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
@@ -267,26 +276,36 @@ void InterpreterCore::RunImpl() {
     // auto dev_ctxs = stream_analyzer_.GetAllDeviceContexts();
     auto dev_ctxs = phi::backends::gpu::CUDAGraphContextManager::Instance()
                         .GetAllDeviceContexts();
-    auto* cuda_graph_dev_ctx = platform::CUDAGraph::CapturingDeviceContext();
-    /*bool create_cuda_graph_stream =
-    platform::CUDAGraph::CreateCUDAGraphStream(); int64_t pool_id =
-    platform::CUDAGraph::CapturingPoolID(); if (create_cuda_graph_stream) {
+    // auto* cuda_graph_dev_ctx_tmp =
+    // platform::CUDAGraph::CapturingDeviceContext(); VLOG(4) << "yoki:
+    // cuda_graph_dev_ctx_tmp: " << cuda_graph_dev_ctx_tmp;
+    bool create_cuda_graph_stream =
+        platform::CUDAGraph::CreateCUDAGraphStream();
+    int64_t pool_id = platform::CUDAGraph::CapturingPoolID();
+    if (create_cuda_graph_stream) {
+      VLOG(4) << "yoki: pool_id: " << pool_id;
       auto* mutable_dev_ctx =
-    phi::backends::gpu::CUDAGraphContextManager::Instance() .Get(pool_id,
-    place_, 0) .get() .get(); auto* cuda_graph_dev_ctx =
-    reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);*/
-    for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
-      auto* stream_dev_ctx = *iter;
-      VLOG(4) << "yoki4: stream_dev_ctx: " << stream_dev_ctx;
-      std::shared_ptr<platform::DeviceEvent> stream_event =
-          std::make_shared<platform::DeviceEvent>(
-              stream_dev_ctx->GetPlace(), platform::GenerateDeviceEventFlag());
-      stream_event->Record(stream_dev_ctx);
-      stream_event->Wait(platform::kCUDA, cuda_graph_dev_ctx);
-      VLOG(4) << "CUDA Graph stream eventWait. cuda graph stream: "
-              << cuda_graph_dev_ctx << " wait for stream: " << stream_dev_ctx;
+          phi::backends::gpu::CUDAGraphContextManager::Instance()
+              .Get(pool_id, place_, 0)
+              .get()
+              .get();
+      auto* cuda_graph_dev_ctx =
+          reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
+      // auto* cuda_graph_dev_ctx = cuda_graph_dev_ctx_tmp;
+      VLOG(4) << "yoki: cuda_graph_dev_ctx: " << cuda_graph_dev_ctx;
+      for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
+        auto* stream_dev_ctx = *iter;
+        VLOG(4) << "yoki4: stream_dev_ctx: " << stream_dev_ctx;
+        std::shared_ptr<platform::DeviceEvent> stream_event =
+            std::make_shared<platform::DeviceEvent>(
+                stream_dev_ctx->GetPlace(),
+                platform::GenerateDeviceEventFlag());
+        stream_event->Record(stream_dev_ctx);
+        stream_event->Wait(platform::kCUDA, cuda_graph_dev_ctx);
+        VLOG(4) << "CUDA Graph stream eventWait. cuda graph stream: "
+                << cuda_graph_dev_ctx << " wait for stream: " << stream_dev_ctx;
+      }
     }
-    // }
   }
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place_)) {

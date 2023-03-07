@@ -51,11 +51,13 @@ class CUDAGraphContextManager {
 
   std::shared_future<std::unique_ptr<DeviceContext>> Get(
       int64_t pool_id, const phi::Place &place, int stream_priority) {
+    VLOG(4) << "yoki: pool_id: " << pool_id;
     std::lock_guard<std::mutex> lk(ctx_mtx_);
     VLOG(6) << "Get cuda_graph_dev_ctx for " << place;
 
     DeviceContextMap &ctxs = cuda_graph_ctx_pool_[pool_id];
     if (ctxs.find(place) == ctxs.end()) {
+      VLOG(4) << "Create dev_ctx";
       phi::EmplaceDeviceContexts(
           &ctxs,
           {place},
@@ -63,6 +65,15 @@ class CUDAGraphContextManager {
           stream_priority);
     }
     return ctxs[place];
+  }
+
+  void UpdatePoolId(int64_t old_pool_id, int64_t new_pool_id) {
+    if (old_pool_id != new_pool_id) {
+      cuda_graph_ctx_pool_[new_pool_id] = cuda_graph_ctx_pool_[old_pool_id];
+      cuda_graph_ctx_pool_.erase(old_pool_id);
+      VLOG(4) << "replace old_pool_id: " << old_pool_id
+              << " to new_pool_id: " << new_pool_id;
+    }
   }
 
   void InsertDeviceContext(phi::DeviceContext *dev_ctx) {
@@ -207,13 +218,13 @@ class CUDAGraph {
         (capturing_graph_->dev_ctx_).get());
   }*/
 
-  static void SetCapturingDeviceContext(phi::GPUContext *dev_ctx) {
+  /*static void SetCapturingDeviceContext(phi::GPUContext *dev_ctx) {
     capturing_graph_->dev_ctx_ = dev_ctx;
   }
 
   static phi::GPUContext *CapturingDeviceContext() {
     return capturing_graph_->dev_ctx_;
-  }
+  }*/
 
   /*static void InsertGPUContext(phi::GPUContext* dev_ctx) {
     capturing_graph_->dev_ctxs_.insert(dev_ctx);

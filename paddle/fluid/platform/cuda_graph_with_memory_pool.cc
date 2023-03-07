@@ -99,7 +99,7 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   CUDAGraph::BeginCapture(place, stream, mode);
   CUDAGraph::SetCreateCUDAGraphStream(create_cuda_graph_stream);
   // CUDAGraph::SetCapturingDeviceContext(std::move(dev_ctx_unique_ptr));
-  CUDAGraph::SetCapturingDeviceContext(dev_ctx);
+  // CUDAGraph::SetCapturingDeviceContext(dev_ctx);
 
   // When using cuda graph in new executor, fast GC must be used.
   // FLAGS_use_stream_safe_cuda_allocator should be true.
@@ -108,7 +108,10 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = false;
   }
+  int64_t old_pool_id = pool_id;
   pool_id = CUDAGraph::SetMemoryPoolID(pool_id);
+  phi::backends::gpu::CUDAGraphContextManager::Instance().UpdatePoolId(
+      old_pool_id, pool_id);
   memory::allocation::AllocatorFacade::Instance().PrepareMemoryPoolForCUDAGraph(
       pool_id);
   dev_ctx->SetCUDAGraphAllocator(memory::allocation::AllocatorFacade::Instance()
