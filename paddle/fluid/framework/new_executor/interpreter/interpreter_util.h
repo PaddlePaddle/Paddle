@@ -99,6 +99,10 @@ void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,
                         VariableScope* var_scope);
 
+void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
+                                          const platform::Place& place,
+                                          Scope* scope);
+
 void FakeInitializeOutputsForFunctionKernel(
     const framework::OperatorBase& op,
     const phi::Kernel& phi_kernel,

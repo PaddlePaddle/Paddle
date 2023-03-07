@@ -47,6 +47,12 @@ namespace interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
+// These Ops is OperatorBase, but we have been handle them in static build
+static std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
+
+static std::set<std::string> OpsCanSkipedInStaticBuild = {
+    "create_double_buffer_reader", "create_py_reader", "fetch_v2"};
+
 // These Op needs set output dtype when register phi kernel, but they didn't
 static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "abs",
@@ -232,7 +238,10 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     KernelCode kernel_code = (is_operator_base << 4) + (has_fluid_kernel << 3) +
                              (has_structured_kernel << 2) +
                              (need_move_to_phi << 1) + need_set_dtype;
-    if (is_operator_base || need_move_to_phi || need_set_dtype) {
+    if (!OpsCanSkipedInStaticBuild.count(op_type) &&
+        ((is_operator_base &&
+          !OperatorBasesHandledInStaticBuild.count(op_type)) ||
+         need_move_to_phi || need_set_dtype)) {
       invalid_ops.insert(std::make_pair(op_type, kernel_code));
     }
   }
@@ -556,17 +565,22 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
 }
 
 void HandleOperatorBase(const platform::Place& place,
-                        const VariableScope* var_scope,
-                        std::shared_ptr<OperatorBase> op_base,
+                        std::shared_ptr<OperatorBase> op,
                         OpFuncNode* op_func_node,
-                        Scope* local_scope) {
+                        Scope* scope,
+                        bool static_build) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
-  op_func_node->operator_base_ = op_base;
+  op_func_node->operator_base_ = op;
   op_func_node->type_ = AnalyseOpFuncType(*op_func_node, place);
   op_func_node->kernel_func_ = nullptr;
-  op_base->Run(*local_scope, place);  // Run without data transformer.
+  if (static_build) {
+    FakeInitializeOutputsForOperatorBase(*op, place, scope);
+  } else {
+    op->Run(*scope, place);  // Run without data transformer.
+  }
+
   op_func_node->dev_ctx_ = dev_ctx;
 }
 
@@ -710,7 +724,7 @@ void BuildOpFuncList(const platform::Place& place,
         VLOG(4) << "HandleOperatorBase";
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
         HandleOperatorBase(
-            place, var_scope, ops[i], &op_func_node, local_scope);
+            place, ops[i], &op_func_node, local_scope, static_build);
       } else {
         VLOG(4) << "OP is not null";
         auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
@@ -1083,6 +1097,46 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
   }
 }
 
+void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
+                                          const platform::Place& place,
+                                          Scope* scope) {
+  const std::string& op_type = op.Type();
+  if (OpsCanSkipedInStaticBuild.count(op_type)) {
+    return;
+  }
+
+  phi::DeviceContext* dev_ctx =
+      platform::DeviceContextPool::Instance().Get(place);
+
+  if (op_type == "read") {
+    const std::string& reader_name = op.Input("Reader");
+    framework::ReaderHolder* reader =
+        GET_DATA_SAFELY(scope->FindVar(reader_name), "Input", "Reader", "Read")
+            .GetMutable<framework::ReaderHolder>();
+    auto& outputs = op.Outputs("Out");
+    auto& var_types = reader->VarTypes();
+    PADDLE_ENFORCE_EQ(
+        outputs.size(),
+        var_types.size(),
+        phi::errors::Unavailable("The output size of read_op (%d) should equal "
+                                 "to the var_types size of ReaderHolder (%d).",
+                                 outputs.size(),
+                                 var_types.size()));
+
+    for (size_t i = 0; i < outputs.size(); ++i) {
+      phi::TensorBase* out_tensor =
+          GetTensorFormVar(scope->FindVar(outputs[i]));
+      if (out_tensor && !IsExtendedTensor(*out_tensor)) {
+        phi::DataType data_type = phi::TransToPhiDataType(var_types[i]);
+        FakeInitializeTensor(*dev_ctx, data_type, place, out_tensor);
+      }
+    }
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Can not static build for op: %s", op_type));
+  }
+}
+
 void FakeInitializeOutputsForFunctionKernel(
     const framework::OperatorBase& op,
     const phi::Kernel& phi_kernel,
@@ -1127,8 +1181,7 @@ void FakeInitializeOutputsForFunctionKernel(
     auto& outs_vector = it->second;
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       phi::TensorBase* out_tensor = GetTensorFormVar(outs_vector[offset]);
-      if (out_tensor && !IsExtendedTensor(*out_tensor) &&
-          !out_tensor->initialized()) {
+      if (out_tensor && !IsExtendedTensor(*out_tensor)) {
         phi::TensorArgDef& tensor_arg_def = output_defs[i];
         phi::DataType dtype = tensor_arg_def.dtype;
         phi::Place place = phi::TransToPhiPlace(tensor_arg_def.backend);
@@ -1136,12 +1189,27 @@ void FakeInitializeOutputsForFunctionKernel(
         if (dtype == DataType::UNDEFINED ||
             OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
                 std::string(kernel_sig.name))) {
-          VLOG(4) << "Get dtype result from InferMeta";
-          RuntimeInferShapeContext infer_shape_ctx(op, runtime_ctx);
-          dynamic_cast<const framework::OperatorWithKernel*>(&op)
-              ->Info()
-              .infer_shape_(&infer_shape_ctx);
-          dtype = out_tensor->dtype();  // dtype from InferMeta
+          if (op_type == "reduce_sum") {
+            // The InferMeta of reduce_sum is sensitive to DDim, so we cannot
+            // get the output dtype from InferMeta
+            int out_dtype = op.Attr<int>("out_dtype");
+            if (out_dtype == -1) {  // -1 means the dtype is same as intput
+              phi::TensorBase* in_tensor =
+                  GetTensorFormVar(runtime_ctx.inputs.find("X")->second.at(0));
+              dtype = in_tensor->dtype();
+            } else {
+              dtype = phi::TransToPhiDataType(out_dtype);
+            }
+            VLOG(6) << "reduce sum got dtype " << dtype
+                    << " from out_dtype attr: " << out_dtype;
+          } else {
+            VLOG(4) << "Get dtype result from InferMeta";
+            RuntimeInferShapeContext infer_shape_ctx(op, runtime_ctx);
+            dynamic_cast<const framework::OperatorWithKernel*>(&op)
+                ->Info()
+                .infer_shape_(&infer_shape_ctx);
+            dtype = out_tensor->dtype();  // dtype from InferMeta
+          }
         }
 
         VLOG(4) << output_names[i] << " fake alloc with type " << dtype
@@ -1158,7 +1226,7 @@ void FakeInitializeOutputsForStructureKernel(
     const framework::OpKernelType& op_kernel_type,
     ExecutionContext* execution_context) {
   const std::string& op_type = execution_context->Type();
-  if (op_type == "fetch_v2") {
+  if (OpsCanSkipedInStaticBuild.count(op_type)) {
     return;
   }
 
@@ -1168,8 +1236,7 @@ void FakeInitializeOutputsForStructureKernel(
     auto multi_output_var = execution_context->MultiOutputVar(parameter_name);
     for (Variable* var : multi_output_var) {
       phi::TensorBase* out_tensor = GetTensorFormVar(var);
-      if (out_tensor && !IsExtendedTensor(*out_tensor) &&
-          !out_tensor->initialized()) {
+      if (out_tensor && !IsExtendedTensor(*out_tensor)) {
         phi::DataType dtype =
             phi::TransToPhiDataType(op_kernel_type.data_type_);
         phi::Place place = execution_context->GetPlace();
