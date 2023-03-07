@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import core
 
 
 def cal_kthvalue(x, k, axis, keepdim=False):
@@ -207,6 +208,11 @@ class TestModeOpInStatic(unittest.TestCase):
             np.testing.assert_allclose(paddle_result, expect_value, rtol=1e-05)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
 class TestKthvalueOpBP16(unittest.TestCase):
     def testkthvaluebp16(OpTest):
         def setUp(self):
@@ -216,6 +222,20 @@ class TestKthvalueOpBP16(unittest.TestCase):
             out = paddle.kthvalue(x, k=2, axis=1)
             self.inputs = {'X': convert_float_to_uint16(x)}
             self.outputs = {'Out': convert_float_to_uint16(out)}
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    ['Out'],
+                )
 
 
 if __name__ == '__main__':
