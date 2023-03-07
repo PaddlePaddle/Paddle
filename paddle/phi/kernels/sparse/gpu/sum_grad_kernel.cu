@@ -30,6 +30,12 @@ namespace sparse {
 //   }
 //   return grad_perm;
 // }
+template <typename T>
+__global__ void SetValueCudaKernel(const T* value,
+                                   const int64_t length,
+                                   T* data) {
+  CUDA_KERNEL_LOOP_TYPE(index, length, int64_t) { data[index] = value[0]; }
+}
 
 template <typename T, typename Context>
 void SumCooGradKernel(const Context& dev_ctx,
@@ -45,7 +51,68 @@ void SumCsrGradKernel(const Context& dev_ctx,
                       const SparseCsrTensor& dout,
                       const IntArray& axis,
                       bool keep_dim,
-                      SparseCsrTensor* dx) {}
+                      SparseCsrTensor* dx) {
+  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
+  unsigned int n_dim = axis.size();
+
+  const DenseTensor& x_crows = x.crows();
+  const DenseTensor& x_cols = x.cols();
+  const DenseTensor& dout_values = dout.values();
+  const auto* x_crows_data = x_crows.data<int64_t>();
+
+  DenseTensor* dx_crows = dx->mutable_crows();
+  DenseTensor* dx_cols = dx->mutable_cols();
+  DenseTensor* dx_values = dx->mutable_values();
+
+  *dx_crows = x_crows;
+  *dx_cols = x_cols;
+
+  if (n_dim == 0) {
+    auto config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, dx->nnz(), 1);
+    SetValueCudaKernel<int64_t><<<config.block_per_grid.x,
+                                  config.thread_per_block.x,
+                                  0,
+                                  dev_ctx.stream()>>>(
+        dout_values.data<T>(), dx->nnz(), dx_values->data<T>());
+  } else {
+    PADDLE_ENFORCE_EQ(axis[0],
+                      -1,
+                      phi::errors::Unimplemented(
+                          "`axis` of SumCsrKernel only support None or -1 now."
+                          "More number will be supported in the future."));
+
+    if (x.dims().size() == 2) {
+      int value_index = 0;
+      for (int k = 0; k < x.dims()[0]; ++k) {
+        if (x_crows_data[k] != x_crows_data[k + 1]) {
+          T value = dout_values.data<T>()[value_index];
+          for (auto i = x_crows_data[k]; i < x_crows_data[k + 1]; ++i) {
+            dx_values->data<T>()[i] = value;
+          }
+          value_index += 1;
+        }
+      }
+    } else {
+      int dout_value_index = 0;
+      int dx_value_index = 0;
+      for (auto batch = 0; batch < x.dims()[0]; ++batch) {
+        for (auto k = batch * (x.dims()[1] + 1);
+             k < batch * (x.dims()[1] + 1) + x.dims()[1];
+             ++k) {
+          if (x_crows_data[k] != x_crows_data[k + 1]) {
+            T value = dout_values.data<T>()[dout_value_index];
+            for (auto i = x_crows_data[k]; i < x_crows_data[k + 1]; ++i) {
+              dx_values->data<T>()[dx_value_index] = value;
+              dx_value_index++;
+            }
+            dout_value_index++;
+          }
+        }
+      }
+    }
+  }
+}
 }  // namespace sparse
 }  // namespace phi
 
