@@ -36,7 +36,8 @@ class QuantOpKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<phi::DenseTensor>("Output");
 
     const auto quantization_scale = ctx.Attr<float>("Scale");
-    const auto quantization_shift = ctx.Attr<float>("Shift");
+    const auto quantization_shift =
+        static_cast<int32_t>(ctx.Attr<float>("Shift"));
     const bool with_scale = quantization_scale != 1.0f;
     const bool with_shift = quantization_shift != 0.0f;
 
@@ -105,7 +106,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
     auto zero_points_mem =
         dnnl::memory(zero_points_md,
                      dev_ctx.GetEngine(),
-                     phi::funcs::to_void_cast<float>(&quantization_shift));
+                     phi::funcs::to_void_cast<int32_t>(&quantization_shift));
 
     std::unordered_map<int, dnnl::memory> reorder_args;
     reorder_args.insert({DNNL_ARG_SRC, *reorder_src_memory_p});
