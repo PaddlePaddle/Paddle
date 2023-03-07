@@ -30,12 +30,18 @@ void OneHotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(one_hot, CPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {}
+PD_REGISTER_KERNEL(one_hot, CPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::FLOAT32);
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(one_hot, GPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {}
+PD_REGISTER_KERNEL(one_hot, GPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::FLOAT32);
+}
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PD_REGISTER_KERNEL(one_hot, XPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {}
+PD_REGISTER_KERNEL(one_hot, XPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::FLOAT32);
+}
 #endif

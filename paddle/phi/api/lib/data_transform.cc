@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -33,7 +33,7 @@ inline bool NeedTransformDataType(const DataType& input,
           target == DataType::COMPLEX64 || target == DataType::COMPLEX128);
 }
 
-inline bool NeedTransformPlace(const paddle::platform::Place& input,
+inline bool NeedTransformPlace(const phi::Place& input,
                                const Backend& target,
                                const TransformFlag& transform_flag) {
   // NOTE(dev): The default value of TransformFlag is True, if it is set with
@@ -52,12 +52,12 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
 
 inline bool NeedTransformLayout(const DataLayout& input,
                                 const DataLayout& target,
-                                const paddle::platform::Place& place,
+                                const phi::Place& place,
                                 const TransformFlag& transform_flag) {
   bool ret = transform_flag.need_trans_layout() &&
              (input != DataLayout::ALL_LAYOUT &&
               target != DataLayout::ALL_LAYOUT && input != target);
-  if (platform::is_gpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::GPU) {
     return false;
   }
   return ret;
@@ -65,10 +65,10 @@ inline bool NeedTransformLayout(const DataLayout& input,
 
 inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
                                         DataLayout layout) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
   VLOG(3) << "DataLayoutTransform src_layout: " << tensor.layout()
           << " dst_layout: " << layout;
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
     return phi::TransferLayout(*dev_ctx, tensor, layout);
   } else {
@@ -139,7 +139,7 @@ phi::DenseTensor CastDataType(const phi::GPUContext& dev_ctx,
 
 inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
                                       DataType dtype) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
 
   VLOG(3) << "DataTypeTransform src_dtype: " << tensor.dtype()
           << " dst_dtype: " << dtype;
@@ -147,11 +147,11 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
   DefaultAllocator alloc(tensor.place());
   phi::DenseTensor out(&alloc, {dtype, tensor.dims(), tensor.layout()});
 
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  } else if (platform::is_gpu_place(tensor.place())) {
+  } else if (tensor.place().GetType() == phi::AllocationType::GPU) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
 #endif
@@ -170,7 +170,7 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   auto& pool = phi::DeviceContextPool::Instance();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // NOTE(yy): TransDataPlace should wait for computation of input.
-  if (!platform::is_cuda_pinned_place(tensor.place())) {
+  if (tensor.place().GetType() != phi::AllocationType::GPUPINNED) {
     pool.Get(tensor.place())->Wait();
     pool.Get(dst_place)->Wait();
   }

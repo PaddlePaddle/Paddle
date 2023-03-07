@@ -148,7 +148,7 @@ class InputSpec:
             print(label)  # InputSpec(shape=(-1, 1), dtype=paddle.int64, name=label)
     """
 
-    def __init__(self, shape, dtype='float32', name=None):
+    def __init__(self, shape, dtype='float32', name=None, stop_gradient=False):
         # replace `None` in shape  with -1
         self.shape = self._verify(shape)
         # convert dtype into united represention
@@ -157,13 +157,18 @@ class InputSpec:
                 dtype = convert_np_dtype_to_dtype_(dtype)
         self.dtype = dtype
         self.name = name
+        self.stop_gradient = stop_gradient
 
     def _create_feed_layer(self):
         return data(self.name, shape=self.shape, dtype=self.dtype)
 
     def __repr__(self):
-        return '{}(shape={}, dtype={}, name={})'.format(
-            type(self).__name__, self.shape, self.dtype, self.name
+        return '{}(shape={}, dtype={}, name={}, stop_gradient={})'.format(
+            type(self).__name__,
+            self.shape,
+            self.dtype,
+            self.name,
+            self.stop_gradient,
         )
 
     @classmethod
@@ -327,10 +332,10 @@ class InputSpec:
         #      foo(x_var)
         #      foo(x_np)  # x_np is a numpy.ndarray.
         #  x_var and x_np hold same shape and dtype, they should also share a same program.
-        return hash((tuple(self.shape), self.dtype))
+        return hash((tuple(self.shape), self.dtype, self.stop_gradient))
 
     def __eq__(self, other):
-        slots = ['shape', 'dtype', 'name']
+        slots = ['shape', 'dtype', 'name', 'stop_gradient']
         return type(self) is type(other) and all(
             getattr(self, attr) == getattr(other, attr) for attr in slots
         )

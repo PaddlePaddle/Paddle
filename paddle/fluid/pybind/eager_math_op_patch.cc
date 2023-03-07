@@ -539,8 +539,8 @@ static PyObject* tensor__mul__method(TensorObject* self,
         CastPyArg2Scalar(other_obj, "__mul__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
       other_tensor = full_ad_func(

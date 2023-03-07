@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
 
 namespace phi {
 namespace funcs {

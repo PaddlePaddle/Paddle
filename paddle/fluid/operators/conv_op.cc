@@ -436,7 +436,6 @@ void ConvOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 
 phi::KernelKey ConvOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
   return phi::KernelKey(data_type, ctx.GetPlace());
 }

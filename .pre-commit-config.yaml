@@ -64,9 +64,10 @@ repos:
     hooks:
     -   id: isort
 -   repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
+    rev: 5.0.4
     hooks:
     -   id: flake8
+        args: ["--config=.flake8"]
 -   repo: https://github.com/PyCQA/autoflake
     rev: v1.7.7
     hooks:
