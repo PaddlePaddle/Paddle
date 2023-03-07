@@ -135,7 +135,7 @@ def log(x, name=None):
         Out = \ln(x)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
         name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
@@ -156,7 +156,9 @@ def log(x, name=None):
     if in_dygraph_mode():
         return _C_ops.log(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "log"
+        )
         inputs = {'X': [x]}
         helper = LayerHelper('log', **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -747,6 +749,9 @@ def floor_divide(x, y, name=None):
 
     .. math::
         out = trunc(x / y)
+
+    - :math:`x`: Multidimensional Tensor.
+    - :math:`y`: Multidimensional Tensor.
 
     Note:
         ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
@@ -2127,7 +2132,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
        logsumexp(x) = \log\sum exp(x)
 
     Args:
-        x (Tensor): The input Tensor with data type float32 or float64, which
+        x (Tensor): The input Tensor with data type float16, float32 or float64, which
             have no more than 4 dimensions.
         axis (int|list|tuple, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
@@ -2166,7 +2171,9 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'logsumexp')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'logsumexp'
+        )
 
         helper = LayerHelper('logsumexp', **locals())
         attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all': reduce_all}
@@ -2648,7 +2655,7 @@ def log1p(x, name=None):
         Out = \ln(x+1)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2667,7 +2674,9 @@ def log1p(x, name=None):
     if in_dygraph_mode():
         return _C_ops.log1p(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "log1p"
+        )
         inputs = {'X': [x]}
         helper = LayerHelper('log1p', **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -4469,19 +4478,15 @@ def gcd(x, y, name=None):
     y = paddle.broadcast_to(y, shape)
     x = paddle.abs(x)
     y = paddle.abs(y)
-    # TODO(zhouwei25): Support 0D for not_equal tensor with scalar
-    zero = paddle.full([], 0)
 
     def _gcd_cond_fn(x, y):
-        # return paddle.any(y != 0)
-        return paddle.any(y != zero)
+        return paddle.any(y != 0)
 
     def _gcd_body_fn(x, y):
         # paddle.mod will raise an error when any element of y is 0. To avoid
         # that, we change those zeros to ones. Their values don't matter because
         # they won't be used.
-        # y_not_equal_0 = y != 0
-        y_not_equal_0 = y != zero
+        y_not_equal_0 = y != 0
         y_safe = paddle.where(y_not_equal_0, y, paddle.ones(y.shape, y.dtype))
         x, y = (
             paddle.where(y_not_equal_0, y, x),

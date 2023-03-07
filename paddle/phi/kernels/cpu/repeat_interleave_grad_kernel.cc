@@ -62,7 +62,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                         paddle::framework::DataTypeToString(
                             paddle::framework::proto::VarType::INT64)));
 
-  paddle::platform::DeviceContextPool::Instance().Get(repeats_tensor.place());
+  phi::DeviceContextPool::Instance().Get(repeats_tensor.place());
   if (index_type == paddle::framework::proto::VarType::INT32) {
     phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
         ctx, repeats_tensor, &index);

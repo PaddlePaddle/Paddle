@@ -14,6 +14,7 @@
 
 #pragma once
 #include <string>
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 #include "paddle/fluid/framework/scope.h"
@@ -51,6 +52,9 @@ int ConvertActivationType(std::string act_type);
 Node* FindNodeWithName(Graph* graph, std::string name);
 
 template <typename T>
+size_t HashTensor(const phi::DenseTensor& in);
+
+template <typename T>
 void PrepareWeight(Graph* graph,
                    Scope* scope,
                    BlockDesc* block,
@@ -58,6 +62,9 @@ void PrepareWeight(Graph* graph,
                    Node** dst,
                    Node** dst_max,
                    bool transpose);
+
+void PrepareBias(
+    Graph* graph, Scope* scope, BlockDesc* block, Node* src, Node** dst);
 
 }  // namespace ir
 }  // namespace framework
