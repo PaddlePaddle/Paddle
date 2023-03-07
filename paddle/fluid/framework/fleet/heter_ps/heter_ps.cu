@@ -42,6 +42,9 @@ HeterPsBase* HeterPsBase::get_instance(
     } else if (optimizer_type == 4) {
       return new HeterPs<CommonFeatureValueAccessor, SparseAdamSharedOptimizer>(
           capacity, resource, *gpu_accessor);
+    } else if (optimizer_type == 5) {
+      return new HeterPs<CommonFeatureValueAccessor, SparseAdagradV2Optimizer>(
+          capacity, resource, *gpu_accessor);
     }
   } else if (accessor_type == "DownpourCtrDymfAccessor" ||
              accessor_type == "DownpourCtrDoubleDymfAccessor") {
