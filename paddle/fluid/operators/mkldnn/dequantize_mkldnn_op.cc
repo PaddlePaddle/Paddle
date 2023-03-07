@@ -100,8 +100,6 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
           {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_DST, zero_points_mem});
     }
     reorder_p->execute(astream, reorder_args);
-
-    reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
     out->set_mem_desc(reorder_dst_memory_p->get_desc());
