@@ -50,7 +50,6 @@ using VariableIdMap = std::map<std::string, std::vector<int>>;
 // These Op needs set output dtype when register phi kernel, but they didn't
 static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "abs",
-    "accuracy",
     "adam",
     "adamw",
     "all_close",
