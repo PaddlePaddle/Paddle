@@ -122,7 +122,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "unique",
     "unique_consecutive_flattened_tensor",
     "unique_raw",
-    "viterbi_decode",
     "viterbi_devode",
     "yolo_loss"};
 
