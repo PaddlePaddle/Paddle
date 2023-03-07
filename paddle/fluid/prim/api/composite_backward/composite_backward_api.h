@@ -780,15 +780,6 @@ void layer_norm_grad(const Tensor& x,
                      Tensor* x_grad,
                      Tensor* scale_grad,
                      Tensor* bias_grad) {
-  // std::cout << "x = " <<
-  // *(dynamic_cast<phi::DenseTensor*>(x.impl().get())) << std::endl;
-  // std::cout << "mean = " <<
-  // *(dynamic_cast<phi::DenseTensor*>(variance.impl().get())) << std::endl;
-  // std::cout << "varience = " <<
-  // *(dynamic_cast<phi::DenseTensor*>(variance.impl().get())) << std::endl;
-  // std::cout << "out_grad = " <<
-  // *(dynamic_cast<phi::DenseTensor*>(out_grad.impl().get())) << std::endl;
-
   auto x_dims = x.dims();
   auto shape_1 = 1;  // front part
   auto shape_2 = 1;  // back part
@@ -832,16 +823,8 @@ void layer_norm_grad(const Tensor& x,
     }
   }
   auto x_sub_mean = x_cast - mean_;
-  // std::cout << "varience_ = " <<
-  // *(dynamic_cast<phi::DenseTensor*>(variance_.impl().get())) << std::endl;
   auto div_var = (1.0 / (variance_ + epsilon));
-  // std::cout << "div_var = " <<
-  // *(dynamic_cast<phi::DenseTensor*>(div_var.impl().get())) << std::endl;
   auto sqrt_var_1 = sqrt<T>(div_var);
-  // std::cout << "x_sub_mean = " <<
-  // *(dynamic_cast<phi::DenseTensor*>(x_sub_mean.impl().get())) << std::endl;
-  // std::cout << "sqrt_var_1 = " <<
-  // *(dynamic_cast<phi::DenseTensor*>(sqrt_var_1.impl().get())) << std::endl;
   if (scale_grad) {
     if (scale_ptr) {
       auto scale_grad_tmp =
@@ -860,23 +843,15 @@ void layer_norm_grad(const Tensor& x,
           full<T>(std::vector<int64_t>({1, shape_2}), 1.0, x_cast.dtype());
     }
     auto dx_end = (scale_cast * sqrt_var_1 * out_grad_cast);
-    // std::cout << "dx_end = " <<
-    // *(dynamic_cast<phi::DenseTensor*>(dx_end.impl().get())) << std::endl;
     auto d_mean_0 = -(scale_cast * sqrt_var_1 * out_grad_cast)
                          .sum(std::vector<int64_t>({1}), x_cast.dtype(), true);
-    // std::cout << "d_mean_0 = " <<
-    // *(dynamic_cast<phi::DenseTensor*>(d_mean_0.impl().get())) << std::endl;
     auto d_mean = 1.0 / (shape_2 * d_mean_0 + epsilon);
-    // std::cout << "d_mean = " <<
-    // *(dynamic_cast<phi::DenseTensor*>(d_mean.impl().get())) << std::endl;
     auto d_std_1 = (-(div_var)*x_sub_mean * out_grad_cast * scale_cast)
                        .sum(std::vector<int64_t>({1}), x_cast.dtype(), true);
     auto d_std_2 = (1.0 / shape_2) * sqrt_var_1;
     d_std_2 = reshape<T>(d_std_2, std::vector<int64_t>({shape_1, 1}));
     d_std_2 = d_std_2 * x_sub_mean;
     auto d_std = d_std_1 * d_std_2;
-    // std::cout << "dx_std = " << *(dynamic_cast<phi::DenseTensor
-    // *>(d_std.impl().get())) << std::endl;
 
     auto x_grad_tmp = dx_end + d_mean + d_std;
     x_grad_tmp = reshape<T>(x_grad_tmp, phi::vectorize(x.dims()));
