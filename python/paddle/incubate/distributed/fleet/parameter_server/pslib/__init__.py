@@ -1097,7 +1097,7 @@ class DownpourOptimizer(DistributedOptimizer):
             )
             self._optimizer_name = "DistributedAdam"
 
-        self._distributed_optimizer = globals()[self._optimizer_name](optimizer)
+        self._distributed_optimizer = DistributedAdam
 
     def backward(
         self,

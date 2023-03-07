@@ -40,6 +40,9 @@ from paddle.incubate.distributed.fleet.base import Mode
 from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
 
 from paddle.incubate.distributed.fleet.parameter_server import version
+from paddle.incubate.distributed.fleet.pslib.optimizer_factory import (
+    DistributedAdam,
+)
 from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     get_sparse_tablenames,
 )
@@ -850,7 +853,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
                 )
                 self._optimizer_name = "DistributedAdam"
 
-            self._optimizer = globals()[self._optimizer_name](optimizer)
+            self._optimizer = DistributedAdam
         else:
             self._optimizer = optimizer
 
