@@ -306,10 +306,7 @@ class TestSigmoidFP16(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True)
 
     def test_check_output(self):
-        check_eager = False
-        if hasattr(self, 'check_eager'):
-            check_eager = self.check_eager
-        self.check_output(check_eager=check_eager, check_prim=True)
+        self.check_output(check_prim=True)
 
 
 @unittest.skipIf(
