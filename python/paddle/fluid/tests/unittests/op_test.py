@@ -1508,9 +1508,6 @@ class OpTest(unittest.TestCase):
             # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             setattr(self.__class__, 'check_prim', True)
             self.__class__.op_type = self.op_type
-            if prim_checker.is_only_check_prim():
-                self.only_prim = True
-                return
         # disable legacy dygraph check when check_eager is True
         if check_eager:
             check_dygraph = False
