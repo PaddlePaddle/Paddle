@@ -17,10 +17,10 @@
 #include <random>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -28,11 +28,12 @@ void ExponentialKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        float lambda,
                        DenseTensor* out) {
-  T* out_data = dev_ctx.template Alloc<T>(out);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  MT* out_data = dev_ctx.template Alloc<MT>(out);
   auto engine = dev_ctx.GetGenerator()->GetCPUEngine();
 
-  std::uniform_real_distribution<T> uniform(0.0, 1.0);
-  phi::funcs::exponential_transform<T> trans(lambda);
+  std::uniform_real_distribution<MT> uniform(0.0, 1.0);
+  phi::funcs::exponential_transform<MT> trans(lambda);
 
   for (int64_t i = 0; i < out->numel(); ++i) {
     out_data[i] = trans(uniform(*engine));
@@ -41,5 +42,11 @@ void ExponentialKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    exponential, CPU, ALL_LAYOUT, phi::ExponentialKernel, float, double) {}
+PD_REGISTER_KERNEL(exponential,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ExponentialKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

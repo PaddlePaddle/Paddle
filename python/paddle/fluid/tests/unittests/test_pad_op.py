@@ -93,7 +93,7 @@ def create_test_fp16(parent):
             return np.float16
 
         def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out', max_relative_error=0.3)
+            self.check_grad(['X'], 'Out', max_relative_error=1e-2)
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
     TestPadFp16.__name__ = cls_name
@@ -104,6 +104,31 @@ create_test_fp16(TestPadOp)
 create_test_fp16(TestCase1)
 create_test_fp16(TestCase2)
 create_test_fp16(TestCase3)
+
+
+def create_test_bp16(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestPadBp16(parent):
+        def get_dtype(self):
+            return paddle.bfloat16
+
+        def test_check_output(self):
+            self.check_output(['X'], 'Out', atol=1e-2)
+
+        def test_check_grad_normal(self):
+            self.check_grad(['X'], 'Out', max_relative_error=1e-2)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Bp16")
+    TestPadBp16.__name__ = cls_name
+    globals()[cls_name] = TestPadBp16
+
+
+create_test_bp16(TestPadOp)
+create_test_bp16(TestCase1)
+create_test_bp16(TestCase2)
+create_test_bp16(TestCase3)
 
 
 class TestPadOpError(unittest.TestCase):
