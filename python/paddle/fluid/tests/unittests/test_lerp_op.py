@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -193,6 +193,37 @@ class TestLerpAPI(unittest.TestCase):
         res_ref = x + w * (y - x)
         np.testing.assert_allclose(res_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
+
+
+class TestLerpBF16(OpTest):
+    def setUp(self):
+        self.op_type = "lerp"
+        self.python_api = paddle.lerp
+        self.init_dtype()
+        self.init_shape()
+        x = np.arange(1.0, 101.0).astype(np.float32).reshape(self.shape)
+        y = np.full(100, 10.0).astype(np.float32).reshape(self.shape)
+        w = np.asarray([0.5]).astype(np.float32)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+            'Weight': convert_float_to_uint16(w),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(x + w * (y - x))}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def init_shape(self):
+        self.shape = [100]
+
+    def test_check_output(self):
+        self.check_output(check_eager=True, atol=1e-2)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'], 'Out', check_eager=True, max_relative_error=1e-2
+        )
 
 
 if __name__ == "__main__":
