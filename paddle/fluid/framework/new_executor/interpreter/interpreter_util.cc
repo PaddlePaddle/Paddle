@@ -107,7 +107,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "nms",
     "nonzero",
     "numl",
-    "qr",
     "qr_grad",
     "rnn",
     "roi_pool",

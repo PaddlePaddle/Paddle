@@ -2932,8 +2932,14 @@ void QrInferMeta(const MetaTensor& x,
 
   q->share_lod(x);
   r->share_lod(x);
-  q->set_dtype(x.dtype());
-  r->set_dtype(x.dtype());
+  if (x.dtype() == DataType::FLOAT32) {
+    q->set_dtype(DataType::COMPLEX64);
+    r->set_dtype(DataType::COMPLEX64);
+  }
+  if (x.dtype() == DataType::FLOAT64) {
+    q->set_dtype(DataType::COMPLEX128);
+    r->set_dtype(DataType::COMPLEX128);
+  }
 }
 
 DDim ReduceInferDim(const MetaTensor& x,
