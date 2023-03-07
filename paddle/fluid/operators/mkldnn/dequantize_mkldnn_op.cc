@@ -33,7 +33,8 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<phi::DenseTensor>("Input");
     const auto quantization_scale = ctx.Attr<float>("Scale");
-    const auto quantization_shift = ctx.Attr<float>("Shift");
+    const auto quantization_shift =
+        static_cast<int32_t>(ctx.Attr<float>("Shift"));
     const bool with_shift = quantization_shift != 0.0f;
     auto* out = ctx.Output<phi::DenseTensor>("Output");
 
@@ -58,7 +59,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
 
     const float reorder_scale = 1. / quantization_scale;
     //    attrs.set_output_scales(mask, {reorder_scale});
-    attrs.set_scales_mask(DNNL_ARG_DST, mask);
+    attrs.set_scales_mask(DNNL_ARG_SRC, mask);
 
     if (with_shift) {
       attrs.set_zero_points_mask(DNNL_ARG_DST, mask);
@@ -85,15 +86,15 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
                      phi::funcs::to_void_cast<float>(&reorder_scale));
 
     auto zero_points_md = dnnl::memory::desc(
-        {1}, dnnl::memory::data_type::u8, dnnl::memory::format_tag::x);
+        {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
     auto zero_points_mem =
         dnnl::memory(zero_points_md,
                      dev_ctx.GetEngine(),
-                     phi::funcs::to_void_cast<float>(&quantization_shift));
+                     phi::funcs::to_void_cast<int32_t>(&quantization_shift));
     std::unordered_map<int, dnnl::memory> reorder_args;
     reorder_args.insert({DNNL_ARG_SRC, *reorder_src_memory_p});
     reorder_args.insert({DNNL_ARG_DST, *reorder_dst_memory_p});
-    reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scales_mem});
+    reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scales_mem});
     if (with_shift) {
       reorder_args.insert(
           {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_DST, zero_points_mem});
