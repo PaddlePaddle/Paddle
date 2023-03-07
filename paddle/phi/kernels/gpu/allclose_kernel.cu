@@ -17,9 +17,10 @@
 #include "glog/logging.h"
 
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/common/data_type.h"
+
 
 namespace phi {
 
@@ -48,7 +49,6 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
     if (!val) *out_data = false;
   }
 }
-
 
 template <typename T, typename Context>
 void AllCloseKernel(const Context& dev_ctx,
@@ -98,10 +98,11 @@ void AllCloseKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(allclose,
-                    GPU,
-                    ALL_LAYOUT,
-                    phi::AllCloseKernel,
-                    float,
-                    double,
-                    phi::dtype::float16)
-                    {kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);}
+                  GPU,
+                  ALL_LAYOUT,
+                  phi::AllCloseKernel,
+                  float,
+                  double,
+                  phi::dtype::float16){
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
