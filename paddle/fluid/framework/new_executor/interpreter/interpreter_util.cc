@@ -53,6 +53,7 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "accuracy",
     "adam",
     "adamw",
+    "all_close",
     "all_raw",
     "angle",
     "any_raw",
