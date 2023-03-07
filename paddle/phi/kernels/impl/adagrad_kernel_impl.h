@@ -31,6 +31,21 @@ struct SparseAdagradFunctor {
 };
 
 template <typename DeviceContext, typename T>
+struct DenseAdagradFunctor {
+  void operator()(const DeviceContext& ctx,
+                  const DenseTensor& param_t,
+                  const DenseTensor& grad_t,
+                  const DenseTensor& moment_t,
+                  const DenseTensor& learning_rate,
+                  const paddle::optional<DenseTensor>& master_param,
+                  float epsilon_t,
+                  bool multi_precision,
+                  DenseTensor* param_out_tensor,
+                  DenseTensor* moment_out_tensor,
+                  DenseTensor* master_param_outs);
+};
+
+template <typename DeviceContext, typename T>
 phi::SelectedRows SquareSelectedRows(const DeviceContext& context,
                                      const phi::SelectedRows& input) {
   phi::SelectedRows out;
@@ -50,35 +65,24 @@ void AdagradDenseKernel(const Context& ctx,
                         const DenseTensor& grad_t,
                         const DenseTensor& moment_t,
                         const DenseTensor& learning_rate,
+                        const paddle::optional<DenseTensor>& master_param,
                         float epsilon_t,
+                        bool multi_precision,
                         DenseTensor* param_out_tensor,
-                        DenseTensor* moment_out_tensor) {
-  ctx.template Alloc<T>(param_out_tensor);
-  ctx.template Alloc<T>(moment_out_tensor);
-
-  T epsilon = static_cast<T>(epsilon_t);
-
-  auto param = EigenVector<T>::Flatten(param_t);
-
-  auto grad = EigenVector<T>::Flatten(grad_t);
-
-  auto moment = EigenVector<T>::Flatten(moment_t);
-
-  auto param_out = EigenVector<T>::Flatten(*param_out_tensor);
-  auto moment_out = EigenVector<T>::Flatten(*moment_out_tensor);
-  auto place = *ctx.eigen_device();
-
-  moment_out.device(place) = moment + grad * grad;
-  Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
-  if (paddle::platform::is_cpu_place(ctx.GetPlace())) {
-    auto* lr = learning_rate.data<T>();
-    param_out.device(place) =
-        param - lr[0] * grad / (moment_out.sqrt() + epsilon);
-  } else {
-    auto lr = EigenVector<T>::Flatten(learning_rate);
-    param_out.device(place) =
-        param - lr.broadcast(m_dsize) * grad / (moment_out.sqrt() + epsilon);
-  }
+                        DenseTensor* moment_out_tensor,
+                        DenseTensor* master_param_outs) {
+  DenseAdagradFunctor<Context, T> functor;
+  functor(ctx,
+          param_t,
+          grad_t,
+          moment_t,
+          learning_rate,
+          master_param,
+          epsilon_t,
+          multi_precision,
+          param_out_tensor,
+          moment_out_tensor,
+          master_param_outs);
 }
 
 template <typename T, typename Context>
@@ -87,9 +91,12 @@ void AdagradSparseKernel(const Context& ctx,
                          const SelectedRows& grad_t,
                          const DenseTensor& moment_t,
                          const DenseTensor& learning_rate,
+                         const paddle::optional<DenseTensor>& master_param,
                          float epsilon_t,
+                         bool multi_precision,
                          DenseTensor* param_out,
-                         DenseTensor* moment_out) {
+                         DenseTensor* moment_out,
+                         DenseTensor* master_param_outs) {
   auto* param_out_tensor = param_out;
   auto* moment_out_tensor = moment_out;
 

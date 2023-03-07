@@ -1672,9 +1672,6 @@ class OpTest(unittest.TestCase):
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             setattr(self.__class__, 'check_prim', True)
             self.__class__.op_type = self.op_type
-            if prim_checker.is_only_check_prim():
-                self.only_prim = True
-                return
         # set some flags by the combination of arguments.
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if (
@@ -1842,8 +1839,6 @@ class OpTest(unittest.TestCase):
                 check_prim=check_prim,
                 inplace_atol=inplace_atol,
             )
-            if hasattr(self, 'only_prim') and self.only_prim:
-                continue
             if check_dygraph:
                 outs, dygraph_dygraph_outs, fetch_list = res
             else:
@@ -1958,6 +1953,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         check_prim=False,
+        only_check_prim=False,
     ):
         self._check_grad_helper()
         places = self._get_places()
@@ -1974,6 +1970,7 @@ class OpTest(unittest.TestCase):
                 user_defined_grad_outputs,
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
+                only_check_prim=only_check_prim,
             )
 
     def check_grad_with_place(
@@ -1989,6 +1986,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         check_dygraph=True,
         check_prim=False,
+        only_check_prim=False,
         numeric_place=None,
     ):
         core._set_prim_all_enabled(False)
@@ -2005,8 +2003,7 @@ class OpTest(unittest.TestCase):
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             setattr(self.__class__, 'check_prim', True)
             self._check_grad_helper()
-            if prim_grad_checker.is_only_check_prim():
-                self.only_prim = True
+            if only_check_prim:
                 return
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()

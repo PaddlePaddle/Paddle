@@ -531,6 +531,9 @@ if(WITH_GPU
     include(external/cutlass) # download, build, install cusparselt
     list(APPEND third_party_deps extern_cutlass)
     set(WITH_CUTLASS ON)
+    include(external/flashattn)
+    list(APPEND third_party_deps extern_flashattn)
+    set(WITH_FLASHATTN ON)
   endif()
 endif()
 
