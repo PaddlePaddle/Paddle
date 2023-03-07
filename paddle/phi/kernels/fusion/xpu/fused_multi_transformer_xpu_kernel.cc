@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/memcpy_kernel.h"
 #ifdef PADDLE_WITH_XPU_XFT
 #include "models/fused_multi_transformer_op.h"
 namespace xft = baidu::xpu::xft;
@@ -94,13 +95,20 @@ void FusedMultiTransformerXpuKernel(
 
   int time_step_value = -1;
   if (TimeStep) {
-    LOG(INFO) << "DEBUG: time_step_ptr=" << TimeStep.get_ptr()->data<int>();
-    PADDLE_ENFORCE_EQ(TimeStep.get_ptr()->place(),
-                      phi::CPUPlace(),
-                      phi::errors::PreconditionNotMet(
-                          "The place of input(TimeStep) must be CPUPlace."));
-    // cache_seq_len
-    time_step_value = TimeStep.get_ptr()->data<int>()[0];
+    // TODO(mayang02): why the code
+    // "kernel->InputAt(20).SetBackend(phi::Backend::CPU)" does not work?
+    if (TimeStep.get_ptr()->place() == phi::CPUPlace()) {
+      // cache_seq_len
+      time_step_value = TimeStep.get_ptr()->data<int>()[0];
+    } else if (TimeStep.get_ptr()->place() == phi::XPUPlace()) {
+      phi::DenseTensor TimeStepCPU;
+      phi::MemcpyD2HKernel<Context>(
+          ctx, *(TimeStep.get_ptr()), 0, &TimeStepCPU);
+      time_step_value = TimeStepCPU.data<int>()[0];
+    } else {
+      LOG(FATAL) << "The place of input(TimeStep): "
+                 << TimeStep.get_ptr()->place() << " is not supported!";
+    }
     PADDLE_ENFORCE_GT(
         time_step_value,
         0,
@@ -122,12 +130,21 @@ void FusedMultiTransformerXpuKernel(
   auto out_dims = Out->dims();
   auto x = xft::xftTensor<XPUTypeT, 3>(
       x_data, std::array<int64_t, 3>{x_dims[0], x_dims[1], x_dims[2]});
+  // TODO(mayang02): xft support mask.dtype = float16
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  float* src_mask_fp32_data =
+      RAII_GUARD.alloc<float>(SrcMask.get_ptr()->numel());
+  int r = xpu::cast<XPUTypeT, float>(ctx.x_context(),
+                                     src_mask_data,
+                                     src_mask_fp32_data,
+                                     SrcMask.get_ptr()->numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::cast");
   auto src_mask =
-      xft::xftTensor<XPUTypeT, 4>(src_mask_data,
-                                  std::array<int64_t, 4>{src_mask_dims[0],
-                                                         src_mask_dims[1],
-                                                         src_mask_dims[2],
-                                                         src_mask_dims[3]});
+      xft::xftTensor<float, 4>(src_mask_fp32_data,
+                               std::array<int64_t, 4>{src_mask_dims[0],
+                                                      src_mask_dims[1],
+                                                      src_mask_dims[2],
+                                                      src_mask_dims[3]});
   auto out = xft::xftTensor<XPUTypeT, 3>(
       out_data, std::array<int64_t, 3>{out_dims[0], out_dims[1], out_dims[2]});
 
@@ -144,8 +161,8 @@ void FusedMultiTransformerXpuKernel(
   std::vector<xft::xftVec<float>> ffn1_bias;
   std::vector<xft::xftMat<TW>> ffn2_weight;
   std::vector<xft::xftVec<float>> ffn2_bias;
-  std::vector<xft::xftTensor<float, 5>> cache_kv_in;
-  std::vector<xft::xftTensor<float, 5>> cache_kv_out;
+  std::vector<xft::xftTensor<XPUTypeT, 5>> cache_kv_in;
+  std::vector<xft::xftTensor<XPUTypeT, 5>> cache_kv_out;
 
   int layers = QKVW.size();
   for (int i = 0; i < layers; ++i) {
@@ -223,26 +240,26 @@ void FusedMultiTransformerXpuKernel(
   param.size_per_head = dim_head;
   param.hidden_act = act_method;
   param.is_fuse_qkv = true;
-  int r = xft::fused_multi_transformer<T, TW, int16_t>(ctx.x_context(),
-                                                       x,
-                                                       cache_kv_in,
-                                                       src_mask,
-                                                       ln_scale,
-                                                       ln_bias,
-                                                       qkvw,
-                                                       qkv_bias,
-                                                       out_linear_w,
-                                                       out_linear_bias,
-                                                       ffn_ln_scale,
-                                                       ffn_ln_bias,
-                                                       ffn1_weight,
-                                                       ffn1_bias,
-                                                       ffn2_weight,
-                                                       ffn2_bias,
-                                                       param,
-                                                       time_step_value,
-                                                       &out,
-                                                       cache_kv_out);
+  r = xft::fused_multi_transformer<XPUTypeT, TW, int16_t>(ctx.x_context(),
+                                                          x,
+                                                          cache_kv_in,
+                                                          src_mask,
+                                                          ln_scale,
+                                                          ln_bias,
+                                                          qkvw,
+                                                          qkv_bias,
+                                                          out_linear_w,
+                                                          out_linear_bias,
+                                                          ffn_ln_scale,
+                                                          ffn_ln_bias,
+                                                          ffn1_weight,
+                                                          ffn1_bias,
+                                                          ffn2_weight,
+                                                          ffn2_bias,
+                                                          param,
+                                                          time_step_value,
+                                                          &out,
+                                                          cache_kv_out);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "xft::fused_multi_transformer");
 }
 
@@ -253,6 +270,7 @@ PD_REGISTER_KERNEL(fused_multi_transformer_xpu,
                    XPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedMultiTransformerXpuKernel,
-                   float) {
+                   float,
+                   phi::dtype::float16) {
   kernel->InputAt(20).SetBackend(phi::Backend::CPU);
 }
