@@ -16,9 +16,9 @@
 
 #include "glog/logging.h"
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 namespace phi {
 
 template <typename T>
@@ -29,16 +29,20 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
                                    bool equal_nan,
                                    int num,
                                    bool* out_data) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const T a = in_data[i], b = other_data[i];
+    const MPType a = static_cast<MPType>(in_data[i]),
+                 b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
-      T left = (a > b ? a - b : b - a);
-      T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-      T diff = (left > right ? left - right : right - left);
+      MPType left = static_cast<MPType>(a > b ? a - b : b - a);
+      MPType right = static_cast<MPType>(atol) +
+                     static_cast<MPType>(b > 0 ? rtol * b : (-rtol) * b);
+      MPType diff =
+          static_cast<MPType>(left > right ? left - right : right - left);
       val = a == b || left <= right || diff <= 1e-15;
     }
     if (!val) *out_data = false;
@@ -53,6 +57,7 @@ void AllCloseKernel(const Context& dev_ctx,
                     const Scalar& atol,
                     bool equal_nan,
                     DenseTensor* out) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   double rtol_v, atol_v;
   if (rtol.dtype() == DataType::FLOAT64) {
     rtol_v = rtol.to<double>();
@@ -73,8 +78,8 @@ void AllCloseKernel(const Context& dev_ctx,
         atol.dtype()));
   }
   VLOG(3) << "rtol and atol is : " << rtol_v << " " << atol_v;
-  const T* in_data = x.data<T>();
-  const T* other_data = y.data<T>();
+  const MPType* in_data = static_cast<MPType>(x.data<MPType>());
+  const MPType* other_data = static_cast<MPType>(y.data<MPType>());
   bool* out_data = dev_ctx.template Alloc<bool>(out);
 
   int num = x.numel();
@@ -86,13 +91,18 @@ void AllCloseKernel(const Context& dev_ctx,
 #else
   cudaMemset(out_data, true, sizeof(bool));
 #endif
-  AllcloseCUDAKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
+  AllcloseCUDAKernel<MPType><<<grid, block, 0, dev_ctx.stream()>>>(
       in_data, other_data, rtol_v, atol_v, equal_nan, num, out_data);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    allclose, GPU, ALL_LAYOUT, phi::AllCloseKernel, float, double) {
+PD_REGISTER_KERNEL(allclose,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::AllCloseKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }

@@ -29,7 +29,8 @@ namespace phi {
 using Tensor = DenseTensor;
 template <typename DeviceContext, typename T>
 struct GetTensorValue {
-  T operator()(const DeviceContext& ctx, const DenseTensor& tensor) const;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType operator()(const DeviceContext& ctx, const DenseTensor& tensor) const;
 };
 
 template <typename DeviceContext, typename T>
@@ -45,21 +46,28 @@ struct IscloseFunctor {
 
 template <typename T>
 struct GetTensorValue<phi::CPUContext, T> {
-  T operator()(const phi::CPUContext& dev_ctx,
-               const DenseTensor& tensor) const {
-    return *(tensor.data<T>());
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType operator()(const phi::CPUContext& dev_ctx,
+                    const DenseTensor& tensor) const {
+    return *(tensor.data<MPType>());
   }
 };
 
 template <typename T>
 struct GetTensorValue<phi::GPUContext, T> {
-  T operator()(const phi::GPUContext& dev_ctx,
-               const DenseTensor& tensor) const {
-    const T* data = tensor.data<T>();
-    T value;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType operator()(const phi::GPUContext& dev_ctx,
+                    const DenseTensor& tensor) const {
+    const MPType* data = static_cast<MPType>((tensor.data<MPType>());
+    MPType value;
     const auto gpu_place = dev_ctx.GetPlace();
     memory_utils::Copy(
-        phi::CPUPlace(), &value, gpu_place, data, sizeof(T), dev_ctx.stream());
+        phi::CPUPlace(),
+        &value,
+        gpu_place,
+        data,
+        sizeof(MPType),
+        dev_ctx.stream());
     return value;
   }
 };
@@ -73,8 +81,9 @@ struct IscloseFunctor<phi::CPUContext, T> {
                   const double atol,
                   bool equal_nan,
                   DenseTensor* output) {
-    auto* in_a = in.data<T>();
-    auto* in_b = other.data<T>();
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    auto* in_a = in.data<MPType>();
+    auto* in_b = other.data<MPType>();
     auto* out_data = ctx.template Alloc<bool>(output);
     auto num = in.numel();
     // *out_data = true;
@@ -82,14 +91,17 @@ struct IscloseFunctor<phi::CPUContext, T> {
       out_data[i] = true;
     }
     for (int i = 0; i < num; i++) {
-      const T a = in_a[i], b = in_b[i];
+      const MPType a = static_cast<MPType>(in_a[i]),
+                   static_cast<MPType>(b = in_b[i]);
       bool val;
       if (std::isnan(a) || std::isnan(b)) {
         val = equal_nan && std::isnan(a) == std::isnan(b);
       } else {
-        T left = (a > b ? a - b : b - a);
-        T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-        T diff = (left > right ? left - right : right - left);
+        MPType left = static_cast<MPType>(a > b ? a - b : b - a);
+        MPType right = static_cast<MPType>(atol) +
+                       static_cast<MPType>(b > 0 ? rtol * b : (-rtol) * b);
+        MPType diff =
+            static_cast<MPType>(left > right ? left - right : right - left);
         val = a == b || left <= right || diff <= 1e-15;
       }
       // *out_data &= val;
