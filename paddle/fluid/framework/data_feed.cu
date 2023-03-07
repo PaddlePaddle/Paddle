@@ -312,6 +312,25 @@ __global__ void FillSlotValueOffsetKernel(const int ins_num,
   }
 }
 
+struct RandInt 
+{
+    int low, high;
+
+    __host__ __device__
+    RandInt(int low, int high) : low(low), high(high) {};
+
+    __host__ __device__
+        int operator()(const unsigned int n) const
+        {
+            thrust::default_random_engine rng;
+            thrust::uniform_int_distribution<int> dist(low, high);
+            rng.discard(n);
+
+            return dist(rng);
+        }
+};
+
+
 void SlotRecordInMemoryDataFeed::FillSlotValueOffset(
     const int ins_num,
     const int used_slot_num,
@@ -457,6 +476,7 @@ __global__ void GraphFillIdKernel(uint64_t *id_tensor,
                                   uint64_t *walk,
                                   uint8_t *walk_ntype,
                                   int *row,
+                                  int *row_col_shift,
                                   int central_word,
                                   int step,
                                   int len,
@@ -477,8 +497,12 @@ __global__ void GraphFillIdKernel(uint64_t *id_tensor,
   // id_tensor[dst] = walk[src];
   // id_tensor[dst + 1] = walk[src + step];
   if (idx < len) {
-    int src = row[idx] * col_num + central_word;
-    if (walk[src] != 0 && walk[src + step] != 0) {
+    int col_idx = (central_word + row_col_shift[idx]) % col_num;
+    int src = row[idx] * col_num + col_idx;
+    int last_row = row[idx] * col_num;
+    int next_row = last_row + col_num;  
+    
+    if ((src + step) >= last_row && (src + step) < next_row &&  walk[src] != 0 && walk[src + step] != 0) {
       for (int i = 0; i < excluded_train_pair_len; i += 2) {
         if (walk_ntype[src] == excluded_train_pair[i] &&
             walk_ntype[src + step] == excluded_train_pair[i + 1]) {
@@ -741,9 +765,11 @@ int GraphDataGenerator::MakeInsPair(cudaStream_t stream) {
   }
   uint64_t *ins_buf = reinterpret_cast<uint64_t *>(d_ins_buf_->ptr());
   int *random_row = reinterpret_cast<int *>(d_random_row_->ptr());
+  int *random_row_col_shift = reinterpret_cast<int *>(d_random_row_col_shift_->ptr());
   int *d_pair_num = reinterpret_cast<int *>(d_pair_num_->ptr());
   cudaMemsetAsync(d_pair_num, 0, sizeof(int), stream);
   int len = buf_state_.len;
+
   // make pair
   GraphFillIdKernel<<<GET_BLOCKS(len), CUDA_NUM_THREADS, 0, stream>>>(
       ins_buf + ins_buf_pair_len_ * 2,
@@ -751,6 +777,7 @@ int GraphDataGenerator::MakeInsPair(cudaStream_t stream) {
       walk,
       walk_ntype,
       random_row + buf_state_.cursor,
+      random_row_col_shift + buf_state_.cursor,
       buf_state_.central_word,
       window_step_[buf_state_.step],
       len,
@@ -2359,6 +2386,7 @@ int GraphDataGenerator::FillWalkBuf() {
   }
   buf_state_.Reset(total_row_);
   int *d_random_row = reinterpret_cast<int *>(d_random_row_->ptr());
+  int *d_random_row_col_shift = reinterpret_cast<int *>(d_random_row_col_shift_->ptr());
 
   paddle::memory::ThrustAllocator<cudaStream_t> allocator(place_, sample_stream_);
   thrust::random::default_random_engine engine(shuffle_seed_);
@@ -2369,6 +2397,12 @@ int GraphDataGenerator::FillWalkBuf() {
                        cnt_iter + total_row_,
                        thrust::device_pointer_cast(d_random_row),
                        engine);
+
+  thrust::transform(exec_policy,
+                    cnt_iter,
+                    cnt_iter + total_row_,
+                    thrust::device_pointer_cast(d_random_row_col_shift),
+                    RandInt(0, walk_len_));
 
   cudaStreamSynchronize(sample_stream_);
   shuffle_seed_ = engine();
@@ -2595,6 +2629,7 @@ int GraphDataGenerator::FillWalkBufMultiPath() {
   }
   buf_state_.Reset(total_row_);
   int *d_random_row = reinterpret_cast<int *>(d_random_row_->ptr());
+  int *d_random_row_col_shift = reinterpret_cast<int *>(d_random_row_col_shift_->ptr());
 
   paddle::memory::ThrustAllocator<cudaStream_t> allocator(place_, sample_stream_);
   thrust::random::default_random_engine engine(shuffle_seed_);
@@ -2605,6 +2640,12 @@ int GraphDataGenerator::FillWalkBufMultiPath() {
                        cnt_iter + total_row_,
                        thrust::device_pointer_cast(d_random_row),
                        engine);
+
+  thrust::transform(exec_policy,
+                    cnt_iter,
+                    cnt_iter + total_row_,
+                    thrust::device_pointer_cast(d_random_row_col_shift),
+                    RandInt(0, walk_len_));
 
   cudaStreamSynchronize(sample_stream_);
   shuffle_seed_ = engine();
@@ -2784,6 +2825,12 @@ void GraphDataGenerator::AllocResource(
       place_,
       (once_sample_startid_len_ * walk_degree_ * repeat_time_) * sizeof(int),
       phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+
+  d_random_row_col_shift_ = memory::AllocShared(
+      place_,
+      (once_sample_startid_len_ * walk_degree_ * repeat_time_) * sizeof(int),
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+
   shuffle_seed_ = 0;
 
   ins_buf_pair_len_ = 0;

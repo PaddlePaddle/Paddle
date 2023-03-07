@@ -249,7 +249,7 @@ message SparseNaiveSGDRuleParameter { // SparseNaiveSGDRule
 }
 
 message
-    SparseAdagradSGDRuleParameter { // SparseAdaGradSGDRule|StdAdaGradSGDRule
+    SparseAdagradSGDRuleParameter { // SparseAdaGradSGDRule|StdAdaGradSGDRule|SparseAdaGradV2SGDRule
   optional double learning_rate = 1 [ default = 0.05 ];
   optional double initial_g2sum = 2 [ default = 3.0 ];
   optional double initial_range = 3 [ default = 0.0001 ];

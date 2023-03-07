@@ -542,6 +542,20 @@ class DownpourServer(Server):
             )
             bounds = strategy.get(prefix + 'sparse_weight_bounds', [-10, 10])
             sgd.adagrad.weight_bounds.extend(bounds)
+        elif optimizer_name == "adagrad_v2":
+            sgd.adagrad.learning_rate = strategy.get(
+                prefix + 'sparse_learning_rate', 0.05
+            )
+            sgd.adagrad.initial_range = strategy.get(
+                prefix + 'sparse_initial_range', 1e-4
+            )
+            if prefix == "embed_":
+                sgd.adagrad.initial_range = 0
+            sgd.adagrad.initial_g2sum = strategy.get(
+                prefix + 'sparse_initial_g2sum', 3
+            )
+            bounds = strategy.get(prefix + 'sparse_weight_bounds', [-10, 10])
+            sgd.adagrad.weight_bounds.extend(bounds)
         elif optimizer_name == "std_adagrad":
             sgd.adagrad.learning_rate = strategy.get(
                 prefix + 'sparse_learning_rate', 0.05

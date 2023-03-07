@@ -845,7 +845,8 @@ struct BufState {
 
   int GetNextStep() {
     step++;
-    if (step <= right && central_word + (*window)[step] < walk_len) {
+    // Checking out-of-bound by MakeInsPair
+    if (step <= right) {
       return 1;
     }
     return 0;
@@ -869,13 +870,9 @@ struct BufState {
     VLOG(2) << "random window: " << random_window << " window[" << left
             << "] = " << (*window)[left] << " window[" << right
             << "] = " << (*window)[right];
-
-    for (step = left; step <= right; step++) {
-      if (central_word + (*window)[step] >= 0) {
-        return 1;
-      }
-    }
-    return 0;
+    // Checking out-of-bound by MakeInsPair
+    step = left;
+    return 1;
   }
 
   int GetNextBatch() {
@@ -1018,6 +1015,7 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_feature_;
   std::shared_ptr<phi::Allocation> d_len_per_row_;
   std::shared_ptr<phi::Allocation> d_random_row_;
+  std::shared_ptr<phi::Allocation> d_random_row_col_shift_;
   std::shared_ptr<phi::Allocation> d_uniq_node_num_;
   std::shared_ptr<phi::Allocation> d_slot_feature_num_map_;
   std::shared_ptr<phi::Allocation> d_actual_slot_id_map_;

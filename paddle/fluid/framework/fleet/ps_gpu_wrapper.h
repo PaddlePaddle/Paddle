@@ -426,6 +426,13 @@ class PSGPUWrapper {
       config[prefix + "ada_epsilon"] = sgd_param.adam().ada_epsilon();
       config[prefix + "min_bound"] = sgd_param.adam().weight_bounds()[0];
       config[prefix + "max_bound"] = sgd_param.adam().weight_bounds()[1];
+    } else if (optimizer_name == "SparseAdaGradV2SGDRule") {
+      config[prefix + "optimizer_type"] = 5;
+      config[prefix + "learning_rate"] = sgd_param.adagrad().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.adagrad().initial_range();
+      config[prefix + "initial_g2sum"] = sgd_param.adagrad().initial_g2sum();
+      config[prefix + "min_bound"] = sgd_param.adagrad().weight_bounds()[0];
+      config[prefix + "max_bound"] = sgd_param.adagrad().weight_bounds()[1];
     }
   }
 
@@ -523,6 +530,15 @@ class PSGPUWrapper {
       if (sgd_param.adam().weight_bounds_size() == 2) {
         config[prefix + "min_bound"] = sgd_param.adam().weight_bounds()[0];
         config[prefix + "max_bound"] = sgd_param.adam().weight_bounds()[1];
+      }
+    } else if (optimizer_name == "adagrad_v2") {
+      config[prefix + "optimizer_type"] = 5;
+      config[prefix + "learning_rate"] = sgd_param.adagrad().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.adagrad().initial_range();
+      config[prefix + "initial_g2sum"] = sgd_param.adagrad().initial_g2sum();
+      if (sgd_param.adagrad().weight_bounds_size() == 2) {
+        config[prefix + "min_bound"] = sgd_param.adagrad().weight_bounds()[0];
+        config[prefix + "max_bound"] = sgd_param.adagrad().weight_bounds()[1];
       }
     }
   }

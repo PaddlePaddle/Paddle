@@ -255,7 +255,7 @@ void HashTable<KeyType, ValType>::set_sparse_sgd(
              &optimizer_config,
              sizeof(OptimizerConfig),
              cudaMemcpyHostToDevice,
-			 stream_);
+       stream_);
   cudaStreamSynchronize(stream_);
 }
 
@@ -267,7 +267,7 @@ void HashTable<KeyType, ValType>::set_embedx_sgd(
              &optimizer_config,
              sizeof(OptimizerConfig),
              cudaMemcpyHostToDevice,
-			 stream_);
+       stream_);
   cudaStreamSynchronize(stream_);
 }
 
@@ -529,6 +529,15 @@ template void HashTable<uint64_t, float*>::update<
                   size_t len,
                   SparseAdagradOptimizer<CommonFeatureValueAccessor> sgd,
                   cudaStream_t stream);
+
+template void HashTable<uint64_t, float*>::update<
+    SparseAdagradV2Optimizer<CommonFeatureValueAccessor>,
+    cudaStream_t>(const uint64_t* d_keys,
+                  const char* d_grads,
+                  size_t len,
+                  SparseAdagradV2Optimizer<CommonFeatureValueAccessor> sgd,
+                  cudaStream_t stream);
+
 template void HashTable<uint64_t, float*>::update<
     SparseAdamOptimizer<CommonFeatureValueAccessor>,
     cudaStream_t>(const uint64_t* d_keys,
