@@ -504,8 +504,8 @@ __inline__ __device__ void cuLoadAddStridedInputs(const int64_t i1_block,
                                                   const int row_stride,
                                                   U *warp_buf1,
                                                   U *warp_buf2,
-                                                  const T *input,
-                                                  const T *dout,
+                                                  const T *__restrict__ input,
+                                                  const T *__restrict__ dout,
                                                   const int64_t i1_end,
                                                   const int64_t n2,
                                                   const U *__restrict__ mean,
@@ -1326,22 +1326,22 @@ __global__ void LayerNormBackwardComputeGradInput(
 
     U sum_loss1 = static_cast<U>(0);
     U sum_loss2 = static_cast<U>(0);
+    U gamma_data = static_cast<U>(0);
     U k_dout_data = static_cast<U>(0);
     U k_input_data = static_cast<U>(0);
-    ScaleT gamma_data = static_cast<ScaleT>(0);
     if (gamma != NULL) {
       for (int l = thrx; l < n2; l += numx) {
-        k_dout_data = static_cast<U>(k_dout[i]);
-        k_input_data = static_cast<U>(k_input[i]);
-        gamma_data = static_cast<U>(gamma[i]);
+        gamma_data = static_cast<U>(gamma[l]);
+        k_dout_data = static_cast<U>(k_dout[l]);
+        k_input_data = static_cast<U>(k_input[l]);
         sum_loss1 += k_dout_data * gamma_data;
         sum_loss2 +=
             k_dout_data * gamma_data * (k_input_data - c_mean) * c_invvar;
       }
     } else {
       for (int l = thrx; l < n2; l += numx) {
-        k_dout_data = static_cast<U>(k_dout[i]);
-        k_input_data = static_cast<U>(k_input[i]);
+        k_dout_data = static_cast<U>(k_dout[l]);
+        k_input_data = static_cast<U>(k_input[l]);
         sum_loss1 += k_dout_data;
         sum_loss2 += k_dout_data * (k_input_data - c_mean) * c_invvar;
       }
