@@ -34,8 +34,7 @@
  **/
 namespace egr {
 
-static void CheckTensor(const paddle::experimental::Tensor& pre,
-                        const paddle::experimental::Tensor& post) {
+static void CheckTensor(const paddle::Tensor& pre, const paddle::Tensor& post) {
   if (!pre.initialized() && post.initialized()) {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
         "The tensor in before and after hook are not consistent"));
@@ -82,7 +81,7 @@ GradNodeBase::MutableOutputMeta() {
   return bwd_out_meta_;
 }
 
-void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
+void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
                                  size_t slot_rank) {
   VLOG(7) << "Set GradSlotMeta for Grad Inputs";
   auto* fwd_out_meta = egr::EagerUtils::nullable_autograd_meta(fwd_out);
@@ -142,9 +141,8 @@ void GradNodeBase::SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
   }
 }
 
-void GradNodeBase::SetGradInMeta(
-    const std::vector<paddle::experimental::Tensor>& fwd_out,
-    size_t slot_rank) {
+void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
+                                 size_t slot_rank) {
   VLOG(7) << "Set GradSlotMeta for Grad Inputs";
   size_t slot_size = fwd_out.size();
   PADDLE_ENFORCE_LE(
@@ -208,7 +206,7 @@ void GradNodeBase::SetGradInMeta(
   }
 }
 
-void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
+void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
                                   size_t slot_rank) {
   auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in);
   PADDLE_ENFORCE_LE(
@@ -265,8 +263,8 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
   }
 }
 
-void GradNodeBase::SetGradOutMeta(
-    const std::vector<paddle::experimental::Tensor>& fwd_in, size_t slot_rank) {
+void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
+                                  size_t slot_rank) {
   size_t slot_size = fwd_in.size();
   PADDLE_ENFORCE_LE(
       slot_rank,
@@ -327,8 +325,7 @@ void GradNodeBase::SetGradOutMeta(
 }
 
 void GradNodeBase::SetGradOutMeta(
-    const std::vector<const paddle::experimental::Tensor*>& fwd_in,
-    size_t slot_rank) {
+    const std::vector<const paddle::Tensor*>& fwd_in, size_t slot_rank) {
   size_t slot_size = fwd_in.size();
   PADDLE_ENFORCE_LE(
       slot_rank,
@@ -406,14 +403,12 @@ int64_t GradNodeBase::RegisterGradientHook(
   return next_hook_id_++;
 }
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
 GradNodeBase::ApplyGradientHooks(
-    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& tensors) {
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
-      outs(tensors.size());
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize> outs(
+      tensors.size());
   for (auto& hook_pair : gradient_hooks_) {
     size_t slot_id = std::get<0>(hook_pair.second);
     size_t rank = std::get<1>(hook_pair.second);
@@ -431,9 +426,9 @@ GradNodeBase::ApplyGradientHooks(
                        "than rank size of grad_tensors",
                        slot_id));
 
-    std::vector<paddle::experimental::Tensor>& slot_out = outs[slot_id];
+    std::vector<paddle::Tensor>& slot_out = outs[slot_id];
     slot_out.resize(tensors[slot_id].size());
-    paddle::experimental::Tensor& out = slot_out[rank];
+    paddle::Tensor& out = slot_out[rank];
     if (!out.defined() || !out.initialized()) {
       out = (*hook)(tensors[slot_id][rank]);
     } else {
@@ -460,11 +455,10 @@ GradNodeBase::ApplyGradientHooks(
 }
 
 void GradNodeBase::HandleComplexGradToRealGrad(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         kSlotSmallVectorSize>* out_grads) {
+    paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>*
+        out_grads) {
   for (size_t slot_id = 0; slot_id < out_grads->size(); slot_id++) {
-    const std::vector<paddle::experimental::Tensor>& slot_out_grads =
-        (*out_grads)[slot_id];
+    const std::vector<paddle::Tensor>& slot_out_grads = (*out_grads)[slot_id];
     for (size_t rank_id = 0; rank_id < slot_out_grads.size(); rank_id++) {
       const GradSlotMeta& slot_meta = bwd_out_meta_[slot_id][rank_id];
 
@@ -477,7 +471,7 @@ void GradNodeBase::HandleComplexGradToRealGrad(
 
       auto fwd_data_type = paddle::framework::TransToProtoVarType(
           slot_meta.GetTensorMeta().dtype);
-      const paddle::experimental::Tensor& grad = slot_out_grads[rank_id];
+      const paddle::Tensor& grad = slot_out_grads[rank_id];
 
       if (paddle::framework::IsComplexType(fwd_data_type)) continue;
 
