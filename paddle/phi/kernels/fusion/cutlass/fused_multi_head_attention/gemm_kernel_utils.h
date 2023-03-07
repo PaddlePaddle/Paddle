@@ -110,6 +110,36 @@ constexpr CUTLASS_HOST_DEVICE integer align_up(integer n, integer m) {
   return ((n + m - 1) / m) * m;
 }
 
+inline int32_t getMaximumSharedMemoryPerBlockKb(int cc) {
+  // from:
+  // https://docs.nvidia.com/cuda/cuda-c-programming-guide/#features-and-technical-specifications-technical-specifications-per-compute-capability
+  switch (cc) {
+    case 50:
+    case 52:
+    case 53:
+    case 60:
+    case 61:
+    case 62:
+      return 64;
+    case 70:
+    case 72:
+      return 96;
+    case 75:
+      return 64;
+    case 80:
+      return 163;
+    case 86:
+      return 99;
+    case 87:
+      return 163;
+    case 89:
+      return 99;
+    case 90:
+      return 227;
+    default:
+      return 0;
+  }
+}
 ////////////////////////////////////////////////////////////////////////////////
 // Determine the type of GEMM we do (TensorCores or not, Shapes ...)
 // TODO: Maybe we could rely on Cutlass's DefaultGemm templates

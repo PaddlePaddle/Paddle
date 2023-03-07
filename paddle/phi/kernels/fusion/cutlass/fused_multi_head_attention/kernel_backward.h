@@ -1153,7 +1153,6 @@ struct AttentionBackwardKernel {
 
     int32_t key_start = 0;
     int32_t key_end = p.num_keys / kBlockSizeJ * kBlockSizeJ;
-    printf("processBlockIJ  begin, threadx= %d, threay=%d \n", threadIdx.x, threadIdx.y);
     for (; key_start < key_end; key_start += kBlockSizeJ) {
       output_frags.clear();
       int32_t query_start = getQueryStart(p, key_start);
@@ -1178,7 +1177,6 @@ struct AttentionBackwardKernel {
             key_start,
             rng_state_init);
       }
-      printf("kOutputInRF, threadx= %d, threay=%d \n", threadIdx.x, threadIdx.y);
       if (kOutputInRF) {
         writeFragsToGmem<true>(shared_storage, output_frags, p, key_start);
       } else if (getQueryStart(p, key_start) >= p.num_queries) {
@@ -1186,7 +1184,6 @@ struct AttentionBackwardKernel {
       }
       __syncthreads();
     }
-    printf("processBlockIJ  end, threadx= %d, threay=%d \n", threadIdx.x, threadIdx.y);
     // Last (partial) key
     if (key_start != p.num_keys) {
       output_frags.clear();
@@ -1200,7 +1197,6 @@ struct AttentionBackwardKernel {
             key_start,
             rng_state_init);
       }
-      printf("writeFragsToGmem  begin, threadx=%d, thready=%d\n", threadIdx.x, threadIdx.y);
       if (kOutputInRF) {
         writeFragsToGmem<false>(shared_storage, output_frags, p, key_start);
       } else if (getQueryStart(p, key_start) >= p.num_queries) {
@@ -1262,7 +1258,6 @@ struct AttentionBackwardKernel {
       int32_t query_start,
       int32_t key_start,
       const curandStatePhilox4_32_10_t& curand_state_init) {
-    printf("in processBlockIJ kernel, threadx=%d, thready=%d\n", threadIdx.x, threadIdx.y);
     cutlass::MatrixCoord no_offset{0, 0};
     accum_t scale = p.scale;
     int16_t thread_id = threadIdx.x + threadIdx.y * blockDim.x;
@@ -1341,13 +1336,11 @@ struct AttentionBackwardKernel {
           thread_id,
           p.head_dim_value);
     };
-    printf("goto processBlockIJ kernel : MatmulQ, threadx=%d, thready=%d\n", threadIdx.x, threadIdx.y);
-
+   
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // MatmulQK
     /////////////////////////////////////////////////////////////////////////////////////////////////
     {
-      printf("in processBlockIJ kernel : MatmulQK, threadx=%d, thready=%d\n", threadIdx.x, threadIdx.y);
       using Mma = typename MatmulQK::Mma;
 
       cutlass::gemm::GemmCoord problem_size(
@@ -1355,7 +1348,6 @@ struct AttentionBackwardKernel {
           num_queries_in_block,
           p.head_dim // k
       );
-
       // k_j
       typename Mma::IteratorA iterator_A(
           {int32_t(p.k_strideM)},
@@ -1457,6 +1449,8 @@ struct AttentionBackwardKernel {
         prologueDOV();
       }
 
+      printf("problem_size.n()=%d , threadx=%d, thready=%d\n",problem_size.n(), threadIdx.x, threadIdx.y);
+
       MatmulQK::B2bGemm::accumApplyLSEToSmem(
           shared_storage.attn_shared_storage(),
           accum,
@@ -1466,6 +1460,7 @@ struct AttentionBackwardKernel {
           warp_id,
           lane_id,
           output_tile_coords);
+      printf("in processBlockIJ accumApplyLSEToSmem end, threadx=%d, thready=%d\n", threadIdx.x, threadIdx.y);
 
       // if we are using dropout, compute Zij, writing it to shared memory.
       // each element of Zij is:
@@ -1519,6 +1514,7 @@ struct AttentionBackwardKernel {
           }
         }
       }
+      printf("in processBlockIJ end sync , threadx=%d, thready=%d\n", threadIdx.x, threadIdx.y);
       __syncthreads();
     }
 

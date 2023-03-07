@@ -1695,6 +1695,7 @@ struct B2bGemm<
       int warp_id,
       int lane_id,
       cutlass::MatrixCoord const& tile_coords) {
+        printf("run in to accumApplyLSEToSmem\n");
     constexpr int32_t kAlignLSE = 32;
     IteratorAccumulatorLSE iterator_lse(
         lse,
@@ -1879,6 +1880,7 @@ struct B2bGemm<
     // NOTE: accum is attn.T
     // TODO: Optimize for each architecture
     static constexpr int WarpSize = 32;
+    printf("run into second accumApplyLSEToSmem\n");
     using AccumLambdaIterator =
         typename DefaultMmaAccumLambdaIterator<IteratorC, accum_t, WarpSize>::
             Iterator;
@@ -2017,6 +2019,7 @@ struct B2bGemm<
     // Non-optimized way to apply LSE to registers
     // NOTE: accum is attn.T
     // TODO: Optimize for each architecture
+    printf("run into third accumApplyLSEToSmem\n");
     static constexpr int WarpSize = 32;
     using AccumLambdaIterator =
         typename DefaultMmaAccumLambdaIterator<IteratorC, accum_t, WarpSize>::
@@ -2028,6 +2031,7 @@ struct B2bGemm<
     lse_prefetched.clear();
     int rowIdx = 0;
     int colIdx = 0;
+    printf("run into third iterateRows\n");
     AccumLambdaIterator::iterateRows(
         lane_offset,
         [&](int accum_m) {
@@ -2044,7 +2048,9 @@ struct B2bGemm<
           ++colIdx;
         },
         [&](int accum_m) {});
+    printf("run into third accumToSmem\n");
     accumToSmem(shared_storage, accum, lane_id, tile_coords);
+    printf("run into third shared_storage\n");
   }
 };
 

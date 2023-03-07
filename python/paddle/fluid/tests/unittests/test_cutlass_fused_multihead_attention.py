@@ -356,28 +356,22 @@ class TestCutlassFMHAMaskOpDatatype(TestCutlassFMHAOp):
         if (self.x_type == np.float16):
             self.batch = 8
             self.num_head = 8
-            self.query_seq_len = 128
-            self.kv_seq_len = 128
+            self.query_seq_len = 1024
+            self.kv_seq_len = 1024
             self.head_size = 32
             self.scale = float(1.0 / math.sqrt(self.head_size))
-            self.causal = True
+            self.causal = False
             self.mask_shape = [1, 1, 1, self.kv_seq_len]
             self.dropout_p = 0.0
         elif (self.x_type == np.float32):
             self.batch = 1
             self.num_head = 8
-            self.query_seq_len = 128
-            self.kv_seq_len = 128
+            self.query_seq_len = 32
+            self.kv_seq_len = 32
             self.head_size = 32
             self.scale = float(1.0 / math.sqrt(self.head_size))
-            self.causal = True
+            self.causal = False
             self.mask_shape = [1, 1, 1, self.kv_seq_len]
-            # self.mask_shape = [
-            #     self.batch,
-            #     self.num_head,
-            #     self.query_seq_len,
-            #     self.kv_seq_len,
-            # ]
             self.dropout_p = 0.0
         else :
             assert(f"this type ({self.x_type}) is not supported")

@@ -12,11 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/gemm_kernel_utils.h"
+#include "paddle/extension.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/api/include/api.h"
+
+#include "paddle/phi/kernels/cum_kernel.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/kernels/cutlass_fmha_backward.h"
 
 namespace phi {
@@ -42,7 +54,8 @@ struct LaunchParams {
   void* logsumexp_ptr;  // [num_batches, num_heads, num_queries] - can be null
   const void* output_ptr;        // [num_batches, query_seq_len, num_heads, head_size]
   const void* grad_output_ptr;  // [num_batches, query_seq_len, num_heads, head_size]
-  float* delta_ptr; // [nH, Mq]
+  const void* delta_ptr; // [nH, Mq]
+  const void* delta_empty_ptr; // [nH, Mq]
     // Output tensors
   void* grad_query_ptr; //  [Mq, nH, K]
   void* grad_key_ptr; //    [Mk, nH, K]
@@ -130,13 +143,15 @@ void LaunchMultiHeadAttentionBackwardKernel(LaunchParams params,
     p.value_ptr = const_cast<T*>(reinterpret_cast<const T*>(params.value_ptr));
     p.bias_ptr = const_cast<T*>(reinterpret_cast<const T*>(params.bias_ptr));;
     p.grad_bias_ptr = const_cast<T*>(reinterpret_cast<const T*>(params.grad_bias_ptr));
-    p.logsumexp_ptr = nullptr;
+    p.logsumexp_ptr = reinterpret_cast<float*>(params.logsumexp_ptr);
     p.output_ptr = const_cast<T*>(reinterpret_cast<const T*>(params.output_ptr));
     p.grad_output_ptr = const_cast<T*>(reinterpret_cast<const T*>(params.grad_output_ptr));
     p.grad_query_ptr = reinterpret_cast<T*>(params.grad_query_ptr);
     p.grad_key_ptr = reinterpret_cast<T*>(params.grad_key_ptr);
     p.grad_value_ptr = reinterpret_cast<T*>(params.grad_value_ptr);
-    p.delta_ptr = (params.delta_ptr);
+
+    auto delta_ptr = AttentionBackward::kKernelComputesDelta ? params.delta_empty_ptr : params.delta_ptr;
+    p.delta_ptr = const_cast<float*>(reinterpret_cast<const float*>(delta_ptr));
 
     p.num_batches = params.num_batches;
     p.num_heads = params.num_heads;
@@ -187,7 +202,11 @@ void LaunchMultiHeadAttentionBackwardKernel(LaunchParams params,
     p.gB_strideB = p.gB_strideM * params.query_seq_len;
 
     p.dropout_prob = params.dropout_prob;
-    p.workspace = const_cast<float*>(reinterpret_cast<const float*>(params.workspace));
+
+    int64_t size_bytes = p.workspace_size();
+    if (size_bytes) {
+      p.workspace = (float*) malloc (size_bytes*sizeof(float)/4);
+    }
   }
 
   VLOG(3)<<"attention_kernel_backward_batched is setting";
@@ -207,6 +226,30 @@ void LaunchMultiHeadAttentionBackwardKernel(LaunchParams params,
                                    "fused multihead attention backward. "));
     return;
   }
+
+  // Check if this kernel is compatible
+  // if (AttentionBackward::kMaxK_ < 128) {
+  if (kMaxK_ < 128) {
+    return;
+  }
+  // Dropout must be supported if we need it
+  // if (params.dropout_prob>0 && !AttentionBackward::kApplyDropout_) {
+  if (params.dropout_prob>0 && !kApplyDropout_) {
+    return;
+  }
+  // Alignment
+  if ((params.q_strideM % AttentionBackward::kMinimumAlignment) ||
+      (params.k_strideM % AttentionBackward::kMinimumAlignment) ||
+      (params.v_strideM % AttentionBackward::kMinimumAlignment)) {
+    return;
+  }
+  // Uses too much shmem
+  const auto maxShmem =
+      getMaximumSharedMemoryPerBlockKb(ctx.GetComputeCapability()) * 1024;
+  if (smem_bytes > maxShmem) {
+    return;
+  }
+
   VLOG(3)<<"attention_kernel_backward_batched is launching";
   VLOG(3)<<"p.getBlocksGrid(): "<<p.getBlocksGrid() <<"; p.getThreadsGrid(): "<<p.getThreadsGrid()
           <<"; smem_bytes: "<<smem_bytes<<"; ctx.stream(): "<<ctx.stream();
@@ -234,7 +277,7 @@ void DispatchKMaxK(LaunchParams params, const phi::GPUContext& ctx) {
                                 kBlockSizeI_,
                                 kBlockSizeJ_,
                                 // upperbound on `max(value.shape[-1], query.shape[-1])`
-                                128>(params, ctx);}
+                                1024>(params, ctx);}
 
 template <typename ArchTag_,
           typename scalar_t_,
@@ -242,7 +285,7 @@ template <typename ArchTag_,
           bool kApplyDropout_,
           bool kPreloadMmas_>
 void DispatchFMHABlockSize(LaunchParams params, const phi::GPUContext& ctx) {
-    DispatchKMaxK<ArchTag_, scalar_t_, kIsAligned_, kApplyDropout_, kPreloadMmas_, 64, 64>
+    DispatchKMaxK<ArchTag_, scalar_t_, kIsAligned_, kApplyDropout_, kPreloadMmas_, 128, 64>
                                                 (params, ctx);
 }
 
@@ -362,18 +405,30 @@ void MultiHeadAttentionBackwardKernel(const Context& ctx,
   params.value_ptr = value.data();
   params.bias_ptr = nullptr; //@TODO zhangdanyang: insert bias or not
   VLOG(3)<<"params.datatype"<<params.datatype;
-  VLOG(3)<<"params.datatype"<<params.datatype;
 
-  // TODO(zhengzekang): currently we only used in inference. Maybe add a bool
-  // flag to save it ?
-  params.logsumexp_ptr = nullptr;
+  // TODO(zhangdanyang): we use logsumexp_ptr or not ?
+  DenseTensor logsumexp;
+  phi::EmptyLikeKernel<T, Context>(ctx, out_grad, out_grad.dtype(), &logsumexp);
+  params.logsumexp_ptr = logsumexp.data();
+
   params.output_ptr = out.data();
   params.grad_output_ptr = out_grad.data();
   VLOG(3)<<"params.output_ptr: " <<params.output_ptr;
 
-  auto delta = phi::Empty<float, Context>(ctx, {query.dims()[0], query.dims()[2], query.dims()[1]});
-  params.delta_ptr = reinterpret_cast<float*>(delta.data());
-  VLOG(3)<<"params.delta_ptr: " <<params.delta_ptr;
+  DenseTensor delta, delta_meta, delta_empty;
+  phi::EmptyLikeKernel<T, Context>(ctx, out_grad, out_grad.dtype(), &delta);
+
+  delta = phi::Multiply<T, Context>(ctx, out_grad, out);
+
+  phi::EmptyKernel<T, Context>(ctx, {delta.dims()[0], delta.dims()[1], delta.dims()[2]}, out_grad.dtype(), &delta_meta);
+
+  phi::SumKernel<T, Context>(ctx, delta, {-1}, delta.dtype(), false, &delta_meta);
+  phi::TransposeKernel<T, Context>(ctx, delta_meta, {0, 2, 1}, &delta_meta);
+
+  phi::EmptyLikeKernel<T, Context>(ctx, delta_meta, delta.dtype(), &delta_empty);
+
+  params.delta_empty_ptr = delta_empty.data();
+  params.delta_ptr = delta.data();
 
   params.cu_seqlens_q_ptr = nullptr;
   params.cu_seqlens_k_ptr = nullptr;
@@ -387,7 +442,7 @@ void MultiHeadAttentionBackwardKernel(const Context& ctx,
   params.head_size = query.dims()[3];
   params.value_head_size = value.dims()[3];
   params.query_seq_len = query.dims()[1];
-  params.key_value_seq_len = key.dims()[0];
+  params.key_value_seq_len = key.dims()[1];
   params.num_heads = query.dims()[2];
 
   params.scale = scale;

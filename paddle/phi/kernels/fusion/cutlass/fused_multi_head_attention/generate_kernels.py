@@ -274,7 +274,7 @@ class BwdKernel:
             DTYPES.keys(),
             zip(SM, SM[1:] + [90]),
             [True, False],
-            [128],
+            [1024],
             [True, False],
         ):
             if dtype == "bf16" and sm < 80:
@@ -292,7 +292,7 @@ class BwdKernel:
             # if max_k > 64:
             #     bi_values.append(64)
             # for bi in bi_values:
-            bi = 64
+            bi = 128
             # output_in_rf = is_half and max_k <= bi
             # preload_mmas = is_half and sm >= 80 and output_in_rf
             # bj = 128 if (preload_mmas and max_k > 64) else 64
