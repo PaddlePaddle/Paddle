@@ -43,8 +43,7 @@ class CustomFMHAXPUKernel : public framework::OpKernel<T> {
     phi::DenseTensor* s_out = ctx.Output<phi::DenseTensor>("SOut");
     phi::DenseTensor* dropout_mask =
         ctx.Output<phi::DenseTensor>("DropoutMask");
-    phi::DenseTensor* dropout_out =
-        ctx.Output<phi::DenseTensor>("DropoutOut");
+    phi::DenseTensor* dropout_out = ctx.Output<phi::DenseTensor>("DropoutOut");
     phi::DenseTensor* ctx_out = ctx.Output<phi::DenseTensor>("CtxOut");
 
     auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
@@ -108,7 +107,6 @@ class CustomFMHAXPUKernel : public framework::OpKernel<T> {
                                               is_test);
 
     free(tmp);
-
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_fusion");
   }
 };
@@ -171,7 +169,6 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
     // seq_len_shape(int32) = [batch_size + 1]
     auto& qkv_shape = qkv->dims();
     auto& seq_len_shape = cu_seq_len->dims();
-    int total_tokens = qkv_shape[0];
     int num_heads = qkv_shape[2];
     int head_size = qkv_shape[3];
     int batch_size = seq_len_shape[0] - 1;
@@ -186,16 +183,6 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
     drop_p.seed_val = 0;
     bool is_test = ctx.Attr<bool>("is_test");
 
-    int qkv_size = total_tokens * num_heads * head_size;
-    XPUType* d_q_ptr = RAII_GUARD.alloc<XPUType>(qkv_size);
-    PADDLE_ENFORCE_NOT_NULL(
-        d_q_ptr, paddle::platform::errors::Fatal("XPU memory is not enough"));
-    XPUType* d_k_ptr = RAII_GUARD.alloc<XPUType>(qkv_size);
-    PADDLE_ENFORCE_NOT_NULL(
-        d_k_ptr, paddle::platform::errors::Fatal("XPU memory is not enough"));
-    XPUType* d_v_ptr = RAII_GUARD.alloc<XPUType>(qkv_size);
-    PADDLE_ENFORCE_NOT_NULL(
-        d_v_ptr, paddle::platform::errors::Fatal("XPU memory is not enough"));
     int r = xpu::mha_fusion_grad<XPUType, int16_t>(
         xpu_ctx,
         qkv_ptr,
@@ -203,9 +190,7 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
         dropout_mask_ptr,
         dropout_out_ptr,
         const_cast<XPUType*>(d_ctx_out_ptr),
-        d_q_ptr,
-        d_k_ptr,
-        d_v_ptr,
+        d_qkv_ptr,
         batch_size,
         num_heads,
         head_size,
@@ -213,15 +198,8 @@ class CustomFMHAGradXPUKernel : public framework::OpKernel<T> {
         lod,
         drop_p,
         is_test);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_fusion");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_fusion_grad");
     free(tmp);
-    std::vector<int64_t> dqkv_shape = {total_tokens, num_heads, head_size};
-    r = xpu::concat<XPUType>(xpu_ctx,
-                             {d_q_ptr, d_k_ptr, d_v_ptr},
-                             d_qkv_ptr,
-                             {dqkv_shape, dqkv_shape, dqkv_shape},
-                             1);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "concat");
   }
 };
 
