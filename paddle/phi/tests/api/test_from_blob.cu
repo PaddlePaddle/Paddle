@@ -149,7 +149,6 @@ TEST(from_blob, Option) {
     delete[] static_cast<int64_t*>(data);
     isdelete++;
   };
-
   {
     size_t offset = sizeof(int64_t) * 4;
     auto test_tesnor = experimental::from_blob(data,
