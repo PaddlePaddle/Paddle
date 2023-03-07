@@ -1509,6 +1509,7 @@ class OpTest(unittest.TestCase):
             if prim_checker.is_only_check_prim():
                 self.only_prim = True
                 return
+
         # disable legacy dygraph check when check_eager is True
         if check_eager:
             check_dygraph = False
@@ -1856,7 +1857,7 @@ class OpTest(unittest.TestCase):
                         ref_eager_dygraph_outs = (
                             self.op_test._calc_python_api_output(place)
                         )
-                        if eager_dygraph_outs is None:
+                        if ref_eager_dygraph_outs is None:
                             self.is_python_api_test = False
                             ref_eager_dygraph_outs = (
                                 self.op_test._calc_dygraph_output(
@@ -2102,6 +2103,7 @@ class OpTest(unittest.TestCase):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker, custom_place=None):
+        self.__class__.op_type = self.op_type
         places = self._get_places()
         if custom_place:
             places.append(custom_place)

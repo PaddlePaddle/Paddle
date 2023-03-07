@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/tests/core/allocator.h"
@@ -32,15 +32,14 @@ TEST(string_tensor, ctor) {
   const DDim dims({1, 2});
   StringTensorMeta meta(dims);
   const auto string_allocator =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   const auto alloc = string_allocator.get();
   auto check_string_tensor = [](const StringTensor& t,
                                 const StringTensorMeta& m) -> bool {
     bool r{true};
     r = r && (t.numel() == product(m.dims));
     r = r && (t.dims() == m.dims);
-    r = r && (t.place() == paddle::platform::CPUPlace());
+    r = r && (t.place() == phi::CPUPlace());
     r = r && t.initialized();
     r = r && t.IsSharedWith(t);
     r = r && (t.meta() == m);
@@ -48,8 +47,7 @@ TEST(string_tensor, ctor) {
   };
   auto cpu = CPUPlace();
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   CPUContext* cpu_ctx = reinterpret_cast<CPUContext*>(pool.Get(cpu));
 
   StringTensor tensor_0(alloc, meta);
