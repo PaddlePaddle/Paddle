@@ -203,6 +203,9 @@ class TestSumOp5(OpTest):
 class TestSumOp6(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.cumsum
+        self.enable_cinn = False
         self.attrs = {'axis': -1, 'flatten': True}
         self.inputs = {'X': np.random.random((5, 6, 5)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum()}
