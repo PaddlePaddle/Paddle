@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import sys
 import random
 import numpy as np
 import paddle
@@ -57,6 +56,7 @@ class TestGradientMergePass(unittest.TestCase):
         paddle.seed(2021)
         np.random.seed(2021)
         random.seed(2021)
+        paddle.distributed.fleet.init(is_collective=True)
         place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 

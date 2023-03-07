@@ -56,7 +56,7 @@ ParallelStrategy = core.ParallelStrategy
 _global_parallel_env = None
 
 
-def is_global_parallel_initialize():
+def _is_global_parallel_initialize():
     global _global_parallel_env
     if _global_parallel_env is None:
         return False
