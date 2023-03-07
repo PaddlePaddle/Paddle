@@ -135,7 +135,7 @@ class TestAllcloseError(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float16')
+                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='int32')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
                 result = paddle.allclose(x, y)
 
