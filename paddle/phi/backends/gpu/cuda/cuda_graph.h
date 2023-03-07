@@ -19,6 +19,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <thread>
 #include <vector>
 
@@ -64,12 +65,27 @@ class CUDAGraphContextManager {
     return ctxs[place];
   }
 
+  void InsertDeviceContext(phi::DeviceContext *dev_ctx) {
+    VLOG(4) << "yoki insert dev_ctx: " << dev_ctx;
+    capturing_dev_ctxs_.insert(dev_ctx);
+  }
+
+  std::set<phi::DeviceContext *> GetAllDeviceContexts() const {
+    return capturing_dev_ctxs_;
+  }
+
+  void ClearDeviceContext() {
+    VLOG(4) << "yoki clear dev_ctx";
+    capturing_dev_ctxs_.clear();
+  }
+
  private:
   CUDAGraphContextManager() {}
   DISABLE_COPY_AND_ASSIGN(CUDAGraphContextManager);
 
   std::mutex ctx_mtx_;
   std::unordered_map<int64_t, DeviceContextMap> cuda_graph_ctx_pool_;
+  std::set<DeviceContext *> capturing_dev_ctxs_;
 };
 
 class CUDAKernelParams {
@@ -199,6 +215,14 @@ class CUDAGraph {
     return capturing_graph_->dev_ctx_;
   }
 
+  /*static void InsertGPUContext(phi::GPUContext* dev_ctx) {
+    capturing_graph_->dev_ctxs_.insert(dev_ctx);
+  }
+
+  static std::set<phi::GPUContext*> GetAllGPUContexts() const {
+    return capturing_graph_->dev_ctxs_;
+  }*/
+
   static void SetCreateCUDAGraphStream(bool create_cuda_graph_stream) {
     capturing_graph_->create_cuda_graph_stream_ = create_cuda_graph_stream;
   }
@@ -250,6 +274,7 @@ class CUDAGraph {
   cudaStream_t stream_{nullptr};
   phi::GPUContext *dev_ctx_;
   // std::unique_ptr<phi::DeviceContext> dev_ctx_;
+  // std::set<phi::GPUContext*> dev_ctxs_;
   phi::GPUPlace place_;
   CUDAGraphID id_;
   int64_t pool_id_{kInvalidPoolID};

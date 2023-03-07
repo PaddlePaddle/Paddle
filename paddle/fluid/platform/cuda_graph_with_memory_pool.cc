@@ -31,10 +31,38 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
                            bool create_cuda_graph_stream) {
   phi::DeviceContext* mutable_dev_ctx;
   if (create_cuda_graph_stream) {
+    PADDLE_ENFORCE_EQ(FLAGS_new_executor_use_cuda_graph,
+                      true,
+                      platform::errors::InvalidArgument(
+                          "FLAGS_new_executor_use_cuda_graph must be True when "
+                          "create_cuda_graph_stream=True"));
     mutable_dev_ctx = phi::backends::gpu::CUDAGraphContextManager::Instance()
                           .Get(pool_id, place, 0)
                           .get()
                           .get();
+    auto dev_ctxs = phi::backends::gpu::CUDAGraphContextManager::Instance()
+                        .GetAllDeviceContexts();
+    VLOG(4) << "yoki2";
+    for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
+      VLOG(4) << "yoki3";
+      auto* stream_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
+      VLOG(4) << "yoki4: stream_dev_ctx: " << stream_dev_ctx;
+      stream_dev_ctx->cudnn_workspace_handle().ResetWorkspace();
+      VLOG(4) << "yoki2";
+      // After PR(#43206), cudnn related initializations will change to lazy
+      // mode. It will only be initialized when op calls them. But cuda graph
+      // not support capture such kind of init, need to init all these handle
+      // before cuda graph.
+      stream_dev_ctx->cublas_handle();
+      VLOG(4) << "yoki3";
+#if CUDA_VERSION >= 11060
+      stream_dev_ctx->cublaslt_handle();
+      VLOG(4) << "yoki4";
+#endif
+      stream_dev_ctx->cudnn_handle();
+      VLOG(4) << "yoki5";
+      stream_dev_ctx->cusolver_dn_handle();
+    }
   } else {
     mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   }
@@ -57,8 +85,9 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
 
   // After PR(#43206), cudnn related initializations will change to lazy mode.
-  // It will only be initialized when op calls them. But cuda graph not support
-  // capture such kind of init, need to init all these handle before cuda graph.
+  // It will only be initialized when op calls them. But cuda graph not
+  // support capture such kind of init, need to init all these handle before
+  // cuda graph.
   dev_ctx->cublas_handle();
 #if CUDA_VERSION >= 11060
   dev_ctx->cublaslt_handle();
@@ -85,6 +114,23 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   dev_ctx->SetCUDAGraphAllocator(memory::allocation::AllocatorFacade::Instance()
                                      .GetAllocator(place)
                                      .get());
+  if (create_cuda_graph_stream) {
+    auto dev_ctxs = phi::backends::gpu::CUDAGraphContextManager::Instance()
+                        .GetAllDeviceContexts();
+    VLOG(4) << "yoki2";
+    for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
+      VLOG(4) << "yoki3";
+      auto* stream_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
+      VLOG(4) << "yoki4: stream_dev_ctx: " << stream_dev_ctx;
+      auto stream_cap = stream_dev_ctx->stream();
+      stream_dev_ctx->SetCUDAGraphAllocator(
+          memory::allocation::AllocatorFacade::Instance()
+              .GetAllocator(place, stream_cap)
+              .get());
+      VLOG(4) << "set CUDAGraphAllocator. dev_ctx: " << stream_dev_ctx
+              << "  stream: " << stream_cap;
+    }
+  }
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = true;
   }
@@ -108,6 +154,18 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
                           .Get(pool_id, place, 0)
                           .get()
                           .get();
+    auto dev_ctxs = phi::backends::gpu::CUDAGraphContextManager::Instance()
+                        .GetAllDeviceContexts();
+    VLOG(4) << "yoki2";
+    for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
+      VLOG(4) << "yoki3";
+      auto* stream_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
+      VLOG(4) << "yoki4: stream_dev_ctx: " << stream_dev_ctx;
+      stream_dev_ctx->cudnn_workspace_handle().ResetWorkspace();
+      stream_dev_ctx->SetCUDAGraphAllocator(nullptr);
+    }
+    phi::backends::gpu::CUDAGraphContextManager::Instance()
+        .ClearDeviceContext();
   } else {
     mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   }

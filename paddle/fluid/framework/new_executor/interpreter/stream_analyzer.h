@@ -47,9 +47,9 @@ class StreamAnalyzer {
 
   //   DeviceContext* CreateCUDAGraphDeviceContext() const;
 
-  void InsertDeviceContext(DeviceContext* dev_ctx);
+  //   void InsertDeviceContext(DeviceContext* dev_ctx);
 
-  std::set<DeviceContext*> GetAllDeviceContexts() const;
+  //   std::set<DeviceContext*> GetAllDeviceContexts() const;
 
  private:
   bool HasDataDependency(const Instruction& cur_instr,
@@ -83,7 +83,7 @@ class StreamAnalyzer {
       const Instruction& cur_instr, const Instruction& next_instr) const;
 
   const Place place_;
-  std::set<DeviceContext*> dev_ctxs_;
+  //   std::set<DeviceContext*> dev_ctxs_;
 };
 
 }  // namespace interpreter

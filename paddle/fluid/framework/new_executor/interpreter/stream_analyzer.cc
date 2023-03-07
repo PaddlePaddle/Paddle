@@ -208,13 +208,13 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
 //   }
 // }
 
-void StreamAnalyzer::InsertDeviceContext(DeviceContext* dev_ctx) {
-  dev_ctxs_.insert(dev_ctx);
-}
+// void StreamAnalyzer::InsertDeviceContext(DeviceContext* dev_ctx) {
+//   dev_ctxs_.insert(dev_ctx);
+// }
 
-std::set<DeviceContext*> StreamAnalyzer::GetAllDeviceContexts() const {
-  return dev_ctxs_;
-}
+// std::set<DeviceContext*> StreamAnalyzer::GetAllDeviceContexts() const {
+//   return dev_ctxs_;
+// }
 
 bool StreamAnalyzer::HasDataDependency(const Instruction& cur_instr,
                                        const Instruction& next_instr) const {
