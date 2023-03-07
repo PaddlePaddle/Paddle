@@ -217,6 +217,13 @@ def expand_v2_composite(x, shape):
             assert size_out % size_in == 0
             repeat = int(size_out / size_in)
         repeat_times.append(repeat)
+    if dim_in < dim_out:
+        shape_in_expand = []
+        for i in range(dim_out - dim_in):
+            shape_in_expand.append(1)
+        shape_in_expand.extend(shape_in)
+        x_reshape = reshape(x, shape_in_expand)
+        return tile(x_reshape, repeat_times=repeat_times)
     return tile(x, repeat_times=repeat_times)
 
 
