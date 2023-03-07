@@ -176,6 +176,8 @@ if((WITH_GPU
   py_test_modules(
     test_fleet_graph_executor MODULES test_fleet_graph_executor ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_fleet_graph_executor
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
