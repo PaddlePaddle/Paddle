@@ -448,6 +448,8 @@ def create_quant_model(
         "pad2d",
         "reshape",
         "layer_norm",
+        "fusion_gru",
+        "multi_gru",
         "quantize",
         "dequantize",
     ]
@@ -499,6 +501,8 @@ def create_quant_model(
         "pad2d": [["X"], ["Out"]],
         "flatten": [["X"], ["Out"]],
         "flatten2": [["X"], ["Out"]],
+        "fusion_gru": [["X", "WeightX", "WeightH"], ["Hidden", "XX"]],
+        "multi_gru": [["X", "WeightX", "WeightH"], ["Hidden"]],
         "quantize": [["Input"], ["Output"]],
         "dequantize": [["Input"], ["Output"]],
     }
