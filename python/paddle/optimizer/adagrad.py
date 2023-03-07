@@ -11,8 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
 
-from ..fluid import framework
+import paddle
+
+from ..fluid import core, framework, unique_name
+from ..fluid.layer_helper import LayerHelper
 from .optimizer import Optimizer
 
 __all__ = []
@@ -126,11 +130,71 @@ class Adagrad(Optimizer):
         )
         self.type = "adagrad"
         self._epsilon = epsilon
+        self._multi_precision = False
+        self._master_weights = {}
         self.initial_accumulator_value = initial_accumulator_value
         self._default_dict = {
             'epsilon': epsilon,
             'initial_accumulator_value': initial_accumulator_value,
         }
+
+    def _create_master_weight(self, param):
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
+
+            var_name = param.name + "_fp32_master"
+            var_name = unique_name.generate(var_name)
+            var = paddle.static.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True,
+            )
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            self._master_weights[param.name] = var
+        return var
+
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = (
+            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
+        target_name = target_param.name
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name
+                )
+            )
+        return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -139,14 +203,23 @@ class Adagrad(Optimizer):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._moment_acc_str, master_p)
                 continue
+            if (
+                p.dtype == core.VarDesc.VarType.FP16
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Momentum optimizer."
+                )
             self._add_accumulator(
                 self._moment_acc_str,
                 p,
                 fill_value=self.initial_accumulator_value,
             )
-            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -157,17 +230,37 @@ class Adagrad(Optimizer):
         moment_acc = self._get_accumulator(
             self._moment_acc_str, param_and_grad[0]
         )
+
+        find_master = (
+            self._multi_precision
+            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        )
+
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
+
         # Create the adagrad optimizer op
+        inputs = {
+            "Param": param_and_grad[0],
+            "Grad": param_and_grad[1],
+            "Moment": moment_acc,
+            "LearningRate": self._create_param_lr(param_and_grad),
+        }
+
+        outputs = {"ParamOut": param_and_grad[0], "MomentOut": moment_acc}
+
+        if find_master:
+            inputs["MasterParam"] = master_weight
+            outputs["MasterParamOut"] = master_weight
+
         adagrad_op = block.append_op(
             type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Moment": moment_acc,
-                "LearningRate": self._create_param_lr(param_and_grad),
-            },
-            outputs={"ParamOut": param_and_grad[0], "MomentOut": moment_acc},
-            attrs={"epsilon": self._epsilon},
+            inputs=inputs,
+            outputs=outputs,
+            attrs={"epsilon": self._epsilon, "multi_precision": find_master},
             stop_gradient=True,
         )
 

@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -150,12 +150,12 @@ void PsroiPoolKernel(const Context& ctx,
                           rois_batch_size,
                           batch_size));
     std::vector<int> rois_num_list(rois_batch_size);
-    paddle::memory::Copy(CPUPlace(),
-                         rois_num_list.data(),
-                         ctx.GetPlace(),
-                         rois_num_data,
-                         sizeof(int) * rois_batch_size,
-                         0);
+    memory_utils::Copy(CPUPlace(),
+                       rois_num_list.data(),
+                       ctx.GetPlace(),
+                       rois_num_data,
+                       sizeof(int) * rois_batch_size,
+                       0);
     int rois_num_count = 0;
     for (int i = 0; i < rois_batch_size; ++i) {
       rois_num_count += rois_num_list[i];

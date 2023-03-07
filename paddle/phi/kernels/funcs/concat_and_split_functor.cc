@@ -57,11 +57,11 @@ struct ConcatFunctor<phi::CPUContext, T> {
       int64_t col_len = input_cols[j];
       auto input_data = input[j].data<T>();
       for (int64_t k = 0; k < out_rows; ++k) {
-        paddle::memory::Copy(cpu_place,
-                             output_data + k * out_cols + col_idx,
-                             cpu_place,
-                             input_data + k * col_len,
-                             sizeof(T) * col_len);
+        memory_utils::Copy(cpu_place,
+                           output_data + k * out_cols + col_idx,
+                           cpu_place,
+                           input_data + k * col_len,
+                           sizeof(T) * col_len);
       }
       col_idx += col_len;
     }
@@ -114,11 +114,11 @@ struct SplitFunctor<phi::CPUContext, T> {
         auto* out_tensor = outputs->at(j);
         if (out_tensor != nullptr) {
           T* dst_ptr = out_tensor->data<T>() + k * col_len;
-          paddle::memory::Copy(cpu_place,
-                               dst_ptr,
-                               cpu_place,
-                               src_ptr + col_idx,
-                               sizeof(T) * col_len);
+          memory_utils::Copy(cpu_place,
+                             dst_ptr,
+                             cpu_place,
+                             src_ptr + col_idx,
+                             sizeof(T) * col_len);
         }
         col_idx += col_len;
       }

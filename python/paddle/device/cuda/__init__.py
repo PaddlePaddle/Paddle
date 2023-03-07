@@ -48,12 +48,12 @@ def current_stream(device=None):
     '''
     Return the current CUDA stream by the device.
 
-    Parameters:
+    Args:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device which want to get stream from.
-        If device is None, the device is the current device. Default: None.
+                If device is None, the device is the current device. Default: None.
 
     Returns:
-        CUDAStream: the stream to the device.
+            CUDAStream: the stream to the device.
 
     Examples:
         .. code-block:: python
@@ -92,9 +92,9 @@ def synchronize(device=None):
     '''
     Wait for the compute on the given CUDA device to finish.
 
-    Parameters:
+    Args:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
-        If device is None, the device is the current device. Default: None.
+                If device is None, the device is the current device. Default: None.
 
     Examples:
         .. code-block:: python
@@ -287,7 +287,7 @@ def memory_allocated(device=None):
         For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -318,7 +318,7 @@ def memory_reserved(device=None):
     Return the current size of GPU memory that is held by the allocator of the given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 

@@ -13,6 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <algorithm>
 #include <cctype>
@@ -456,7 +460,7 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 #ifdef PADDLE_WITH_XPU_KP
   m.def("get_xpu_device_op_support_types",
         [](const std::string &op_name, phi::backends::xpu::XPUVersion version) {
-          return platform::get_xpu_op_support_type(op_name, version);
+          return platform::get_xpu_kp_op_support_type(op_name, version);
         });
 #else
   m.def("get_xpu_device_op_support_types",

@@ -33,6 +33,7 @@ namespace cub = hipcub;
 #endif
 // trace op include
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -84,11 +85,10 @@ void GetClassInterval(const gpuStream_t& stream,
         paddle::platform::NCCLCommContext::Instance().Get(rid, place);
     // use global calculate stream
     const auto calcu_stream =
-        static_cast<GPUContext*>(
-            paddle::platform::DeviceContextPool::Instance().Get(place))
+        static_cast<GPUContext*>(phi::DeviceContextPool::Instance().Get(place))
             ->stream();
 
-    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         num_classes_per_device_ptr,
         num_classes_per_device_ptr,
         num_classes_per_device.numel(),
@@ -104,7 +104,8 @@ void GetClassInterval(const gpuStream_t& stream,
   size_t cub_temp_storage_bytes = 0;
   cub::DeviceScan::InclusiveSum<int*, int*>(
       nullptr, cub_temp_storage_bytes, nullptr, nullptr, nranks + 1, stream);
-  auto cub_temp_storage = paddle::memory::Alloc(place, cub_temp_storage_bytes);
+  auto cub_temp_storage =
+      phi::memory_utils::Alloc(place, cub_temp_storage_bytes);
   cub::DeviceScan::InclusiveSum<int*, int*>(cub_temp_storage->ptr(),
                                             cub_temp_storage_bytes,
                                             num_classes_per_device_ptr,
@@ -245,7 +246,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
       // use global calculate stream
       stream = static_cast<GPUContext*>(
-                   paddle::platform::DeviceContextPool::Instance().Get(place))
+                   phi::DeviceContextPool::Instance().Get(place))
                    ->stream();
     }
   }
@@ -356,7 +357,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           logits_max_buff,
           logits_max_buff,
           logits_max.numel(),
@@ -398,7 +399,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           sum_exp_logits_buff,
           sum_exp_logits_buff,
           sum_exp_logits.numel(),
@@ -457,7 +458,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           loss_ptr,
           loss_ptr,
           loss->numel(),

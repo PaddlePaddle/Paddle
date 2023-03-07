@@ -223,6 +223,7 @@ class AutoScanTest(unittest.TestCase):
         passes: Optional[List[str]] = None,
         use_gpu: bool = False,
         use_mkldnn: bool = False,
+        use_xpu: bool = False,
         ir_optim: Optional[bool] = None,
     ):
         config = paddle_infer.Config()
@@ -235,6 +236,8 @@ class AutoScanTest(unittest.TestCase):
             config.enable_use_gpu(100, 0)
         if use_mkldnn:
             config.enable_mkldnn()
+        if use_xpu:
+            config.enable_xpu()
         if passes is not None:
             config.pass_builder().set_passes(passes)
             self.passes = passes
@@ -571,6 +574,8 @@ class PassAutoScanTest(AutoScanTest):
         dic['use_mkldnn'] = enable_mkldnn
         enable_gpu = config.use_gpu()
         dic['use_gpu'] = enable_gpu
+        enable_xpu = config.use_xpu()
+        dic['use_xpu'] = enable_xpu
         if not self.passes:
             dic['passes'] = self.passes
 
@@ -648,7 +653,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             os.getenv('TEST_NUM_PERCENT_CASES', default='1.0')
         )
 
-        # Use a seperate random generator for skipping tests
+        # Use a separate random generator for skipping tests
         self.skip_rng = np.random.default_rng(int(time.strftime("%W")))
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:

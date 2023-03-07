@@ -17,10 +17,12 @@ Layers used for QAT.
 from paddle.nn import Layer
 from paddle.nn import functional as F
 
+from ..format import ConvertibleQuantedLayer
 
-class QuantedConv2D(Layer):
+
+class QuantedConv2D(ConvertibleQuantedLayer):
     """
-    The computational logic of QuantizedConv2D is the same with Conv2D.
+    The computational logic of QuantizedConv2D is the same as Conv2D.
     The only difference is that its inputs are all fake quantized.
     """
 
@@ -77,3 +79,9 @@ class QuantedConv2D(Layer):
             groups=self._groups,
             data_format=self._data_format,
         )
+
+    def weights_to_quanters(self):
+        return [('weight', 'weight_quanter')]
+
+    def activation_quanters(self):
+        return ['activation_quanter']

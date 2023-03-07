@@ -41,7 +41,7 @@ import numpy as np
 
 interpreter = sys.executable
 # Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
-# will be the C++ execubable on Windows
+# will be the C++ executable on Windows
 if sys.platform == 'win32' and 'python.exe' not in interpreter:
     interpreter = sys.exec_prefix + os.sep + 'python.exe'
 import_cv2_proc = subprocess.Popen(
@@ -89,9 +89,9 @@ def batch_images_from_tar(
     :type data_file: string
     :param dataset_name: 'train','test' or 'valid'
     :type dataset_name: string
-    :param img2label: a dic with image file name as key
+    :param img2label: a dict with image file name as key
                     and image's label as value
-    :type img2label: dic
+    :type img2label: dict
     :param num_per_batch: image number per batch file
     :type num_per_batch: int
     :return: path of list file containing paths of batch file
@@ -332,7 +332,7 @@ def simple_transform(
 ):
     """
     Simply data argumentation for training. These operations include
-    resizing, croping and flipping.
+    resizing, cropping and flipping.
 
     Example usage:
 
