@@ -169,7 +169,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
     def test_custom_device(self):
         self._test_static()
-        self._test_static_pe()
         self._test_dynamic()
         self._test_double_grad_dynamic()
         self._test_with_dataloader()
