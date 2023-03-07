@@ -388,7 +388,7 @@ class Engine:
         if self.main_program._pipeline_opt:
             assert "tasks" in self.main_program._pipeline_opt["fleet_opt"]
             fleet_opt = self.main_program._pipeline_opt["fleet_opt"]
-            fwd_task = fleet_opt["tasks"][1]
+            fwd_task = fleet_opt["tasks"][0]
             fwd_prog = fwd_task.get_program()
             fwd_block = fwd_prog.global_block()
 
