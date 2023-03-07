@@ -95,20 +95,12 @@ void FusedMultiTransformerXpuKernel(
 
   int time_step_value = -1;
   if (TimeStep) {
-    // TODO(mayang02): why the code
-    // "kernel->InputAt(20).SetBackend(phi::Backend::CPU)" does not work?
-    if (TimeStep.get_ptr()->place() == phi::CPUPlace()) {
-      // cache_seq_len
-      time_step_value = TimeStep.get_ptr()->data<int>()[0];
-    } else if (TimeStep.get_ptr()->place() == phi::XPUPlace()) {
-      phi::DenseTensor TimeStepCPU;
-      phi::MemcpyD2HKernel<Context>(
-          ctx, *(TimeStep.get_ptr()), 0, &TimeStepCPU);
-      time_step_value = TimeStepCPU.data<int>()[0];
-    } else {
-      LOG(FATAL) << "The place of input(TimeStep): "
-                 << TimeStep.get_ptr()->place() << " is not supported!";
-    }
+    PADDLE_ENFORCE_EQ(TimeStep.get_ptr()->place(),
+                      phi::CPUPlace(),
+                      phi::errors::PreconditionNotMet(
+                          "The place of input(TimeStep) must be CPUPlace."));
+    // cache_seq_len
+    time_step_value = TimeStep.get_ptr()->data<int>()[0];
     PADDLE_ENFORCE_GT(
         time_step_value,
         0,

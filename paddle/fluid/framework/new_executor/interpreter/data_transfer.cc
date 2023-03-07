@@ -581,6 +581,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                 VLOG(6) << "argument " << var_name
                         << " use new expected kernel key : "
                         << *expected_kernel_key_for_argument_def;
+              } else {
+                continue;
               }
             }
 
