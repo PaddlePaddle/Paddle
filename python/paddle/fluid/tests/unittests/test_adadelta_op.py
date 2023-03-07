@@ -22,15 +22,23 @@ import paddle.fluid as fluid
 
 
 def adadelta_wrapper(
-    Param, Grad, AvgSquaredGrad, AvgSquaredUpdate, rho=0.95, epsilon=1e-6
+    Param,
+    Grad,
+    AvgSquaredGrad,
+    AvgSquaredUpdate,
+    master_weight=None,
+    rho=0.95,
+    epsilon=1e-6,
 ):
     paddle._C_ops.adadelta_(
         Param,
         Grad,
         AvgSquaredGrad,
         AvgSquaredUpdate,
+        None,
         rho,
         epsilon,
+        False,
     )
     return Param, AvgSquaredGrad, AvgSquaredUpdate
 
