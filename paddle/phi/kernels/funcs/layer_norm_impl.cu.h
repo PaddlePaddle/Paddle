@@ -64,12 +64,9 @@ __forceinline__ __device__ U BlockReduceSum(U val, U *shared) {
   int lane = threadIdx.x % warpSize;
   int wid = threadIdx.x / warpSize;
 
-  val = WarpReduceSum(val);  // Each warp performs partial reduction
-
-  __syncthreads();
+  val = WarpReduceSum(val);          // Each warp performs partial reduction
   if (lane == 0) shared[wid] = val;  // Write reduced value to shared memory
-
-  __syncthreads();  // Wait for all partial reductions
+  __syncthreads();                   // Wait for all partial reductions
   // read from shared memory only if that warp existed
   val =
       (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : static_cast<U>(0);
@@ -518,16 +515,34 @@ __inline__ __device__ void cuLoadAddStridedInputs(const int64_t i1_block,
   if (i1 >= i1_end) return;
   U curr_mean = mean[i1];
   U curr_invvar = rsqrt_<U>(var[i1] + epsilon);
-  for (int k = 0; k < VPT; ++k) {
-    const int i2 = i2_off + k;
-    const int64_t load_idx = i1 * n2 + i2;
-    const int write_idx = thr_load_row_off * row_stride + thr_load_col_off + k;
-    if (i2 < n2) {
+
+  if (i2_off + (VPT - 1) < n2) {
+#pragma unroll
+    for (int k = 0; k < VPT; ++k) {
+      const int i2 = i2_off + k;
+      const int64_t load_idx = i1 * n2 + i2;
+      const int write_idx =
+          thr_load_row_off * row_stride + thr_load_col_off + k;
       U curr_input = static_cast<U>(input[load_idx]);
       U curr_dout = static_cast<U>(dout[load_idx]);
       warp_buf1[write_idx] += curr_dout;
       warp_buf2[write_idx] +=
           curr_dout * (curr_input - curr_mean) * curr_invvar;
+    }
+  } else {
+#pragma unroll
+    for (int k = 0; k < VPT; ++k) {
+      const int i2 = i2_off + k;
+      if (i2 < n2) {
+        const int64_t load_idx = i1 * n2 + i2;
+        const int write_idx =
+            thr_load_row_off * row_stride + thr_load_col_off + k;
+        U curr_input = static_cast<U>(input[load_idx]);
+        U curr_dout = static_cast<U>(dout[load_idx]);
+        warp_buf1[write_idx] += curr_dout;
+        warp_buf2[write_idx] +=
+            curr_dout * (curr_input - curr_mean) * curr_invvar;
+      }
     }
   }
 }
@@ -1275,7 +1290,6 @@ __global__ void LayerNormBackwardSumGradGammaBeta(
         sum_gamma += buf[read_idx];
         sum_beta += buf[read_idx + nbsize3];
       }
-      __syncthreads();
     }
     // write out fully summed gradients
     if (threadIdx.y == 0) {
@@ -1296,52 +1310,40 @@ __global__ void LayerNormBackwardComputeGradInput(
     const float epsilon,
     const LayerNormScaleBiasT<T, U, ScaleBiasSameTypeX> *gamma,
     T *grad_input) {
+  using ScaleT = LayerNormScaleBiasT<T, U, ScaleBiasSameTypeX>;
 #ifdef __HIPCC__
   for (auto i1 = hipBlockIdx_x; i1 < n1; i1 += hipGridDim_x) {
 #else
   for (auto i1 = blockIdx.x; i1 < n1; i1 += gridDim.x) {
 #endif
-    U sum_loss1 = U(0);
-    U sum_loss2 = U(0);
+
     const U c_mean = mean[i1];
     const U c_invvar = rsqrt_<U>(var[i1] + epsilon);
-    const T *k_input = input + i1 * n2;
-    const T *k_dout = dout + i1 * n2;
+    const T *__restrict__ k_input = input + i1 * n2;
+    const T *__restrict__ k_dout = dout + i1 * n2;
     constexpr int numx = BDIMX * BDIMY;
     const int thrx = threadIdx.x + threadIdx.y * BDIMX;
+
+    U sum_loss1 = static_cast<U>(0);
+    U sum_loss2 = static_cast<U>(0);
+    U k_dout_data = static_cast<U>(0);
+    U k_input_data = static_cast<U>(0);
+    ScaleT gamma_data = static_cast<ScaleT>(0);
     if (gamma != NULL) {
-      int l = 4 * thrx;
-      for (; l + 3 < n2; l += 4 * numx) {
-        for (int k = 0; k < 4; ++k) {
-          const U c_h = static_cast<U>(k_input[l + k]);
-          const U c_loss = static_cast<U>(k_dout[l + k]);
-          sum_loss1 += c_loss * static_cast<U>(gamma[l + k]);
-          sum_loss2 +=
-              c_loss * static_cast<U>(gamma[l + k]) * (c_h - c_mean) * c_invvar;
-        }
-      }
-      for (; l < n2; ++l) {
-        const U c_h = static_cast<U>(k_input[l]);
-        const U c_loss = static_cast<U>(k_dout[l]);
-        sum_loss1 += c_loss * static_cast<U>(gamma[l]);
+      for (int l = thrx; l < n2; l += numx) {
+        k_dout_data = static_cast<U>(k_dout[i]);
+        k_input_data = static_cast<U>(k_input[i]);
+        gamma_data = static_cast<U>(gamma[i]);
+        sum_loss1 += k_dout_data * gamma_data;
         sum_loss2 +=
-            c_loss * static_cast<U>(gamma[l]) * (c_h - c_mean) * c_invvar;
+            k_dout_data * gamma_data * (k_input_data - c_mean) * c_invvar;
       }
     } else {
-      int l = 4 * thrx;
-      for (; l + 3 < n2; l += 4 * numx) {
-        for (int k = 0; k < 4; ++k) {
-          const U c_h = static_cast<U>(k_input[l + k]);
-          const U c_loss = static_cast<U>(k_dout[l + k]);
-          sum_loss1 += c_loss;
-          sum_loss2 += c_loss * (c_h - c_mean) * c_invvar;
-        }
-      }
-      for (; l < n2; ++l) {
-        const U c_h = static_cast<U>(k_input[l]);
-        const U c_loss = static_cast<U>(k_dout[l]);
-        sum_loss1 += c_loss;
-        sum_loss2 += c_loss * (c_h - c_mean) * c_invvar;
+      for (int l = thrx; l < n2; l += numx) {
+        k_dout_data = static_cast<U>(k_dout[i]);
+        k_input_data = static_cast<U>(k_input[i]);
+        sum_loss1 += k_dout_data;
+        sum_loss2 += k_dout_data * (k_input_data - c_mean) * c_invvar;
       }
     }
     // intra-warp reductions
@@ -1383,7 +1385,6 @@ __global__ void LayerNormBackwardComputeGradInput(
           sum_loss1 += buf[2 * read_i];
           sum_loss2 += buf[2 * read_i + 1];
         }
-        __syncthreads();
       }
       if (threadIdx.y == 0) {
         buf[2 * threadIdx.x] = sum_loss1;
@@ -1401,21 +1402,17 @@ __global__ void LayerNormBackwardComputeGradInput(
     T *k_grad_input = grad_input + i1 * n2;
     if (gamma != NULL) {
       for (int l = thrx; l < n2; l += numx) {
-        const U c_h = static_cast<U>(k_input[l]);
-        const U c_loss = static_cast<U>(k_dout[l]);
-        U f_grad_input = fH * c_loss * static_cast<U>(gamma[l]);
+        U f_grad_input = fH * k_dout_data * gamma_data;
         f_grad_input -= sum_loss1;
-        f_grad_input -= (c_h - c_mean) * c_invvar * sum_loss2;
+        f_grad_input -= (k_input_data - c_mean) * c_invvar * sum_loss2;
         f_grad_input *= term1;
         k_grad_input[l] = static_cast<T>(f_grad_input);
       }
     } else {
       for (int l = thrx; l < n2; l += numx) {
-        const U c_h = static_cast<U>(k_input[l]);
-        const U c_loss = static_cast<U>(k_dout[l]);
-        U f_grad_input = fH * c_loss;
+        U f_grad_input = fH * k_dout_data;
         f_grad_input -= sum_loss1;
-        f_grad_input -= (c_h - c_mean) * c_invvar * sum_loss2;
+        f_grad_input -= (k_input_data - c_mean) * c_invvar * sum_loss2;
         f_grad_input *= term1;
         k_grad_input[l] = static_cast<T>(f_grad_input);
       }
@@ -1923,16 +1920,14 @@ static void LayerNormBackward(
         constexpr int part_size = BDIMY2 * VPT;
         const dim3 blocks2((feature_size + BDIMX2 - 1) / BDIMX2, part_size, 1);
 
-        auto part_grad_gamma_ptr = phi::memory_utils::Alloc(
+        int64_t param_num = part_size * feature_size;
+        auto part_grad_param_ptr = phi::memory_utils::Alloc(
             dev_ctx.GetPlace(),
-            part_size * feature_size * sizeof(U),
+            param_num * sizeof(U) * 2,  // for both gamma and beta
             phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-        auto part_grad_beta_ptr = phi::memory_utils::Alloc(
-            dev_ctx.GetPlace(),
-            part_size * feature_size * sizeof(U),
-            phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-        U *part_grad_gamma = reinterpret_cast<U *>(part_grad_gamma_ptr->ptr());
-        U *part_grad_beta = reinterpret_cast<U *>(part_grad_beta_ptr->ptr());
+
+        U *part_grad_gamma = reinterpret_cast<U *>(part_grad_param_ptr->ptr());
+        U *part_grad_beta = reinterpret_cast<U *>(part_grad_gamma + param_num);
 
         LayerNormBackwardPartGradGammaBeta<T, U, BDIMX2, BDIMY2, VPT>
             <<<blocks2, threads2, 0, stream>>>(
