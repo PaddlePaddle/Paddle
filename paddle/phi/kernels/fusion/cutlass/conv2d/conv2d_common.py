@@ -17,6 +17,10 @@ import sys
 sys.path.append("../")
 from util import SubstituteTemplate
 
+# For beginners, these template parameters may be difficult to understand.
+# Please refer to the conv-related demo of CUTLASS for better understanding.
+# https://github.com/NVIDIA/cutlass/tree/master/examples
+
 CommonCutlassConvKernelDeclare = """
 cutlass::Status ${kernel_func_name}(ConvAllParams params) {
   using kernel_base =
@@ -79,6 +83,7 @@ cutlass::Status ${kernel_func_name}(ConvAllParams params) {
                                                 groups);
 """
 
+# This is the execution part of this cutlass conv kernel.
 
 CommonCutlassConvKernelExecute = """
   ImplicitGemm implicit_gemm_op;

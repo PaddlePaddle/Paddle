@@ -115,7 +115,8 @@ if(WITH_CUTLASS)
     COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
 
-  file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
+  file(GLOB cutlass_cu "fusion/cutlass/conv2d/generated/*.cu"
+       "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 

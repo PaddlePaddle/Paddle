@@ -73,27 +73,31 @@ class CbrAct(enum.Enum):
     Silu = 3
 
 
-ActCutlassTag = {
+ActTag = {
     CbrAct.Identity: 'cutlass::epilogue::thread::Identity',
     CbrAct.Silu: 'cutlass::epilogue::thread::SiLu',
     CbrAct.Relu: 'cutlass::epilogue::thread::ReLu',
 }
 
-# some global variables used, now we only support these residual blocks
-EpiResBlocks = [
+# Some global variables used, now we only support these residual blocks.
+SupportedEpilogue = [
     (CbrAct.Silu, "cutlass::plus", CbrAct.Identity),
     (CbrAct.Identity, "cutlass::plus", CbrAct.Relu),
 ]
 
 UnderScoreName = {
-    EpiResBlocks[0]: "conv2d_bias_silu_add",
-    EpiResBlocks[1]: "conv2d_bias_add_relu",
+    SupportedEpilogue[0]: "conv2d_bias_silu_add",
+    SupportedEpilogue[1]: "conv2d_bias_add_relu",
 }
 
 CamelName = {
-    EpiResBlocks[0]: "Conv2dBiasSiluAdd",
-    EpiResBlocks[1]: "Conv2dBiasAddRelu",
+    SupportedEpilogue[0]: "Conv2dBiasSiluAdd",
+    SupportedEpilogue[1]: "Conv2dBiasAddRelu",
 }
+
+# Generate sm75 TensorOp conv code.
+# CUTLASS Tensor Core operations are implemented using CUDA's mma instruction.
+# Here is mma.m16n8k8.
 
 
 def generate_sm75_1688():
@@ -146,7 +150,7 @@ def generate_sm75_1688():
     kernel_dict["epilogue_vector_length"] = "8"
 
     sm75_code = ""
-    for epi_res_block in EpiResBlocks:
+    for epi_res_block in SupportedEpilogue:
         op_dict = {}
         op_dict["func_name"] = UnderScoreName[epi_res_block].lower() + "_sm75"
         op_dict["enum_op_name"] = UnderScoreName[epi_res_block].upper()
@@ -181,9 +185,9 @@ def generate_sm75_1688():
                         kernel_dict["kernel_func_name"] = op_dict[
                             "func_name"
                         ] + str(suffix)
-                        kernel_dict["act1"] = ActCutlassTag[epi_res_block[0]]
+                        kernel_dict["act1"] = ActTag[epi_res_block[0]]
                         kernel_dict["binary"] = epi_res_block[1]
-                        kernel_dict["act2"] = ActCutlassTag[epi_res_block[2]]
+                        kernel_dict["act2"] = ActTag[epi_res_block[2]]
                         suffix += 1
 
                         sm75_code += SubstituteTemplate(cbr_kernel, kernel_dict)
@@ -202,9 +206,9 @@ if __name__ == "__main__":
     all_code = cbr_header
     all_code += generate_sm75_1688()
     all_code += GenerateFunctionForPhi(
-        sm_versions, EpiResBlocks, UnderScoreName, CamelName
+        sm_versions, SupportedEpilogue, UnderScoreName, CamelName
     )
     all_code += CommonTail
-    with open("conv2d_bias_residual.cu", "w") as f:
+    with open("generated/conv2d_bias_residual.cu", "w") as f:
         f.write(all_code)
         f.close()

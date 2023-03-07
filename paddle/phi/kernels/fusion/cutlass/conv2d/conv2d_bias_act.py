@@ -64,7 +64,7 @@ cba_kernel_no_alpha = (
     + CommonCutlassConvKernelExecute
 )
 
-# this is used for leaky_relu, this activation need a fuse_alpha parameter
+# This is used for leaky_relu, this activation need a fuse_alpha parameter.
 
 cba_kernel_alpha = cba_kernel_no_alpha.replace(
     "{1.f, 1.f}", "{1.f, 1.f, alpha}"
@@ -80,34 +80,38 @@ class CbaAct(enum.Enum):
     LeakyRelu = 4
 
 
-# some global variables used, now we only support these activations
-SupportEpiFuncs = [
+# Some global variables used, now we only support these activations.
+SupportedAct = [
     CbaAct.Identity,
     CbaAct.Relu,
     CbaAct.Silu,
     CbaAct.LeakyRelu,
 ]
 
-ActCutlassTag = {
-    SupportEpiFuncs[0]: 'cutlass::epilogue::thread::LinearCombination',
-    SupportEpiFuncs[1]: 'cutlass::epilogue::thread::LinearCombinationRelu',
-    SupportEpiFuncs[2]: 'cutlass::epilogue::thread::LinearCombinationSilu',
-    SupportEpiFuncs[3]: 'cutlass::epilogue::thread::LinearCombinationLeakyRelu',
+ActTag = {
+    SupportedAct[0]: 'cutlass::epilogue::thread::LinearCombination',
+    SupportedAct[1]: 'cutlass::epilogue::thread::LinearCombinationRelu',
+    SupportedAct[2]: 'cutlass::epilogue::thread::LinearCombinationSilu',
+    SupportedAct[3]: 'cutlass::epilogue::thread::LinearCombinationLeakyRelu',
 }
 
 UnderScoreName = {
-    SupportEpiFuncs[0]: "conv2d_bias",
-    SupportEpiFuncs[1]: "conv2d_bias_relu",
-    SupportEpiFuncs[2]: "conv2d_bias_silu",
-    SupportEpiFuncs[3]: "conv2d_bias_leaky_relu",
+    SupportedAct[0]: "conv2d_bias",
+    SupportedAct[1]: "conv2d_bias_relu",
+    SupportedAct[2]: "conv2d_bias_silu",
+    SupportedAct[3]: "conv2d_bias_leaky_relu",
 }
 
 CamelName = {
-    SupportEpiFuncs[0]: "Conv2dBias",
-    SupportEpiFuncs[1]: "Conv2dBiasRelu",
-    SupportEpiFuncs[2]: "Conv2dBiasSilu",
-    SupportEpiFuncs[3]: "Conv2dBiasLeakyRelu",
+    SupportedAct[0]: "Conv2dBias",
+    SupportedAct[1]: "Conv2dBiasRelu",
+    SupportedAct[2]: "Conv2dBiasSilu",
+    SupportedAct[3]: "Conv2dBiasLeakyRelu",
 }
+
+# Generate sm75 TensorOp conv code.
+# CUTLASS Tensor Core operations are implemented using CUDA's mma instruction.
+# Here is mma.m16n8k8.
 
 
 def generate_sm75_1688():
@@ -159,13 +163,13 @@ def generate_sm75_1688():
     kernel_dict["epilogue_vector_length"] = "8"
 
     sm75_code = ""
-    for epi_func in SupportEpiFuncs:
+    for epi_func in SupportedAct:
         op_dict = {}
         op_dict["func_name"] = UnderScoreName[epi_func].lower() + "_sm75"
         op_dict["enum_op_name"] = UnderScoreName[epi_func].upper()
-        # for a op, we record all its kernels into a std::vector in C++ code
+        # For a function, we record all its kernels into a std::vector in C++ code
         all_kernel_names = ""
-        kernel_dict["epi_func"] = ActCutlassTag[epi_func]
+        kernel_dict["epi_func"] = ActTag[epi_func]
         suffix = 0
         for iterator_algorithm in iterator_algorithms:
             for alignment in alignments:
@@ -210,9 +214,9 @@ if __name__ == "__main__":
     all_code = cba_header
     all_code += generate_sm75_1688()
     all_code += GenerateFunctionForPhi(
-        sm_versions, SupportEpiFuncs, UnderScoreName, CamelName
+        sm_versions, SupportedAct, UnderScoreName, CamelName
     )
     all_code += CommonTail
-    with open("conv2d_bias_act.cu", "w") as f:
+    with open("generated/conv2d_bias_act.cu", "w") as f:
         f.write(all_code)
         f.close()
