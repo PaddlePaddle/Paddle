@@ -28,8 +28,8 @@ void MaxOutKernel(const Context& dev_ctx,
   if (axis < 0) {
     axis += x.dims().size();
   }
-
-  phi::funcs::MaxOutFunctor<Context, T> maxout_forward;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  phi::funcs::MaxOutFunctor<Context, MPType> maxout_forward;
   maxout_forward(dev_ctx, x, out, groups, axis);
 }
 

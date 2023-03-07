@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/maxouting.h"
 #include "paddle/phi/kernels/maxout_grad_kernel.h"
@@ -31,12 +32,12 @@ void MaxOutGradKernel(const Context& dev_ctx,
   if (axis < 0) {
     axis += x.dims().size();
   }
-
-  phi::funcs::SetConstant<Context, T> zero;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  phi::funcs::SetConstant<Context, MPType> zero;
   if (x_grad) {
-    dev_ctx.template Alloc<T>(x_grad);
-    zero(dev_ctx, x_grad, static_cast<T>(0.0));
-    phi::funcs::MaxOutGradFunctor<Context, T> maxout_backward;
+    dev_ctx.template Alloc<MPType>(x_grad);
+    zero(dev_ctx, x_grad, static_cast<MPType>(0.0));
+    phi::funcs::MaxOutGradFunctor<Context, MPType> maxout_backward;
     maxout_backward(dev_ctx, x, x_grad, out, out_grad, groups, axis);
   }
 }
