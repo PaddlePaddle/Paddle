@@ -403,6 +403,7 @@ class QuantConfig(object):
         for child in model.children():
             layer_prefix = child.full_name()
             config = self._layer2config.get(model, self.global_config)
+
             config = self._type2config.get(type(child), config)
             config = self._prefix2config.get(layer_prefix, config)
             if config is not None:
@@ -419,26 +420,21 @@ class QuantConfig(object):
         return self._details_helper(self._model)
 
     def _details_helper(self, layer: Layer):
-        extra_lines = []
         sublayer_lines = []
         for name, sublayer in layer.named_children():
             sublayer_str = self._details_helper(sublayer)
             sublayer_str = self._addindent(sublayer_str, 2)
-            sublayer_lines.append(
-                '('
-                + name
-                + '): '
-                + sublayer_str
-                + ', '
-                + str(self._layer2config[sublayer])
-            )
+            if sublayer in self._layer2config:
+                sublayer_lines.append(
+                    '('
+                    + name
+                    + '): '
+                    + sublayer_str
+                    + ', '
+                    + str(self._layer2config[sublayer])
+                )
 
         final_str = layer.__class__.__name__ + '('
-        if extra_lines:
-            if len(extra_lines) > 1:
-                final_str += '\n  ' + '\n  '.join(extra_lines) + '\n'
-            elif len(extra_lines) == 1:
-                final_str += extra_lines[0]
         if sublayer_lines:
             final_str += '\n  ' + '\n  '.join(sublayer_lines) + '\n'
 
