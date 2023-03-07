@@ -155,7 +155,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
         self, inputs, running_mean, running_variance, weight, bias
     ):
         paddle.enable_static()
-        core._set_prim_all_enabled(True)
+
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
@@ -208,7 +208,6 @@ class TestCompositeBatchNorm(unittest.TestCase):
             fetch_list=[z],
         )
         paddle.disable_static()
-        core._set_prim_all_enabled(False)
         return res
 
     def compare_backward(self):
@@ -253,7 +252,8 @@ class TestCompositeBatchNorm(unittest.TestCase):
             atol=attrs.get_atol("backward"),
         )
 
-    def test_backward(self):
+    def test_backward_prim_vjp(self):
+        core._set_prim_backward_enabled(True)
         for i in self.training:
             for j in self.dtypes:
                 for m in self.momentum:
@@ -267,6 +267,24 @@ class TestCompositeBatchNorm(unittest.TestCase):
                 attrs.set_shape(n)
                 attrs.set_use_global_stats(t)
                 self.compare_backward()
+        core._set_prim_backward_enabled(False)
+
+    def test_backward(self):
+        core._set_prim_all_enabled(True)
+        for i in self.training:
+            for j in self.dtypes:
+                for m in self.momentum:
+                    attrs.set_training(i)
+                    attrs.set_dtype(j)
+                    attrs.set_momentum(m)
+                    self.compare_backward()
+
+        for n in self.shapes:
+            for t in self.use_global_stats:
+                attrs.set_shape(n)
+                attrs.set_use_global_stats(t)
+                self.compare_backward()
+        core._set_prim_all_enabled(False)
 
 
 if __name__ == '__main__':
