@@ -20,6 +20,11 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
 
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/device_context.h"
+
 namespace phi {
 
 template <typename T, typename AccT>
@@ -124,7 +129,7 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
-  using AccT = typename kps::details::MPTypeTrait<T>::Type;
+  using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
@@ -342,4 +347,5 @@ PD_REGISTER_KERNEL(group_norm,
                    phi::GroupNormKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}

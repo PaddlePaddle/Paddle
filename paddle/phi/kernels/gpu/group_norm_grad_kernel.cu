@@ -51,8 +51,8 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
   if (x_scale != static_cast<T>(0)) x_scale_inv = static_cast<T>(1.0) / x_scale;
   AccT d_mean_data = static_cast<AccT>(0);
   AccT d_var_data = static_cast<AccT>(0);
-  T d_scale_data = static_cast<T>(0);
-  T d_bias_data = static_cast<T>(0);
+  AccT d_scale_data = static_cast<AccT>(0);
+  AccT d_bias_data = static_cast<AccT>(0);
 
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
     AccT val, dval;
@@ -67,8 +67,8 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
     d_mean_data += dval * static_cast<AccT>(x_scale);
 
     val = val * static_cast<AccT>(x_scale_inv);
-    d_bias_data += static_cast<T>(dval);
-    d_scale_data += static_cast<T>(val * dval);
+    d_bias_data += dval;
+    d_scale_data += val * dval;
   }
   CudaAtomicAddWithWarp(&(d_mean[bid * groups + gid]),
                         static_cast<AccT>(d_mean_data));
@@ -77,16 +77,16 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
 
   if (flags & kHasScale) {
 #if CUDA_VERSION >= 11070
-    phi::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
+    phi::CudaAtomicAdd(&(d_scale[ccid]), static_cast<T>(d_scale_data));
 #else
-    CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
+    CudaAtomicAddWithWarp(&(d_scale[ccid]), static_cast<T>(d_scale_data));
 #endif
   }
   if (flags & kHasBias) {
 #if CUDA_VERSION >= 11070
-    phi::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
+    phi::CudaAtomicAdd(&(d_bias[ccid]), static_cast<T>(d_bias_data));
 #else
-    CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
+    CudaAtomicAddWithWarp(&(d_bias[ccid]), static_cast<T>(d_bias_data));
 #endif
   }
 }
@@ -128,7 +128,7 @@ __global__ void GroupNormBackward(const T* x,
                                      : static_cast<AccT>(1);
   AccT x_bias =
       (flags & kHasBias) ? static_cast<AccT>(bias[ccid]) : static_cast<AccT>(0);
-  AccT x_scale_inv = static_cast<T>(0);
+  AccT x_scale_inv = static_cast<AccT>(0);
   if (x_scale != static_cast<AccT>(0))
     x_scale_inv = static_cast<AccT>(1.0) / x_scale;
 
@@ -220,7 +220,7 @@ __global__ void GetBackwardParamsCUDAKernel(int imsize,
     sum1 += static_cast<AccT>(ds[index]) * scale_v;
     sum2 += static_cast<AccT>(db[index]) * scale_v;
     const AccT scale_c =
-        scale == nullptr ? static_cast<AccT>(0) : static_cast<T>(scale[c]);
+        scale == nullptr ? static_cast<AccT>(0) : static_cast<AccT>(scale[c]);
     p1[index] = static_cast<AccT>(scale_c) * var_inv;
   }
 
@@ -402,7 +402,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
               p1_data,
               p2_data,
               p3_data);
-      GetXGradientCUDAKernel<T>
+      GetXGradientCUDAKernel<T, AccT>
           <<<grid, threads, 0, dev_ctx.stream()>>>(imsize,
                                                    C,
                                                    group_size,
@@ -424,7 +424,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
 
     DenseTensor temp_var;
     temp_var.Resize(var.dims());
-    dev_ctx.template Alloc<T>(&temp_var);
+    dev_ctx.template Alloc<AccT>(&temp_var);
     set_zero_AccT(dev_ctx, &temp_var, static_cast<AccT>(0));
     auto* temp_var_data = temp_var.data<AccT>();
 
@@ -483,4 +483,5 @@ PD_REGISTER_KERNEL(group_norm_grad,
                    phi::GroupNormGradKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
