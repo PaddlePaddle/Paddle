@@ -285,6 +285,15 @@ void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void floor_grad(const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto zero_tensor =
+        full<T>(phi::vectorize(out_grad.dims()), 0.0, out_grad.dtype());
+    set_output<T>(zero_tensor, x_grad);
+  }
+}
+
+template <typename T>
 void concat_grad(const std::vector<Tensor>& x,
                  const Tensor& out_grad,
                  const Scalar& axis,
