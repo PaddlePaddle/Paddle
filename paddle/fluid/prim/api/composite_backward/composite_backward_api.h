@@ -304,8 +304,7 @@ void elementwise_pow_grad(const Tensor& x,
   }  // indicate we will compute dy
   if (dx) {
     // dx = y * x^(y-1)
-    auto one_tensor = full<T>(phi::vectorize(y.dims()), 1.0, y.dtype());
-    auto tmp_z = y - one_tensor;
+    auto tmp_z = y - 1.0;
     auto x_pow_z = elementwise_pow<T>(x, tmp_z);
     auto dx_res = y * x_pow_z;
     if (y.dims() != x.dims()) {
