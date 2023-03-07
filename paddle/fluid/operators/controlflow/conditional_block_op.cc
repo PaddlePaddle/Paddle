@@ -83,8 +83,8 @@ class ConditionalBlockOp : public ConditionalOp {
 
       auto &cur_scope = *scopes->front();
 #ifdef PADDLE_WITH_MKLDNN
-      // (jczaja) Executor on being destroyed clears oneDNN cache and
-      // reset registered model data layout. This is unwanted for nested
+      // Executor on being destroyed clears oneDNN cache and resets
+      // registered model data layout. This is unwanted for nested
       // Executors (executors declared inside control ops)
       platform::DontClearMKLDNNCache(dev_place);
 #endif
