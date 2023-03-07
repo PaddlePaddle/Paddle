@@ -35,6 +35,41 @@ namespace phi {
 namespace backends {
 namespace gpu {
 
+class CUDAGraphContextManager {
+ public:
+  using DeviceContextMap =
+      std::map<phi::Place, std::shared_future<std::unique_ptr<DeviceContext>>>;
+
+  static CUDAGraphContextManager &Instance() {
+    static CUDAGraphContextManager *cuda_graph_ctx_manager =
+        new CUDAGraphContextManager;
+    return *cuda_graph_ctx_manager;
+  }
+
+  std::shared_future<std::unique_ptr<DeviceContext>> Get(
+      int64_t pool_id, const phi::Place &place, int stream_priority) {
+    std::lock_guard<std::mutex> lk(ctx_mtx_);
+    VLOG(6) << "Get cuda_graph_dev_ctx for " << place;
+
+    DeviceContextMap &ctxs = cuda_graph_ctx_pool_[pool_id];
+    if (ctxs.find(place) == ctxs.end()) {
+      platform::EmplaceDeviceContexts(
+          &ctxs,
+          {place},
+          /*disable_setting_default_stream_for_allocator=*/true,
+          stream_priority);
+    }
+    return ctxs[place];
+  }
+
+ private:
+  CUDAGraphContextManager() {}
+  DISABLE_COPY_AND_ASSIGN(CUDAGraphContextManager);
+
+  std::mutex ctx_mtx_;
+  std::unordered_map<int64_t, DeviceContextMap> cuda_graph_ctx_pool_;
+};
+
 class CUDAKernelParams {
  public:
   explicit CUDAKernelParams(const cudaKernelNodeParams *params)
@@ -162,6 +197,14 @@ class CUDAGraph {
     return capturing_graph_->dev_ctx_;
   }*/
 
+  static void SetCreateCUDAGraphStream(bool create_cuda_graph_stream) {
+    capturing_graph_->create_cuda_graph_stream_ = create_cuda_graph_stream;
+  }
+
+  static bool CreateCUDAGraphStream() {
+    return capturing_graph_->create_cuda_graph_stream_;
+  }
+
   // This API can be used to debug which GPU operation is not
   // supported during capturing CUDA Graph.
   static bool IsValidCapturing();
@@ -217,6 +260,7 @@ class CUDAGraph {
   std::mutex func_mtx_;
 
   bool is_first_run_{true};
+  bool create_cuda_graph_stream_{false};
 
   static paddle::optional<std::thread::id> capturing_thread_id_;
   static std::unique_ptr<CUDAGraph> capturing_graph_;

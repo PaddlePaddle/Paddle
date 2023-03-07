@@ -291,7 +291,7 @@ class TestCustomStream(unittest.TestCase):
                     if i == 1 and use_cuda_graph:
                         # paddle.set_flags({"FLAGS_new_executor_use_cuda_graph": True})
                         cuda_graph = CUDAGraph(place, mode="global")
-                        cuda_graph.capture_begin(use_multi_stream=True)
+                        cuda_graph.capture_begin(create_cuda_graph_stream=True)
                         exe.run(main_program)
                         cuda_graph.capture_end()
 
