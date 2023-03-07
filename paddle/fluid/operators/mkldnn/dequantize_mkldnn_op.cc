@@ -57,8 +57,6 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     dnnl::primitive_attr attrs;
     static constexpr int32_t mask = 0;  // same shift and scale for whole tensor
 
-    const float reorder_scale = quantization_scale;
-    //    attrs.set_output_scales(mask, {reorder_scale});
     attrs.set_scales_mask(DNNL_ARG_DST, mask);
 
     if (with_shift) {
@@ -83,7 +81,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     auto scales_mem =
         dnnl::memory(scales_md,
                      dev_ctx.GetEngine(),
-                     phi::funcs::to_void_cast<float>(&reorder_scale));
+                     phi::funcs::to_void_cast<float>(&quantization_scale));
 
     auto zero_points_md = dnnl::memory::desc(
         {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);

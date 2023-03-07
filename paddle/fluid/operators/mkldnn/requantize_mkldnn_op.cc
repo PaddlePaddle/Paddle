@@ -39,9 +39,9 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto scale_in = ctx.Attr<float>("Scale_in");
-    auto shift_in = ctx.Attr<float>("Shift_in");
+    auto shift_in = static_cast<int32_t>(ctx.Attr<float>("Shift_in"));
     auto scale_out = ctx.Attr<float>("Scale_out");
-    auto shift_out = ctx.Attr<float>("Shift_out");
+    auto shift_out = static_cast<int32_t>(ctx.Attr<float>("Shift_out"));
     bool with_shift = shift_in != 0.0f || shift_out != 0.0f;
     auto* output = ctx.Output<phi::DenseTensor>("Output");
 
@@ -53,7 +53,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
         scale_out,
         0.0f,
         platform::errors::InvalidArgument("Scale of output cannot be 0.0"));
-    if (shift_in != 0.0f) {
+    if (shift_in != 0) {
       PADDLE_ENFORCE_EQ(
           input->dtype(),
           DataType::UINT8,
@@ -72,7 +72,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
     dnnl::primitive_attr attrs;
     int mask = 0;
-    float reorder_scale = scale_out / scale_in;
+    float reorder_scale = scale_in / scale_out;
     attrs.set_scales_mask(DNNL_ARG_DST, mask);
     auto scales_md = dnnl::memory::desc(
         {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
@@ -81,11 +81,11 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
                      dev_ctx.GetEngine(),
                      phi::funcs::to_void_cast<float>(&reorder_scale));
 
-    uint8_t reorder_shift =
-        with_shift ? clip_to_uint8(shift_out - reorder_scale * shift_in) : 0;
-
-    if (with_shift) {
+    if (shift_in != 0) {
       attrs.set_zero_points_mask(DNNL_ARG_DST, mask);
+    }
+    if (shift_in != 0) {
+      attrs.set_zero_points_mask(DNNL_ARG_SRC, mask);
     }
 
     phi::funcs::ReorderOneDNNHandler reorder_handler(
@@ -107,18 +107,25 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     auto& astream = phi::OneDNNContext::tls().get_stream();
 
     auto zero_points_md = dnnl::memory::desc(
-        {1}, dnnl::memory::data_type::u8, dnnl::memory::format_tag::x);
-    auto zero_points_mem = dnnl::memory(zero_points_md,
-                                        dev_ctx.GetEngine(),
-                                        static_cast<uint8_t*>(&reorder_shift));
+        {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
+    auto zero_points_in_mem =
+        dnnl::memory(zero_points_md, dev_ctx.GetEngine(), &shift_in);
+    auto zero_points_out_mem =
+        dnnl::memory(zero_points_md, dev_ctx.GetEngine(), &shift_out);
 
     std::unordered_map<int, dnnl::memory> reorder_args;
     reorder_args.insert({DNNL_ARG_SRC, *src_memory_p});
     reorder_args.insert({DNNL_ARG_DST, *dst_memory_p});
     reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scales_mem});
-    if (with_shift) {
+    // shift for SRC
+    if (shift_in != 0.0f) {
       reorder_args.insert(
-          {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_DST, zero_points_mem});
+          {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_DST, zero_points_in_mem});
+    }
+    // shift for DST
+    if (shift_out != 0.0f) {
+      reorder_args.insert(
+          {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_DST, zero_points_out_mem});
     }
 
     reorder_p->execute(astream, reorder_args);
