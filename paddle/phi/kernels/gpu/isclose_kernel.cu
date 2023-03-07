@@ -22,4 +22,11 @@
 
 
 PD_REGISTER_KERNEL(
-    isclose, GPU, ALL_LAYOUT, phi::IscloseKernel, float, double, phi::dtype::float16) {}
+    isclose,
+    GPU,
+    ALL_LAYOUT,
+    phi::IscloseKernel,
+    float,
+    double,
+    phi::dtype::float16
+) {}
