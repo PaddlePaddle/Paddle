@@ -722,7 +722,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
     {% if output_typename == "Tensor" %}
     auto {{outputs[i]}} = this->GetOutputPtr(&{{outputs[i]+ "_t"}});
     {% elif output_typename == "Tensor[]" %}
-    std::vector<paddle::experimental::Tensor*> {{outputs[i]}}({{outputs[i] + "_t"}}.size());
+    std::vector<paddle::Tensor*> {{outputs[i]}}({{outputs[i] + "_t"}}.size());
     for(size_t i = 0; i < {{outputs[i]}}.size(); ++i){
       {{outputs[i]}}[i] = &{{outputs[i] + "_t"}}[i];
     }
