@@ -70,7 +70,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "eig",
     "eig_grad",
     "eigh",
-    "eigvals",
     "ftt_c2r",
     "ftt_r2c",
     "fused_adam",
