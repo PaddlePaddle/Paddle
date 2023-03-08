@@ -2110,9 +2110,9 @@ class OpTest(unittest.TestCase):
         numeric_grads,
         analytic_grads,
         names,
-        atol,
         max_relative_error,
         msg_prefix,
+        atol=0,
     ):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
             # Used by bfloat16 for now to solve precision problem
@@ -2430,9 +2430,9 @@ class OpTest(unittest.TestCase):
             numeric_grads,
             analytic_grads,
             inputs_to_check,
-            atol,
             max_relative_error,
             "Gradient Check On %s" % str(place),
+            atol=atol,
         )
 
         if check_dygraph:
@@ -2462,9 +2462,9 @@ class OpTest(unittest.TestCase):
                 numeric_grads,
                 dygraph_grad,
                 inputs_to_check,
-                atol,
                 max_relative_error,
                 "Gradient Check On %s" % str(place),
+                atol=atol,
             )
             # ensure switch back eager dygraph
             g_disable_legacy_dygraph()
@@ -2495,9 +2495,9 @@ class OpTest(unittest.TestCase):
                         numeric_grads,
                         eager_dygraph_grad,
                         inputs_to_check,
-                        atol,
                         max_relative_error,
                         "Gradient Check On %s" % str(place),
+                        atol=atol,
                     )
 
     def _find_var_in_dygraph(self, output_vars, name):
