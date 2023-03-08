@@ -166,7 +166,7 @@ class Adagrad(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        moment_acc = self._get_accumulator(
+        moment_acc = self._get_accumulator_master(
             self._moment_acc_str, param_and_grad[0]
         )
 

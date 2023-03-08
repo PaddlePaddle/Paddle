@@ -171,10 +171,10 @@ class Adadelta(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        avg_squared_grad_acc = self._get_accumulator(
+        avg_squared_grad_acc = self._get_accumulator_master(
             self._avg_squared_grad_acc_str, param_and_grad[0]
         )
-        avg_squared_update_acc = self._get_accumulator(
+        avg_squared_update_acc = self._get_accumulator_master(
             self._avg_squared_update_acc_str, param_and_grad[0]
         )
         find_master = (

@@ -214,8 +214,10 @@ class Adamax(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        moment = self._get_accumulator(self._moment_acc_str, param_and_grad[0])
-        inf_norm = self._get_accumulator(
+        moment = self._get_accumulator_master(
+            self._moment_acc_str, param_and_grad[0]
+        )
+        inf_norm = self._get_accumulator_master(
             self._inf_norm_acc_str, param_and_grad[0]
         )
 
@@ -229,7 +231,7 @@ class Adamax(Optimizer):
             else None
         )
 
-        beta1_pow_acc = self._get_accumulator(
+        beta1_pow_acc = self._get_accumulator_master(
             self._beta1_pow_acc_str, param_and_grad[0]
         )
         if framework.in_dygraph_mode():
@@ -289,7 +291,7 @@ class Adamax(Optimizer):
                 if grad is None or param.stop_gradient is True:
                     continue
                 if framework.in_dygraph_mode():
-                    beta1_pow_acc = self._get_accumulator(
+                    beta1_pow_acc = self._get_accumulator_master(
                         self._beta1_pow_acc_str, param
                     )
                     with no_grad():
@@ -301,7 +303,7 @@ class Adamax(Optimizer):
                     with param.block.program._optimized_guard(
                         [param, grad]
                     ), name_scope('adamax'):
-                        beta1_pow_acc = self._get_accumulator(
+                        beta1_pow_acc = self._get_accumulator_master(
                             self._beta1_pow_acc_str, param
                         )
                         block.append_op(
@@ -316,7 +318,7 @@ class Adamax(Optimizer):
                 if grad is None or param.stop_gradient is True:
                     continue
                 if framework.in_dygraph_mode():
-                    beta1_pow_acc = self._get_accumulator(
+                    beta1_pow_acc = self._get_accumulator_master(
                         self._beta1_pow_acc_str, param
                     )
                     self._beta1 = parameters_and_grads.get(
@@ -331,7 +333,7 @@ class Adamax(Optimizer):
                     with param.block.program._optimized_guard(
                         [param, grad]
                     ), name_scope('adamax'):
-                        beta1_pow_acc = self._get_accumulator(
+                        beta1_pow_acc = self._get_accumulator_master(
                             self._beta1_pow_acc_str, param
                         )
                         self._beta1 = parameters_and_grads.get(
