@@ -99,7 +99,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "matrix_nms",
     "matrix_rank_tol",
     "merged_adam",
-    "mode",
     "momentum",
     "multiclass_nms3",
     "multinomial",
