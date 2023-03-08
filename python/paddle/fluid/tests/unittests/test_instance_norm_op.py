@@ -87,7 +87,7 @@ def _cal_mean_variance(x, epsilon, mean_shape):
 
 
 def instance_norm_wrapper(x, weight=None, bias=None, esp=1e-05):
-    return paddle.nn.functional_instance_norm(
+    return paddle.nn.functional.instance_norm(
         x, None, None, weight, bias, True, 0.9, esp
     )
 
