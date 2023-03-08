@@ -80,7 +80,11 @@ def handle_related_ut_file(rootPath):
             for line in f.readlines():
                 file_name = line.replace('\n', '').strip()
                 if file_name.endswith(".cc"):
-                    if file_name.replace('.cc', '.h') not in related_file_list and file_name.replace('.cc', '.h') in all_file_paddle_list:
+                    if (
+                        file_name.replace('.cc', '.h') not in related_file_list
+                        and file_name.replace('.cc', '.h')
+                        in all_file_paddle_list
+                    ):
                         os.system(
                             'echo %s >> %s'
                             % (
@@ -268,7 +272,7 @@ def ut_file_map_supplement(rootPath):
         print("load_dict_new success!!")
 
     os.system(
-        'cd %s && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/tmp_test/prec_delta --no-check-certificate'
+        'cd %s && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/new_precise_test_map/prec_delta --no-check-certificate'
         % precision_test_map_store_dir
     )
     prec_delta_new = "%s/build/prec_delta" % rootPath
