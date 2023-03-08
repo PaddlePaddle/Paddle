@@ -20,10 +20,10 @@ import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
 from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
+from paddle.nn.common import layers
 
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
