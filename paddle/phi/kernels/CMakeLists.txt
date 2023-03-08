@@ -111,6 +111,8 @@ file(
 
 if(WITH_CUTLASS)
   execute_process(
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated"
     COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
     COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
