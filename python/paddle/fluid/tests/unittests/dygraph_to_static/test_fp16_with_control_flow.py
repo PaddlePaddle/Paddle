@@ -30,6 +30,8 @@ class Net(paddle.nn.Layer):
         y = 0
         for i in range(paddle.shape(x)[0]):
             y = y + x[i]
+            for j in range(paddle.shape(x)[0]):
+                y = y + x[j]
         return y
 
 

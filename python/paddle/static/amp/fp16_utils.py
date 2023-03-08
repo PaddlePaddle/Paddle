@@ -513,7 +513,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                                 e
                             )
                         )
-                        out_var = global_block.var(out_var_name)
+                        out_var = block._var_recursive(out_var_name)
                         if out_var is not None:
                             _logger.debug(
                                 "-- var {} is got in the global block --".format(
