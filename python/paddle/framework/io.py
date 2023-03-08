@@ -37,20 +37,22 @@ from paddle.fluid.framework import (
     _non_static_mode,
     _varbase_creator,
 )
-from paddle.fluid.io import _is_file_path, _is_memory_buffer
-from paddle.fluid.io import _legacy_save as _legacy_static_save
-from paddle.fluid.io import (
-    _open_file_buffer,
-    _pack_loaded_dict,
-    _pickle_loads_mac,
-    _unpack_saved_dict,
-)
 from paddle.jit.api import _SaveLoadConfig
 from paddle.jit.translated_layer import (
     INFER_MODEL_SUFFIX,
     INFER_PARAMS_SUFFIX,
     _construct_params_and_buffers,
     _construct_program_holders,
+)
+
+from .io_utils import (
+    _is_file_path,
+    _is_memory_buffer,
+    _legacy_static_save,
+    _open_file_buffer,
+    _pack_loaded_dict,
+    _pickle_loads_mac,
+    _unpack_saved_dict,
 )
 
 __all__ = []
