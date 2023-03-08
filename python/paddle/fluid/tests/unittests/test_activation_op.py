@@ -2967,35 +2967,6 @@ class TestPow_ZeroDim(TestPow):
         self.enable_cinn = False
 
 
-class TestPowFP16(TestActivation):
-    def setUp(self):
-        self.op_type = "pow"
-        self.prim_op_type = "comp"
-        self.python_api = paddle.pow
-        self.check_eager = True
-        self.init_dtype()
-        self.init_shape()
-
-        np.random.seed(1024)
-        x = np.random.uniform(1, 2, self.shape).astype(self.dtype)
-        out = np.power(x, 3)
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {'factor': 3.0}
-        self.outputs = {'Out': out}
-
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output(check_eager=self.check_eager, check_prim=True)
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', check_eager=self.check_eager, check_prim=True
-        )
-
-
 class TestPow_factor_tensor(TestActivation):
     def setUp(self):
         self.op_type = "pow"
@@ -3896,8 +3867,7 @@ else:
 create_test_act_fp16_class(TestLog10, atol=5e-2)
 create_test_act_fp16_class(TestLog1p, grad_atol=0.9)
 create_test_act_fp16_class(TestSquare)
-create_test_act_fp16_class(TestPow, atol=5e-2)
-create_test_act_fp16_class(TestPowFP16, atol=5e-2)
+create_test_act_fp16_class(TestPow, check_prim=True)
 create_test_act_fp16_class(TestPow_factor_tensor, atol=5e-2)
 create_test_act_fp16_class(TestSTanh, grad_atol=0.9)
 create_test_act_fp16_class(TestSoftplus)
