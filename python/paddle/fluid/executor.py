@@ -1760,21 +1760,7 @@ class Executor:
                     )
                     return False
 
-                # Unsupported case 2: parallel graph
-                if core.globals()['FLAGS_enable_parallel_graph'] in [
-                    1,
-                    '1',
-                    True,
-                    'True',
-                    'true',
-                ]:
-                    warnings.warn(
-                        "Standalone executor is not used for parallel graph",
-                        UserWarning,
-                    )
-                    return False
-
-                # Unsupported case 3: inference
+                # Unsupported case 2: inference
                 if compiled_program._is_inference:
                     warnings.warn(
                         "Standalone executor is not used for inference",
@@ -1782,7 +1768,7 @@ class Executor:
                     )
                     return False
 
-                # Unsupported case 4: async mode
+                # Unsupported case 3: async mode
                 if (
                     compiled_program._build_strategy is not None
                     and compiled_program._build_strategy.async_mode
@@ -1793,7 +1779,7 @@ class Executor:
                     )
                     return False
 
-                # Unsupported case 5: CUDA Graph
+                # Unsupported case 4: CUDA Graph
                 if (
                     compiled_program._build_strategy is not None
                     and compiled_program._build_strategy.allow_cuda_graph_capture

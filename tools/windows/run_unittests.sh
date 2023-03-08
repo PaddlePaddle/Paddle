@@ -32,7 +32,6 @@ disable_wingpu_test="^test_model$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_parallel_executor_feed_persistable_var$|\
 ^test_parallel_executor_inference_feed_partial_data$|\
-^test_parallel_ssa_graph_inference_feed_partial_data$|\
 ^test_py_reader_combination$|\
 ^test_py_reader_pin_memory$|\
 ^test_py_reader_push_pop$|\
@@ -145,7 +144,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_py_reader_push_pop$|\
 ^test_parallel_executor_feed_persistable_var$|\
 ^test_parallel_executor_inference_feed_partial_data$|\
-^test_parallel_ssa_graph_inference_feed_partial_data$|\
 ^test_reader_reset$|\
 ^test_parallel_executor_seresnext_base_gpu$|\
 ^test_py_reader_pin_memory$|\
