@@ -45,14 +45,6 @@ def create_or_get_tensor(scope, var_name, var, place):
     return tensor
 
 
-class FakeDir:
-    def __init__(self, name) -> None:
-        self.name = name
-
-    def cleanup(self):
-        pass
-
-
 class TestSyncBatchNormOpTraining(unittest.TestCase):
     """sync_batch_norm op test."""
 
@@ -66,16 +58,8 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-3
-        # self.data_dir = tempfile.TemporaryDirectory()
-        # self.fleet_log_dir = tempfile.TemporaryDirectory()
-        self.data_dir = FakeDir("/home/lvyongkang/kang/Paddle/build/log_debug")
-        self.fleet_log_dir = FakeDir(
-            "/home/lvyongkang/kang/Paddle/build/log_fleet_debug"
-        )
-        import shutil
-
-        shutil.rmtree(self.fleet_log_dir.name)
-        os.makedirs(self.fleet_log_dir.name)
+        self.data_dir = tempfile.TemporaryDirectory()
+        self.fleet_log_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self) -> None:
         self.data_dir.cleanup()
