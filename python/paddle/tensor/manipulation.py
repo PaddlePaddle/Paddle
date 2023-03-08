@@ -3150,7 +3150,7 @@ def tile(x, repeat_times, name=None):
             [
                 'bool',
                 'float16',
-                'bfloat16',
+                'uint16',
                 'float32',
                 'float64',
                 'int32',
