@@ -21,15 +21,16 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
+np.random.seed(1024)
+
 
 class TestIndexSelectOp(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select
         self.op_type = "index_select"
         self.prim_op_type = "comp"
-
         self.init_dtype_type()
-        np.random.seed(1024)
+
         index_np = np.random.randint(
             low=0, high=self.x_shape[self.dim], size=self.index_size
         )
