@@ -219,7 +219,7 @@ class TestIscloseOpFp16(unittest.TestCase):
                 out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
 
 
-class TestAllcloseOpFloat16(TestIscloseOp):
+class TestIscloseOpFloat16(TestIscloseOp):
     def set_args(self):
         self.input = np.array([10.1]).astype("float16")
         self.other = np.array([10]).astype("float16")
