@@ -37,8 +37,8 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
                       platform::errors::InvalidArgument(
                           "FLAGS_new_executor_use_cuda_graph must be True when "
                           "create_cuda_graph_stream=True"));
-    if (pool_id <= kInvalidPoolID) {
-      pool_id = UniqueMemoryPoolID();
+    if (pool_id <= CUDAGraph::kInvalidPoolID) {
+      pool_id = CUDAGraph::UniqueMemoryPoolID();
     }
     mutable_dev_ctx = phi::backends::gpu::CUDAGraphContextManager::Instance()
                           .Get(pool_id, place, 0)
