@@ -193,6 +193,25 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     if (abs(feature_size) > FEATURE_SIZE_THRESHOLD) {
       return;
     }
+    // since gamma and beta are constant var, dynamic shape should be useless
+    auto min_input_shape =
+        Get<std::map<std::string, std::vector<int>>>("min_input_shape");
+    if (min_input_shape.find(layer_norm_in->Name()) != min_input_shape.end()) {
+      auto max_input_shape =
+          Get<std::map<std::string, std::vector<int>>>("max_input_shape");
+      auto opt_input_shape =
+          Get<std::map<std::string, std::vector<int>>>("optim_input_shape");
+      auto min_shape = min_input_shape[layer_norm_in->Name()];
+      auto max_shape = max_input_shape[layer_norm_in->Name()];
+      auto opt_shape = opt_input_shape[layer_norm_in->Name()];
+
+      for (int i = begin_norm_axis; i < static_cast<int>(input_shape.size());
+           i++) {
+        if (min_shape[i] != max_shape[i] || max_shape[i] != opt_shape[i]) {
+          return;
+        }
+      }
+    }
 
     auto reduce_mean0_out_name(
         patterns::PDNodeName("split_layernorm", "reduce0"));

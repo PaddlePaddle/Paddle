@@ -226,7 +226,7 @@ class TrtConvertLayerNormTest_2(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 64, 3, 3]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 64, 3, 3]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 64, 3, 9]}
             self.dynamic_shape.opt_input_shape = {"input_data": [2, 64, 3, 3]}
 
         def clear_dynamic_shape():

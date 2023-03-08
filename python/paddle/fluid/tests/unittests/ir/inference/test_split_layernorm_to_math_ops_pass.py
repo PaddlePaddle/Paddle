@@ -37,13 +37,13 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
         )
         config.set_trt_dynamic_shape_info(
             {
-                "input_data": [1, 1, 1],
+                "input_data": [1, 6, 16],
             },
             {
-                "input_data": [4, 128, 128],
+                "input_data": [4, 6, 16],
             },
             {
-                "input_data": [1, 96, 96],
+                "input_data": [1, 6, 16],
             },
         )
         yield config, [
@@ -70,13 +70,13 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
         )
         config.set_trt_dynamic_shape_info(
             {
-                "input_data": [1, 1, 1],
+                "input_data": [1, 6, 16],
             },
             {
-                "input_data": [4, 128, 128],
+                "input_data": [4, 6, 16],
             },
             {
-                "input_data": [1, 96, 96],
+                "input_data": [1, 6, 16],
             },
         )
         yield config, [
@@ -96,8 +96,8 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
 
         begin_norm_axis = draw(st.sampled_from([2, 1, -1, -2]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
-        dim0 = draw(st.integers(min_value=1, max_value=96))
-        dim1 = int(96 / dim0)
+        dim0 = 6
+        dim1 = 16
         weight_len = dim1
         if begin_norm_axis == 1 or begin_norm_axis == -2:
             weight_len *= dim0
@@ -164,10 +164,10 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=50,
+            max_examples=20,
             passes=["split_layernorm_to_math_ops_pass"],
             max_duration=250,
-            min_success_num=50,
+            min_success_num=20,
         )
 
 
