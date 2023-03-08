@@ -14,13 +14,11 @@
 
 import warnings
 
-import paddle
 from paddle import _C_ops
 
-from ..fluid import core, framework, unique_name
+from ..fluid import core, framework
 from ..fluid.dygraph import no_grad
 from ..fluid.framework import in_dygraph_mode
-from ..fluid.layer_helper import LayerHelper
 from .optimizer import Optimizer
 
 __all__ = []
@@ -93,34 +91,6 @@ class SGD(Optimizer):
         self.type = "sgd"
         self._multi_precision = multi_precision
         self._master_weights = {}
-
-    def _create_master_weight(self, param):
-        if param.name in self._master_weights:
-            var = self._master_weights[param.name]
-        else:
-            assert isinstance(self.helper, LayerHelper)
-
-            var_name = param.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
-            var = paddle.static.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True,
-            )
-            block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32,
-                },
-            )
-            self._master_weights[param.name] = var
-        return var
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
