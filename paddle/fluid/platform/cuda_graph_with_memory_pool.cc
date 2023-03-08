@@ -37,6 +37,9 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
                       platform::errors::InvalidArgument(
                           "FLAGS_new_executor_use_cuda_graph must be True when "
                           "create_cuda_graph_stream=True"));
+    if (pool_id <= kInvalidPoolID) {
+      pool_id = UniqueMemoryPoolID();
+    }
     mutable_dev_ctx = phi::backends::gpu::CUDAGraphContextManager::Instance()
                           .Get(pool_id, place, 0)
                           .get()
@@ -109,10 +112,10 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
   if (old_value) {
     FLAGS_use_stream_safe_cuda_allocator = false;
   }
-  int64_t old_pool_id = pool_id;
+  // int64_t old_pool_id = pool_id;
   pool_id = CUDAGraph::SetMemoryPoolID(pool_id);
-  phi::backends::gpu::CUDAGraphContextManager::Instance().UpdatePoolId(
-      old_pool_id, pool_id);
+  // phi::backends::gpu::CUDAGraphContextManager::Instance().UpdatePoolId(
+  //     old_pool_id, pool_id);
   memory::allocation::AllocatorFacade::Instance().PrepareMemoryPoolForCUDAGraph(
       pool_id);
   dev_ctx->SetCUDAGraphAllocator(memory::allocation::AllocatorFacade::Instance()
@@ -195,6 +198,13 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   dev_ctx->cudnn_workspace_handle().ResetWorkspace();
   dev_ctx->SetCUDAGraphAllocator(nullptr);
+  // std::unique_ptr<CUDAGraph> end_capture_graph = CUDAGraph::EndCapture();
+  // if (create_cuda_graph_stream) {
+  //   VLOG(4) << "yoki clear1";
+  //   phi::backends::gpu::CUDAGraphContextManager::Instance().ClearCUDAGraphContext(pool_id);
+  //   VLOG(4) << "yoki clear2";
+  // }
+  // return end_capture_graph;
   return CUDAGraph::EndCapture();
 }
 #endif

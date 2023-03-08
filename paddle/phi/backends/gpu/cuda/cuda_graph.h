@@ -67,14 +67,32 @@ class CUDAGraphContextManager {
     return ctxs[place];
   }
 
-  void UpdatePoolId(int64_t old_pool_id, int64_t new_pool_id) {
+  /*void UpdatePoolId(int64_t old_pool_id, int64_t new_pool_id) {
     if (old_pool_id != new_pool_id) {
+      auto old_map = cuda_graph_ctx_pool_[old_pool_id];
+      for (auto& pair : old_map) {
+        VLOG(4) << "yoki: old: dev_ctx_ptr: ";
+        VLOG(4) << (pair.second).get().get();
+      }
       cuda_graph_ctx_pool_[new_pool_id] = cuda_graph_ctx_pool_[old_pool_id];
+      auto new_map = cuda_graph_ctx_pool_[new_pool_id];
+      for (auto& pair : new_map) {
+        VLOG(4) << "yoki: new: dev_ctx_ptr: ";
+        VLOG(4) << (pair.second).get().get();
+      }
+      // cuda_graph_ctx_pool_[old_pool_id].clear();
       cuda_graph_ctx_pool_.erase(old_pool_id);
+      for (auto& pair : old_map) {
+        VLOG(4) << "yoki: old2: dev_ctx_ptr: ";
+        VLOG(4) << (pair.second).get().get();
+      }
+      for (auto& pair : new_map) {
+        VLOG(4) << "yoki: new2: dev_ctx_ptr: ";
+        VLOG(4) << (pair.second).get().get();
+      }
       VLOG(4) << "replace old_pool_id: " << old_pool_id
               << " to new_pool_id: " << new_pool_id;
-    }
-  }
+    }*/
 
   void InsertDeviceContext(phi::DeviceContext *dev_ctx) {
     VLOG(4) << "yoki insert dev_ctx: " << dev_ctx;
@@ -89,6 +107,12 @@ class CUDAGraphContextManager {
     VLOG(4) << "yoki clear dev_ctx";
     capturing_dev_ctxs_.clear();
   }
+
+  // void ClearCUDAGraphContext(int64_t pool_id) {
+  //   VLOG(4) << "yoki ClearCUDAGraphContext";
+  //   cuda_graph_ctx_pool_[pool_id].clear();
+  //   cuda_graph_ctx_pool_.erase(pool_id);
+  // }
 
  private:
   CUDAGraphContextManager() {}
@@ -154,6 +178,7 @@ class CUDAGraph {
   CUDAGraphID ID() const { return id_; }
 
   static int64_t SetMemoryPoolID(int64_t pool_id) {
+    VLOG(4) << "yoki: pool_id: " << pool_id;
     auto &pool_id_ = capturing_graph_->pool_id_;
     PADDLE_ENFORCE_EQ(
         pool_id_,
@@ -163,13 +188,16 @@ class CUDAGraph {
                                      pool_id_));
     if (pool_id <= kInvalidPoolID) {
       pool_id_ = UniqueMemoryPoolID();
+      VLOG(4) << "yoki1: UniqueMemoryPoolID";
     } else {
       PADDLE_ENFORCE_GE(
           pool_id,
           kDefaultPoolID,
           phi::errors::InvalidArgument("Invalid memory pool id %d.", pool_id));
       pool_id_ = pool_id;
+      VLOG(4) << "yoki2: pool_id_ = pool_id";
     }
+    VLOG(4) << "yoki: pool_id_: " << pool_id_;
     return pool_id_;
   }
 

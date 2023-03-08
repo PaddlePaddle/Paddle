@@ -33,9 +33,9 @@
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
-#endif
+// #ifdef PADDLE_WITH_CUDA
+// #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+// #endif
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
@@ -764,6 +764,7 @@ void InterpreterCore::Convert(
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
+#ifdef PADDLE_WITH_CUDA
     if (FLAGS_new_executor_use_cuda_graph) {
       auto& op = op_func_node.operator_base_;
       auto& op_type = op->Type();
@@ -778,6 +779,7 @@ void InterpreterCore::Convert(
             .InsertDeviceContext(dev_ctx_);
       }
     }
+#endif
   }
 
   /*if (FLAGS_new_executor_use_cuda_graph) {
