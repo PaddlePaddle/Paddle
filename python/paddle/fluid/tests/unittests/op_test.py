@@ -2242,7 +2242,6 @@ class OpTest(unittest.TestCase):
                 inputs_to_check,
                 output_names,
                 no_grad_set,
-                atol,
                 numeric_grad_delta,
                 in_place,
                 max_relative_error,
@@ -2252,6 +2251,7 @@ class OpTest(unittest.TestCase):
                 check_eager=check_eager,
                 check_prim=check_prim,
                 only_check_prim=only_check_prim,
+                atol=atol,
             )
 
     def check_grad_with_place(
