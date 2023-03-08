@@ -35,6 +35,7 @@ class TestGaussianRandomOp(OpTest):
         self.__class__.use_mlu = True
         self.set_attrs()
         self.inputs = {}
+        self.dtype = 'float32'
         self.attrs = {
             "shape": [123, 92],
             "mean": self.mean,
@@ -43,7 +44,7 @@ class TestGaussianRandomOp(OpTest):
         }
         paddle.seed(10)
 
-        self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
+        self.outputs = {'Out': np.zeros((123, 92), dtype=self.dtype)}
 
     def set_attrs(self):
         self.mean = 1.0
@@ -56,13 +57,31 @@ class TestGaussianRandomOp(OpTest):
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
         hist, _ = np.histogram(outs[0], range=(-3, 5))
-        hist = hist.astype("float32")
+        hist = hist.astype(self.dtype)
         hist /= float(outs[0].size)
         data = np.random.normal(size=(123, 92), loc=1, scale=2)
         hist2, _ = np.histogram(data, range=(-3, 5))
-        hist2 = hist2.astype("float32")
+        hist2 = hist2.astype(self.dtype)
         hist2 /= float(outs[0].size)
         np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
+
+class TestGaussianRandomOpFp16(TestGaussianRandomOp):
+    def setUp(self):
+        self.op_type = "gaussian_random"
+        self.place = paddle.device.MLUPlace(0)
+        self.__class__.use_mlu = True
+        self.set_attrs()
+        self.inputs = {}
+        self.dtype = 'float16'
+        self.attrs = {
+            "shape": [123, 92],
+            "mean": self.mean,
+            "std": self.std,
+            "seed": 10,
+        }
+        paddle.seed(10)
+
+        self.outputs = {'Out': np.zeros((123, 92), dtype=self.dtype)}
 
 
 class TestMeanStdAreInt(TestGaussianRandomOp):
