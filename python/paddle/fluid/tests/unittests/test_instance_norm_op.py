@@ -104,9 +104,9 @@ class TestInstanceNormOp(OpTest):
             x_np, scale_np, bias_np, self.epsilon, mean_np, var_np
         )
         self.inputs = {
-            'X': paddle.to_tensor(x_np),
-            'Scale': paddle.to_tensor(scale_np),
-            'Bias': paddle.to_tensor(bias_np),
+            'X': x_np,
+            'Scale': scale_np,
+            'Bias': bias_np,
         }
         self.attrs = {'epsilon': self.epsilon}
         self.outputs = {
@@ -143,7 +143,7 @@ class TestInstanceNormOp(OpTest):
         self.epsilon = 1e-8
 
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
 
 class TestInstanceNormOpTraining(unittest.TestCase):
