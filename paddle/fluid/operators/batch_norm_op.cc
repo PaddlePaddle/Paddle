@@ -544,28 +544,24 @@ class BatchNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
  public:
   void Apply() override {
     // inputs and outputs of batch_norm
-    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
-    paddle::experimental::Tensor scale = this->GetSingleForwardInput("Scale");
-    paddle::experimental::Tensor bias = this->GetSingleForwardInput("Bias");
-    paddle::experimental::Tensor mean = this->GetSingleForwardInput("Mean");
-    paddle::experimental::Tensor variance =
-        this->GetSingleForwardInput("Variance");
-    paddle::experimental::Tensor y = this->GetSingleForwardOutput("Y");
-    paddle::experimental::Tensor mean_out =
-        this->GetSingleForwardOutput("MeanOut");
-    paddle::experimental::Tensor variance_out =
-        this->GetSingleForwardOutput("VarianceOut");
-    paddle::experimental::Tensor saved_mean =
-        this->GetSingleForwardOutput("SavedMean");
-    paddle::experimental::Tensor saved_variance =
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor scale = this->GetSingleForwardInput("Scale");
+    paddle::Tensor bias = this->GetSingleForwardInput("Bias");
+    paddle::Tensor mean = this->GetSingleForwardInput("Mean");
+    paddle::Tensor variance = this->GetSingleForwardInput("Variance");
+    paddle::Tensor y = this->GetSingleForwardOutput("Y");
+    paddle::Tensor mean_out = this->GetSingleForwardOutput("MeanOut");
+    paddle::Tensor variance_out = this->GetSingleForwardOutput("VarianceOut");
+    paddle::Tensor saved_mean = this->GetSingleForwardOutput("SavedMean");
+    paddle::Tensor saved_variance =
         this->GetSingleForwardOutput("SavedVariance");
-    paddle::optional<paddle::experimental::Tensor> reserve_space =
+    paddle::optional<paddle::Tensor> reserve_space =
         this->GetOptionalSingleForwardOutput("ReserveSpace");
 
-    paddle::experimental::Tensor y_grad = this->GetSingleOutputGrad("Y");
-    paddle::experimental::Tensor x_grad = this->GetSingleInputGrad("X");
-    paddle::experimental::Tensor scale_grad = this->GetSingleInputGrad("Scale");
-    paddle::experimental::Tensor bias_grad = this->GetSingleInputGrad("Bias");
+    paddle::Tensor y_grad = this->GetSingleOutputGrad("Y");
+    paddle::Tensor x_grad = this->GetSingleInputGrad("X");
+    paddle::Tensor scale_grad = this->GetSingleInputGrad("Scale");
+    paddle::Tensor bias_grad = this->GetSingleInputGrad("Bias");
 
     auto dx_ptr = this->GetOutputPtr(&x_grad);
     std::string dx_name = this->GetOutputName(x_grad);
