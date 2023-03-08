@@ -853,7 +853,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
                 )
                 self._optimizer_name = "DistributedAdam"
 
-            self._optimizer = DistributedAdam
+            self._optimizer = globals()[self._optimizer_name](optimizer)
         else:
             self._optimizer = optimizer
 

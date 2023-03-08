@@ -24,7 +24,6 @@ from paddle.incubate.distributed.fleet.base import DistributedOptimizer
 from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
 from paddle.incubate.distributed.fleet.role_maker import HeterRoleMaker
 import paddle
-import paddle.fluid as fluid
 
 
 class PSLib(Fleet):
@@ -1044,8 +1043,8 @@ class fleet_embedding:
 
     def __init__(self, click_name, scale_sparse_grad=True):
         """Init."""
-        self.origin_emb = fluid.layers.embedding
-        self.origin_emb_v2 = fluid.embedding
+        # self.origin_emb = fluid.layers.embedding
+        self.origin_emb_v2 = paddle.static.nn.embedding
         # if user uses cvm layer after embedding, click_name can be None
         self.click_name = "" if click_name is None else click_name
         self.scale_sparse_grad = scale_sparse_grad
@@ -1054,16 +1053,16 @@ class fleet_embedding:
 
     def __enter__(self):
         """Enter."""
-        fluid.layers.embedding = _fleet_embedding
-        fluid.embedding = _fleet_embedding_v2
+        # fluid.layers.embedding = _fleet_embedding
+        paddle.static.nn.embedding = _fleet_embedding_v2
         FLEET_GLOBAL_DICT["cur_accessor"] = self.accessor
         FLEET_GLOBAL_DICT["click_name"] = self.click_name
         FLEET_GLOBAL_DICT["scale_sparse_grad"] = self.scale_sparse_grad
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit."""
-        fluid.layers.embedding = self.origin_emb
-        fluid.embedding = self.origin_emb_v2
+        # fluid.layers.embedding = self.origin_emb
+        paddle.static.nn.embedding = self.origin_emb_v2
         FLEET_GLOBAL_DICT["cur_accessor"] = ""
         FLEET_GLOBAL_DICT["click_name"] = ""
         FLEET_GLOBAL_DICT["scale_sparse_grad"] = None
@@ -1099,7 +1098,7 @@ class DownpourOptimizer(DistributedOptimizer):
             )
             self._optimizer_name = "DistributedAdam"
 
-        self._distributed_optimizer = DistributedAdam
+        self._distributed_optimizer = globals()[self._optimizer_name](optimizer)
 
     def backward(
         self,
