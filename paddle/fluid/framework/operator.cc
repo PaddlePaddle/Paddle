@@ -3251,8 +3251,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
   }
 #endif
 
-  LOG(INFO) << input_names.size() << ", " << input_defs.size();
-
   PADDLE_ENFORCE_EQ(input_names.size(),
                     input_defs.size(),
                     platform::errors::InvalidArgument(
