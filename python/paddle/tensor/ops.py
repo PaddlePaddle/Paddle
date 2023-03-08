@@ -16,7 +16,7 @@ from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.framework import in_dygraph_mode
 from ..framework import LayerHelper
-from .layer_function_generator import (
+from ..utils.layer_function_generator import (
     add_sample_code,
     generate_activation_fn,
     generate_inplace_fn,

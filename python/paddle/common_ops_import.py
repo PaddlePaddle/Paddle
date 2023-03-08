@@ -34,7 +34,4 @@ from paddle.fluid.framework import (  # noqa: F401
 )
 from paddle.fluid.layer_helper import LayerHelper  # noqa: F401
 from paddle.fluid.layers import fill_constant, utils  # noqa: F401
-from paddle.fluid.layers.layer_function_generator import (  # noqa: F401
-    templatedoc,
-)
 from paddle.fluid.param_attr import ParamAttr  # noqa: F401

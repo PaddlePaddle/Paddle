@@ -17,6 +17,7 @@
 import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle.utils.layer_function_generator import templatedoc
 
 from ...common_ops_import import Variable
 from ...fluid.data_feeder import (
@@ -28,7 +29,6 @@ from ...fluid.framework import in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
 from ...framework import convert_np_dtype_to_dtype_, core
 from ...tensor.creation import assign
-from ...tensor.layer_function_generator import templatedoc
 
 __all__ = []
 

@@ -18,8 +18,8 @@ from ..framework import (
     convert_np_dtype_to_dtype_,
     _varbase_creator,
     in_dygraph_mode,
+    OpProtoHolder,
 )
-from ..layers.layer_function_generator import OpProtoHolder
 from . import no_grad
 from .. import framework
 

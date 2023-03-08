@@ -22,7 +22,7 @@ from paddle.common_ops_import import Variable, check_type, default_main_program
 from paddle.fluid import core, framework, unique_name
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.framework import LayerHelper, _non_static_mode, in_dygraph_mode
-from paddle.tensor.layer_function_generator import templatedoc
+from paddle.utils.layer_function_generator import templatedoc
 
 __all__ = []
 

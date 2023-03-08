@@ -36,11 +36,6 @@ from ..framework import (
 from ..framework import _current_expected_place
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
-from .layer_function_generator import (
-    autodoc,
-    templatedoc,
-    _generate_doc_string_,
-)
 from .tensor import fill_constant, zeros
 from . import utils
 from .. import unique_name

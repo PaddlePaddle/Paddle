@@ -26,7 +26,7 @@ from ..framework import (
 from ..framework import Variable
 from ..core import VarDesc
 from .. import core
-from .layer_function_generator import templatedoc
+from ...utils.layer_function_generator import templatedoc
 from . import utils
 from ..data_feeder import (
     check_variable_and_dtype,

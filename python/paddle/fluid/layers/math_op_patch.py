@@ -16,8 +16,7 @@ import warnings
 import inspect
 
 from .. import core
-from ..framework import Variable, unique_name, static_only
-from .layer_function_generator import OpProtoHolder
+from ..framework import Variable, unique_name, static_only, OpProtoHolder
 from paddle.fluid.dygraph.base import in_declarative_mode
 
 _supported_int_dtype_ = [

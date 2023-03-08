@@ -28,9 +28,9 @@ from paddle.common_ops_import import (
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype
 from paddle.fluid.framework import Variable, _non_static_mode, static_only
-from paddle.fluid.layers.layer_function_generator import templatedoc
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn.initializer import Constant, Normal
+from paddle.utils.layer_function_generator import templatedoc
 
 __all__ = []
 
