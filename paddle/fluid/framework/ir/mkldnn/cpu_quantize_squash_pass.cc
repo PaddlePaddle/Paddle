@@ -141,8 +141,7 @@ bool CPUQuantizeSquashPass::IsDequantizeQuantizeIncompatible(
   bool is_input_signed =
       dequant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
 
-  /* TODO(sfraczek): remove elementwise from this condition when BinaryMKLDNN
-   kernel will support two different input data types */
+  // BinaryOneDNN doesn't support two different input data types
   bool is_next_op_concat_or_elementwise =
       next_op->Op()->Type() == "concat" ||
       next_op->Op()->Type().find("elementwise") == 0;
