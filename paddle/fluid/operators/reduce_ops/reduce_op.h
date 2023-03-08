@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/generator/get_expected_kernel_func.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 // only can include the headers in paddle/phi/api dirs
