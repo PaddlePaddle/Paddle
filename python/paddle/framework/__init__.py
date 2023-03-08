@@ -30,7 +30,7 @@ from ..fluid.core import CustomPlace  # noqa: F401
 from ..fluid.core import VarBase  # noqa: F401
 
 from ..fluid import core  # noqa: F401
-from ..fluid.dygraph import base, layers, to_variable
+from ..fluid.dygraph import base, to_variable
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from ..fluid.dygraph.base import grad  # noqa: F401
 from .io import save  # noqa: F401
