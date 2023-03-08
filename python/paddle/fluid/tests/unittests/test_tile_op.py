@@ -203,7 +203,7 @@ class TestTileFP16OP(OpTest):
         self.python_api = paddle.tile
         self.init_data()
         x = np.random.uniform(10, size=self.ori_shape).astype(self.dtype)
-        out = output = np.tile(x, self.repeat_times)
+        output = np.tile(x, self.repeat_times)
         self.inputs = {'X': x}
         self.attrs = {'repeat_times': self.repeat_times}
         self.outputs = {'Out': output}
