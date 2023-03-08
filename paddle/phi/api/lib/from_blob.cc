@@ -22,8 +22,6 @@ char touch_extension_api() { return '\0'; }
 
 using AllocationDeleter = void (*)(phi::Allocation*);
 
-static thread_local Deleter g_deleter = nullptr;
-
 PADDLE_API Tensor from_blob(void* data,
                             const phi::DDim& shape,
                             DataType dtype,
@@ -41,7 +39,7 @@ PADDLE_API Tensor from_blob(void* data,
 
   AllocationDeleter alloc_deleter = nullptr;
   if (deleter) {
-    g_deleter = deleter;
+    static thread_local Deleter g_deleter = deleter;
     alloc_deleter = [](phi::Allocation* p) { g_deleter(p->ptr()); };
   }
 
