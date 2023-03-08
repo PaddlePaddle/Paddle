@@ -265,13 +265,13 @@ class LayerNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
  public:
   void Apply() override {
     // get inputs
-    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
-    paddle::experimental::Tensor mean = this->GetSingleForwardOutput("Mean");
-    paddle::experimental::Tensor var = this->GetSingleForwardOutput("Variance");
-    paddle::experimental::Tensor y_grad = this->GetSingleOutputGrad("Y");
-    paddle::optional<paddle::experimental::Tensor> scale =
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor mean = this->GetSingleForwardOutput("Mean");
+    paddle::Tensor var = this->GetSingleForwardOutput("Variance");
+    paddle::Tensor y_grad = this->GetSingleOutputGrad("Y");
+    paddle::optional<paddle::Tensor> scale =
         this->GetOptionalSingleForwardInput("Scale");
-    paddle::optional<paddle::experimental::Tensor> bias =
+    paddle::optional<paddle::Tensor> bias =
         this->GetOptionalSingleForwardInput("Bias");
 
     // get Attrs
@@ -279,9 +279,9 @@ class LayerNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     auto begin_norm_axis = this->Attr<int>("begin_norm_axis");
 
     // get outputs
-    paddle::experimental::Tensor x_grad = this->GetSingleInputGrad("X");
-    paddle::experimental::Tensor scale_grad = this->GetSingleInputGrad("Scale");
-    paddle::experimental::Tensor bias_grad = this->GetSingleInputGrad("Bias");
+    paddle::Tensor x_grad = this->GetSingleInputGrad("X");
+    paddle::Tensor scale_grad = this->GetSingleInputGrad("Scale");
+    paddle::Tensor bias_grad = this->GetSingleInputGrad("Bias");
 
     auto dx_ptr = this->GetOutputPtr(&x_grad);
     std::string dx_name = this->GetOutputName(x_grad);
