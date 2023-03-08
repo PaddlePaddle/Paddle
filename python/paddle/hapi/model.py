@@ -35,7 +35,6 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import _get_paddle_place, _non_static_mode
 from paddle.fluid.layers import collective
-from paddle.utils import flatten
 from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
