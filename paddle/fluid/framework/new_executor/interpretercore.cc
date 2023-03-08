@@ -33,6 +33,7 @@
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
