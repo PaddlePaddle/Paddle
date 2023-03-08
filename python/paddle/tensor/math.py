@@ -5122,6 +5122,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, sum_mode='sum'):
         dx (float, optional): The spacing between sample points when x is None.If neither x nor dx is provided then the default is dx = 1
         axis (int, optional): The axis along which to integrate.The default is -1.
         sum_mode (str): use a different summation.
+
     Returns:
         Tensor, Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
     """
@@ -5174,7 +5175,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, sum_mode='sum'):
     )
 
 
-def trapezoid(y, x=None, dx=None, axis=-1):
+def trapezoid(y, x=None, dx=None, axis=-1, name=None):
     """
     Integrate along the given axis using the composite trapezoidal rule. Use the sum method.
 
@@ -5186,6 +5187,8 @@ def trapezoid(y, x=None, dx=None, axis=-1):
             default is None.
         dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1
         axis (int, optional): The axis along which to integrate.The default is -1.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor, Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
 
@@ -5233,7 +5236,7 @@ def trapezoid(y, x=None, dx=None, axis=-1):
     return _trapezoid(y, x=x, dx=dx, axis=axis, sum_mode='sum')
 
 
-def cumulative_trapezoid(y, x=None, dx=None, axis=-1):
+def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
     """
     Integrate along the given axis using the composite trapezoidal rule. Use the cumsum method
 
@@ -5245,6 +5248,8 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1):
             default is None.
         dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1
         axis (int, optional): The axis along which to integrate.The default is -1.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor, Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
 
