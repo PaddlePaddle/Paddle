@@ -37,9 +37,11 @@ from paddle.fluid.framework import (
     _non_static_mode,
     _varbase_creator,
 )
-from paddle.fluid.io import _is_file_path, _is_memory_buffer
-from paddle.fluid.io import _legacy_save as _legacy_static_save
-from paddle.fluid.io import (
+
+from .io_utils import (
+    _is_file_path,
+    _is_memory_buffer,
+    _legacy_static_save,
     _open_file_buffer,
     _pack_loaded_dict,
     _pickle_loads_mac,
