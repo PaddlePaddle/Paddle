@@ -5226,7 +5226,7 @@ def trapezoid(y, x=None, dx=None, axis=-1):
             print(paddle.trapezoid(y, axis=0))
             # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [1.50000000, 2.50000000, 3.50000000])
-            print(paddle.trapezoid(a, axis=1))
+            print(paddle.trapezoid(y, axis=1))
             # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [2., 8.])
     """
