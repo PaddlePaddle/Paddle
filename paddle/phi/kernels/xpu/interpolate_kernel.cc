@@ -219,6 +219,39 @@ void NearestInterpKernel(
                                 output);
 }
 
+// fake bicubic interp using bilinear interp, waiting for xdnn support
+template <typename T, typename Context>
+void BicubicInterpKernel(
+    const Context& ctx,
+    const DenseTensor& x,
+    const paddle::optional<DenseTensor>& out_size,
+    const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,
+    const paddle::optional<DenseTensor>& scale_tensor,
+    const std::string& data_layout,
+    int out_d,
+    int out_h,
+    int out_w,
+    const std::vector<float>& scale,
+    const std::string& interp_method,
+    bool align_corners,
+    int align_mode,
+    DenseTensor* output) {
+  BilinearInterpKernel<T, Context>(ctx,
+                                   x,
+                                   out_size,
+                                   size_tensor,
+                                   scale_tensor,
+                                   data_layout,
+                                   out_d,
+                                   out_h,
+                                   out_w,
+                                   scale,
+                                   interp_method,
+                                   align_corners,
+                                   align_mode,
+                                   output);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
@@ -228,6 +261,11 @@ PD_REGISTER_KERNEL(
 }
 PD_REGISTER_KERNEL(
     nearest_interp, XPU, ALL_LAYOUT, phi::NearestInterpKernel, float) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
+PD_REGISTER_KERNEL(
+    bicubic_interp, XPU, ALL_LAYOUT, phi::BicubicInterpKernel, float) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

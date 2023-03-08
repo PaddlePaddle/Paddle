@@ -74,6 +74,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
+      {"bicubic_interp", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"bicubic_interp_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"bilinear_interp_v2", XPUKernelSet({phi::DataType::FLOAT32})},
       {"bilinear_interp_v2_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"bitwise_not", XPUKernelSet({phi::DataType::BOOL})},
