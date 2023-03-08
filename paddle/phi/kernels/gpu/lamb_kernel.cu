@@ -32,5 +32,4 @@ PD_REGISTER_KERNEL(lamb,
   kernel->OutputAt(3).SetDataType(paddle::experimental::DataType::UNDEFINED);
   kernel->OutputAt(4).SetDataType(paddle::experimental::DataType::UNDEFINED);
   kernel->OutputAt(5).SetDataType(paddle::experimental::DataType::UNDEFINED);
-  kernel->OutputAt(6).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
