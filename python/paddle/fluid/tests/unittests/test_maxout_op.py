@@ -136,5 +136,34 @@ class TestMaxoutAPI(unittest.TestCase):
             self.assertRaises(ValueError, F.maxout, x_float32, 2, 2)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestMaxOutOpFP16(OpTest):
+    def setUp(self):
+        self.op_type = "maxout"
+        self.python_api = paddle.nn.Maxout
+        input_np = np.random.uniform(-1, 1, [2, 6, 5, 4]).astype(np.float16)
+        self.groups = 2
+        self.axis = 1
+        output_np = maxout_forward_naive(input_np, self.groups, self.axis)
+        self.attrs = {'groups': self.groups, 'axis': self.axis}
+        self.inputs = {'X': input_np}
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_grad_with_place(
+                place, ['X'], 'Out', max_relative_error=0.5
+            )
+
+
 if __name__ == '__main__':
     unittest.main()
