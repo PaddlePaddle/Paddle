@@ -35,7 +35,8 @@ KernelKey InterpolateGetKernelTypeForVar(
     PADDLE_ENFORCE_NE(
         it,
         attrs.end(),
-        errors::NotFound("Attr(data_layout) of InterpolateOp is not found."));
+        errors::NotFound(
+            "Attribute(data_layout) of InterpolateOp is not found."));
     const std::string data_layout = PADDLE_GET_CONST(std::string, it->second);
     auto dl = StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
