@@ -193,6 +193,8 @@ class TestAllcloseOpFloat16(TestAllcloseOp):
         self.rtol = np.array([0.01]).astype("float64")
         self.atol = np.array([0]).astype("float64")
         self.equal_nan = False
+
+
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
