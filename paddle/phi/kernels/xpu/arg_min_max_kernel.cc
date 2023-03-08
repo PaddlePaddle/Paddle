@@ -36,7 +36,8 @@ void ArgMaxKernel(const Context& dev_ctx,
                   int dtype,
                   DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      (dtype < 0 || dtype == 2 || dtype == 3),
+      (dtype < 0 || dtype == ARG_MAX_OUTPUT_DATATYPE_INT32 ||
+       dtype == ARG_MAX_OUTPUT_DATATYPE_INT64),
       true,
       errors::InvalidArgument(
           "The attribute of dtype in xpu argmin/argmax must be [%s] or [%s], "
