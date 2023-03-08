@@ -1788,7 +1788,7 @@ def empty(shape, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'complex64', 'complex128'],
             'empty',
         )
         check_type(shape, 'shape', (Variable, list, tuple), 'empty')
