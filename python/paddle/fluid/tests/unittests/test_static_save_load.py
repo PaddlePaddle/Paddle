@@ -346,7 +346,9 @@ class TestSaveLoadBase(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, os.path.join(temp_dir.name, "test_1"))
+            paddle.static.save(
+                main_program, os.path.join(temp_dir.name, "test_1")
+            )
 
             # set var to zero
             for var in main_program.list_vars():
@@ -360,7 +362,7 @@ class TestSaveLoadBase(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(
+            paddle.static.load(
                 main_program,
                 os.path.join(temp_dir.name, "test_1.pdparams"),
                 exe,
@@ -485,7 +487,9 @@ class TestSaveLoadPartial(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, os.path.join(temp_dir.name, "test_1"))
+            paddle.static.save(
+                main_program, os.path.join(temp_dir.name, "test_1")
+            )
 
             # set var to zero
             for var in main_program.list_vars():
@@ -499,7 +503,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(
+            paddle.static.load(
                 test_program, os.path.join(temp_dir.name, "test_1.pdopt"), None
             )
 
@@ -510,7 +514,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                     )
                     base_t = base_map[var.name]
                     np.testing.assert_array_equal(new_t, base_t)
-            fluid.load(
+            paddle.static.load(
                 test_program,
                 os.path.join(temp_dir.name, "test_1.pdmodel"),
                 None,
@@ -617,7 +621,9 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, os.path.join(temp_dir.name, "test_1"))
+            paddle.static.save(
+                main_program, os.path.join(temp_dir.name, "test_1")
+            )
 
             # set var to zero
             for var in main_program.list_vars():
@@ -631,7 +637,9 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(main_program, os.path.join(temp_dir.name, "test_1"), exe)
+            paddle.static.load(
+                main_program, os.path.join(temp_dir.name, "test_1"), exe
+            )
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -752,7 +760,9 @@ class TestProgramStatePartial(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, os.path.join(temp_dir.name, 'test_1'))
+            paddle.static.save(
+                main_program, os.path.join(temp_dir.name, 'test_1')
+            )
 
             # set var to zero
             for var in main_program.list_vars():
@@ -767,23 +777,23 @@ class TestProgramStatePartial(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             # fluid.load(test_program, "./test_1", None )
-            program_state = fluid.load_program_state(
+            program_state = paddle.static.load_program_state(
                 os.path.join(temp_dir.name, 'test_1')
             )
 
-            program_state_1 = fluid.load_program_state(
+            program_state_1 = paddle.static.load_program_state(
                 os.path.join(temp_dir.name, 'test_1.pdparams')
             )
 
-            program_state_2 = fluid.load_program_state(
+            program_state_2 = paddle.static.load_program_state(
                 os.path.join(temp_dir.name, 'test_1.pdopt')
             )
 
-            program_state_3 = fluid.load_program_state(
+            program_state_3 = paddle.static.load_program_state(
                 os.path.join(temp_dir.name, 'test_1.pdmodel')
             )
 
-            fluid.set_program_state(test_program, program_state)
+            paddle.static.set_program_state(test_program, program_state)
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -805,7 +815,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.set_program_state(test_program, program_state_1)
+            paddle.static.set_program_state(test_program, program_state_1)
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -827,7 +837,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.set_program_state(test_program, program_state_2)
+            paddle.static.set_program_state(test_program, program_state_2)
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -849,7 +859,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.set_program_state(test_program, program_state_3)
+            paddle.static.set_program_state(test_program, program_state_3)
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -880,7 +890,7 @@ class TestVariableInit(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         temp_dir = tempfile.TemporaryDirectory()
-        fluid.save(
+        paddle.static.save(
             fluid.default_main_program(),
             os.path.join(temp_dir.name, "test_path"),
         )
@@ -905,7 +915,7 @@ class TestVariableInit(unittest.TestCase):
         place = self.set_place()
         exe = fluid.Executor(place)
         parameter_list = list(
-            filter(fluid.io.is_parameter, program.list_vars())
+            filter(paddle.framework.is_parameter, program.list_vars())
         )
 
         fluid.core._create_loaded_parameter(
@@ -925,7 +935,10 @@ class TestVariableInit(unittest.TestCase):
             set_var(new_v, load_dict[v.name])
 
         opt_list = list(
-            filter(fluid.io.is_belong_to_optimizer, program.list_vars())
+            filter(
+                paddle.framework.io_utils.is_belong_to_optimizer,
+                program.list_vars(),
+            )
         )
 
         fluid.core._create_loaded_parameter(
@@ -1092,7 +1105,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(
+            paddle.static.load(
                 main_program, os.path.join(self.temp_dir.name, "test_path"), exe
             )
 
@@ -1112,7 +1125,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
                     var.desc.set_shape(new_shape)
             with self.assertRaises(RuntimeError):
-                fluid.load(
+                paddle.static.load(
                     main_program,
                     os.path.join(self.temp_dir.name, "test_path"),
                     exe,
@@ -1120,7 +1133,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
             # check unused parameter
 
-            fluid.load(
+            paddle.static.load(
                 test_clone_program,
                 os.path.join(self.temp_dir.name, "test_path"),
                 exe,
@@ -1239,7 +1252,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(
+            paddle.static.load(
                 main_program,
                 os.path.join(self.temp_dir.name, "test_static_load_var_list"),
                 exe,
@@ -1377,11 +1390,11 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             file_model_path = os.path.join(save_dir, "model_single")
-            fluid.load(
+            paddle.static.load(
                 main_program,
                 file_model_path,
                 exe,
-                fluid.io.get_program_persistable_vars(main_program),
+                paddle.static.io.get_program_persistable_vars(main_program),
             )
 
             for var in main_program.list_vars():
@@ -1403,36 +1416,33 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     var.desc.set_shape(new_shape)
 
             with self.assertRaises(RuntimeError):
-                fluid.load(
+                paddle.static.load(
                     main_program,
                     file_model_path,
                     exe,
-                    fluid.io.get_program_persistable_vars(main_program),
+                    paddle.static.io.get_program_persistable_vars(main_program),
                 )
 
-            fluid.io.save_params(
-                exe, "test_path", main_program, filename="model_single"
-            )
             with self.assertRaises(RuntimeError):
-                fluid.load(
+                paddle.static.load(
                     main_program,
                     file_model_path,
                     exe,
-                    fluid.io.get_program_persistable_vars(main_program),
+                    paddle.static.io.get_program_persistable_vars(main_program),
                 )
 
             # check when executor is None
             with self.assertRaises(ValueError):
-                fluid.load(
+                paddle.static.load(
                     main_program,
                     file_model_path,
                     None,
-                    fluid.io.get_program_persistable_vars(main_program),
+                    paddle.static.io.get_program_persistable_vars(main_program),
                 )
 
             # check when var list is None
             with self.assertRaises(ValueError):
-                fluid.load(main_program, file_model_path, exe, None)
+                paddle.static.load(main_program, file_model_path, exe, None)
 
             # check save params, load var_list = get_program_persistable_vars
             with self.assertRaises(RuntimeError):
@@ -1440,7 +1450,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     main_program.global_block(), shape=[1], name="test_temp_var"
                 )
                 all_var_list = list(main_program.list_vars())
-                fluid.load(
+                paddle.static.load(
                     main_program,
                     file_model_path,
                     exe,
@@ -1579,8 +1589,8 @@ class TestProgramStateOldSave(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             # case 1: load basic
-            program_state = fluid.load_program_state(save_dir)
-            fluid.set_program_state(main_program, program_state)
+            program_state = paddle.static.load_program_state(save_dir)
+            paddle.static.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
             # case 2: load with no need file
@@ -1594,21 +1604,21 @@ class TestProgramStateOldSave(unittest.TestCase):
                     else:
                         raise e
 
-            program_state = fluid.load_program_state(save_dir)
-            fluid.set_program_state(main_program, program_state)
+            program_state = paddle.static.load_program_state(save_dir)
+            paddle.static.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
             # case 3: load with var_list
-            program_state = fluid.load_program_state(
+            program_state = paddle.static.load_program_state(
                 save_dir, main_program.all_parameters()
             )
-            fluid.set_program_state(main_program, program_state)
+            paddle.static.set_program_state(main_program, program_state)
             self.check_in_static(main_program, base_map)
 
         if self.test_dygraph:
             # make sure `load_program_state` can be used in dynamic graph mode
             with fluid.dygraph.guard(place):
-                load_state = fluid.load_program_state(save_dir)
+                load_state = paddle.static.load_program_state(save_dir)
                 for k, v in load_state.items():
                     np.testing.assert_array_equal(base_map[k], v)
 
@@ -1758,11 +1768,13 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             # fluid.load(test_program, "./test_1", None )
-            program_state = fluid.load_program_state(
+            program_state = paddle.static.load_program_state(
                 os.path.join(save_dir, "model_1"),
-                var_list=fluid.io.get_program_persistable_vars(main_program),
+                var_list=paddle.static.io.get_program_persistable_vars(
+                    main_program
+                ),
             )
-            fluid.set_program_state(main_program, program_state)
+            paddle.static.set_program_state(main_program, program_state)
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -1773,15 +1785,17 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                     np.testing.assert_array_equal(new_t, base_t)
 
             with self.assertRaises(ValueError):
-                fluid.load_program_state(os.path.join(save_dir, "model_1"))
+                paddle.static.load_program_state(
+                    os.path.join(save_dir, "model_1")
+                )
 
             with self.assertRaises(TypeError):
-                fluid.load_program_state(
+                paddle.static.load_program_state(
                     os.path.join(save_dir, "model_1"), var_list=["str"]
                 )
 
             with self.assertRaises(RuntimeError):
-                fluid.load_program_state(
+                paddle.static.load_program_state(
                     os.path.join(save_dir, "model_1"),
                     var_list=[
                         main_program.global_block().create_var(
@@ -1827,17 +1841,17 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
             )
 
             with self.assertRaises(ValueError):
-                paddle.fluid.save(prog, path, 2.0)
+                paddle.static.save(prog, path, 2.0)
 
             with self.assertRaises(ValueError):
-                paddle.fluid.save(prog, path, 1)
+                paddle.static.save(prog, path, 1)
 
             with self.assertRaises(ValueError):
-                paddle.fluid.save(prog, path, 5)
+                paddle.static.save(prog, path, 5)
 
             protocols = [2, 3, 4]
             for protocol in protocols:
-                paddle.fluid.save(prog, path, protocol)
+                paddle.static.save(prog, path, protocol)
                 # set var to zero
                 for var in prog.list_vars():
                     if isinstance(var, framework.Parameter) or var.persistable:
@@ -1851,7 +1865,7 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                         )
                         self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-                paddle.fluid.load(prog, path)
+                paddle.static.load(prog, path)
 
                 for var in prog.list_vars():
                     if isinstance(var, framework.Parameter) or var.persistable:
