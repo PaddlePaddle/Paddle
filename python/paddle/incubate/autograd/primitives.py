@@ -22,6 +22,7 @@ from paddle.tensor import atan  # noqa: F401
 from paddle.tensor import atanh  # noqa: F401
 from paddle.tensor import broadcast_shape  # noqa: F401
 from paddle.tensor import broadcast_to  # noqa: F401
+from paddle.tensor import concat  # noqa: F401
 from paddle.tensor import cos  # noqa: F401
 from paddle.tensor import cosh  # noqa: F401
 from paddle.tensor import cumprod  # noqa: F401
@@ -122,6 +123,7 @@ others = [
     'fill_constant',
     'reshape',
     'full',
+    'concat',
     'uniform',
     'greater_equal',
 ]

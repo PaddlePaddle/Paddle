@@ -21,7 +21,7 @@
 
 TEST(TensorWrapper, Basic) {
   VLOG(6) << "Test Full reserved";
-  paddle::experimental::Tensor et1;
+  paddle::Tensor et1;
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt = std::make_shared<phi::DenseTensor>(
@@ -50,7 +50,7 @@ TEST(TensorWrapper, Basic) {
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et1).second,
            egr::EagerUtils::OutRankInfo(et1).second);
   VLOG(6) << "Test reconstruct";
-  paddle::experimental::Tensor et2;
+  paddle::Tensor et2;
   phi::DenseTensorMeta meta2 =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, phi::make_ddim({1, 2}));
   std::shared_ptr<phi::DenseTensor> dt2 = std::make_shared<phi::DenseTensor>(
@@ -78,7 +78,7 @@ TEST(TensorWrapper, Basic) {
   CHECK_EQ(egr::EagerUtils::OutRankInfo(recover_et2).second,
            egr::EagerUtils::OutRankInfo(et2).second);
   // Test Raw recover
-  paddle::experimental::Tensor et3;
+  paddle::Tensor et3;
   auto tw2 = egr::TensorWrapper(et3);
   CHECK(tw2.recover().initialized() == false);
 }
