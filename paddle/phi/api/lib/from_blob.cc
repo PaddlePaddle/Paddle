@@ -22,13 +22,13 @@ using AllocationDeleter = void (*)(phi::Allocation*);
 
 static thread_local Deleter g_deleter = nullptr;
 
-Tensor from_blob(void* data,
-                 const phi::DDim& shape,
-                 phi::DataType dtype,
-                 const Place& place,
-                 phi::DataLayout layout,
-                 size_t storage_offset,
-                 const Deleter& deleter) {
+PADDLE_API Tensor from_blob(void* data,
+                            const phi::DDim& shape,
+                            DataType dtype,
+                            const Place& place,
+                            phi::DataLayout layout,
+                            size_t storage_offset,
+                            const Deleter& deleter) {
   PADDLE_ENFORCE_NOT_NULL(
       data, phi::errors::InvalidArgument("data can not be nullptr"));
 

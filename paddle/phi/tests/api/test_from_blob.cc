@@ -30,13 +30,15 @@ PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 #endif
 
+using paddle::experimental::DataType;
+
 TEST(from_blob, CPU) {
   // 1. create data
   int64_t data[] = {4, 3, 2, 1};
 
   // 2. test API
   auto test_tesnor = paddle::experimental::from_blob(
-      data, {1, 2, 2}, phi::DataType::INT64, phi::CPUPlace());
+      data, {1, 2, 2}, DataType::INT64, phi::CPUPlace());
 
   // 3. check result
   // 3.1 check tensor attributes
@@ -46,7 +48,7 @@ TEST(from_blob, CPU) {
   ASSERT_EQ(test_tesnor.dims()[2], 2);
   ASSERT_EQ(test_tesnor.numel(), 4);
   ASSERT_EQ(test_tesnor.is_cpu(), true);
-  ASSERT_EQ(test_tesnor.dtype(), phi::DataType::INT64);
+  ASSERT_EQ(test_tesnor.dtype(), DataType::INT64);
   ASSERT_EQ(test_tesnor.layout(), phi::DataLayout::NCHW);
   ASSERT_EQ(test_tesnor.is_dense_tensor(), true);
 
@@ -89,7 +91,7 @@ TEST(from_blob, GPU) {
 
   // 2. test API
   auto gpu_tesnor = paddle::experimental::from_blob(
-      gpu_data, {2, 3}, phi::DataType::FLOAT32, phi::GPUPlace());
+      gpu_data, {2, 3}, DataType::FLOAT32, phi::GPUPlace());
 
   // 3. check result
   // 3.1 check tensor attributes
@@ -98,7 +100,7 @@ TEST(from_blob, GPU) {
   ASSERT_EQ(gpu_tesnor.dims()[1], 3);
   ASSERT_EQ(gpu_tesnor.numel(), 6);
   ASSERT_EQ(gpu_tesnor.is_gpu(), true);
-  ASSERT_EQ(gpu_tesnor.dtype(), phi::DataType::FLOAT32);
+  ASSERT_EQ(gpu_tesnor.dtype(), DataType::FLOAT32);
 
   // 3.2 check tensor values
   auto* gpu_tesnor_data = gpu_tesnor.template data<float>();
@@ -152,7 +154,7 @@ TEST(from_blob, Option) {
     size_t offset = sizeof(int64_t) * 4;
     auto test_tesnor = paddle::experimental::from_blob(data,
                                                        {1, 2, 2, 1},
-                                                       phi::DataType::INT64,
+                                                       DataType::INT64,
                                                        phi::CPUPlace(),
                                                        phi::DataLayout::NHWC,
                                                        offset,
@@ -164,7 +166,7 @@ TEST(from_blob, Option) {
     ASSERT_EQ(test_tesnor.dims()[2], 2);
     ASSERT_EQ(test_tesnor.numel(), 4);
     ASSERT_EQ(test_tesnor.is_cpu(), true);
-    ASSERT_EQ(test_tesnor.dtype(), phi::DataType::INT64);
+    ASSERT_EQ(test_tesnor.dtype(), DataType::INT64);
     ASSERT_EQ(test_tesnor.layout(), phi::DataLayout::NHWC);  // check layout
 
     // check tensor values
