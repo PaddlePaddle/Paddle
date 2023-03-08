@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/maxouting.h"
 #include "paddle/phi/kernels/maxout_kernel.h"
 
