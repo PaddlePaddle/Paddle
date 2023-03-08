@@ -51,6 +51,31 @@ ARGS_NAME = '__args'
 # NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
 ORIGI_INFO = "Original information of source code for ast node."
 
+DEL_TEMP_DIR = True  # A flag to avoid atexit.register more than once
+FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
+FOR_ITER_TUPLE_PREFIX = '__for_loop_iter_tuple'
+FOR_ITER_TARGET_PREFIX = '__for_loop_iter_target'
+FOR_ITER_ITERATOR_PREFIX = '__for_loop_iter_iterator'
+FOR_ITER_TUPLE_INDEX_PREFIX = '__for_loop_iter_tuple_index'
+FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
+FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
+FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
+
+RE_PYNAME = '[a-zA-Z0-9_]+'
+RE_PYMODULE = r'[a-zA-Z0-9_]+\.'
+
+# Assign not support float64, use float32 value as magic number.
+RETURN_NO_VALUE_VAR_NAME = "__no_value_return_var"
+RETURN_NO_VALUE_MAGIC_NUM = 1.77113e27
+
+TRUE_FUNC_PREFIX = 'true_fn'
+FALSE_FUNC_PREFIX = 'false_fn'
+
+WHILE_CONDITION_PREFIX = 'while_condition'
+WHILE_BODY_PREFIX = 'while_body'
+FOR_CONDITION_PREFIX = 'for_loop_condition'
+FOR_BODY_PREFIX = 'for_loop_body'
+
 
 class BaseNodeVisitor(gast.NodeVisitor):
     """
@@ -82,19 +107,6 @@ dygraph_class_to_static_api = {
     "PiecewiseDecay": "piecewise_decay",
     "PolynomialDecay": "polynomial_decay",
 }
-
-DEL_TEMP_DIR = True  # A flag to avoid atexit.register more than once
-FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
-FOR_ITER_TUPLE_PREFIX = '__for_loop_iter_tuple'
-FOR_ITER_TARGET_PREFIX = '__for_loop_iter_target'
-FOR_ITER_ITERATOR_PREFIX = '__for_loop_iter_iterator'
-FOR_ITER_TUPLE_INDEX_PREFIX = '__for_loop_iter_tuple_index'
-FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
-FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
-FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
-
-RE_PYNAME = '[a-zA-Z0-9_]+'
-RE_PYMODULE = r'[a-zA-Z0-9_]+\.'
 
 
 def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
@@ -142,9 +154,6 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
         is_data=True,
         need_check_feed=False,
     )
-
-
-RETURN_NO_VALUE_MAGIC_NUM = 1.77113e27
 
 
 def create_undefined_variable():
@@ -1108,14 +1117,6 @@ class NameScope:
         self.args |= name_scope.args
         self.w_vars |= name_scope.w_vars
         self.push_pop_vars |= name_scope.push_pop_vars
-
-
-TRUE_FUNC_PREFIX = 'true_fn'
-FALSE_FUNC_PREFIX = 'false_fn'
-
-WHILE_BODY_PREFIX = 'while_body'
-FOR_CONDITION_PREFIX = 'for_loop_condition'
-FOR_BODY_PREFIX = 'for_loop_body'
 
 
 class FunctionNameLivenessAnalysis(gast.NodeVisitor):

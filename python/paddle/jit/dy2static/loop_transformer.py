@@ -29,6 +29,7 @@ from .utils import (
     FOR_BODY_PREFIX,
     FOR_CONDITION_PREFIX,
     WHILE_BODY_PREFIX,
+    WHILE_CONDITION_PREFIX,
     FunctionNameLivenessAnalysis,
     GetterSetterHelper,
     ast_to_source_code,
@@ -40,8 +41,6 @@ from .utils import (
 )
 
 __all__ = []
-
-WHILE_CONDITION_PREFIX = 'while_condition'
 
 
 def create_while_nodes(

@@ -24,8 +24,6 @@ from typing import Any, List
 import numpy
 
 from paddle.fluid.dygraph.layers import Layer
-from paddle.jit.dy2static.logging_utils import TranslatorLogger
-from paddle.jit.dy2static.utils import is_builtin, is_paddle_func, unwrap
 
 from .convert_operators import (
     convert_enumerate,
@@ -34,12 +32,14 @@ from .convert_operators import (
     convert_range,
     convert_zip,
 )
+from .logging_utils import TranslatorLogger
 from .program_translator import (
     CONVERSION_OPTIONS,
     StaticFunction,
     convert_to_static,
     unwrap_decorators,
 )
+from .utils import is_builtin, is_paddle_func, unwrap
 
 __all__ = []
 
