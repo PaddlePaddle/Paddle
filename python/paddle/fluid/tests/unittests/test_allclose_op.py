@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+import paddle.fluid.core as core
 
 
 class TestAllcloseOp(OpTest):
@@ -183,6 +184,18 @@ class TestAllcloseOpFloat64(TestAllcloseOp):
     def set_args(self):
         self.input = np.array([10.1]).astype("float64")
         self.other = np.array([10]).astype("float64")
+        self.rtol = np.array([0.01]).astype("float64")
+        self.atol = np.array([0]).astype("float64")
+        self.equal_nan = False
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestAllcloseOpFloat16(TestAllcloseOp):
+    def set_args(self):
+        self.input = np.array([10.1]).astype("float16")
+        self.other = np.array([10]).astype("float16")
         self.rtol = np.array([0.01]).astype("float64")
         self.atol = np.array([0]).astype("float64")
         self.equal_nan = False
