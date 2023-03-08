@@ -201,10 +201,13 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
         group = new_process_group(group_ranks)
 
         check_variable_and_dtype(
-            X_var, 'x', ['float16', 'float32', 'float64'], 'norm'
+            X_var, 'x', ['float16', 'float32', 'float64', 'uint16'], 'norm'
         )
         check_dtype(
-            X_var.dtype, 'dtype', ['float16', 'float32', 'float64'], 'norm'
+            X_var.dtype,
+            'dtype',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'norm',
         )
 
         # 2. insert c_allgather op
