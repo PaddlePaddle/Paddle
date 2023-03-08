@@ -560,30 +560,16 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                 expected_kernel_key_for_argument_def = nullptr;
             if (argument_def &&
                 argument_def->backend != phi::Backend::ALL_BACKEND) {
-              const phi::Backend& tensor_backend =
-                  phi::TransToPhiBackend(tensor_in->place());
               const phi::Backend& def_backend = argument_def->backend;
-              if ((def_backend != tensor_backend &&
-                   !(def_backend == phi::Backend::GPUDNN &&
-                     tensor_backend == phi::Backend::GPU) &&
-                   !(def_backend == phi::Backend::KPS &&
-                     tensor_backend == phi::Backend::XPU) &&
-                   !(def_backend == phi::Backend::ONEDNN &&
-                     tensor_backend == phi::Backend::CPU)) ||
-                  tensor_in->place().GetType() == AllocationType::GPUPINNED) {
-                expected_kernel_key_for_argument_def =
-                    std::make_unique<phi::KernelKey>(
-                        def_backend,
-                        expected_kernel_key.data_layout_,
-                        framework::TransToPhiDataType(
-                            expected_kernel_key.data_type_));
-
-                VLOG(6) << "argument " << var_name
-                        << " use new expected kernel key : "
-                        << *expected_kernel_key_for_argument_def;
-              } else {
-                continue;
-              }
+              expected_kernel_key_for_argument_def =
+                  std::make_unique<phi::KernelKey>(
+                      def_backend,
+                      expected_kernel_key.data_layout_,
+                      framework::TransToPhiDataType(
+                          expected_kernel_key.data_type_));
+              VLOG(6) << "argument " << var_name
+                      << " use new expected kernel key : "
+                      << *expected_kernel_key_for_argument_def;
             }
 
             // apply data transform
