@@ -771,7 +771,7 @@ class OperatorWithKernel : public OperatorBase {
                                const Scope& exec_scope) const;
 
   void PhiKernelTune(const ExecutionContext& exe_ctx,
-                     const std::string& phi_kernel_name);
+                     const std::string& phi_kernel_name) const;
 
   OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx) const;
 

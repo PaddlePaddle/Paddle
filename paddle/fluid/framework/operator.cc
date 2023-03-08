@@ -1760,7 +1760,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
       VLOG(6) << *kernel_signature_.get();
       phi_kernel_name = kernel_signature_->name;
-      LOG(INFO) << "JZZ: " << type_;
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
       dev_ctx = pool.Get(kernel_type_->place_);
@@ -1808,9 +1807,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi_kernel_.reset(
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
               phi_kernel_name, phi_kernel_key)));
-
-      LOG(INFO) << "JZZ Phi kernel: " << phi_kernel_name << ", "
-                << phi_kernel_key << ", " << phi_kernel_.get();
 
       if (phi_kernel_->IsValid()) {
         VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
@@ -2044,8 +2040,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         phi::KernelContext phi_kernel_context;
         // Do data transform before building KernelContext
         // TODO(zhiqiu): support TransferInplaceVarsBack
-        LOG(INFO) << "JZZ address1:" << phi_kernel_.get();
-        LOG(INFO) << phi_kernel_->args_def().input_defs().size();
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, &phi_kernel_context);
         (*phi_kernel_)(&phi_kernel_context);
       }
@@ -2104,8 +2098,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
-void OperatorWithKernel::PhiKernelTune(const ExecutionContext& exe_ctx,
-                                       const std::string& phi_kernel_name) {
+void OperatorWithKernel::PhiKernelTune(
+    const ExecutionContext& exe_ctx, const std::string& phi_kernel_name) const {
   if (kernel_type_.get()->library_type_ == LibraryType::kCUDNN) {
     // Try to get cutlass kernel
     OpKernelType kernel_type_cutlass(std::move(
