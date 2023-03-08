@@ -65,8 +65,6 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
-void AngleInferMeta(const MetaTensor& x, MetaTensor* out);
-
 void ChannelShuffleInferMeta(const MetaTensor& x,
                              int groups,
                              const std::string& data_format,
