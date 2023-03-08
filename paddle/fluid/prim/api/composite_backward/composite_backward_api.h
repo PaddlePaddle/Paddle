@@ -818,19 +818,8 @@ void maximum_grad(const Tensor& x,
                   int axis,
                   Tensor* x_grad,
                   Tensor* y_grad) {
-  auto x_broadcasted = x;
-  auto y_broadcasted = y;
-  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> y_dim = phi::vectorize<int64_t>(y.dims());
-  if ((x.size() < y.size()) || (x.dims().size() < y.dims().size())) {
-    x_broadcasted = x.expand(IntArray(y_dim));
-  }
-  if ((y.size() < x.size()) || (y.dims().size() < x.dims().size())) {
-    y_broadcasted = y.expand(IntArray(x_dim));
-  }
   if (x_grad) {
-    auto x_tmp = cast<T>(greater_than<T>(x_broadcasted, y_broadcasted),
-                         out_grad.dtype());
+    auto x_tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
     auto dx_res = out_grad * x_tmp;
     if (y.dims() != x.dims()) {
       // Maybe need reduce here
@@ -849,8 +838,7 @@ void maximum_grad(const Tensor& x,
     }
   }
   if (y_grad) {
-    auto y_tmp =
-        cast<T>(less_equal<T>(x_broadcasted, y_broadcasted), out_grad.dtype());
+    auto y_tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
     auto dy_res = out_grad * y_tmp;
     if (x.dims() != y.dims()) {
       // Maybe need reduce here
