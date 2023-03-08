@@ -770,8 +770,14 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
-  OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx,
-                                          const bool use_cutlass = false) const;
+  void PhiKernelTune(const ExecutionContext& exe_ctx,
+                     const std::string& phi_kernel_name);
+
+  OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx) const;
+
+  OpKernelType InnerGetExpectedKernelType(
+      const ExecutionContext& ctx,
+      const framework::LibraryType library_type) const;
 
   void HandleComplexGradToRealGrad(const Scope& scope,
                                    RuntimeContext* ctx) const;

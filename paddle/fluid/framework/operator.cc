@@ -1761,15 +1761,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       VLOG(6) << *kernel_signature_.get();
       phi_kernel_name = kernel_signature_->name;
       LOG(INFO) << "JZZ: " << type_;
-      // if (type_ == "conv2d_fusion2"){
-      //   LOG(INFO) << "JZZ conv2d_fusion_cutlass";
-      //   kernel_type_.reset(
-      //       new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx,
-      //       true))));
-      // } else {
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
-      //}
       dev_ctx = pool.Get(kernel_type_->place_);
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
@@ -2045,61 +2038,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                           tensors,
                           HasAttr(CacheImpl::kNotAllowInferShapeCahce)));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
-
-        LOG(INFO) << "JZZ 1";
-
-        {
-          phi::KernelKey phi_kernel_key_cutlass;
-          std::unique_ptr<phi::Kernel> phi_kernel_cutlass;
-          // Judge whether need to tune between cudnn and cutlass
-          if (kernel_type_.get()->library_type_ == LibraryType::kCUDNN) {
-            // Try to get cutlass kernel
-            OpKernelType kernel_type_cutlass(
-                std::move(InnerGetExpectedKernelType(exe_ctx, true)));
-
-            LOG(INFO) << "JZZ 1.1";
-
-            if (kernel_type_cutlass.library_type_ == LibraryType::kCUTLASS) {
-              phi_kernel_key_cutlass =
-                  TransOpKernelTypeToPhiKernelKey(kernel_type_cutlass);
-
-              LOG(INFO) << "JZZ 1.2";
-
-              phi_kernel_cutlass.reset(
-                  new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-                      phi_kernel_name, phi_kernel_key_cutlass)));
-
-              LOG(INFO) << "JZZ 1.3";
-
-              if (phi_kernel_cutlass->IsValid()) {
-                PhiKernelTuner tuner(impl_->getKernelContext());
-                tuner.AddPhiKernel(std::move(phi_kernel_));
-                tuner.AddPhiKernel(std::move(phi_kernel_cutlass));
-                // std::pair<phi::Kernel*, int> best_kernel(tuner.Run());
-                phi_kernel_ = std::move(tuner.Run());
-                LOG(INFO) << "JZZ address0:" << phi_kernel_.get();
-                LOG(INFO) << phi_kernel_->args_def().input_defs().size();
-                // if (best_kernel.second == 1) {
-                //   kernel_type_.reset(new OpKernelType(
-                //       std::move(InnerGetExpectedKernelType(exe_ctx, true))));
-                // }
-              }
-            }
-          }
-
-          LOG(INFO) << "JZZ address2:" << phi_kernel_.get();
-          LOG(INFO) << phi_kernel_->args_def().input_defs().size();
-
-          LOG(INFO) << "JZZ 2";
-
-          (*phi_kernel_)(impl_->getKernelContext());
-
-          LOG(INFO) << "JZZ address3:" << phi_kernel_.get();
-          LOG(INFO) << phi_kernel_->args_def().input_defs().size();
-        }
-        LOG(INFO) << "JZZ address4";
-        LOG(INFO) << phi_kernel_.get();
-        LOG(INFO) << phi_kernel_->args_def().input_defs().size();
+        PhiKernelTune(exe_ctx, phi_kernel_name);
+        (*phi_kernel_)(impl_->getKernelContext());
       } else {
         phi::KernelContext phi_kernel_context;
         // Do data transform before building KernelContext
@@ -2164,8 +2104,34 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
+void OperatorWithKernel::PhiKernelTune(const ExecutionContext& exe_ctx,
+                                       const std::string& phi_kernel_name) {
+  if (kernel_type_.get()->library_type_ == LibraryType::kCUDNN) {
+    // Try to get cutlass kernel
+    OpKernelType kernel_type_cutlass(std::move(
+        InnerGetExpectedKernelType(exe_ctx, framework::LibraryType::kCUTLASS)));
+    if (kernel_type_cutlass.library_type_ == LibraryType::kCUTLASS) {
+      phi::KernelKey phi_kernel_key_cutlass;
+      std::unique_ptr<phi::Kernel> phi_kernel_cutlass;
+      phi_kernel_key_cutlass =
+          TransOpKernelTypeToPhiKernelKey(kernel_type_cutlass);
+
+      phi_kernel_cutlass.reset(
+          new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
+              phi_kernel_name, phi_kernel_key_cutlass)));
+
+      if (phi_kernel_cutlass->IsValid()) {
+        PhiKernelTuner tuner(impl_->getKernelContext());
+        tuner.AddPhiKernel(std::move(phi_kernel_));
+        tuner.AddPhiKernel(std::move(phi_kernel_cutlass));
+        phi_kernel_ = std::move(tuner.Run());
+      }
+    }
+  }
+}
+
 OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
-    const ExecutionContext& ctx, const bool use_cutlass) const {
+    const ExecutionContext& ctx) const {
   phi::KernelKey phi_kernel_key = this->GetExpectedKernelType(ctx);
   auto expected_kernel_key =
       framework::TransPhiKernelKeyToOpKernelType(phi_kernel_key);
@@ -2189,13 +2155,128 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   if (this->CanCUDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
-#if defined(PADDLE_WITH_CUTLASS)
-  if (this->CanCUTLASSBeUsed(ctx, expected_kernel_key.data_type_) &&
-      use_cutlass) {
-    expected_kernel_key.library_type_ = framework::LibraryType::kCUTLASS;
+#endif
+
+  if (HasAttr("op_device")) {
+    if (Attr<std::string>("op_device") == "cpu") {
+      expected_kernel_key.place_ = platform::CPUPlace();
+    } else if (Attr<std::string>("op_device").find("gpu") !=
+               std::string::npos) {
+      auto device = Attr<std::string>("op_device");
+      size_t pos = device.find(':');
+      if (pos != std::string::npos) {
+        device = device.substr(0, pos);
+        LOG_FIRST_N(WARNING, 1)
+            << "Device index is only supported under pipeline parallelism, "
+            << "so it will be ignored.";
+      }
+      // when the Op that does not have GPUKernel is assigned to GPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
+      expected_kernel_key.place_ = platform::CPUPlace();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (SupportGPU()) {
+        auto& dev_ctx = ctx.device_context();
+        expected_kernel_key.place_ = dev_ctx.GetPlace();
+      }
+#endif
+      if (platform::is_cpu_place(expected_kernel_key.place_)) {
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << type_
+            << ") has no CUDA implementation. It will be assigned to CPUPlace.";
+      }
+    } else if (Attr<std::string>("op_device").find("npu") !=
+               std::string::npos) {
+      auto device = Attr<std::string>("op_device");
+      size_t pos = device.find(':');
+      if (pos != std::string::npos) {
+        device = device.substr(0, pos);
+        LOG_FIRST_N(WARNING, 1)
+            << "Device index is only supported under pipeline parallelism, "
+            << "so it will be ignored.";
+      }
+      // when the Op that does not have NPUKernel is assigned to NPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
+      expected_kernel_key.place_ = platform::CPUPlace();
+#ifdef PADDLE_WITH_ASCEND_CL
+      if (SupportNPU()) {
+        auto& dev_ctx = ctx.device_context();
+        expected_kernel_key.place_ = dev_ctx.GetPlace();
+      }
+#endif
+      if (platform::is_cpu_place(expected_kernel_key.place_)) {
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << type_
+            << ") has no NPU implementation. It will be assigned to CPUPlace.";
+      }
+    } else if (Attr<std::string>("op_device").find("xpu") !=
+               std::string::npos) {
+      auto device = Attr<std::string>("op_device");
+      size_t pos = device.find(':');
+      if (pos != std::string::npos) {
+        device = device.substr(0, pos);
+        LOG_FIRST_N(WARNING, 1)
+            << "Device index is only supported under pipeline parallelism, "
+            << "so it will be ignored.";
+      }
+      // when the Op that does not have XPUKernel is assigned to XPU, the
+      // CPUKernel will be executed and a warning will be given at the same
+      // time.
+      expected_kernel_key.place_ = platform::CPUPlace();
+#ifdef PADDLE_WITH_XPU
+      if (SupportXPU()) {
+        auto& dev_ctx = ctx.device_context();
+        expected_kernel_key.place_ = dev_ctx.GetPlace();
+      }
+#endif
+      if (platform::is_cpu_place(expected_kernel_key.place_)) {
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << type_
+            << ") has no XPU implementation. It will be assigned to CPUPlace.";
+      }
+    }
   }
+
+  if (platform::places_are_same_class(expected_kernel_key.place_,
+                                      ctx.GetPlace())) {
+    expected_kernel_key.place_ = ctx.GetPlace();
+  }
+
+  VLOG(3) << "op type:" << type_
+          << ", expected_kernel_key:" << expected_kernel_key;
+  return expected_kernel_key;
+}
+
+OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
+    const ExecutionContext& ctx,
+    const framework::LibraryType library_type) const {
+  phi::KernelKey phi_kernel_key = this->GetExpectedKernelType(ctx);
+  auto expected_kernel_key =
+      framework::TransPhiKernelKeyToOpKernelType(phi_kernel_key);
+
+  if (library_type == framework::LibraryType::kMKLDNN) {
+#ifdef PADDLE_WITH_MKLDNN
+    if (!this->DnnFallback() &&
+        !paddle::platform::in_mkldnn_white_list(type_) &&
+        this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
+      expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
+      expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
+    }
 #endif
+  } else if (library_type == framework::LibraryType::kCUDNN) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (this->CanCUDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
+      expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+    }
 #endif
+  } else if (library_type == framework::LibraryType::kCUTLASS) {
+#if defined(PADDLE_WITH_CUTLASS)
+    if (this->CanCUTLASSBeUsed(ctx, expected_kernel_key.data_type_)) {
+      expected_kernel_key.library_type_ = framework::LibraryType::kCUTLASS;
+    }
+#endif
+  }
 
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
