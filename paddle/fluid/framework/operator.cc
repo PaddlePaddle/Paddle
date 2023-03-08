@@ -2374,6 +2374,8 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
   }
   VLOG(6) << *kernel_signature_.get();
   phi_kernel_name = kernel_signature_->name;
+  kernel_type_.reset(
+      new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
 
   auto phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
   phi_kernel_.reset(new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
