@@ -437,6 +437,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
         "select_input",
         "while",
         "while_grad",
+        "cast",
     }
     global_block = program.global_block()
     keep_fp32_ops = set()
