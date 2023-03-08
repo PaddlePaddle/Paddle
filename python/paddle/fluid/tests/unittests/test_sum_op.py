@@ -305,7 +305,7 @@ class TestFP16SumOp(TestSumOp):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_grad(['x0'], 'Out', max_relative_error=0.15)
+            self.check_grad(['x0'], 'Out', max_relative_error=1e-2)
 
 
 def create_test_sum_fp16_class(parent):
@@ -355,7 +355,7 @@ class TestSumBF16Op(OpTest):
     def test_check_grad(self):
         # new dynamic graph mode does not support unit16 type
         self.check_grad(
-            ['x0'], 'Out', numeric_grad_delta=0.5, check_dygraph=False
+            ['x0'], 'Out', check_dygraph=False, max_relative_error=0.5
         )
 
 
