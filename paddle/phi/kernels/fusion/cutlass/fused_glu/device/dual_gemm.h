@@ -61,6 +61,8 @@ D2 = element_wise(D0, D1)
 #include "cutlass/epilogue/thread/linear_combination_relu.h"
 #include "cutlass/epilogue/threadblock/default_epilogue_tensor_op.h"
 #include "../kernel/dual_gemm.h"
+#include "paddle/phi/kernels/fusion/cutlass/fused_glu/thread/right_act_and_mul.h"
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -85,82 +87,56 @@ namespace device {
 //     typename LayoutC_,
 //     /// Element type for internal accumulation
 //     typename ElementAccumulator_,
-//     /// Operator class tag
-//     typename OperatorClass_,
 //     /// Tag indicating architecture to tune for
 //     typename ArchTag_,
-//     /// Threadblock-level tile size (concept: GemmShape)
-//     typename ThreadblockShape_,
-//     /// Warp-level tile size (concept: GemmShape)
-//     typename WarpShape_,
-//     /// Instruction-level tile size (concept: GemmShape)
-//     typename InstructionShape_,
 //     /// Epilogue output operator
 //     typename EpilogueOutputOp0_,
 //     typename EpilogueOutputOp1_,
 //     typename EpilogueOutputOp2_,
 //     /// Threadblock-level swizzling operator
-//     typename ThreadblockSwizzle_ = threadblock::GemmIdentityThreadblockSwizzle<>,
-//     /// Number of stages used in the pipelined mainloop
-//     int Stages =
-//         DefaultGemmConfiguration<OperatorClass_, ArchTag_, ElementA_, ElementB_,
-//                                  ElementC_, ElementAccumulator_>::kStages,
+//     typename ThreadblockSwizzle_,
+//     int Stages, 
 //     bool StoreD0 = true,
 //     bool StoreD1 = true,
 //     /// If true, kernel supports split-K with serial reduction
-//     bool SplitKSerial = false,
-//     /// Access granularity of A matrix in units of elements
-//     int AlignmentA =
-//         DefaultGemmConfiguration<OperatorClass_, ArchTag_, ElementA_, ElementB_,
-//                                  ElementC_, ElementAccumulator_>::kAlignmentA,
-//     /// Access granularity of B matrix in units of elements
-//     int AlignmentB =
-//         DefaultGemmConfiguration<OperatorClass_, ArchTag_, ElementA_, ElementB_,
-//                                  ElementC_, ElementAccumulator_>::kAlignmentB,
-//     /// Operation performed by GEMM
-//     typename Operator_ = typename DefaultGemmConfiguration<
-//         OperatorClass_, ArchTag_, ElementA_, ElementB_, ElementC_,
-//         ElementAccumulator_>::Operator>
+//     bool SplitKSerial = false>
+
 
 template <
     /// Element type for A matrix operand
     typename ElementA_,
-    /// Layout type for A matrix operand
-    typename LayoutA_,
-    /// Element type for B matrix operand
-    typename ElementB_,
-    /// Layout type for B matrix operand
-    typename LayoutB_,
-    /// Element type for C and D matrix operands
-    typename ElementC_,
-    /// Layout type for C and D matrix operands
-    typename LayoutC_,
     /// Element type for internal accumulation
     typename ElementAccumulator_,
+    /// store for backward
+    bool StoreD,
+    /// Activate Type
+    template <typename> class ActivationType, 
     /// Tag indicating architecture to tune for
-    typename ArchTag_,
-    /// Epilogue output operator
-    typename EpilogueOutputOp0_,
-    typename EpilogueOutputOp1_,
-    typename EpilogueOutputOp2_,
-    /// Threadblock-level swizzling operator
-    typename ThreadblockSwizzle_,
-    int Stages, 
-    bool StoreD0 = true,
-    bool StoreD1 = true,
-    /// If true, kernel supports split-K with serial reduction
-    bool SplitKSerial = false>
+    typename ArchTag_>
 class DualGemm {
  public:
 
   using ElementA = ElementA_;
-  using LayoutA = LayoutA_;
+  // using LayoutA = LayoutA_;
+  using LayoutA = cutlass::layout::RowMajor;
+
   using TensorRefA = TensorRef<ElementA const, LayoutA>;
-  using ElementB = ElementB_;
-  using LayoutB = LayoutB_;
+  // using ElementB = ElementB_;
+  using ElementB = ElementA_;
+
+
+  // using LayoutB = LayoutB_;
+  using LayoutB = cutlass::layout::RowMajor; 
+
   using TensorRefB = TensorRef<ElementB const, LayoutB>;
-  using ElementC = ElementC_;
-  using LayoutC = LayoutC_;
+  // using ElementC = ElementC_;
+  using ElementC = ElementA_;
+
+  using ElementOutput = ElementA_; 
+  // using LayoutC = LayoutC_;
+  using LayoutC = cutlass::layout::RowMajor; 
+
+
   using TensorRefC = TensorRef<ElementC const, LayoutC>;
   using TensorRefD = TensorRef<ElementC, LayoutC>;
   using ElementAccumulator = ElementAccumulator_;
@@ -169,35 +145,61 @@ class DualGemm {
   using ThreadblockShape = cutlass::gemm::GemmShape<128, 64, GemmType::ThreadK>;
   using WarpShape = cutlass::gemm::GemmShape<64, 32, GemmType::WarpK>;
   using InstructionShape = typename GemmType::InstructionShape;
-  using EpilogueOutputOp0 = EpilogueOutputOp0_;
-  using EpilogueOutputOp1 = EpilogueOutputOp1_;
-  using EpilogueOutputOp2 = EpilogueOutputOp2_;
-  using ThreadblockSwizzle = ThreadblockSwizzle_;
+  // using EpilogueOutputOp0 = EpilogueOutputOp0_;
+  // using EpilogueOutputOp1 = EpilogueOutputOp1_;
+  // using EpilogueOutputOp2 = EpilogueOutputOp2_;
+
+  // using kScaleType = cutlass::epilogue::thread::ScaleType::NoBetaScaling;
+  using ElementCompute = ElementAccumulator_;
+
+  using EpilogueOutputOp0 = cutlass::epilogue::thread::LinearCombination<
+      ElementOutput,
+      128 / cutlass::sizeof_bits<ElementOutput>::value,
+      ElementAccumulator,
+      ElementCompute,
+      cutlass::epilogue::thread::ScaleType::NoBetaScaling>;
+  using EpilogueOutputOp1 = cutlass::epilogue::thread::LinearCombination<
+      ElementOutput,
+      128 / cutlass::sizeof_bits<ElementOutput>::value,
+      ElementAccumulator,
+      ElementCompute,
+      cutlass::epilogue::thread::ScaleType::NoBetaScaling>;
+
+  using EpilogueOutputOp2 = cutlass::epilogue::thread::RightActAndMul<
+      ActivationType,
+      ElementOutput,
+      128 / cutlass::sizeof_bits<ElementOutput>::value,
+      ElementOutput,
+      ElementCompute>;
+
+  // using ThreadblockSwizzle = ThreadblockSwizzle_;
+  using ThreadblockSwizzle = cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<1>;
 
   using OpClass = typename GemmType::OpClass;
 
   static int const AlignmentA =
-      DefaultGemmConfiguration<OpClass, ArchTag_, ElementA_, ElementB_,
-                                ElementC_, ElementAccumulator_>::kAlignmentA;
+      DefaultGemmConfiguration<OpClass, ArchTag_, ElementA, ElementB,
+                                ElementC, ElementAccumulator>::kAlignmentA;
   static int const AlignmentB =
-      DefaultGemmConfiguration<OpClass, ArchTag_, ElementA_, ElementB_,
-                                ElementC_, ElementAccumulator_>::kAlignmentB;
+      DefaultGemmConfiguration<OpClass, ArchTag_, ElementA, ElementB,
+                                ElementC, ElementAccumulator_>::kAlignmentB;
 
   using Operator = typename DefaultGemmConfiguration<OpClass, 
                                                      ArchTag_, 
-                                                     ElementA_, 
-                                                     ElementB_, 
-                                                     ElementC_, 
+                                                     ElementA, 
+                                                     ElementB, 
+                                                     ElementC, 
                                                      ElementAccumulator_>::Operator; 
 
 
-  static int const kStages = Stages;
+  // static int const kStages = Stages;
+  static int const kStages = 3;
   static int const kAlignmentA = AlignmentA;
   static int const kAlignmentB = AlignmentB;
   static int const kAlignmentC = EpilogueOutputOp1::kCount;
-  static bool const kSplitKSerial = SplitKSerial;
-  static bool constexpr kStoreD0 = StoreD0;
-  static bool constexpr kStoreD1 = StoreD1;
+  static bool const kSplitKSerial = false;
+  static bool constexpr kStoreD0 = StoreD;
+  static bool constexpr kStoreD1 = StoreD;
   static ComplexTransform const kTransformA = ComplexTransform::kNone;
   static ComplexTransform const kTransformB = ComplexTransform::kNone;
 
@@ -233,7 +235,7 @@ class DualGemm {
         typename DefaultConfig::EpilogueOutputOp,
         ThreadblockSwizzle, 
         DefaultConfig::kStages, 
-        SplitKSerial, // SplitKSerial
+        kSplitKSerial, // SplitKSerial
         Operator>;
 
   using DualMmaFromSmem =
@@ -471,6 +473,15 @@ public:
     return Status::kSuccess;
   }
 
+  __host__ dim3 getBlocksGrid() const {
+    ThreadblockSwizzle threadblock_swizzle;
+    return threadblock_swizzle.get_grid_shape(params_.grid_tiled_shape);
+  }
+
+  __host__ dim3 getThreadsGrid() const {
+    return dim3(DualGemmKernel::kThreadCount, 1, 1);
+  }
+
   /// Runs the kernel using initialized state.
   Status run(cudaStream_t stream) {
 
@@ -519,6 +530,10 @@ public:
     return status;
   }
 };
+
+// template <typename DualGemm>
+// __global__ void fused_glu_kernel(typename DualGemm::Params params);
+
 
 } // namespace device
 } // namespace gemm
