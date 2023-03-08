@@ -107,7 +107,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             var_list = list(
                 filter(lambda var: var.persistable, prog.list_vars())
             )
-            fluid.io.load_vars(
+            paddle.static.io.load_vars(
                 exe, path_vars1, main_program=prog, vars=var_list
             )
 
@@ -123,7 +123,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             path_vars2 = os.path.join(
                 self.temp_dir.name, 'test_replace_save_load_vars_binary2/model/'
             )
-            fluid.io.save_vars(
+            paddle.static.io.save_vars(
                 exe, path_vars2, main_program=prog, vars=var_list
             )
             self.set_zero(prog, place)

@@ -1986,9 +1986,13 @@ void BrpcPsClient::PushDenseTaskConsume() {
                 const float *merge_data = tmp_task_vec.data();
                 accessor->Merge(
                     &total_send_data, &merge_data, total_send_data_size);
+#ifndef __GNUC__
 #pragma optimize("", off)
+#endif
                 delete async_task;
+#ifndef __GNUC__
 #pragma optimize("", on)
+#endif
                 return 0;
               });
           ++merge_count;

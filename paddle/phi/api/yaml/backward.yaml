@@ -533,6 +533,7 @@
     param: [out_grad]
   kernel :
     func : floor_grad
+  composite : floor_grad(out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : fold_grad
@@ -565,6 +566,7 @@
     func : GatherNdGradInferMeta
   kernel :
     func : gather_nd_grad
+  composite : gather_nd_grad(x, index, out_grad, x_grad)
   no_need_buffer : x
 
 - backward_op : gelu_grad
@@ -802,6 +804,7 @@
   kernel :
     func : log_grad
   backward : log_double_grad
+  composite : log_grad(x, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : log_loss_grad

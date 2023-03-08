@@ -20,9 +20,8 @@
 #include "paddle/phi/core/ddim.h"
 namespace paddle {
 namespace prim {
-using Tensor = paddle::experimental::Tensor;
-using IntArray =
-    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+using Tensor = paddle::Tensor;
+using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
@@ -89,7 +88,11 @@ void transpose_grad(const Tensor& grad_out,
     std::vector<int> reverse_perm(perm);
     // make origin ranks
     for (int i = 0; i < static_cast<int>(perm.size()); ++i) {
-      reverse_perm[perm[i]] = i;
+      if (perm[i] >= 0) {
+        reverse_perm[perm[i]] = i;
+      } else {
+        reverse_perm[perm[i] + perm.size()] = i;
+      }
     }
     auto grad_x_tmp = transpose<T>(grad_out, reverse_perm);
     set_output<T>(grad_x_tmp, grad_x);
@@ -285,6 +288,15 @@ void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void floor_grad(const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto zero_tensor =
+        full<T>(phi::vectorize(out_grad.dims()), 0.0, out_grad.dtype());
+    set_output<T>(zero_tensor, x_grad);
+  }
+}
+
+template <typename T>
 void concat_grad(const std::vector<Tensor>& x,
                  const Tensor& out_grad,
                  const Scalar& axis,
@@ -373,6 +385,14 @@ void expand_grad(const Tensor& x,
     } else {
       by_pass<T>(out_grad, x_grad);
     }
+  }
+}
+
+template <typename T>
+void log_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    // dx = dout / x
+    set_output<T>(out_grad / x, x_grad);
   }
 }
 
@@ -786,7 +806,18 @@ void topk_grad(const Tensor& x,
   if (x_grad) {
     auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
     auto x_grad_tmp = put_along_axis<T>(zero_tensor, indices, out_grad, axis);
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
 
+template <typename T>
+void gather_nd_grad(const Tensor& x,
+                    const Tensor& index,
+                    const Tensor& out_grad,
+                    Tensor* x_grad) {
+  if (x_grad) {
+    auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+    auto x_grad_tmp = scatter_nd_add<T>(zero_tensor, index, out_grad);
     set_output<T>(x_grad_tmp, x_grad);
   }
 }
