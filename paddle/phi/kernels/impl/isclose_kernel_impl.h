@@ -18,10 +18,10 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-
 // TODO(xiongkun): remove the header when decouple the memcpy function in phi.
 #include "paddle/phi/common/memory_utils.h"
 
@@ -58,16 +58,15 @@ struct GetTensorValue<phi::GPUContext, T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType operator()(const phi::GPUContext& dev_ctx,
                     const DenseTensor& tensor) const {
-    const MPType* data = static_cast<MPType>((tensor.data<MPType>());
+    const MPType* data = static_cast<MPType>(tensor.data<MPType>());
     MPType value;
     const auto gpu_place = dev_ctx.GetPlace();
-    memory_utils::Copy(
-        phi::CPUPlace(),
-        &value,
-        gpu_place,
-        data,
-        sizeof(MPType),
-        dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &value,
+                       gpu_place,
+                       data,
+                       sizeof(MPType),
+                       dev_ctx.stream());
     return value;
   }
 };
@@ -92,7 +91,7 @@ struct IscloseFunctor<phi::CPUContext, T> {
     }
     for (int i = 0; i < num; i++) {
       const MPType a = static_cast<MPType>(in_a[i]),
-                   static_cast<MPType>(b = in_b[i]);
+                   b = static_cast<MPType>(in_b[i]);
       bool val;
       if (std::isnan(a) || std::isnan(b)) {
         val = equal_nan && std::isnan(a) == std::isnan(b);
@@ -119,16 +118,20 @@ __global__ void IscloseCUDAKernel(const T* in_data,
                                   bool equal_nan,
                                   int num,
                                   bool* out_data) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const T a = in_data[i], b = other_data[i];
+    const MPType a = static_cast<MPType>(in_data[i]),
+                 b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
-      T left = (a > b ? a - b : b - a);
-      T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-      T diff = (left > right ? left - right : right - left);
+      MPType left = static_cast<MPType>(a > b ? a - b : b - a);
+      MPType right = static_cast<MPType>(atol) +
+                     static_cast<MPType>(b > 0 ? rtol * b : (-rtol) * b);
+      MPType diff =
+          static_cast<MPType>(left > right ? left - right : right - left);
       val = a == b || left <= right || diff <= 1e-15;
     }
     out_data[i] = val;
@@ -145,9 +148,10 @@ struct IscloseFunctor<phi::GPUContext, T> {
                   const double atol,
                   bool equal_nan,
                   DenseTensor* output) {
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     int num = in.numel();
-    const T* in_data = in.data<T>();
-    const T* other_data = other.data<T>();
+    const MPType* in_data = in.data<MPType>();
+    const MPType* other_data = other.data<MPType>();
     bool* out_data = dev_ctx.template Alloc<bool>(output);
     int block = 1024;
     int grid = (block - 1 + num) / block;
@@ -157,7 +161,7 @@ struct IscloseFunctor<phi::GPUContext, T> {
 #else
     cudaMemset(out_data, true, num * sizeof(bool));
 #endif
-    IscloseCUDAKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
+    IscloseCUDAKernel<MPType><<<grid, block, 0, dev_ctx.stream()>>>(
         in_data, other_data, rtol, atol, equal_nan, num, out_data);
   }
 };

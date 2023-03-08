@@ -78,8 +78,8 @@ void AllCloseKernel(const Context& dev_ctx,
         atol.dtype()));
   }
   VLOG(3) << "rtol and atol is : " << rtol_v << " " << atol_v;
-  const MPType* in_data = static_cast<MPType>(x.data<MPType>());
-  const MPType* other_data = static_cast<MPType>(y.data<MPType>());
+  const MPType* in_data = x.data<MPType>();
+  const MPType* other_data = y.data<MPType>();
   bool* out_data = dev_ctx.template Alloc<bool>(out);
 
   int num = x.numel();
