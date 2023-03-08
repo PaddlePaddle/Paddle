@@ -189,9 +189,9 @@ class FusionGroupPassCastTest(FusionGroupPassTest):
             self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
 
             tmp_0 = paddle.add(self.feed_vars[0], self.feed_vars[1])
+            tmp_0.stop_gradient = False
             tmp_1 = paddle.cast(tmp_0, dtype="float64")
             tmp_2 = paddle.cast(tmp_1, dtype="float32")
-            tmp_0.stop_gradient = False
 
         self.append_gradients(tmp_2)
 
