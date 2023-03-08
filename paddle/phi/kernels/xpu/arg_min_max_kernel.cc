@@ -22,6 +22,11 @@
 
 namespace phi {
 
+namespace {
+const int ARG_MAX_OUTPUT_DATATYPE_INT32 = 2;
+const int ARG_MAX_OUTPUT_DATATYPE_INT64 = 3;
+}  // namespace
+
 template <typename T, typename Context>
 void ArgMaxKernel(const Context& dev_ctx,
                   const DenseTensor& x,
@@ -53,7 +58,7 @@ void ArgMaxKernel(const Context& dev_ctx,
   }
   auto xdims_vec = phi::vectorize<int>(x_dims);
   int r = 0;
-  if (dtype != 2) {
+  if (dtype != ARG_MAX_OUTPUT_DATATYPE_INT32) {
     dev_ctx.template Alloc<int64_t>(out);
     if (x.dims().size() == 0) {
       xpu::constant(dev_ctx.x_context(),
