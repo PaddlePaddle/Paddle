@@ -17,4 +17,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/lamb_kernel_impl.h"
 
-PD_REGISTER_KERNEL(lamb, CPU, ALL_LAYOUT, phi::LambKernel, float, double) {}
+PD_REGISTER_KERNEL(lamb, CPU, ALL_LAYOUT, phi::LambKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(3).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(4).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(5).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(6).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}

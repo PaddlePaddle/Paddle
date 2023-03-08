@@ -83,7 +83,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "is_empty",
     "is_finite",
     "kthvalue",
-    "lamb",
     "layer_norm",
     "layer_norm_grad",
     "less_equal",

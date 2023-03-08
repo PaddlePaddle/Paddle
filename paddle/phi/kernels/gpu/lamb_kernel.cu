@@ -27,4 +27,10 @@ PD_REGISTER_KERNEL(lamb,
                    double) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(3).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(4).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(5).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(6).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
