@@ -15,7 +15,7 @@ if(WITH_GPU)
     DEPS context_pool)
   nv_test(
     test_from_blob
-    SRCS test_from_blob.cu
+    SRCS test_from_blob.cc
     DEPS from_blob ${COMMON_API_TEST_DEPS})
 elseif(WITH_ROCM)
   hip_test(
@@ -32,7 +32,7 @@ elseif(WITH_ROCM)
     DEPS context_pool)
   hip_test(
     test_from_blob
-    SRCS test_from_blob.cu
+    SRCS test_from_blob.cc
     DEPS from_blob ${COMMON_API_TEST_DEPS})
 else()
   cc_test(
@@ -41,7 +41,7 @@ else()
     DEPS glog selected_rows ${COMMON_API_TEST_DEPS})
   cc_test(
     test_from_blob
-    SRCS test_from_blob.cu
+    SRCS test_from_blob.cc
     DEPS from_blob ${COMMON_API_TEST_DEPS})
 endif()
 
