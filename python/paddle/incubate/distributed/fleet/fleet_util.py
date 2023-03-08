@@ -23,6 +23,7 @@ import time
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet.utils.fs import HDFSClient
 from paddle.fluid.log_helper import get_logger
@@ -54,13 +55,13 @@ class FleetUtil:
     def __init__(self, mode="pslib"):
         global fleet
         if mode == "pslib":
-            from paddle.incubate.fleet.parameter_server.pslib import (
+            from paddle.incubate.distributed.fleet.parameter_server.pslib import (
                 fleet as fleet_pslib,
             )
 
             fleet = fleet_pslib
         elif mode == "transpiler":
-            from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
+            from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
                 fleet as fleet_transpiler,
             )
 
@@ -1087,11 +1088,13 @@ class FleetUtil:
             vars = [program.global_block().var(i) for i in var_names]
             with fluid.scope_guard(scope):
                 if save_combine:
-                    fluid.io.save_vars(
+                    paddle.static.io.save_vars(
                         executor, "./", program, vars=vars, filename=model_name
                     )
                 else:
-                    fluid.io.save_vars(executor, model_name, program, vars=vars)
+                    paddle.static.io.save_vars(
+                        executor, model_name, program, vars=vars
+                    )
 
             configs = {
                 "fs.default.name": hadoop_fs_name,

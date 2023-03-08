@@ -623,7 +623,7 @@ def _lower_composite(block, blacklist=[]):
                     new_outs,
                 ):
                     if orig_out is None:
-                        # to keep same as phi op defination, orig_out may receive None
+                        # to keep same as phi op definition, orig_out may receive None
                         continue
                     elif new_out is not None:
                         assert orig_out.dtype == new_out.dtype, (
@@ -655,12 +655,10 @@ def _lower_composite(block, blacklist=[]):
                 for i in range(len(op.output_names)):
                     outputs[op.output_names[i]] = op.output(op.output_names[i])
 
-                attrs = {}
-                for name in sorted(op.attr_names):
-                    attrs[name] = op.attr(name)
                 from paddle.fluid.dygraph.base import param_guard
 
                 new_op_desc = block.desc.append_op()
+                new_op_desc.copy_from(op.desc)
                 with param_guard(inputs), param_guard(outputs):
                     op = Operator(
                         block=block,
@@ -668,7 +666,7 @@ def _lower_composite(block, blacklist=[]):
                         type=op.type,
                         inputs=inputs,
                         outputs=outputs,
-                        attrs=attrs,
+                        attrs=None,
                     )
                 block.ops.append(op)
 

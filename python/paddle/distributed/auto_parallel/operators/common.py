@@ -191,7 +191,7 @@ def register_distributed_operator_impl(op_type, dist_impl):
 
 def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
     """
-    Here just return the first compatible implemention.
+    Here just return the first compatible implementation.
     This will be improved by cost model in the future.
     """
     op_type = dist_op.serial_op.type

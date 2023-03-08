@@ -14,8 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/core/mixed_vector.h"
+
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#endif
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/axpy_handler.h"
@@ -73,35 +76,35 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
             out_value->numel() / out_rows.size()));
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto out_place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(out_place),
+    PADDLE_ENFORCE_EQ(out_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
     auto* out_data = out_value->data<T>();
     auto* in1_data = in1_value.data<T>();
-    paddle::memory::Copy(out_place,
-                         out_data,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T));
+    memory_utils::Copy(out_place,
+                       out_data,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T));
 
     auto* in2_data = in2_value.data<T>();
-    paddle::memory::Copy(out_place,
-                         out_data + in1_value.numel(),
-                         in2_place,
-                         in2_data,
-                         in2_value.numel() * sizeof(T));
+    memory_utils::Copy(out_place,
+                       out_data + in1_value.numel(),
+                       in2_place,
+                       in2_data,
+                       in2_value.numel() * sizeof(T));
   }
 };
 
@@ -204,23 +207,23 @@ struct SelectedRowsAddTo<phi::CPUContext, T> {
     mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(in1_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(in2_place.GetType() == phi::AllocationType::CPU,
                       true,
                       phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    paddle::memory::Copy(in2_place,
-                         in2_data + input2_offset,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T));
+    memory_utils::Copy(in2_place,
+                       in2_data + input2_offset,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T));
   }
 };
 
@@ -563,11 +566,11 @@ struct MergeAddImpl {
       for (auto* in : inputs) {
         auto* in_data = in->value().data<T>();
         auto in_numel = in->rows().size() * input_width;
-        paddle::memory::Copy(out_place,
-                             out_data + copied_numel,
-                             in_place,
-                             in_data,
-                             in_numel * sizeof(T));
+        memory_utils::Copy(out_place,
+                           out_data + copied_numel,
+                           in_place,
+                           in_data,
+                           in_numel * sizeof(T));
         copied_numel += in_numel;
       }
     } else {
@@ -677,16 +680,16 @@ struct MergeAdd<phi::XPUContext, T> {
     xpu::ctx_guard RAII_GUARD(context.x_context());
     int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
     int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-    paddle::memory::Copy(context.GetPlace(),
-                         y_rows_data,
-                         phi::CPUPlace(),
-                         merge_rows.data(),
-                         ym * sizeof(int64_t));
-    paddle::memory::Copy(context.GetPlace(),
-                         x_rows_data,
-                         phi::CPUPlace(),
-                         input_rows.data(),
-                         xm * sizeof(int64_t));
+    memory_utils::Copy(context.GetPlace(),
+                       y_rows_data,
+                       phi::CPUPlace(),
+                       merge_rows.data(),
+                       ym * sizeof(int64_t));
+    memory_utils::Copy(context.GetPlace(),
+                       x_rows_data,
+                       phi::CPUPlace(),
+                       input_rows.data(),
+                       xm * sizeof(int64_t));
     int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
                                             x_data,
                                             y_data,
@@ -775,16 +778,16 @@ struct MergeAdd<phi::XPUContext, T> {
       xpu::ctx_guard RAII_GUARD(context.x_context());
       int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
       int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-      paddle::memory::Copy(context.GetPlace(),
-                           y_rows_data,
-                           phi::CPUPlace(),
-                           merge_rows.data(),
-                           ym * sizeof(int64_t));
-      paddle::memory::Copy(context.GetPlace(),
-                           x_rows_data,
-                           phi::CPUPlace(),
-                           input_rows.data(),
-                           xm * sizeof(int64_t));
+      memory_utils::Copy(context.GetPlace(),
+                         y_rows_data,
+                         phi::CPUPlace(),
+                         merge_rows.data(),
+                         ym * sizeof(int64_t));
+      memory_utils::Copy(context.GetPlace(),
+                         x_rows_data,
+                         phi::CPUPlace(),
+                         input_rows.data(),
+                         xm * sizeof(int64_t));
       int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
                                               x_data,
                                               y_data,
