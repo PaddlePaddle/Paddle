@@ -139,7 +139,7 @@ struct DivGradDY {
 };
 
 template <typename T>
-struct DivGradDY<paddle::platform::complex<T>> {
+struct DivGradDY<phi::dtype::complex<T>> {
   HOSTDEVICE phi::dtype::complex<T> operator()(
       phi::dtype::complex<T> x,
       phi::dtype::complex<T> y,
