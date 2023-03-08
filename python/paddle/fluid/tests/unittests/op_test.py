@@ -2219,7 +2219,6 @@ class OpTest(unittest.TestCase):
         inputs_to_check,
         output_names,
         no_grad_set=None,
-        atol=1e-5,
         numeric_grad_delta=0.005,
         in_place=False,
         max_relative_error=0.005,
@@ -2229,6 +2228,7 @@ class OpTest(unittest.TestCase):
         check_eager=False,
         check_prim=False,
         only_check_prim=False,
+        atol=1e-5,
     ):
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -2260,7 +2260,6 @@ class OpTest(unittest.TestCase):
         inputs_to_check,
         output_names,
         no_grad_set=None,
-        atol=1e-5,
         numeric_grad_delta=0.005,
         in_place=False,
         max_relative_error=0.005,
@@ -2271,6 +2270,7 @@ class OpTest(unittest.TestCase):
         check_eager=False,
         check_prim=False,
         only_check_prim=False,
+        atol=1e-5,
     ):
         core._set_prim_all_enabled(False)
         if check_prim:
