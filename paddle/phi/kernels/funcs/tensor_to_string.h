@@ -16,7 +16,7 @@
 
 #include <sstream>
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -33,7 +33,7 @@ static const std::vector<T> &ToVector(const std::vector<T> &vec) {
 template <typename T>
 static std::vector<T> ToVector(const T *x, size_t n, const phi::Place &place) {
 #ifdef __NVCC__
-  if (paddle::platform::is_gpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::GPU) {
     using CopyT = typename std::
         conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
     std::vector<CopyT> cpu_x(n);

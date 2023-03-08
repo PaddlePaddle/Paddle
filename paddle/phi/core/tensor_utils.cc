@@ -14,13 +14,12 @@ limitations under the License. */
 
 #include "paddle/phi/core/tensor_utils.h"
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/platform/device_context.h"
 
 namespace phi {
 
