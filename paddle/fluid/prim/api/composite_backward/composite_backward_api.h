@@ -923,10 +923,12 @@ void batch_norm_grad(const Tensor& x,
             << scale.dtype() << std::endl;
   std::cout << "bn vjp in ************************* bias.dtype " << bias.dtype()
             << std::endl;
-  std::cout << "bn vjp in ************************* mean_out.dtype "
-            << mean_out.dtype() << std::endl;
-  std::cout << "bn vjp in ************************* saved_variance.dtype "
-            << saved_variance.dtype() << std::endl;
+  // std::cout << "mean_out =**** " <<
+  // *(dynamic_cast<phi::DenseTensor*>(mean_out.get().impl().get())) <<
+  // std::endl; std::cout << "variance_out =**** " <<
+  // *(dynamic_cast<phi::DenseTensor*>(variance_out.get().impl().get())) <<
+  // std::endl;
+
   std::cout << "bn vjp in ************************* out_grad.dtype "
             << out_grad.dtype() << std::endl;
   std::cout << "bn vjp in ************************* momentum " << momentum
@@ -938,7 +940,15 @@ void batch_norm_grad(const Tensor& x,
 
   DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
 
-  auto x_dims = x.dims();
+  Tensor x_data = x;
+  Tensor out_grad_data = out_grad;
+  if (x.dtype() == phi::DataType::FLOAT16) {
+    x_data = cast<T>(x, phi::DataType::FLOAT32);
+  }
+  if (out_grad.dtype() == phi::DataType::FLOAT16) {
+    out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
+  }
+  auto x_dims = x_data.dims();
   const int C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
                                                    : x_dims[x_dims.size() - 1]);
   int nume = 1;
@@ -964,6 +974,10 @@ void batch_norm_grad(const Tensor& x,
     mean_data = run_mean;
     rsqrt_var = 1 / (run_var + eps).pow(0.5);
   } else {
+    std::cout << "bn vjp in ************************* saved_mean.dtype "
+              << saved_mean.dtype() << std::endl;
+    std::cout << "bn vjp in ************************* saved_variance.dtype "
+              << saved_variance.dtype() << std::endl;
     mean_data = saved_mean;
     rsqrt_var = saved_variance;
   }
@@ -985,12 +999,12 @@ void batch_norm_grad(const Tensor& x,
   std::vector<int> nchw_to_nhwc_dim = {0, 2, 3, 1};
   std::vector<int> nhwc_to_nchw_dim = {0, 3, 1, 2};
   auto reduce_axis = IntArray(std::vector<int>{0, 1, 2});
-  auto dtype = x.dtype();
+  auto dtype = x_data.dtype();
 
   switch (data_layout_) {
     case DataLayout::kNCHW: {
-      auto nhwc_x = transpose<T>(x, nchw_to_nhwc_dim);
-      auto nhwc_out_grad = transpose<T>(out_grad, nchw_to_nhwc_dim);
+      auto nhwc_x = transpose<T>(x_data, nchw_to_nhwc_dim);
+      auto nhwc_out_grad = transpose<T>(out_grad_data, nchw_to_nhwc_dim);
 
       auto x_sub_mean = nhwc_x - mean_data;
 
@@ -1009,6 +1023,9 @@ void batch_norm_grad(const Tensor& x,
 
           auto x_grad_data = part1 * part2;
           auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
+          if (x.dtype() == phi::DataType::FLOAT16) {
+            nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
+          }
           set_output<T>(nchw_x_grad, x_grad);
         }
       }
@@ -1025,29 +1042,35 @@ void batch_norm_grad(const Tensor& x,
     }
     case DataLayout::kNHWC: {
       if (x_grad) {
-        auto x_sub_mean = x - mean_data;
+        auto x_sub_mean = x_data - mean_data;
         if (x_grad) {
           if (use_global_stats) {
-            auto x_grad_data = scale * rsqrt_var * out_grad;
+            auto x_grad_data = scale * rsqrt_var * out_grad_data;
             set_output<T>(x_grad_data, x_grad);
           } else {
             auto part1 = scale * 1.0 / nhw * rsqrt_var;
-            auto sum_temp1 = sum<T>(out_grad, reduce_axis, dtype, false);
+            auto sum_temp1 = sum<T>(out_grad_data, reduce_axis, dtype, false);
             auto sum_temp2 =
-                sum<T>(out_grad * x_sub_mean, reduce_axis, dtype, false);
-            auto part2 = nhw * out_grad - sum_temp1 -
+                sum<T>(out_grad_data * x_sub_mean, reduce_axis, dtype, false);
+            auto part2 = nhw * out_grad_data - sum_temp1 -
                          x_sub_mean * sum_temp2 * (rsqrt_var * rsqrt_var);
             auto x_grad_data = part1 * part2;
+            if (x.dtype() == phi::DataType::FLOAT16) {
+              x_grad_data = cast<T>(x_grad_data, x.dtype());
+            }
             set_output<T>(x_grad_data, x_grad);
           }
         }
         if (scale_grad) {
-          auto scale_grad_data = sum<T>(
-              out_grad * x_sub_mean * rsqrt_var, reduce_axis, dtype, false);
+          auto scale_grad_data = sum<T>(out_grad_data * x_sub_mean * rsqrt_var,
+                                        reduce_axis,
+                                        dtype,
+                                        false);
           set_output<T>(scale_grad_data, scale_grad);
         }
         if (bias_grad) {
-          auto bias_grad_data = sum<T>(out_grad, reduce_axis, dtype, false);
+          auto bias_grad_data =
+              sum<T>(out_grad_data, reduce_axis, dtype, false);
           set_output<T>(bias_grad_data, bias_grad);
         }
         break;
