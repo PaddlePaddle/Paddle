@@ -203,7 +203,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   }
 
   // slice and memcpy
-  // for 0D tensor, can't concat eath tensor, stack them. for 1+D tensor, concat
+  // for 0D tensor, can't concat each tensor, stack them. for 1+D tensor, concat
   // them
   int begin = 0;
   int end = 0;

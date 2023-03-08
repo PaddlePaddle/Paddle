@@ -59,7 +59,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
 #endif
       PADDLE_ENFORCE_NOT_NULL(
           event_,
-          platform::errors::InvalidArgument("The cuda envet created is NULL."));
+          platform::errors::InvalidArgument("The cuda event created is NULL."));
     }
   }
 #endif
