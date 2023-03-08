@@ -50,7 +50,7 @@ class TestWhereOp2(TestWhereOp):
         self.cond = np.ones((60, 2)).astype('bool')
 
 
-class TestWhereOpFloat16(TestWhereOp):
+class TestWhereFP16OP(TestWhereOp):
     def init_config(self):
         self.dtype = np.float16
         self.x = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
@@ -63,7 +63,7 @@ class TestWhereOpFloat16(TestWhereOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestWhereOpBFloat16(OpTest):
+class TestWhereBF16OP(OpTest):
     def setUp(self):
         self.op_type = 'where'
         self.dtype = np.uint16
