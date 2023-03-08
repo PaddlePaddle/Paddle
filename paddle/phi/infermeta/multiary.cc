@@ -2481,6 +2481,10 @@ void SgdInferMeta(const MetaTensor& param,
 
   param_out->set_dims(param.dims());
   param_out->set_dtype(param.dtype());
+  if (multi_precision) {
+    master_param_out->set_dims(master_param.dims());
+    master_param_out->set_dtype(master_param.dtype());
+  }
 }
 
 void SendUERecvInferMeta(const MetaTensor& x,
