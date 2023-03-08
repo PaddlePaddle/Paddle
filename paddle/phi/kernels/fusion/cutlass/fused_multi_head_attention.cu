@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/cutlass/fused_multi_head_attention/kernels/cutlass_fmha_forward.h"
@@ -111,8 +111,8 @@ void LaunchMultiHeadAttentionKernel(LaunchParams params,
     if (Attention::kNeedsOutputAccumulatorBuffer) {
       const int64_t output_size = params.num_batches * params.num_heads *
                                   params.query_seq_len * params.head_size;
-      paddle::memory::AllocationPtr tmp_output_accum_buffer_ptr{nullptr};
-      tmp_output_accum_buffer_ptr = paddle::memory::Alloc(
+      phi::Allocator::AllocationPtr tmp_output_accum_buffer_ptr{nullptr};
+      tmp_output_accum_buffer_ptr = phi::memory_utils::Alloc(
           ctx.GetPlace(),
           output_size * sizeof(typename Attention::output_accum_t),
           phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
