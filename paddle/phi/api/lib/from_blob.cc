@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/from_blob.h"
 #include "paddle/phi/api/lib/api_registry.h"
-#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace experimental {

@@ -17,7 +17,6 @@ limitations under the License. */
 #include <functional>
 
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace experimental {
