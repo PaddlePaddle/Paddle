@@ -103,7 +103,11 @@ class TestInstanceNormOp(OpTest):
         ref_y_np, ref_mean_np, ref_var_np = _reference_instance_norm_naive(
             x_np, scale_np, bias_np, self.epsilon, mean_np, var_np
         )
-        self.inputs = {'X': x_np, 'Scale': scale_np, 'Bias': bias_np}
+        self.inputs = {
+            'X': paddle.to_tensor(x_np),
+            'Scale': paddle.to_tensor(scale_np),
+            'Bias': paddle.to_tensor(bias_np),
+        }
         self.attrs = {'epsilon': self.epsilon}
         self.outputs = {
             'Y': ref_y_np,
@@ -292,6 +296,7 @@ class TestInstanceNormOpTrainingCase2(TestInstanceNormOpTraining):
 
 class TestInstanceNormOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # the input of instance_norm must be Variable.
             x1 = fluid.create_lod_tensor(
@@ -304,14 +309,17 @@ class TestInstanceNormOpError(unittest.TestCase):
                 name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
             )
             self.assertRaises(TypeError, paddle.static.nn.instance_norm, x2)
+        paddle.disable_static()
 
 
 class TestInstanceNormOpErrorCase1(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # the first dimension of input for instance_norm must between [2d, 5d]
             x = paddle.static.data(name='x', shape=[3], dtype="float32")
             self.assertRaises(ValueError, paddle.static.nn.instance_norm, x)
+        paddle.disable_static()
 
 
 class TestElasticNormOp(unittest.TestCase):
