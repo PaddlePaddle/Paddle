@@ -19,7 +19,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -38,12 +38,11 @@ TEST(DEV_API, strings_cast_convert) {
   const DDim dims({1, 2});
   StringTensorMeta meta(dims);
   const auto string_allocator =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   const auto alloc = string_allocator.get();
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
 
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  auto* dev_ctx = pool.Get(phi::CPUPlace());
 
   StringTensor dense_x(alloc, meta);
 
@@ -92,13 +91,11 @@ TEST(DEV_API, strings_cast_convert_utf8) {
   // 1. create tensor
   const DDim dims({1, 1});
   StringTensorMeta meta(dims);
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(paddle::platform::CPUPlace());
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(phi::CPUPlace());
 
   const auto string_allocator =
-      std::make_unique<paddle::experimental::DefaultAllocator>(
-          paddle::platform::CPUPlace());
+      std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   const auto alloc = string_allocator.get();
   StringTensor dense_x(alloc, meta);
 

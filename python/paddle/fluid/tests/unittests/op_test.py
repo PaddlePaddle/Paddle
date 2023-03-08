@@ -1018,7 +1018,7 @@ class OpTest(unittest.TestCase):
         enable_inplace=None,
         for_inplace_test=None,
     ):
-        with paddle.static.program_guard(paddle.static.Program()):
+        with paddle.fluid.framework._static_guard():
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -1041,11 +1041,7 @@ class OpTest(unittest.TestCase):
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(
-                    program
-                ).with_data_parallel(
-                    loss_name=loss.name if loss else None, places=place
-                )
+                compiled_prog = fluid.CompiledProgram(program)
                 program = compiled_prog
             fetch_list = getattr(self, "fetch_list", [])
             # if the fetch_list is customized by user, we use it directly.
@@ -1069,9 +1065,7 @@ class OpTest(unittest.TestCase):
                 build_strategy.enable_inplace = enable_inplace
 
                 compiled_prog = fluid.CompiledProgram(
-                    program
-                ).with_data_parallel(
-                    build_strategy=build_strategy, places=place
+                    program, build_strategy=build_strategy
                 )
                 program = compiled_prog
 
@@ -1347,7 +1341,7 @@ class OpTest(unittest.TestCase):
         Returns:
             res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given grad_op_desc.
         """
-        with paddle.static.program_guard(paddle.static.Program()):
+        with paddle.fluid.framework._static_guard():
             (
                 fwd_outs,
                 fwd_fetch_list,
@@ -1371,9 +1365,7 @@ class OpTest(unittest.TestCase):
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.enable_inplace = enable_inplace
                 compiled_program = fluid.CompiledProgram(
-                    grad_program
-                ).with_data_parallel(
-                    loss_name="", build_strategy=build_strategy, places=place
+                    grad_program, build_strategy=build_strategy
                 )
                 program = compiled_program
 
@@ -1506,9 +1498,6 @@ class OpTest(unittest.TestCase):
             # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             setattr(self.__class__, 'check_prim', True)
             self.__class__.op_type = self.op_type
-            if prim_checker.is_only_check_prim():
-                self.only_prim = True
-                return
         # disable legacy dygraph check when check_eager is True
         if check_eager:
             check_dygraph = False
@@ -1856,7 +1845,7 @@ class OpTest(unittest.TestCase):
                         ref_eager_dygraph_outs = (
                             self.op_test._calc_python_api_output(place)
                         )
-                        if eager_dygraph_outs is None:
+                        if ref_eager_dygraph_outs is None:
                             self.is_python_api_test = False
                             ref_eager_dygraph_outs = (
                                 self.op_test._calc_dygraph_output(
@@ -2086,8 +2075,6 @@ class OpTest(unittest.TestCase):
                 check_eager=check_eager,
                 check_prim=check_prim,
             )
-            if hasattr(self, 'only_prim') and self.only_prim:
-                continue
             if check_eager:
                 assert not check_dygraph
                 outs, eager_dygraph_outs, fetch_list = res
@@ -2102,6 +2089,7 @@ class OpTest(unittest.TestCase):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker, custom_place=None):
+        self.__class__.op_type = self.op_type
         places = self._get_places()
         if custom_place:
             places.append(custom_place)
@@ -2164,7 +2152,10 @@ class OpTest(unittest.TestCase):
                 else:
                     abs_a = 1 if abs_a < 1e-3 else abs_a
 
-            diff_mat = np.abs(a - b) / abs_a
+            if self.dtype == np.bool:
+                diff_mat = np.abs(a ^ b) / abs_a
+            else:
+                diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
 
             def err_msg():
@@ -2207,6 +2198,7 @@ class OpTest(unittest.TestCase):
         check_dygraph=True,
         check_eager=False,
         check_prim=False,
+        only_check_prim=False,
     ):
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -2228,6 +2220,7 @@ class OpTest(unittest.TestCase):
                 check_dygraph,
                 check_eager=check_eager,
                 check_prim=check_prim,
+                only_check_prim=only_check_prim,
             )
 
     def check_grad_with_place(
@@ -2245,6 +2238,7 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
         check_eager=False,
         check_prim=False,
+        only_check_prim=False,
     ):
         core._set_prim_all_enabled(False)
         if check_prim:
@@ -2260,8 +2254,7 @@ class OpTest(unittest.TestCase):
             # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             setattr(self.__class__, 'check_prim', True)
             self._check_grad_helper()
-            if prim_grad_checker.is_only_check_prim():
-                self.only_prim = True
+            if only_check_prim:
                 return
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -2666,7 +2659,7 @@ class OpTest(unittest.TestCase):
         user_defined_grad_outputs=None,
         parallel=False,
     ):
-        with paddle.static.program_guard(paddle.static.Program()):
+        with paddle.fluid.framework._static_guard():
             prog = Program()
             scope = core.Scope()
             block = prog.global_block()
@@ -2735,9 +2728,7 @@ class OpTest(unittest.TestCase):
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
-                    loss_name=loss.name, places=place
-                )
+                compiled_prog = fluid.CompiledProgram(prog)
                 prog = compiled_prog
             executor = fluid.Executor(place)
             res = list(

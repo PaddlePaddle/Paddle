@@ -20,8 +20,6 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/impl/amp_kernel_impl.h"
 
-#include "paddle/fluid/memory/memory.h"
-
 namespace phi {
 
 // Utils
@@ -176,12 +174,12 @@ class LazyZeros<phi::GPUContext, T> {
     for (int i = 0; i < xs_size; i++) {
       h_starts[i + 1] = h_starts[i] + outs[i]->numel();
     }
-    paddle::memory::Copy(dev_ctx.GetPlace(),
-                         d_starts,
-                         cpu_place,
-                         h_starts,
-                         (xs_size + 1) * sizeof(int64_t),
-                         dev_ctx.stream());
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       d_starts,
+                       cpu_place,
+                       h_starts,
+                       (xs_size + 1) * sizeof(int64_t),
+                       dev_ctx.stream());
 
     // copy each tensor of "outs" data address array to device
     auto h_out_addrs_mem =
@@ -197,12 +195,12 @@ class LazyZeros<phi::GPUContext, T> {
     for (size_t i = 0; i < xs_size; ++i) {
       h_out_addrs[i] = dev_ctx.Alloc<T>(outs[i]);
     }
-    paddle::memory::Copy(dev_ctx.GetPlace(),
-                         d_out_addrs,
-                         cpu_place,
-                         h_out_addrs,
-                         xs_size * sizeof(T*),
-                         dev_ctx.stream());
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       d_out_addrs,
+                       cpu_place,
+                       h_out_addrs,
+                       xs_size * sizeof(T*),
+                       dev_ctx.stream());
 
     // launch cuda kernel
     int64_t total_num = h_starts[xs_size];
@@ -306,12 +304,12 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     h_starts[i] = h_starts[i - 1] + xs[i - 1]->numel();
   }
   int64_t total_num = h_starts[xs_size];
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       d_starts,
-                       cpu_place,
-                       h_starts,
-                       (xs_size + 1) * sizeof(int64_t),
-                       dev_ctx.stream());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_starts,
+                     cpu_place,
+                     h_starts,
+                     (xs_size + 1) * sizeof(int64_t),
+                     dev_ctx.stream());
 
   // copy each tensor's data address to device
   auto h_mem = phi::memory_utils::Alloc(cpu_place, 2 * xs_size * sizeof(T*));
@@ -329,12 +327,12 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     h_xs[i] = xs[i]->data<T>();
     h_outs[i] = dev_ctx.template Alloc<T>(outs[i]);
   }
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       d_xs,
-                       cpu_place,
-                       h_xs,
-                       2 * xs_size * sizeof(T*),
-                       dev_ctx.stream());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_xs,
+                     cpu_place,
+                     h_xs,
+                     2 * xs_size * sizeof(T*),
+                     dev_ctx.stream());
 
   // Launch Kernel
   int threads_per_block = std::min(static_cast<int64_t>(1024), total_num);
@@ -358,7 +356,9 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::BOOL);
+}
 
 PD_REGISTER_KERNEL(update_loss_scaling,
                    GPU,
