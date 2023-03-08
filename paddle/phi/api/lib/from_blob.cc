@@ -13,12 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/api/include/from_blob.h"
+#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace experimental {
 
-char touch_extension_api() { return '\0'; }
+PD_REGISTER_API(from_blob)
 
 using AllocationDeleter = void (*)(phi::Allocation*);
 

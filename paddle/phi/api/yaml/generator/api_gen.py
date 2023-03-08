@@ -364,6 +364,7 @@ def source_include(header_file_path):
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
+#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/type_traits.h"
@@ -397,10 +398,10 @@ namespace experimental {
     )
 
 
-def touch_extension():
+def declare_extension_api():
     return """
 
-  static int a = touch_extension_api();
+PD_DECLARE_API(from_blob);
 """
 
 
@@ -434,7 +435,7 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
         header_file.write(foward_api.gene_api_declaration())
         source_file.write(foward_api.gene_api_code())
 
-    source_file.write(touch_extension())
+    source_file.write(declare_extension_api())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

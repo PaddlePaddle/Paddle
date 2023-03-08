@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
-char touch_extension_api();
-
 using Deleter = std::function<void(void*)>;
 
 /**
