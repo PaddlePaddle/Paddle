@@ -34,6 +34,7 @@ import pickle
 import tarfile
 
 import numpy as np
+
 from paddle.utils import try_import
 
 __all__ = []
