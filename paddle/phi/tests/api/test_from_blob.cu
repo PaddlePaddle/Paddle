@@ -28,9 +28,6 @@ PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 #endif
 
-namespace paddle {
-namespace tests {
-
 using phi::memory_utils::Copy;
 
 TEST(from_blob, CPU) {
@@ -38,7 +35,7 @@ TEST(from_blob, CPU) {
   int64_t data[] = {4, 3, 2, 1};
 
   // 2. test API
-  auto test_tesnor = experimental::from_blob(
+  auto test_tesnor = paddle::experimental::from_blob(
       data, {1, 2, 2}, phi::DataType::INT64, phi::CPUPlace());
 
   // 3. check result
@@ -63,7 +60,7 @@ TEST(from_blob, CPU) {
   ASSERT_EQ(data, test_tensor_data);
 
   // 3.4 test other API
-  auto test_tensor_pow = experimental::pow(test_tesnor, 2);
+  auto test_tensor_pow = paddle::experimental::pow(test_tesnor, 2);
   auto* test_tensor_pow_data = test_tensor_pow.template data<int64_t>();
   for (int64_t i = 0; i < 4; i++) {
     ASSERT_EQ(test_tensor_pow_data[i],
@@ -89,7 +86,7 @@ TEST(from_blob, GPU) {
        ctx->stream());
 
   // 2. test API
-  auto gpu_tesnor = experimental::from_blob(
+  auto gpu_tesnor = paddle::experimental::from_blob(
       gpu_data, {2, 3}, phi::DataType::FLOAT32, phi::GPUPlace());
 
   // 3. check result
@@ -119,7 +116,7 @@ TEST(from_blob, GPU) {
   ASSERT_EQ(gpu_data, gpu_tesnor_data);
 
   // 3.4 test other API
-  auto gpu_tesnor_pow = experimental::pow(gpu_tesnor, 2);
+  auto gpu_tesnor_pow = paddle::experimental::pow(gpu_tesnor, 2);
   auto* gpu_tesnor_pow_data = gpu_tesnor_pow.template data<float>();
   float gpu_tesnor_pow_data_cpu[6];
   Copy(phi::CPUPlace(),
@@ -151,13 +148,13 @@ TEST(from_blob, Option) {
   };
   {
     size_t offset = sizeof(int64_t) * 4;
-    auto test_tesnor = experimental::from_blob(data,
-                                               {1, 2, 2, 1},
-                                               phi::DataType::INT64,
-                                               phi::CPUPlace(),
-                                               DataLayout::NHWC,
-                                               offset,
-                                               deleter);
+    auto test_tesnor = paddle::experimental::from_blob(data,
+                                                       {1, 2, 2, 1},
+                                                       phi::DataType::INT64,
+                                                       phi::CPUPlace(),
+                                                       phi::DataLayout::NHWC,
+                                                       offset,
+                                                       deleter);
 
     // check tensor attributes
     ASSERT_EQ(test_tesnor.dims().size(), 4);
@@ -178,7 +175,7 @@ TEST(from_blob, Option) {
     ASSERT_EQ(data + 4, test_tensor_data);
 
     // test other API
-    auto test_tensor_pow = experimental::pow(test_tesnor, 2);
+    auto test_tensor_pow = paddle::experimental::pow(test_tesnor, 2);
     auto* test_tensor_pow_data = test_tensor_pow.template data<int64_t>();
     for (int64_t i = 0; i < 4; i++) {
       ASSERT_EQ(test_tensor_pow_data[i],
@@ -190,6 +187,3 @@ TEST(from_blob, Option) {
   }
   ASSERT_EQ(isdelete, 1);
 }
-
-}  // namespace tests
-}  // namespace paddle

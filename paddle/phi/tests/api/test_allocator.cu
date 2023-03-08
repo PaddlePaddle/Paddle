@@ -16,14 +16,14 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/context_pool.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/device_context.h"
 
-using paddle::memory::Copy;
+using phi::memory_utils::Copy;
 
 template <typename T>
 class Scale {
