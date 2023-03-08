@@ -97,7 +97,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "momentum",
     "multiclass_nms3",
     "multinomial",
-    "nanmedian",
     "nms",
     "nonzero",
     "numl",
