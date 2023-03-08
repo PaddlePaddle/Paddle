@@ -234,11 +234,11 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 + " "
                 + fetch_names[i]
                 + ') has diff. \n'
-                # + '\nBN     '
-                # + str(bn_val)
-                # + '\n'
-                # + 'Sync BN '
-                # + str(sync_bn_val),
+                + '\nBN     '
+                + str(bn_val)
+                + '\n'
+                + 'Sync BN '
+                + str(sync_bn_val),
             )
 
     def test_train(self):
