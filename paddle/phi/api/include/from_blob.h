@@ -46,17 +46,18 @@ using Deleter = std::function<void(void*)>;
  */
 PADDLE_API Tensor from_blob(void* data,
                             const phi::DDim& shape,
-                            DataType dtype,
+                            phi::DataType dtype,
                             const Place& place,
-                            DataLayout layout,
+                            phi::DataLayout layout,
                             size_t storage_offset,
                             const Deleter& deleter);
 
 inline Tensor from_blob(void* data,
                         const phi::DDim& shape,
-                        DataType dtype,
+                        phi::DataType dtype,
                         const Place& place) {
-  return from_blob(data, shape, dtype, place, DataLayout::NCHW, 0, nullptr);
+  return from_blob(
+      data, shape, dtype, place, phi::DataLayout::NCHW, 0, nullptr);
 }
 
 }  // namespace experimental

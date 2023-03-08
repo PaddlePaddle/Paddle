@@ -24,9 +24,9 @@ static thread_local Deleter g_deleter = nullptr;
 
 Tensor from_blob(void* data,
                  const phi::DDim& shape,
-                 DataType dtype,
+                 phi::DataType dtype,
                  const Place& place,
-                 DataLayout layout,
+                 phi::DataLayout layout,
                  size_t storage_offset,
                  const Deleter& deleter) {
   PADDLE_ENFORCE_NOT_NULL(
