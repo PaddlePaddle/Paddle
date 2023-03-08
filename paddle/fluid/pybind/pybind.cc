@@ -71,6 +71,8 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
@@ -450,6 +452,73 @@ struct iinfo {
   }
 };
 
+struct finfo {
+  int64_t bits;
+  double eps;
+  double min;  // lowest()
+  double max;
+  double tiny;
+  double smallest_normal;  // min()
+  double resolution;
+  std::string dtype;
+
+  explicit finfo(const framework::proto::VarType::Type &type) {
+    switch (type) {
+      case framework::proto::VarType::FP16:
+        eps = std::numeric_limits<paddle::platform::float16>::epsilon();
+        min = std::numeric_limits<paddle::platform::float16>::lowest();
+        max = std::numeric_limits<paddle::platform::float16>::max();
+        smallest_normal = std::numeric_limits<paddle::platform::float16>::min();
+        tiny = smallest_normal;
+        resolution = std::pow(
+            10, -std::numeric_limits<paddle::platform::float16>::digits10);
+        bits = 16;
+        dtype = "float16";
+        break;
+      case framework::proto::VarType::FP32:
+      case framework::proto::VarType::COMPLEX64:
+        eps = std::numeric_limits<float>::epsilon();
+        min = std::numeric_limits<float>::lowest();
+        max = std::numeric_limits<float>::max();
+        smallest_normal = std::numeric_limits<float>::min();
+        tiny = smallest_normal;
+        resolution = std::pow(10, -std::numeric_limits<float>::digits10);
+        bits = 32;
+        dtype = "float32";
+        break;
+      case framework::proto::VarType::FP64:
+      case framework::proto::VarType::COMPLEX128:
+        eps = std::numeric_limits<double>::epsilon();
+        min = std::numeric_limits<double>::lowest();
+        max = std::numeric_limits<double>::max();
+        smallest_normal = std::numeric_limits<double>::min();
+        tiny = smallest_normal;
+        resolution = std::pow(10, -std::numeric_limits<double>::digits10);
+        bits = 64;
+        dtype = "float64";
+        break;
+      case framework::proto::VarType::BF16:
+        eps = std::numeric_limits<paddle::platform::bfloat16>::epsilon();
+        min = std::numeric_limits<paddle::platform::bfloat16>::lowest();
+        max = std::numeric_limits<paddle::platform::bfloat16>::max();
+        smallest_normal =
+            std::numeric_limits<paddle::platform::bfloat16>::min();
+        tiny = smallest_normal;
+        resolution = std::pow(
+            10, -std::numeric_limits<paddle::platform::bfloat16>::digits10);
+        bits = 16;
+        dtype = "bfloat16";
+        break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.finfo can only be paddle.float32, "
+            "paddle.float64, paddle.float16, paddle.bfloat16"
+            "paddle.complex64, or paddle.complex128"));
+        break;
+    }
+  }
+};
+
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
   // is not inside obj, but it would also set the error flag of Python.
@@ -666,6 +735,29 @@ PYBIND11_MODULE(libpaddle, m) {
         std::ostringstream oss;
         oss << "paddle.iinfo(min=" << a.min;
         oss << ", max=" << a.max;
+        oss << ", bits=" << a.bits;
+        oss << ", dtype=" << a.dtype << ")";
+        return oss.str();
+      });
+
+  py::class_<finfo>(m, "finfo")
+      .def(py::init<const framework::proto::VarType::Type &>())
+      .def_readonly("min", &finfo::min)
+      .def_readonly("max", &finfo::max)
+      .def_readonly("bits", &finfo::bits)
+      .def_readonly("eps", &finfo::eps)
+      .def_readonly("resolution", &finfo::resolution)
+      .def_readonly("smallest_normal", &finfo::smallest_normal)
+      .def_readonly("tiny", &finfo::tiny)
+      .def_readonly("dtype", &finfo::dtype)
+      .def("__repr__", [](const finfo &a) {
+        std::ostringstream oss;
+        oss << "paddle.finfo(min=" << a.min;
+        oss << ", max=" << a.max;
+        oss << ", eps=" << a.eps;
+        oss << ", resolution=" << a.resolution;
+        oss << ", smallest_normal=" << a.smallest_normal;
+        oss << ", tiny=" << a.tiny;
         oss << ", bits=" << a.bits;
         oss << ", dtype=" << a.dtype << ")";
         return oss.str();
@@ -2526,10 +2618,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_op_info_recorder", &phi::DisableOpInfoRecorder);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("set_cublas_switch", platform::SetAllowTF32Cublas);
-  m.def("get_cublas_switch", platform::AllowTF32Cublas);
-  m.def("set_cudnn_switch", platform::SetAllowTF32Cudnn);
-  m.def("get_cudnn_switch", platform::AllowTF32Cudnn);
+  m.def("set_cublas_switch", phi::SetAllowTF32Cublas);
+  m.def("get_cublas_switch", phi::AllowTF32Cublas);
+  m.def("set_cudnn_switch", phi::SetAllowTF32Cudnn);
+  m.def("get_cudnn_switch", phi::AllowTF32Cudnn);
 #endif  // PADDLE_WITH_CUDA
   m.def("clear_executor_cache", []() {
     pybind11::gil_scoped_release release;

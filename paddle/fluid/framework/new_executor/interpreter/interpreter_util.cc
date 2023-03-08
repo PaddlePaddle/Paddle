@@ -118,7 +118,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "sgd",
     "svd",
     "sync_batch_norm_grad",
-    "top_k",
     "unique",
     "unique_consecutive_flattened_tensor",
     "unique_raw",
@@ -824,8 +823,7 @@ void BuildOpFuncList(const platform::Place& place,
         if (!(op->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
               op->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
           VLOG(4) << "infer shape";
-          InterpretercoreInferShapeContext infer_shape_ctx(*op,
-                                                           runtime_context);
+          RuntimeInferShapeContext infer_shape_ctx(*op, runtime_context);
           // TODO(Aurelius84): In case of control flow ops, they are NOT
           // inheritted from OperatorWithKernel.
           op_with_kernel->Info().infer_shape_(&infer_shape_ctx);
