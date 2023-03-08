@@ -405,9 +405,6 @@ PD_REGISTER_KERNEL(qr,  // cuda_only
                    ALL_LAYOUT,
                    phi::QrKernel,
                    float,
-                   double) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::UNDEFINED);
-}
+                   double) {}
 
 #endif  // not PADDLE_WITH_HIP

@@ -46,7 +46,7 @@ void QrKernel(const Context& ctx,
   int q_stride = m * k;
   int r_stride = k * n;
   auto* x_data = x.data<phi::dtype::Real<T>>();
-  phi::dtype::Real<T>* q_data = nullptr;
+  T* q_data = nullptr;
   if (compute_q) {
     q_data = ctx.template Alloc<phi::dtype::Real<T>>(
         q, batch_size * m * k * sizeof(phi::dtype::Real<T>));
@@ -93,7 +93,4 @@ void QrKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(qr, CPU, ALL_LAYOUT, phi::QrKernel, float, double) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::UNDEFINED);
-}
+PD_REGISTER_KERNEL(qr, CPU, ALL_LAYOUT, phi::QrKernel, float, double) {}
