@@ -18,6 +18,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #endif
 
 namespace phi {

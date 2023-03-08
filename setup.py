@@ -155,6 +155,7 @@ def get_header_install_dir(header):
         patterns = [
             'install/mkldnn/include',
             'pybind/src/extern_pybind/include',
+            'third_party/xpu/src/extern_xpu/xpu/include/',
         ]
         for pattern in patterns:
             install_dir = re.sub(pattern, '', install_dir)
@@ -1052,6 +1053,9 @@ def get_package_data_and_package_dir():
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_BKCL_LIB_NAME")]
 
+    if env_dict.get("WITH_XPU_XFT") == 'ON':
+        shutil.copy(env_dict.get("XPU_XFT_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XFT_LIB_NAME")]
     # remove unused paddle/libs/__init__.py
     if os.path.isfile(libs_path + '/__init__.py'):
         os.remove(libs_path + '/__init__.py')
@@ -1218,6 +1222,15 @@ def get_headers():
         headers += list(
             find_files('*.pb', env_dict.get("externalError_INCLUDE_DIR"))
         )
+
+    if env_dict.get("WITH_XDNN_API") == 'ON':
+        headers += list(
+            find_files(
+                '*.h',
+                paddle_binary_dir + '/third_party/xpu/src/extern_xpu/xpu',
+                recursive=True,
+            )
+        )  # xdnn api headers
 
     # pybind headers
     headers += list(find_files('*.h', env_dict.get("PYBIND_INCLUDE_DIR"), True))

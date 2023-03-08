@@ -322,11 +322,6 @@ class PrimForwardChecker:
             if hasattr(self.op_test, 'enable_check_jit_comp_with_cinn')
             else True
         )
-        self.only_prim = (
-            self.op_test.only_prim
-            if hasattr(self.op_test, 'only_prim')
-            else False
-        )
         self.kernel_sig = self.get_kernel_sig()
 
     def init_checker_threshold(self):
@@ -437,9 +432,6 @@ class PrimForwardChecker:
             attrs_outputs,
         )
         return kernel_sig
-
-    def is_only_check_prim(self):
-        return self.only_prim
 
     def get_eager_desire(self):
         paddle.disable_static()
@@ -634,7 +626,7 @@ class PrimForwardChecker:
                 msg = (
                     'Check static comp forward api out failed. Mismatch between static comp '
                     'and eager on %s, when enable_fw_comp is %s,the forward api out tensor\'s index is : %d \n'
-                    'static comp forward api out tensor:%s\n eager forward api out tensor:%s\n'
+                    'static comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
                     % (
                         str(self.place),
                         self.enable_fw_comp,
@@ -700,7 +692,7 @@ class PrimForwardChecker:
                 msg = (
                     'Check jit comp forward api out failed. Mismatch between jit comp '
                     'and eager on %s, when enable_fw_comp is %s,the forward api out tensor\'s index is : %d \n'
-                    'jit comp forward api out tensor:%s\n eager forward api out tensor:%s\n'
+                    'jit comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
                     % (
                         str(self.place),
                         self.enable_fw_comp,
@@ -784,7 +776,7 @@ class PrimForwardChecker:
                 msg = (
                     'Check jit comp with cinn forward api out failed. Mismatch between jit comp and eager on %s, '
                     'when enable_fw_comp is %s, enable_cinn is %s, the forward api out tensor\'s index is : %d \n'
-                    'jit comp forward api out tensor:%s\n eager forward api out tensor:%s\n'
+                    'jit comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
                     % (
                         str(self.place),
                         self.enable_fw_comp,
@@ -976,7 +968,7 @@ class PrimGradChecker(PrimForwardChecker):
                 msg = (
                     'Check eager comp grad out failed. Mismatch between eager comp '
                     'and eager on %s, when enable_rev_comp is %s,the eager comp grad out tensor\'s index is : %d \n'
-                    'eager comp grad out tensor:%s\n eager grad out tensor:%s\n'
+                    'eager comp grad out tensor:\n%s\n eager grad out tensor:\n%s\n'
                     % (
                         str(self.place),
                         self.enable_rev_comp,
@@ -1070,7 +1062,7 @@ class PrimGradChecker(PrimForwardChecker):
                 msg = (
                     'Check static comp grad out failed. Mismatch between static comp '
                     'and eager on %s, when enable_fw_comp is %s,enable_rev_comp is %s,the forward api out tensor\'s index is : %d \n'
-                    'static comp grad out tensor:%s\n eager grad out tensor:%s\n'
+                    'static comp grad out tensor:\n%s\n eager grad out tensor:\n%s\n'
                     % (
                         str(self.place),
                         self.enable_fw_comp,
@@ -1171,7 +1163,7 @@ class PrimGradChecker(PrimForwardChecker):
                 msg = (
                     'Check jit comp grad out failed. Mismatch between jit comp '
                     'and eager on %s, when enable_fw_comp is %s, enable_rev_comp is %s,the grad out tensor\'s index is : %d \n'
-                    'jit comp grad out tensor:%s\n eager grad out out tensor:%s\n'
+                    'jit comp grad out tensor:\n%s\n eager grad out out tensor:\n%s\n'
                     % (
                         str(self.place),
                         self.enable_fw_comp,
@@ -1286,7 +1278,7 @@ class PrimGradChecker(PrimForwardChecker):
                 msg = (
                     'Check jit comp with cinn grad out failed. Mismatch between jit comp with cinn '
                     'and eager on %s, when enable_fw_comp is %s, enable_rev_comp is %s, enable_cinn is %s,'
-                    'the grad out tensor\'s index is : %d ,jit comp with cinn grad out tensor:%s\n eager grad out out tensor:%s\n'
+                    'the grad out tensor\'s index is : %d ,jit comp with cinn grad out tensor:\n%s\n eager grad out out tensor:\n%s\n'
                     % (
                         str(self.place),
                         self.enable_fw_comp,

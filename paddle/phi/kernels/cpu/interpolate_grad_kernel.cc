@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/interpolate_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
@@ -36,6 +37,7 @@ static void LinearInterpolationGrad(const DenseTensor& output_grad,
   auto input_grad_t = EigenTensor<T, 3>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 3>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int l = 0; l < out_w; l++) {
     int x_w = align_flag ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
                          : static_cast<int>(ratio_w * l);
@@ -51,11 +53,11 @@ static void LinearInterpolationGrad(const DenseTensor& output_grad,
       for (int j = 0; j < c; j++) {  // loop for channels
         // linear interpolation grad
         if (data_layout == DataLayout::kNCHW) {
-          const T grad = output_grad_t(i, j, l);
+          const MT grad = static_cast<MT>(output_grad_t(i, j, l));
           input_grad_t(i, j, x_w) += static_cast<T>(grad * d_e);
           input_grad_t(i, j, x_e) += static_cast<T>(grad * d_w);
         } else {
-          const T grad = output_grad_t(i, l, j);
+          const MT grad = static_cast<MT>(output_grad_t(i, l, j));
           input_grad_t(i, x_w, j) += static_cast<T>(grad * d_e);
           input_grad_t(i, x_e, j) += static_cast<T>(grad * d_w);
         }
@@ -81,6 +83,9 @@ static void BilinearInterpolationGrad(const DenseTensor& output_grad,
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
+
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+
   for (int k = 0; k < out_h; k++) {  // loop for images
     int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
                          : static_cast<int>(ratio_h * k);
@@ -105,13 +110,14 @@ static void BilinearInterpolationGrad(const DenseTensor& output_grad,
         for (int j = 0; j < c; j++) {  // loop for channels
           // bilinear interpolation grad
           if (data_layout == DataLayout::kNCHW) {
-            const T grad = output_grad_t(i, j, k, l);
+            // const T grad = output_grad_t(i, j, k, l);
+            const MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
             input_grad_t(i, j, y_n, x_w) += static_cast<T>(grad * d_s * d_e);
             input_grad_t(i, j, y_s, x_w) += static_cast<T>(grad * d_n * d_e);
             input_grad_t(i, j, y_n, x_e) += static_cast<T>(grad * d_s * d_w);
             input_grad_t(i, j, y_s, x_e) += static_cast<T>(grad * d_n * d_w);
           } else {
-            const T grad = output_grad_t(i, k, l, j);
+            const MT grad = static_cast<MT>(output_grad_t(i, k, l, j));
             input_grad_t(i, y_n, x_w, j) += static_cast<T>(grad * d_s * d_e);
             input_grad_t(i, y_s, x_w, j) += static_cast<T>(grad * d_n * d_e);
             input_grad_t(i, y_n, x_e, j) += static_cast<T>(grad * d_s * d_w);
@@ -173,24 +179,23 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
                                      const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (int k = 0; k < out_h; k++) {  // loop for images
-    T y_n = align_corners ? static_cast<T>(ratio_h * k)
-                          : static_cast<T>(ratio_h * (k + 0.5) - 0.5);
+    MT y_n = align_corners ? ratio_h * k : ratio_h * (k + 0.5) - 0.5;
     int input_y = floorf(y_n);
-    T y_t = y_n - input_y;
+    MT y_t = y_n - input_y;
 
     for (int l = 0; l < out_w; l++) {
-      T x_n = align_corners ? static_cast<T>(ratio_w * l)
-                            : static_cast<T>(ratio_w * (l + 0.5) - 0.5);
+      MT x_n = align_corners ? ratio_w * l : ratio_w * (l + 0.5) - 0.5;
       int input_x = floorf(x_n);
-      T x_t = x_n - input_x;
+      MT x_t = x_n - input_x;
 
-      T x_coeffs[4];
-      T y_coeffs[4];
+      MT x_coeffs[4];
+      MT y_coeffs[4];
 
-      funcs::get_cubic_upsample_coefficients<T>(x_coeffs, x_t);
-      funcs::get_cubic_upsample_coefficients<T>(y_coeffs, y_t);
+      funcs::get_cubic_upsample_coefficients<MT>(x_coeffs, x_t);
+      funcs::get_cubic_upsample_coefficients<MT>(y_coeffs, y_t);
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
@@ -202,13 +207,13 @@ static void BicubicInterpolationGrad(const DenseTensor& output_grad,
               int access_y = std::max(std::min(input_y - 1 + jj, in_h - 1),
                                       static_cast<int>(0));
               if (data_layout == DataLayout::kNCHW) {
-                T grad = output_grad_t(i, j, k, l);
+                MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
                 input_grad_t(i, j, access_y, access_x) +=
-                    grad * y_coeffs[jj] * x_coeffs[ii];
+                    static_cast<T>(grad * y_coeffs[jj] * x_coeffs[ii]);
               } else {
-                T grad = output_grad_t(i, k, l, j);
+                MT grad = static_cast<MT>(output_grad_t(i, k, l, j));
                 input_grad_t(i, access_y, access_x, j) +=
-                    grad * y_coeffs[jj] * x_coeffs[ii];
+                    static_cast<T>(grad * y_coeffs[jj] * x_coeffs[ii]);
               }
             }
           }
@@ -238,6 +243,7 @@ static void TrilinearInterpolationGrad(const DenseTensor& output_grad,
   auto input_grad_t = EigenTensor<T, 5>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 5>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int j = 0; j < out_d; j++) {  // loop for D
     int t_f = align_flag ? static_cast<int>(ratio_d * (j + 0.5) - 0.5)
                          : static_cast<int>(ratio_d * j);
@@ -272,7 +278,7 @@ static void TrilinearInterpolationGrad(const DenseTensor& output_grad,
           for (int i = 0; i < c; i++) {  // loop for channels
             // trilinear interpolation grad
             if (data_layout == DataLayout::kNCHW) {
-              const T grad = output_grad_t(b, i, j, k, l);
+              const MT grad = static_cast<MT>(output_grad_t(b, i, j, k, l));
               input_grad_t(b, i, t_f, y_n, x_w) +=
                   static_cast<T>(grad * d_b * d_s * d_e);
               input_grad_t(b, i, t_f, y_n, x_e) +=
@@ -290,7 +296,7 @@ static void TrilinearInterpolationGrad(const DenseTensor& output_grad,
               input_grad_t(b, i, t_b, y_s, x_e) +=
                   static_cast<T>(grad * d_f * d_n * d_w);
             } else {
-              const T grad = output_grad_t(b, j, k, l, i);
+              const MT grad = static_cast<MT>(output_grad_t(b, j, k, l, i));
               input_grad_t(b, t_f, y_n, x_w, i) +=
                   static_cast<T>(grad * d_b * d_s * d_e);
               input_grad_t(b, t_f, y_n, x_e, i) +=
@@ -1038,7 +1044,9 @@ PD_REGISTER_KERNEL(bilinear_interp_grad,
                    ALL_LAYOUT,
                    phi::BilinearInterpGradKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1047,7 +1055,9 @@ PD_REGISTER_KERNEL(nearest_interp_grad,
                    ALL_LAYOUT,
                    phi::NearestInterpGradKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1056,7 +1066,9 @@ PD_REGISTER_KERNEL(trilinear_interp_grad,
                    ALL_LAYOUT,
                    phi::TrilinearInterpGradKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1065,7 +1077,9 @@ PD_REGISTER_KERNEL(linear_interp_grad,
                    ALL_LAYOUT,
                    phi::LinearInterpGradKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1074,7 +1088,9 @@ PD_REGISTER_KERNEL(bicubic_interp_grad,
                    ALL_LAYOUT,
                    phi::BicubicInterpGradKernel,
                    float,
-                   double) {
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

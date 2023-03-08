@@ -746,7 +746,7 @@ construct_composite_tensor_attr(attrs, fluid_attrs, attr_dict)
     {% if output_typename == "Tensor" %}
     auto {{outputs[i]}} = this->GetOutputPtr(&{{outputs[i]+ "_t"}});
     {% elif output_typename == "Tensor[]" %}
-    std::vector<paddle::experimental::Tensor*> {{outputs[i]}}({{outputs[i] + "_t"}}.size());
+    std::vector<paddle::Tensor*> {{outputs[i]}}({{outputs[i] + "_t"}}.size());
     for(size_t i = 0; i < {{outputs[i]}}.size(); ++i){
       {{outputs[i]}}[i] = &{{outputs[i] + "_t"}}[i];
     }
