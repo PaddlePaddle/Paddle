@@ -29,20 +29,22 @@ the image layout as follows.
   formats can be used for training. Noted that, the format should
   be keep consistent between the training and inference period.
 """
+
 import os
-import pickle
 import tarfile
 
 import numpy as np
 
-from paddle.utils import try_import
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+import pickle
 
 __all__ = []
 
 
 def _check_cv2():
-    cv2 = try_import('cv2')
-
     if cv2 is None:
         import sys
 
@@ -92,9 +94,7 @@ def batch_images_from_tar(
             data.append(tf.extractfile(mem).read())
             labels.append(img2label[mem.name])
             if len(data) == num_per_batch:
-                output = {}
-                output['label'] = labels
-                output['data'] = data
+                output = {'label': labels, 'data': data}
                 pickle.dump(
                     output,
                     open('%s/batch_%d' % (out_path, file_id), 'wb'),
@@ -104,14 +104,12 @@ def batch_images_from_tar(
                 data = []
                 labels = []
     if len(data) > 0:
-        output = {}
-        output['label'] = labels
-        output['data'] = data
+        output = {'label': labels, 'data': data}
         pickle.dump(
             output, open('%s/batch_%d' % (out_path, file_id), 'wb'), protocol=2
         )
 
-    with open(meta_file, 'a') as meta:
+    with open(meta_file, mode='a') as meta:
         for file in os.listdir(out_path):
             meta.write(os.path.abspath("%s/%s" % (out_path, file)) + "\n")
     return meta_file
@@ -135,8 +133,7 @@ def load_image_bytes(bytes, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    cv2 = try_import('cv2')
-
+    assert _check_cv2() is True
     flag = 1 if is_color else 0
     file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, flag)
@@ -160,7 +157,7 @@ def load_image(file, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    cv2 = try_import('cv2')
+    assert _check_cv2() is True
 
     # cv2.IMAGE_COLOR for OpenCV3
     # cv2.CV_LOAD_IMAGE_COLOR for older OpenCV Version
@@ -189,7 +186,7 @@ def resize_short(im, size):
     :param size: the shorter edge size of image after resizing.
     :type size: int
     """
-    cv2 = try_import('cv2')
+    assert _check_cv2() is True
 
     h, w = im.shape[:2]
     h_new, w_new = size, size
