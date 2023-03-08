@@ -21,7 +21,7 @@
 
 namespace phi {
 
-phi::KernelKey InterpolateGetKernelTypeForVar(
+KernelKey InterpolateGetKernelTypeForVar(
     const GetKernelTypeForVarContext* ctx) {
   const std::string& var_name = ctx->GetVarName();
   const DenseTensor& tensor = ctx->GetTensor();
@@ -29,29 +29,28 @@ phi::KernelKey InterpolateGetKernelTypeForVar(
   const AttributeMap& attrs = ctx->GetAttrs();
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
-  if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
-      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+  if ((expected_kernel_type.layout() == DataLayout::ONEDNN) &&
+      (tensor.layout() != DataLayout::ONEDNN)) {
     auto it = attrs.find("data_layout");
     PADDLE_ENFORCE_NE(
         it,
         attrs.end(),
-        phi::errors::NotFound("Cannot find attribute data_layout, please check "
-                              "the AttributeMap"));
+        errors::NotFound("Attr(data_layout) of InterpolateOp is not found."));
     const std::string data_layout = PADDLE_GET_CONST(std::string, it->second);
-    auto dl = phi::StringToDataLayout(data_layout);
+    auto dl = StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != phi::DataLayout::kAnyLayout) {
-      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+    if (dl != DataLayout::kAnyLayout) {
+      return KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
     }
   }
   if (var_name == "OutSize" || var_name == "SizeTensor" ||
       var_name == "Scale") {
-    return phi::KernelKey(phi::Backend::ALL_BACKEND,
-                          expected_kernel_type.layout(),
-                          expected_kernel_type.dtype());
+    return KernelKey(Backend::ALL_BACKEND,
+                     expected_kernel_type.layout(),
+                     expected_kernel_type.dtype());
   }
-  return phi::KernelKey(
+  return KernelKey(
       tensor.place(), tensor.layout(), expected_kernel_type.dtype());
 }
 
