@@ -276,7 +276,7 @@ def generate_activation_fn(op_type):
             # abs exp square ops support dtype(int32, int64, float16, float32, float64)
             check_variable_and_dtype(x, 'x', [
                 'int32', 'int64', 'float16', 'float32', 'float64', 'complex64',
-                'complex128'
+                'complex128', 'uint16'
             ], op_type)
 
         helper = LayerHelper(op_type, **locals())

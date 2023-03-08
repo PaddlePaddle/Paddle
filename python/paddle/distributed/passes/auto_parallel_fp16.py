@@ -526,7 +526,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
         check_variable_and_dtype(
             e,
             "x",
-            ['float16', 'float32', 'float64'],
+            ['float16', 'float32', 'float64', 'uint16'],
             'check_finite_and_unscale',
         )
 
@@ -573,7 +573,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
 def _split_grads(params_grads):
     grads = [g for _, g in params_grads]
     fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
-    fp16_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP16]
+    fp16_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP16 or g.dtype == core.VarDesc.VarType.BF16]
     assert len(fp32_grads) + len(fp16_grads) == len(
         grads
     ), "Data types of all grads must be either fp16 or fp32."

@@ -75,7 +75,7 @@ def _dtype_to_str(dtype):
     Args:
         dtype (VarType): Variable type.
     """
-    if dtype == core.VarDesc.VarType.FP16:
+    if dtype == core.VarDesc.VarType.BF16:
         return 'fp16'
     else:
         return 'fp32'
@@ -203,7 +203,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             else:
                 if op.has_attr('in_dtype'):
                     op._set_attr('in_dtype', dest_dtype)
-    if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.FP16:
+    if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.BF16:
         for out_name in op.output_names:
             if _keep_fp32_output(op, out_name):
                 continue
@@ -212,9 +212,9 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                 if out_var.type not in _valid_types:
                     continue
                 if out_var.dtype == core.VarDesc.VarType.FP32:
-                    out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+                    out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
                     if op.has_attr('out_dtype'):
-                        op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+                        op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
     return num_cast_ops
 
 
@@ -441,7 +441,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                         continue
 
                     if in_var.dtype == core.VarDesc.VarType.FP32:
-                        in_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+                        in_var.desc.set_dtype(core.VarDesc.VarType.BF16)
                         to_fp16_var_names.add(in_var_name)
 
                     _logger.debug(
@@ -471,20 +471,20 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                         continue
 
                     if out_var.dtype == core.VarDesc.VarType.FP32:
-                        out_var.desc.set_dtype(core.VarDesc.VarType.FP16)
+                        out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
 
                     _logger.debug(
                         "-- op type: {}, out var name: {}, out var dtype: {} --"
                         .format(op.type, out_var_name, out_var.dtype))
             if op.has_attr('in_dtype') and op.attr(
                     'in_dtype') == core.VarDesc.VarType.FP32:
-                op._set_attr('in_dtype', core.VarDesc.VarType.FP16)
+                op._set_attr('in_dtype', core.VarDesc.VarType.BF16)
             if op.has_attr('out_dtype') and op.attr(
                     'out_dtype') == core.VarDesc.VarType.FP32:
-                op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
+                op._set_attr('out_dtype', core.VarDesc.VarType.BF16)
             if op.has_attr('dtype') and op.attr(
                     'dtype') == core.VarDesc.VarType.FP32:
-                op._set_attr('dtype', core.VarDesc.VarType.FP16)
+                op._set_attr('dtype', core.VarDesc.VarType.BF16)
 
     # process ops in keep_fp32_ops
     op_var_rename_map = [
@@ -498,14 +498,14 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
             num_cast_ops = 0
             if op in keep_fp32_ops:
                 pre_cast_num = _insert_cast_op(block, op, idx,
-                                               core.VarDesc.VarType.FP16,
+                                               core.VarDesc.VarType.BF16,
                                                core.VarDesc.VarType.FP32)
                 num_cast_ops += pre_cast_num
                 for out_var_name in op.output_arg_names:
                     out_var = block.vars.get(out_var_name)
                     if out_var is None or out_var.type not in _valid_types:
                         continue
-                    if out_var.dtype == core.VarDesc.VarType.FP16:
+                    if out_var.dtype == core.VarDesc.VarType.BF16:
                         out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
                         post_ops = find_true_post_op(ops, op, out_var_name)
                         for post_op in post_ops:
@@ -514,7 +514,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                             post_cast_num = _insert_cast_post_op(
                                 block, op, idx + pre_cast_num + 1,
                                 core.VarDesc.VarType.FP32,
-                                core.VarDesc.VarType.FP16, out_var_name,
+                                core.VarDesc.VarType.BF16, out_var_name,
                                 op_var_rename_map)
                             num_cast_ops += post_cast_num
             idx += num_cast_ops + 1
@@ -634,12 +634,12 @@ def rewrite_program(main_prog, amp_lists):
         num_cast_ops = 0
         if op in black_op_set:
             num_cast_ops = _insert_cast_op(block, op, idx,
-                                           core.VarDesc.VarType.FP16,
+                                           core.VarDesc.VarType.BF16,
                                            core.VarDesc.VarType.FP32)
         elif op in white_op_set:
             num_cast_ops = _insert_cast_op(block, op, idx,
                                            core.VarDesc.VarType.FP32,
-                                           core.VarDesc.VarType.FP16)
+                                           core.VarDesc.VarType.BF16)
         else:
             pass
 

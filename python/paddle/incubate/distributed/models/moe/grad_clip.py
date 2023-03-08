@@ -117,7 +117,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
             sum_square = _squared_l2_norm(merge_grad)
-            if sum_square.dtype == core.VarDesc.VarType.FP16:
+            if sum_square.dtype == core.VarDesc.VarType.FP16 or sum_square.dtype == core.VarDesc.VarType.BF16:
                 sum_square_list_fp16.append(sum_square)
             elif sum_square.dtype == core.VarDesc.VarType.FP32:
                 sum_square_list_fp32.append(sum_square)
