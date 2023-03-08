@@ -29,44 +29,19 @@ the image layout as follows.
   formats can be used for training. Noted that, the format should
   be keep consistent between the training and inference period.
 """
-
-import os
-
-# FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
-# https://github.com/numpy/numpy/issues/12497
-import subprocess
-import sys
-
-import numpy as np
-
-interpreter = sys.executable
-# Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
-# will be the C++ executable on Windows
-if sys.platform == 'win32' and 'python.exe' not in interpreter:
-    interpreter = sys.exec_prefix + os.sep + 'python.exe'
-import_cv2_proc = subprocess.Popen(
-    [interpreter, "-c", "import cv2"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-)
-out, err = import_cv2_proc.communicate()
-retcode = import_cv2_proc.poll()
-if retcode != 0:
-    cv2 = None
-else:
-    try:
-        import cv2
-    except ImportError:
-        cv2 = None
-
 import os
 import pickle
 import tarfile
+
+import numpy as np
+from paddle.utils import try_import
 
 __all__ = []
 
 
 def _check_cv2():
+    cv2 = try_import('cv2')
+
     if cv2 is None:
         import sys
 
@@ -159,7 +134,7 @@ def load_image_bytes(bytes, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    assert _check_cv2() is True
+    cv2 = try_import('cv2')
 
     flag = 1 if is_color else 0
     file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
@@ -184,7 +159,7 @@ def load_image(file, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    assert _check_cv2() is True
+    cv2 = try_import('cv2')
 
     # cv2.IMAGE_COLOR for OpenCV3
     # cv2.CV_LOAD_IMAGE_COLOR for older OpenCV Version
@@ -213,7 +188,7 @@ def resize_short(im, size):
     :param size: the shorter edge size of image after resizing.
     :type size: int
     """
-    assert _check_cv2() is True
+    cv2 = try_import('cv2')
 
     h, w = im.shape[:2]
     h_new, w_new = size, size
