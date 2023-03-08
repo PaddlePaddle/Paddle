@@ -178,9 +178,12 @@ class AdamW(Optimizer):
             raise TypeError("weight_decay should be float or Tensor.")
         if lr_ratio is not None:
             assert isinstance(lr_ratio, Callable)
-            if not core.is_compiled_with_cuda():
+            if (
+                not core.is_compiled_with_cuda()
+                and not core.is_compiled_with_xpu()
+            ):
                 raise NotImplementedError(
-                    "'lr_ratio' is unimplemented in CPU, XPU and NPU"
+                    "'lr_ratio' is unimplemented in CPU, and NPU"
                 )
 
         if parameters is not None:
@@ -491,6 +494,7 @@ class AdamW(Optimizer):
                 else self._beta2.numpy().item(0)
             )
 
+            found_inf = self._get_auxiliary_var('found_inf')
             _, _, _, _, _, _ = _C_ops.adamw_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -500,7 +504,7 @@ class AdamW(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                None,
+                found_inf,
                 _beta1,
                 _beta2,
                 self._epsilon,

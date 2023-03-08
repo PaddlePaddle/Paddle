@@ -199,7 +199,7 @@ class CspReporter:
         # forth we need to generate op info
         opInfo = self._profileFileReader.getOPTraceInfo(groupId)
 
-        # finially we need dump this information into disk
+        # finally we need dump this information into disk
         processPool = []
         pidList = []
 

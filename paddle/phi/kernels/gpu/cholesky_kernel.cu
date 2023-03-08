@@ -22,9 +22,9 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
@@ -81,7 +81,7 @@ struct MatrixBandPartFunctor {
     int workspace_size = 0;                                              \
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDn##C##potrf_bufferSize( \
         handle, uplo, n, A, lda, &workspace_size));                      \
-    auto workspace = paddle::memory::Alloc(                              \
+    auto workspace = phi::memory_utils::Alloc(                           \
         dev_ctx.GetPlace(),                                              \
         workspace_size,                                                  \
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream()))); \
@@ -149,7 +149,7 @@ void CholeskyKernel(const Context& dev_ctx,
     for_range(matrix_band_part_functor);
   }
 
-  auto info = paddle::memory::Alloc(
+  auto info = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batch_count,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -195,12 +195,12 @@ void CholeskyKernel(const Context& dev_ctx,
   std::vector<int> error_info;  // only for checking positive matrix
   error_info.resize(batch_count);
 
-  paddle::memory::Copy(CPUPlace(),
-                       error_info.data(),
-                       dev_ctx.GetPlace(),
-                       info_ptr,
-                       sizeof(int) * batch_count,
-                       dev_ctx.stream());
+  memory_utils::Copy(CPUPlace(),
+                     error_info.data(),
+                     dev_ctx.GetPlace(),
+                     info_ptr,
+                     sizeof(int) * batch_count,
+                     dev_ctx.stream());
 
   for (int i = 0; i < batch_count; ++i) {
     PADDLE_ENFORCE_EQ(error_info[i],

@@ -367,6 +367,34 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
       use_calc_stream);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::ReduceScatter(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceScatterOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  return Collective(
+      out_tensor,
+      in_tensor,
+      [&](phi::DenseTensor* output,
+          const phi::DenseTensor& input,
+          BKCLContext_t comm,
+          const XPUStream& stream) {
+        return bkcl_reduce_scatter(
+            comm,
+            input.data(),
+            output->data(),
+            output->numel(),
+            platform::ToBKCLDataType(
+                framework::TransToProtoVarType(input.type())),
+            ToBKCLRedType(opts.reduce_op),
+            stream);
+      },
+      CommType::REDUCE_SCATTER,
+      sync_op,
+      use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
     const BarrierOptions& opts) {
   PADDLE_ENFORCE_GE(opts.device_id,

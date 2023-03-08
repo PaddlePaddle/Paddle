@@ -389,11 +389,11 @@ def _getitem_impl_(var, item):
             slice_item
         ):
             if (
-                isinstance(slice_item, int)
+                not is_tensor_array
+                and isinstance(slice_item, int)
                 and var.shape[dim] is not None
                 and var.shape[dim] >= 0
                 and slice_item >= var.shape[dim]
-                and not is_tensor_array
             ):
                 # For python, if users write a, b = var, the __getitem__
                 # method will iterate through 0, 1, 2 ... until __getitem__
@@ -423,10 +423,10 @@ def _getitem_impl_(var, item):
             if start is None:
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
-                if var.shape[dim] != -1 and (
+                if (
                     paddle.fluid.framework._non_static_mode()
                     or not is_tensor_array
-                ):
+                ) and var.shape[dim] != -1:
                     end = var.shape[dim] if step > 0 else -1
                 else:
                     end = MAX_INTEGER if step > 0 else -1
@@ -473,10 +473,9 @@ def _getitem_impl_(var, item):
                         new_slice_item.append(0)
                 slice_item = new_slice_item
 
-            from .layers import assign
             from ..tensor import index_select
 
-            idx = assign(np.array(slice_item).astype("int32"))
+            idx = paddle.assign(np.array(slice_item).astype("int32"))
             return index_select(var, index=idx, axis=0)
 
         elif isinstance(slice_item, (Variable, core.eager.Tensor)):
@@ -720,9 +719,7 @@ def _setitem_impl_(var, item, value):
                     )
                 )
 
-            from .layers import assign
-
-            idx_tensor = assign(slice_item)
+            idx_tensor = paddle.assign(slice_item)
             return set_value_for_bool_tensor(var, idx_tensor, value)
 
         elif isinstance(slice_item, Variable):
@@ -862,11 +859,10 @@ def set_value_for_bool_tensor(var, item, value):
 
     def idx_not_empty(var, item, value):
         from .framework import Variable
-        from .layers import assign
         from ..tensor import gather_nd, scatter_nd_add
 
         if not isinstance(value, Variable):
-            value = assign(value).cast(var.dtype)
+            value = paddle.assign(value).cast(var.dtype)
 
         idx = paddle.nonzero(item)
         gather_val = gather_nd(var, idx)

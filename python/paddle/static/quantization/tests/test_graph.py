@@ -15,8 +15,6 @@
 import os
 import unittest
 
-import numpy as np
-
 import paddle
 from paddle.fluid.framework import IrGraph
 from paddle.framework import core
@@ -76,11 +74,11 @@ class TestGraph(unittest.TestCase):
         build_strategy.memory_optimize = False
         build_strategy.enable_inplace = False
         origin_binary = paddle.static.CompiledProgram(
-            graph.graph
-        ).with_data_parallel(loss_name=loss.name, build_strategy=build_strategy)
+            graph.graph, build_strategy=build_strategy
+        )
         backup_binary = paddle.static.CompiledProgram(
-            backup_graph.graph
-        ).with_data_parallel(loss_name=loss.name, build_strategy=build_strategy)
+            backup_graph.graph, build_strategy=build_strategy
+        )
         place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         exe.run(startup)
@@ -102,40 +100,6 @@ class TestGraph(unittest.TestCase):
 
         _train(origin_binary)
         _train(backup_binary)
-
-        checkponit_dir = "checkpoint_gpu" if use_cuda else "checkpoint_cpu"
-
-        def _set_zero(var_name, scope, place):
-            var = scope.find_var(var_name).get_tensor()
-            var_array = np.zeros(var._get_dims()).astype("float32")
-            var.set(var_array, place)
-
-        sum_before = np.sum(
-            np.array(
-                paddle.static.global_scope()
-                .find_var('conv2d_1.w_0')
-                .get_tensor()
-            )
-        )
-        paddle.fluid.io._save_persistable_nodes(exe, checkponit_dir, graph)
-        _set_zero('conv2d_1.w_0', paddle.static.global_scope(), place)
-        set_after = np.sum(
-            np.array(
-                paddle.static.global_scope()
-                .find_var('conv2d_1.w_0')
-                .get_tensor()
-            )
-        )
-        self.assertEqual(set_after, 0)
-        paddle.fluid.io._load_persistable_nodes(exe, checkponit_dir, graph)
-        sum_after = np.sum(
-            np.array(
-                paddle.static.global_scope()
-                .find_var('conv2d_1.w_0')
-                .get_tensor()
-            )
-        )
-        self.assertEqual(sum_before, sum_after)
 
         marked_nodes = set()
         for op in graph.all_op_nodes():

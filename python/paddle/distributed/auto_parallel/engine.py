@@ -26,7 +26,6 @@ import paddle.distributed.auto_parallel.utils as auto_utils
 import paddle.utils as utils
 from paddle import static
 from paddle.distributed import fleet
-from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.executor import _to_name_str
 from paddle.fluid.layers.utils import flatten
 from paddle.framework import IrGraph
@@ -248,7 +247,7 @@ class Engine:
                 labels = sample[split:]
         else:
             raise TypeError(
-                "Data should be a Dataset or IterableDatset, but received {}.".format(
+                "Data should be a Dataset or IterableDataset, but received {}.".format(
                     type(data).__name__
                 )
             )
@@ -700,7 +699,7 @@ class Engine:
     def _parallel(self, mode, all_ranks=False):
         # Parallelize program based on the planner's results
         # For now, the completer has to be passed to the planner,
-        # because we may use it to complete the annotation of the backwarkward and update.
+        # because we may use it to complete the annotation of the backward and update.
         parallelizer = Parallelizer(
             mode,
             self._planners[mode].completer,
@@ -771,7 +770,9 @@ class Engine:
 
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
-            self._place = paddle.framework.CUDAPlace(ParallelEnv().dev_id)
+            self._place = paddle.framework.CUDAPlace(
+                paddle.distributed.ParallelEnv().dev_id
+            )
 
         if self._strategy.seed:
             paddle.seed(self._strategy.seed + self._dp_ranks[0])

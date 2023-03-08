@@ -23,7 +23,6 @@ from .operators import graph_send_recv
 from .operators import graph_khop_sampler
 from .operators import graph_sample_neighbors
 from .operators import graph_reindex
-from .operators import unzip
 from .tensor import segment_sum
 from .tensor import segment_mean
 from .tensor import segment_max
@@ -39,7 +38,7 @@ from . import multiprocessing  # noqa: F401
 
 from .nn.loss import identity_loss
 
-from ..fluid.incubate import fleet
+from ..distributed import fleet
 from . import xpu
 
 __all__ = [
@@ -56,5 +55,4 @@ __all__ = [
     'segment_max',
     'segment_min',
     'identity_loss',
-    'unzip',
 ]

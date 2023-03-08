@@ -59,7 +59,7 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 
 std::shared_ptr<distributed::EagerReducer> CreateEagerReducer(
     py::handle py_tensors,
@@ -1251,7 +1251,9 @@ void BindDistributed(py::module *m) {
                       py::arg("rank"),
                       py::arg("world_size"),
                       py::arg("group_id") = 0,
-                      py::call_guard<py::gil_scoped_release>());
+                      py::call_guard<py::gil_scoped_release>())
+          .def_static("group_start", distributed::ProcessGroupBKCL::GroupStart)
+          .def_static("group_end", distributed::ProcessGroupBKCL::GroupEnd);
 #endif
 
   py::class_<distributed::ProcessGroup::Task,
