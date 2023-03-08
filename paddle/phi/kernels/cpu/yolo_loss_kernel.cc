@@ -372,5 +372,5 @@ void YoloLossKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     yolo_loss, CPU, ALL_LAYOUT, phi::YoloLossKernel, float, double) {
-  kernel->OutputAt(2).SetDataType(paddle::experimental::DataType::INT64);
+  kernel->OutputAt(2).SetDataType(paddle::experimental::DataType::INT32);
 }
