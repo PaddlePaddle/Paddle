@@ -38,11 +38,14 @@ void AdadeltaInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& avg_squared_grad,
                        const MetaTensor& avg_squared_update,
+                       const MetaTensor& master_param,
                        float rho,
                        float epsilon,
+                       bool multi_precision,
                        MetaTensor* param_out,
                        MetaTensor* avg_squared_grad_out,
-                       MetaTensor* avg_squared_update_out) {
+                       MetaTensor* avg_squared_update_out,
+                       MetaTensor* master_param_out) {
   auto param_dims = param.dims();
   PADDLE_ENFORCE_EQ(
       param_dims,
@@ -74,9 +77,12 @@ void AdagradInferMeta(const MetaTensor& param,
                       const MetaTensor& grad,
                       const MetaTensor& moment,
                       const MetaTensor& learning_rate,
+                      const MetaTensor& master_param,
                       float epsilon,
+                      bool multi_precision,
                       MetaTensor* param_out,
-                      MetaTensor* moment_out) {
+                      MetaTensor* moment_out,
+                      MetaTensor* master_param_out) {
   auto lr_dims = learning_rate.dims();
   PADDLE_ENFORCE_EQ(
       phi::product(lr_dims),
@@ -184,12 +190,15 @@ void AdamaxInferMeta(const MetaTensor& param,
                      const MetaTensor& moment,
                      const MetaTensor& inf_norm,
                      const MetaTensor& beta1_pow,
+                     const MetaTensor& master_param,
                      float beta1,
                      float beta2,
                      float epsilon,
+                     bool multi_precision,
                      MetaTensor* param_out,
                      MetaTensor* moment_out,
-                     MetaTensor* inf_norm_out) {
+                     MetaTensor* inf_norm_out,
+                     MetaTensor* master_param_outs) {
   auto lr_dims = learning_rate.dims();
   PADDLE_ENFORCE_NE(
       product(lr_dims),

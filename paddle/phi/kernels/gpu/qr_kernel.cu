@@ -18,9 +18,9 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/unary.h"
@@ -139,12 +139,12 @@ void QrKernel(const Context& ctx,
         auto new_qr_data = ctx.template Alloc<phi::dtype::Real<T>>(&new_qr);
         auto new_qr_stride = m * m;
         for (int i = 0; i < batch_size; ++i) {
-          paddle::memory::Copy(ctx.GetPlace(),
-                               (new_qr_data + i * new_qr_stride),
-                               ctx.GetPlace(),
-                               (qr_data + i * qr_stride),
-                               qr_stride * sizeof(phi::dtype::Real<T>),
-                               ctx.stream());
+          memory_utils::Copy(ctx.GetPlace(),
+                             (new_qr_data + i * new_qr_stride),
+                             ctx.GetPlace(),
+                             (qr_data + i * qr_stride),
+                             qr_stride * sizeof(phi::dtype::Real<T>),
+                             ctx.stream());
         }
         BatchedOrgqr<Context, T>(ctx,
                                  batch_size,
@@ -218,12 +218,12 @@ void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &info_h,
-                         dev_ctx.GetPlace(),
-                         info_d,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &info_h,
+                       dev_ctx.GetPlace(),
+                       info_d,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
@@ -272,12 +272,12 @@ void BatchedGeqrf<GPUContext, double>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &info_h,
-                         dev_ctx.GetPlace(),
-                         info_d,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &info_h,
+                       dev_ctx.GetPlace(),
+                       info_d,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
@@ -328,12 +328,12 @@ void BatchedOrgqr<GPUContext, float>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &info_h,
-                         dev_ctx.GetPlace(),
-                         info_d,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &info_h,
+                       dev_ctx.GetPlace(),
+                       info_d,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
@@ -384,12 +384,12 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
     // Do we need synchronized here?
     // check the error info
     int info_h;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &info_h,
-                         dev_ctx.GetPlace(),
-                         info_d,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &info_h,
+                       dev_ctx.GetPlace(),
+                       info_d,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
