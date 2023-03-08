@@ -94,8 +94,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "multinomial",
     "nanmedian",
     "numl",
-    "qr",
-    "qr_grad",
     "rnn",
     "search_sort",
     "select",
