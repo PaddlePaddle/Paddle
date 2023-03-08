@@ -9,12 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/fluid/platform/device_context.h>
+#include "paddle/phi/kernels/funcs/gru_compute.h"
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/detail/gru_gpu_kernel.h"
 #include "paddle/phi/kernels/funcs/detail/gru_kernel.h"
-#include "paddle/phi/kernels/funcs/gru_compute.h"
 
 namespace phi {
 namespace funcs {
