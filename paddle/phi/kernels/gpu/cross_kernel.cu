@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_calculator.h"
@@ -153,5 +154,12 @@ void CrossKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    cross, GPU, ALL_LAYOUT, phi::CrossKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(cross,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CrossKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::bfloat16) {}

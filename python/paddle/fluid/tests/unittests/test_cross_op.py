@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -63,6 +63,18 @@ class TestCrossOpCase1(TestCrossOp):
         for i in range(2048):
             z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+class TestCrossOpCase2(TestCrossOp):
+    def setUp(self):
+        self.op_type = "cross"
+        self.python_api = paddle.cross
+        self.initTestCase()
+        self.inputs = {
+            'X': convert_float_to_uint16(np.random.random(self.shape)),
+            'Y': convert_float_to_uint16(np.random.random(self.shape)),
+        }
+        self.init_output()
 
 
 class TestCrossAPI(unittest.TestCase):
