@@ -198,7 +198,7 @@ class TestAllcloseOpFloat16(TestAllcloseOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output(check_eager=True)
+                self.check_output_with_place(place, check_eager=True)
 
 
 class TestAllcloseOpFloat32(TestAllcloseOp):
