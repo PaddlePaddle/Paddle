@@ -186,6 +186,20 @@ class TestAllcloseOpFp16(unittest.TestCase):
                 out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
 
 
+class TestAllcloseOpFloat16(TestAllcloseOp):
+    def set_args(self):
+        self.input = np.array([10.1]).astype("float16")
+        self.other = np.array([10]).astype("float16")
+        self.rtol = np.array([0.01]).astype("float64")
+        self.atol = np.array([0]).astype("float64")
+        self.equal_nan = False
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output(check_eager=True)
+
+
 class TestAllcloseOpFloat32(TestAllcloseOp):
     def set_args(self):
         self.input = np.array([10.1]).astype("float32")
