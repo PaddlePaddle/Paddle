@@ -200,11 +200,9 @@ def expand_v2_composite(x, shape):
     out = tile(x, repeat_times = repeat_times)
     """
     shape_in = x.shape
-    assert len(shape) >= len(shape_in)
     dim_out = len(shape)
     dim_in = len(shape_in)
-    if dim_out == 0:
-        return x
+    assert dim_in <= dim_out and dim_out >= 0
     repeat_times = []
     for i in range(dim_out):
         offset = dim_out - i
