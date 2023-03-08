@@ -173,6 +173,8 @@ inline void ConvertToFusedOp(OpDesc* op) {
   if (it != fused_ops.end()) {
     op->SetType(it->second);
     VLOG(3) << "Converted " << it->first << " to " << it->second;
+  } else {
+    VLOG(3) << "Fused op for " << op->Type() << " is not implemented yet.";
   }
 }
 

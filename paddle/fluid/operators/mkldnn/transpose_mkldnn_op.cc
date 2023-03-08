@@ -57,8 +57,6 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dnnl::memory::desc(x_vec_dims,
                            x->mem_desc().data_type(),
                            phi::funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
-    // a trick is used here to fake transpose of out_md, so later it will be
-    // "untransposed", leaving output data in plain format tag
     auto dst_strides =
         phi::funcs::FakeTransposeStrides(dst_md.dims(), transpose_axis);
 

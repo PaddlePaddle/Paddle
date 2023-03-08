@@ -165,8 +165,8 @@ void FuseQuantTranspose2DequantOneDNNPass::FuseTranspose2Dequantize(
 
 void FuseQuantTranspose2DequantOneDNNPass::ApplyImpl(Graph *graph) const {
   FuseQuantizeTranspose2(graph, "fused_transpose");
-  FuseQuantizeTranspose2(graph, "transpose2");
   FuseTranspose2Dequantize(graph, "fused_transpose");
+  FuseQuantizeTranspose2(graph, "transpose2");
   FuseTranspose2Dequantize(graph, "transpose2");
 }
 

@@ -115,10 +115,7 @@ void FuseOperatorReshape2OneDNNPass::FuseReshape2(Graph *graph,
       return;
     }
 
-    if (op_type == "transpose2") {
-      ConvertToFusedOp(operator_op->Op());
-    }
-
+    ConvertToFusedOp(operator_op->Op());
     operator_op->Op()->SetAttr("fused_reshape2_shape", reshape2_shape);
     operator_op->Op()->SetOutput("Out", {reshape2_out->Name()});
 

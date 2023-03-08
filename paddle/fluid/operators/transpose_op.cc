@@ -134,6 +134,12 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout")
         .AsExtra();
+    AddAttr<std::string>(
+        "mkldnn_data_type",
+        "(string, default \"float32\"). Data type of mkldnn kernel")
+        .SetDefault("float32")
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
     AddComment(R"DOC(
 Transpose Operator.
 
