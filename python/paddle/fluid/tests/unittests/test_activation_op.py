@@ -1742,10 +1742,11 @@ class TestRound_ZeroDim(TestRound):
 class TestRelu(TestActivation):
     def setUp(self):
         self.op_type = "relu"
-        self.python_api = getattr(F, self.op_type)
-
+        self.python_api = paddle.nn.functional.relu
+        self.prim_op_type = "comp"
         self.init_dtype()
         self.init_shape()
+        self.skip_cinn()
 
         np.random.seed(1024)
         if self.dtype == np.uint16:
@@ -1766,12 +1767,21 @@ class TestRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
 
 class TestRelu_ZeroDim(TestRelu):
     def init_shape(self):
         self.shape = []
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
 
 class TestReluAPI(unittest.TestCase):
@@ -3871,7 +3881,7 @@ create_test_act_fp16_class(TestAcosh, grad_atol=0.85)
 create_test_act_fp16_class(TestAsinh, grad_atol=0.85)
 create_test_act_fp16_class(TestAtanh, grad_atol=0.85)
 create_test_act_fp16_class(TestRound, grad_check=False)
-create_test_act_fp16_class(TestRelu)
+create_test_act_fp16_class(TestRelu, check_prim=True)
 create_test_act_fp16_class(TestGelu)
 create_test_act_fp16_class(TestBRelu)
 create_test_act_fp16_class(TestRelu6)
