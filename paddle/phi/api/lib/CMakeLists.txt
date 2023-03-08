@@ -390,6 +390,10 @@ cc_library(
   api_int_array
   SRCS int_array.cc
   DEPS tensor_copy)
+cc_library(
+  from_blob
+  SRCS from_blob.cc
+  DEPS phi_tensor_raw)
 
 cc_library(
   phi_tensor_operants
@@ -403,8 +407,3 @@ cc_library(
   tensor_api
   SRCS ${tensor_api_source_file}
   DEPS operants_manager)
-
-cc_library(
-  from_blob
-  SRCS from_blob.cc
-  DEPS phi_tensor_raw)
