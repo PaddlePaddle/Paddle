@@ -74,14 +74,21 @@ void HeavisideKernel(const Context& dev_ctx,
 }
 
 // Create the definition of Pow
-DEFINE_CUDA_ELEMENTWISE_OP(ElementwisePow)
 template <typename T, typename Context>
 void ElementwisePowKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out) {
-  int axis = -1;
-  ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, -1, funcs::ElementwisePowFunctor<T>());
 }
 
 }  // namespace phi
@@ -99,9 +106,6 @@ PD_REGISTER_KERNEL(
     floor_divide_raw, KPS, ALL_LAYOUT, phi::FloorDivideRawKernel, int) {}
 PD_REGISTER_KERNEL(
     elementwise_pow, KPS, ALL_LAYOUT, phi::ElementwisePowKernel, float) {}
-PD_REGISTER_KERNEL(
-    elementwise_pow_raw, KPS, ALL_LAYOUT, phi::ElementwisePowRawKernel, float) {
-}
 
 #else
 using float16 = phi::dtype::float16;
@@ -173,10 +177,10 @@ PD_REGISTER_KERNEL(heaviside,
                    int,
                    float16,
                    int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow_raw,
+PD_REGISTER_KERNEL(elementwise_pow,
                    KPS,
                    ALL_LAYOUT,
-                   phi::ElementwisePowRawKernel,
+                   phi::ElementwisePowKernel,
                    float,
                    double,
                    int,

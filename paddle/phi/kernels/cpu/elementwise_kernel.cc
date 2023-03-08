@@ -84,11 +84,11 @@ void FloorDivideRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ElementwisePowRawKernel(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& y,
-                             int axis,
-                             DenseTensor* out) {
+void ElementwisePowKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          DenseTensor* out) {
+  int axis = -1;
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
@@ -159,10 +159,10 @@ PD_REGISTER_KERNEL(floor_divide_raw,
                    phi::FloorDivideRawKernel,
                    int,
                    int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow_raw,
+PD_REGISTER_KERNEL(elementwise_pow,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ElementwisePowRawKernel,
+                   phi::ElementwisePowKernel,
                    float,
                    double,
                    int,
