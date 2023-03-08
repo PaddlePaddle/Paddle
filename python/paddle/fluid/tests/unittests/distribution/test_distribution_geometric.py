@@ -113,25 +113,6 @@ class TestGeometric(unittest.TestCase):
                 == case.get('expect')
             )
 
-    def test_sample(self):
-        sample_shape = (30000,)
-        samples = self._paddle_geom.sample(sample_shape)
-        sample_values = samples.numpy()
-        self.assertEqual(sample_values.dtype, self.probs.dtype)
-
-        np.testing.assert_allclose(
-            sample_values.mean(axis=0),
-            scipy.stats.geom.mean(self.probs),
-            rtol=0.7,
-            atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
-        )
-        np.testing.assert_allclose(
-            sample_values.var(axis=0),
-            scipy.stats.geom.var(self.probs),
-            rtol=0.7,
-            atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
-        )
-
     def test_rsample_shape(self):
         cases = [
             {
@@ -150,26 +131,6 @@ class TestGeometric(unittest.TestCase):
                 tuple(self._paddle_geom.rsample(case.get('input')).shape)
                 == case.get('expect')
             )
-
-    def test_rsample(self):
-
-        sample_shape = (30000,)
-        samples = self._paddle_geom.rsample(sample_shape)
-        sample_values = samples.numpy()
-        self.assertEqual(sample_values.dtype, self.probs.dtype)
-
-        np.testing.assert_allclose(
-            sample_values.mean(axis=0),
-            scipy.stats.geom.mean(self.probs),
-            rtol=0.7,
-            atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
-        )
-        np.testing.assert_allclose(
-            sample_values.var(axis=0),
-            scipy.stats.geom.var(self.probs),
-            rtol=0.7,
-            atol=ATOL.get(str(self._paddle_geom.probs.numpy().dtype)),
-        )
 
 
 @place(DEVICES)

@@ -84,17 +84,11 @@ class Geometric(Distribution):
     def __init__(self, probs=None):
         if probs is None:
             raise ValueError("`Probs` must be specified.")
-        if isinstance(probs, numbers.Real) or isinstance(probs, list):
+        if isinstance(probs, numbers.Real):
             probs = paddle.full(
-                shape=(), fill_value=probs, dtype=paddle.float32
+                shape=(1,), fill_value=probs, dtype=paddle.float32
             )
-
         if isinstance(probs, (paddle.Tensor, framework.Variable)):
-            if probs.dtype != paddle.float32:
-                raise ValueError(
-                    f"Probs'dtype must be float32, but get {probs.dtype}"
-                )
-
             all_ones = paddle.full(
                 shape=probs.shape, fill_value=1, dtype=probs.dtype
             )
@@ -134,11 +128,6 @@ class Geometric(Distribution):
         return self.one_tensor / self.probs
 
     @property
-    def mode(self):
-        """Mode of geometric distribution."""
-        return paddle.zeros_like(self.probs)
-
-    @property
     def variance(self):
         """Variance of geometric distribution"""
         return paddle.to_tensor(
@@ -162,8 +151,6 @@ class Geometric(Distribution):
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.pow((1 - self.probs), k - 1) * self.probs
-        else:
-            raise TypeError(f"k must be int|Variable,but get {type(k)}")
 
     def log_pmf(self, k):
         """Log probability mass function evaluated at k
@@ -176,8 +163,6 @@ class Geometric(Distribution):
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return paddle.log(self.pmf(k))
-        else:
-            raise TypeError(f"k must be int|Variable,but get {type(k)}")
 
     def sample(self, shape=()):
         """Sample from Geometric distribution with sample shape.
@@ -188,11 +173,6 @@ class Geometric(Distribution):
         Returns:
             Sampled data with shape `sample_shape` + `batch_shape` + `event_shape`.
         """
-        if not isinstance(shape, tuple):
-            raise TypeError(
-                f'sample shape must be tuple, but get {type(shape)}.'
-            )
-
         with paddle.no_grad():
             return self.rsample(shape)
 
@@ -205,11 +185,6 @@ class Geometric(Distribution):
         Returns:
             Tensor: A sample tensor that fits the Geometric distribution.
         """
-        if not isinstance(shape, tuple):
-            raise TypeError(
-                f'sample shape must be tuple, but get {type(shape)}.'
-            )
-
         shape = Distribution._extend_shape(self, sample_shape=shape)
         tiny = np.finfo(dtype='float32').tiny
 
@@ -242,8 +217,6 @@ class Geometric(Distribution):
         """
         if isinstance(k, (numbers.Integral, framework.Variable)):
             return 1.0 - paddle.pow((1.0 - self.probs), k)
-        else:
-            raise TypeError(f"k must be int|Variable,but get {type(k)}")
 
     def kl_divergence(self, other):
         """Calculate the KL divergence KL(self || other) with two Geometric instances.
