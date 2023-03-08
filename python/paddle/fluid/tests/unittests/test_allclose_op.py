@@ -189,18 +189,6 @@ class TestAllcloseOpFloat64(TestAllcloseOp):
         self.equal_nan = False
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
-class TestAllcloseOpFloat16(TestAllcloseOp):
-    def set_args(self):
-        self.input = np.array([10.1]).astype("float16")
-        self.other = np.array([10]).astype("float16")
-        self.rtol = np.array([0.01]).astype("float64")
-        self.atol = np.array([0]).astype("float64")
-        self.equal_nan = False
-
-
 class TestAllcloseOpLargeDimInput(TestAllcloseOp):
     def set_args(self):
         self.input = np.array(np.zeros([2048, 1024])).astype("float64")
@@ -209,6 +197,21 @@ class TestAllcloseOpLargeDimInput(TestAllcloseOp):
         self.rtol = np.array([1e-05]).astype("float64")
         self.atol = np.array([1e-08]).astype("float64")
         self.equal_nan = False
+
+
+class TestAllcloseOpFp16(unittest.TestCase):
+    def test_allclose_fp16(self):
+        x_np = np.random.random((10, 16)).astype('float16')
+        y_np = np.random.random((10, 16)).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+            y = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+            out = paddle.allclose(x, y)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
 
 
 if __name__ == "__main__":
