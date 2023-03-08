@@ -30,7 +30,7 @@ Tensor empty<Tensor>(const paddle::experimental::IntArray& shape,
 }
 
 template <>
-Tensor empty_like<Tensor>(const paddle::experimental::Tensor& x,
+Tensor empty_like<Tensor>(const paddle::Tensor& x,
                           paddle::experimental::DataType dtype,
                           const paddle::Place& place) {
   if (dtype == paddle::experimental::DataType::UNDEFINED) {
@@ -40,14 +40,13 @@ Tensor empty_like<Tensor>(const paddle::experimental::Tensor& x,
 }
 
 template <>
-void set_output<Tensor>(const paddle::experimental::Tensor& x_tmp,
-                        paddle::experimental::Tensor* x) {
+void set_output<Tensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_impl(x_tmp.impl());
   x->set_autograd_meta(x_tmp.mutable_autograd_meta());
 }
 
 template <>
-void by_pass<Tensor>(const paddle::experimental::Tensor& x, Tensor* out) {
+void by_pass<Tensor>(const paddle::Tensor& x, Tensor* out) {
   set_output<Tensor>(x, out);
 }
 
