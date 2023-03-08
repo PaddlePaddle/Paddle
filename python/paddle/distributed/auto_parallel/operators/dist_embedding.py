@@ -455,7 +455,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         check_variable_and_dtype(
             Out_var,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'c_allreduce_sum',
         )
 
@@ -645,7 +645,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         check_variable_and_dtype(
             Out_grad,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             '_c_identity',
         )
 
@@ -687,12 +687,15 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             },
         )
         check_variable_and_dtype(
-            intermediate_var_0, 'x', ['float16', 'float32', 'float64'], 'linear'
+            intermediate_var_0,
+            'x',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'linear',
         )
         check_dtype(
             intermediate_var_0.dtype,
             'dtype',
-            ['float16', 'float32', 'float64'],
+            ['float16', 'float32', 'float64', 'uint16'],
             'linear',
         )
 
