@@ -847,6 +847,34 @@ class Optimizer:
             )
         return self._accumulators[name][param.name]
 
+    def _get_accumulator_master(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = (
+            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
+        target_name = target_param.name
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name
+                )
+            )
+        return self._accumulators[name][target_name]
+
     def _get_global_accumulator(self, name):
         """Utility function to fetch a global accumulator
 
@@ -1837,34 +1865,6 @@ class LarsMomentumOptimizer(Optimizer):
         self._rescale_grad = float(rescale_grad)
         self._master_weights = {}
 
-    def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
-        Args:
-            name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
-        Returns:
-            accumulator variable for the parameter
-        """
-        if self._name is not None:
-            name = self._name + "_" + name
-        find_master = (
-            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
-        )
-        target_param = (
-            self._master_weights[param.name] if find_master else param
-        )
-        target_name = target_param.name
-        if (
-            name not in self._accumulators
-            or target_name not in self._accumulators[name]
-        ):
-            raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
-            )
-        return self._accumulators[name][target_name]
-
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
@@ -1893,7 +1893,7 @@ class LarsMomentumOptimizer(Optimizer):
                     _lars_weight_decay = 0.0
                     break
 
-        velocity_acc = self._get_accumulator(
+        velocity_acc = self._get_accumulator_master(
             self._velocity_acc_str, param_and_grad[0]
         )
         lr = self._create_param_lr(param_and_grad)
@@ -2056,34 +2056,6 @@ class AdagradOptimizer(Optimizer):
         self.initial_accumulator_value = initial_accumulator_value
         self._master_weights = {}
 
-    def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
-        Args:
-            name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
-        Returns:
-            accumulator variable for the parameter
-        """
-        if self._name is not None:
-            name = self._name + "_" + name
-        find_master = (
-            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
-        )
-        target_param = (
-            self._master_weights[param.name] if find_master else param
-        )
-        target_name = target_param.name
-        if (
-            name not in self._accumulators
-            or target_name not in self._accumulators[name]
-        ):
-            raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
-            )
-        return self._accumulators[name][target_name]
-
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
@@ -2109,7 +2081,7 @@ class AdagradOptimizer(Optimizer):
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
-        moment_acc = self._get_accumulator(
+        moment_acc = self._get_accumulator_master(
             self._moment_acc_str, param_and_grad[0]
         )
 
@@ -2739,42 +2711,16 @@ class AdamaxOptimizer(Optimizer):
                 shape=[1],
             )
 
-    def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
-        Args:
-            name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
-        Returns:
-            accumulator variable for the parameter
-        """
-        if self._name is not None:
-            name = self._name + "_" + name
-        find_master = (
-            self._multi_precision and core.VarDesc.VarType.FP16 == param.dtype
-        )
-        target_param = (
-            self._master_weights[param.name] if find_master else param
-        )
-        target_name = target_param.name
-        if (
-            name not in self._accumulators
-            or target_name not in self._accumulators[name]
-        ):
-            raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
-            )
-        return self._accumulators[name][target_name]
-
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
-        moment = self._get_accumulator(self._moment_acc_str, param_and_grad[0])
-        inf_norm = self._get_accumulator(
+        moment = self._get_accumulator_master(
+            self._moment_acc_str, param_and_grad[0]
+        )
+        inf_norm = self._get_accumulator_master(
             self._inf_norm_acc_str, param_and_grad[0]
         )
-        beta1_pow_acc = self._get_accumulator(
+        beta1_pow_acc = self._get_accumulator_master(
             self._beta1_pow_acc_str, param_and_grad[0]
         )
 
@@ -3199,34 +3145,6 @@ class AdadeltaOptimizer(Optimizer):
         self._epsilon = epsilon
         self._rho = rho
 
-    def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
-        Args:
-            name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
-        Returns:
-            accumulator variable for the parameter
-        """
-        if self._name is not None:
-            name = self._name + "_" + name
-        find_master = (
-            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
-        )
-        target_param = (
-            self._master_weights[param.name] if find_master else param
-        )
-        target_name = target_param.name
-        if (
-            name not in self._accumulators
-            or target_name not in self._accumulators[name]
-        ):
-            raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
-            )
-        return self._accumulators[name][target_name]
-
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
@@ -3254,10 +3172,10 @@ class AdadeltaOptimizer(Optimizer):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
 
-        avg_squared_grad_acc = self._get_accumulator(
+        avg_squared_grad_acc = self._get_accumulator_master(
             self._avg_squared_grad_acc_str, param_and_grad[0]
         )
-        avg_squared_update_acc = self._get_accumulator(
+        avg_squared_update_acc = self._get_accumulator_master(
             self._avg_squared_update_acc_str, param_and_grad[0]
         )
         find_master = (
@@ -3462,34 +3380,6 @@ class RMSPropOptimizer(Optimizer):
         self._multi_precision = False
         self._master_weights = {}
 
-    def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
-        Args:
-            name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
-        Returns:
-            accumulator variable for the parameter
-        """
-        if self._name is not None:
-            name = self._name + "_" + name
-        find_master = (
-            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
-        )
-        target_param = (
-            self._master_weights[param.name] if find_master else param
-        )
-        target_name = target_param.name
-        if (
-            name not in self._accumulators
-            or target_name not in self._accumulators[name]
-        ):
-            raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
-            )
-        return self._accumulators[name][target_name]
-
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
@@ -3517,13 +3407,13 @@ class RMSPropOptimizer(Optimizer):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
 
-        momentum_acc = self._get_accumulator(
+        momentum_acc = self._get_accumulator_master(
             self._momentum_acc_str, param_and_grad[0]
         )
-        mean_square_acc = self._get_accumulator(
+        mean_square_acc = self._get_accumulator_master(
             self._mean_square_acc_str, param_and_grad[0]
         )
-        mean_grad_acc = self._get_accumulator(
+        mean_grad_acc = self._get_accumulator_master(
             self._mean_grad_acc_str, param_and_grad[0]
         )
         find_master = (
