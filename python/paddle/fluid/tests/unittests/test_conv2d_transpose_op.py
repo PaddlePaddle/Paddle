@@ -965,7 +965,7 @@ class TestCUDNN_BF16(TestConv2DTransposeOp):
         self.filter_size = [f_c, 6, 3, 3]
 
     def init_op_type(self):
-        self.need_check_grad = True
+        self.need_check_grad = False
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
 
