@@ -323,7 +323,8 @@ cc_library(
        api_gen_utils
        phi_data_transform
        api_custom_impl
-       phi_profiler)
+       phi_profiler
+       from_blob)
 cc_library(
   phi_bw_function_api
   SRCS ${bw_api_source_file}

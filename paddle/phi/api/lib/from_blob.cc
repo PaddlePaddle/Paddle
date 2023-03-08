@@ -18,6 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
+char touch_extension_api() { return '\0'; }
+
 using AllocationDeleter = void (*)(phi::Allocation*);
 
 static thread_local Deleter g_deleter = nullptr;

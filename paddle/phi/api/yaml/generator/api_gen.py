@@ -347,6 +347,7 @@ def header_include():
     return """
 #include <tuple>
 
+#include "paddle/phi/api/include/from_blob.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/int_array.h"
@@ -396,6 +397,13 @@ namespace experimental {
     )
 
 
+def touch_extension():
+    return """
+
+  static int a = touch_extension_api();
+"""
+
+
 def generate_api(api_yaml_path, header_file_path, source_file_path):
     apis = []
 
@@ -425,6 +433,8 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
         header_file.write(foward_api.gene_api_declaration())
         source_file.write(foward_api.gene_api_code())
+
+    source_file.write(touch_extension())
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
