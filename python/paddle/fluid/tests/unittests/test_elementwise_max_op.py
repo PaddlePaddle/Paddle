@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid.core as core
@@ -36,15 +36,15 @@ class TestElementwiseOp(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
+            self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+            self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+            self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -114,15 +114,15 @@ class TestElementwiseBF16Op(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
+            self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+            self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+            self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
@@ -173,8 +173,32 @@ class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
             )
         }
 
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
 
-class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+            check_dygraph=False,
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+            check_dygraph=False,
+        )
+
+
+class TestElementwiseMaxOp_broadcast_1(TestElementwiseMaxOp_broadcast_0):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
@@ -193,7 +217,7 @@ class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
+class TestElementwiseMaxOp_broadcast_2(TestElementwiseMaxOp_broadcast_0):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
@@ -211,7 +235,7 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
+class TestElementwiseMaxOp_broadcast_3(TestElementwiseMaxOp_broadcast_0):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
@@ -230,7 +254,7 @@ class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
         }
 
 
-class TestElementwiseMaxOp_broadcast_4(TestElementwiseOp):
+class TestElementwiseMaxOp_broadcast_4(TestElementwiseMaxOp_broadcast_0):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -39,15 +39,15 @@ class TestElementwisePowOp(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
+            self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+            self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+            self.check_grad(['X', 'Y'], 'Out', check_dygraph=True)
 
 
 class TestElementwisePowOp_ZeroDim1(TestElementwisePowOp):
@@ -207,9 +207,9 @@ class TestElementwisePowOpInt(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
+            self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
 
 class TestElementwisePowGradOpInt(unittest.TestCase):
@@ -258,9 +258,9 @@ class TestElementwisePowOpFP16(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False)
+            self.check_output(check_dygraph=False)
         else:
-            self.check_output(check_eager=True)
+            self.check_output(check_dygraph=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -269,7 +269,7 @@ class TestElementwisePowOpFP16(OpTest):
             user_defined_grads=pow_grad(
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
-            check_eager=True,
+            check_dygraph=True,
         )
 
 

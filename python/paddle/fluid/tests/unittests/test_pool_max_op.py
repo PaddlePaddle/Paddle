@@ -15,7 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -129,6 +131,14 @@ def max_pool2D_forward_naive(
     return out, mask
 
 
+def maxpool3d_wrapper(
+    x, kernel_size, strides, paddings, global_pooling=False, adaptive=False
+):
+    return paddle._C_ops.max_pool3d_with_index(
+        x, kernel_size, strides, paddings, global_pooling, adaptive
+    )
+
+
 class TestMaxPoolWithIndex_Op(OpTest):
     def setUp(self):
         self.init_test_case()
@@ -168,6 +178,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
     def init_test_case(self):
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
+        self.python_api = maxpool3d_wrapper
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
         self.strides = [2, 2, 2]
@@ -189,6 +200,8 @@ class TestCase2(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
+        self.python_api = maxpool3d_wrapper
+
         self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
         self.strides = [2, 2, 2]
@@ -203,11 +216,20 @@ class TestCase3(TestCase2):
         self.global_pool = False
 
 
+def maxpool2d_wrapper(
+    x, kernel_size, strides, paddings, global_pooling=False, adaptive=False
+):
+    return paddle._C_ops.max_pool2d_with_index(
+        x, kernel_size, strides, paddings, global_pooling, adaptive
+    )
+
+
 # ----------------max_pool2d_with_index----------------
 class TestCase4(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
+        self.python_api = maxpool2d_wrapper
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -226,6 +248,8 @@ class TestCase6(TestMaxPoolWithIndex_Op):
     def init_test_case(self):
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
+        self.python_api = maxpool2d_wrapper
+
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
         self.strides = [2, 2]
