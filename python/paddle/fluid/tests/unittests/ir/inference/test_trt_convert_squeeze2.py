@@ -37,54 +37,59 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         for dims in [2, 3, 4]:
             for batch in [3, 4]:
                 for axes in [[2], [2, 3], [-1]]:
-                    self.batch = batch
-                    self.dims = dims
-                    self.axes = axes
-                    dics = [{"axes": axes}]
-                    ops_config = [
-                        {
-                            "op_type": "squeeze2",
-                            "op_inputs": {"X": ["in_data"]},
-                            "op_outputs": {
-                                "Out": ["out_data"],
-                                "XShape": ["XShape_data"],
-                            },
-                            "op_attrs": dics[0],
-                        }
-                    ]
-                    # new_axes is the update of axes
-                    new_axes = list(axes)
-                    for i in range(len(new_axes)):
-                        if new_axes[i] < 0:
-                            new_axes[i] += dims
-                    if max(new_axes) >= dims:
-                        continue
-                    # generate input data
-                    self.input_shape = [1] * dims
-                    for i in range(dims):
-                        self.input_shape[i] = np.random.randint(1, 20)
+                    for attr_axis in [True, False]:
+                        self.batch = batch
+                        self.dims = dims
+                        self.axes = axes
+                        dics = [{"axes": []}]
+                        if attr_axis:
+                            dics[0]["axes"] = axes
+                        ops_config = [
+                            {
+                                "op_type": "squeeze2",
+                                "op_inputs": {"X": ["in_data"]},
+                                "op_outputs": {
+                                    "Out": ["out_data"],
+                                    "XShape": ["XShape_data"],
+                                },
+                                "op_attrs": dics[0],
+                            }
+                        ]
+                        # new_axes is the update of axes
+                        new_axes = list(axes)
+                        for i in range(len(new_axes)):
+                            if new_axes[i] < 0:
+                                new_axes[i] += dims
+                        if max(new_axes) >= dims:
+                            continue
+                        # generate input data
+                        self.input_shape = [1] * dims
+                        for i in range(dims):
+                            self.input_shape[i] = np.random.randint(1, 20)
 
-                    def generate_input1(attrs: List[Dict[str, Any]], batch):
-                        self.input_shape[0] = batch
-                        for i in new_axes:
-                            self.input_shape[i] = 1
-                        return np.random.random(self.input_shape).astype(
-                            np.float32
+                        def generate_input1(attrs: List[Dict[str, Any]], batch):
+                            self.input_shape[0] = batch
+                            for i in new_axes:
+                                self.input_shape[i] = 1
+                            return np.random.random(self.input_shape).astype(
+                                np.float32
+                            )
+
+                        ops = self.generate_op_config(ops_config)
+                        program_config = ProgramConfig(
+                            ops=ops,
+                            weights={},
+                            inputs={
+                                "in_data": TensorConfig(
+                                    data_gen=partial(
+                                        generate_input1, dics, batch
+                                    )
+                                )
+                            },
+                            outputs=["out_data"],
                         )
 
-                    ops = self.generate_op_config(ops_config)
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "in_data": TensorConfig(
-                                data_gen=partial(generate_input1, dics, batch)
-                            )
-                        },
-                        outputs=["out_data"],
-                    )
-
-                    yield program_config
+                        yield program_config
 
     def sample_predictor_configs(
         self, program_config
