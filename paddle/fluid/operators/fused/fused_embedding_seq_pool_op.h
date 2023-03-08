@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -108,17 +108,17 @@ struct EmbeddingVSumFunctor {
                           "But received the ids's LoD[0] = %d.",
                           ids_lod.size()));
 
-    jit::emb_seq_pool_attr_t attr(table_height,
-                                  table_width,
-                                  0,
-                                  idx_width,
-                                  out_width,
-                                  jit::SeqPoolType::kSum);
+    phi::jit::emb_seq_pool_attr_t attr(table_height,
+                                       table_width,
+                                       0,
+                                       idx_width,
+                                       out_width,
+                                       phi::jit::SeqPoolType::kSum);
     for (size_t i = 0; i != ids_lod.size() - 1; ++i) {
       attr.index_height = ids_lod[i + 1] - ids_lod[i];
-      auto emb_seqpool =
-          jit::KernelFuncs<jit::EmbSeqPoolTuple<T>, platform::CPUPlace>::Cache()
-              .At(attr);
+      auto emb_seqpool = phi::jit::KernelFuncs<phi::jit::EmbSeqPoolTuple<T>,
+                                               platform::CPUPlace>::Cache()
+                             .At(attr);
       emb_seqpool(
           table, ids + ids_lod[i] * idx_width, output + i * out_width, &attr);
     }
@@ -265,9 +265,9 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       T *d_table_data = d_table_value->mutable_data<T>(context.GetPlace());
       const T *d_output_data = d_output->data<T>();
 
-      auto vbroadcast =
-          jit::KernelFuncs<jit::VBroadcastTuple<T>, platform::CPUPlace>::Cache()
-              .At(out_width);
+      auto vbroadcast = phi::jit::KernelFuncs<phi::jit::VBroadcastTuple<T>,
+                                              platform::CPUPlace>::Cache()
+                            .At(out_width);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
         const T *src = d_output_data + i * out_width;
