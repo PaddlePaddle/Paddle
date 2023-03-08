@@ -32,11 +32,6 @@ KernelKey InterpolateGetKernelTypeForVar(
   if ((expected_kernel_type.layout() == DataLayout::ONEDNN) &&
       (tensor.layout() != DataLayout::ONEDNN)) {
     auto it = attrs.find("data_layout");
-    PADDLE_ENFORCE_NE(
-        it,
-        attrs.end(),
-        errors::NotFound(
-            "Attribute(data_layout) of InterpolateOp is not found."));
     const std::string data_layout = PADDLE_GET_CONST(std::string, it->second);
     auto dl = StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
