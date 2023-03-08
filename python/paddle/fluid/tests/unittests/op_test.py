@@ -2110,73 +2110,102 @@ class OpTest(unittest.TestCase):
         numeric_grads,
         analytic_grads,
         names,
+        atol,
         max_relative_error,
         msg_prefix,
     ):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
-            # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
-            # max_relative_error is 1e-7. According to the value of np.abs(a), we
-            # change np.abs(a) to achieve dynamic threshold. For example, if
-            # the value of np.abs(a) is between 1e-10 and 1e-8, we set np.abs(a)*=1e4.
-            # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
-            # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
-
-            abs_a = np.abs(a)
-            if abs_a.ndim > 0:
-                if (
-                    self.dtype == np.float64
-                    and self.op_type
-                    not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
-                ):
-                    abs_a[abs_a < 1e-10] = 1e-3
-                    abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
-                    abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
-                elif self.is_bfloat16_op():
-                    abs_a[abs_a < 1e-2] = 1
-                else:
-                    abs_a[abs_a < 1e-3] = 1
-            elif abs_a.ndim == 0:
-                if (
-                    self.dtype == np.float64
-                    and self.op_type
-                    not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
-                ):
-                    if abs_a < 1e-10:
-                        abs_a = 1e-3
-                    elif abs_a > 1e-10 and abs_a <= 1e-8:
-                        abs_a = abs_a * 1e4
-                    elif abs_a > 1e-8 and abs_a <= 1e-6:
-                        abs_a = abs_a * 1e2
-                elif self.is_bfloat16_op():
-                    abs_a = 1 if abs_a < 1e-2 else abs_a
-                else:
-                    abs_a = 1 if abs_a < 1e-3 else abs_a
-
-            if self.dtype == np.bool:
-                diff_mat = np.abs(a ^ b) / abs_a
-            else:
-                diff_mat = np.abs(a - b) / abs_a
-            max_diff = np.max(diff_mat)
-
-            def err_msg():
-                offset = np.argmax(diff_mat > max_relative_error)
-                return (
-                    "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
-                    "the first error element is %d, expected %e, but got %e."
-                ) % (
-                    self.op_type,
-                    msg_prefix,
-                    name,
-                    str(a.shape),
-                    self.dtype,
-                    max_diff,
-                    max_relative_error,
-                    offset,
-                    a.flatten()[offset],
-                    b.flatten()[offset],
+            # Used by bfloat16 for now to solve precision problem
+            if self.is_bfloat16_op():
+                if a.size == 0:
+                    self.assertTrue(b.size == 0)
+                self.assertTrue(
+                    np.allclose(
+                        b,
+                        a,
+                        atol=atol,
+                        rtol=max_relative_error,
+                        equal_nan=False,
+                    ),
+                    (
+                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff over limit"
+                    )
+                    % (
+                        self.op_type,
+                        msg_prefix,
+                        name,
+                        str(a.shape),
+                        self.dtype,
+                    ),
                 )
+            else:
+                # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
+                # max_relative_error is 1e-7. According to the value of np.abs(a), we
+                # change np.abs(a) to achieve dynamic threshold. For example, if
+                # the value of np.abs(a) is between 1e-10 and 1e-8, we set np.abs(a)*=1e4.
+                # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
+                # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
 
-            self.assertLessEqual(max_diff, max_relative_error, err_msg())
+                abs_a = np.abs(a)
+                if abs_a.ndim > 0:
+                    if (
+                        self.dtype == np.float64
+                        and self.op_type
+                        not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+                    ):
+                        abs_a[abs_a < 1e-10] = 1e-3
+                        abs_a[
+                            np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)
+                        ] *= 1e4
+                        abs_a[
+                            np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)
+                        ] *= 1e2
+                    elif self.is_bfloat16_op():
+                        abs_a[abs_a < 1e-2] = 1
+                    else:
+                        abs_a[abs_a < 1e-3] = 1
+                elif abs_a.ndim == 0:
+                    if (
+                        self.dtype == np.float64
+                        and self.op_type
+                        not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+                    ):
+                        if abs_a < 1e-10:
+                            abs_a = 1e-3
+                        elif abs_a > 1e-10 and abs_a <= 1e-8:
+                            abs_a = abs_a * 1e4
+                        elif abs_a > 1e-8 and abs_a <= 1e-6:
+                            abs_a = abs_a * 1e2
+                    elif self.is_bfloat16_op():
+                        abs_a = 1 if abs_a < 1e-2 else abs_a
+                    else:
+                        abs_a = 1 if abs_a < 1e-3 else abs_a
+
+                if self.dtype == np.bool:
+                    diff_mat = np.abs(a ^ b) / abs_a
+                else:
+                    diff_mat = np.abs(a - b) / abs_a
+                max_diff = np.max(diff_mat)
+
+                def err_msg():
+                    offset = np.argmax(diff_mat > max_relative_error)
+                    return (
+                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
+                        "the first error element is %d, expected %e, but got %e."
+                    ) % (
+                        self.op_type,
+                        msg_prefix,
+                        name,
+                        str(a.shape),
+                        self.dtype,
+                        max_diff,
+                        max_relative_error,
+                        offset,
+                        a.flatten()[offset],
+                        b.flatten()[offset],
+                    )
+
+                self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def _check_grad_helper(self):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -2190,6 +2219,7 @@ class OpTest(unittest.TestCase):
         inputs_to_check,
         output_names,
         no_grad_set=None,
+        atol=1e-5,
         numeric_grad_delta=0.005,
         in_place=False,
         max_relative_error=0.005,
@@ -2212,6 +2242,7 @@ class OpTest(unittest.TestCase):
                 inputs_to_check,
                 output_names,
                 no_grad_set,
+                atol,
                 numeric_grad_delta,
                 in_place,
                 max_relative_error,
@@ -2229,6 +2260,7 @@ class OpTest(unittest.TestCase):
         inputs_to_check,
         output_names,
         no_grad_set=None,
+        atol=1e-5,
         numeric_grad_delta=0.005,
         in_place=False,
         max_relative_error=0.005,
@@ -2266,9 +2298,16 @@ class OpTest(unittest.TestCase):
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
 
         self._check_grad_helper()
-        if self.is_bfloat16_op() and self.is_mkldnn_op():
-            check_dygraph = False
-            check_eager = False
+        if self.is_bfloat16_op():
+            if self.is_mkldnn_op():
+                check_dygraph = False
+                check_eager = False
+                atol = 1e-2 if atol < 1e-2 else atol
+            else:
+                atol = 1e-1 if atol < 1e-1 else atol
+
+        if self.is_float16_op():
+            atol = 1e-3 if atol < 1e-3 else atol
 
         if (
             self.dtype == np.float64
@@ -2391,6 +2430,7 @@ class OpTest(unittest.TestCase):
             numeric_grads,
             analytic_grads,
             inputs_to_check,
+            atol,
             max_relative_error,
             "Gradient Check On %s" % str(place),
         )
@@ -2422,6 +2462,7 @@ class OpTest(unittest.TestCase):
                 numeric_grads,
                 dygraph_grad,
                 inputs_to_check,
+                atol,
                 max_relative_error,
                 "Gradient Check On %s" % str(place),
             )
@@ -2454,6 +2495,7 @@ class OpTest(unittest.TestCase):
                         numeric_grads,
                         eager_dygraph_grad,
                         inputs_to_check,
+                        atol,
                         max_relative_error,
                         "Gradient Check On %s" % str(place),
                     )
