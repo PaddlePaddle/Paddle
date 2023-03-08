@@ -24,21 +24,20 @@ import numpy as np
 import paddle
 import paddle.profiler as profiler
 import paddle.utils.deprecated as deprecated
-from paddle.fluid import core, framework
+from paddle.fluid import core, framework, unique_name
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
+from paddle.fluid.dygraph.base import (
+    _convert_into_variable,
+    in_declarative_mode,
+    program_desc_tracing_guard,
+)
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import Program
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode
 from paddle.profiler.utils import in_profiler_mode
 
-from .. import unique_name
-from .base import (
-    _convert_into_variable,
-    in_declarative_mode,
-    program_desc_tracing_guard,
-)
 from .layer_hooks import (
     LayerOpsRecoder,
     record_program_ops_pre_hook,
