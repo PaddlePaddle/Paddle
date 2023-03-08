@@ -118,7 +118,7 @@ def bicubic_interp_np(
 
 class XPUTestBicubicInterpV2Op(XPUOpTestWrapper):
     def __init__(self):
-        self.op_name = 'bicubic_interp'
+        self.op_name = 'bicubic_interp_v2'
         self.use_dynamic_create_class = False
 
     class TestBicubicInterpOp(XPUOpTest):
@@ -129,7 +129,7 @@ class XPUTestBicubicInterpV2Op(XPUOpTestWrapper):
             self.data_layout = 'NCHW'
             self.init_test_case()
             self.dtype = self.in_type
-            self.op_type = "bicubic_interp"
+            self.op_type = "bicubic_interp_v2"
             input_np = np.random.random(self.input_shape).astype(self.dtype)
 
             if self.data_layout == "NCHW":
@@ -374,7 +374,7 @@ class XPUTestBicubicInterpV2Op(XPUOpTestWrapper):
             self.actual_shape = None
             self.init_test_case()
             self.init_place()
-            self.op_type = "bicubic_interp"
+            self.op_type = "bicubic_interp_v2"
             self.dtype = self.in_type
             self.shape_by_1Dtensor = False
             self.scale_by_1Dtensor = False
@@ -488,7 +488,7 @@ class XPUTestBicubicInterpV2Op(XPUOpTestWrapper):
             self.scale_by_1Dtensor = True
 
 
-support_types = get_xpu_op_support_types('bicubic_interp')
+support_types = get_xpu_op_support_types('bicubic_interp_v2')
 for stype in support_types:
     create_test_class(globals(), XPUTestBicubicInterpV2Op, stype)
 
