@@ -943,11 +943,7 @@ class OpTest(unittest.TestCase):
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(
-                    program
-                ).with_data_parallel(
-                    loss_name=loss.name if loss else None, places=place
-                )
+                compiled_prog = fluid.CompiledProgram(program)
                 program = compiled_prog
             fetch_list = getattr(self, "fetch_list", [])
             # if the fetch_list is customized by user, we use it directly.
@@ -971,9 +967,7 @@ class OpTest(unittest.TestCase):
                 build_strategy.enable_inplace = enable_inplace
 
                 compiled_prog = fluid.CompiledProgram(
-                    program
-                ).with_data_parallel(
-                    build_strategy=build_strategy, places=place
+                    program, build_strategy=build_strategy
                 )
                 program = compiled_prog
 
@@ -1273,9 +1267,7 @@ class OpTest(unittest.TestCase):
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.enable_inplace = enable_inplace
                 compiled_program = fluid.CompiledProgram(
-                    grad_program
-                ).with_data_parallel(
-                    loss_name="", build_strategy=build_strategy, places=place
+                    grad_program, build_strategy=build_strategy
                 )
                 program = compiled_program
 
@@ -2426,9 +2418,7 @@ class OpTest(unittest.TestCase):
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
-                    loss_name=loss.name, places=place
-                )
+                compiled_prog = fluid.CompiledProgram(prog)
                 prog = compiled_prog
             executor = fluid.Executor(place)
             res = list(
