@@ -170,7 +170,7 @@ class OpTestUtils:
             for name in attrs_sig
         ]
         results = []
-        # hack support variable length parameter(such as paddle.meshgrid(*args,**k))
+        # hack support variable length parameter(such as paddle.meshgrid(*args,**kwargs)
         if api_params == []:
             results.append(input_arguments)
             return results
