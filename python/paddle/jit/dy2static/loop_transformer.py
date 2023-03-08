@@ -24,10 +24,11 @@ from .base_transformer import (
     ForNodeVisitor,
 )
 from .ifelse_transformer import ARGS_NAME
-from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 from .utils import (
     FunctionNameLivenessAnalysis,
     GetterSetterHelper,
+    NodeVarType,
     ast_to_source_code,
     create_get_args_node,
     create_name_str,
