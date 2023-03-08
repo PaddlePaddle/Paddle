@@ -33,21 +33,6 @@ struct hash<std::vector<T>> {
   }
 };
 
-///
-/// \brief Enable hashing std::vector<std::vector<T> instances.
-///
-template <typename T>
-struct hash<std::vector<std::vector<T>>> {
-  std::size_t operator()(const std::vector<std::vector<T>> &lod) const {
-    std::size_t seed = 0;
-    for (size_t i = 0; i < lod.size(); ++i) {
-      seed ^= std::hash<std::vector<T>>()(lod[i]) + 0x9e3779b9 + (seed << 6) +
-              (seed >> 2);
-    }
-    return seed;
-  }
-};
-
 }  // namespace std
 
 namespace ir {
@@ -65,8 +50,6 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
   ///
   enum class DataLayout : unsigned int {
     UNDEFINED = 0,
-    // TODO(chenweihang): keep ANY for compatibility, remove it later
-    ANY = UNDEFINED,
     NHWC,
     NCHW,
     NCDHW,
@@ -83,14 +66,6 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
 
     // Note: Unify phi DataLayout and fluid::framework::DataLayout,
     // for compatible with fluid DataLayout, here need prefix `k`
-
-    // Note: The original `kAnyLayout (enum value 2)` is a strange design.
-    // `kAnyLayout` originally cannot represent any kind of Layout,
-    // at the same time, it can also represent any Layout.
-    // Strictly, it means "default" or "undefined" layout,
-    // and should not be mixed with other meaningful layouts
-
-    kAnyLayout = ANY,
     kNHWC = NHWC,
     kNCHW = NCHW,
     kMKLDNN = ONEDNN,  // all layouts supported by ONEDNN internally
