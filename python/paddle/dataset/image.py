@@ -35,9 +35,10 @@ import tarfile
 
 import numpy as np
 
-from paddle.utils.lazy_import import try_import
+from paddle.utils import try_import
 
 __all__ = []
+cv2 = try_import("cv2")
 
 
 def batch_images_from_tar(
@@ -120,7 +121,6 @@ def load_image_bytes(bytes, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    cv2 = try_import('cv2')
     flag = 1 if is_color else 0
     file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, flag)
@@ -144,7 +144,7 @@ def load_image(file, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    cv2 = try_import('cv2')
+
     # cv2.IMAGE_COLOR for OpenCV3
     # cv2.CV_LOAD_IMAGE_COLOR for older OpenCV Version
     # cv2.IMAGE_GRAYSCALE for OpenCV3
@@ -172,8 +172,6 @@ def resize_short(im, size):
     :param size: the shorter edge size of image after resizing.
     :type size: int
     """
-    cv2 = try_import('cv2')
-
     h, w = im.shape[:2]
     h_new, w_new = size, size
     if h > w:
