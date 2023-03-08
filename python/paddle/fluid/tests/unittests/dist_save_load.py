@@ -22,7 +22,7 @@ from test_dist_base import RUN_STEP, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core, io
+from paddle.fluid import core
 
 
 class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
@@ -56,7 +56,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
             return var.persistable
 
-        io.load_vars(
+        paddle.static.io.load_vars(
             executor,
             dirname=dirname,
             main_program=program,
@@ -89,7 +89,9 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
         exe.run(startup_prog)
 
         if need_load and model_dir:
-            fluid.io.load_persistables(exe, model_dir, pserver_prog)
+            paddle.distributed.io.load_persistables(
+                exe, model_dir, pserver_prog
+            )
 
         exe.run(pserver_prog)
 

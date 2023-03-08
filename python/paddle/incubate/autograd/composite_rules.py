@@ -202,17 +202,18 @@ def mean_composite(x, axis, keepdim):
     return divide(sum_x, norm)
 
 
-def maybe_wrap_dim(dim: int, dim_post_expr: int):
-    """get real dim form idx and len of dims"""
-    if dim_post_expr == 0:
-        assert dim == 0 or dim == -1
-        return 0
-    min = -dim_post_expr
-    max = dim_post_expr - 1
-    assert not (dim < min or dim > max)
-    if dim < 0:
-        dim += dim_post_expr
-    return dim
+@REGISTER_COMPOSITE('stack')
+def stack_composite(x, axis):
+    """
+    define composite rule of op stack
+    unsqueeze each dimension of the input (use reshape), and then concat
+    """
+    x_shape = x[0].shape
+    if axis < 0:
+        axis += len(x_shape) + 1
+    out_shape = x_shape[:axis] + (1,) + x_shape[axis:]
+    out = concat([reshape(item, out_shape) for item in x], axis)
+    return out
 
 
 @REGISTER_COMPOSITE('flatten_contiguous_range')

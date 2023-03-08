@@ -20,9 +20,8 @@
 #include "paddle/phi/core/ddim.h"
 namespace paddle {
 namespace prim {
-using Tensor = paddle::experimental::Tensor;
-using IntArray =
-    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+using Tensor = paddle::Tensor;
+using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
@@ -89,7 +88,11 @@ void transpose_grad(const Tensor& grad_out,
     std::vector<int> reverse_perm(perm);
     // make origin ranks
     for (int i = 0; i < static_cast<int>(perm.size()); ++i) {
-      reverse_perm[perm[i]] = i;
+      if (perm[i] >= 0) {
+        reverse_perm[perm[i]] = i;
+      } else {
+        reverse_perm[perm[i] + perm.size()] = i;
+      }
     }
     auto grad_x_tmp = transpose<T>(grad_out, reverse_perm);
     set_output<T>(grad_x_tmp, grad_x);
