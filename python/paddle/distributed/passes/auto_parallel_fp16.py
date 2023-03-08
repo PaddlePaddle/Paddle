@@ -29,6 +29,9 @@ from paddle.distributed.auto_parallel.utils import (
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.framework import core
 from paddle.static import default_main_program, default_startup_program
+
+# NOTE bf16 and fp16 may have diff logic for _keep_layer_norm_scale_bias_to_fp32
+from paddle.static.amp.fp16_utils import _keep_layer_norm_scale_bias_to_fp32
 from paddle.utils import unique_name
 
 from ..auto_parallel.process_mesh import ProcessMesh
@@ -44,6 +47,7 @@ __amp_skip_ops__ = [
     'cast',
 ]
 __target_dtype__ = None
+__amp_utils__ = None
 
 
 def set_op_dtype_to_fp16(op):
@@ -210,7 +214,7 @@ class FP16State:
                         self._op_fp16_dict[op.desc.original_id()] = True
                     return
 
-            if _need_keep_fp32(
+            if __amp_utils__._need_keep_fp32(
                 op, self.amp_list.unsupported_list, self.use_fp16_guard
             ):
                 self._op_fp16_dict[op.desc.original_id()] = False
@@ -242,7 +246,11 @@ class FP16State:
 
         # NOTE(JZ-LIANG) "array_" is a hack to adopt for ernie3.0 inference, since there is
         # a trick which make the LOD_TENSOR_ARRAY to the float32 in while block to reset the LOD_TENSOR_ARRAY
-        if var is None or var.type not in _valid_types or "array_" in var_name:
+        if (
+            var is None
+            or var.type not in __amp_utils__._valid_types
+            or "array_" in var_name
+        ):
             return
 
         if var.dtype == core.VarDesc.VarType.FP32:
@@ -276,7 +284,10 @@ class FP16State:
                 elif self._is_fp16_op(op.desc.original_id()) is False:
                     for out_var_name in op.output_arg_names:
                         out_var = block.vars.get(out_var_name)
-                        if out_var is None or out_var.type not in _valid_types:
+                        if (
+                            out_var is None
+                            or out_var.type not in __amp_utils__._valid_types
+                        ):
                             continue
                         if out_var.dtype == __target_dtype__:
                             out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
@@ -292,7 +303,10 @@ class FP16State:
                 elif self._is_fp16_op(op.desc.original_id()) is False:
                     for out_var_name in op.output_arg_names:
                         out_var = block.vars.get(out_var_name)
-                        if out_var is None or out_var.type not in _valid_types:
+                        if (
+                            out_var is None
+                            or out_var.type not in __amp_utils__._valid_types
+                        ):
                             continue
                         if out_var.dtype == __target_dtype__:
                             out_var.desc.set_dtype(core.VarDesc.VarType.FP32)
@@ -361,6 +375,7 @@ class FP16State:
                     out_var.desc.set_dtype(in_var.dtype)
 
             idx += num_cast_ops + 1
+        print("self.forward_input_cast_ops: ", self.forward_input_cast_ops)
         block._sync_with_cpp()
 
     def _insert_forward_cast_ops(
@@ -381,19 +396,30 @@ class FP16State:
                 in_var = block._find_var_recursive(in_var_name)
                 if (
                     in_var is None
-                    or in_var.type not in _valid_types
+                    or in_var.type not in __amp_utils__._valid_types
                     or in_var.dtype == dst_dtype
                 ):
                     continue
 
                 if in_var.dtype == src_dtype:
                     cast_name = (
-                        in_var.name + '.cast_' + _dtype_to_str(dst_dtype)
+                        in_var.name
+                        + '.cast_'
+                        + __amp_utils__._dtype_to_str(dst_dtype)
                     )
                     cast_var = block.vars.get(cast_name)
                     self.forward_input_cast_ops[op.desc.original_id()] += [
                         (cast_name, in_var.name, dst_dtype, src_dtype, in_name)
                     ]
+                    print(
+                        "insert forward cast: ",
+                        cast_name,
+                        in_var.name,
+                        dst_dtype,
+                        src_dtype,
+                        in_name,
+                    )
+                    print(str(op))
 
                     in_var_dist_attr = consume_op_attr.get_input_dist_attr(
                         in_var.name
@@ -469,7 +495,8 @@ class FP16State:
             assert out_var.dtype == dst_dtype, "{}, {}".format(
                 str(out_var), dst_dtype
             )
-
+        if int(forward_op_id) == 610:
+            print("forward_op_id = 610", str(op))
         for (
             cast_name,
             src_name,
@@ -477,9 +504,14 @@ class FP16State:
             src_dtype,
             slot_name,
         ) in self.forward_input_cast_ops[forward_op_id]:
+            if int(forward_op_id) == 610:
+                print("forward_op_id = 610 insert: ")
+                print(cast_name, src_name, dst_dtype, src_dtype, slot_name)
 
             # some forward output is not need by backward computation, e.g. logit in softmax_with_cross_entropy
-            if slot_name not in op.input_names:
+            if slot_name not in op.input_names and op.type in [
+                'softmax_with_cross_entropy_grad'
+            ]:
                 continue
 
             # rename input
@@ -490,12 +522,14 @@ class FP16State:
             assert src_var_dist_attr is not None
             op._rename_input(src_name, cast_name)
             grad_op_attr.set_input_dist_attr(cast_name, src_var_dist_attr)
-
+            if int(forward_op_id) == 610:
+                print("here0")
             # create cast grad
             grad_slot_name = slot_name + "@GRAD"
             if grad_slot_name not in op.output_names:
                 continue
-
+            if int(forward_op_id) == 610:
+                print("here1")
             # some forward input maybe stop_gradient=True, e.g. input_mask
             if len(op.output(grad_slot_name)) == 0:
                 continue
@@ -519,6 +553,8 @@ class FP16State:
                 persistable=grad.persistable,
                 stop_gradient=grad.stop_gradient,
             )
+            if int(forward_op_id) == 610:
+                print("here2: ", str(cast_grad))
             dist_context.set_tensor_dist_attr_for_program(
                 cast_grad, grad_dist_attr
             )
@@ -537,6 +573,8 @@ class FP16State:
                     OP_ROLE_KEY: OpRole.Backward,
                 },
             )
+            if int(forward_op_id) == 610:
+                print("here2: ", str(cast_op))
             grad.desc.set_dtype(src_dtype)
 
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
@@ -722,7 +760,7 @@ def cast_startup_program():
                     op._set_attr('dtype', __target_dtype__)
 
 
-@register_pass("auto_parallel_amp_o2")
+@register_pass("auto_parallel_fp16")
 class FP16Pass(AMPPass):
     def __init__(self):
         super().__init__()
@@ -740,24 +778,28 @@ class FP16Pass(AMPPass):
             self.use_optimizer_fp16 = self.get_attr("level", None) == "o3"
 
         # swith enviroment for fp16 / bf16.
-        if self.target_dtype == "fp16":
-            from paddle.static.amp.fp16_utils import AutoMixedPrecisionLists
+        if self.target_dtype == "float16":
+            import paddle.static.amp.fp16_utils as amp_utils
 
-            __target_dtype__ = core.VarDesc.VarType.FP16
-            AMPList = AutoMixedPrecisionLists
-        elif self.target_dtype == "bf16":
-            from paddle.static.amp.bf16.amp_utils import (
-                AutoMixedPrecisionListsBF16,
-            )
+            AMPList = amp_utils.AutoMixedPrecisionLists
+            __target_dtype = core.VarDesc.VarType.FP16
 
-            AMPList = AutoMixedPrecisionListsBF16
-            __target_dtype__ = core.VarDesc.VarType.BF16
+        elif self.target_dtype == "bfloat16":
+            import paddle.static.amp.bf16.amp_utils as amp_utils
+
+            AMPList = amp_utils.AutoMixedPrecisionListsBF16
+            __target_dtype = core.VarDesc.VarType.BF16
+
         else:
             raise NotImplementedError(
                 "target dtype [{}] is for amp o2 not supported yet.".format(
                     self.target_dtype
                 )
             )
+        global __target_dtype__
+        __target_dtype__ = __target_dtype
+        global __amp_utils__
+        __amp_utils__ = amp_utils
         amp_list = AMPList(
             set(self.get_attr("custom_white_list")),
             set(self.get_attr("custom_black_list")),
