@@ -25,7 +25,7 @@ namespace phi {
 namespace {
 const int ARG_MAX_OUTPUT_DATATYPE_INT32 = 2;
 const int ARG_MAX_OUTPUT_DATATYPE_INT64 = 3;
-}  // namespace
+}  // Anonymous namespace
 
 template <typename T, typename Context>
 void ArgMaxKernel(const Context& dev_ctx,
