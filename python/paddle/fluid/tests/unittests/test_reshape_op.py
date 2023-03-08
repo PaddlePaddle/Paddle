@@ -77,7 +77,7 @@ class TestReshapeOp_ZeroDim2(TestReshapeOp_ZeroDim1):
         self.infered_shape = (1,)
 
 
-class TestReshapeOp_ZeroDim3(TestReshapeOp_ZeroDim1):
+class TestReshapeOp_ZeroDim3(OpTest):
     def init_data(self):
         self.ori_shape = (1,)
         self.new_shape = ()
@@ -135,7 +135,6 @@ class TestReshapeOpWithInputShape(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
-        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
 
@@ -158,7 +157,7 @@ class TestReshapeOpWithInputShape(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(["X"], "Out")
 
 
 # Situation 3: have shape(list, have tensor), no actual shape(Tensor)
@@ -166,7 +165,6 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
-        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
 
@@ -196,7 +194,7 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(["X"], "Out")
 
 
 class TestReshapeOpDimInfer1_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor):
@@ -220,7 +218,6 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
-        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
 
@@ -243,7 +240,7 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(["X"], "Out")
 
 
 class TestReshapeOpDimInfer1_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
