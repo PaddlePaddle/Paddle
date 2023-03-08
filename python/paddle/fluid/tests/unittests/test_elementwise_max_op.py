@@ -26,6 +26,7 @@ class TestElementwiseOp(OpTest):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.enable_cinn = False
         # If x and y have the same value, the max() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
@@ -75,6 +76,7 @@ class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.uniform(0.1, 1, []).astype("float64")
         y = np.random.uniform(0.1, 1, []).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -86,6 +88,7 @@ class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         y = np.random.uniform(0.1, 1, []).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -97,6 +100,7 @@ class TestElementwiseMaxOp_ZeroDim3(TestElementwiseOp):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.uniform(0.1, 1, []).astype("float64")
         y = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -116,6 +120,7 @@ class TestElementwiseBF16Op(OpTest):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.dtype = np.uint16
         # If x and y have the same value, the max() is not differentiable.
         # So we generate test data by the following method
@@ -137,6 +142,7 @@ class TestElementwiseBF16Op(OpTest):
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
+            # check_prim=False, bfloat16 is not supported in `less_equal`
             self.check_grad(['X', 'Y'], 'Out', check_eager=False)
         else:
             self.check_grad(['X', 'Y'], 'Out', check_eager=True)
@@ -156,6 +162,7 @@ class TestElementwiseMaxOp_scalar(TestElementwiseOp):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.random_integers(-5, 5, [2, 3, 20]).astype("float64")
         y = np.array([0.5]).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -167,6 +174,7 @@ class TestElementwiseMaxOp_Vector(TestElementwiseOp):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
         self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.random((100,)).astype("float64")
         sgn = np.random.choice([-1, 1], (100,)).astype("float64")
         y = x + sgn * np.random.uniform(0.1, 1, (100,)).astype("float64")
