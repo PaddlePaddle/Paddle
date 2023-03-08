@@ -104,7 +104,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "qr",
     "qr_grad",
     "rnn",
-    "roi_pool",
     "search_sort",
     "select",
     "send_recv",
