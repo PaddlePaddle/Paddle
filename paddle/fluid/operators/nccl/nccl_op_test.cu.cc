@@ -130,6 +130,7 @@ class NCCLTester : public ::testing::Test {
     VLOG(1) << " send_tensor : " << send_tensor->numel()
             << " recv_tensor : " << recv_tensor->numel();
     op->Run(*scope, place);
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
     VLOG(1) << "Device : " << gpu_id << " finished " << op_desc.Type();
   }
 
