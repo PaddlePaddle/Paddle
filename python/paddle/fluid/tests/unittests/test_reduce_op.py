@@ -1250,6 +1250,18 @@ class TestAnyAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestAllZeroError(unittest.TestCase):
+    def test_errors(self):
+        with paddle.fluid.dygraph.guard():
+
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(np.reshape(array, [0, 0, 0]), dtype='bool')
+                paddle.all(x, axis=1)
+
+            self.assertRaises(ValueError, test_0_size)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

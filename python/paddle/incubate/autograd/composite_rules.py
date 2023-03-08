@@ -192,6 +192,20 @@ def mean_composite(x, axis, keepdim):
     return divide(sum_x, norm)
 
 
+@REGISTER_COMPOSITE('stack')
+def stack_composite(x, axis):
+    """
+    define composite rule of op stack
+    unsqueeze each dimension of the input (use reshape), and then concat
+    """
+    x_shape = x[0].shape
+    if axis < 0:
+        axis += len(x_shape) + 1
+    out_shape = x_shape[:axis] + (1,) + x_shape[axis:]
+    out = concat([reshape(item, out_shape) for item in x], axis)
+    return out
+
+
 @REGISTER_COMPOSITE('flatten_contiguous_range')
 def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     """
@@ -283,6 +297,17 @@ def hard_swish_composite(x):
         * x
         / full(x.shape, scale, dtype=x.dtype)
     )
+    return res
+
+
+@REGISTER_COMPOSITE('sigmoid')
+def sigmoid_composite(x):
+    """
+    define composite rule of op sigmoid
+    res = 1 / (1 + exp(-x))
+    """
+    sum_temp = 1 + exp(-x)
+    res = 1 / sum_temp
     return res
 
 

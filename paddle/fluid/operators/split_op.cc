@@ -212,19 +212,18 @@ class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
  public:
   void Apply() override {
-    std::vector<paddle::experimental::Tensor> tensor_sections =
-        this->GetMultiForwardInput("SectionsTensorList");
-    paddle::experimental::Tensor tensor_axis =
-        this->GetSingleForwardInput("AxisTensor");
+    std::vector<paddle::optional<paddle::Tensor>> tensor_sections =
+        this->GetOptionalMultiForwardInput("SectionsTensorList");
+    paddle::optional<paddle::Tensor> tensor_axis =
+        this->GetOptionalSingleForwardInput("AxisTensor");
     int axis = static_cast<int>(this->Attr<int>("axis"));
     std::vector<int> sections =
         static_cast<std::vector<int>>(this->Attr<std::vector<int>>("sections"));
 
-    paddle::experimental::Tensor input_grad = this->GetSingleInputGrad("X");
+    paddle::Tensor input_grad = this->GetSingleInputGrad("X");
     auto dx_ptr = this->GetOutputPtr(&input_grad);
     std::string dx_name = this->GetOutputName(input_grad);
-    std::vector<paddle::experimental::Tensor> out_grad =
-        this->GetMultiOutputGrad("Out");
+    std::vector<paddle::Tensor> out_grad = this->GetMultiOutputGrad("Out");
 
     if (tensor_axis.is_initialized()) {
       PADDLE_THROW(platform::errors::Unimplemented(
