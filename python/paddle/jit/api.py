@@ -73,6 +73,7 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.fluid.io import save_inference_model
 
 
 def create_program_from_desc(program_desc):
@@ -1159,8 +1160,6 @@ def save(layer, path, input_spec=None, **configs):
         )
 
         # 5. save inference model
-        from paddle.fluid.io import save_inference_model
-
         # construct new save_inference_model arguments
         model_path = dirname
         # NOTE(chenweihang): because prefix contains model and params filename,
@@ -1209,7 +1208,11 @@ def save(layer, path, input_spec=None, **configs):
             paddle.static.save_vars(
                 Executor(_current_expected_place()),
                 dirname=model_path,
-                vars=list(filter(paddle.fluid.io.is_persistable, ordered_vars)),
+                vars=list(
+                    filter(
+                        paddle.framework.io_utils.is_persistable, ordered_vars
+                    )
+                ),
                 filename=params_filename,
             )
         # save property
@@ -1678,11 +1681,8 @@ class TracedLayer:
     @switch_to_static_graph
     def _compile(self):
         self._compiled_program = CompiledProgram(
-            self._program
-        ).with_data_parallel(
+            self._program,
             build_strategy=self._build_strategy,
-            exec_strategy=self._exec_strategy,
-            places=self._place,
         )
 
     def _build_feed(self, inputs):
@@ -1815,8 +1815,6 @@ class TracedLayer:
         dirname = os.path.dirname(path)
         if dirname and not os.path.exists(dirname):
             os.makedirs(dirname)
-
-        from paddle.fluid.io import save_inference_model
 
         def get_feed_fetch(all_vars, partial_vars):
             if partial_vars is None:

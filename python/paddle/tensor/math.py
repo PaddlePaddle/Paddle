@@ -750,6 +750,9 @@ def floor_divide(x, y, name=None):
     .. math::
         out = trunc(x / y)
 
+    - :math:`x`: Multidimensional Tensor.
+    - :math:`y`: Multidimensional Tensor.
+
     Note:
         ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 

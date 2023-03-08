@@ -42,12 +42,16 @@ class AdamaxOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) "
              "Input exponentially weighted infinity norm");
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator");
-
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("MomentOut", "(Tensor) Output first moment");
     AddOutput("InfNormOut",
               "(Tensor) "
               "Output exponentially weighted infinity norm");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "
@@ -63,6 +67,10 @@ class AdamaxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1.0e-8) "
                    "Constant for numerical stability")
         .SetDefault(1.0e-8f);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Adamax Optimizer.
 

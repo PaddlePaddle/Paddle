@@ -28,6 +28,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/scope_guard.h"
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
