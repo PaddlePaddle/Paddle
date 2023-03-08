@@ -67,16 +67,6 @@ PADDLE_DEFINE_EXPORTED_int32(
     "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
-namespace platform {
-
-void ParseCommandLineFlags(int argc, char **argv, bool remove) {
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, remove);
-}
-
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 #ifdef _WIN32
@@ -109,6 +99,7 @@ bool InitGflags(std::vector<std::string> args) {
             << ", Init commandline: " << line;
 
     char **arr = argv.data();
+    ::GFLAGS_NAMESPACE::AllowCommandLineReparsing();
     ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &arr, true);
     successed = true;
 
