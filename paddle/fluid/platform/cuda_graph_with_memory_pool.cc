@@ -17,6 +17,7 @@
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/phi/backends/context_pool.h"
 // #include "paddle/phi/backends/context_pool_utils.h"
+#include "paddle/fluid/platform/device_event.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
 DECLARE_bool(new_executor_use_cuda_graph);
@@ -118,6 +119,11 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
                                      .GetAllocator(place)
                                      .get());
   if (create_cuda_graph_stream) {
+    std::shared_ptr<platform::DeviceEvent> cuda_graph_event =
+        std::make_shared<platform::DeviceEvent>(
+            dev_ctx->GetPlace(), platform::GenerateDeviceEventFlag());
+    cuda_graph_event->Record(dev_ctx);
+
     auto dev_ctxs = phi::backends::gpu::CUDAGraphContextManager::Instance()
                         .GetAllDeviceContexts();
     VLOG(4) << "yoki2";
@@ -132,6 +138,11 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
               .get());
       VLOG(4) << "set CUDAGraphAllocator. dev_ctx: " << stream_dev_ctx
               << "  stream: " << stream_cap;
+
+      VLOG(4) << "yoki4: stream_dev_ctx: " << stream_dev_ctx;
+      cuda_graph_event->Wait(platform::kCUDA, stream_dev_ctx);
+      VLOG(4) << "CUDA Graph stream eventWait. stream: " << stream_dev_ctx
+              << " wait for cuda graph stream: " << dev_ctx;
     }
   }
   if (old_value) {
@@ -157,6 +168,8 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
                           .Get(pool_id, place, 0)
                           .get()
                           .get();
+    auto* cuda_graph_dev_ctx =
+        reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
     auto dev_ctxs = phi::backends::gpu::CUDAGraphContextManager::Instance()
                         .GetAllDeviceContexts();
     VLOG(4) << "yoki2";
@@ -164,6 +177,13 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
       VLOG(4) << "yoki3";
       auto* stream_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
       VLOG(4) << "yoki4: stream_dev_ctx: " << stream_dev_ctx;
+      std::shared_ptr<platform::DeviceEvent> stream_event =
+          std::make_shared<platform::DeviceEvent>(
+              stream_dev_ctx->GetPlace(), platform::GenerateDeviceEventFlag());
+      stream_event->Record(stream_dev_ctx);
+      stream_event->Wait(platform::kCUDA, cuda_graph_dev_ctx);
+      VLOG(4) << "CUDA Graph stream eventWait. cuda graph stream: "
+              << cuda_graph_dev_ctx << " wait for stream: " << stream_dev_ctx;
       stream_dev_ctx->cudnn_workspace_handle().ResetWorkspace();
       stream_dev_ctx->SetCUDAGraphAllocator(nullptr);
     }

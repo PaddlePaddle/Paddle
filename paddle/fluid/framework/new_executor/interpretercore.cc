@@ -33,7 +33,9 @@
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#endif
 
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
@@ -201,28 +203,28 @@ interpreter::CostInfo InterpreterCore::DryRun(
 
 void InterpreterCore::RunImpl() {
   // auto* cuda_graph_dev_ctx = stream_analyzer_.CreateCUDAGraphDeviceContext();
-  if (platform::IsCUDAGraphCapturing()) {
-    /*auto dev_ctxs = stream_analyzer_.GetAllDeviceContexts();
-    VLOG(4) << "yoki2";
-    for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
-      VLOG(4) << "yoki3";
-      auto* stream_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
-      VLOG(4) << "yoki4";
-      auto stream = stream_dev_ctx->stream();
-      VLOG(4) << "yoki5";
-      if (!stream_dev_ctx->IsCUDAGraphAllocatorValid()) {
-        VLOG(4) << "yoki6";
-        stream_dev_ctx->SetCUDAGraphAllocator(
-            memory::allocation::AllocatorFacade::Instance()
-                .GetAllocator(place_, stream)
-                .get());
-        VLOG(4) << "set CUDAGraphAllocator. dev_ctx: " << stream_dev_ctx
-                << "  stream: " << stream;
-      } else {
-        VLOG(4) << "CUDAGraphAllocator is not nullptr.";
-      }
-    }
-    VLOG(4) << "yoki7";*/
+  /*if (platform::IsCUDAGraphCapturing()) {
+    // auto dev_ctxs = stream_analyzer_.GetAllDeviceContexts();
+    // VLOG(4) << "yoki2";
+    // for (auto iter = dev_ctxs.begin(); iter != dev_ctxs.end(); ++iter) {
+    //   VLOG(4) << "yoki3";
+    //   auto* stream_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
+    //   VLOG(4) << "yoki4";
+    //   auto stream = stream_dev_ctx->stream();
+    //   VLOG(4) << "yoki5";
+    //   if (!stream_dev_ctx->IsCUDAGraphAllocatorValid()) {
+    //     VLOG(4) << "yoki6";
+    //     stream_dev_ctx->SetCUDAGraphAllocator(
+    //         memory::allocation::AllocatorFacade::Instance()
+    //             .GetAllocator(place_, stream)
+    //             .get());
+    //     VLOG(4) << "set CUDAGraphAllocator. dev_ctx: " << stream_dev_ctx
+    //             << "  stream: " << stream;
+    //   } else {
+    //     VLOG(4) << "CUDAGraphAllocator is not nullptr.";
+    //   }
+    // }
+    // VLOG(4) << "yoki7";
     auto dev_ctxs = phi::backends::gpu::CUDAGraphContextManager::Instance()
                         .GetAllDeviceContexts();
     // auto* cuda_graph_dev_ctx_tmp =
@@ -255,7 +257,7 @@ void InterpreterCore::RunImpl() {
                 << " wait for cuda graph stream: " << cuda_graph_dev_ctx;
       }
     }
-  }
+  }*/
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
@@ -273,7 +275,7 @@ void InterpreterCore::RunImpl() {
     async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
   }
-  if (platform::IsCUDAGraphCapturing()) {
+  /*if (platform::IsCUDAGraphCapturing()) {
     // auto dev_ctxs = stream_analyzer_.GetAllDeviceContexts();
     auto dev_ctxs = phi::backends::gpu::CUDAGraphContextManager::Instance()
                         .GetAllDeviceContexts();
@@ -307,7 +309,7 @@ void InterpreterCore::RunImpl() {
                 << cuda_graph_dev_ctx << " wait for stream: " << stream_dev_ctx;
       }
     }
-  }
+  }*/
 #ifdef PADDLE_WITH_ASCEND_CL
   if (platform::is_npu_place(place_)) {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
