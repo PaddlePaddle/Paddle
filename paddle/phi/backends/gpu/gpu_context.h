@@ -262,6 +262,28 @@ class PADDLE_API GPUContext : public DeviceContext,
   std::unique_ptr<Impl> impl_;
 };
 
+// Note: In order to register the kernel of CUDNN, DnnContext is required.
+// Currently, CUDNN kernel directly uses GPUContext. But if the kernel function
+// has the same name, this will lead to duplicate instantiations of GPU kernel
+// and Dnn kernel function, so if we using DnnContext = GPUContext, we
+// must use different function name for cudnn kernel
+using GPUDNNContext = GPUContext;
+
+// KPS (Kernel PrimitiveS API) needs to exist as a kind of backend,
+// because we want to implement a KPS-based kernel and make it run
+// on GPU and XPU at the same time, so we need KPSContext when registering
+// KPS Kernel. Note: XPU and GPU cannot be compiled at the same time!
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+using KPSContext = GPUContext;
+#endif
+
+}  // namespace phi
+
+namespace Eigen {
+struct DefaultDevice;
+}  // namespace Eigen
+
+namespace phi {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // Currently, GPUPinnedContext is only used to data copying.
 class GPUPinnedContext
@@ -282,20 +304,4 @@ class GPUPinnedContext
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 #endif
-
-// Note: In order to register the kernel of CUDNN, DnnContext is required.
-// Currently, CUDNN kernel directly uses GPUContext. But if the kernel function
-// has the same name, this will lead to duplicate instantiations of GPU kernel
-// and Dnn kernel function, so if we using DnnContext = GPUContext, we
-// must use different function name for cudnn kernel
-using GPUDNNContext = GPUContext;
-
-// KPS (Kernel PrimitiveS API) needs to exist as a kind of backend,
-// because we want to implement a KPS-based kernel and make it run
-// on GPU and XPU at the same time, so we need KPSContext when registering
-// KPS Kernel. Note: XPU and GPU cannot be compiled at the same time!
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-using KPSContext = GPUContext;
-#endif
-
 }  // namespace phi

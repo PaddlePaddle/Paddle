@@ -597,49 +597,44 @@ void DeviceManager::CCLRecv(const std::string& device_type,
 }
 
 // profiler
-void DeviceManager::ProfilerInitialize(
-    const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
-    void** context) {
+void DeviceManager::ProfilerInitialize(const std::string& dev_type,
+                                       phi::TraceEventCollector* collector,
+                                       void** context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
   dev_impl->ProfilerInitialize(collector, context);
 }
 
-void DeviceManager::ProfilerFinalize(
-    const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
-    void* context) {
+void DeviceManager::ProfilerFinalize(const std::string& dev_type,
+                                     phi::TraceEventCollector* collector,
+                                     void* context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
   dev_impl->ProfilerFinalize(collector, context);
 }
 
-void DeviceManager::ProfilerPrepareTracing(
-    const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
-    void* context) {
+void DeviceManager::ProfilerPrepareTracing(const std::string& dev_type,
+                                           phi::TraceEventCollector* collector,
+                                           void* context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
   dev_impl->ProfilerPrepareTracing(collector, context);
 }
 
-void DeviceManager::ProfilerStartTracing(
-    const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
-    void* context) {
+void DeviceManager::ProfilerStartTracing(const std::string& dev_type,
+                                         phi::TraceEventCollector* collector,
+                                         void* context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
   dev_impl->ProfilerStartTracing(collector, context);
 }
 
-void DeviceManager::ProfilerStopTracing(
-    const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
-    void* context) {
+void DeviceManager::ProfilerStopTracing(const std::string& dev_type,
+                                        phi::TraceEventCollector* collector,
+                                        void* context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
   dev_impl->ProfilerStopTracing(collector, context);
 }
 
 void DeviceManager::ProfilerCollectTraceData(
     const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
+    phi::TraceEventCollector* collector,
     uint64_t start_ns,
     void* context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
