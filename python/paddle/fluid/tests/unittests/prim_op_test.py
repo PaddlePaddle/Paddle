@@ -105,7 +105,7 @@ class OpTestUtils:
         def to_defaults_list(params, defaults):
             return [defaults[p] for p in params if p in defaults]
 
-        def parse_attri_value(name, op_inputs, op_attrs, np_inputs):
+        def parse_attri_value(name, op_inputs, op_proto_attrs, np_inputs):
             """parse true value from inputs and attrs, if there is no name passed by OpTest, return Empty
             1. if the name in op_attrs, use the op_attrs[name]
             2. if the name in op_inputs, convert the op_inputs to [type of default value]
@@ -162,7 +162,7 @@ class OpTestUtils:
         # use tuple to distinguish list(Tensor)
         input_arguments = [
             tuple(op_proto_ins.get(name, Empty()))
-            if isinstance(np_inputs[name], list)
+            if name in np_inputs and isinstance(np_inputs[name], list)
             else op_proto_ins.get(name, Empty())
             for name in inputs_sig
         ] + [
