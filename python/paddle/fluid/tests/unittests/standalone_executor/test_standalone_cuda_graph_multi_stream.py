@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.device.cuda.graphs import CUDAGraph
+
+sys.path.append("..")
+from test_cuda_graph_static_mode import build_program
 
 # from test_standalone_executor import build_program
 
@@ -30,6 +33,7 @@ def can_use_cuda_graph():
     return paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm()
 
 
+"""
 def func1(data):
     weight = paddle.randn([64, 64], name='weight')  # gpu
     matmul_out = paddle.matmul(data, weight, name='matmul_out')  # gpus
@@ -82,7 +86,7 @@ def build_program(batch_size, class_num):
         optimizer = paddle.optimizer.SGD(learning_rate=lr)
         optimizer.minimize(loss)
     return main, startup, image, label, loss, lr
-
+"""
 
 """
 def build_program():
@@ -151,6 +155,7 @@ class TestCustomStream(unittest.TestCase):
                     'FLAGS_sync_nccl_allreduce': False,
                     'FLAGS_cudnn_deterministic': True,
                     'FLAGS_use_stream_safe_cuda_allocator': True,
+                    'FLAGS_new_executor_use_cuda_graph': True,
                 }
             )
 
@@ -180,26 +185,14 @@ class TestCustomStream(unittest.TestCase):
 
         paddle.seed(seed)
         np.random.seed(seed)
-
-        main, startup, image, label, loss, lr = build_program(
-            batch_size, class_num
+        startup = paddle.static.Program()
+        main = paddle.static.Program()
+        image, label, loss, lr = build_program(
+            main, startup, batch_size, class_num
         )
 
-        # if apply_custom_stream:
-        #     self.set_custom_stream(main)
-        op_index_for_stream1 = [2, 4, 9]
-        op_index_for_stream2 = [7, 8, 10, 11]
-        ops = main.global_block().ops
-        print("yoki: ops: ", ops)
-        for op_index in op_index_for_stream1:
-            ops[op_index].dist_attr.execution_stream = "s1"
-            ops[op_index].dist_attr.stream_priority = 0
-            print("yoki s1: ops[", op_index, "]: ", ops[op_index].type)
-        for op_index in op_index_for_stream2:
-            ops[op_index].dist_attr.execution_stream = "s2"
-            ops[op_index].dist_attr.stream_priority = -1
-            print("yoki s2: ops[", op_index, "]: ", ops[op_index].type)
-        print("yoki: ops2: ", ops)
+        if apply_custom_stream:
+            self.set_custom_stream(main)
 
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
@@ -223,19 +216,16 @@ class TestCustomStream(unittest.TestCase):
             outs = []
             paddle.set_flags({"FLAGS_new_executor_use_cuda_graph": True})
             for batch_id in range(20):
-                use_feed_data = False
                 image_np = np.random.rand(*image_shape).astype('float32')
                 label_np = np.random.randint(
                     low=0, high=class_num, size=label_shape, dtype='int64'
                 )
-                if not use_feed_data:
-                    image_t.set(image_np, place)
-                    label_t.set(label_np, place)
+                image_t.set(image_np, place)
+                label_t.set(label_np, place)
 
                 if batch_id == 1 and use_cuda_graph:
                     cuda_graph = CUDAGraph(place, mode="global")
                     cuda_graph.capture_begin(create_cuda_graph_stream=True)
-                    # exe.run(compiled_program)
                     exe.run(main)
                     cuda_graph.capture_end()
 
@@ -243,13 +233,6 @@ class TestCustomStream(unittest.TestCase):
                     lr_t.set(np.array([lr()], dtype='float32'), place)
                     cuda_graph.replay()
                 else:
-                    # if use_feed_data:
-                    #     exe.run(
-                    #         compiled_program,
-                    #         feed={'image': image_np, 'label': label_np},
-                    #     )
-                    # else:
-                    #     exe.run(compiled_program)
                     exe.run(main)
                 outs.append(np.array(loss_t))
                 print("yoki: ", np.array(loss_t))
@@ -313,16 +296,34 @@ class TestCustomStream(unittest.TestCase):
         if not can_use_cuda_graph():
             return
 
-        outs_baselines = self.run_program(
-            use_cuda_graph=False, apply_custom_stream=False
-        )
+        # outs_baselines = self.run_program(
+        #     use_cuda_graph=False, apply_custom_stream=False
+        # )
         # outs_stream = self.run_program(use_cuda_graph=False, apply_custom_stream=True)
         # outs_cuda_graph = self.run_program(use_cuda_graph=True, apply_custom_stream=False)
-        outs_cuda_graph_stream = self.run_program(
-            use_cuda_graph=True, apply_custom_stream=True
-        )
-        for bl, out in zip(outs_baselines, outs_cuda_graph_stream):
-            self.assertEqual(bl[0], out[0])
+        # outs_cuda_graph_stream = self.run_program(
+        #     use_cuda_graph=True, apply_custom_stream=True
+        # )
+        # for bl, b2, b3, out in zip(outs_baselines, outs_stream, outs_cuda_graph, outs_cuda_graph_stream):
+        #     print("bl: ", bl)
+        #     print("b2: ", b2)
+        #     print("b3: ", b3)
+        #     print("out: ", out)
+        #     self.assertEqual(bl[0], b2[0], b3[0], out[0])
+
+        outs = []
+        for use_cuda_graph in [False, True]:
+            for apply_custom_stream in [False, True]:
+                out = self.run_program(use_cuda_graph, apply_custom_stream)
+                print("out: ", out)
+                outs.append(out)
+
+        print("outs: ", outs)
+
+        for out in outs:
+            for baseline, result in zip(outs[0], out):
+                print("baseline, result = ", baseline, "  ", result)
+                self.assertEqual(baseline[0], result[0])
 
 
 if __name__ == "__main__":
