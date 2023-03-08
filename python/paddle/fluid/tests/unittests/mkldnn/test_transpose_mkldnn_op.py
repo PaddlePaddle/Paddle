@@ -16,10 +16,10 @@ import unittest
 
 import numpy as np
 
-from paddle.fluid.tests.unittests.test_transpose_op import TestTransposeOp
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 
-class TestTransposeMKLDNN(TestTransposeOp):
+class TestTransposeMKLDNN(OpTest):
     def setUp(self):
         self.init_op_type()
         self.initTestCase()

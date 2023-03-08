@@ -88,7 +88,11 @@ void transpose_grad(const Tensor& grad_out,
     std::vector<int> reverse_perm(perm);
     // make origin ranks
     for (int i = 0; i < static_cast<int>(perm.size()); ++i) {
-      reverse_perm[perm[i]] = i;
+      if (perm[i] >= 0) {
+        reverse_perm[perm[i]] = i;
+      } else {
+        reverse_perm[perm[i] + perm.size()] = i;
+      }
     }
     auto grad_x_tmp = transpose<T>(grad_out, reverse_perm);
     set_output<T>(grad_x_tmp, grad_x);
@@ -381,6 +385,14 @@ void expand_grad(const Tensor& x,
     } else {
       by_pass<T>(out_grad, x_grad);
     }
+  }
+}
+
+template <typename T>
+void log_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    // dx = dout / x
+    set_output<T>(out_grad / x, x_grad);
   }
 }
 
