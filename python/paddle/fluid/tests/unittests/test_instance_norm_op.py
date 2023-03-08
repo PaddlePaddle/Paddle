@@ -86,11 +86,17 @@ def _cal_mean_variance(x, epsilon, mean_shape):
     return mean, var
 
 
+def instance_norm_wrapper(x, weight=None, bias=None, esp=1e-05):
+    return paddle.nn.functional_instance_norm(
+        x, None, None, weight, bias, True, 0.9, esp
+    )
+
+
 class TestInstanceNormOp(OpTest):
     def setUp(self):
         self.op_type = "instance_norm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.nn.functional.instance_norm
+        self.python_api = instance_norm_wrapper
         self.init_test_case()
         self.init_dtype()
         scale_shape = [self.c]
@@ -140,7 +146,7 @@ class TestInstanceNormOp(OpTest):
         self.c = self.shape[1]
         self.h = self.shape[2]
         self.w = self.shape[3]
-        self.epsilon = 1e-8
+        self.epsilon = 1e-5
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -174,6 +180,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
 
     def test_forward_backward(self):
         def test_with_place(place, shape):
+            paddle.enable_static()
             epsilon = self.epsilon
             n, c, h, w = shape[0], shape[1], shape[2], shape[3]
             scale_shape = [c]
@@ -269,6 +276,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
             for id, name in enumerate(self.fetch_list):
                 self.__assert_close(var_dict[name], out[id], name)
             print("op test forward passes: ", str(place))
+            paddle.disable_static()
 
         places = [core.CPUPlace()]
 
