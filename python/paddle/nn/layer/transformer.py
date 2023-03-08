@@ -530,6 +530,69 @@ class MultiHeadAttention(Layer):
         return out if len(outs) == 1 else tuple(outs)
 
 
+class SparseAttention(MultiHeadAttention):
+    def __init__(
+        self,
+        embed_dim,
+        num_heads,
+        sparse,
+        dropout=0.0,
+        kdim=None,
+        vdim=None,
+        need_weights=False,
+        weight_attr=None,
+        bias_attr=None,
+    ):
+        super().__init__(
+            embed_dim,
+            num_heads,
+            dropout,
+            kdim,
+            vdim,
+            need_weights,
+            weight_attr,
+            bias_attr,
+        )
+
+    def forward(self, query, key=None, value=None, attn_mask=None, cache=None):
+        key = query if key is None else key
+        value = query if value is None else value
+        # compute q ,k ,v
+        if cache is None:
+            q, k, v = self._prepare_qkv(query, key, value, cache)
+        else:
+            q, k, v, cache = self._prepare_qkv(query, key, value, cache)
+
+        if (
+            self.sparse_mask is None
+            or self.sparse_mask.shape[0] != q.shape[0] * q.shape[1]
+            or self.sparse_mask.shape[1] != q.shape[2]
+        ):
+            mask = self.sparse.forward(q.shape[0], q.shape[2])
+            self.sparse_mask = mask.astype('float32').to_sparse_csr()
+
+        if attn_mask is not None:
+            attn_mask = _convert_attention_mask(attn_mask, q.dtype)
+            attn_mask = attn_mask.squeeze()
+            if len(attn_mask.shape) == 1:
+                attn_mask = attn_mask.reshape((1, attn_mask.shape[0]))
+        out = paddle.sparse.nn.functional.attention(
+            q, k, v, self.sparse_mask, attn_mask=attn_mask
+        )
+
+        # combine heads
+        out = tensor.transpose(out, perm=[0, 2, 1, 3])
+        out = tensor.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+
+        # project to output
+        out = self.out_proj(out)
+
+        outs = [out]
+        if cache is not None:
+            outs.append(cache)
+        return out if len(outs) == 1 else tuple(outs)
+
+
 class TransformerEncoderLayer(Layer):
     """
     TransformerEncoderLayer is composed of two sub-layers which are self (multi-head)
@@ -629,14 +692,23 @@ class TransformerEncoderLayer(Layer):
         weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
 
-        self.self_attn = MultiHeadAttention(
-            d_model,
-            nhead,
-            dropout=attn_dropout,
-            weight_attr=weight_attrs[0],
-            bias_attr=bias_attrs[0],
-            sparse=sparse,
-        )
+        if sparse is None:
+            self.self_attn = MultiHeadAttention(
+                d_model,
+                nhead,
+                dropout=attn_dropout,
+                weight_attr=weight_attrs[0],
+                bias_attr=bias_attrs[0],
+            )
+        else:
+            self.self_attn = SparseAttention(
+                d_model,
+                nhead,
+                sparse,
+                dropout=attn_dropout,
+                weight_attr=weight_attrs[0],
+                bias_attr=bias_attrs[0],
+            )
         self.linear1 = Linear(
             d_model, dim_feedforward, weight_attrs[1], bias_attr=bias_attrs[1]
         )
