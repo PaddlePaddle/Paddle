@@ -263,6 +263,8 @@ PD_REGISTER_KERNEL(svd,  // cuda_only
                    ALL_LAYOUT,
                    phi::SvdKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
 
 #endif  // not PADDLE_WITH_HIP
