@@ -353,6 +353,9 @@ class OpTest(unittest.TestCase):
 
         _set_use_system_allocator(cls._use_system_allocator)
 
+        if hasattr(cls, 'check_prim') and os.getenv('FLAGS_prim_test_log'):
+            print("check prim end!")
+
         def is_empty_grad_op(op_type):
             all_op_kernels = core._get_all_register_op_kernels()
             grad_op = op_type + '_grad'
