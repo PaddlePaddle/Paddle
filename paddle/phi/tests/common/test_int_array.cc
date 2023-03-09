@@ -68,10 +68,10 @@ TEST(IntArray, ConstructFromCPUTensorVector) {
   auto shape0 = paddle::experimental::full({2}, 3, DataType::INT64);
   auto shape1 = paddle::experimental::full({2}, 3, DataType::INT32);
 
-  std::vector<paddle::experimental::Tensor> shape{shape0, shape0};
+  std::vector<paddle::Tensor> shape{shape0, shape0};
   auto out = paddle::experimental::full(shape, 1);
 
-  std::vector<paddle::experimental::Tensor> shape_new{shape0, shape1};
+  std::vector<paddle::Tensor> shape_new{shape0, shape1};
   auto out1 = paddle::experimental::full(shape_new, 1);
 
   ASSERT_EQ(out.dims().size(), 2);
@@ -134,10 +134,10 @@ TEST(IntArray, ConstructFromGPUTensorVector) {
   auto shape0 = paddle::experimental::full({2}, 3, DataType::INT64, GPUPlace());
   auto shape1 = paddle::experimental::full({2}, 3, DataType::INT32, GPUPlace());
 
-  std::vector<paddle::experimental::Tensor> shape{shape0, shape0};
+  std::vector<paddle::Tensor> shape{shape0, shape0};
   auto out = paddle::experimental::full(shape, 1);
 
-  std::vector<paddle::experimental::Tensor> shape_new{shape0, shape1};
+  std::vector<paddle::Tensor> shape_new{shape0, shape1};
   auto out1 = paddle::experimental::full(shape_new, 1);
 
   ASSERT_EQ(out.dims().size(), 2);

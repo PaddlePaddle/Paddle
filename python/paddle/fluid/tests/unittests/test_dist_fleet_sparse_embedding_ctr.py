@@ -264,7 +264,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
         feeder = fluid.DataFeeder(place=fluid.CPUPlace(), feed_list=datas)
         exe.run(fluid.default_startup_program())
 
-        fluid.io.load_persistables(exe, model_file)
+        paddle.distributed.io.load_persistables(exe, model_file)
 
         for batch_id, data in enumerate(reader()):
             score = exe.run(

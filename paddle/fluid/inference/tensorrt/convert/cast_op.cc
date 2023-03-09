@@ -44,16 +44,20 @@ class CastOpConverter : public OpConverter {
     switch (out_dtype) {
       case 0:  // BOOL = 0
         layer->setOutputType(0, nvinfer1::DataType::kBOOL);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kBOOL);
         break;
       case 2:  // INT32 = 2
       case 3:  // INT64 = 3 there is no int64 in tensorrt subgraph
         layer->setOutputType(0, nvinfer1::DataType::kINT32);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
         break;
       case 4:  // FP16 = 4
         layer->setOutputType(0, nvinfer1::DataType::kHALF);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
         break;
       case 5:  // FP32 = 5
         layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
         break;
       default:
         LOG(ERROR) << "Unable to convert a fluid data type(" << out_dtype

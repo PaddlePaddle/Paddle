@@ -232,7 +232,7 @@ void SplitDenseTensorWithType(const phi::XPUContext &dev_ctx,
 
 void ConcatTensor(const phi::DeviceContext &dev_ctx,
                   const std::vector<phi::DenseTensor> &tensor_list,
-                  const experimental::Tensor *tensor) {
+                  const Tensor *tensor) {
   auto *dense_tensor =
       std::dynamic_pointer_cast<phi::DenseTensor>(tensor->impl()).get();
 
@@ -285,7 +285,7 @@ void ConcatTensor(const phi::DeviceContext &dev_ctx,
 
 void SplitTensor(const phi::DeviceContext &dev_ctx,
                  const phi::DenseTensor &tensor,
-                 const std::vector<experimental::Tensor> *tensor_list) {
+                 const std::vector<Tensor> *tensor_list) {
   std::vector<phi::DenseTensor *> dense_list;
   for (auto &tensor : *tensor_list) {
     auto *p_tensor =
