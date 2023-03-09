@@ -1,1 +1,11 @@
 # This file is to support those static ops different the dynamic.
+
+- backward_op : max_grad
+  forward: max (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : max_grad

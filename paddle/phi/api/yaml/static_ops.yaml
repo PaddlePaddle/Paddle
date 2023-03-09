@@ -86,6 +86,15 @@
     backend : x
     force_backend : force_cpu
 
+- op : max
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceIntArrayAxisInferMetaBase
+  kernel :
+    func : max
+  backward : max_grad
+
 - op : multi_encoder_xpu
   args : (Tensor x, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor mask, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx)
   output : Tensor(out), Tensor(x_fp16), Tensor(out_fp16)

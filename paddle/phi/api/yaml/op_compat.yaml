@@ -1115,6 +1115,11 @@
   int_array:
     axis :
       data_type : int
+      support_tensor : true
+  get_expected_kerneltype :
+    fw_invoke : ReduceGetExpectedKernelType
+    bw_invoke0 : ReduceGradGetExpectedKernelType
+  keep_signature : [max, max_grad]
   extra :
     attrs : [bool use_mkldnn = false]
 
