@@ -54,7 +54,7 @@ class TestGatherNdOpWithIndex1(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestGatherNdOpWithLowIndex(OpTest):
@@ -88,6 +88,7 @@ class TestGatherNdOpIndex1(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([1, 2]).astype("int32")
 
@@ -99,7 +100,7 @@ class TestGatherNdOpIndex1(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestGatherNdOpWithSameIndexAsX(OpTest):
