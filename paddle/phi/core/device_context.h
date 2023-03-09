@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
@@ -207,6 +208,20 @@ class PADDLE_API DeviceContext {
    * @return The type information of the derived class.
    */
   TypeInfo<DeviceContext> type_info() const { return type_info_; }
+
+  /**
+   * @brief Set the comm context point.
+   *
+   * @param CommContext
+   */
+  void SetCommContext(distributed::CommContext* comm_context);
+
+  /**
+   * @brief Get the comm context point.
+   *
+   * @return comm context point
+   */
+  distributed::CommContext* GetCommContext() const;
 
  private:
   struct Impl;
