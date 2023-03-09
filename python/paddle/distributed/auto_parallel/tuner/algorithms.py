@@ -23,7 +23,7 @@ from .trial import TrialStatus
 
 class AlgorithmBase(ABC):
     """
-    An Tuning alogrithm is a class to find out an optimal configuration
+    An Tuning algorithm is a class to find out an optimal configuration
     given the selected tuning optimization pass(es) and the arguments to be tuned.
     Different optimization pass(es) will correspond to a different algorithm,
     where different search space **pruning rules** will applied.
@@ -71,7 +71,7 @@ class AlgorithmBase(ABC):
     @abstractmethod
     def update(self, results):
         """
-        Update the algorthim with the results of last trial. Using this information is used to
+        Update the algorithm with the results of last trial. Using this information is used to
         pruning the search space of the future trial.
         """
         pass
@@ -227,7 +227,7 @@ class ReccomputeCheckpointAlgorithm(AlgorithmBase):
             else:
                 self._trial_idx = self._total_num_trial
                 self._logger.info(
-                    "Recompute is unnecessary for this model size, which will reduce the Throughtput."
+                    "Recompute is unnecessary for this model size, which will reduce the Throughput."
                 )
         else:
             if self._trail_left >= self._trail_right:

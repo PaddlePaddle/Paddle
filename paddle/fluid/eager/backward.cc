@@ -82,8 +82,7 @@ void EnforceGradNodeHasInput(GradNodeBase* node) {
           node->name()));
 }
 
-void DuplicateCheck(const std::vector<paddle::experimental::Tensor>& inputs,
-                    bool is_input) {
+void DuplicateCheck(const std::vector<paddle::Tensor>& inputs, bool is_input) {
   std::unordered_set<AutogradMeta*> visisted_ins;
   std::string msg = is_input ? "inputs" : "outputs";
   for (auto in : inputs) {
@@ -102,14 +101,14 @@ void DuplicateCheck(const std::vector<paddle::experimental::Tensor>& inputs,
 
 GeneralGrad* GeneralGrad::general_grad_ = new GeneralGrad();
 
-std::vector<paddle::experimental::Tensor> RunBackward(
-    const std::vector<paddle::experimental::Tensor>& tensors,  // output
-    const std::vector<paddle::experimental::Tensor>& grad_tensors,
+std::vector<paddle::Tensor> RunBackward(
+    const std::vector<paddle::Tensor>& tensors,  // output
+    const std::vector<paddle::Tensor>& grad_tensors,
     bool retain_graph,
     bool create_graph = false,
-    const std::vector<paddle::experimental::Tensor>& inputs = {},
+    const std::vector<paddle::Tensor>& inputs = {},
     bool allow_unused = false,
-    const std::vector<paddle::experimental::Tensor>& no_grad_vars = {}) {
+    const std::vector<paddle::Tensor>& no_grad_vars = {}) {
   VLOG(3) << "Start Backward";
 
   // *Gradient Hook should happen at node-level
@@ -128,7 +127,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   std::unordered_map<GradNodeBase*, std::unique_ptr<GradTensorHolder>>
       node_input_buffers_dict;
   for (size_t i = 0; i < tensors.size(); i++) {
-    const paddle::experimental::Tensor& tensor = tensors[i];
+    const paddle::Tensor& tensor = tensors[i];
 
     AutogradMeta* auto_grad_meta = EagerUtils::nullable_autograd_meta(tensor);
     if (auto_grad_meta == nullptr) {
@@ -255,8 +254,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
     VLOG(7) << "Run Backward Kernel with GradTensorHolder.";
     // Run Pre Backward Node and get outputs
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
         grad_output_tensors = (*node)(
             node_input_buffer->Buffers(), create_graph, is_general_grad);
 
@@ -315,8 +313,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                 "grad_output_tensors[i].size(), which is: %d. This error may "
                 "indicate autoprune or autograd api error. ",
                 grad_output_tensors.size()));
-        paddle::experimental::Tensor& grad_output_tensor =
-            grad_output_tensors[i][j];
+        paddle::Tensor& grad_output_tensor = grad_output_tensors[i][j];
 
         if ((!grad_output_tensor.defined() ||
              !grad_output_tensor.initialized())) {
@@ -380,10 +377,9 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
 }
 
-void Backward(
-    const std::vector<paddle::experimental::Tensor>& tensors,  // outputs
-    const std::vector<paddle::experimental::Tensor>& grad_tensors,
-    bool retain_graph) {
+void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
+              const std::vector<paddle::Tensor>& grad_tensors,
+              bool retain_graph) {
   VLOG(3) << "Run in Backward";
   paddle::platform::RecordEvent backward_record_event(
       "backward", paddle::platform::TracerEventType::UserDefined, 1);
@@ -391,15 +387,15 @@ void Backward(
   phi::autotune::AutoTuneStatus::Instance().Update();
 }
 
-std::vector<paddle::experimental::Tensor> Grad(
-    const std::vector<paddle::experimental::Tensor>& tensors,  // outputs
-    const std::vector<paddle::experimental::Tensor>& inputs,
-    const std::vector<paddle::experimental::Tensor>& grad_tensors,
+std::vector<paddle::Tensor> Grad(
+    const std::vector<paddle::Tensor>& tensors,  // outputs
+    const std::vector<paddle::Tensor>& inputs,
+    const std::vector<paddle::Tensor>& grad_tensors,
     bool retain_graph,
     bool create_graph,
     bool only_inputs,
     bool allow_unused,
-    const std::vector<paddle::experimental::Tensor>& no_grad_vars) {
+    const std::vector<paddle::Tensor>& no_grad_vars) {
   VLOG(3) << "Run in Grad";
 
   DuplicateCheck(inputs, true /* is_input */);

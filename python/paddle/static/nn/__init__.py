@@ -38,25 +38,27 @@ from .common import prelu  # noqa: F401
 from .common import layer_norm  # noqa: F401
 
 
-from ...fluid.input import embedding  # noqa: F401
+from .common import embedding  # noqa: F401
 from ...fluid.contrib.layers import sparse_embedding  # noqa: F401
 from ...fluid.layers import StaticRNN  # noqa: F401
+from ...fluid.layers.nn import _pull_sparse  # noqa: F401
+from ...fluid.layers.nn import _pull_sparse_v2  # noqa: F401
 
-from ...fluid.layers.sequence_lod import sequence_conv  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_softmax  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_pool  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_concat  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_first_step  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_last_step  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_slice  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_expand  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_expand_as  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_pad  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_unpad  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_reshape  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_scatter  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_enumerate  # noqa: F401
-from ...fluid.layers.sequence_lod import sequence_reverse  # noqa: F401
+from .sequence_lod import sequence_conv  # noqa: F401
+from .sequence_lod import sequence_softmax  # noqa: F401
+from .sequence_lod import sequence_pool  # noqa: F401
+from .sequence_lod import sequence_concat  # noqa: F401
+from .sequence_lod import sequence_first_step  # noqa: F401
+from .sequence_lod import sequence_last_step  # noqa: F401
+from .sequence_lod import sequence_slice  # noqa: F401
+from .sequence_lod import sequence_expand  # noqa: F401
+from .sequence_lod import sequence_expand_as  # noqa: F401
+from .sequence_lod import sequence_pad  # noqa: F401
+from .sequence_lod import sequence_unpad  # noqa: F401
+from .sequence_lod import sequence_reshape  # noqa: F401
+from .sequence_lod import sequence_scatter  # noqa: F401
+from .sequence_lod import sequence_enumerate  # noqa: F401
+from .sequence_lod import sequence_reverse  # noqa: F401
 
 from .control_flow import cond
 

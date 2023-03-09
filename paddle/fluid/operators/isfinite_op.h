@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "paddle/phi/kernels/reduce_any_kernel.h"
@@ -129,17 +129,17 @@ inline void TensorIsfinite(const phi::DenseTensor& tensor,
 inline bool TensorContainsNAN(const phi::DenseTensor& tensor) {
   phi::DenseTensor out;
   TensorContainsNAN(tensor, &out);
-  return GetValue<bool>(&out);
+  return paddle::framework::GetValue<bool>(&out);
 }
 inline bool TensorContainsInf(const phi::DenseTensor& tensor) {
   phi::DenseTensor out;
   TensorContainsInf(tensor, &out);
-  return GetValue<bool>(&out);
+  return paddle::framework::GetValue<bool>(&out);
 }
 inline bool TensorIsfinite(const phi::DenseTensor& tensor) {
   phi::DenseTensor out;
   TensorIsfinite(tensor, &out);
-  return GetValue<bool>(&out);
+  return paddle::framework::GetValue<bool>(&out);
 }
 }  // namespace framework
 namespace operators {

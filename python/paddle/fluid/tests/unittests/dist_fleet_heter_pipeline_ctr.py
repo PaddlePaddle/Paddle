@@ -82,7 +82,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 ),
                 is_sparse=True,
             )
-            dnn_pool = fluid.layers.sequence_pool(
+            dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=dnn_embedding, pool_type="sum"
             )
             dnn_out = dnn_pool
@@ -98,7 +98,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 ),
                 is_sparse=True,
             )
-            lr_pool = fluid.layers.sequence_pool(
+            lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
                 input=lr_embbding, pool_type="sum"
             )
 
@@ -116,8 +116,8 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 dnn_out = fc
 
         with fluid.device_guard("cpu"):
-            merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
-            label = fluid.layers.cast(label, dtype="int64")
+            merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
+            label = paddle.cast(label, dtype="int64")
             predict = paddle.static.nn.fc(
                 x=merge_layer, size=2, activation='softmax'
             )

@@ -47,7 +47,7 @@ set(COMMON_KERNEL_DEPS
     concat_and_split_functor
     selected_rows_functor)
 # remove this dep after removing fluid deps on tensor creation
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils lod_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils
                        sparse_infermeta)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
@@ -79,9 +79,17 @@ set(COMMON_KERNEL_DEPS
     utf8proc
     gather_scatter_functor)
 
+if(WITH_FLASHATTN)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_dynload_flashattn)
+endif()
+
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl
+                         nccl_comm_context)
+endif()
+if(WITH_GLOO)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} gloo_comm_context)
 endif()
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
 if(WITH_CUDNN_FRONTEND)

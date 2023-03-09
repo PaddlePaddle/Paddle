@@ -100,17 +100,17 @@ class WhileOp : public framework::OperatorBase {
 
     auto &cond = scope.FindVar(Input(kCondition))->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
-        cond.dims(),
-        phi::make_ddim({1}),
+        cond.numel(),
+        1,
         platform::errors::InvalidArgument(
-            "The shape of Input(Condition) of WhileOp must be 1. But now "
-            "the Condition's shape is ",
-            cond.dims().to_str(),
+            "The numel of Input(Condition) of WhileOp must be 1. But now "
+            "the Condition's numel is ",
+            cond.numel(),
             ".\n"));
 
 #ifdef PADDLE_WITH_MKLDNN
-    // (jczaja) Executor on being destroyed clears oneDNN cache and
-    // resets registered model data layout. This is unwanted for nested
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
     // Executors (executors declared inside control ops)
     platform::DontClearMKLDNNCache(dev_place);
 #endif
@@ -202,16 +202,16 @@ class WhileOp : public framework::OperatorBase {
     if (FLAGS_control_flow_use_new_executor) {
       LOG_FIRST_N(INFO, 1) << "[ControlFlow][WhileOp] New Executor is Running.";
       if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
-        std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
         framework::Scope placeholder;  // Don't care if it's valid, just for
                                        // initialize InterpreterCore
+        framework::interpreter::ExecutionConfig execution_config;
+        execution_config.create_local_scope = false;
+        execution_config.used_for_control_flow_op = true;
+        execution_config.skip_gc_vars =
+            std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
         core_.reset(new framework::InterpreterCore(
-            dev_place,
-            *block,
-            skip_gc_vars,
-            &placeholder,
-            /* used_for_jit */ false,
-            /* used_for_control_flow_op */ true));
+            dev_place, *block, &placeholder, execution_config));
       }
     } else {
       if (!executor_ ||
@@ -398,13 +398,14 @@ class WhileGradOp : public framework::OperatorBase {
         std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
         framework::Scope placeholder;  // Don't care if it's valid, just for
                                        // initialize InterpreterCore
+        framework::interpreter::ExecutionConfig execution_config;
+        execution_config.create_local_scope = false;
+        execution_config.used_for_control_flow_op = true;
+        execution_config.skip_gc_vars =
+            std::set<std::string>(skip_vars.begin(), skip_vars.end());
+
         core_.reset(new framework::InterpreterCore(
-            dev_place,
-            *block,
-            skip_gc_vars,
-            &placeholder,
-            /* used_for_jit */ false,
-            /* used_for_control_flow_op */ true));
+            dev_place, *block, &placeholder, execution_config));
       }
     } else {
       if (!executor_ ||
