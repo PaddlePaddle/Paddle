@@ -356,6 +356,11 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
   out->set_dims(output_dim);
 }
 
+void BroadcastBaseInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+}
+
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(out_dtype);
