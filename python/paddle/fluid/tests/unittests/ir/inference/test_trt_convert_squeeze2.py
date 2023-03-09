@@ -98,8 +98,6 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             max_shape = list(self.input_shape)
             min_shape = list(self.input_shape)
             opt_shape = list(self.input_shape)
-            for i in range(len(self.input_shape)):
-                max_shape[i] = max_shape[i] + 1
             self.dynamic_shape.min_input_shape = {"in_data": min_shape}
             self.dynamic_shape.max_input_shape = {"in_data": max_shape}
             self.dynamic_shape.opt_input_shape = {"in_data": opt_shape}
