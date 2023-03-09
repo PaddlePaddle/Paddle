@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/core/utils/visit_place.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/phi/backends/dynload/mklml.h"
@@ -236,7 +237,7 @@ void set_constant(const phi::DeviceContext& context,
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // tensor->place().apply_visitor(func);
-  paddle::platform::VisitPlace(tensor->place(), func);
+  phi::VisitPlace(tensor->place(), func);
 #elif defined(PADDLE_WITH_XPU)
   func(phi::XPUPlace());
 #else
