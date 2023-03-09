@@ -120,7 +120,7 @@ template <class To, class From>
 inline typename cast_type_deduction<To, From>::return_type dyn_cast_impl(
     From &Val) {  // NOLINT
   if (!isa<To>(Val)) {
-    throw("dyn_cast_impl<To>() argument of incompatible type!");
+    return nullptr;
   }
   return cast_value<To, From>::call(Val);
 }
@@ -129,7 +129,7 @@ template <class To, class From>
 inline typename cast_type_deduction<To, From *>::return_type dyn_cast_impl(
     From *Val) {
   if (!isa<To>(Val)) {
-    throw("dyn_cast_impl<To>() argument of incompatible type!");
+    return nullptr;
   }
   return cast_value<To, From *>::call(Val);
 }
