@@ -23,7 +23,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 // TODO(xiongkun): remove the header when decouple the memcpy function in phi.
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 using Tensor = DenseTensor;
@@ -58,7 +58,7 @@ struct GetTensorValue<phi::GPUContext, T> {
     const T* data = tensor.data<T>();
     T value;
     const auto gpu_place = dev_ctx.GetPlace();
-    paddle::memory::Copy(
+    memory_utils::Copy(
         phi::CPUPlace(), &value, gpu_place, data, sizeof(T), dev_ctx.stream());
     return value;
   }

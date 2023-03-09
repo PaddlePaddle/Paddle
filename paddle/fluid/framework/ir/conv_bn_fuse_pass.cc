@@ -18,6 +18,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -413,7 +414,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     if (is_mkldnn) {
       if (conv->Op()->Type() == "conv2d" ||
           conv->Op()->Type() == "depthwise_conv2d") {
-        conv->Op()->SetType("fused_conv2d");
+        ConvertToFusedOp(conv->Op());
       }
       if (mkldnn_with_bias) {
         // reuse existing conv bias node

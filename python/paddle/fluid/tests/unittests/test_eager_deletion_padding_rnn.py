@@ -473,7 +473,7 @@ class PaddingRNNTestBase(unittest.TestCase):
         # You can override the function to set your own config.
         pass
 
-    def _prepare_program(self, config, parallel=True):
+    def _prepare_program(self, config):
         paddle.seed(config.random_seed)
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
@@ -517,16 +517,7 @@ class PaddingRNNTestBase(unittest.TestCase):
 
         self.exe.run(self.startup_program)
 
-        if parallel:
-            self.train_program = fluid.compiler.CompiledProgram(
-                self.main_program
-            ).with_data_parallel(
-                loss_name=self.loss.name,
-                build_strategy=self.build_strategy,
-                exec_strategy=self.exec_strategy,
-            )
-        else:
-            self.train_program = self.main_program
+        self.train_program = self.main_program
 
     def _generate_init_data(self):
         init_hidden = np.zeros(
@@ -621,29 +612,27 @@ class PaddingRNNTestBase(unittest.TestCase):
             ppl = np.append(ppl, batch_ppl)
         return ppl
 
-    def train(self, config, parallel=True, use_program_cache=True):
+    def train(self, config, use_program_cache=True):
         self.set_customed_config()
 
         self.config = config
-        self._prepare_program(config, parallel)
+        self._prepare_program(config)
         ppl = np.zeros(shape=(0, config.batch_size))
         for epoch_id in range(config.max_epoch):
             train_ppl = self._train_an_epoch(epoch_id, use_program_cache)
             ppl = np.append(ppl, train_ppl)
         return ppl
 
-    def compare_padding_static_mode(
-        self, parallel=True, use_program_cache=True
-    ):
+    def compare_padding_static_mode(self, use_program_cache=True):
         '''
         Test that train ppl of padding mode is same to that of static graph mode
         '''
         config = RNNConfig('test', 'padding')
         with fluid.scope_guard(fluid.Scope()):
-            padding_rnn_ppl = self.train(config, parallel, use_program_cache)
+            padding_rnn_ppl = self.train(config, use_program_cache)
         config = RNNConfig('test', 'static')
         with fluid.scope_guard(fluid.Scope()):
-            static_rnn_ppl = self.train(config, parallel, use_program_cache)
+            static_rnn_ppl = self.train(config, use_program_cache)
         np.testing.assert_allclose(padding_rnn_ppl, static_rnn_ppl, rtol=0.001)
 
 
@@ -654,7 +643,7 @@ class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
         '''
         fluid.core._set_eager_deletion_mode(-1.0, 1.0, True)
         # When parallel is True, use_program_cache does not make a difference.
-        self.compare_padding_static_mode(parallel=True, use_program_cache=True)
+        self.compare_padding_static_mode(use_program_cache=True)
 
     def test_padding_mode_eager_deletion(self):
         '''
@@ -662,7 +651,7 @@ class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
         '''
         fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
         # When parallel is True, use_program_cache does not make a difference.
-        self.compare_padding_static_mode(parallel=True, use_program_cache=True)
+        self.compare_padding_static_mode(use_program_cache=True)
 
 
 if __name__ == '__main__':

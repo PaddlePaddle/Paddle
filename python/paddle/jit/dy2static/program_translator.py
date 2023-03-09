@@ -19,6 +19,7 @@ import threading
 import warnings
 import weakref
 
+from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
@@ -47,7 +48,9 @@ from .utils import (
     ast_to_source_code,
     func_to_source_code,
     input_specs_compatible,
+    is_paddle_func,
     make_hashable,
+    prim_or_cinn_is_enabled,
     type_name,
     unwrap,
 )
@@ -148,6 +151,8 @@ def convert_to_static(function):
     """
     Transforms function of dygraph into static function using the cache mechanism.
 
+    Note(dev): It will return function.__func__ if encountering class method.
+
     Args:
         function(callable): The function with dygraph layers that will be converted into static layers.
     """
@@ -156,7 +161,11 @@ def convert_to_static(function):
 
     # Return directly if decorated with @not_to_static and DO NOT Cache it
     options = getattr(function, CONVERSION_OPTIONS, None)
-    if options is not None and options.not_convert:
+    # or ignore paddle api
+    need_skip = (options is not None and options.not_convert) or is_paddle_func(
+        function
+    )
+    if need_skip:
         return function.__func__ if inspect.ismethod(function) else function
 
     with _CACHE_LOCK:
@@ -320,6 +329,19 @@ class StaticFunction:
             self._dygraph_function = function
             self._class_instance = None
 
+        if input_spec is not None and prim_or_cinn_is_enabled(
+            kwargs.get("build_strategy", None)
+        ):
+            from paddle.static import InputSpec
+
+            for spec in flatten(input_spec):
+                if isinstance(spec, InputSpec) and -1 in spec.shape:
+                    input_spec = None
+                    warnings.warn(
+                        'Now prim and cinn do not support -1 shape, but input_spec has -1 shape so we set it to None.'
+                    )
+                    break
+
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
         self._program_cache = ProgramCache()
@@ -400,7 +422,7 @@ class StaticFunction:
 
     def _clone(self):
         return self.__class__(
-            self._dygraph_function, self._input_spec, **self._kwargs
+            self.dygraph_function, self._input_spec, **self._kwargs
         )
 
     def __call__(self, *args, **kwargs):
@@ -498,14 +520,7 @@ class StaticFunction:
         Return:
             Outputs of dygraph function.
         """
-        if self._class_instance is not None:
-            dygraph_function = self._dygraph_function.__get__(
-                self._class_instance
-            )
-        else:
-            dygraph_function = self._dygraph_function
-
-        return dygraph_function(*args, **kwargs)
+        return self.dygraph_function(*args, **kwargs)
 
     def _raise_when_property(self):
         """raise RuntimeError when property=True
@@ -571,7 +586,7 @@ class StaticFunction:
         """
         Returns the source code of transformed static function for debugging.
         """
-        static_func = convert_to_static(self._dygraph_function)
+        static_func = convert_to_static(self.dygraph_function)
         source_code = func_to_source_code(static_func)
         return source_code
 
@@ -580,7 +595,10 @@ class StaticFunction:
         """
         Returns the original decorated function.
         """
-        return self._dygraph_function
+        if self._class_instance is not None:
+            return self._dygraph_function.__get__(self._class_instance)
+        else:
+            return self._dygraph_function
 
     @property
     def concrete_program(self):
@@ -1046,17 +1064,6 @@ class ConcreteProgram:
         )
 
 
-def _extract_indeed_params_buffers(class_instance):
-    """
-    To filter not initialzed buffers.
-    """
-    params = list(get_parameters(class_instance).values())
-    buffers = list(get_buffers(class_instance).values())
-    buffers = [buffer for buffer in buffers if len(buffer.shape) != 0]
-
-    return params + buffers
-
-
 class ParametersRecorder:
     def __init__(self):
         self.params_dict = {}
@@ -1177,7 +1184,17 @@ class ProgramCache:
             else:
                 raise
 
-        concrete_program._to_prim()
+        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy']):
+            for var in concrete_program.main_program.list_vars():
+                if -1 in var.shape:
+                    warnings.warn(
+                        "Now prim and cinn do not support -1 shape, but the shape of var {} is {}".format(
+                            var.name, var.shape
+                        )
+                    )
+        if not _in_amp_guard() and not _in_pure_fp16_guard():
+            concrete_program._to_prim()
+
         return concrete_program, partial_program_from(concrete_program)
 
     def __getitem__(self, item):
@@ -1228,6 +1245,9 @@ class ProgramCache:
 
     def concrete_programs(self):
         return [cp for key, (cp, _) in self._caches.items()]
+
+    def clear(self):
+        self._caches = collections.OrderedDict()
 
 
 class ProgramTranslator:

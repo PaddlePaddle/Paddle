@@ -35,12 +35,12 @@ class TestCloudRoleMaker2(unittest.TestCase):
     def test_pslib_2(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.base.role_maker import (
+        from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+            fleet,
+        )
+        from paddle.incubate.distributed.fleet.role_maker import (
             GeneralRoleMaker,
             RoleMakerBase,
-        )
-        from paddle.incubate.fleet.parameter_server.distribute_transpiler import (
-            fleet,
         )
 
         paddle.enable_static()
@@ -204,7 +204,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
                 """
                 pass
 
-        from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+        from paddle.incubate.distributed.fleet.base import Fleet
 
         class TmpFleet(Fleet):
             """
@@ -269,14 +269,16 @@ class TestCloudRoleMaker2(unittest.TestCase):
         tmp._role_maker = TmpClass()
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
+        from paddle.incubate.distributed.fleet.role_maker import (
+            GeneralRoleMaker,
+        )
 
         tmp = RoleMakerBase()
         tmp.all_gather(1)
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
         tmp.barrier_all()
-        from paddle.fluid.incubate.fleet.base.role_maker import (
+        from paddle.incubate.distributed.fleet.role_maker import (
             MPISymetricRoleMaker,
         )
 
