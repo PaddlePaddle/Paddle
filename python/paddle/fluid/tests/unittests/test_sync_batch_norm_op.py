@@ -247,7 +247,6 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         places = [core.CUDAPlace(0)]
         for place in places:
             for layout in ["NHWC", "NCHW"]:
-                # for layout in ["NHWC",]:
                 self._compare(place, layout, False)
 
     def test_infer(self):
