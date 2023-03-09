@@ -107,27 +107,8 @@ template size_t HashTensor<float>(const phi::DenseTensor& in);
 
 std::string GetPrefixWithoutHash(const std::string& name,
                                  const phi::DenseTensor& tensor) {
-  size_t hash = 0;
-  switch (tensor.dtype()) {
-    case phi::DataType::FLOAT32:
-      hash = HashTensor<float>(tensor);
-      break;
-    case phi::DataType::INT16:
-      hash = HashTensor<int16_t>(tensor);
-      break;
-    case phi::DataType::FLOAT16:
-      // 1. std::hash can not be applied on paddle::experimental::float16
-      // 2. We only compute hash on transed_weight(int16)/transed_bias(float32).
-      // Float16 tensors are only in origin models.
-      return name;
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Not support hash tensor with type %s.",
-          phi::DataTypeToString(tensor.dtype())));
-      break;
-  }
-  std::size_t found = name.find(std::to_string(hash));
-  return found == std::string::npos ? name : name.substr(found);
+  std::size_t found = name.find("_#");
+  return found == std::string::npos ? name : name.substr(0, found);
 }
 
 template <typename T>
@@ -148,8 +129,8 @@ void PrepareWeight(Graph* graph,
   size_t dst_hash = HashTensor<T>(dst_tensor);
   size_t dst_max_hash = HashTensor<float>(dst_max_tensor);
   std::string pre_name = GetPrefixWithoutHash(src_name, *src_tensor);
-  std::string dst_name = pre_name + "_" + std::to_string(dst_hash);
-  std::string dst_max_name = pre_name + "_max_" + std::to_string(dst_max_hash);
+  std::string dst_name = pre_name + "_#" + std::to_string(dst_hash);
+  std::string dst_max_name = pre_name + "_max_#" + std::to_string(dst_max_hash);
   *dst = FindNodeWithName(graph, dst_name);
   if (*dst == nullptr) {
     // Create dst node
@@ -226,7 +207,7 @@ void PrepareBias(
   CastToFp32(src_tensor, &dst_tensor);
   size_t dst_hash = HashTensor<float>(dst_tensor);
   std::string pre_name = GetPrefixWithoutHash(src_name, *src_tensor);
-  std::string dst_name = pre_name + "_" + std::to_string(dst_hash);
+  std::string dst_name = pre_name + "_#" + std::to_string(dst_hash);
   *dst = FindNodeWithName(graph, dst_name);
   if (*dst == nullptr) {
     // Create dst node

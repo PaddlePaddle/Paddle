@@ -109,9 +109,6 @@ void BincountCUDAInner(const Context& dev_ctx,
         <<<GET_BLOCKS(input_numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
             input_data, input_numel, has_weights, weights_data, output_data);
   } else {
-    const auto& weights_type =
-        paddle::framework::TransToProtoVarType(weights->dtype());
-
     if (weights->dtype() == DataType::FLOAT32) {
       float* output_data = dev_ctx.template Alloc<float>(output);
       phi::funcs::SetConstant<Context, float>()(
