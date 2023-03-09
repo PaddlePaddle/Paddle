@@ -342,9 +342,9 @@ def sqrt_composite(x):
     res = pow(x, y)
     return res
 
+
 @REGISTER_COMPOSITE('relu')
 def relu_composite(x):
     """define composite rule of op relu."""
     # relu(x) = max(x, 0)
     return maximum(x, zeros_like(x))
-
