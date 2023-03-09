@@ -23,7 +23,7 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/mixed_vector.h"
