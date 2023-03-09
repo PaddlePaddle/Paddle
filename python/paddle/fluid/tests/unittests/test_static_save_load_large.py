@@ -58,7 +58,7 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
             )
             path = os.path.join(path, "static_save")
             protocol = 4
-            paddle.fluid.save(prog, path, pickle_protocol=protocol)
+            paddle.static.save(prog, path, pickle_protocol=protocol)
             # set var to zero
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -70,7 +70,7 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                     )
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            paddle.fluid.load(prog, path)
+            paddle.static.load(prog, path)
 
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -91,8 +91,8 @@ class TestStaticSaveLoadLargeParameters(unittest.TestCase):
                     )
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            program_state = fluid.load_program_state(path)
-            fluid.set_program_state(prog, program_state)
+            program_state = paddle.static.load_program_state(path)
+            paddle.static.set_program_state(prog, program_state)
             for var in prog.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     new_t = np.array(

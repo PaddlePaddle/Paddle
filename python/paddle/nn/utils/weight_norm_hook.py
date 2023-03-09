@@ -232,6 +232,7 @@ def remove_weight_norm(layer, name='weight'):
             # Conv2D(3, 5, kernel_size=[3, 3], data_format=NCHW)
 
             remove_weight_norm(conv)
+            # The following is the effect after removing the weight norm:
             # print(conv.weight_g)
             # AttributeError: 'Conv2D' object has no attribute 'weight_g'
     """

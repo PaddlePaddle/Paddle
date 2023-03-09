@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
