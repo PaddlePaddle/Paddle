@@ -1233,7 +1233,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64', 'int32', 'int64', 'float16', 'uint16'],
             'range/arange',
         )
         helper = LayerHelper('range', **locals())
