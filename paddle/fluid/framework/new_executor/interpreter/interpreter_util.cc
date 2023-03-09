@@ -1090,7 +1090,9 @@ void FakeInitializeOutputsForFunctionKernel(
       if (out_tensor && !out_tensor->initialized()) {
         phi::TensorArgDef& tensor_arg_def = output_defs[start_idx + offset];
         phi::DataType dtype = tensor_arg_def.dtype;
-        phi::Place place = phi::TransToPhiPlace(tensor_arg_def.backend);
+        phi::Place place = tensor_arg_def.backend == phi::Backend::CUSTOM
+                               ? dev_ctx.GetPlace()
+                               : phi::TransToPhiPlace(tensor_arg_def.backend);
 
         if (dtype == DataType::UNDEFINED ||
             OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
