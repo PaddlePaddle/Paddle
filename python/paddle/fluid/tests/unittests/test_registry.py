@@ -24,7 +24,7 @@ import paddle.fluid as fluid
 class TestRegistry(unittest.TestCase):
     @prog_scope()
     def test_registry_layer(self):
-        x = fluid.layers.data(name='X', shape=[10, 10], dtype='float32')
+        x = paddle.static.data(name='X', shape=[-1, 10, 10], dtype='float32')
         output = paddle.mean(x)
 
         place = fluid.CPUPlace()

@@ -198,8 +198,7 @@ void RefcountedMemoryMapAllocation::close() {
       MemoryMapAllocationPool::Instance().Insert(MemoryMapInfo(
           flags_, map_size_ - mmap_alignment, ipc_name_, map_ptr_));
     } else {
-      if (info->refcount == 0 &&
-          shm_open(ipc_name_.c_str(), O_RDWR, (mode_t)0600) != -1) {
+      if (info->refcount == 0) {
         shm_unlink(ipc_name_.c_str());
         VLOG(6) << "shm_unlink file: " << ipc_name_;
       }

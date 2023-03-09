@@ -501,6 +501,7 @@ struct MinGradXYFunctor {
 template <typename T, typename Enable = void>
 struct RemainderFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
     T res = a % b;
 
     // Accoding to #PR26732: in dividen % divsor
@@ -647,6 +648,5 @@ struct ElementwiseInversePowFunctor<dtype::float16> {
     return static_cast<dtype::float16>(std::pow(f_b, f_a));
   }
 };
-
 }  // namespace funcs
 }  // namespace phi

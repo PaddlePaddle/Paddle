@@ -650,7 +650,7 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[5], dtype='int32')
+            x = paddle.static.data(name='x', shape=[-1, 5], dtype='int32')
             z = paddle.tensor.fill_constant([1], 'int32', 0)
             x_shape = paddle.shape(x)
             i = paddle.tensor.fill_constant([1], 'int32', 0)

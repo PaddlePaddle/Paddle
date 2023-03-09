@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/ddim.h"
@@ -216,7 +217,7 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                  padding_common,
                  strides,
                  dilations_,
-                 paddle::platform::AllowTF32Cudnn(),
+                 phi::AllowTF32Cudnn(),
                  c_groups);
 
 #ifdef PADDLE_WITH_HIP

@@ -15,7 +15,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/prim/api/manual/backward/composite_backward_api.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
 namespace paddle {
@@ -51,23 +51,29 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
   }
 };
 
-class ElementwiseAddGradCompositeOpMaker
-    : public prim::GradCompositeOpMakerBase {
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+class ElementwiseAddCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
  public:
   void Apply() override {
-    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
-    paddle::experimental::Tensor y = this->GetSingleForwardInput("Y");
-    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    paddle::experimental::Tensor dx = this->GetSingleInputGrad("X");
-    auto dx_ptr = this->GetOutputPtr(&dx);
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+    auto* dx_ptr = this->GetOutputPtr(&dx);
     std::string dx_name = this->GetOutputName(dx);
-    paddle::experimental::Tensor dy = this->GetSingleInputGrad("Y");
-    auto dy_ptr = this->GetOutputPtr(&dy);
+    paddle::Tensor dy = this->GetSingleInputGrad("Y");
+    auto* dy_ptr = this->GetOutputPtr(&dy);
     std::string dy_name = this->GetOutputName(dy);
     int axis = static_cast<int>(this->Attr<int>("axis"));
-    VLOG(3) << "Runing add_grad composite func";
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite add_grad but we got: ",
+            axis));
+    VLOG(6) << "Runing add_grad composite func";
     prim::add_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);
     this->RecoverOutputName(dy, dy_name);
@@ -122,7 +128,7 @@ REGISTER_OPERATOR(elementwise_add,
                   ::paddle::operators::ElementwiseOpInferVarType,
                   elementwise_addGradMaker<::paddle::framework::OpDesc>,
                   elementwise_addGradMaker<::paddle::imperative::OpBase>,
-                  ::paddle::operators::ElementwiseAddGradCompositeOpMaker,
+                  ::paddle::operators::ElementwiseAddCompositeGradOpMaker,
                   ::paddle::operators::ElementwiseOpInplaceInferer);
 
 namespace ops = paddle::operators;

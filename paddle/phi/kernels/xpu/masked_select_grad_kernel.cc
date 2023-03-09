@@ -33,6 +33,12 @@ void MaskedSelectGradKernel(const Context& dev_ctx,
 
   auto mask_shape = phi::vectorize<int>(mask.dims());
   auto xshape = phi::vectorize<int>(x_grad->dims());
+  if (mask.dims().size() == 0) {
+    mask_shape = std::vector<int>({1});
+  }
+  if (x_grad->dims().size() == 0) {
+    xshape = std::vector<int>({1});
+  }
 
   int r = xpu::masked_select_grad(dev_ctx.x_context(),
                                   input_data,

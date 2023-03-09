@@ -110,10 +110,10 @@ def train(net_type, use_cuda, save_dirname, is_local):
     train_program.random_seed = 123
     startup_prog.random_seed = 456
     with fluid.program_guard(train_program, startup_prog):
-        images = fluid.layers.data(
-            name='pixel', shape=data_shape, dtype='float32'
+        images = paddle.static.data(
+            name='pixel', shape=[-1] + data_shape, dtype='float32'
         )
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         if net_type == "vgg":
             print("train vgg net")
@@ -235,7 +235,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
         training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
-        t = fluid.DistributeTranspiler()
+        t = paddle.distributed.transpiler.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
@@ -444,11 +444,11 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
             with paddle.fluid.unique_name.guard():
-                image = fluid.layers.data(
-                    name='image', shape=[3, 224, 224], dtype='float32'
+                image = paddle.static.data(
+                    name='image', shape=[-1, 3, 224, 224], dtype='float32'
                 )
-                label = fluid.layers.data(
-                    name='label', shape=[1], dtype='int64'
+                label = paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
                 )
                 py_reader = fluid.io.DataLoader.from_generator(
                     feed_list=[image, label],

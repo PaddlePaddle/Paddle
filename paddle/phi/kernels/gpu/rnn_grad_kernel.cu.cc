@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/rnn_grad_kernel.h"
 
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/gpu/rnn_functor.h"
@@ -223,8 +223,7 @@ void RnnGradKernel(const Context &dev_ctx,
 #endif
   std::vector<int> SequenceLength;
   if (has_seq_length) {
-    SequenceLength =
-        paddle::operators::GetDataFromTensor<int>(sequence_length.get_ptr());
+    SequenceLength = phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
   }
 
   auto input_dims = x.dims();
@@ -261,108 +260,104 @@ void RnnGradKernel(const Context &dev_ctx,
   if (!has_seq_length) {
     if (x_grad) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::miopenRNNBackwardData(
-              handle,
-              rnn.rnn_desc(),
-              seq_length,
-              rnn.y_descs(),
-              out_data,
-              rnn.y_descs(),
-              out_grad_data,
-              rnn.last_h_desc(),
-              last_h_grad_data,
-              rnn.last_c_desc(),
-              last_c_grad_data,
-              rnn.weight_desc(),
-              weight_data,
-              rnn.init_h_desc(),
-              init_h_data,
-              rnn.init_c_desc(),
-              init_c_data,
-              rnn.x_descs(),
-              x_grad_data,
-              rnn.init_h_desc(),
-              init_h_grad_data,
-              rnn.init_c_desc(),
-              init_c_grad_data,
-              workspace_data_.data<uint8_t>(),
-              workspace_size,
-              const_cast<uint8_t *>(reserve_data),
-              reserve_size));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenRNNBackwardData(
+          handle,
+          rnn.rnn_desc(),
+          seq_length,
+          rnn.y_descs(),
+          out_data,
+          rnn.y_descs(),
+          out_grad_data,
+          rnn.last_h_desc(),
+          last_h_grad_data,
+          rnn.last_c_desc(),
+          last_c_grad_data,
+          rnn.weight_desc(),
+          weight_data,
+          rnn.init_h_desc(),
+          init_h_data,
+          rnn.init_c_desc(),
+          init_c_data,
+          rnn.x_descs(),
+          x_grad_data,
+          rnn.init_h_desc(),
+          init_h_grad_data,
+          rnn.init_c_desc(),
+          init_c_grad_data,
+          workspace_data_.data<uint8_t>(),
+          workspace_size,
+          const_cast<uint8_t *>(reserve_data),
+          reserve_size));
 #else
       // This interface is used when the input/output is unpadded.
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cudnnRNNBackwardData(
-              handle,
-              rnn.rnn_desc(),
-              seq_length,
-              rnn.y_descs(),
-              out_data,
-              rnn.y_descs(),
-              out_grad_data,
-              rnn.last_h_desc(),
-              last_h_grad_data,
-              rnn.last_c_desc(),
-              last_c_grad_data,
-              rnn.weight_desc(),
-              weight_data,
-              rnn.init_h_desc(),
-              init_h_data,
-              rnn.init_c_desc(),
-              init_c_data,
-              rnn.x_descs(),
-              x_grad_data,
-              rnn.init_h_desc(),
-              init_h_grad_data,
-              rnn.init_c_desc(),
-              init_c_grad_data,
-              workspace_data_.data<uint8_t>(),
-              workspace_size,
-              const_cast<uint8_t *>(reserve_data),
-              reserve_size));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNBackwardData(
+          handle,
+          rnn.rnn_desc(),
+          seq_length,
+          rnn.y_descs(),
+          out_data,
+          rnn.y_descs(),
+          out_grad_data,
+          rnn.last_h_desc(),
+          last_h_grad_data,
+          rnn.last_c_desc(),
+          last_c_grad_data,
+          rnn.weight_desc(),
+          weight_data,
+          rnn.init_h_desc(),
+          init_h_data,
+          rnn.init_c_desc(),
+          init_c_data,
+          rnn.x_descs(),
+          x_grad_data,
+          rnn.init_h_desc(),
+          init_h_grad_data,
+          rnn.init_c_desc(),
+          init_c_grad_data,
+          workspace_data_.data<uint8_t>(),
+          workspace_size,
+          const_cast<uint8_t *>(reserve_data),
+          reserve_size));
 #endif
     }
     if (!weight_grad_list.empty()) {
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::miopenRNNBackwardWeights(
-              handle,
-              rnn.rnn_desc(),
-              seq_length,
-              rnn.x_descs(),
-              x.data<T>(),
-              rnn.init_h_desc(),
-              init_h_data,
-              rnn.y_descs(),
-              out.data<T>(),
-              rnn.weight_desc(),
-              weight_grad_data,
-              workspace_data_.data<uint8_t>(),
-              workspace_size,
-              const_cast<uint8_t *>(reserve_data),
-              reserve_size));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenRNNBackwardWeights(
+          handle,
+          rnn.rnn_desc(),
+          seq_length,
+          rnn.x_descs(),
+          x.data<T>(),
+          rnn.init_h_desc(),
+          init_h_data,
+          rnn.y_descs(),
+          out.data<T>(),
+          rnn.weight_desc(),
+          weight_grad_data,
+          workspace_data_.data<uint8_t>(),
+          workspace_size,
+          const_cast<uint8_t *>(reserve_data),
+          reserve_size));
       // permute weight grad list from weight grad tensor
       TensorToPermutedWeight<T>(
           place, stream, weight_grad, &weight_grad_list, rnn_mode, is_bidirec);
 #else
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cudnnRNNBackwardWeights(
-              handle,
-              rnn.rnn_desc(),
-              seq_length,
-              rnn.x_descs(),
-              x.data<T>(),
-              rnn.init_h_desc(),
-              init_h_data,
-              rnn.y_descs(),
-              out.data<T>(),
-              workspace_data_.data<uint8_t>(),
-              workspace_size,
-              rnn.weight_desc(),
-              weight_grad_data,
-              const_cast<uint8_t *>(reserve_data),
-              reserve_size));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNBackwardWeights(
+          handle,
+          rnn.rnn_desc(),
+          seq_length,
+          rnn.x_descs(),
+          x.data<T>(),
+          rnn.init_h_desc(),
+          init_h_data,
+          rnn.y_descs(),
+          out.data<T>(),
+          workspace_data_.data<uint8_t>(),
+          workspace_size,
+          rnn.weight_desc(),
+          weight_grad_data,
+          const_cast<uint8_t *>(reserve_data),
+          reserve_size));
 #endif
     }
   } else {
@@ -370,57 +365,55 @@ void RnnGradKernel(const Context &dev_ctx,
     // for train
     // This interface is used when the input/output is padded.
     if (x_grad) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cudnnRNNBackwardDataEx(
-              handle,
-              rnn.rnn_desc(),
-              rnn.y_seq_desc(),
-              out_data,
-              rnn.y_seq_desc(),
-              out_grad_data,
-              nullptr,
-              nullptr,
-              rnn.last_h_desc(),
-              last_h_grad_data,
-              rnn.last_c_desc(),
-              last_c_grad_data,
-              rnn.weight_desc(),
-              weight_data,
-              rnn.init_h_desc(),
-              init_h_data,
-              rnn.init_c_desc(),
-              init_c_data,
-              rnn.x_seq_desc(),
-              x_grad_data,
-              rnn.init_h_desc(),
-              init_h_grad_data,
-              rnn.init_c_desc(),
-              init_c_grad_data,
-              nullptr,
-              nullptr,
-              workspace_data_.data<uint8_t>(),
-              workspace_size,
-              const_cast<uint8_t *>(reserve_data),
-              reserve_size));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNBackwardDataEx(
+          handle,
+          rnn.rnn_desc(),
+          rnn.y_seq_desc(),
+          out_data,
+          rnn.y_seq_desc(),
+          out_grad_data,
+          nullptr,
+          nullptr,
+          rnn.last_h_desc(),
+          last_h_grad_data,
+          rnn.last_c_desc(),
+          last_c_grad_data,
+          rnn.weight_desc(),
+          weight_data,
+          rnn.init_h_desc(),
+          init_h_data,
+          rnn.init_c_desc(),
+          init_c_data,
+          rnn.x_seq_desc(),
+          x_grad_data,
+          rnn.init_h_desc(),
+          init_h_grad_data,
+          rnn.init_c_desc(),
+          init_c_grad_data,
+          nullptr,
+          nullptr,
+          workspace_data_.data<uint8_t>(),
+          workspace_size,
+          const_cast<uint8_t *>(reserve_data),
+          reserve_size));
     }
 
     if (!weight_grad_list.empty()) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cudnnRNNBackwardWeightsEx(
-              handle,
-              rnn.rnn_desc(),
-              rnn.x_seq_desc(),
-              x.data<T>(),
-              rnn.init_h_desc(),
-              init_h_data,
-              rnn.y_seq_desc(),
-              out.data<T>(),
-              workspace_data_.data<uint8_t>(),
-              workspace_size,
-              rnn.weight_desc(),
-              weight_grad_data,
-              const_cast<uint8_t *>(reserve_data),
-              reserve_size));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNBackwardWeightsEx(
+          handle,
+          rnn.rnn_desc(),
+          rnn.x_seq_desc(),
+          x.data<T>(),
+          rnn.init_h_desc(),
+          init_h_data,
+          rnn.y_seq_desc(),
+          out.data<T>(),
+          workspace_data_.data<uint8_t>(),
+          workspace_size,
+          rnn.weight_desc(),
+          weight_grad_data,
+          const_cast<uint8_t *>(reserve_data),
+          reserve_size));
     }
 #else
     PADDLE_THROW(phi::errors::Unavailable(

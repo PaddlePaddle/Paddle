@@ -19,12 +19,50 @@
 PADDLE_DEFINE_EXPORTED_bool(prim_enabled, false, "enable_prim or not");
 namespace paddle {
 namespace prim {
-bool PrimCommonUtils::IsPrimEnabled() {
-  return StaticCompositeContext::Instance().IsPrimEnabled();
+bool PrimCommonUtils::IsBwdPrimEnabled() {
+  return StaticCompositeContext::Instance().IsBwdPrimEnabled();
 }
 
-void PrimCommonUtils::SetPrimEnabled(bool enable_prim) {
-  return StaticCompositeContext::Instance().SetPrimEnabled(enable_prim);
+void PrimCommonUtils::SetBwdPrimEnabled(bool enable_prim) {
+  StaticCompositeContext::Instance().SetBwdPrimEnabled(enable_prim);
 }
+
+bool PrimCommonUtils::IsEagerPrimEnabled() {
+  return StaticCompositeContext::Instance().IsEagerPrimEnabled();
+}
+
+void PrimCommonUtils::SetEagerPrimEnabled(bool enable_prim) {
+  StaticCompositeContext::Instance().SetEagerPrimEnabled(enable_prim);
+}
+
+bool PrimCommonUtils::IsFwdPrimEnabled() {
+  return StaticCompositeContext::Instance().IsFwdPrimEnabled();
+}
+
+void PrimCommonUtils::SetFwdPrimEnabled(bool enable_prim) {
+  StaticCompositeContext::Instance().SetFwdPrimEnabled(enable_prim);
+}
+
+void PrimCommonUtils::SetAllPrimEnabled(bool enable_prim) {
+  StaticCompositeContext::Instance().SetAllPrimEnabled(enable_prim);
+}
+
+size_t PrimCommonUtils::CheckSkipCompOps(const std::string& op_type) {
+  return StaticCompositeContext::Instance().CheckSkipCompOps(op_type);
+}
+
+void PrimCommonUtils::AddSkipCompOps(const std::string& op_type) {
+  StaticCompositeContext::Instance().AddSkipCompOps(op_type);
+}
+
+void PrimCommonUtils::RemoveSkipCompOps(const std::string& op_type) {
+  StaticCompositeContext::Instance().RemoveSkipCompOps(op_type);
+}
+
+void PrimCommonUtils::SetTargetGradName(
+    const std::map<std::string, std::string>& m) {
+  StaticCompositeContext::Instance().SetTargetGradName(m);
+}
+
 }  // namespace prim
 }  // namespace paddle

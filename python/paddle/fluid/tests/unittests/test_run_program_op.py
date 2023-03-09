@@ -131,7 +131,7 @@ class RunProgramOpTest(unittest.TestCase):
         forward_program = _add_build_strategy_for(program, 0, forward_op_num)
         backward_program = _add_build_strategy_for(
             program,
-            forward_op_num + 2 * output_num,
+            forward_op_num + output_num,
             program.desc.block(0).op_size(),
         )
         return forward_program.desc, backward_program.desc
@@ -403,7 +403,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
         weight_attr = fluid.ParamAttr(
             name=self.input_names['Params'][0],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(
+            initializer=paddle.nn.initializer.Assign(
                 self.inputs['Params'][self.input_names['Params'][0]]
             ),
             trainable=True,
@@ -411,7 +411,7 @@ class TestRunProgramOpWithFC(RunProgramOpTest):
         bias_attr = fluid.ParamAttr(
             name=self.input_names['Params'][1],
             learning_rate=0.5,
-            initializer=fluid.initializer.NumpyArrayInitializer(
+            initializer=paddle.nn.initializer.Assign(
                 self.inputs['Params'][self.input_names['Params'][1]]
             ),
             trainable=True,
@@ -460,16 +460,16 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
 
     def build_model(self):
         # 1. simple model
-        x = fluid.layers.data(
-            name=self.input_names['X'][0], shape=[5], dtype='int64'
+        x = paddle.static.data(
+            name=self.input_names['X'][0], shape=[-1, 5], dtype='int64'
         )
-        emb = fluid.input.embedding(
+        emb = paddle.static.nn.embedding(
             input=x,
             size=[10, 16],
             param_attr=fluid.ParamAttr(
                 name="emb_weight",
                 learning_rate=10,
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     self.inputs['Params'][self.input_names['Params'][0]]
                 ),
             ),

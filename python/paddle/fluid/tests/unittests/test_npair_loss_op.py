@@ -83,23 +83,20 @@ class TestNpairLossOp(unittest.TestCase):
             l2_reg=reg_lambda,
         )
 
-        anc = fluid.layers.data(
+        anc = paddle.static.data(
             dtype='float32',
             name='anc',
             shape=embeddings_anchor.shape,
-            append_batch_size=False,
         )
-        pos = fluid.layers.data(
+        pos = paddle.static.data(
             dtype='float32',
             name='pos',
             shape=embeddings_positive.shape,
-            append_batch_size=False,
         )
-        lab = fluid.layers.data(
+        lab = paddle.static.data(
             dtype='float32',
             name='lab',
             shape=row_labels.shape,
-            append_batch_size=False,
         )
 
         npair_loss_op = paddle.nn.functional.npair_loss(
@@ -197,6 +194,43 @@ class TestNpairLossOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_anchor_type)
             self.assertRaises(TypeError, test_positive_type)
             self.assertRaises(TypeError, test_labels_type)
+
+
+class TestNpairLossZeroError(unittest.TestCase):
+    def test_errors(self):
+        with paddle.fluid.dygraph.guard():
+
+            def test_anchor_0_size():
+                array = np.array([], dtype=np.float32)
+                anchor = paddle.to_tensor(
+                    np.reshape(array, [0, 0, 0]), dtype='float32'
+                )
+                positive = paddle.to_tensor(
+                    np.reshape(array, [0]), dtype='float32'
+                )
+                array = np.array([1, 2, 3, 4], dtype=np.float32)
+                labels = paddle.to_tensor(
+                    np.reshape(array, [4]), dtype='float32'
+                )
+                paddle.nn.functional.npair_loss(anchor, positive, labels)
+
+            def test_positive_0_size():
+                array = np.array([1], dtype=np.float32)
+                array1 = np.array([], dtype=np.float32)
+                anchor = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 1]), dtype='float32'
+                )
+                positive = paddle.to_tensor(
+                    np.reshape(array1, [0]), dtype='float32'
+                )
+                array = np.array([1, 2, 3, 4], dtype=np.float32)
+                labels = paddle.to_tensor(
+                    np.reshape(array, [4]), dtype='float32'
+                )
+                paddle.nn.functional.npair_loss(anchor, positive, labels)
+
+            self.assertRaises(ValueError, test_anchor_0_size)
+            self.assertRaises(ValueError, test_positive_0_size)
 
 
 if __name__ == '__main__':

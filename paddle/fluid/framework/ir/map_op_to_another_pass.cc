@@ -53,8 +53,14 @@ void MapOp2AnotherPass::ApplyImpl(ir::Graph* graph) const {
         op_desc->SetAttr("shape", std::vector<int>{0, -1});
       }
     } else if (op_type == "depthwise_conv2d") {
-      op_desc->SetType(replaced_map[op_type]);
-      op_desc->SetAttr("use_cudnn", true);
+      auto groups = PADDLE_GET_CONST(int, op_desc->GetAttr("groups"));
+      if (groups > 1) {
+#if CUDNN_VERSION >= 8100
+        op_desc->SetType(replaced_map[op_type]);
+        op_desc->RemoveAttr("use_cudnn");
+        op_desc->SetAttr("use_cudnn", true);
+#endif
+      }
     }
     op_desc->Flush();
     ++found_count;

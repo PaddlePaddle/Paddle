@@ -21,7 +21,6 @@ from decorator_helper import prog_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.nn.functional as F
 
 
@@ -31,7 +30,7 @@ class TestSigmoidTripleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = F.sigmoid(x)
         x_arr = np.random.random(shape).astype(dtype)
@@ -58,7 +57,7 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = F.sigmoid(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -88,7 +87,7 @@ class TestTanhTripleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.tanh(x)
         x_arr = np.random.random(shape).astype(dtype)
@@ -118,7 +117,7 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.tanh(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -148,7 +147,7 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.abs(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -176,7 +175,7 @@ class TestReluDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
         y = F.relu(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -206,7 +205,7 @@ class TestLeakyReluDoubleGradCheck(unittest.TestCase):
         alpha = 0.2
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
 
         y = paddle.nn.functional.leaky_relu(x, alpha)
@@ -241,7 +240,7 @@ class TestELUDoubleGradCheck(unittest.TestCase):
         dtype = np.float64
         SEED = 0
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
 
         y = paddle.nn.functional.elu(x, alpha=alpha)
@@ -275,7 +274,7 @@ class TestCELUDoubleGradCheck(unittest.TestCase):
         dtype = np.float64
         SEED = 0
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
 
         y = F.celu(x, alpha=alpha)
@@ -307,7 +306,7 @@ class TestSqrtDoubleGradCheck(unittest.TestCase):
         eps = 0.0001
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
 
         y = paddle.sqrt(x)
@@ -339,7 +338,7 @@ class TestRsqrtDoubleGradCheck(unittest.TestCase):
         eps = 0.0001
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
 
         y = paddle.rsqrt(x)
@@ -372,7 +371,7 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
         y = paddle.square(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -403,7 +402,7 @@ class TestLogDoubleGradCheck(unittest.TestCase):
         eps = 1e-6
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
         x.persistable = True
         y = paddle.log(x)
 
@@ -434,7 +433,7 @@ class TestSinDoubleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.sin(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -464,7 +463,7 @@ class TestCosDoubleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.cos(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -494,7 +493,7 @@ class TestPowDoubleGradCheck1(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 1e-6
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.pow(x, 2)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -523,7 +522,7 @@ class TestPowDoubleGradCheck2(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 1e-6
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.pow(x, 1)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -552,7 +551,7 @@ class TestSinTripleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.sin(x)
         x_arr = np.random.random(shape).astype(dtype)
@@ -582,7 +581,7 @@ class TestPowTripleGradCheck1(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 1e-6
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.pow(x, 1)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -611,7 +610,7 @@ class TestPowTripleGradCheck2(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 1e-6
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.pow(x, 2)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -640,7 +639,7 @@ class TestPowTripleGradCheck3(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 1e-6
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.pow(x, 4)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
@@ -669,7 +668,7 @@ class TestCosTripleGradCheck(unittest.TestCase):
         shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
-        x = layers.data('x', shape, False, dtype=dtype)
+        x = paddle.static.data('x', shape, dtype=dtype)
         x.persistable = True
         y = paddle.cos(x)
         x_arr = np.random.random(shape).astype(dtype)

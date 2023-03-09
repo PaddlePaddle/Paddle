@@ -43,30 +43,34 @@ enum class AlgorithmType {
   kConvForward = 1,
   kConvBackwardData = 2,
   kConvBackwardFilter = 3,
-#ifdef PADDLE_WITH_CUDNN_FRONTEND
-  kConvForwardV8 = 4,
-  kConvBackwardDataV8 = 5,
-  kConvBackwardFilterV8 = 6,
-  kTranspose = 7,
-  kAlgorithmCount = 8
-#else
   kTranspose = 4,
-  kAlgorithmCount = 5
+  kMatmul = 5,
+#if !defined(PADDLE_WITH_CUDNN_FRONTEND)
+  kAlgorithmCount = 6
+#else
+  kConvForwardV8 = 6,
+  kConvBackwardDataV8 = 7,
+  kConvBackwardFilterV8 = 8,
+  kAlgorithmCount = 9
 #endif
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
-// (todo. hong) use cudnnConvolutionFwdAlgo_t
-using AlgorithmsCacheMap = AlgorithmsCache<size_t, int64_t>;
 // AlgorithmType -> AlgorithmsCache
+using AlgorithmsCacheMap = AlgorithmsCache<size_t, int64_t>;
 using AlgorithmsTypeMap = std::unordered_map<int64_t, AlgorithmsCacheMap>;
+
+// (todo. hong) use cudnnConvolutionFwdAlgo_t
 using ConvAlgorithmsCacheMap = ConvAlgorithmsCache<ConvAutoTuneResult>;
 using ConvAlgorithmsTypeMap =
     std::unordered_map<int64_t, ConvAlgorithmsCacheMap>;
+
+using MatmulAlgorithmsCacheMap = MatmulAlgorithmsCache<size_t, int64_t>;
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 using CudnnV8AlgorithmsTypeMap =
     std::unordered_map<int64_t, CudnnFrontendPlanCache>;
 #endif
+
 class AutoTuneCache {
  public:
   static AutoTuneCache& Instance() {
@@ -78,6 +82,8 @@ class AutoTuneCache {
     return auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
+  MatmulAlgorithmsCacheMap& GetMatmul() { return matmul_auto_tune_map_; }
+
   ConvAlgorithmsCacheMap& GetConv(const AlgorithmType& algo_type) {
     return conv_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
@@ -87,8 +93,6 @@ class AutoTuneCache {
     return cudnn_v8_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 #endif
-
-  AlgorithmsCacheMap& GetTranspose() { return Get(AlgorithmType::kTranspose); }
 
   void Clean() {
     for (auto& v : auto_tune_map_) {
@@ -163,6 +167,7 @@ class AutoTuneCache {
 
   AlgorithmsTypeMap auto_tune_map_;
   ConvAlgorithmsTypeMap conv_auto_tune_map_;
+  MatmulAlgorithmsCacheMap matmul_auto_tune_map_;
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   CudnnV8AlgorithmsTypeMap cudnn_v8_auto_tune_map_;
 #endif

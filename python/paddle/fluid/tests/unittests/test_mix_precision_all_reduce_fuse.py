@@ -36,8 +36,10 @@ def loss_net(hidden, label):
 
 
 def conv_net(use_feed):
-    img = fluid.layers.data(name='image', shape=img_shape, dtype='float16')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(
+        name='image', shape=[-1] + img_shape, dtype='float16'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=img,
@@ -49,7 +51,7 @@ def conv_net(use_feed):
     )
     conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
 
-    conv_pool_1 = fluid.layers.cast(conv_pool_1, np.float32)
+    conv_pool_1 = paddle.cast(conv_pool_1, np.float32)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -58,7 +60,7 @@ def conv_net(use_feed):
         pool_stride=2,
         act="relu",
     )
-    hidden = fluid.layers.cast(conv_pool_2, np.float32)
+    hidden = paddle.cast(conv_pool_2, np.float32)
     return loss_net(hidden, label)
 
 

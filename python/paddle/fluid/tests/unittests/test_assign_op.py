@@ -22,7 +22,6 @@ from decorator_helper import prog_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
 from paddle.fluid.backward import append_backward
 
@@ -79,7 +78,7 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
             z = paddle.add(x=x, y=y)
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
             init_array = paddle.tensor.array_write(x=z, i=i)
-            array = fluid.layers.assign(init_array)
+            array = paddle.assign(init_array)
             sums = paddle.tensor.array_read(array=init_array, i=i)
             mean = paddle.mean(sums)
             append_backward(mean)
@@ -111,10 +110,10 @@ class TestAssignOpError(unittest.TestCase):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
-            self.assertRaises(TypeError, fluid.layers.assign, x1)
+            self.assertRaises(TypeError, paddle.assign, x1)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
             x2 = np.array([[2.5, 2.5]], dtype='uint8')
-            self.assertRaises(TypeError, fluid.layers.assign, x2)
+            self.assertRaises(TypeError, paddle.assign, x2)
         paddle.disable_static()
 
 
@@ -253,7 +252,7 @@ class TestAssignOpErrorApi(unittest.TestCase):
 
 class TestAssignDoubleGradCheck(unittest.TestCase):
     def assign_wrapper(self, x):
-        return paddle.fluid.layers.assign(x[0])
+        return paddle.assign(x[0])
 
     @prog_scope()
     def func(self, place):
@@ -261,9 +260,9 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 4, 5], False, dtype)
+        data = paddle.static.data('data', [3, 4, 5], dtype)
         data.persistable = True
-        out = paddle.fluid.layers.assign(data)
+        out = paddle.assign(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
         gradient_checker.double_grad_check(
@@ -284,7 +283,7 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
 
 class TestAssignTripleGradCheck(unittest.TestCase):
     def assign_wrapper(self, x):
-        return paddle.fluid.layers.assign(x[0])
+        return paddle.assign(x[0])
 
     @prog_scope()
     def func(self, place):
@@ -292,9 +291,9 @@ class TestAssignTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 4, 5], False, dtype)
+        data = paddle.static.data('data', [3, 4, 5], dtype)
         data.persistable = True
-        out = paddle.fluid.layers.assign(data)
+        out = paddle.assign(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
         gradient_checker.triple_grad_check(

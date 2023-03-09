@@ -22,7 +22,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
@@ -228,7 +227,7 @@ class TestSqueezeDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3], False, dtype)
+        data = paddle.static.data('data', [2, 3], dtype)
         data.persistable = True
         out = paddle.squeeze(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
@@ -259,7 +258,7 @@ class TestSqueezeTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 3], False, dtype)
+        data = paddle.static.data('data', [2, 3], dtype)
         data.persistable = True
         out = paddle.squeeze(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)

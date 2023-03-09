@@ -20,7 +20,6 @@ import numpy as np
 
 import paddle
 import paddle.dataset.wmt16 as wmt16
-import paddle.fluid as fluid
 
 
 def get_input_descs(args, mode="train"):
@@ -296,12 +295,11 @@ class InputField:
         self.feed_list = []
         for slot in input_slots:
             self.feed_list.append(
-                fluid.layers.data(
+                paddle.static.data(
                     name=slot['name'],
                     shape=slot['shape'],
                     dtype=slot['dtype'],
                     lod_level=slot.get('lod_level', 0),
-                    append_batch_size=False,
                 )
             )
 
@@ -311,7 +309,7 @@ def load(program, model_path, executor=None, var_list=None):
     To load python2 saved models in python3.
     """
     try:
-        fluid.load(program, model_path, executor, var_list)
+        paddle.static.load(program, model_path, executor, var_list)
     except UnicodeDecodeError:
         warnings.warn(
             "An UnicodeDecodeError is catched, which might be caused by loading "
@@ -320,7 +318,7 @@ def load(program, model_path, executor=None, var_list=None):
         )
         load_bak = pickle.load
         pickle.load = partial(load_bak, encoding="latin1")
-        fluid.load(program, model_path, executor, var_list)
+        paddle.static.load(program, model_path, executor, var_list)
         pickle.load = load_bak
 
 

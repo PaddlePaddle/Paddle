@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/matmul_transpose_reshape_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -24,7 +25,7 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(Graph *graph) const {
-  auto matmul_types = {"matmul", "matmul_v2"};
+  auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
 
   for (const auto &matmul_type : matmul_types) {
     Fuse(graph, matmul_type);
@@ -84,6 +85,7 @@ void MatmulTransposeReshapeMKLDNNPass::Fuse(
     }
 
     OpDesc *matmul_desc = matmul_op->Op();
+    ConvertToFusedOp(matmul_desc);
     matmul_desc->SetOutput("Out", {reshape_out->Name()});
     matmul_desc->SetAttr("fused_reshape_Out", reshape_shape);
     matmul_desc->SetAttr("fused_transpose_Out", transpose_axis);
@@ -149,6 +151,27 @@ MatmulTransposeReshapeMKLDNNPass::MatmulTransposeReshapeMKLDNNPass() {
       .IsType<bool>()
       .End();
 
+  AddOpCompat(OpCompat("fused_matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End();
+
   AddOpCompat(OpCompat("transpose2"))
       .AddInput("X")
       .IsTensor()
@@ -189,6 +212,7 @@ REGISTER_PASS(matmul_transpose_reshape_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(matmul_transpose_reshape_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("fused_matmul", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("transpose2", 0)

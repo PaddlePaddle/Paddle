@@ -20,7 +20,6 @@ from pass_test import PassTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 
 
 class FusionGroupPassTest(PassTest):
@@ -113,7 +112,7 @@ class FusionGroupPassInplaceTest(FusionGroupPassTest):
             # subgraph with 3 op node
             tmp_0 = self.feed_vars[0] - self.feed_vars[1]
             tmp_1 = tmp_0 * self.feed_vars[2]
-            tmp_2 = layers.assign(tmp_1, output=tmp_0)
+            tmp_2 = paddle.assign(tmp_1, output=tmp_0)
             tmp_3 = paddle.matmul(tmp_2, self.feed_vars[3])
 
         self.num_fused_ops = 1
@@ -138,7 +137,7 @@ class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
 
             # subgraph with 2 op nodes
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
-            tmp_1 = layers.cast(tmp_0, dtype="float16")
+            tmp_1 = paddle.cast(tmp_0, dtype="float16")
             zero = paddle.tensor.fill_constant(
                 shape=[128], dtype="float16", value=0
             )
@@ -147,10 +146,10 @@ class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
             tmp_2 = paddle.add(tmp_1, zero)
             tmp_3 = paddle.matmul(tmp_0, self.feed_vars[2])
             # subgraph with 4 op nodes
-            tmp_3 = layers.cast(tmp_2, dtype="float16")
+            tmp_3 = paddle.cast(tmp_2, dtype="float16")
             tmp_4 = paddle.nn.functional.relu(tmp_1 + tmp_3)
-            tmp_5 = layers.cast(tmp_4, dtype=dtype)
-            tmp_3 = layers.cast(tmp_2, dtype=dtype)
+            tmp_5 = paddle.cast(tmp_4, dtype=dtype)
+            tmp_3 = paddle.cast(tmp_2, dtype=dtype)
 
         self.append_gradients(tmp_5)
 
@@ -187,8 +186,8 @@ class FusionGroupPassCastTest(FusionGroupPassTest):
             self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
 
             tmp_0 = paddle.add(self.feed_vars[0], self.feed_vars[1])
-            tmp_1 = layers.cast(tmp_0, dtype="float64")
-            tmp_2 = layers.cast(tmp_1, dtype="float32")
+            tmp_1 = paddle.cast(tmp_0, dtype="float64")
+            tmp_2 = paddle.cast(tmp_1, dtype="float32")
 
         self.append_gradients(tmp_2)
 

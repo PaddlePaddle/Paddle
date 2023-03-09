@@ -130,9 +130,9 @@ class TestResnet(unittest.TestCase):
         )
 
     def test_resnet_composite(self):
-        core.set_prim_enabled(True)
+        core._set_prim_backward_enabled(True)
         static_loss = self.train(to_static=True)
-        core.set_prim_enabled(False)
+        core._set_prim_backward_enabled(False)
         dygraph_loss = self.train(to_static=False)
         np.testing.assert_allclose(
             static_loss,
