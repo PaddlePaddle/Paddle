@@ -109,6 +109,7 @@ class TestIndexSelectAPI(unittest.TestCase):
         self.data_index = np.array([0, 1, 1]).astype('int32')
 
     def test_index_select_api(self):
+        paddle.enable_static()
         self.input_data()
 
         # case 1:
@@ -144,6 +145,7 @@ class TestIndexSelectAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
+        paddle.disable_static()
         self.input_data()
         # case 1:
         with fluid.dygraph.guard():
