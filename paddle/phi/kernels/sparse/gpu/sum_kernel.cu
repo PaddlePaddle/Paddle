@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -206,6 +207,9 @@ void SumCooKernel(const Context& dev_ctx,
                                               out_indices_data,
                                               out_values_data);
   }
+  if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
+    phi::Cast<T, Context>(dev_ctx, out_values, dtype);
+  }
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 }
 
@@ -307,7 +311,9 @@ PD_REGISTER_KERNEL(sum_coo,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {}
+                   bool) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}
 
 PD_REGISTER_KERNEL(sum_csr,
                    GPU,
@@ -318,4 +324,6 @@ PD_REGISTER_KERNEL(sum_csr,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {}
+                   bool) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}

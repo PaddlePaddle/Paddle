@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/arange_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
@@ -100,6 +100,9 @@ void SumCooKernel(const Context& dev_ctx,
       }
       out_values_data[j] = out_value;
     }
+  }
+  if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
+    phi::Cast<T, Context>(dev_ctx, out_values, dtype);
   }
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 }
