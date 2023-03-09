@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/operator_unsqueeze2_onednn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void FuseOperatorUnsqueeze2OneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::pair<std::string, int>> ops_and_outputs = {
-      {"transpose2", 2}, {"elementwise_mul", 1}};
+      {"transpose2", 2}, {"fused_elementwise_mul", 1}, {"elementwise_mul", 1}};
 
   for (const auto &op_and_outputs : ops_and_outputs)
     FuseUnsqueeze2(graph, op_and_outputs.first, op_and_outputs.second);
@@ -55,6 +55,7 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(
     GET_IR_NODE_FROM_SUBGRAPH(
         unsqueeze2_out, unsqueeze2_out, op_unsqueeze2_pattern);
 
+    ConvertToFusedOp(operator_op->Op());
     if (!operator_op->Op()->HasAttr("use_mkldnn") ||
         (operator_op->Op()->HasAttr("use_mkldnn") &&
          !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_mkldnn"))))) {
