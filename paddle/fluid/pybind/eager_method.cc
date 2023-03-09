@@ -1071,7 +1071,7 @@ static PyObject* tensor_method__advanced_index(TensorObject* self,
     }
   });
 
-  paddle::experimental::Tensor value_tensor;
+  paddle::Tensor value_tensor;
   // deal with value type
   if (py::isinstance<py::array>(value_obj)) {
     value_tensor =
@@ -1094,7 +1094,7 @@ static PyObject* tensor_method__advanced_index(TensorObject* self,
         "please check the type of value."));
   }
 
-  std::vector<paddle::experimental::Tensor> indices_tensor;
+  std::vector<paddle::Tensor> indices_tensor;
 
   bool isAdvanceIndex = true;
   bool isBoolIndex = false;
@@ -1230,7 +1230,7 @@ static PyObject* tensor_method__advanced_index(TensorObject* self,
     return ToPyObject(isAdvanceIndex);
   }
 
-  std::vector<paddle::experimental::Tensor> indices_tensor_bd(
+  std::vector<paddle::Tensor> indices_tensor_bd(
       BroadCastAllTensor(indices_tensor));
 
   if ((value_tensor.dims() != indices_tensor_bd[0].dims()) &&

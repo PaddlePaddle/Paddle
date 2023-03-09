@@ -559,13 +559,12 @@ void SetTensorFromPyArray(phi::DenseTensor *self,
   }
 }
 
-static paddle::experimental::Tensor PyArrayToTensor(
+static paddle::Tensor PyArrayToTensor(
     const paddle::experimental::DataType &dtype,
     const phi::Place &place,
     PyObject *value_obj) {
-  paddle::experimental::Tensor rt_tensor(
-      std::make_shared<phi::DenseTensor>(),
-      egr::Controller::Instance().GenerateUniqueName());
+  paddle::Tensor rt_tensor(std::make_shared<phi::DenseTensor>(),
+                           egr::Controller::Instance().GenerateUniqueName());
   py::object value_obj_tmp(py::handle(value_obj), true);
   py::object value = value_obj_tmp;
   if (dtype == paddle::experimental::DataType::FLOAT32) {
@@ -610,7 +609,7 @@ static paddle::experimental::Tensor PyArrayToTensor(
   return rt_tensor;
 }
 
-static paddle::experimental::Tensor PyListToTensor(
+static paddle::Tensor PyListToTensor(
     const paddle::experimental::DataType &dtype,
     const phi::Place &place,
     PyObject *value_obj) {
@@ -619,7 +618,7 @@ static paddle::experimental::Tensor PyListToTensor(
       dtype, place, py::array_t<double>(value_obj_tmp).ptr());
 }
 
-static paddle::experimental::Tensor PyValueToTensor(
+static paddle::Tensor PyValueToTensor(
     const paddle::experimental::DataType &dtype,
     const phi::Place &place,
     PyObject *value_obj) {
@@ -1280,13 +1279,13 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 
 // static paddle::experimental::IntArray BroadCastDims()
 
-static std::vector<paddle::experimental::Tensor> BroadCastAllTensor(
-    const std::vector<paddle::experimental::Tensor> &tensors) {
+static std::vector<paddle::Tensor> BroadCastAllTensor(
+    const std::vector<paddle::Tensor> &tensors) {
   if (tensors.empty()) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Not support empty vector of tensor!"));
   }
-  std::vector<paddle::experimental::Tensor> rt_tensors;
+  std::vector<paddle::Tensor> rt_tensors;
 
   auto pre_dim = tensors[0].dims();
   auto tmp_dim = phi::make_ddim({0});
