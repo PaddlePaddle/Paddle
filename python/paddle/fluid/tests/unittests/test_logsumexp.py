@@ -190,14 +190,18 @@ class TestLogsumexp_FP16(TestLogsumexp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestLogsumexpBF16(OpTest):
+class TestLogsumexpBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'logsumexp'
         self.dtype = np.uint16
+        self.shape = [2, 3, 4, 5]
+        self.axis = [-1]
+        self.keepdim = False
+        self.reduce_all = False
         self.__class__.op_type = self.op_type
-        self.python_api = paddle.logsumexp
-        x = np.random.rand([10, 12]).astype(np.float32)
-        output = np.logsumexp(x)
+        self.python_api = paddle.logsumexp_wrapper
+        x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
+        output = ref_logsumexp(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
