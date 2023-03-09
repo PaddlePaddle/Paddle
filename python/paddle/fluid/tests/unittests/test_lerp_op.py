@@ -201,6 +201,7 @@ class TestLerpBF16(OpTest):
         self.python_api = paddle.lerp
         self.init_dtype()
         self.init_shape()
+        self.__class__.op_type = self.op_type
         x = np.arange(1.0, 101.0).astype(np.float32).reshape(self.shape)
         y = np.full(100, 10.0).astype(np.float32).reshape(self.shape)
         w = np.asarray([0.5]).astype(np.float32)

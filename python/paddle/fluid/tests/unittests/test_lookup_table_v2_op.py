@@ -299,6 +299,7 @@ class TestEmbeddingFP16OP(OpTest):
         self.op_type = "lookup_table_v2"
         self.dtype = "float16"
         self.python_api = paddle.nn.functional.embedding
+        self.__class__.op_type = self.op_type
         table = np.random.random((17, 31)).astype(np.float32)
         ids = np.random.randint(0, 17, 4).astype(self.id_dtype())
         self.inputs = {'W': table.astype(self.dtype), 'Ids': ids}
