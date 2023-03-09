@@ -32,6 +32,10 @@ extra {
     type: FLOAT
   }
   attrs {
+    name: "fused_unsqueeze2_axes"
+    type: INTS  
+  }
+  attrs {
     name: "scale_x"
     type: FLOAT
   }

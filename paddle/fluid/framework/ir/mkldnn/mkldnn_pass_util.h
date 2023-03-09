@@ -164,7 +164,7 @@ inline void ConvertToFusedOp(OpDesc* op) {
       {"elementwise_add", "fused_elementwise_add"},
       {"elementwise_sub", "fused_elementwise_sub"},
       {"elementwise_mul", "fused_elementwise_mul"},
-      {"elementwise_mul", "fused_elementwise_div"}};
+      {"elementwise_div", "fused_elementwise_div"}};
 
   if (op->Type() == "matmul") {
     op->SetAttr("trans_x", op->GetAttr("transpose_X"));
