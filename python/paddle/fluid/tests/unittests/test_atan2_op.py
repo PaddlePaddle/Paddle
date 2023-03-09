@@ -140,9 +140,10 @@ class TestAtan2OpBf16(OpTest):
         self.op_type = 'atan2'
         self.python_api = paddle.atan2
         self.dtype = np.uint16
+        self.__class__.op_type = self.op_type
         x1 = np.random.uniform(-1, -0.1, [15, 17]).astype(np.float32)
         x2 = np.random.uniform(0.1, 1, [15, 17]).astype(np.float32)
-        out = paddle.atan2(x1, x2)
+        out = np.atan2(x1, x2)
 
         self.inputs = {
             'X1': convert_float_to_uint16(x1),
@@ -151,14 +152,12 @@ class TestAtan2OpBf16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_eager=True)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad(['X1', 'X2'], 'Out', check_eager=True)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
 
 class TestAtan2Error(unittest.TestCase):
