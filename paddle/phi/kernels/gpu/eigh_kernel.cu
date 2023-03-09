@@ -43,6 +43,9 @@ PD_REGISTER_KERNEL(eigh,  // cuda_only
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
+  kernel->OutputAt(1).SetDataType(paddle::DataType::UNDEFINED);
+}
 
 #endif  // not PADDLE_WITH_HIP
