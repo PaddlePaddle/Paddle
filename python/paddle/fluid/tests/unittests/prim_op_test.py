@@ -199,7 +199,7 @@ class OpTestUtils:
         ]  # convert None -> [None]
         for inp in inp_args:
             assert isinstance(
-                inp, (list, tuple)
+                inp, list
             ), "currently only support `X` is [Tensor], don't support other structure."
         args = [inp[0] if len(inp) == 1 else inp for inp in inp_args] + args[
             inp_num:
