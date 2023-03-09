@@ -86,5 +86,5 @@ PD_REGISTER_KERNEL(histogram,
                    double,
                    int,
                    int64_t) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::INT64);
+  kernel->OutputAt(0).SetDataType(paddle::DataType::INT64);
 }
