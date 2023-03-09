@@ -34,5 +34,10 @@ else:
         source_files.append('custom_relu_op.cu')
     setup(
         name='custom_setup_op_relu_model_static_multidevices',
-        ext_modules=CUDAExtension(sources=source_files),
+        ext_modules=CUDAExtension(
+            sources=source_files,
+            include_dirs=paddle_includes,
+            extra_compile_args=extra_compile_args,
+            verbose=True,
+        ),
     )
