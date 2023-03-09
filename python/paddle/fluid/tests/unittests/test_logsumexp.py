@@ -185,19 +185,29 @@ class TestLogsumexp_FP16(TestLogsumexp):
         np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-02, atol=1e-02)
 
 
-class TestLogsumexpOpBP16(unittest.TestCase):
-    def TestLogcumsumexpbp16(OpTest):
-        def setUp(self):
-            self.op_type = 'logsumexp'
-            self.dtype = np.uint16
-            x = np.random.rand([10, 12]).astype(np.float32)
-            out = ref_logsumexp(x)
-            self.inputs = {'X': convert_float_to_uint16(x)}
-            tensor_x = paddle.to_tensor(convert_float_to_uint16(x))
-            out_pad = logsumexp_wrapper(tensor_x)
-            np.testing.assert_allclose(
-                out_pad.numpy(), out, rtol=1e-02, atol=1e-02
-            )
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestLogsumexpBF16(OpTest):
+    def setUp(self):
+        self.op_type = 'logsumexp'
+        self.dtype = np.uint16
+        self.__class__.op_type = self.op_type
+        self.python_api = paddle.logsumexp
+        x = np.random.rand([10, 12]).astype(np.float32)
+        output = np.logsumexp(x)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 class TestLogsumexpError(unittest.TestCase):
