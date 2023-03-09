@@ -48,36 +48,45 @@ TEST(ReBindStream_multi, use_gpu) {
   AnalysisConfig config1;
   config1.EnableUseGpu(100, 0);
   config1.SetModel(model_dir);
+  config1.EnableTensorRtEngine();
   AnalysisConfig config2;
   config2.EnableUseGpu(100, 0);
+  config2.EnableTensorRtEngine();
   config2.SetModel(model_dir);
 
   cudaStream_t stream1, stream2, stream3;
-  cudaStreamCreateWithFlags(&stream1, cudaStreamNonBlocking);
-  cudaStreamCreateWithFlags(&stream2, cudaStreamNonBlocking);
-  cudaStreamCreateWithFlags(&stream3, cudaStreamNonBlocking);
+  cudaStreamCreate(&stream1);
+  cudaStreamCreate(&stream2);
+  cudaStreamCreate(&stream3);
 
   config1.SetExecStream(stream1);
   config2.SetExecStream(stream1);
   auto predictor1 = paddle_infer::CreatePredictor(config1);
   auto predictor2 = paddle_infer::CreatePredictor(config2);
 
-  float x_data[3 * 224 * 224] = {0};
+  std::vector<float> x1(3 * 224 * 224, 1.0);
   auto x_t1 = predictor1->GetInputHandle("x");
   x_t1->Reshape({1, 3, 224, 224});
-  x_t1->CopyFromCpu(x_data);
+  x_t1->CopyFromCpu(x1.data());
+  std::vector<float> x2(3 * 224 * 224, 2.0);
   auto x_t2 = predictor2->GetInputHandle("x");
   x_t2->Reshape({1, 3, 224, 224});
-  x_t2->CopyFromCpu(x_data);
+  x_t2->CopyFromCpu(x2.data());
 
   ASSERT_TRUE(predictor1->Run());
+  cudaStreamSynchronize(stream1);
   ASSERT_TRUE(predictor2->Run());
+  cudaStreamSynchronize(stream1);
 
   ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(predictor1.get(), stream2));
+  cudaDeviceSynchronize();
   ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(predictor2.get(), stream2));
+  cudaDeviceSynchronize();
 
   ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(predictor1.get(), stream3));
+  cudaStreamSynchronize(stream3);
   ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(predictor2.get(), stream3));
+  cudaStreamSynchronize(stream3);
 }
 
 }  // namespace inference

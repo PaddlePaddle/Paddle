@@ -483,22 +483,18 @@ void ResourceManager::DestroyGPUResource(void* stream) {
 }
 
 void ResourceManager::Decrease(void* stream) {
-  PADDLE_ENFORCE_EQ(ref_count_.count(stream),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "The stream[%p] not found in ref_count.", stream));
+  LOG(ERROR) << "Decrease enter, stream " << ref_count_.count(stream);
+  if (ref_count_.count(stream) == 0) return;
   --ref_count_[stream];
+
   if (ref_count_[stream] == 0) {
     ref_count_.erase(stream);
-    gpu_resources_.erase(stream);
+    if (gpu_resources_.count(stream) > 0) gpu_resources_.erase(stream);
   }
+  LOG(ERROR) << "Decrease finish";
 }
 
 void ResourceManager::Increase(void* stream) {
-  PADDLE_ENFORCE_EQ(ref_count_.count(stream),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "The stream[%p] not found in ref_count.", stream));
   ++ref_count_[stream];
 }
 
@@ -512,31 +508,50 @@ GPUContextResource* ResourceManager::GetGPUResource(void* stream) const {
 
 void ResourceManager::GpuResourceReBindStream(void* old_stream,
                                               void* new_stream) {
+  std::lock_guard<std::mutex> lock_gurad(gpu_mutex_);
+  LOG(ERROR) << "GpuResourceReBindStream enter";
+
   PADDLE_ENFORCE_EQ(
       gpu_resources_.count(old_stream),
       true,
       platform::errors::InvalidArgument(
           "The stream[%p] not found in gpu_resources.", old_stream));
-  auto gpu_resource = std::move(gpu_resources_.at(old_stream));
-  DestroyGPUResource(old_stream);
-  PADDLE_ENFORCE_EQ(
-      ref_count_.count(old_stream),
-      0,
-      platform::errors::Fatal("gpu resources rebind stream failed."));
 
-  gpu_resource->ReBindStream(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindDnnHandle(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindBlasHandle(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindBlasTensorCoreHandle(
-      static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindBlasTF32Handle(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindSolverDnHandle(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindSparseHandle(static_cast<gpuStream_t>(new_stream));
-  gpu_resource->ReBindEigenDevice(static_cast<gpuStream_t>(new_stream),
-                                  gpu_resource->Place());
+  bool new_stream_existed = gpu_resources_.count(new_stream) > 0;
+  LOG(ERROR) << "GpuResourceReBindStream new_stream_existed " << new_stream_existed;
+  if (not new_stream_existed) {
+    if (ref_count_[old_stream] == 1) {
+      LOG(ERROR) << "ReBind enter";
+      auto gpu_resource = std::move(gpu_resources_.at(old_stream));
+      gpu_resource->ReBindStream(static_cast<gpuStream_t>(new_stream));
+      gpu_resource->ReBindDnnHandle(static_cast<gpuStream_t>(new_stream));
+      gpu_resource->ReBindBlasHandle(static_cast<gpuStream_t>(new_stream));
+      gpu_resource->ReBindBlasTensorCoreHandle(
+                            static_cast<gpuStream_t>(new_stream));
+      gpu_resource->ReBindBlasTF32Handle(
+                            static_cast<gpuStream_t>(new_stream));
+      gpu_resource->ReBindSolverDnHandle(
+                            static_cast<gpuStream_t>(new_stream));
+      gpu_resource->ReBindSparseHandle(
+                            static_cast<gpuStream_t>(new_stream));
+      gpu_resource->ReBindEigenDevice(static_cast<gpuStream_t>(new_stream),
+                                      gpu_resource->Place());
+      gpu_resources_.emplace(new_stream, std::move(gpu_resource));
+      LOG(ERROR) << "ReBind finish";
+    } else {
+      LOG(ERROR) << "new resource enter";
+      auto place = gpu_resources_.at(old_stream)->Place();
+      std::unique_ptr<GPUContextResource> resource{
+          new GPUContextResource(place, new_stream)};
+      gpu_resources_.emplace(new_stream, std::move(resource));
+      LOG(ERROR) << "new resource finish";
+    }
+  }
+
+  Decrease(old_stream);
 
   ref_count_[new_stream]++;
-  gpu_resources_.emplace(new_stream, std::move(gpu_resource));
+  LOG(ERROR) << "GpuResourceReBindStream finish";
 }
 
 int ResourceManager::RefCount(void* stream) const {
