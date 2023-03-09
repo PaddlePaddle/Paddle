@@ -256,12 +256,6 @@ bool MatMulKernel<double>::CanBeUsed(const matmul_attr_t& attr) const {
   return true;
 }
 
-template <>
-bool SoftmaxKernel<float>::CanBeUsed(const int& d) const {
-  // tuned on avx2
-  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) && d < 60;
-}
-
 #define AWALYS_USE_ME_WITH_DOUBLE(func)                      \
   template <>                                                \
   bool func##Kernel<double>::CanBeUsed(const int& d) const { \
