@@ -28,7 +28,7 @@ from paddle.fluid.framework import Operator, Program, Variable
 
 # Temporary solution, it will be deleted later
 from paddle.fluid.layers.control_flow import ConditionalBlock, select_input
-from paddle.fluid.layers.utils import (
+from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
     flatten,

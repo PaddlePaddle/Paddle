@@ -338,6 +338,9 @@ class OpTest(unittest.TestCase):
 
         _set_use_system_allocator(cls._use_system_allocator)
 
+        if hasattr(cls, 'check_prim') and os.getenv('FLAGS_prim_test_log'):
+            print("check prim end!")
+
         def is_empty_grad_op(op_type):
             all_op_kernels = core._get_all_register_op_kernels()
             grad_op = op_type + '_grad'
@@ -2307,7 +2310,9 @@ class OpTest(unittest.TestCase):
 
                 if in_dygraph_mode():
                     core.eager.run_backward(
-                        fluid.layers.utils.flatten(outputs), grad_outputs, False
+                        paddle.utils.flatten(outputs),
+                        grad_outputs,
+                        False,
                     )
                     grad_inputs = []
                     for inputs_list in inputs.values():
@@ -2316,8 +2321,8 @@ class OpTest(unittest.TestCase):
                     return grad_inputs
                 else:
                     grad_inputs = paddle.grad(
-                        outputs=fluid.layers.utils.flatten(outputs),
-                        inputs=fluid.layers.utils.flatten(inputs),
+                        outputs=paddle.utils.flatten(outputs),
+                        inputs=paddle.utils.flatten(inputs),
                         grad_outputs=grad_outputs,
                     )
                     return [grad.numpy() for grad in grad_inputs]

@@ -26,6 +26,7 @@
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -59,16 +60,12 @@ static std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
 // These Op needs set output dtype when register phi kernel, but they didn't
 static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "abs",
-    "accuracy",
     "adam",
     "adamw",
     "all_close",
     "all_raw",
     "angle",
     "arg_sort",
-    "argmax",
-    "argmin",
-    "as_real",
     "atan2",
     "auc",
     "bincount",
@@ -77,14 +74,11 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "complex",
     "conv3d_coo",
     "distribute_fpn_proposals",
-    "edit_distance",
     "eig",
     "eig_grad",
     "eigh",
-    "eigvals",
     "ftt_c2r",
     "ftt_r2c",
-    "fused_adam",
     "fused_matmul",
     "generate_proposals",
     "graph_sample_neighbors",
@@ -92,40 +86,28 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "histogram",
     "instance_norm",
     "is_empty",
-    "is_finite",
     "kthvalue",
     "lamb",
     "layer_norm_grad",
     "less_equal",
     "less_than",
-    "lstsq",
-    "lu",
-    "matrix_nms",
-    "matrix_rank_tol",
     "merged_adam",
     "mode",
     "momentum",
     "multiclass_nms3",
     "multinomial",
     "nanmedian",
-    "nms",
-    "nonzero",
     "numl",
-    "qr",
-    "qr_grad",
     "rnn",
-    "roi_pool",
     "search_sort",
     "select",
     "send_recv",
     "send_ue_recv",
-    "sgd",
     "svd",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
     "unique_raw",
-    "viterbi_decode",
     "viterbi_devode",
     "yolo_loss"};
 
@@ -756,6 +738,7 @@ void BuildOpFuncList(const platform::Place& place,
 
         auto& pool = platform::DeviceContextPool::Instance();
         auto* dev_ctx = pool.Get(place);
+        SetDeviceCommContext(op, dev_ctx);
         auto exec_ctx = ExecutionContext(
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
         auto expected_kernel_key = framework::TransPhiKernelKeyToOpKernelType(
@@ -1194,7 +1177,9 @@ void FakeInitializeOutputsForFunctionKernel(
       if (out_tensor && !IsExtendedTensor(*out_tensor)) {
         phi::TensorArgDef& tensor_arg_def = output_defs[i];
         phi::DataType dtype = tensor_arg_def.dtype;
-        phi::Place place = phi::TransToPhiPlace(tensor_arg_def.backend);
+        phi::Place place = tensor_arg_def.backend == phi::Backend::CUSTOM
+                               ? dev_ctx.GetPlace()
+                               : phi::TransToPhiPlace(tensor_arg_def.backend);
 
         if (dtype == DataType::UNDEFINED ||
             OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
@@ -1279,6 +1264,24 @@ void LogDeviceMemoryStats(const platform::Place& place) {
                    "Allocated", place.device)) /
                    1024 / 1024
             << " MB";
+  }
+}
+
+void SetDeviceCommContext(framework::OperatorBase* operator_base,
+                          platform::DeviceContext* dev_ctx) {
+  if (operator_base->HasAttr("ring_id")) {
+    int ring_id = operator_base->Attr<int>("ring_id");
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (comm_context_manager.Has(ring_id)) {
+      auto comm_context = comm_context_manager.Get(ring_id);
+      if (!dev_ctx->GetCommContext()) {
+        dev_ctx->SetCommContext(comm_context);
+      }
+    } else {
+      LOG(WARNING) << "op: " << operator_base->Type()
+                   << ", ring_id: " << ring_id << ", get comm_context failed!";
+    }
   }
 }
 
