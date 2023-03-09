@@ -96,7 +96,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "select",
     "send_recv",
     "send_ue_recv",
-    "sgd",
     "svd",
     "sync_batch_norm_grad",
     "unique",
