@@ -882,8 +882,7 @@ void gather_nd_grad(const Tensor& x,
 }
 
 template <typename T>
-void assign_grad(const Tensor& out_grad,
-                 Tensor* x_grad) {
+void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     set_output<T>(out_grad, x_grad);
   }
