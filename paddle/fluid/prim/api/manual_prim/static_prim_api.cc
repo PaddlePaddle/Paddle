@@ -76,9 +76,12 @@ Tensor full<DescTensor>(const IntArray& shape,
     case phi::DataType::FLOAT32:
       op->SetAttr("value", value.to<float>());
       break;
-    case phi::DataType::FLOAT64:
-      op->SetAttr("str_value", std::to_string(value.to<double>()));
+    case phi::DataType::FLOAT64: {
+      std::stringstream ss;
+      ss << std::setprecision(20) << value.to<double>();
+      op->SetAttr("str_value", ss.str());
       break;
+    }
     case phi::DataType::BOOL:
       op->SetAttr("str_value", std::to_string(value.to<bool>()));
       break;

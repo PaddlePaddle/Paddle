@@ -1600,7 +1600,7 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
-  backward : softplus_grad
+  backward : softplus_grad, softplus_double_grad
   inputs :
     x : X
   outputs :

@@ -16,15 +16,13 @@
 
 #include "paddle/phi/api/include/tensor.h"
 
-paddle::experimental::Tensor add_n_ad_func(
-    const std::vector<paddle::experimental::Tensor>& x);
+paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x);
 
-paddle::experimental::Tensor conv2d_ad_func(
-    const paddle::experimental::Tensor& input,
-    const paddle::experimental::Tensor& filter,
-    std::vector<int> strides,
-    std::vector<int> paddings,
-    std::string padding_algorithm,
-    std::vector<int> dilations,
-    int groups,
-    std::string data_format);
+paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
+                              const paddle::Tensor& filter,
+                              std::vector<int> strides,
+                              std::vector<int> paddings,
+                              std::string padding_algorithm,
+                              std::vector<int> dilations,
+                              int groups,
+                              std::string data_format);
