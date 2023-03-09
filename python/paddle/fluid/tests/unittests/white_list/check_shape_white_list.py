@@ -30,5 +30,5 @@ NEED_TO_FIX_OP_LIST = [
     'rnn',
     'multi_dot',
     'index_add',
-    'layer_norm',
+    'reshape2',
 ]

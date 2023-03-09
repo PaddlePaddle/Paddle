@@ -338,6 +338,9 @@ class OpTest(unittest.TestCase):
 
         _set_use_system_allocator(cls._use_system_allocator)
 
+        if hasattr(cls, 'check_prim') and os.getenv('FLAGS_prim_test_log'):
+            print("check prim end!")
+
         def is_empty_grad_op(op_type):
             all_op_kernels = core._get_all_register_op_kernels()
             grad_op = op_type + '_grad'
@@ -943,11 +946,7 @@ class OpTest(unittest.TestCase):
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(
-                    program
-                ).with_data_parallel(
-                    loss_name=loss.name if loss else None, places=place
-                )
+                compiled_prog = fluid.CompiledProgram(program)
                 program = compiled_prog
             fetch_list = getattr(self, "fetch_list", [])
             # if the fetch_list is customized by user, we use it directly.
@@ -971,9 +970,7 @@ class OpTest(unittest.TestCase):
                 build_strategy.enable_inplace = enable_inplace
 
                 compiled_prog = fluid.CompiledProgram(
-                    program
-                ).with_data_parallel(
-                    build_strategy=build_strategy, places=place
+                    program, build_strategy=build_strategy
                 )
                 program = compiled_prog
 
@@ -1273,9 +1270,7 @@ class OpTest(unittest.TestCase):
                 build_strategy = fluid.BuildStrategy()
                 build_strategy.enable_inplace = enable_inplace
                 compiled_program = fluid.CompiledProgram(
-                    grad_program
-                ).with_data_parallel(
-                    loss_name="", build_strategy=build_strategy, places=place
+                    grad_program, build_strategy=build_strategy
                 )
                 program = compiled_program
 
@@ -1400,6 +1395,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
     ):
         core._set_prim_all_enabled(False)
+        core.set_prim_eager_enabled(False)
 
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
@@ -1990,6 +1986,7 @@ class OpTest(unittest.TestCase):
         numeric_place=None,
     ):
         core._set_prim_all_enabled(False)
+        core.set_prim_eager_enabled(False)
         if check_prim:
             prim_grad_checker = PrimGradChecker(
                 self,
@@ -2426,9 +2423,7 @@ class OpTest(unittest.TestCase):
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(prog).with_data_parallel(
-                    loss_name=loss.name, places=place
-                )
+                compiled_prog = fluid.CompiledProgram(prog)
                 prog = compiled_prog
             executor = fluid.Executor(place)
             res = list(
