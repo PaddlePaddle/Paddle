@@ -34,8 +34,8 @@ from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.utils import gast
 
+from .ast_utils import ast_to_source_code
 from .logging_utils import warn
-from .utils_helper import ast_to_source_code
 
 __all__ = []
 
