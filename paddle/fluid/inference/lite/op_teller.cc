@@ -21,13 +21,19 @@
 #include "paddle/fluid/inference/lite/engine.h"
 
 namespace paddle {
+namespace lite {
+std::vector<std::string> GetAllOps();
+}
+}  // namespace paddle
+
+namespace paddle {
 namespace inference {
 namespace lite {
 
 // Just tell by the op_types.
 struct SimpleOpTeller : public Teller {
   SimpleOpTeller() {
-    std::vector<std::string> lite_ops = paddle::lite_api::GetAllOps();
+    std::vector<std::string> lite_ops = paddle::lite::GetAllOps();
     auto is_non_inst = [](const std::string& op) -> bool {
       const std::vector<std::string> ops = {"feed", "fetch", "while"};
       return std::find(ops.begin(), ops.end(), op) != ops.end();
