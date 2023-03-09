@@ -90,9 +90,7 @@ class TestResnet50Accuracy(unittest.TestCase):
         loss = self.build_program(main_program, startup_program)
         exe = paddle.static.Executor(place)
 
-        compiled_prog = paddle.static.CompiledProgram(
-            main_program
-        ).with_data_parallel(loss_name=loss.name)
+        compiled_prog = paddle.static.CompiledProgram(main_program)
         loss_vals = []
         scope = paddle.static.Scope()
 

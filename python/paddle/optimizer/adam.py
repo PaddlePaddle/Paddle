@@ -317,12 +317,9 @@ class Adam(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if p.name in self._already_create_accumulater:
-                continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
-                self._already_create_accumulater.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -333,7 +330,6 @@ class Adam(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
-            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -364,6 +360,8 @@ class Adam(Optimizer):
         # create the adam optimize op
 
         if framework.in_dygraph_mode():
+            found_inf = self._get_auxiliary_var('found_inf')
+
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
@@ -384,7 +382,7 @@ class Adam(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                None,
+                found_inf,
                 _beta1,
                 _beta2,
                 self._epsilon,
@@ -695,28 +693,21 @@ class Adam(Optimizer):
                         if master_weight is not None
                         else None
                     )
-                    found_inf = self._get_auxiliary_var('found_inf')
-                    if found_inf:
-                        if isinstance(found_inf, core.eager.Tensor):
-                            self._set_auxiliary_var('found_inf', True)
-                    else:
-                        if isinstance(found_inf, core.eager.Tensor):
-                            self._set_auxiliary_var('found_inf', False)
-                        _, _, _, _, _, _ = _C_ops.merged_adam_(
-                            self._param_dict[key][param_group_idx],
-                            grad_dict[key],
-                            lr_dict[key],
-                            self._moment1_dict[key][param_group_idx],
-                            self._moment2_dict[key][param_group_idx],
-                            self._beta1_pow_acc_dict[key][param_group_idx],
-                            self._beta2_pow_acc_dict[key][param_group_idx],
-                            master_weight,
-                            _beta1,
-                            _beta2,
-                            self._epsilon,
-                            find_master,
-                            False,
-                        )
+                    _, _, _, _, _, _ = _C_ops.merged_adam_(
+                        self._param_dict[key][param_group_idx],
+                        grad_dict[key],
+                        lr_dict[key],
+                        self._moment1_dict[key][param_group_idx],
+                        self._moment2_dict[key][param_group_idx],
+                        self._beta1_pow_acc_dict[key][param_group_idx],
+                        self._beta2_pow_acc_dict[key][param_group_idx],
+                        master_weight,
+                        _beta1,
+                        _beta2,
+                        self._epsilon,
+                        find_master,
+                        False,
+                    )
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],

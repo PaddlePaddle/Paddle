@@ -25,14 +25,13 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.executor as executor
 import paddle.fluid.optimizer as optimizer
-from paddle.distributed.io import load_inference_model_distributed
-from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.io import (
-    load_inference_model,
-    save_inference_model,
+from paddle.distributed.io import (
+    load_inference_model_distributed,
     save_persistables,
 )
+from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.io import load_inference_model, save_inference_model
 
 paddle.enable_static()
 
@@ -238,9 +237,7 @@ class TestInstance(unittest.TestCase):
 
         # will print warning message
 
-        cp_prog = CompiledProgram(program).with_data_parallel(
-            loss_name=avg_cost.name
-        )
+        cp_prog = CompiledProgram(program)
 
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
         self.assertRaises(

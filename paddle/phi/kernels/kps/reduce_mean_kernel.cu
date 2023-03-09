@@ -45,6 +45,7 @@ PD_REGISTER_KERNEL(mean_raw,
                    float,
                    double,
                    bool,
+                   phi::dtype::bfloat16,
                    float16,
                    int,
                    int64_t) {}

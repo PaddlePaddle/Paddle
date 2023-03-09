@@ -16,6 +16,7 @@
 #include <string>
 #include <tuple>
 
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/table_printer.h"
@@ -39,6 +40,12 @@ struct MkldnnQuantizerConfig;
 extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kDlnneSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
+
+AnalysisConfig::AnalysisConfig() {
+  // NOTE(liuyuanle): Why put the following code here?
+  // ref to https://github.com/PaddlePaddle/Paddle/pull/50864
+  inference::InitGflagsFromEnv();
+}
 
 PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
@@ -672,22 +679,8 @@ void AnalysisConfig::EnableMkldnnInt8(
 #ifdef PADDLE_WITH_MKLDNN
   use_mkldnn_int8_ = true;
   use_fc_padding_ = false;
-  if (!op_list.empty()) {
-    for (auto &type : op_list) {
-      if (!quantize_enabled_op_types_.count(type)) {
-        LOG(ERROR) << "There are unsupported operators in the configured "
-                      "quantization operator list. The unsupported operator "
-                      "is: "
-                   << type;
-        use_mkldnn_int8_ = false;
-        break;
-      }
-    }
-    if (use_mkldnn_int8_) {
-      quantize_enabled_op_types_.clear();
-      quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
-    }
-  }
+  if (!op_list.empty())
+    quantize_enabled_op_types_.insert(op_list.begin(), op_list.end());
 #else
   LOG(ERROR) << "Please compile with MKLDNN first to use MkldnnInt8";
   use_mkldnn_int8_ = false;

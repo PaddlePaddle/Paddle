@@ -508,6 +508,16 @@
     func : fill_diagonal_tensor_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : flash_attn_grad
+  forward : flash_attn (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false) -> Tensor(out), Tensor(softmax_lse), Tensor(softmax), Tensor(seed_offset)
+  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor out_grad, float dropout = 0.0, bool causal = false)
+  output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
+  infer_meta :
+    func : FlashAttnGradInferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_grad
+
 - backward_op : flip_grad
   forward : flip (Tensor x, int[] axis) -> Tensor(out)
   args : (Tensor out_grad, int[] axis)
@@ -523,6 +533,7 @@
     param: [out_grad]
   kernel :
     func : floor_grad
+  composite : floor_grad(out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : fold_grad
@@ -555,6 +566,7 @@
     func : GatherNdGradInferMeta
   kernel :
     func : gather_nd_grad
+  composite : gather_nd_grad(x, index, out_grad, x_grad)
   no_need_buffer : x
 
 - backward_op : gelu_grad
@@ -662,6 +674,17 @@
     func : InverseGradInferMeta
   kernel :
     func : inverse_grad
+
+- backward_op : kron_grad
+  forward : kron (Tensor x, Tensor y) -> Tensor(out)
+  args : (Tensor x, Tensor y, Tensor out_grad)
+  output : Tensor(x_grad), Tensor(y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, y]
+  kernel :
+    func : kron_grad
+    data_type : out_grad
 
 - backward_op : kthvalue_grad
   forward : kthvalue(Tensor x, int k, int axis, bool keepdim) -> Tensor(out), Tensor(indices)
@@ -781,6 +804,7 @@
   kernel :
     func : log_grad
   backward : log_double_grad
+  composite : log_grad(x, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : log_loss_grad
@@ -1103,6 +1127,12 @@
   backward : rsqrt_double_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : scale_grad
+  forward : scale (Tensor x, Scalar scale, float bias, bool bias_after_scale) -> Tensor(out)
+  args : (Tensor out_grad, Scalar scale=1.0)
+  output : Tensor(x_grad)
+  invoke : scale(out_grad, scale, 0.0f, true)
+
 - backward_op : scatter_grad
   forward : scatter (Tensor x, Tensor index, Tensor updates, bool overwrite=true) -> Tensor(out)
   args : (Tensor index, Tensor updates, Tensor out_grad, bool overwrite)
@@ -1206,6 +1236,12 @@
     func : sigmoid_triple_grad
   optional : grad_grad_out_grad
   inplace : (grad_grad_x -> fwd_grad_out_grad)
+
+- backward_op : sign_grad
+  forward : sign (Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  invoke : scale(out_grad, 0.0f, 0.0f, true)
 
 - backward_op : silu_grad
   forward : silu (Tensor x) -> Tensor(out)
@@ -1501,6 +1537,7 @@
   kernel :
     func : topk_grad
     data_type : out_grad
+  composite : topk_grad(x, indices, out_grad, k, axis, largest, sorted, x_grad)
 
 - backward_op : trace_grad
   forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)

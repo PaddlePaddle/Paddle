@@ -81,7 +81,7 @@ class QKVPattern(BasePattern):
         # Pattern
         self.attrs["shard_spec"] = [
             [(1, 2, 3), [[-1, 0], [-1, 1]]],
-        ]  # 2-tuple list such as [(tensor_id, shard_sepc)]
+        ]  # 2-tuple list such as [(tensor_id, shard_spec)]
 
 
 def convert_to_graph(ops, block):
@@ -535,7 +535,7 @@ class ClusterPartitionUtil:
         ],
     ) -> list:
         """
-        Partiton cluster into possible device meshes.
+        Partition cluster into possible device meshes.
 
         Args:
             n (int): The number of nodes.

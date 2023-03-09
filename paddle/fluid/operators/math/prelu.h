@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
