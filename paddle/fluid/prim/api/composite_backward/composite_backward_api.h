@@ -1014,12 +1014,13 @@ void batch_norm_grad(const Tensor& x,
           auto nchw_x_grad = transpose<T>(nhwc_x_grad, nhwc_to_nchw_dim);
           set_output<T>(nchw_x_grad, x_grad);
         } else {
-          auto part1 = scale * 1.0 / nhw * rsqrt_var;
-          auto sum_temp1 = sum<T>(nhwc_out_grad, reduce_axis, dtype, false);
-          auto sum_temp2 =
-              sum<T>(nhwc_out_grad * x_sub_mean, reduce_axis, dtype, false);
-          auto part2 = nhw * nhwc_out_grad - sum_temp1 -
-                       x_sub_mean * sum_temp2 * (rsqrt_var * rsqrt_var);
+          auto part1 = scale * rsqrt_var;
+          auto mean_temp1 =
+              sum<T>(nhwc_out_grad, reduce_axis, dtype, false) / nhw;
+
+          auto tmp = nhwc_out_grad * x_sub_mean * rsqrt_var * rsqrt_var / nhw;
+          auto mean_temp2 = sum<T>(tmp, reduce_axis, dtype, false);
+          auto part2 = nhwc_out_grad - mean_temp1 - x_sub_mean * mean_temp2;
 
           auto x_grad_data = part1 * part2;
           auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
@@ -1043,23 +1044,21 @@ void batch_norm_grad(const Tensor& x,
     case DataLayout::kNHWC: {
       if (x_grad) {
         auto x_sub_mean = x_data - mean_data;
-        if (x_grad) {
-          if (use_global_stats) {
-            auto x_grad_data = scale * rsqrt_var * out_grad_data;
-            set_output<T>(x_grad_data, x_grad);
-          } else {
-            auto part1 = scale * 1.0 / nhw * rsqrt_var;
-            auto sum_temp1 = sum<T>(out_grad_data, reduce_axis, dtype, false);
-            auto sum_temp2 =
-                sum<T>(out_grad_data * x_sub_mean, reduce_axis, dtype, false);
-            auto part2 = nhw * out_grad_data - sum_temp1 -
-                         x_sub_mean * sum_temp2 * (rsqrt_var * rsqrt_var);
-            auto x_grad_data = part1 * part2;
-            if (x.dtype() == phi::DataType::FLOAT16) {
-              x_grad_data = cast<T>(x_grad_data, x.dtype());
-            }
-            set_output<T>(x_grad_data, x_grad);
+        if (use_global_stats) {
+          auto x_grad_data = scale * rsqrt_var * out_grad_data;
+          set_output<T>(x_grad_data, x_grad);
+        } else {
+          auto part1 = scale * 1.0 / nhw * rsqrt_var;
+          auto sum_temp1 = sum<T>(out_grad_data, reduce_axis, dtype, false);
+          auto sum_temp2 =
+              sum<T>(out_grad_data * x_sub_mean, reduce_axis, dtype, false);
+          auto part2 = nhw * out_grad_data - sum_temp1 -
+                       x_sub_mean * sum_temp2 * (rsqrt_var * rsqrt_var);
+          auto x_grad_data = part1 * part2;
+          if (x.dtype() == phi::DataType::FLOAT16) {
+            x_grad_data = cast<T>(x_grad_data, x.dtype());
           }
+          set_output<T>(x_grad_data, x_grad);
         }
         if (scale_grad) {
           auto scale_grad_data = sum<T>(out_grad_data * x_sub_mean * rsqrt_var,
