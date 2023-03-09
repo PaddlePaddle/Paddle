@@ -16,35 +16,7 @@ def {
 }
 extra {
   attrs {
-    name: "x_data_format"
-    type: STRING
-  }
-  attrs {
-    name: "y_data_format"
-    type: STRING
-  }
-  attrs {
-    name: "alpha"
+    name: "fused_output_scale"
     type: FLOAT
-  }
-  attrs {
-    name: "beta"
-    type: FLOAT
-  }  
-  attrs {
-    name: "Scale_x"
-    type: FLOAT
-  }
-  attrs {
-    name: "Scale_y"
-    type: FLOAT
-  }
-  attrs {
-    name: "Scale_out"
-    type: FLOAT
-  }
-  attrs {
-    name: "fuse_activation"
-    type: STRING
   }
 }
