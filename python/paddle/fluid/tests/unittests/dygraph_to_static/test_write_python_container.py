@@ -146,10 +146,10 @@ class TestLoopWriteContainerNestListDict(TestWriteContainer):
 
 class TestIfElseWriteContainerDict(TestWriteContainer):
     def set_func(self):
-        self.func = func_ifelse_write_list
+        self.func = func_ifelse_write_dict
 
     def set_getitem_path(self):
-        self.getitem_path = (0,)
+        self.getitem_path = ("a",)
 
 
 class TestIfElseWriteContainerList(TestWriteContainer):
