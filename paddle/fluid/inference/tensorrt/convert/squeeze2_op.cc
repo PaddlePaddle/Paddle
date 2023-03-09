@@ -43,7 +43,7 @@ class Squeeze2OpConverter : public OpConverter {
               "The necessary attributes of the squeeze2 operator axes is "
               "missing."));
         } else if (input_dims.d[i] == 1) {
-          axes.push_back(i);
+          axes.push_back(engine_->with_dynamic_shape() ? i : i + 1);
         }
       }
     }
