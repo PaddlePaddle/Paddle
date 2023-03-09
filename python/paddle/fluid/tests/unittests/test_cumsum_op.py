@@ -118,9 +118,8 @@ class TestSumOp1(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.init_dtype()
-        self.attrs = {'axis': 2, 'dtype': self.dtype}
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
+        self.attrs = {'axis': 2}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=2)}
 
     def test_check_output(self):
@@ -129,69 +128,93 @@ class TestSumOp1(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
 
-    def init_dtype(self):
-        self.dtype = "float64"
 
-
-class TestSumOp2(TestSumOp1):
+class TestSumOp2(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.init_dtype()
-        self.attrs = {'axis': -1, 'reverse': True, 'dtype': self.dtype}
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
+        self.attrs = {'axis': -1, 'reverse': True}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {
             'Out': np.flip(
                 np.flip(self.inputs['X'], axis=2).cumsum(axis=2), axis=2
             )
         }
 
+    def test_check_output(self):
+        self.check_output()
 
-class TestSumOp3(TestSumOp1):
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestSumOp3(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.init_dtype()
-        self.attrs = {'axis': 1, 'dtype': self.dtype}
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
+        self.attrs = {'axis': 1}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
 
+    def test_check_output(self):
+        self.check_output()
 
-class TestSumOp4(TestSumOp1):
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestSumOp4(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.init_dtype()
-        self.attrs = {'axis': 0, 'dtype': self.dtype}
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
+        self.attrs = {'axis': 0}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 
+    def test_check_output(self):
+        self.check_output()
 
-class TestSumOp5(TestSumOp1):
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestSumOp5(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.init_dtype()
-        self.attrs = {'axis': 1, 'dtype': self.dtype}
-        self.inputs = {'X': np.random.random((5, 20)).astype(self.dtype)}
+        self.inputs = {'X': np.random.random((5, 20)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
 
+    def test_check_output(self):
+        self.check_output()
 
-class TestSumOp6(TestSumOp1):
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestSumOp6(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
-        self.init_dtype()
-        self.attrs = {'axis': -1, 'flatten': True, 'dtype': self.dtype}
-        self.inputs = {'X': np.random.random((5, 6, 5)).astype(self.dtype)}
+        self.prim_op_type = "prim"
+        self.python_api = paddle.cumsum
+        self.enable_cinn = False
+        self.attrs = {'axis': -1, 'flatten': True}
+        self.inputs = {'X': np.random.random((5, 6, 5)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum()}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSumOp7(OpTest):
@@ -200,10 +223,14 @@ class TestSumOp7(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.init_dtype()
-        self.attrs = {'axis': 0, 'dtype': self.dtype}
-        self.inputs = {'X': np.random.random((100)).astype(self.dtype)}
+        self.inputs = {'X': np.random.random((100)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestCumsumFP16(unittest.TestCase):
@@ -237,14 +264,13 @@ class TestSumOpExclusive1(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.init_dtype()
-        self.attrs = {'axis': 2, 'exclusive': True, 'dtype': self.dtype}
-        a = np.random.random((4, 5, 20)).astype(self.dtype)
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 20)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
                 (
-                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    np.zeros((4, 5, 1), dtype=np.float64),
                     a[:, :, :-1].cumsum(axis=2),
                 ),
                 axis=2,
@@ -257,91 +283,109 @@ class TestSumOpExclusive1(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
 
-    def init_dtype(self):
-        self.dtype = "float64"
 
-
-class TestSumOpExclusive2(TestSumOpExclusive1):
+class TestSumOpExclusive2(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.init_dtype()
-        self.attrs = {'axis': 2, 'exclusive': True, 'dtype': self.dtype}
-        a = np.random.random((1, 1, 100)).astype(self.dtype)
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((1, 1, 100)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
                 (
-                    np.zeros((1, 1, 1), dtype=self.dtype),
+                    np.zeros((1, 1, 1), dtype=np.float64),
                     a[:, :, :-1].cumsum(axis=2),
                 ),
                 axis=2,
             )
         }
 
+    def test_check_output(self):
+        self.check_output()
 
-class TestSumOpExclusive3(TestSumOpExclusive1):
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestSumOpExclusive3(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.init_dtype()
-        self.attrs = {'axis': 2, 'exclusive': True, 'dtype': self.dtype}
-        a = np.random.random((4, 5, 20)).astype(self.dtype)
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 20)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
                 (
-                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    np.zeros((4, 5, 1), dtype=np.float64),
                     a[:, :, :-1].cumsum(axis=2),
                 ),
                 axis=2,
             )
         }
 
+    def test_check_output(self):
+        self.check_output()
 
-class TestSumOpExclusive4(TestSumOpExclusive1):
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestSumOpExclusive4(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.init_dtype()
-        self.attrs = {'axis': 2, 'exclusive': True, 'dtype': self.dtype}
-        a = np.random.random((1, 1, 100)).astype(self.dtype)
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((1, 1, 100)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
                 (
-                    np.zeros((1, 1, 1), dtype=self.dtype),
+                    np.zeros((1, 1, 1), dtype=np.float64),
                     a[:, :, :-1].cumsum(axis=2),
                 ),
                 axis=2,
             )
         }
 
+    def test_check_output(self):
+        self.check_output()
 
-class TestSumOpExclusive5(TestSumOpExclusive1):
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestSumOpExclusive5(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.attrs = {'axis': 2, "exclusive": True, 'dtype': self.dtype}
-        a = np.random.random((4, 5, 40)).astype(self.dtype)
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 40)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
                 (
-                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    np.zeros((4, 5, 1), dtype=np.float64),
                     a[:, :, :-1].cumsum(axis=2),
                 ),
                 axis=2,
             )
         }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSumOpExclusiveFP16(OpTest):
@@ -376,21 +420,15 @@ class TestSumOpReverseExclusive(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.cumsum
         self.enable_cinn = False
-        self.init_dtype()
-        self.attrs = {
-            'axis': 2,
-            'reverse': True,
-            'exclusive': True,
-            'dtype': self.dtype,
-        }
-        a = np.random.random((4, 5, 6)).astype(self.dtype)
+        self.attrs = {'axis': 2, 'reverse': True, "exclusive": True}
+        a = np.random.random((4, 5, 6)).astype("float64")
         self.inputs = {'X': a}
         a = np.flip(a, axis=2)
         self.outputs = {
             'Out': np.concatenate(
                 (
                     np.flip(a[:, :, :-1].cumsum(axis=2), axis=2),
-                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    np.zeros((4, 5, 1), dtype=np.float64),
                 ),
                 axis=2,
             )
@@ -401,46 +439,6 @@ class TestSumOpReverseExclusive(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
-
-    def init_dtype(self):
-        self.dtype = "float64"
-
-
-def create_test_fp16_class(parent, atol=1e-3, max_relative_error=1e-2):
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
-    class TestCumsumOpFP16(parent):
-        def init_dtype(self):
-            self.dtype = "float16"
-
-        def test_check_output(self):
-            self.check_output(atol=atol)
-
-        def test_check_grad(self):
-            self.check_grad(
-                ['X'], 'Out', check_prim=True, max_relative_error=1e-2
-            )
-
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
-    TestCumsumOpFP16.__name__ = cls_name
-    globals()[cls_name] = TestCumsumOpFP16
-
-
-"""
-create_test_fp16_class(TestSumOp1)
-create_test_fp16_class(TestSumOp2)
-create_test_fp16_class(TestSumOp3)
-create_test_fp16_class(TestSumOp4)
-create_test_fp16_class(TestSumOp5)
-create_test_fp16_class(TestSumOp6)
-create_test_fp16_class(TestSumOpExclusive1)
-create_test_fp16_class(TestSumOpExclusive2)
-create_test_fp16_class(TestSumOpExclusive3)
-create_test_fp16_class(TestSumOpExclusive4)
-create_test_fp16_class(TestSumOpExclusive5)
-create_test_fp16_class(TestSumOpReverseExclusive)
-"""
 
 
 class BadInputTest(unittest.TestCase):
