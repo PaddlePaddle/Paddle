@@ -4845,6 +4845,8 @@ class PipelineOptimizer(object):
             grad_name = op.output('Out')
             assert len(grad_name) == 1
             param_name = self._strip_grad_suffix(grad_name[0])
+            print(f"grad_name={grad_name[0]}, param_name={param_name}")
+            print(self._param_device_map)
             device = self._param_device_map[param_name]
             op._set_attr(self._op_device_key, device)
         elif self._is_gradient_clip_op(op) or self._is_regularization_op(op):
@@ -4904,6 +4906,7 @@ class PipelineOptimizer(object):
                 op._set_attr(self._op_device_key, f"{self._device}:all")
                 continue
             # op_device attribute has been set
+            print(f"op type{op.type}, {self._get_op_device_attr(op)}")
             if self._get_op_device_attr(op): continue
             self._add_op_device_attr_for_op(op, idx, block)
 

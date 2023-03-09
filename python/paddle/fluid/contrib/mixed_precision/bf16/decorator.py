@@ -42,17 +42,26 @@ class OptimizerWithMixedPrecision(object):
 
     def __init__(self, optimizer, amp_lists, use_pure_bf16, use_bf16_guard):
         self._optimizer = optimizer
-        if optimizer.type == 'sgd':
-            optimizer._use_mkldnn = True
+        if hasattr(optimizer, 'type'):
+            if optimizer.type == 'sgd':
+                optimizer._use_mkldnn = True
         self._amp_lists = amp_lists
         self._param_grads = None
         self._train_program = None
+
+        self._is_distributed = False
 
         self._learning_rate = optimizer._learning_rate
         self._learning_rate_map = optimizer._learning_rate_map
         self._use_pure_bf16 = use_pure_bf16
         self._use_bf16_guard = use_bf16_guard
         self._to_bf16_var_names = None
+
+    def _set_distributed(self, flag):
+        # if distributed, all cards will communication with each other,
+        # overlap communication and computation by split the
+        # check_finite_and_unscale op.
+        self._is_distributed = flag
 
     def _init_amp_var(self):
         # Ensure the data type of learning rate vars is float32 (same as the
