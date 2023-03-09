@@ -15,13 +15,13 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
+  namespace framework {
+  class Scope;
 
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
+  namespace proto {
+  class OpDesc;
+  }  // namespace proto
+  }  // namespace framework
 }  // namespace paddle
 
 namespace paddle {
@@ -42,30 +42,25 @@ class Pad3dOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
 
     // Declare inputs
-    auto* input = engine_->GetITensor(op_desc.Input("X").front());
+    auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
-    nvinfer1::ITensor* paddings;
+    std::vector<int> paddings;
+    if (op_desc.HasInput("Paddings")) {
+      auto* paddings_v = scope.FindVar(op_desc.Input("Paddings")[0]);
+      auto* padding_t = paddings_v->GetMutable<phi::DenseTensor>();
+      phi::DenseTensor paddings_tensor;
+      paddings_tensor.Resize(padding_t->dims());
+      platform::CPUPlace cpu_place;
+      paddle::framework::TensorCopySync(
+          (*padding_t), cpu_place, &paddings_tensor);
+      auto* paddings_data =
+          paddings_tensor.mutable_data<int>(platform::CPUPlace());
+      paddings = std::vector<int>(paddings_data,
+                                  paddings_data + paddings_tensor.numel());
 
-    if (engine_->with_dynamic_shape() && op_desc.HasInput("Paddings") &&
-        op_desc.Input("Paddings").size() >= 1) {
-      paddings = engine_->GetITensor(op_desc.Input("Paddings").front());
-      //      auto* paddings_v =
-      //      scope.FindVar(op_desc.Input("Paddings").front());
-      //      PADDLE_ENFORCE_NOT_NULL(
-      //          paddings_v,
-      //          platform::errors::NotFound(
-      //              "Variable of Paddings of pad3d TRT converter is not
-      //              found."));
-      //      auto* padding_t = paddings_v->GetMutable<phi::DenseTensor>();
-      //      auto* p = padding_t;
-      //      auto* padding_d = p->data<int>();
-      //      for (int i = 0; i < padding_t->numel(); i++) {
-      //        paddings.push_back(padding_d[i]);
-      //      }
     } else {
-      std::vector<int> paddings_v =
+      paddings =
           PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
-      paddings = Add1DConstantLayer(paddings_v);
     }
 
     float value{0.F};
@@ -79,7 +74,7 @@ class Pad3dOpConverter : public OpConverter {
     }
 
     const int inputDim = input->getDimensions().nbDims;
-    const int pad_size = paddings->getDimensions().d[0];
+    const int pad_size = paddings.size();
     PADDLE_ENFORCE_EQ(inputDim * 2 - 4,
                       pad_size,
                       phi::errors::InvalidArgument(
@@ -88,38 +83,29 @@ class Pad3dOpConverter : public OpConverter {
                           pad_size));
 
     // convert paddle pad to tensorrt pad
-    //    auto transpose_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle,
-    //    *paddings); nvinfer1::Permutation perm{4, 2, 0, 5, 3, 1};
-    //    transpose_layer->setFirstTranspose(perm);
-    //    paddings = transpose_layer->getOutput(0);
-    // split paddings to pre_pad and post_pad
-    auto* pre_zeros = Add1DConstantLayer(std::vector<int>(2, 0));
-    auto start_slice1 = nvinfer1::Dims{1, { 0 }};
-    auto start_slice2 = nvinfer1::Dims{1, { 3 }};
-    auto size_slice = nvinfer1::Dims{1, { 3 }};
-    auto stride_slice = nvinfer1::Dims{1, { 1 }};
-    auto* pre_pad =
-        TRT_ENGINE_ADD_LAYER(
-            engine_, Slice, *paddings, start_slice1, size_slice, stride_slice)
-            ->getOutput(0);
-    pre_pad = Concat(std::vector<nvinfer1::ITensor*>{pre_zeros, pre_pad});
-    auto* post_pad =
-        TRT_ENGINE_ADD_LAYER(
-            engine_, Slice, *paddings, start_slice2, size_slice, stride_slice)
-            ->getOutput(0);
-    post_pad = Concat(std::vector<nvinfer1::ITensor*>{pre_zeros, post_pad});
-    std::cout << "pre_pad: " << pre_pad->getDimensions().d[0] << std::endl;
-    std::cout << "post_pad: " << post_pad->getDimensions().d[0] << std::endl;
+    std::vector<int> pre_pad_v(inputDim, 0);
+    std::vector<int> post_pad_v(inputDim, 0);
+
+    for (int i = 0; i < inputDim; i += 2) {
+      pre_pad_v[i + 2] = paddings[pad_size - 2 - i];
+      post_pad_v[i + 2] = paddings[pad_size - 1 - i];
+    }
+
+    nvinfer1::ITensor* pre_pad = Add1DConstantLayer(pre_pad_v);
+    nvinfer1::ITensor* post_pad = Add1DConstantLayer(post_pad_v);
+
     std::vector<int> zeros_v(inputDim, 0);
     auto const zeros = Add1DConstantLayer(zeros_v);
+
+    nvinfer1::ITensor* start{};
+    nvinfer1::ITensor* size{};
     // elementwise add zeros and pre_pad
-    nvinfer1::ITensor* start =
-        TRT_ENGINE_ADD_LAYER(engine_,
-                             ElementWise,
-                             *zeros,
-                             *pre_pad,
-                             nvinfer1::ElementWiseOperation::kSUB)
-            ->getOutput(0);
+    start = TRT_ENGINE_ADD_LAYER(engine_,
+                                 ElementWise,
+                                 *zeros,
+                                 *pre_pad,
+                                 nvinfer1::ElementWiseOperation::kSUB)
+                ->getOutput(0);
 
     auto const total_padding =
         TRT_ENGINE_ADD_LAYER(engine_,
@@ -135,20 +121,18 @@ class Pad3dOpConverter : public OpConverter {
     }
     auto const input_shape = Add1DConstantLayer(input_shape_v);
 
-    nvinfer1::ITensor* size =
-        TRT_ENGINE_ADD_LAYER(engine_,
-                             ElementWise,
-                             *input_shape,
-                             *total_padding,
-                             nvinfer1::ElementWiseOperation::kSUM)
-            ->getOutput(0);
+    size = TRT_ENGINE_ADD_LAYER(engine_,
+                                ElementWise,
+                                *input_shape,
+                                *total_padding,
+                                nvinfer1::ElementWiseOperation::kSUM)
+               ->getOutput(0);
 
     // add slice layer
     nvinfer1::Dims stride;
     stride.nbDims = inputDim;
     std::fill_n(stride.d, inputDim, 1);
     auto const& dummy = stride;
-
     auto* slice_layer =
         TRT_ENGINE_ADD_LAYER(engine_,
                              Slice,
@@ -158,7 +142,6 @@ class Pad3dOpConverter : public OpConverter {
                              stride);
     slice_layer->setInput(1, *start);
     slice_layer->setInput(2, *size);
-
     if (padding_mode == "constant") {
       slice_layer->setMode(nvinfer1::SliceMode::kFILL);
       if (value != 0.F) {
@@ -199,7 +182,6 @@ class Pad3dOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(slice_layer, "pad3d", {output_name}, test_mode);
-
 #else
     VLOG(3) << "pad3d is not supported when TensorRT < 8.2";
 #endif
