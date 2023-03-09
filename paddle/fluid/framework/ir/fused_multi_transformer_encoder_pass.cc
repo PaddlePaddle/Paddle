@@ -20,11 +20,6 @@ class Scope;
 }  // namespace framework
 }  // namespace paddle
 
-PADDLE_DEFINE_EXPORTED_int32(fused_multi_transformer_cache_kv_seq_len,
-                             1024,
-                             "The sum of max input sequence len and max "
-                             "decoder name for Cache KV");
-
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -1881,19 +1876,17 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
 
     // CacheKV input
     VarDesc cache_kv_desc("cache_kv" + std::to_string(layer_idx));
+    // FIXME: only support max_seq_len <= 1024
     cache_kv_desc.SetDataType(
         framework::TransToProtoVarType(bq_tensor->dtype()));
     cache_kv_desc.SetPersistable(false);
     auto* cache_kv = graph->CreateVarNode(&cache_kv_desc);
 
-    int max_seq_len = FLAGS_fused_multi_transformer_cache_kv_seq_len > 0 ?
-                    FLAGS_fused_multi_transformer_cache_kv_seq_len : 1024;
-
     OpDesc fill_const_op_desc(layer_norm->Op()->Block());
     fill_const_op_desc.SetType("fill_constant_batch_size_like");
     fill_const_op_desc.SetInput("Input", {input0->Name()});
     fill_const_op_desc.SetOutput("Out", {cache_kv->Name()});
-    std::vector<int> shape = {2, -1, num_head, max_seq_len, dim_head};
+    std::vector<int> shape = {2, -1, num_head, 1024, dim_head};
     fill_const_op_desc.SetAttr("shape", shape);
     fill_const_op_desc.SetAttr("input_dim_idx", 0);
     fill_const_op_desc.SetAttr("output_dim_idx", 1);
@@ -2679,19 +2672,17 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
 
     // CacheKV input
     VarDesc cache_kv_desc("cache_kv" + std::to_string(layer_idx));
+    // FIXME: only support max_seq_len <= 1024
     cache_kv_desc.SetDataType(
         framework::TransToProtoVarType(qkv_b_tensor->dtype()));
     cache_kv_desc.SetPersistable(false);
     auto* cache_kv = graph->CreateVarNode(&cache_kv_desc);
 
-    int max_seq_len = FLAGS_fused_multi_transformer_cache_kv_seq_len > 0 ?
-                    FLAGS_fused_multi_transformer_cache_kv_seq_len : 1024;
-
     OpDesc fill_const_op_desc(layer_norm->Op()->Block());
     fill_const_op_desc.SetType("fill_constant_batch_size_like");
     fill_const_op_desc.SetInput("Input", {input0->Name()});
     fill_const_op_desc.SetOutput("Out", {cache_kv->Name()});
-    std::vector<int> shape = {2, -1, num_head, max_seq_len, dim_head};
+    std::vector<int> shape = {2, -1, num_head, 1024, dim_head};
     fill_const_op_desc.SetAttr("shape", shape);
     fill_const_op_desc.SetAttr("input_dim_idx", 0);
     fill_const_op_desc.SetAttr("output_dim_idx", 1);
@@ -3517,19 +3508,17 @@ int MultiDevicesFusedMultiTransformerEncoderPass::BuildFusion(
 
     // CacheKV input
     VarDesc cache_kv_desc("cache_kv" + std::to_string(layer_idx));
+    // FIXME: only support max_seq_len <= 1024
     cache_kv_desc.SetDataType(
         framework::TransToProtoVarType(wq_tensor->dtype()));
     cache_kv_desc.SetPersistable(false);
     auto* cache_kv = graph->CreateVarNode(&cache_kv_desc);
 
-    int max_seq_len = FLAGS_fused_multi_transformer_cache_kv_seq_len > 0 ?
-                    FLAGS_fused_multi_transformer_cache_kv_seq_len : 1024;
-
     OpDesc fill_const_op_desc(layer_norm->Op()->Block());
     fill_const_op_desc.SetType("fill_constant_batch_size_like");
     fill_const_op_desc.SetInput("Input", {input0->Name()});
     fill_const_op_desc.SetOutput("Out", {cache_kv->Name()});
-    std::vector<int> shape = {2, -1, num_head, max_seq_len, dim_head};
+    std::vector<int> shape = {2, -1, num_head, 1024, dim_head};
     fill_const_op_desc.SetAttr("shape", shape);
     fill_const_op_desc.SetAttr("input_dim_idx", 0);
     fill_const_op_desc.SetAttr("output_dim_idx", 1);
@@ -4305,14 +4294,11 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     cache_kv_desc.SetPersistable(false);
     auto* cache_kv = graph->CreateVarNode(&cache_kv_desc);
 
-    int max_seq_len = FLAGS_fused_multi_transformer_cache_kv_seq_len > 0 ?
-                    FLAGS_fused_multi_transformer_cache_kv_seq_len : 1024;
-
     OpDesc fill_const_op_desc(layer_norm->Op()->Block());
     fill_const_op_desc.SetType("fill_constant_batch_size_like");
     fill_const_op_desc.SetInput("Input", {input0->Name()});
     fill_const_op_desc.SetOutput("Out", {cache_kv->Name()});
-    std::vector<int> shape = {2, -1, num_head, max_seq_len, dim_head};
+    std::vector<int> shape = {2, -1, num_head, 1024, dim_head};
     fill_const_op_desc.SetAttr("shape", shape);
     fill_const_op_desc.SetAttr("input_dim_idx", 0);
     fill_const_op_desc.SetAttr("output_dim_idx", 1);
