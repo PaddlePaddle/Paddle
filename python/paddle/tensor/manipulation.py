@@ -1942,6 +1942,8 @@ def split(x, num_or_sections, axis=0, name=None):
         dim = (len(input.shape) + dim) if dim < 0 else dim
         if isinstance(num_or_sections, Variable):
             num_or_sections = num_or_sections.tolist()
+        else:
+            num_or_sections = num_or_sections
         if isinstance(num_or_sections, (list, tuple)):
             if utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
