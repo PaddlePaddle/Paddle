@@ -35,6 +35,142 @@
 
 namespace phi {
 
+template <typename Context, typename Input_type>
+class Custom_copy {
+ public:
+  Custom_copy() = default;
+  void operator()(const Context& context,
+                  auto* input_data_ptr,
+                  auto* output_data_hat,
+                  int64_t num_input) {
+    thrust::copy(thrust::device,
+                 input_data_ptr,
+                 input_data_ptr + num_input,
+                 output_data_hat);
+  }
+};
+
+template <typename Context>
+class Custom_copy<Context, phi::dtype::float16> {
+ public:
+  Custom_copy() = default;
+  void operator()(const Context& context,
+                  auto* input_data_ptr,
+                  auto* output_data_hat,
+                  int64_t num_input) {
+    DenseTensor intermediate_variable;
+    intermediate_variable.Resize(phi::make_ddim({num_input}));
+    auto* intermediate_variable_data_ptr =
+        context.template Alloc<float>(&intermediate_variable);
+
+    thrust::copy(thrust::device,
+                 input_data_ptr,
+                 input_data_ptr + num_input,
+                 intermediate_variable_data_ptr);
+
+    thrust::copy(thrust::device,
+                 intermediate_variable_data_ptr,
+                 intermediate_variable_data_ptr + num_input,
+                 output_data_hat);
+  }
+};
+
+template <typename Context>
+class Custom_copy<Context, phi::dtype::bfloat16> {
+ public:
+  Custom_copy() = default;
+  void operator()(const Context& context,
+                  auto* input_data_ptr,
+                  auto* output_data_hat,
+                  int64_t num_input) {
+    DenseTensor intermediate_variable;
+    intermediate_variable.Resize(phi::make_ddim({num_input}));
+    auto* intermediate_variable_data_ptr =
+        context.template Alloc<float>(&intermediate_variable);
+
+    thrust::copy(thrust::device,
+                 input_data_ptr,
+                 input_data_ptr + num_input,
+                 intermediate_variable_data_ptr);
+
+    thrust::copy(thrust::device,
+                 intermediate_variable_data_ptr,
+                 intermediate_variable_data_ptr + num_input,
+                 output_data_hat);
+  }
+};
+
+template <typename Context, typename not_equal_T, typename Input_type>
+class Custom_adjacent_difference {
+ public:
+  Custom_adjacent_difference() = default;
+  void operator()(const Context& context,
+                  auto* input_data_ptr,
+                  auto* output_data_hat,
+                  int64_t num_input,
+                  not_equal_T not_equal) {
+    thrust::adjacent_difference(thrust::device,
+                                input_data_ptr,
+                                input_data_ptr + num_input,
+                                output_data_hat,
+                                not_equal);
+  }
+};
+
+template <typename Context, typename not_equal_T>
+class Custom_adjacent_difference<Context, not_equal_T, phi::dtype::float16> {
+ public:
+  Custom_adjacent_difference() = default;
+  void operator()(const Context& context,
+                  auto* input_data_ptr,
+                  auto* output_data_hat,
+                  int64_t num_input,
+                  not_equal_T not_equal) {
+    DenseTensor intermediate_variable;
+    intermediate_variable.Resize(phi::make_ddim({num_input}));
+    auto* intermediate_variable_data_ptr =
+        context.template Alloc<float>(&intermediate_variable);
+
+    thrust::copy(thrust::device,
+                 input_data_ptr,
+                 input_data_ptr + num_input,
+                 intermediate_variable_data_ptr);
+
+    thrust::adjacent_difference(thrust::device,
+                                intermediate_variable_data_ptr,
+                                intermediate_variable_data_ptr + num_input,
+                                output_data_hat,
+                                thrust::not_equal_to<float>());
+  }
+};
+
+template <typename Context, typename not_equal_T>
+class Custom_adjacent_difference<Context, not_equal_T, phi::dtype::bfloat16> {
+ public:
+  Custom_adjacent_difference() = default;
+  void operator()(const Context& context,
+                  auto* input_data_ptr,
+                  auto* output_data_hat,
+                  int64_t num_input,
+                  not_equal_T not_equal) {
+    DenseTensor intermediate_variable;
+    intermediate_variable.Resize(phi::make_ddim({num_input}));
+    auto* intermediate_variable_data_ptr =
+        context.template Alloc<float>(&intermediate_variable);
+
+    thrust::copy(thrust::device,
+                 input_data_ptr,
+                 input_data_ptr + num_input,
+                 intermediate_variable_data_ptr);
+
+    thrust::adjacent_difference(thrust::device,
+                                intermediate_variable_data_ptr,
+                                intermediate_variable_data_ptr + num_input,
+                                output_data_hat,
+                                thrust::not_equal_to<float>());
+  }
+};
+
 // Binary function 'less than'
 template <typename InT>
 struct LessThan {
@@ -222,12 +358,9 @@ static void UniqueFlattendCUDATensor(const Context& context,
     auto* inverse_data = context.template Alloc<IndexT>(index);
     DenseTensor inv_loc;
     inv_loc.Resize(phi::make_ddim({num_input}));
-    auto inv_loc_data_ptr = context.template Alloc<IndexT>(&inv_loc);
-    thrust::adjacent_difference(thrust::device,
-                                in_data_hat,
-                                in_data_hat + num_input,
-                                inv_loc_data_ptr,
-                                not_equal);
+    auto* inv_loc_data_ptr = context.template Alloc<IndexT>(&inv_loc);
+    Custom_adjacent_difference<Context, not_equal_T, InT>()(
+        context, in_data_hat, inv_loc_data_ptr, num_input, not_equal);
     thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
     inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
     thrust::inclusive_scan(thrust::device,
@@ -246,15 +379,13 @@ static void UniqueFlattendCUDATensor(const Context& context,
     DenseTensor tmp_indices;
     tmp_indices.Resize(phi::make_ddim({num_input}));
     auto* tmp_indices_data_ptr = context.template Alloc<IndexT>(&tmp_indices);
-    thrust::copy(thrust::device,
-                 in_data_hat,
-                 in_data_hat + num_input,
-                 tmp_indices_data_ptr);
+    Custom_copy<Context, InT>()(
+        context, in_data_hat, tmp_indices_data_ptr, num_input);
     thrust::unique_by_key(thrust::device,
                           tmp_indices_data_ptr,
                           tmp_indices_data_ptr + num_input,
                           indices_data,
-                          equal);
+                          thrust::equal_to<IndexT>());
     indices->Resize(phi::make_ddim({num_out}));
   }
 
