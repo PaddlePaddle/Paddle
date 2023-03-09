@@ -14,6 +14,12 @@
 
 #pragma once
 
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif
+
+#include <math.h>
+
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/phi/common/int_array.h"
@@ -454,6 +460,15 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void abs_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto abs_tmp = abs<T>(x);
+    auto divide_tmp = divide<T>(x, abs_tmp);
+    set_output<T>(out_grad * divide_tmp, x_grad);
+  }
+}
+
+template <typename T>
 void matmul_double_grad(const Tensor& x,
                         const Tensor& y,
                         const Tensor& grad_out,
@@ -869,6 +884,17 @@ void gather_nd_grad(const Tensor& x,
     auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
     auto x_grad_tmp = scatter_nd_add<T>(zero_tensor, index, out_grad);
     set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
+void erf_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto m_2_sqrt_pi = full<T>(phi::vectorize(x.dims()), M_2_SQRTPI, x.dtype());
+    auto neg_one = full<T>(phi::vectorize(x.dims()), -1.0, x.dtype());
+    auto neg_tmp = neg_one * x * x;
+    auto mul_tmp = m_2_sqrt_pi * exp<T>(neg_tmp);
+    set_output<T>(out_grad * mul_tmp, x_grad);
   }
 }
 

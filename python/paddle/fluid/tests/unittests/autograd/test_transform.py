@@ -15,7 +15,6 @@
 import unittest
 
 import paddle
-from paddle.fluid.layers.utils import flatten
 from paddle.incubate.autograd.primx import Transform, orig2prim, prim2orig
 
 paddle.enable_static()
@@ -157,10 +156,10 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
             xs_dot, ys_dot = ad.linearize(self.orig_xs, self.orig_ys)
             linearize_ops = [op.type for op in self.main_program.block(0).ops]
             self.assertEqual(sorted(linearize_ops), sorted(self.linearize_ops))
-            flatten_xs_dot = flatten(xs_dot)
+            flatten_xs_dot = paddle.utils.flatten(xs_dot)
             for k, v in self.xs_shape_map.items():
                 self.assertEqual(flatten_xs_dot[k].shape, v)
-            flatten_ys_dot = flatten(ys_dot)
+            flatten_ys_dot = paddle.utils.flatten(ys_dot)
             for k, v in self.ys_shape_map.items():
                 self.assertEqual(flatten_ys_dot[k].shape, v)
 
@@ -168,12 +167,12 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
             ys_bar, xs_bar = ad.transpose(ys_dot, xs_dot, retain_fwd=False)
             transpose_ops = [op.type for op in self.main_program.block(0).ops]
             self.assertEqual(sorted(transpose_ops), sorted(self.transpose_ops))
-            flatten_xs_bar = flatten(xs_bar)
+            flatten_xs_bar = paddle.utils.flatten(xs_bar)
             for k, v in self.xs_shape_map.items():
                 # There may be None in the result of transpose like gather op
                 if flatten_xs_bar[k] is not None:
                     self.assertEqual(flatten_xs_bar[k].shape, v)
-            flatten_ys_bar = flatten(ys_bar)
+            flatten_ys_bar = paddle.utils.flatten(ys_bar)
             for k, v in self.ys_shape_map.items():
                 self.assertEqual(flatten_ys_bar[k].shape, v)
 

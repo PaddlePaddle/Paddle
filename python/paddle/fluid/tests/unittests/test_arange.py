@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
@@ -56,6 +56,50 @@ class TestFloatArangeOp(TestArangeOp):
         self.dtype = np.float32
         self.python_api = paddle.arange
         self.case = (0, 5, 1)
+
+
+class TestFloa16ArangeOp(TestArangeOp):
+    def init_config(self):
+        self.dtype = np.float16
+        self.python_api = paddle.arange
+        self.case = (0, 5, 1)
+
+    def test_check_output(self):
+        self.check_output()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestBFloat16ArangeOp(OpTest):
+    def setUp(self):
+        self.op_type = "range"
+        self.init_config()
+        self.inputs = {
+            'Start': convert_float_to_uint16(self.start),
+            'End': convert_float_to_uint16(self.end),
+            'Step': convert_float_to_uint16(self.step),
+        }
+
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                np.arange(self.start, self.end, self.step)
+            )
+        }
+
+    def init_config(self):
+        self.dtype = np.uint16
+        self.python_api = arange_wrapper
+        self.case = (0, 5, 1)
+        self.start = np.array([self.case[0]]).astype(np.float32)
+        self.end = np.array([self.case[1]]).astype(np.float32)
+        self.step = np.array([self.case[2]]).astype(np.float32)
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
 
 class TestInt32ArangeOp(TestArangeOp):
