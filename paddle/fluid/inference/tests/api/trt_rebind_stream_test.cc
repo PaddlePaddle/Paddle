@@ -39,8 +39,10 @@ TEST(ReBindStream_single, use_gpu) {
   float x_data[3 * 224 * 224] = {0};
   x_t->CopyFromCpu(x_data);
   ASSERT_TRUE(predictor->Run());
-  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(predictor.get(), stream2));
-  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(predictor.get(), stream3));
+  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(
+      predictor.get(), stream2));
+  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(
+      predictor.get(), stream3));
 }
 
 TEST(ReBindStream_multi, use_gpu) {
@@ -78,14 +80,18 @@ TEST(ReBindStream_multi, use_gpu) {
   ASSERT_TRUE(predictor2->Run());
   cudaStreamSynchronize(stream1);
 
-  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(predictor1.get(), stream2));
+  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(
+      predictor1.get(), stream2));
   cudaDeviceSynchronize();
-  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(predictor2.get(), stream2));
+  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(
+      predictor2.get(), stream2));
   cudaDeviceSynchronize();
 
-  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(predictor1.get(), stream3));
+  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(
+      predictor1.get(), stream3));
   cudaStreamSynchronize(stream3);
-  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(predictor2.get(), stream3));
+  ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(
+      predictor2.get(), stream3));
   cudaStreamSynchronize(stream3);
 }
 
