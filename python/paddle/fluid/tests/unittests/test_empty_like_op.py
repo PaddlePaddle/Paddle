@@ -219,14 +219,14 @@ class TestEmptyLikeOpFP16(unittest.TestCase):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestEmptylikeBFloat16(OpTest):
+class TestEmptylikeBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'empty_like'
         self.dtype = np.uint16
         self.__class__.op_type = self.op_type
         self.python_api = paddle.empty_like
         x = np.random.random((200, 3)).astype('int32')
-        output = np.empty_like(x)
+        output = np.empty_like(x, dtype='float32')
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 

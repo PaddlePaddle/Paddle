@@ -302,7 +302,7 @@ class TestEmptyOpFP16(unittest.TestCase):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestEmptyBFloat16(OpTest):
+class TestEmptyBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'empty'
         self.dtype = np.uint16
@@ -312,7 +312,7 @@ class TestEmptyBFloat16(OpTest):
         shape = np.array([200, 3]).astype('int32')
         output = np.empty(shape=shape, dtype='float32')
         self.inputs = {'SHAPE': shape}
-        self.attrs = {'dtype': typea}
+        self.attrs = {'DTYPE': typea}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
@@ -321,7 +321,7 @@ class TestEmptyBFloat16(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['SHAPE'], 'Out')
+        self.check_grad_with_place(place, ['DTYPE'], 'Out')
 
 
 class TestEmptyError(unittest.TestCase):
