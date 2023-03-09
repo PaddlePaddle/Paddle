@@ -250,7 +250,7 @@ class DistributedBatchSampler(BatchSampler):
             drop_last, bool
         ), "drop_last should be a boolean number"
 
-        from paddle.fluid.dygraph.parallel import ParallelEnv
+        from paddle.distributed import ParallelEnv
 
         if num_replicas is not None:
             assert (

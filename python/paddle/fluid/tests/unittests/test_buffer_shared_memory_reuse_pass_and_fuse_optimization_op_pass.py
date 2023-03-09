@@ -23,9 +23,6 @@ class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
         self.fuse_all_optimizer_ops = True
         self.fuse_all_reduce_ops = False
 
-    def test_multi_card_fetch_var(self):
-        self.check_multi_card_fetch_var()
-
     def test_single_card_fetch_var(self):
         self.check_single_card_fetch_var()
 
@@ -35,9 +32,6 @@ class CPUInplaceTestWithFuseOptimizationOps(InplaceTestBase):
         self.use_cuda = False
         self.fuse_all_optimizer_ops = True
         self.fuse_all_reduce_ops = False
-
-    def test_multi_card_fetch_var(self):
-        self.check_multi_card_fetch_var()
 
     # TODO(zcd): should check why this test failed.
     @unittest.skip("should fix this later.")

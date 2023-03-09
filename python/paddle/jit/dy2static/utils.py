@@ -15,6 +15,7 @@
 import ast
 import atexit
 import copy
+import functools
 import importlib.util
 import inspect
 import os
@@ -23,7 +24,6 @@ import sys
 import tempfile
 import textwrap
 import warnings
-from functools import reduce
 from importlib.machinery import SourceFileLoader
 
 import astor
@@ -33,7 +33,6 @@ import paddle
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers import assign
 from paddle.utils import gast
 
 __all__ = []
@@ -156,7 +155,7 @@ def create_undefined_variable():
     helper = LayerHelper('create_undefined_variable', **locals())
     saved_block_ids = helper.main_program.current_block_idx
     helper.main_program.current_block_idx = 0
-    assign(RETURN_NO_VALUE_MAGIC_NUM, var)
+    paddle.assign(RETURN_NO_VALUE_MAGIC_NUM, var)
     helper.main_program.current_block_idx = saved_block_ids
     return var
 
@@ -288,8 +287,22 @@ def is_paddle_api(node):
 
 
 def is_paddle_func(func):
-    m = inspect.getmodule(func)
-    return m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
+    try:
+        if isinstance(func, functools.partial):
+            func = func.func
+
+        # In case of dynamically monkey patch customised function
+        # into paddle class obj, so we consider its class module
+        # path as prefix.
+        if hasattr(func, "__self__"):
+            func = func.__self__
+        elif inspect.ismethod(func):
+            func = func.__func__
+
+        m = inspect.getmodule(func)
+        return m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
+    except Exception:
+        return False
 
 
 # Is numpy_api cannot reuse is_api_in_module because of numpy module problem
@@ -638,6 +651,8 @@ def func_to_source_code(function, dedent=True):
     """
     Transforms function into raw string of source code.
     """
+    if isinstance(function, functools.partial):
+        function = function.func
     if not (inspect.isfunction(function) or inspect.ismethod(function)):
         raise TypeError(
             "The type of 'function' should be a function or method, but received {}.".format(
@@ -1430,7 +1445,9 @@ class GetterSetterHelper:
     def __init__(self, getter_func, setter_func, *name_lists):
         name_lists = map(lambda x: [] if x is None else x, name_lists)
         name_sets = map(lambda x: set(x), name_lists)
-        self._union = list(reduce(lambda x, y: x | y, name_sets, set()))
+        self._union = list(
+            functools.reduce(lambda x, y: x | y, name_sets, set())
+        )
         self._union.sort()
         self.getter = getter_func
         self.setter = setter_func
@@ -1490,7 +1507,7 @@ def _param_grad_names(program_desc, params):
     Parse PARAM@GARD name from original train and infer program.
     """
     names = []
-    # NOTE: `names` and `self._params` must be in the same order so that
+    # NOTE: `names` and `params` must be in the same order so that
     # the param grad name can be set correctly in the run_program.
     for param in params:
         candidate = [
@@ -1520,3 +1537,25 @@ def _out_grad_names(program_desc, fwd_end_op_index, out_size):
             var_name = op.output('Out')[0]
             names.append(var_name)
     return names
+
+
+def prim_or_cinn_is_enabled(build_strategy):
+    if build_strategy is not None and build_strategy.build_cinn_pass:
+        return True
+
+    if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
+        return True
+
+    env_flags = [
+        'FLAGS_prim_forward',
+        'FLAGS_prim_backward',
+        'FLAGS_prim_all',
+        'FLAGS_use_cinn',
+    ]
+    for flag in env_flags:
+        value = os.getenv(flag)
+        if value is None:
+            continue
+        elif value.lower() in ['true', '1']:
+            return True
+    return False

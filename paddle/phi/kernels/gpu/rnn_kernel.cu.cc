@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/rnn_kernel.h"
 
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/gpu/rnn_functor.h"
 
@@ -42,81 +42,78 @@ void RNNInferece(bool has_seq_length,
 // This interface is used when the input/output is unpadded.
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::miopenRNNForwardInference(
-            handle,
-            rnn->rnn_desc(),
-            seq_length,
-            rnn->x_descs(),
-            x_data,
-            rnn->init_h_desc(),
-            init_h_data,
-            rnn->init_c_desc(),
-            init_c_data,
-            rnn->weight_desc(),
-            w_data,
-            rnn->y_descs(),
-            out_data,
-            rnn->last_h_desc(),
-            last_h_data,
-            rnn->last_c_desc(),
-            last_c_data,
-            workspace_data->data<uint8_t>(),
-            workspace_size));
+        phi::dynload::miopenRNNForwardInference(handle,
+                                                rnn->rnn_desc(),
+                                                seq_length,
+                                                rnn->x_descs(),
+                                                x_data,
+                                                rnn->init_h_desc(),
+                                                init_h_data,
+                                                rnn->init_c_desc(),
+                                                init_c_data,
+                                                rnn->weight_desc(),
+                                                w_data,
+                                                rnn->y_descs(),
+                                                out_data,
+                                                rnn->last_h_desc(),
+                                                last_h_data,
+                                                rnn->last_c_desc(),
+                                                last_c_data,
+                                                workspace_data->data<uint8_t>(),
+                                                workspace_size));
 #else
     PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnRNNForwardInference(
-            handle,
-            rnn->rnn_desc(),
-            seq_length,
-            rnn->x_descs(),
-            x_data,
-            rnn->init_h_desc(),
-            init_h_data,
-            rnn->init_c_desc(),
-            init_c_data,
-            rnn->weight_desc(),
-            w_data,
-            rnn->y_descs(),
-            out_data,
-            rnn->last_h_desc(),
-            last_h_data,
-            rnn->last_c_desc(),
-            last_c_data,
-            workspace_data->data<uint8_t>(),
-            workspace_size));
+        phi::dynload::cudnnRNNForwardInference(handle,
+                                               rnn->rnn_desc(),
+                                               seq_length,
+                                               rnn->x_descs(),
+                                               x_data,
+                                               rnn->init_h_desc(),
+                                               init_h_data,
+                                               rnn->init_c_desc(),
+                                               init_c_data,
+                                               rnn->weight_desc(),
+                                               w_data,
+                                               rnn->y_descs(),
+                                               out_data,
+                                               rnn->last_h_desc(),
+                                               last_h_data,
+                                               rnn->last_c_desc(),
+                                               last_c_data,
+                                               workspace_data->data<uint8_t>(),
+                                               workspace_size));
 #endif
   } else {
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
     // for inference
     // This interface is used when the input/output is padded.
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnRNNForwardInferenceEx(
-            handle,
-            rnn->rnn_desc(),
-            rnn->x_seq_desc(),
-            x_data,
-            rnn->init_h_desc(),
-            init_h_data,
-            rnn->init_c_desc(),
-            init_c_data,
-            rnn->weight_desc(),
-            w_data,
-            rnn->y_seq_desc(),
-            out_data,
-            rnn->last_h_desc(),
-            last_h_data,
-            rnn->last_c_desc(),
-            last_c_data,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            workspace_data->data<uint8_t>(),
-            workspace_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNForwardInferenceEx(
+        handle,
+        rnn->rnn_desc(),
+        rnn->x_seq_desc(),
+        x_data,
+        rnn->init_h_desc(),
+        init_h_data,
+        rnn->init_c_desc(),
+        init_c_data,
+        rnn->weight_desc(),
+        w_data,
+        rnn->y_seq_desc(),
+        out_data,
+        rnn->last_h_desc(),
+        last_h_data,
+        rnn->last_c_desc(),
+        last_c_data,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        workspace_data->data<uint8_t>(),
+        workspace_size));
 #else
     // CUDNN VERSION has to >=7.2.1
     PADDLE_THROW(phi::errors::Unavailable(
@@ -205,8 +202,7 @@ void RnnKernel(const Context &dev_ctx,
 #endif
   std::vector<int> SequenceLength;
   if (has_seq_length) {
-    SequenceLength =
-        paddle::operators::GetDataFromTensor<int>(sequence_length.get_ptr());
+    SequenceLength = phi::GetVectorFromTensor<int>(sequence_length.get_ptr());
   }
 
   auto handle = dev_ctx.cudnn_handle();
@@ -311,88 +307,85 @@ void RnnKernel(const Context &dev_ctx,
 // for train
 // This interface is used when the input/output is unpadded.
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::miopenRNNForwardTraining(
-              handle,
-              rnn.rnn_desc(),
-              seq_length,
-              rnn.x_descs(),
-              x_data,
-              rnn.init_h_desc(),
-              init_h_data,
-              rnn.init_c_desc(),
-              init_c_data,
-              rnn.weight_desc(),
-              w_data,
-              rnn.y_descs(),
-              out_data,
-              rnn.last_h_desc(),
-              last_h_data,
-              rnn.last_c_desc(),
-              last_c_data,
-              workspace_data_.data<uint8_t>(),
-              workspace_size,
-              reserve_data,
-              reserve_size));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenRNNForwardTraining(
+          handle,
+          rnn.rnn_desc(),
+          seq_length,
+          rnn.x_descs(),
+          x_data,
+          rnn.init_h_desc(),
+          init_h_data,
+          rnn.init_c_desc(),
+          init_c_data,
+          rnn.weight_desc(),
+          w_data,
+          rnn.y_descs(),
+          out_data,
+          rnn.last_h_desc(),
+          last_h_data,
+          rnn.last_c_desc(),
+          last_c_data,
+          workspace_data_.data<uint8_t>(),
+          workspace_size,
+          reserve_data,
+          reserve_size));
 #else
       PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cudnnRNNForwardTraining(
-              handle,
-              rnn.rnn_desc(),
-              seq_length,
-              rnn.x_descs(),
-              x_data,
-              rnn.init_h_desc(),
-              init_h_data,
-              rnn.init_c_desc(),
-              init_c_data,
-              rnn.weight_desc(),
-              w_data,
-              rnn.y_descs(),
-              out_data,
-              rnn.last_h_desc(),
-              last_h_data,
-              rnn.last_c_desc(),
-              last_c_data,
-              workspace_data_.data<uint8_t>(),
-              workspace_size,
-              reserve_data,
-              reserve_size));
+          phi::dynload::cudnnRNNForwardTraining(handle,
+                                                rnn.rnn_desc(),
+                                                seq_length,
+                                                rnn.x_descs(),
+                                                x_data,
+                                                rnn.init_h_desc(),
+                                                init_h_data,
+                                                rnn.init_c_desc(),
+                                                init_c_data,
+                                                rnn.weight_desc(),
+                                                w_data,
+                                                rnn.y_descs(),
+                                                out_data,
+                                                rnn.last_h_desc(),
+                                                last_h_data,
+                                                rnn.last_c_desc(),
+                                                last_c_data,
+                                                workspace_data_.data<uint8_t>(),
+                                                workspace_size,
+                                                reserve_data,
+                                                reserve_size));
 #endif
     } else {
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 7201
       // for train
       // This interface is used when the input/output is padded.
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          paddle::platform::dynload::cudnnRNNForwardTrainingEx(
-              handle,
-              rnn.rnn_desc(),
-              rnn.x_seq_desc(),
-              x_data,
-              rnn.init_h_desc(),
-              init_h_data,
-              rnn.init_c_desc(),
-              init_c_data,
-              rnn.weight_desc(),
-              w_data,
-              rnn.y_seq_desc(),
-              out_data,
-              rnn.last_h_desc(),
-              last_h_data,
-              rnn.last_c_desc(),
-              last_c_data,
-              nullptr,
-              nullptr,
-              nullptr,
-              nullptr,
-              nullptr,
-              nullptr,
-              nullptr,
-              nullptr,
-              workspace_data_.data<uint8_t>(),
-              workspace_size,
-              reserve_data,
-              reserve_size));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnRNNForwardTrainingEx(
+          handle,
+          rnn.rnn_desc(),
+          rnn.x_seq_desc(),
+          x_data,
+          rnn.init_h_desc(),
+          init_h_data,
+          rnn.init_c_desc(),
+          init_c_data,
+          rnn.weight_desc(),
+          w_data,
+          rnn.y_seq_desc(),
+          out_data,
+          rnn.last_h_desc(),
+          last_h_data,
+          rnn.last_c_desc(),
+          last_c_data,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr,
+          nullptr,
+          workspace_data_.data<uint8_t>(),
+          workspace_size,
+          reserve_data,
+          reserve_size));
 #else
       PADDLE_THROW(phi::errors::Unavailable(
           "The padded input is supported by "

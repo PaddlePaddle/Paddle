@@ -101,6 +101,8 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
           xpu::Error_t::SUCCESS,
           platform::errors::External(
               "Execute function CopyTensorByXPU failed by [%d]", r));
+      sentenceIds_temp->set_lod(sentenceIds->lod());
+      sentenceScores_temp->set_lod(sentenceScores->lod());
     }
   }
 };

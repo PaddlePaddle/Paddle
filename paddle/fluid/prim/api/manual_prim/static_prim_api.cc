@@ -38,111 +38,17 @@ namespace paddle {
 namespace prim {
 
 template <>
-Tensor pow<DescTensor>(const Tensor& x, const Scalar& y) {
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
+Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
-  op->SetType("pow");
+  // TODO(cxxly): move to auto generate dir.
+  op->SetType("reshape2");
   op->SetInput("X",
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
+  auto out = empty<DescTensor>({}, x.dtype(), paddle::Place());
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->SetAttr("factor", y.to<float>());
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor scale<DescTensor>(const Tensor& x,
-                         const Scalar& scale,
-                         float bias,
-                         bool bias_after_scale) {
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("scale");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->SetAttr("scale", scale.to<float>());
-  op->SetAttr("bias", bias);
-  op->SetAttr("bias_after_scale", bias_after_scale);
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor multiply<DescTensor>(const Tensor& x, const Tensor& y) {
-  // Grad infershape
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("elementwise_mul");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetInput("Y",
-               {std::static_pointer_cast<prim::DescTensor>(y.impl())->Name()});
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor unsqueeze<DescTensor>(const Tensor& x, const IntArray& axis) {
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("unsqueeze2");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  std::vector<int> new_shape(axis.GetData().begin(), axis.GetData().end());
-  op->SetAttr("axes", new_shape);
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor expand<DescTensor>(const Tensor& x, const IntArray& shape) {
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("expand_v2");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  std::vector<int> new_shape(shape.GetData().begin(), shape.GetData().end());
-  op->SetAttr("shape", new_shape);
-  op->CheckAttrs();
-  op->InferVarType(block);
-  return out;
-}
-
-template <>
-Tensor divide<DescTensor>(const Tensor& x, const Tensor& y) {
-  // Grad infershape
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("elementwise_div");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  op->SetInput("Y",
-               {std::static_pointer_cast<prim::DescTensor>(y.impl())->Name()});
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->SetAttr("shape", unsafe_vector_cast<int64_t, int>(shape.GetData()));
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);
@@ -160,23 +66,58 @@ Tensor full<DescTensor>(const IntArray& shape,
   framework::OpDesc* op = block->AppendOp();
   op->SetType("fill_constant");
   op->SetAttr("shape", shape.GetData());
-  PADDLE_ENFORCE_EQ(
-      ((dtype == DataType::FLOAT32) || (dtype == DataType::FLOAT64) ||
-       (dtype == DataType::FLOAT16)),
-      true,
-      phi::errors::InvalidArgument(
-          "We only support float32/float16 for full, but we got data type: %s",
+  switch (dtype) {
+    case phi::DataType::FLOAT16:
+      op->SetAttr("str_value", std::to_string(value.to<float>()));
+      break;
+    case phi::DataType::BFLOAT16:
+      op->SetAttr("str_value", std::to_string(value.to<float>()));
+      break;
+    case phi::DataType::FLOAT32:
+      op->SetAttr("value", value.to<float>());
+      break;
+    case phi::DataType::FLOAT64: {
+      std::stringstream ss;
+      ss << std::setprecision(20) << value.to<double>();
+      op->SetAttr("str_value", ss.str());
+      break;
+    }
+    case phi::DataType::BOOL:
+      op->SetAttr("str_value", std::to_string(value.to<bool>()));
+      break;
+    case phi::DataType::INT8:
+      op->SetAttr("str_value", std::to_string(value.to<int8_t>()));
+      break;
+    case phi::DataType::UINT8:
+      op->SetAttr("str_value", std::to_string(value.to<uint8_t>()));
+      break;
+    case phi::DataType::INT16:
+      op->SetAttr("str_value", std::to_string(value.to<int16_t>()));
+      break;
+    case phi::DataType::UINT16:
+      op->SetAttr("str_value", std::to_string(value.to<uint16_t>()));
+      break;
+    case phi::DataType::INT32:
+      op->SetAttr("str_value", std::to_string(value.to<int32_t>()));
+      break;
+    case phi::DataType::UINT32:
+      op->SetAttr("str_value", std::to_string(value.to<uint32_t>()));
+      break;
+    case phi::DataType::INT64:
+      op->SetAttr("str_value", std::to_string(value.to<int64_t>()));
+      break;
+    case phi::DataType::UINT64:
+      op->SetAttr("str_value", std::to_string(value.to<uint64_t>()));
+      break;
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "We support "
+          "bool/float16/bfloat16/float32/float64/int8/int16/int32/int64/uint8/"
+          "uint16/"
+          "uint32/uint64 for full, but we got data type: %s",
           phi::DataTypeToString(dtype)));
-  if (dtype == phi::DataType::FLOAT32) {
-    op->SetAttr("value", value.to<float>());
-  } else if (dtype == phi::DataType::FLOAT64) {
-    op->SetAttr("str_value", std::to_string(value.to<double>()));
-  } else if (dtype == phi::DataType::FLOAT16) {
-    op->SetAttr("str_value", std::to_string(value.to<float>()));
-  } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "We only support float64/float32/float16 for full"));
   }
+
   op->SetAttr("dtype", paddle::framework::TransToProtoVarType(dtype));
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
@@ -187,65 +128,43 @@ Tensor full<DescTensor>(const IntArray& shape,
 }
 
 template <>
-Tensor sum<DescTensor>(const Tensor& x,
-                       const IntArray& axis,
-                       DataType dtype,
-                       bool keepdim) {
-  // Grad infershape
-  Tensor out = empty<DescTensor>({}, dtype, paddle::Place());
+std::vector<Tensor> split<DescTensor>(const Tensor& x,
+                                      const IntArray& sections,
+                                      const Scalar& axis) {
+  int elem_num = sections.size();
+  std::vector<std::string> outs_name;
+  std::vector<Tensor> outs;
+  for (int i = 0; i < elem_num; ++i) {
+    Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
+    std::string out_name =
+        std::static_pointer_cast<prim::DescTensor>(out.impl())->Name();
+    outs_name.push_back(std::move(out_name));
+    outs.push_back(out);
+  }
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
-  op->SetType("reduce_sum");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  std::vector<int> res;
-  for (auto value : axis.GetData()) {
-    res.push_back(static_cast<int>(value));
-  }
-  op->SetAttr("dim", res);
-  op->SetAttr("keep_dim", keepdim);
-  op->SetAttr("dtype", paddle::framework::TransToProtoVarType(dtype));
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->SetType("split");
+  op->SetAttr("sections", sections.GetData());
+  op->SetAttr("axis", axis.to<int>());
+  op->SetOutput("Out", outs_name);
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);
-  return out;
+  return outs;
 }
 
 template <>
-Tensor reshape<DescTensor>(const Tensor& x, const IntArray& shape) {
-  // Grad infershape
-  Tensor out = empty<DescTensor>({}, x.dtype(), paddle::Place());
+Tensor cast<DescTensor>(const Tensor& x, DataType dtype) {
+  Tensor out = empty<DescTensor>({}, DataType::FLOAT32, paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
   framework::OpDesc* op = block->AppendOp();
-  op->SetType("reshape");
-  op->SetInput("X",
-               {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
-  std::vector<int> res;
-  for (auto value : shape.GetData()) {
-    // TODO(jiabin): This cast is not safe for now, find a way to handle this.
-    res.push_back(static_cast<int>(value));
-  }
-  op->SetAttr("shape", res);
-  op->SetOutput(
-      "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->CheckAttrs();
-  op->InferVarType(block);
-  op->InferShape(*block);
-  return out;
-}
-
-template <>
-Tensor exp<DescTensor>(const Tensor& x) {
-  Tensor out = empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
-  framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();
-  framework::OpDesc* op = block->AppendOp();
-  op->SetType("exp");
+  op->SetType("cast");
   op->SetInput("X",
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
+  op->SetAttr("in_dtype", paddle::framework::TransToProtoVarType(x.dtype()));
+  op->SetAttr("out_dtype", paddle::framework::TransToProtoVarType(dtype));
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);

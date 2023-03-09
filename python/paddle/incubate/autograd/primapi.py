@@ -17,6 +17,7 @@ import typing
 
 import paddle
 from paddle.fluid import backward, core, framework
+from paddle.fluid.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
 
@@ -235,6 +236,8 @@ def to_prim(blocks):
             f"Expect block or sequence of blocks, but got {type(blocks)}."
         )
     with framework.program_guard(main_program):
-        print("Running lowering for forward...")
-        primx._lower_composite(blocks)
+        print("Lowering composite forward ops begin...")
+        primx._lower_composite(blocks, prim_config["forward_blacklist"])
+        replace_ops = prim_config["composite_ops_record"]
+        print(f"Lowering composite forward ops finish: {replace_ops}")
     return

@@ -118,7 +118,7 @@ std::vector<paddle::Tensor> relu_xpu_backward(const paddle::Tensor& x,
   auto zeros = paddle::experimental::full_like(x, 0.0, x.dtype(), x.place());
   auto condition = paddle::experimental::greater_than(x, zeros);
 
-  grad_x = paddle::multiply(grad_out, paddle::where(condition, ones, zeros));
+  grad_x = grad_out * paddle::where(condition, ones, zeros);
 
   return {grad_x};
 }

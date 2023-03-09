@@ -26,6 +26,7 @@ from paddle_bfloat import bfloat16
 
 import paddle
 import paddle.fluid as fluid
+from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.fluid import core
 
 
@@ -126,7 +127,11 @@ class TestCollectiveAPIRunnerBase:
             shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
         )
         if args['static_mode']:
-            result = self.get_model(train_prog, startup_prog, rank)
+            result = (
+                self.get_model_new(train_prog, startup_prog, rank)
+                if args["use_comm_context"]
+                else self.get_model(train_prog, startup_prog, rank)
+            )
             exe = fluid.Executor(place)
             exe.run(startup_prog)
             fetch_list = []
@@ -172,11 +177,7 @@ class TestDistBase(unittest.TestCase):
 
         # NOTE: this is a hack to get int format nccl version, like 2134
         # if current platform is not linux, version number will be 0
-        nccl_version_str = subprocess.check_output(
-            r"ldconfig -v | grep 'libnccl.so' | tail -n1 | sed -r 's/^.*\.so\.//'",
-            stderr=subprocess.DEVNULL,
-            shell=True,
-        ).decode('utf-8')
+        nccl_version_str = get_nccl_version_str()
         self._nccl_version = (
             int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
         )
