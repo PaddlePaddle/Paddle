@@ -1471,6 +1471,7 @@ class OpTest(unittest.TestCase):
     ):
 
         core._set_prim_all_enabled(False)
+        core.set_prim_eager_enabled(False)
         if check_prim:
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
@@ -2221,6 +2222,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
     ):
         core._set_prim_all_enabled(False)
+        core.set_prim_eager_enabled(False)
         if check_prim:
             prim_grad_checker = PrimGradChecker(
                 self,
