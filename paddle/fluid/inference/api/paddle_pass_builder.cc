@@ -377,7 +377,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_mkldnn_fuse_pass",  //
              "shuffle_channel_mkldnn_detect_pass",    //
-             "elt_act_onednn_fuse_pass",              //
+             "elementwise_act_onednn_fuse_pass",      //
              "layer_norm_onednn_optimization_pass",   //
              "operator_scale_onednn_fuse_pass",       //
              "operator_unsqueeze2_onednn_fuse_pass",  //
