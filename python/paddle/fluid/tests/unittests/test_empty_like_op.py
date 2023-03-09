@@ -226,7 +226,7 @@ class TestEmptylikeBFloat16(OpTest):
         self.__class__.op_type = self.op_type
         self.python_api = paddle.empty_like
         x = np.random.random((200, 3)).astype('int32')
-        output = np.empty(x)
+        output = np.empty_like(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 

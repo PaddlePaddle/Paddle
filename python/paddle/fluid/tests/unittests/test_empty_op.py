@@ -306,13 +306,13 @@ class TestEmptyBFloat16(OpTest):
     def setUp(self):
         self.op_type = 'empty'
         self.dtype = np.uint16
-        typea = 'float32'
+        typea = 'bfloat16'
         self.__class__.op_type = self.op_type
         self.python_api = paddle.empty
         shape = np.array([200, 3]).astype('int32')
         output = np.empty(shape=shape, dtype='float32')
         self.inputs = {'SHAPE': shape}
-        self.attrs = {'dtype': convert_float_to_uint16(typea)}
+        self.attrs = {'dtype': typea}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
