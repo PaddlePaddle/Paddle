@@ -107,11 +107,7 @@ KernelSignature ElementwiseHeavisideOpArgumentMapping(
 
 KernelSignature ElementwisePowOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
-  if (axis == -1) {
-    return KernelSignature("elementwise_pow", {"X", "Y"}, {}, {"Out"});
-  }
-  return KernelSignature("elementwise_pow_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature("elementwise_pow", {"X", "Y"}, {}, {"Out"});
 }
 
 KernelSignature ElementwiseAddGradOpArgumentMapping(
@@ -227,10 +223,8 @@ KernelSignature ElementwiseHeavisideGradOpArgumentMapping(
 
 KernelSignature ElementwisePowGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("elementwise_pow_grad",
-                         {"X", "Y", "Out@GRAD"},
-                         {"axis"},
-                         {"X@GRAD", "Y@GRAD"});
+  return KernelSignature(
+      "elementwise_pow_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 }  // namespace phi
 

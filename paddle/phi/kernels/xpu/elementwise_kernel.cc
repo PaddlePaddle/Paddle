@@ -97,11 +97,11 @@ void RemainderRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ElementwisePowRawKernel(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& y,
-                             int axis,
-                             DenseTensor* out) {
+void ElementwisePowKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          DenseTensor* out) {
+  int axis = -1;
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
@@ -143,9 +143,9 @@ PD_REGISTER_KERNEL(remainder_raw,
                    phi::dtype::float16,
                    int32_t,
                    int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow_raw,
+PD_REGISTER_KERNEL(elementwise_pow,
                    XPU,
                    ALL_LAYOUT,
-                   phi::ElementwisePowRawKernel,
+                   phi::ElementwisePowKernel,
                    float,
                    phi::dtype::float16) {}
