@@ -58,8 +58,6 @@ int GetFwdFusedEpilogueType(const phi::GPUContext& ctx,
   return static_cast<int>(fuse_type);
 }
 
-#define PRTDBG printf("[%s, %d]: Run here.\n", __func__, __LINE__);
-
 template <typename DeviceContext, typename T>
 class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
  public:
@@ -76,16 +74,6 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
 
-    if (ctx.HasAttr("activation")) {
-      PRTDBG;
-    } else {
-      PRTDBG;
-    }
-    if (ctx.HasOutput("Out")) {
-      PRTDBG;
-    } else {
-      PRTDBG;
-    }
     std::string activation = ctx.Attr<std::string>("activation");
     dev_ctx.Alloc<T>(out, out->numel() * sizeof(T));
     // (M * K) * (K * N)
@@ -111,7 +99,6 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
         static_cast<int>(fuse_type),
         static_cast<const void*>(bias->data<T>()),
         reserve_data);
-    PRTDBG;
     phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx,
                                            x->data<T>(),
                                            y->data<T>(),
@@ -122,7 +109,6 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
                                            trans_x,
                                            trans_y,
                                            &fued_impl);
-    PRTDBG;
   }
 };
 
@@ -137,22 +123,10 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     const phi::DenseTensor* y = ctx.Input<phi::DenseTensor>("Y");
     const phi::DenseTensor* reserve_space =
         ctx.Input<phi::DenseTensor>("ReserveSpace");
-    PRTDBG;
     phi::DenseTensor* dx = ctx.Output<phi::DenseTensor>("DX");
     phi::DenseTensor* dy = ctx.Output<phi::DenseTensor>("DY");
     phi::DenseTensor* dbias = ctx.Output<phi::DenseTensor>("DBias");
-    PRTDBG;
 
-    if (ctx.HasAttr("activation")) {
-      PRTDBG;
-    } else {
-      PRTDBG;
-    }
-    if (ctx.HasOutput("Out")) {
-      PRTDBG;
-    } else {
-      PRTDBG;
-    }
     std::string activation_grad = ctx.Attr<std::string>("activation");
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
@@ -163,7 +137,13 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
     int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
-    PRTDBG;
+
+    VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
+            << "}, dout.shape={" << dout->dims() << "}, M=" << M << ", N=" << N
+            << ", K=" << K << ", trans_x=" << trans_x << ", trans_y=" << trans_y
+            << ", activation=" << activation_grad
+            << ", reserve_space=" << reserve_space;
+
     ComputeFusedGemmEpilogueBackward<T>(dev_ctx,
                                         dout,
                                         x,
@@ -178,7 +158,6 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
                                         dx,
                                         dy,
                                         dbias);
-    PRTDBG;
   }
 };
 #endif
@@ -201,5 +180,6 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext, double>,
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext,
                                      paddle::platform::float16>,
-    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::bfloat16>);
+    ops::FusedGemmEpilogueGradKernel<phi::GPUContext,
+                                     paddle::platform::bfloat16>);
 #endif

@@ -33,9 +33,6 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(
         ctx->HasOutput("Out"), "Output", "Out", "FusedGemmEpilogueOp");
 
-    // printf("[%s, %d]: ctx->HasOutput(\"Out\") = %d\n", __func__, __LINE__,
-    // ctx->HasOutput("Out")); printf("[%s, %d]: ctx->HasOutput(\"activation\")
-    // = %d\n", __func__, __LINE__, ctx->HasAttr("activation"));
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     auto bias_dims = ctx->GetInputDim("Bias");
