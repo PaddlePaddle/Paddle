@@ -220,13 +220,17 @@ class TestLerpBF16(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output(check_eager=True, atol=1e-2)
+            self.check_output_with_place(place, check_eager=True, atol=1e-2)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_grad(
-                ['X', 'Y'], 'Out', check_eager=True, max_relative_error=1e-2
+            self.check_grad_with_place(
+                place,
+                ['X', 'Y'],
+                'Out',
+                check_eager=True,
+                max_relative_error=1e-2,
             )
 
 
