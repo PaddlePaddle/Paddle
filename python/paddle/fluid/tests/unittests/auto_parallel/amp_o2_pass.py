@@ -32,8 +32,13 @@ def apply_pass(use_amp=False, amp_dtype="bfloat16"):
     if use_amp:
         amp = strategy.amp
         amp.enable = True
-        amp.dytpe = amp_dtype
+        amp.dtype = amp_dtype
         amp.level = "o2"
+        amp.custom_black_list = [
+            'c_softmax_with_cross_entropy',
+            'elementwise_div',
+            'reduce_sum',
+        ]
 
     return strategy
 
@@ -104,10 +109,6 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             batch_size=self.batch_size,
         )
         loss0 = mp_history.history['loss'][0]
-        with open(
-            "./mp_program.txt.{}".format(paddle.distributed.get_rank()), "w+"
-        ) as f:
-            f.write(str(mp_engine.main_program))
 
         # bf16
         mp_bf16_engine = self.get_engine(use_amp=True)
@@ -120,11 +121,6 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             batch_size=self.batch_size,
         )
         loss1 = mp_bf16_history.history['loss'][0]
-        with open(
-            "./bf16_program.txt.{}".format(paddle.distributed.get_rank()), "w+"
-        ) as f:
-            f.write(str(mp_bf16_engine.main_program))
-
         np.testing.assert_allclose(loss0, loss1, atol=1e-3, rtol=1e-2)
 
         # self.check_param_grad_fuse_overlap(sharding_engine.main_program)

@@ -375,7 +375,6 @@ class FP16State:
                     out_var.desc.set_dtype(in_var.dtype)
 
             idx += num_cast_ops + 1
-        print("self.forward_input_cast_ops: ", self.forward_input_cast_ops)
         block._sync_with_cpp()
 
     def _insert_forward_cast_ops(
@@ -411,15 +410,6 @@ class FP16State:
                     self.forward_input_cast_ops[op.desc.original_id()] += [
                         (cast_name, in_var.name, dst_dtype, src_dtype, in_name)
                     ]
-                    print(
-                        "insert forward cast: ",
-                        cast_name,
-                        in_var.name,
-                        dst_dtype,
-                        src_dtype,
-                        in_name,
-                    )
-                    print(str(op))
 
                     in_var_dist_attr = consume_op_attr.get_input_dist_attr(
                         in_var.name
