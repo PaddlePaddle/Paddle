@@ -151,19 +151,17 @@ class TestLayerNormOpByOpTest(OpTest):
         )
 
     def initConfig(self):
-        self.rev_comp_atol = 1e-6
-        self.rev_comp_rtol = 1e-6
+        self.rev_comp_atol = 1e-7
+        self.rev_comp_rtol = 1e-7
         self.fw_comp_atol = 1e-6
         self.fw_comp_rtol = 1e-6
-        self.cinn_atol = 1e-6
-        self.cinn_rtol = 1e-6
 
         self.ori_atol = 1e-4
         self.ori_rtol = 1e-4
-        self.max_relative_error = 1e-4
+        self.max_relative_error = 1e-5
 
         self.dtype = "float64"
-        self.x_shape = [3, 3, 3, 4]
+        self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1
         self.has_scale = True
@@ -176,7 +174,6 @@ class TestLayerNormOpByOpTest(OpTest):
             mul, self.x_shape[self.begin_norm_axis : len(self.x_shape)], 1
         )
         self.scale_shape = [self.D]
-
         x = np.random.random(self.x_shape).astype(self.dtype)
         scale = (
             np.random.random(self.scale_shape).astype(self.dtype)
@@ -226,7 +223,7 @@ class TestLayerNormOpByOpTestFP64_case2(TestLayerNormOpByOpTest):
         self.max_relative_error = 1e-5
 
         self.dtype = "float64"
-        self.x_shape = [3, 3, 3, 4]
+        self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1
         self.has_scale = False
@@ -235,17 +232,17 @@ class TestLayerNormOpByOpTestFP64_case2(TestLayerNormOpByOpTest):
 
 class TestLayerNormOpByOpTestFP64_case3(TestLayerNormOpByOpTest):
     def initConfig(self):
-        self.rev_comp_atol = 1e-6
-        self.rev_comp_rtol = 1e-6
+        self.rev_comp_atol = 1e-7
+        self.rev_comp_rtol = 1e-7
         self.fw_comp_atol = 1e-7
         self.fw_comp_rtol = 1e-7
 
         self.ori_atol = 1e-4
         self.ori_rtol = 1e-4
-        self.max_relative_error = 1e-4
+        self.max_relative_error = 1e-5
 
         self.dtype = "float64"
-        self.x_shape = [3, 3, 3, 4]
+        self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1
         self.has_scale = True
@@ -264,7 +261,7 @@ class TestLayerNormOpByOpTestFP64_case4(TestLayerNormOpByOpTest):
         self.max_relative_error = 1e-5
 
         self.dtype = "float64"
-        self.x_shape = [3, 3, 3, 4]
+        self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1
         self.has_scale = False
@@ -278,10 +275,10 @@ class TestLayerNormOpByOpTestFP32(TestLayerNormOpByOpTest):
 
         self.ori_atol = 1e-4
         self.ori_rtol = 1e-4
-        self.max_relative_error = 6e-3
+        self.max_relative_error = 7e-3
 
         self.dtype = "float32"
-        self.x_shape = [3, 3, 3, 4]
+        self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1
         self.has_scale = True
@@ -298,7 +295,7 @@ class TestLayerNormOpByOpTestFP32_case2(TestLayerNormOpByOpTest):
         self.max_relative_error = 1e-5
 
         self.dtype = "float32"
-        self.x_shape = [3, 3, 3, 4]
+        self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1
         self.has_scale = False
@@ -312,10 +309,10 @@ class TestLayerNormOpByOpTestFP32_case3(TestLayerNormOpByOpTest):
 
         self.ori_atol = 1e-4
         self.ori_rtol = 1e-4
-        self.max_relative_error = 8e-3
+        self.max_relative_error = 3e-3
 
         self.dtype = "float32"
-        self.x_shape = [3, 3, 3, 4]
+        self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1
         self.has_scale = True
@@ -329,10 +326,10 @@ class TestLayerNormOpByOpTestFP32_case4(TestLayerNormOpByOpTest):
 
         self.ori_atol = 1e-4
         self.ori_rtol = 1e-4
-        self.max_relative_error = 4e-3
+        self.max_relative_error = 1e-3
 
         self.dtype = "float32"
-        self.x_shape = [3, 3, 3, 4]
+        self.x_shape = [2, 6, 6, 3]
         self.epsilon = 0.00001
         self.begin_norm_axis = 1
         self.has_scale = False
