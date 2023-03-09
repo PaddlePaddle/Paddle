@@ -1284,6 +1284,9 @@ class TestRsqrt_ZeroDim(TestRsqrt):
 class TestAbs(TestActivation):
     def setUp(self):
         self.op_type = "abs"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.abs
+        self.enable_cinn = False
         self.init_dtype()
         self.init_shape()
 
@@ -1305,7 +1308,7 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestAbs_ZeroDim(TestAbs):
@@ -2623,9 +2626,14 @@ class TestLog(TestActivation):
     def setUp(self):
         self.op_type = "log"
         self.check_eager = True
+        self.prim_op_type = "prim"
         self.python_api = paddle.log
         self.init_dtype()
         self.init_shape()
+
+        if len(self.shape) == 0:
+            # for 0-D tensor, skip cinn testing
+            self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -2637,7 +2645,7 @@ class TestLog(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -3823,7 +3831,7 @@ create_test_act_fp16_class(TestTanhshrink)
 create_test_act_fp16_class(TestHardShrink)
 create_test_act_fp16_class(TestSoftshrink)
 create_test_act_fp16_class(TestSqrt)
-create_test_act_fp16_class(TestAbs)
+create_test_act_fp16_class(TestAbs, check_prim=True)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(TestFloor, check_prim=True, grad_check=False)
 create_test_act_fp16_class(TestCos, grad_atol=0.85)
@@ -3846,7 +3854,7 @@ create_test_act_fp16_class(TestSoftRelu, grad_atol=0.85)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestCELU)
 create_test_act_fp16_class(TestReciprocal)
-create_test_act_fp16_class(TestLog)
+create_test_act_fp16_class(TestLog, check_prim=True)
 if core.is_compiled_with_rocm():
     create_test_act_fp16_class(TestLog2, atol=5e-2, grad_atol=0.85)
 else:

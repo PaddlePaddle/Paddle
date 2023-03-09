@@ -27,7 +27,6 @@ import math
 import paddle
 from paddle.fluid import layers
 from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import (
     Program,
     Parameter,

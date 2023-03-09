@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,26 +14,14 @@
 
 #pragma once
 
-#include "paddle/phi/core/macros.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-namespace distributed {
 
-class CommContext {
- public:
-  CommContext(int rank, int size) : rank_(rank), size_(size) {}
-  virtual ~CommContext() = default;
+template <typename T, typename Context>
+void BroadcastKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     int root,
+                     DenseTensor* out);
 
-  int GetRank() { return rank_; }
-  int GetSize() { return size_; }
-
- protected:
-  int rank_;
-  int size_;
-
- private:
-  DISABLE_COPY_AND_ASSIGN(CommContext);
-};
-
-}  // namespace distributed
 }  // namespace phi
