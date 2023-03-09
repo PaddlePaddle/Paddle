@@ -30,22 +30,16 @@ class OpBase;
 }  // namespace imperative
 }  // namespace paddle
 
-namespace ops = paddle::operators;
-
-class ReduceProdOpMaker : public ops::ReduceOpMaker {
- protected:
-  virtual std::string GetName() const { return "reduce_prod"; }
-  virtual std::string GetOpType() const { return "Reduce reduce_prod"; }
-};
-
+namespace paddle {
+namespace operators {
 class ReduceProdCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
  public:
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
   void Apply() override {
     // get inputs
-    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
-    paddle::experimental::Tensor out = this->GetSingleForwardOutput("Out");
-    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out = this->GetSingleForwardOutput("Out");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
 
     // get attr
     std::vector<int> axis = this->Attr<std::vector<int>>("dim");
@@ -53,7 +47,7 @@ class ReduceProdCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     bool reduce_all = this->Attr<bool>("reduce_all");
 
     // get output
-    paddle::experimental::Tensor x_grad_t = this->GetSingleInputGrad("X");
+    paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
 
     // get output ptr
     auto x_grad = this->GetOutputPtr(&x_grad_t);
@@ -67,6 +61,17 @@ class ReduceProdCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     // recover output name
     this->RecoverOutputName(x_grad_t, x_grad_name);
   }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+namespace ops = paddle::operators;
+
+class ReduceProdOpMaker : public ops::ReduceOpMaker {
+ protected:
+  virtual std::string GetName() const { return "reduce_prod"; }
+  virtual std::string GetOpType() const { return "Reduce reduce_prod"; }
 };
 
 DECLARE_INFER_SHAPE_FUNCTOR(
