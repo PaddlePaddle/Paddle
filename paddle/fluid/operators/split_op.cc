@@ -225,6 +225,14 @@ class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     std::string dx_name = this->GetOutputName(input_grad);
     std::vector<paddle::Tensor> out_grad = this->GetMultiOutputGrad("Out");
 
+    for (int i = 0; i < tensor_sections.size(); ++i) {
+      if (tensor_sections[i].is_initialized()) {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "We don't support dynamic sections from tensor for split composite "
+            "grad for now. "));
+      }
+    }
+
     if (tensor_axis.is_initialized()) {
       PADDLE_THROW(platform::errors::Unimplemented(
           "We don't support dynamic index from tensor for split composite "
@@ -250,5 +258,6 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(split,
                   ops::SplitOp,
                   ops::SplitOpMaker,
+                  ops::SplitCompositeGradOpMaker,
                   ops::SplitGradMaker<paddle::framework::OpDesc>,
                   ops::SplitGradMaker<paddle::imperative::OpBase>);
