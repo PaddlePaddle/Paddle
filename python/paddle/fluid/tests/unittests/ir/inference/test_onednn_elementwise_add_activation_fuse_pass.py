@@ -118,7 +118,7 @@ class TestElementwiseAddActivationOneDNNFusePass(PassAutoScanTest):
         config = self.create_inference_config(
             use_mkldnn=True,
             passes=[
-                'elementwise_activation_onednn_fuse_pass',
+                'elementwise_act_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',
             ],
         )
@@ -128,7 +128,7 @@ class TestElementwiseAddActivationOneDNNFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             passes=[
-                'elementwise_activation_onednn_fuse_pass',
+                'elementwise_act_onednn_fuse_pass',
                 'operator_scale_onednn_fuse_pass',
             ],
         )

@@ -25,15 +25,15 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
                             DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  float scale_x = dev_ctx.HasDnnAttr("Scale_x")
-                      ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_x"))
+  float scale_x = dev_ctx.HasDnnAttr("scale_x")
+                      ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_x"))
                       : 1.0f;
-  float scale_y = dev_ctx.HasDnnAttr("Scale_y")
-                      ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_y"))
+  float scale_y = dev_ctx.HasDnnAttr("scale_y")
+                      ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_y"))
                       : 1.0f;
   float scale_out =
-      dev_ctx.HasDnnAttr("Scale_out")
-          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_out"))
+      dev_ctx.HasDnnAttr("scale_out")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_out"))
           : 1.0f;
 
   dnnl::post_ops post_operations;
