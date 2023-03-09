@@ -72,30 +72,6 @@ class TestCompiledProgram(unittest.TestCase):
             )
             np.testing.assert_array_equal(loss_data[0], self.loss)
 
-    def test_compiled_program_with_data_parallel(self):
-        with new_program_scope():
-            paddle.seed(self.seed)
-            paddle.framework.random._manual_program_seed(self.seed)
-            place = (
-                fluid.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
-            )
-            exe = fluid.Executor(place)
-
-            loss = simple_fc_net()
-            exe.run(fluid.default_startup_program())
-            compiled_prog = fluid.CompiledProgram(
-                fluid.default_main_program()
-            ).with_data_parallel(loss_name=loss.name, places=[place])
-
-            (loss_data,) = exe.run(
-                compiled_prog,
-                feed={"image": self.img, "label": self.label},
-                fetch_list=[loss.name],
-            )
-            np.testing.assert_array_equal(loss_data[0], self.loss)
-
 
 class TestCompiledProgramError(unittest.TestCase):
     def test_program_or_graph_error(self):
@@ -111,17 +87,6 @@ class TestCompiledProgramError(unittest.TestCase):
             input=prediction, label=label, reduction='none', use_softmax=False
         )
         avg_loss = paddle.mean(loss)
-
-    def compile_program_not_compiled(self):
-        with fluid.program_guard(fluid.Program()):
-            # build model
-            self.build_simple_model()
-            # compile program
-            program = fluid.default_main_program()
-            compiled_program = fluid.CompiledProgram(
-                program
-            ).with_data_parallel()
-            return compiled_program
 
     def compile_program(self):
         with fluid.program_guard(fluid.Program()):
@@ -148,34 +113,6 @@ class TestCompiledProgramError(unittest.TestCase):
             new_place = fluid.CUDAPlace(0)
             with self.assertRaises(ValueError):
                 compiled_program._compile(scope, new_place)
-
-    def test_share_vars_from_error_no_parallel(self):
-        with fluid.program_guard(fluid.Program()):
-            source_program, _, _ = self.compile_program()
-            self.build_simple_model()
-            # compile program
-            program = fluid.default_main_program()
-            compiled_program = fluid.CompiledProgram(
-                program
-            ).with_data_parallel(share_vars_from=source_program)
-            scope = fluid.global_scope()
-            place = fluid.CPUPlace()
-            with self.assertRaises(ValueError):
-                compiled_program._compile(scope, place)
-
-    def test_share_vars_from_error_no_executor(self):
-        with fluid.program_guard(fluid.Program()):
-            source_program = self.compile_program_not_compiled()
-            self.build_simple_model()
-            # compile program
-            program = fluid.default_main_program()
-            compiled_program = fluid.CompiledProgram(
-                program
-            ).with_data_parallel(share_vars_from=source_program)
-            scope = fluid.global_scope()
-            place = fluid.CPUPlace()
-            with self.assertRaises(ValueError):
-                compiled_program._compile(scope, place)
 
 
 if __name__ == '__main__':

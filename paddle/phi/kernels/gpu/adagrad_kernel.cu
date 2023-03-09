@@ -13,15 +13,90 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/adagrad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 #include "paddle/phi/kernels/impl/adagrad_kernel_impl.h"
 
 namespace phi {
+
+template <typename T, typename MT>
+__global__ void AdagradGPUKernel(const T* param,
+                                 const T* grad,
+                                 const MT* moment,
+                                 const MT* lr,
+                                 const MT* master_param,
+                                 MT epsilon,
+                                 T* param_out,
+                                 MT* moment_out,
+                                 MT* master_param_out,
+                                 int num) {
+  auto idx = blockDim.x * blockIdx.x + threadIdx.x;
+  MT lr_data = static_cast<T>(lr[0]);
+
+  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+    MT grad_data = static_cast<MT>(grad[i]);
+    MT moment_out_data = static_cast<MT>(moment[i]) + grad_data * grad_data;
+    moment_out[i] = static_cast<MT>(moment_out_data);
+    auto in = master_param_out ? master_param[i] : static_cast<MT>(param[i]);
+    MT param_out_data =
+        in - (lr_data * grad_data) / (sqrt(moment_out_data) + epsilon);
+
+    param_out[i] = static_cast<MT>(param_out_data);
+
+    if (master_param_out) {
+      master_param_out[i] = param_out_data;
+    }
+  }
+}
+
+template <typename T>
+struct DenseAdagradFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& ctx,
+                  const DenseTensor& param_t,
+                  const DenseTensor& grad_t,
+                  const DenseTensor& moment_t,
+                  const DenseTensor& learning_rate,
+                  const paddle::optional<DenseTensor>& master_param,
+                  float epsilon_t,
+                  bool multi_precision,
+                  DenseTensor* param_out_tensor,
+                  DenseTensor* moment_out_tensor,
+                  DenseTensor* master_param_outs) {
+    using MPDType = typename phi::dtype::template MPTypeTrait<T>::Type;
+    T* param_out_data = ctx.template Alloc<T>(param_out_tensor);
+    MPDType* moment_out_data = ctx.template Alloc<MPDType>(moment_out_tensor);
+    const MPDType* master_in_data =
+        multi_precision ? master_param->data<MPDType>() : nullptr;
+    MPDType* master_out_data =
+        multi_precision ? ctx.template Alloc<MPDType>(master_param_outs)
+                        : nullptr;
+
+    MPDType epsilon = static_cast<MPDType>(epsilon_t);
+
+    int numel = param_t.numel();
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, 1);
+    int grid = config.block_per_grid.x;
+    int block = config.thread_per_block.x;
+    auto stream = ctx.stream();
+    AdagradGPUKernel<T, MPDType>
+        <<<block, grid, 0, stream>>>(param_t.data<T>(),
+                                     grad_t.data<T>(),
+                                     moment_t.data<MPDType>(),
+                                     learning_rate.data<MPDType>(),
+                                     master_in_data,
+                                     epsilon,
+                                     param_out_data,
+                                     moment_out_data,
+                                     master_out_data,
+                                     numel);
+  }
+};
 
 template <typename T, int block_size>
 __global__ void MergeGradKernel(const T* grad,
@@ -123,11 +198,19 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
 
 template struct SparseAdagradFunctor<phi::GPUContext, float>;
 template struct SparseAdagradFunctor<phi::GPUContext, double>;
+template struct DenseAdagradFunctor<phi::GPUContext, float>;
+template struct DenseAdagradFunctor<phi::GPUContext, double>;
+template struct DenseAdagradFunctor<phi::GPUContext, phi::dtype::float16>;
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    adagrad, GPU, ALL_LAYOUT, phi::AdagradDenseKernel, float, double) {}
+PD_REGISTER_KERNEL(adagrad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::AdagradDenseKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(adagrad_dense_param_sparse_grad,
                    GPU,

@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -196,6 +196,61 @@ class TestTileOpInteger(OpTest):
         self.check_output()
 
 
+class TestTileFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "tile"
+        self.dtype = np.float16
+        self.python_api = paddle.tile
+        self.init_data()
+        x = np.random.uniform(10, size=self.ori_shape).astype(self.dtype)
+        output = np.tile(x, self.repeat_times)
+        self.inputs = {'X': x}
+        self.attrs = {'repeat_times': self.repeat_times}
+        self.outputs = {'Out': output}
+
+    def init_data(self):
+        self.dtype = np.float16
+        self.ori_shape = [100, 4, 5]
+        self.repeat_times = [2, 1, 4]
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestTileBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = 'tile'
+        self.__class__.op_type = self.op_type
+        self.python_api = paddle.tile
+        self.init_data()
+        x = np.random.uniform(10, size=self.ori_shape).astype(np.float32)
+        output = np.tile(x, self.repeat_times)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'repeat_times': self.repeat_times}
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def init_data(self):
+        self.dtype = np.uint16
+        self.ori_shape = [100, 4, 5]
+        self.repeat_times = [2, 1, 4]
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
+
+
 # Situation 5: input x is Bool
 class TestTileOpBoolean(OpTest):
     def setUp(self):
@@ -364,6 +419,20 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
         self.assertEqual(out.grad.shape, [2, 3])
 
         paddle.enable_static()
+
+
+class Testfp16TileOp(unittest.TestCase):
+    def testfp16(self):
+        input_x = (np.random.random([1, 2, 3])).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[1, 2, 3], dtype='float16')
+            repeat_times = [2, 2]
+            out = paddle.tile(x, repeat_times=repeat_times)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': input_x}, fetch_list=[out])
 
 
 if __name__ == "__main__":

@@ -133,7 +133,7 @@ endif()
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context custom_kernel context_pool)
+  DEPS device_context custom_kernel context_pool memcpy)
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
@@ -159,7 +159,6 @@ cc_library(
        cudnn_workspace_helper
        ${XPU_CTX_DEPS}
        ${MLU_CTX_DEPS}
-       eigen3
        phi_backends
        phi_device_context
        generator)
@@ -248,10 +247,6 @@ if(WITH_GPU)
     device_context_test_cuda_graph
     SRCS device_context_test_cuda_graph.cu
     DEPS device_context gpu_info cuda_graph_with_memory_pool)
-  nv_test(
-    transform_test
-    SRCS transform_test.cu
-    DEPS memory place device_context)
 endif()
 
 if(WITH_ROCM)
@@ -277,10 +272,6 @@ if(WITH_ROCM)
     device_context_test
     SRCS device_context_test.cu
     DEPS device_context gpu_info)
-  hip_test(
-    transform_test
-    SRCS transform_test.cu
-    DEPS memory place device_context)
 endif()
 
 cc_library(timer SRCS timer.cc)

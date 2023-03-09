@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -98,18 +99,6 @@ struct GpuDevice;
 namespace paddle {
 namespace platform {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-/*Set the value of the global variable allow_tf32_cublas*/
-void SetAllowTF32Cublas(bool active);
-/*Get the global variable allow_tf32_cublas value*/
-bool AllowTF32Cublas();
-extern bool allow_tf32_cudnn;
-/*Set the value of the global variable allow_tf32_cudnn*/
-void SetAllowTF32Cudnn(bool active);
-/*Get the global variable allow_tf32_cudnn value*/
-bool AllowTF32Cudnn();
-#endif  // PADDLE_WITH_CUDA
-
 enum DeviceType {
   CPU = 0,
   CUDA = 1,
@@ -134,14 +123,6 @@ constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
 
 using DeviceContext = phi::DeviceContext;
 
-template <typename Place>
-struct DefaultDeviceContextType;
-
-template <>
-struct DefaultDeviceContextType<platform::CPUPlace> {
-  using TYPE = phi::CPUContext;
-};
-
 // Graphcore IPU
 #ifdef PADDLE_WITH_IPU
 class IPUDeviceContext
@@ -161,35 +142,15 @@ class IPUDeviceContext
  private:
   IPUPlace place_;
 };
-template <>
-struct DefaultDeviceContextType<platform::IPUPlace> {
-  using TYPE = IPUDeviceContext;
-};
 #endif
 
 #ifdef PADDLE_WITH_MLU
 class MLUDeviceContext;
-
-template <>
-struct DefaultDeviceContextType<platform::MLUPlace>;
 #endif
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;
-class XPUDeviceContext : public phi::XPUContext {
- public:
-  XPUDeviceContext();
-  explicit XPUDeviceContext(XPUPlace place);
-  virtual ~XPUDeviceContext();
-  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-  xpuStream stream() const { return XPUContext::x_context()->xpu_stream; }
-  void CreateStream() { XPUContext::CreateStream(); }
-};
-
-template <>
-struct DefaultDeviceContextType<platform::XPUPlace> {
-  using TYPE = XPUDeviceContext;
-};
+using XPUDeviceContext = phi::XPUContext;
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -251,11 +212,6 @@ class NPUDeviceContext
   DISABLE_COPY_AND_ASSIGN(NPUDeviceContext);
 };
 
-template <>
-struct DefaultDeviceContextType<platform::NPUPlace> {
-  using TYPE = NPUDeviceContext;
-};
-
 // Currently, NPUPinnedDeviceContext is only used to data copying.
 class NPUPinnedDeviceContext
     : public DeviceContext,
@@ -275,19 +231,9 @@ class NPUPinnedDeviceContext
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
-template <>
-struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
-  using TYPE = NPUPinnedDeviceContext;
-};
-
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <>
-struct DefaultDeviceContextType<platform::CUDAPlace> {
-  using TYPE = phi::GPUContext;
-};
-
 // Currently, CUDAPinnedDeviceContext is only used to data copying.
 class CUDAPinnedDeviceContext
     : public DeviceContext,
@@ -306,90 +252,57 @@ class CUDAPinnedDeviceContext
   CUDAPinnedPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
-
-template <>
-struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
-  using TYPE = CUDAPinnedDeviceContext;
-};
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-class CustomDeviceContext : public phi::CustomContext {
- public:
-  explicit CustomDeviceContext(CustomPlace place);
-  virtual ~CustomDeviceContext();
-
-  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
-
-  template <typename Callback>
-  void AddStreamCallback(Callback&& callback) const {
-    return stream_->AddCallback(callback);
-  }
-
-  void WaitStreamCallback() const { return stream_->WaitCallback(); }
-
- private:
-  std::shared_ptr<phi::stream::Stream> stream_;
-};
-template <>
-struct DefaultDeviceContextType<platform::CustomPlace> {
-  using TYPE = CustomDeviceContext;
-};
-#else
-template <>
-struct DefaultDeviceContextType<platform::CustomPlace> {
-  using TYPE = DeviceContext;
-};
+using CustomDeviceContext = phi::CustomContext;
 #endif
 
-void EmplaceDeviceContexts(
+void EmplaceExternalContext(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
         place_to_device_context,
-    const std::vector<platform::Place>& places,
+    const platform::Place& place,
     bool disable_setting_default_stream_for_allocator,
     int stream_priority);
 
-/*! \brief device context pool singleton */
-class DeviceContextPool {
- public:
-  static DeviceContextPool& Instance();
+using phi::EmplaceDeviceContexts;
 
-  /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Init(const std::vector<platform::Place>& places);
-
-  static bool IsInitialized();
-
-  static void SetPool(DeviceContextPool* dev_pool);
-
-  /*! \brief  Return handle of single device context. */
-  platform::DeviceContext* Get(const platform::Place& place);
-
-  template <typename Place>
-  const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
-      const Place& place) {
-    return reinterpret_cast<
-        const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
-  }
-
-  size_t size() const;
-
-  const std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
-  device_contexts() const;
-
-  static void SetDeviceContexts(
-      const std::map<Place,
-                     std::shared_future<std::unique_ptr<DeviceContext>>>*);
-
- private:
-  explicit DeviceContextPool(const std::vector<platform::Place>& places);
-
-  std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
-      device_contexts_;
-  static thread_local const std::
-      map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*
-          external_device_contexts_;  // not owned
-  DISABLE_COPY_AND_ASSIGN(DeviceContextPool);
-};
+using DeviceContextPool = phi::DeviceContextPool;
 
 }  // namespace platform
 }  // namespace paddle
+
+namespace phi {
+
+#ifdef PADDLE_WITH_IPU
+template <>
+struct DefaultDeviceContextType<phi::IPUPlace> {
+  using TYPE = paddle::platform::IPUDeviceContext;
+};
+#endif
+
+#ifdef PADDLE_WITH_MLU
+template <>
+struct DefaultDeviceContextType<phi::MLUPlace>;
+#endif
+
+#ifdef PADDLE_WITH_ASCEND_CL
+template <>
+struct DefaultDeviceContextType<phi::NPUPlace> {
+  using TYPE = paddle::platform::NPUDeviceContext;
+};
+
+template <>
+struct DefaultDeviceContextType<phi::NPUPinnedPlace> {
+  using TYPE = paddle::platform::NPUPinnedDeviceContext;
+};
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+template <>
+struct DefaultDeviceContextType<phi::GPUPinnedPlace> {
+  using TYPE = paddle::platform::CUDAPinnedDeviceContext;
+};
+#endif
+
+}  //  namespace phi

@@ -15,6 +15,7 @@
 #include <mutex>
 #include "cutlass/conv/kernel/default_conv2d_fprop.h"
 #include "cutlass/epilogue/thread/linear_combination_leaky_relu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
 
 namespace phi {
@@ -115,11 +116,10 @@ cutlass::Status Conv2dBiasLeakyReluImpl(ConvAllParams params) {
 
   auto ctx = params.ctx;
   auto stream = ctx->stream();
-  paddle::memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
-      paddle::memory::Alloc(
-          ctx->GetPlace(),
-          bytes,
-          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
+      ctx->GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   void *workspace = tmp_gpu_ptrs_data->ptr();
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);

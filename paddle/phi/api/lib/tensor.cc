@@ -21,7 +21,6 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/api/include/context_pool.h"
-#include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -37,7 +36,9 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
-namespace experimental {
+
+using DeviceContextPool = experimental::DeviceContextPool;
+using DefaultAllocator = experimental::DefaultAllocator;
 
 /////// Tensor Methods ////////
 
@@ -150,18 +151,24 @@ const Place &Tensor::place() const {
   return impl_->place();
 }
 
-bool Tensor::is_cpu() const { return paddle::platform::is_cpu_place(place()); }
-
-bool Tensor::is_gpu() const { return paddle::platform::is_gpu_place(place()); }
-
-bool Tensor::is_gpu_pinned() const {
-  return paddle::platform::is_cuda_pinned_place(place());
+bool Tensor::is_cpu() const {
+  return place().GetType() == phi::AllocationType::CPU;
 }
 
-bool Tensor::is_xpu() const { return paddle::platform::is_xpu_place(place()); }
+bool Tensor::is_gpu() const {
+  return place().GetType() == phi::AllocationType::GPU;
+}
+
+bool Tensor::is_gpu_pinned() const {
+  return place().GetType() == phi::AllocationType::GPUPINNED;
+}
+
+bool Tensor::is_xpu() const {
+  return place().GetType() == phi::AllocationType::XPU;
+}
 
 bool Tensor::is_custom_device() const {
-  return paddle::platform::is_custom_place(place());
+  return place().GetType() == phi::AllocationType::CUSTOM;
 }
 
 /* Part 4: Data Access methods */
@@ -434,21 +441,4 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
   }
 }
 
-PADDLE_API Tensor operator+(const Tensor &x, const Tensor &y) {
-  return paddle::OperantsManager::Instance().add(x, y);
-}
-
-PADDLE_API Tensor operator-(const Tensor &x, const Tensor &y) {
-  return paddle::OperantsManager::Instance().subtract(x, y);
-}
-
-PADDLE_API Tensor operator*(const Tensor &x, const Tensor &y) {
-  return paddle::OperantsManager::Instance().multiply(x, y);
-}
-
-PADDLE_API Tensor operator/(const Tensor &x, const Tensor &y) {
-  return paddle::OperantsManager::Instance().divide(x, y);
-}
-
-}  // namespace experimental
 }  // namespace paddle

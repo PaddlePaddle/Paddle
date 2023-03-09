@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import collections
 from collections import defaultdict
 from collections.abc import Iterable
@@ -126,6 +125,50 @@ _dy2st_enable_standalone_executor_ = os.environ.get(
 _cuda_graph_enable_standalone_executor_ = os.environ.get(
     'FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR', 0
 )
+
+
+# special_op_attrs, extra_op_attrs are prepared for printing warnings
+# when turning on FLAGS_print_extra_attrs
+special_op_attrs = {
+    "elementwise_add": [{"axis": -1}],
+    "elementwise_sub": [{"axis": -1}],
+    "elementwise_mul": [{"axis": -1}],
+    "elementwise_div": [{"axis": -1}],
+    "elementwise_max": [{"axis": -1}],
+    "elementwise_min": [{"axis": -1}],
+    "elementwise_pow": [{"axis": -1}],
+    "elementwise_mod": [{"axis": -1}],
+    "elementwise_floordiv": [{"axis": -1}],
+    "less_than": [{"axis": -1}],
+    "less_equal": [{"axis": -1}],
+    "greater_than": [{"axis": -1}],
+    "greater_equal": [{"axis": -1}],
+    "equal": [{"axis": -1}],
+    "not_equal": [{"axis": -1}],
+    "amax": [{"reduce_all": False}],
+    "amin": [{"reduce_all": False}],
+    "any": [{"reduce_all": False}],
+    "frobenius_norm": [{"reduce_all": False}],
+    "logsumexp": [{"reduce_all": False}],
+    "reduce_max": [{"reduce_all": False}],
+    "reduce_min": [{"reduce_all": False}],
+    "reduce_mean": [{"reduce_all": False}],
+    "reduce_prod": [{"reduce_all": False}],
+    "reduce_sum": [{"reduce_all": False}],
+}
+
+extra_op_attrs = {
+    "gather": ["overwrite"],
+    "graph_reindex": ["flag_buffer_hashtable"],
+    "graph_sample_neighbors": ["flag_perm_buffer"],
+    "relu6": ["threshold"],
+    "swish": ["beta"],
+    "hsigmoid_loss": ["remote_prefetch"],
+    "max_pool2d_with_index": ["global_pooling"],
+    "uniform": ["diag_num"],
+    "unique": ["is_sorted"],
+}
+
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -2773,6 +2816,9 @@ class OpProtoHolder:
 
         return custom_op_names
 
+    def has_op_proto(self, type):
+        return type in self.op_proto_map
+
     @staticmethod
     def generated_op_attr_names():
         return {
@@ -2883,6 +2929,8 @@ class Operator:
             self._type = type
             self.attrs = attrs if attrs else {}
         else:
+            self.legacy_attrs = attrs if attrs else {}
+
             self.block = block
             self.desc = desc
             # note: not add self.attrs here:
@@ -3059,6 +3107,11 @@ class Operator:
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
                 for attr_name in extra_attrs_map.keys():
+                    if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
+                        warnings.warn(
+                            "op %s use extra_attr: %s" % (type, attr_name)
+                        )
+
                     if (attr_name not in op_attrs) or (
                         op_attrs[attr_name] is None
                     ):
@@ -3067,6 +3120,34 @@ class Operator:
                         )
                     else:
                         self._update_desc_attr(attr_name, op_attrs[attr_name])
+
+                if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
+                    if type in extra_op_attrs:
+                        attrs = extra_op_attrs.get(type, [])
+                        for attr in attrs:
+                            if attr in op_attrs.keys():
+                                warnings.warn(
+                                    "op %s use extra_attr: %s" % (type, attr)
+                                )
+
+                    if type in special_op_attrs:
+                        attrs = special_op_attrs.get(type, [])
+                        for attr in attrs:
+                            a_name = list(attr.keys())[0]
+                            default_value = list(attr.values())[0]
+                            if (
+                                a_name in op_attrs.keys()
+                                and default_value != op_attrs[a_name]
+                            ):
+                                warnings.warn(
+                                    "op %s's attr %s = %s is not the default value: %s"
+                                    % (
+                                        type,
+                                        a_name,
+                                        op_attrs[a_name],
+                                        default_value,
+                                    )
+                                )
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():
@@ -3080,12 +3161,21 @@ class Operator:
                     )
 
             self.desc.check_attrs()
+
+            # record all attrs needed by creating op
+            for item in self.desc.attr_names():
+                self.legacy_attrs[item] = self.desc.attr(item)
+
             if self._has_kernel(type):
                 self.desc.infer_var_type(self.block.desc)
                 self.desc.infer_shape(self.block.desc)
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
+
+    def _get_runtime_attrs(self):
+        """Record all attrs needed by creating op. This api is only for to_prim process."""
+        return self.legacy_attrs
 
     def to_string(self, throw_on_error):
         """
@@ -7216,7 +7306,7 @@ class EagerParamBase(_core_eager_eagertensor):
         assert (
             self._init_func is not None
         ), "Required self._init_func is not None, but received None."
-        self._init_func()
+        self._init_func(self, None)
         # clear function handle to release resource
         self._init_func = None
 
@@ -7241,7 +7331,7 @@ class EagerParamBase(_core_eager_eagertensor):
         assert (
             self._init_op_creator is not None
         ), "Required self._init_op_creator is not None, but received None."
-        self._init_op_creator(block)
+        self._init_op_creator(self, block)
 
     def __str__(self):
         """
@@ -7293,6 +7383,8 @@ class EagerParamBase(_core_eager_eagertensor):
         new_param = EagerParamBase(self.shape, self.dtype, **state)
         memo[id(self)] = new_param
         new_param.copy_(self, True)
+        new_param._init_func = self._init_func
+        new_param._init_op_creator = self._init_op_creator
         return new_param
 
     def _copy_to(self, device, blocking):
@@ -7500,6 +7592,18 @@ def _dygraph_guard(tracer):
     if tracer is not None:
         core._switch_tracer(tracer)
 
+    try:
+        yield
+    finally:
+        if tmp_tracer is not None:
+            core._switch_tracer(tmp_tracer)
+        global_var._dygraph_tracer_ = tmp_tracer
+
+
+@signature_safe_contextmanager
+def _static_guard():
+    tmp_tracer = global_var._dygraph_tracer_
+    global_var._dygraph_tracer_ = None
     try:
         yield
     finally:
@@ -7739,7 +7843,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_cuda():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with CUDA".format(avaliable_gpu_place)
+                "not compiled with CUDA".format(avaliable_gpu_place.group())
             )
         if place == "gpu_pinned":
             return core.CUDAPinnedPlace()
@@ -7757,7 +7861,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_xpu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with XPU".format(avaliable_xpu_place)
+                "not compiled with XPU".format(avaliable_xpu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
@@ -7770,7 +7874,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_npu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with NPU".format(avaliable_npu_place)
+                "not compiled with NPU".format(avaliable_npu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
@@ -7783,7 +7887,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_ipu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with IPU".format(avaliable_ipu_place)
+                "not compiled with IPU".format(avaliable_ipu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
@@ -7796,7 +7900,7 @@ def _get_paddle_place(place):
         if not core.is_compiled_with_mlu():
             raise ValueError(
                 "The device should not be {}, since PaddlePaddle is "
-                "not compiled with MLU".format(avaliable_mlu_place)
+                "not compiled with MLU".format(avaliable_mlu_place.group())
             )
         place_info_list = place.split(':', 1)
         device_id = place_info_list[1]
