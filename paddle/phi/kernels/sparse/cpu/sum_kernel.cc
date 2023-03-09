@@ -120,7 +120,11 @@ void SumCsrKernel(const Context& dev_ctx,
   DenseTensor out_crows, out_cols, out_values;
   DDim out_dims;
   if (n_dim == 0) {
-    out_dims = make_ddim({1, 1});
+    if (keep_dim && x.dims().size() == 3) {
+      out_dims = make_ddim({1, 1, 1});
+    } else {
+      out_dims = make_ddim({1, 1});
+    }
     out_crows = Empty<int64_t, Context>(dev_ctx, {2});  // crows = [0, 1]
     auto* out_crows_data = out_crows.data<int64_t>();
     out_crows_data[0] = 0;
@@ -156,7 +160,11 @@ void SumCsrKernel(const Context& dev_ctx,
         }
       }
     } else {
-      out_dims = make_ddim({x.dims()[0], x.dims()[1], 1});
+      if (keep_dim) {
+        out_dims = make_ddim({x.dims()[0], x.dims()[1], 1});
+      } else {
+        out_dims = make_ddim({x.dims()[0], x.dims()[1]});
+      }
       int j = 0;
       for (int batch = 0; batch < x.dims()[0]; ++batch) {
         auto* cur_x_crows_data = x_crows_data + batch * x.dims()[2];

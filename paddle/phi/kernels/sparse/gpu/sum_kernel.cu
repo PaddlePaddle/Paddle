@@ -225,7 +225,11 @@ void SumCsrKernel(const Context& dev_ctx,
   DenseTensor out_crows, out_cols, out_values;
   DDim out_dims;
   if (n_dim == 0) {
-    out_dims = make_ddim({1, 1});
+    if (keep_dim && x.dims().size() == 3) {
+      out_dims = make_ddim({1, 1, 1});
+    } else {
+      out_dims = make_ddim({1, 1});
+    }
     out_crows = Empty<int64_t, Context>(dev_ctx, {2});  // crows = [0, 1]
     out_cols = Empty<int64_t, Context>(dev_ctx, {1});   // crows = [0]
     auto* out_crows_data = out_crows.data<int64_t>();
@@ -270,7 +274,11 @@ void SumCsrKernel(const Context& dev_ctx,
       out_values = Empty<T, Context>(dev_ctx, {x.dims()[0] * x.dims()[1]});
       auto* out_cols_data = out_cols.data<int64_t>();
       auto* out_values_data = out_values.data<T>();
-      out_dims = make_ddim({x.dims()[0], x.dims()[1], 1});
+      if (keep_dim) {
+        out_dims = make_ddim({x.dims()[0], x.dims()[1], 1});
+      } else {
+        out_dims = make_ddim({x.dims()[0], x.dims()[1]});
+      }
       auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
           dev_ctx, x.dims()[0] * (x.dims()[1] + 1), 1);
       SumCsr3DCudaKernel<T><<<config.block_per_grid.x,

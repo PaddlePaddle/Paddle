@@ -196,11 +196,6 @@ SparseCsrTensor SumCsr(const Context& dev_ctx,
                        const IntArray& axis,
                        DataType dtype,
                        bool keep_dim) {
-  PADDLE_ENFORCE_LE(
-      keep_dim,
-      true,
-      phi::errors::Unimplemented("SparseCsrTensor only support 2 dims tensor, "
-                                 "so `keep_dim` should be true."));
   unsigned int n_dim = axis.size();
   PADDLE_ENFORCE_LE(n_dim,
                     2,
