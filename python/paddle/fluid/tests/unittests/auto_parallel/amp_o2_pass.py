@@ -94,7 +94,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
 
     def test_param_grad_fuse_overlap(self):
         # std
-        mp_engine = self.get_engine(False)
+        mp_engine = self.get_engine(use_amp=False)
         mp_history = mp_engine.fit(
             self.dataset,
             3,
@@ -104,9 +104,13 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             batch_size=self.batch_size,
         )
         loss0 = mp_history.history['loss'][0]
+        with open(
+            "./mp_program.txt.{}".format(paddle.distributed.get_rank()), "w+"
+        ) as f:
+            f.write(str(mp_engine.main_program))
 
         # bf16
-        mp_bf16_engine = self.get_engine(True)
+        mp_bf16_engine = self.get_engine(use_amp=True)
         mp_bf16_history = mp_bf16_engine.fit(
             self.dataset,
             3,
@@ -116,6 +120,10 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
             batch_size=self.batch_size,
         )
         loss1 = mp_bf16_history.history['loss'][0]
+        with open(
+            "./bf16_program.txt.{}".format(paddle.distributed.get_rank()), "w+"
+        ) as f:
+            f.write(str(mp_bf16_engine.main_program))
 
         np.testing.assert_allclose(loss0, loss1, atol=1e-3, rtol=1e-2)
 
