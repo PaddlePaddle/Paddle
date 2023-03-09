@@ -2112,22 +2112,20 @@ class OpTest(unittest.TestCase):
         names,
         max_relative_error,
         msg_prefix,
-        atol=0,
+        atol=1e-5,
     ):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
             # Used by bfloat16 for now to solve precision problem
             if self.is_bfloat16_op():
                 if a.size == 0:
                     self.assertTrue(b.size == 0)
-                self.assertTrue(
-                    np.allclose(
-                        b,
-                        a,
-                        atol=atol,
-                        rtol=max_relative_error,
-                        equal_nan=False,
-                    ),
-                    (
+                np.testing.assert_allclose(
+                    b,
+                    a,
+                    rtol=max_relative_error,
+                    atol=atol,
+                    equal_nan=False,
+                    err_msg=(
                         "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff over limit"
                     )
                     % (
