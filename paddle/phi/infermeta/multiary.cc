@@ -1975,6 +1975,8 @@ void LambInferMeta(const MetaTensor& param,
   beta1_pow_out->set_dtype(beta1_pow.dtype());
   beta2_pow_out->set_dims(beta2_pow_dims);
   beta2_pow_out->set_dtype(beta2_pow.dtype());
+
+  master_param_out->set_dtype(master_param.dtype());
 }
 
 void LogspaceInferMeta(const MetaTensor& start,
