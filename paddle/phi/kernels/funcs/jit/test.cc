@@ -771,57 +771,6 @@ void TestKernelMatMul() {
 }
 
 template <typename KernelTuple, typename PlaceType>
-void TestKernelSoftmax() {
-  using T = typename KernelTuple::data_type;
-  VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
-  for (int bs : {1, 2, 10}) {
-    for (int n : TestSizes()) {
-      for (int m : {1, 2, 3}) {  // remain
-        if (m > n || n % m != 0) {
-          continue;
-        }
-        auto ref = jit::GetReferFunc<KernelTuple>();
-        EXPECT_TRUE(ref != nullptr);
-        std::vector<T> x(bs * n), y(bs * n);
-        RandomVec<T>(bs * n, x.data());
-        const T* x_data = x.data();
-        T* y_data = y.data();
-
-        std::vector<T> xinp(x.size());  // inplace test
-        std::copy(x.begin(), x.end(), xinp.begin());
-        ref(x_data, y_data, n, bs, m);
-        T* xinp_data = xinp.data();
-        ref(xinp_data, xinp_data, n, bs, m);
-        ExpectEQ<T>(xinp_data, y_data, n * bs);
-
-        auto verifier = [](const typename KernelTuple::func_type tgt,
-                           const std::vector<T>& x,
-                           const std::vector<T>& yref,
-                           int n,
-                           int bs,
-                           int m) {
-          EXPECT_TRUE(tgt != nullptr);
-          EXPECT_EQ(yref.size(), x.size());
-          EXPECT_EQ(x.size(), static_cast<size_t>(n * bs));
-          const T* x_data = x.data();
-          const T* yref_data = yref.data();
-          std::vector<T> ytgt(n * bs);
-          T* ytgt_data = ytgt.data();
-          // test normal
-          tgt(x_data, ytgt_data, n, bs, m);
-          ExpectEQ<T>(ytgt_data, yref_data, n * bs);
-          // test inplace x
-          std::copy(x.begin(), x.end(), ytgt.begin());
-          tgt(ytgt_data, ytgt_data, n, bs, m);
-          ExpectEQ<T>(ytgt_data, yref_data, n * bs);
-        };
-        TestAllImpls<KernelTuple, PlaceType>(n, verifier, x, y, n, bs, m);
-      }
-    }
-  }
-}
-
-template <typename KernelTuple, typename PlaceType>
 void TestKernelStrideASum() {
   using T = typename KernelTuple::data_type;
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
@@ -847,57 +796,6 @@ void TestKernelStrideASum() {
         ExpectEQ<T>(&tgt_res, &ref_res, 1);
       };
       TestAllImpls<KernelTuple, PlaceType>(d, verifier, x, ref_res, m);
-    }
-  }
-}
-
-template <typename KernelTuple, typename PlaceType>
-void TestKernelStrideScal() {
-  using T = typename KernelTuple::data_type;
-  VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
-  for (int d : TestSizes()) {
-    for (int m : {1, 2, 3}) {  // stride
-      if (m > d || d % m != 0) {
-        continue;
-      }
-      auto ref = jit::GetReferFunc<KernelTuple>();
-      EXPECT_TRUE(ref != nullptr);
-
-      const T a = static_cast<T>(3);
-      std::vector<T> x(d), yref(d);
-      std::vector<T> xinp(d);  // inplace test
-      RandomVec<T>(d, x.data());
-      std::copy(x.begin(), x.end(), xinp.begin());
-
-      const T* x_data = x.data();
-      T* yref_data = yref.data();
-      T* xinp_data = xinp.data();
-      // test refer code inplace
-      ref(&a, x_data, yref_data, d, m);
-      ref(&a, xinp_data, xinp_data, d, m);
-      ExpectEQ<T>(xinp_data, yref_data, d);
-
-      auto verifier = [](const typename KernelTuple::func_type tgt,
-                         const T a,
-                         const std::vector<T>& x,
-                         const std::vector<T>& yref,
-                         const int m) {
-        EXPECT_TRUE(tgt != nullptr);
-        EXPECT_EQ(yref.size(), x.size());
-        const T* x_data = x.data();
-        const T* yref_data = yref.data();
-        const int d = yref.size();
-        std::vector<T> ytgt(d);
-        T* ytgt_data = ytgt.data();
-        // test normal
-        tgt(&a, x_data, ytgt_data, d, m);
-        ExpectEQ<T>(ytgt_data, yref_data, d);
-        // test inplace x
-        std::copy(x.begin(), x.end(), ytgt.begin());
-        tgt(&a, ytgt_data, ytgt_data, d, m);
-        ExpectEQ<T>(ytgt_data, yref_data, d);
-      };
-      TestAllImpls<KernelTuple, PlaceType>(d, verifier, a, x, yref, m);
     }
   }
 }
@@ -1429,15 +1327,14 @@ TEST(JITKernel_helper, attr) {
       << jit::to_string(jit::kLSTMCtHt) << jit::to_string(jit::kLSTMC1H1)
       << jit::to_string(jit::kLayerNorm) << jit::to_string(jit::kMatMul)
       << jit::to_string(jit::kNCHW16CMulNC) << jit::to_string(jit::kSeqPool)
-      << jit::to_string(jit::kSoftmax) << jit::to_string(jit::kVAdd)
-      << jit::to_string(jit::kVAddBias) << jit::to_string(jit::kVAddRelu)
-      << jit::to_string(jit::kVBroadcast) << jit::to_string(jit::kVCopy)
-      << jit::to_string(jit::kVExp) << jit::to_string(jit::kVIdentity)
-      << jit::to_string(jit::kVMul) << jit::to_string(jit::kVRelu)
-      << jit::to_string(jit::kVScal) << jit::to_string(jit::kSgd)
-      << jit::to_string(jit::kAdam) << jit::to_string(jit::kVSigmoid)
-      << jit::to_string(jit::kVSquare) << jit::to_string(jit::kVSub)
-      << jit::to_string(jit::kVTanh);
+      << jit::to_string(jit::kVAdd) << jit::to_string(jit::kVAddBias)
+      << jit::to_string(jit::kVAddRelu) << jit::to_string(jit::kVBroadcast)
+      << jit::to_string(jit::kVCopy) << jit::to_string(jit::kVExp)
+      << jit::to_string(jit::kVIdentity) << jit::to_string(jit::kVMul)
+      << jit::to_string(jit::kVRelu) << jit::to_string(jit::kVScal)
+      << jit::to_string(jit::kSgd) << jit::to_string(jit::kAdam)
+      << jit::to_string(jit::kVSigmoid) << jit::to_string(jit::kVSquare)
+      << jit::to_string(jit::kVSub) << jit::to_string(jit::kVTanh);
   EXPECT_EQ(out.str().size(), 239UL);
 
   // SeqPoolTypes

@@ -105,26 +105,6 @@ void VScal<double>(const double* a, const double* x, double* y, int n) {
 }
 
 template <>
-void StrideScal<float>(
-    const float* a, const float* x, float* y, int n, int stride) {
-  if (x == y) {
-    phi::dynload::cblas_sscal(n / stride, *a, y, stride);
-  } else {
-    refer::StrideScal<float>(a, x, y, n, stride);
-  }
-}
-
-template <>
-void StrideScal<double>(
-    const double* a, const double* x, double* y, int n, int stride) {
-  if (x == y) {
-    phi::dynload::cblas_dscal(n / stride, *a, y, stride);
-  } else {
-    refer::StrideScal<double>(a, x, y, n, stride);
-  }
-}
-
-template <>
 void VExp<float>(const float* x, float* y, int n) {
   phi::dynload::vsExp(n, x, y);
 }

@@ -26,7 +26,6 @@ using T = float;
 
 void VSigmoid(const T* x, T* y, int n);
 void VTanh(const T* x, T* y, int n);
-void Softmax(const T* x, T* y, int n, int bs, int remain);
 
 void LSTMCtHt(lstm_t* step, const lstm_attr_t* attr);
 void LSTMC1H1(lstm_t* step, const lstm_attr_t* attr);
@@ -47,8 +46,6 @@ DECLARE_MORE_KERNEL(VSigmoid);
 DECLARE_MORE_KERNEL(VTanh);
 
 // XRN
-DECLARE_MORE_KERNEL(Softmax);
-
 DECLARE_MORE_KERNEL(LSTMCtHt);
 DECLARE_MORE_KERNEL(LSTMC1H1);
 

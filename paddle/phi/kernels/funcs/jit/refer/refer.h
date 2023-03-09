@@ -442,33 +442,6 @@ void StrideScal(const T* a, const T* x, T* y, int n, int stride) {
   }
 }
 
-// y = e^(x - max(x))
-// y = y / sum(y)
-// remain is the product of dimension shapes after the axis dimension
-template <typename T>
-void Softmax(const T* x, T* y, int n, int bs = 1, int remain = 1) {
-  for (int i = 0; i < bs; ++i) {
-    T scalar;
-    HMax(x, &scalar, n);
-    scalar = static_cast<T>(0) - scalar;
-    VAddBias(&scalar, x, y, n);  // x - max
-    VExp(y, y, n);
-    if (remain == 1) {
-      HSum(y, &scalar, n);
-      scalar = static_cast<T>(1) / scalar;
-      VScal(&scalar, y, y, n);
-    } else {
-      for (int j = 0; j < remain; j++) {
-        StrideASum(&y[j], &scalar, n, remain);
-        scalar = static_cast<T>(1) / scalar;
-        StrideScal(&scalar, &y[j], &y[j], n, remain);
-      }
-    }
-    x += n;
-    y += n;
-  }
-}
-
 // embedding seq pool
 // table is a matrix with (tbl_h, tbl_w)
 // idx is a matrix with (idx_h, idx_w)

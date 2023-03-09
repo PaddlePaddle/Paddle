@@ -49,41 +49,6 @@ void VTanh(const T* x, T* y, int n) {
   compute_addbias(&b, y, y, n);
 }
 
-// remain is the product of dimension shapes after the axis dimension
-void Softmax(const T* x, T* y, int n, int bs, int remain) {
-  auto compute_hmax = KernelFuncs<HMaxTuple<T>, CPUPlace>::Cache().At(n);
-  auto compute_hsum = KernelFuncs<HSumTuple<T>, CPUPlace>::Cache().At(n);
-  auto compute_vscal = KernelFuncs<VScalTuple<T>, CPUPlace>::Cache().At(n);
-  auto compute_strideasum =
-      KernelFuncs<StrideASumTuple<T>, CPUPlace>::Cache().At(n);
-  auto compute_stridescal =
-      KernelFuncs<StrideScalTuple<T>, CPUPlace>::Cache().At(n);
-  auto compute_vaddbias =
-      KernelFuncs<VAddBiasTuple<T>, CPUPlace>::Cache().At(n);
-  auto compute_vexp = KernelFuncs<VExpTuple<T>, CPUPlace>::Cache().At(n);
-
-  for (int i = 0; i < bs; ++i) {
-    T scalar;
-    compute_hmax(x, &scalar, n);
-    scalar = static_cast<T>(0) - scalar;
-    compute_vaddbias(&scalar, x, y, n);  // x - max
-    compute_vexp(y, y, n);
-    if (remain == 1) {
-      compute_hsum(y, &scalar, n);
-      scalar = static_cast<T>(1) / scalar;
-      compute_vscal(&scalar, y, y, n);
-    } else {
-      for (int j = 0; j < remain; ++j) {
-        compute_strideasum(&y[j], &scalar, n, remain);
-        scalar = static_cast<T>(1) / scalar;
-        compute_stridescal(&scalar, &y[j], &y[j], n, remain);
-      }
-    }
-    x += n;
-    y += n;
-  }
-}
-
 void (*getActFunc(KernelType type, int d))(const T*, T*, int) {  // NOLINT
   if (type == kVSigmoid) {
     return KernelFuncs<VSigmoidTuple<T>, CPUPlace>::Cache().At(d);
@@ -221,8 +186,6 @@ bool VSigmoidKernel::CanBeUsed(const int& d) const { return true; }
 
 bool VTanhKernel::CanBeUsed(const int& d) const { return true; }
 
-bool SoftmaxKernel::CanBeUsed(const int& d) const { return true; }
-
 bool LSTMCtHtKernel::CanBeUsed(const lstm_attr_t& attr) const { return true; }
 
 bool LSTMC1H1Kernel::CanBeUsed(const lstm_attr_t& attr) const { return true; }
@@ -245,7 +208,6 @@ namespace mix = phi::jit::more::mix;
 
 REGISTER_MORE_KERNEL(VSigmoid);
 REGISTER_MORE_KERNEL(VTanh);
-REGISTER_MORE_KERNEL(Softmax);
 REGISTER_MORE_KERNEL(LSTMCtHt);
 REGISTER_MORE_KERNEL(LSTMC1H1);
 REGISTER_MORE_KERNEL(GRUH1);

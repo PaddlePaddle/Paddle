@@ -391,22 +391,6 @@ void BenchKernelMatMul() {
 }
 
 template <typename KernelTuple, typename PlaceType>
-void BenchKernelSoftmax() {
-  using T = typename KernelTuple::data_type;
-  for (int bs : {1, 2, 10}) {
-    for (int n : TestSizes()) {
-      phi::DenseTensor x, y;
-      x.Resize({bs, n});
-      y.Resize({bs, n});
-      RandomVec<T>(bs * n, x.mutable_data<T>(PlaceType()), -2.f, 2.f);
-      const T* x_data = x.data<T>();
-      T* y_data = y.mutable_data<T>(PlaceType());
-      BenchAllImpls<KernelTuple, PlaceType>(n, x_data, y_data, n, bs, 1);
-    }
-  }
-}
-
-template <typename KernelTuple, typename PlaceType>
 void BenchKernelLayerNorm() {
   using T = typename KernelTuple::data_type;
   const T epsilon = 9.99999975e-06;
@@ -569,7 +553,6 @@ BENCH_FP32_CPU(CRFDecoding);
 BENCH_FP32_CPU(SeqPool);
 BENCH_FP32_CPU(EmbSeqPool);
 BENCH_FP32_CPU(MatMul);
-BENCH_FP32_CPU(Softmax);
 BENCH_FP32_CPU(Sgd);
 BENCH_FP32_CPU(VBroadcast);
 

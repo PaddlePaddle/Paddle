@@ -39,9 +39,7 @@ typedef enum {
   kMatMul,
   kNCHW16CMulNC,
   kSeqPool,
-  kSoftmax,
   kStrideASum,
-  kStrideScal,
   kVAdd,
   kVAddBias,
   kVAddRelu,
@@ -349,14 +347,6 @@ struct LayerNormTuple {
   typedef int attr_type;
   typedef void (*func_type)(
       T*, T*, T*, T*, const T*, const T*, int, const float, int);
-};
-
-template <typename T>
-struct SoftmaxTuple {
-  static constexpr KernelType kernel_type = kSoftmax;
-  typedef T data_type;
-  typedef int attr_type;
-  typedef void (*func_type)(const T*, T*, int, int, int);
 };
 
 // nChw16c = nChw16c .* NC
