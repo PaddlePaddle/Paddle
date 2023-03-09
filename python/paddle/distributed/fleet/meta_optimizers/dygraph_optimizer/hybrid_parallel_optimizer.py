@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import paddle
 from paddle import framework
 from paddle.autograd import no_grad
@@ -229,6 +230,41 @@ class HybridParallelOptimizer:
                                 self._inner_opt._grad_clip, hcg
                             )
 
+    def _filter_fn(self, param):
+        p_name = param.name
+        if p_name.startswith("pos_embedding"):
+            return True
+        elif p_name.startswith("layer_norm"):
+            return True
+        elif ".b_" in p_name and (param.is_distributed is False):
+            return True
+        else:
+            return False
+
+    def _step(self, parameters_list):
+        mp_group = self._hcg.get_model_parallel_group()
+        src_rank = hcg.get_model_parallel_group_src_rank()
+        sync_param = None
+        mp_sync = os.getenv("FLAGS_mp_sync", False)
+
+        if mp_group.nranks > 1 and mp_sync:
+            sync_param = sorted([p for p in parameters_list if self._filter_fn(p)])
+            for p in sync_param:
+                if p._grad_ivar() is None: continue
+                paddle.distributed.broadcast(p._grad_ivar(), src=src_rank, group=mp_group, sync_op=True)
+
+        self._inner_opt.step()
+
+        if mp_group.nranks > 1 and mp_sync:
+            for p in sync_param:
+                paddle.distributed.broadcast(p, src=src_rank, group=mp_group, sync_op=True)
+                # support opt state of adam and adamw to broadcast now.
+                if isinstance(self._inner_opt, paddle.[paddle.optimizer.Adam, paddle.optimizer.AdamW]):
+                    moment1 = self._inner_opt._get_accumulator(self._inner_opt._moment1_acc_str, p)
+                    moment2 = self._inner_opt._get_accumulator(self._inner_opt._moment2_acc_str, p)
+                    paddle.distributed.broadcast(moment1, src=src_rank, group=mp_group, sync_op=True)
+                    paddle.distributed.broadcast(moment2, src=src_rank, group=mp_group, sync_op=True)
+
     @no_grad()
     @framework.dygraph_only
     def step(self):
@@ -239,7 +275,7 @@ class HybridParallelOptimizer:
         if self._dp_enable:
             fused_allreduce_gradients(list(parameters_list), self._hcg)
 
-        self._inner_opt.step()
+        self._step(parameters_list)
 
     @no_grad()
     def minimize(
