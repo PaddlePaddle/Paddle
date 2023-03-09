@@ -50,7 +50,10 @@ using VariableIdMap = std::map<std::string, std::vector<int>>;
 // These Ops is OperatorBase, but we have been handle them in static build
 static std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
 
-static std::set<std::string> OpsCanSkipedInStaticBuild = {
+static std::set<std::string> OperatorBasesMustRunInStaticBuild = {
+    "create_double_buffer_reader", "create_py_reader"};
+
+static std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader", "fetch_v2"};
 
 // These Op needs set output dtype when register phi kernel, but they didn't
@@ -69,6 +72,7 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "atan2",
     "auc",
     "bincount",
+    "check_finite_and_unscale",
     "clip_by_norm",
     "complex",
     "conv3d_coo",
@@ -91,7 +95,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "is_finite",
     "kthvalue",
     "lamb",
-    "layer_norm",
     "layer_norm_grad",
     "less_equal",
     "less_than",
@@ -128,12 +131,15 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
 
 // These Ops can use InferMeta to infer the output dtype
 static std::set<std::string> OpsWithAvailablePhiInferMeta = {
-    "abs", "adam", "adamw", "layer_norm", "layer_norm_grad", "merged_adam"};
+    "abs", "adam", "adamw", "layer_norm_grad", "merged_adam"};
 
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
 static std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
-    "fused_batch_norm_act", "fused_batch_norm_act_grad"};
+    "fused_attention",
+    "fused_attention_grad",
+    "fused_batch_norm_act",
+    "fused_batch_norm_act_grad"};
 
 // NOTE(Ruibiao): SingleStreamGuard make some multi-strem op (i.e.,
 // c_allreduce_sum) run in single stream. It is dedicated to BuildOpFuncList
@@ -233,7 +239,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     KernelCode kernel_code = (is_operator_base << 4) + (has_fluid_kernel << 3) +
                              (has_structured_kernel << 2) +
                              (need_move_to_phi << 1) + need_set_dtype;
-    if (!OpsCanSkipedInStaticBuild.count(op_type) &&
+    if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type) &&
         ((is_operator_base &&
           !OperatorBasesHandledInStaticBuild.count(op_type)) ||
          need_move_to_phi || need_set_dtype)) {
@@ -571,6 +577,9 @@ void HandleOperatorBase(const platform::Place& place,
   op_func_node->type_ = AnalyseOpFuncType(*op_func_node, place);
   op_func_node->kernel_func_ = nullptr;
   if (static_build) {
+    if (OperatorBasesMustRunInStaticBuild.count(op->Type())) {
+      op->Run(*scope, place);
+    }
     FakeInitializeOutputsForOperatorBase(*op, place, scope);
   } else {
     op->Run(*scope, place);  // Run without data transformer.
@@ -1098,7 +1107,7 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
                                           const platform::Place& place,
                                           Scope* scope) {
   const std::string& op_type = op.Type();
-  if (OpsCanSkipedInStaticBuild.count(op_type)) {
+  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
     return;
   }
 
@@ -1124,8 +1133,11 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
       phi::TensorBase* out_tensor =
           GetTensorFormVar(scope->FindVar(outputs[i]));
       if (out_tensor && !IsExtendedTensor(*out_tensor)) {
-        phi::DataType data_type = phi::TransToPhiDataType(var_types[i]);
-        FakeInitializeTensor(*dev_ctx, data_type, place, out_tensor);
+        phi::DataType dtype = phi::TransToPhiDataType(var_types[i]);
+
+        VLOG(4) << outputs[i] << " fake alloc with type " << dtype
+                << " on place " << place << " " << out_tensor;
+        FakeInitializeTensor(*dev_ctx, dtype, place, out_tensor);
       }
     }
   } else {
@@ -1165,12 +1177,13 @@ void FakeInitializeOutputsForFunctionKernel(
 
   size_t start_idx = 0;
   for (size_t i = 0; i < output_names.size(); ++i) {
-    auto it = runtime_ctx.outputs.find(output_names[i]);
+    const std::string& parameter_name = output_names[i];
+    auto it = runtime_ctx.outputs.find(parameter_name);
     // Deal with the case that some outputs are not found or be NULL when run
     // the kernel. For example : the outputs of matmul_grad are dx and dy,
     // sometimes dx or dy may be NULL.
     if (it == runtime_ctx.outputs.end() || it->second.empty()) {
-      VLOG(4) << "Output " << output_names[i] << " not found";
+      VLOG(4) << "Output " << parameter_name << " not found";
       ++start_idx;
       continue;
     }
@@ -1185,10 +1198,10 @@ void FakeInitializeOutputsForFunctionKernel(
 
         if (dtype == DataType::UNDEFINED ||
             OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
-                std::string(kernel_sig.name))) {
+                std::string(op_type))) {
+          // Some OP's InferMeta is sensitive to DDim, so we cannot get their
+          // output dtype from InferMeta
           if (op_type == "reduce_sum") {
-            // The InferMeta of reduce_sum is sensitive to DDim, so we cannot
-            // get the output dtype from InferMeta
             int out_dtype = op.Attr<int>("out_dtype");
             if (out_dtype == -1) {  // -1 means the dtype is same as intput
               phi::TensorBase* in_tensor =
@@ -1197,8 +1210,14 @@ void FakeInitializeOutputsForFunctionKernel(
             } else {
               dtype = phi::TransToPhiDataType(out_dtype);
             }
-            VLOG(6) << "reduce sum got dtype " << dtype
-                    << " from out_dtype attr: " << out_dtype;
+          } else if (op_type == "layer_norm") {
+            phi::TensorBase* in_tensor =
+                GetTensorFormVar(runtime_ctx.inputs.find("X")->second.at(0));
+            phi::DataType in_dtype = in_tensor->dtype();
+            dtype = (in_dtype == phi::DataType::BFLOAT16 ||
+                     in_dtype == phi::DataType::FLOAT16)
+                        ? phi::DataType::FLOAT32
+                        : in_dtype;
           } else {
             VLOG(4) << "Get dtype result from InferMeta";
             RuntimeInferShapeContext infer_shape_ctx(op, runtime_ctx);
@@ -1209,7 +1228,7 @@ void FakeInitializeOutputsForFunctionKernel(
           }
         }
 
-        VLOG(4) << output_names[i] << " fake alloc with type " << dtype
+        VLOG(4) << parameter_name << " fake alloc with type " << dtype
                 << " on place " << place << " " << out_tensor;
 
         FakeInitializeTensor(dev_ctx, dtype, place, out_tensor);
@@ -1223,7 +1242,7 @@ void FakeInitializeOutputsForStructureKernel(
     const framework::OpKernelType& op_kernel_type,
     ExecutionContext* execution_context) {
   const std::string& op_type = execution_context->Type();
-  if (OpsCanSkipedInStaticBuild.count(op_type)) {
+  if (OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
     return;
   }
 

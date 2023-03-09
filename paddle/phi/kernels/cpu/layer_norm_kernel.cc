@@ -141,4 +141,7 @@ void LayerNormKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    layer_norm, CPU, ALL_LAYOUT, phi::LayerNormKernel, float, double) {}
+    layer_norm, CPU, ALL_LAYOUT, phi::LayerNormKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+}
