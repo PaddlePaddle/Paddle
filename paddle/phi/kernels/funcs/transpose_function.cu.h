@@ -966,8 +966,8 @@ struct PermuteParams {
   IdxAndOffsetHelper<IndexT, Rank> dst_index_helper;
   int perm[Rank]{};
 
-  explicit PermuteParams(const std::vector<int64_t>& dims,
-                         const std::vector<int>& perm_) {
+  PermuteParams(const std::vector<int64_t>& dims,
+                const std::vector<int>& perm_) {
     IndexT dst_dims[Rank];
     IndexT src_dims[Rank];
     for (auto i = 0; i < Rank; ++i) {

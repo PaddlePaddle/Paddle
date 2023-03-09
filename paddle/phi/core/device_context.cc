@@ -238,6 +238,12 @@ struct DeviceContext::Impl {
     return host_generator_;
   }
 
+  distributed::CommContext* GetCommContext() const { return comm_context_; }
+
+  void SetCommContext(distributed::CommContext* comm_context) {
+    comm_context_ = comm_context;
+  }
+
  private:
   void ClearHolder(TensorBase* tensor) const {
     if (!tensor->initialized()) return;
@@ -264,6 +270,8 @@ struct DeviceContext::Impl {
 #endif
   Generator* device_generator_{nullptr};
   Generator* host_generator_{nullptr};
+
+  distributed::CommContext* comm_context_{nullptr};
 };
 
 DeviceContext::DeviceContext() { impl_ = std::make_unique<Impl>(); }
@@ -416,6 +424,14 @@ void DeviceContext::SetHostGenerator(Generator* gen) {
 
 Generator* DeviceContext::GetHostGenerator() const {
   return impl_->GetHostGenerator();
+}
+
+void DeviceContext::SetCommContext(distributed::CommContext* comm_context) {
+  impl_->SetCommContext(comm_context);
+}
+
+distributed::CommContext* DeviceContext::GetCommContext() const {
+  return impl_->GetCommContext();
 }
 
 }  // namespace phi
