@@ -385,7 +385,8 @@ void BindGraphGpuWrapper(py::module* m) {
                              std::string,
                              int,
                              bool,
-                             const std::vector<bool>&>(
+                             const std::vector<bool>&,
+                             bool>(
                &GraphGpuWrapper::load_edge_file))
       .def("load_node_and_edge", &GraphGpuWrapper::load_node_and_edge)
       .def("upload_batch",

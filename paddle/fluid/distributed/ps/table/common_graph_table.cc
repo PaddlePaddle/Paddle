@@ -182,12 +182,19 @@ int32_t GraphTable::Load_to_ssd(const std::string &path,
   std::vector<::paddle::framework::GpuPsNodeInfo> info_array[task_pool_size_];
   std::vector<uint64_t> edge_array[task_pool_size_];  // edge id list
 
+  // get edge weight
+  std::vector<float> weight_array[task_pool_size_];   // neighbor weight list
+
   for (size_t i = 0; i < bags.size(); i++) {
     if (bags[i].size() > 0) {
       tasks.push_back(_shards_task_pool[i]->enqueue([&, i, this]() -> int {
         node_array[i].resize(bags[i].size());
         info_array[i].resize(bags[i].size());
         edge_array[i].reserve(bags[i].size());
+
+        if (is_weighted_) {
+          weight_array[i].reserve(bags[i].size());
+        }
 
         for (size_t j = 0; j < bags[i].size(); j++) {
           auto node_id = bags[i][j];
@@ -198,6 +205,9 @@ int32_t GraphTable::Load_to_ssd(const std::string &path,
             info_array[i][j].neighbor_size = v->get_neighbor_size();
             for (size_t k = 0; k < v->get_neighbor_size(); k++) {
               edge_array[i].push_back(v->get_neighbor_id(k));
+              if (is_weighted_) {
+                weight_array[i].push_back(v->get_neighbor_weight(k));
+              }
             }
           } else {
             info_array[i][j].neighbor_offset = 0;
@@ -215,8 +225,8 @@ int32_t GraphTable::Load_to_ssd(const std::string &path,
     tot_len += edge_array[i].size();
   }
 
-  ::paddle::framework::GpuPsCommGraph res;
-  res.init_on_cpu(tot_len, ids.size());
+  paddle::framework::GpuPsCommGraph res;
+  res.init_on_cpu(tot_len, ids.size(), is_weighted_);
   int64_t offset = 0, ind = 0;
   for (int i = 0; i < task_pool_size_; i++) {
     for (size_t j = 0; j < node_array[i].size(); j++) {
@@ -226,6 +236,11 @@ int32_t GraphTable::Load_to_ssd(const std::string &path,
     }
     for (size_t j = 0; j < edge_array[i].size(); j++) {
       res.neighbor_list[offset + j] = edge_array[i][j];
+
+      if (is_weighted_) {
+        res.weight_list[offset + j] = weight_array[i][j];
+      }
+
     }
     offset += edge_array[i].size();
   }
@@ -1298,7 +1313,8 @@ int32_t GraphTable::parse_edge_and_load(
     std::string graph_data_local_path,
     int part_num,
     bool reverse,
-    const std::vector<bool> &is_reverse_edge_map) {
+    const std::vector<bool> &is_reverse_edge_map,
+    bool use_weight) {
   std::vector<std::string> etypes;
   std::unordered_map<std::string, std::string> edge_to_edgedir;
   int res = parse_type_to_typepath(
@@ -1342,13 +1358,13 @@ int32_t GraphTable::parse_edge_and_load(
                 ::paddle::string::join_strings(etype_path_list, delim);
           }
           if (!only_load_reverse_edge) {
-            this->load_edges(etype_path_str, false, etypes[i]);
+            this->load_edges(etype_path_str, false, etypes[i], use_weight);
             if (reverse) {
               std::string r_etype = get_inverse_etype(etypes[i]);
-              this->load_edges(etype_path_str, true, r_etype);
+              this->load_edges(etype_path_str, true, r_etype, use_weight);
             }
           } else {
-            this->load_edges(etype_path_str, true, etypes[i]);
+            this->load_edges(etype_path_str, true, etypes[i], use_weight);
           }
           return 0;
         }));
@@ -1410,7 +1426,8 @@ int32_t GraphTable::load_node_and_edge_file(
     std::string graph_data_local_path,
     int part_num,
     bool reverse,
-    const std::vector<bool> &is_reverse_edge_map) {
+    const std::vector<bool> &is_reverse_edge_map,
+    bool use_weight) {
   std::vector<std::string> etypes;
   std::unordered_map<std::string, std::string> edge_to_edgedir;
   int res = parse_type_to_typepath(
@@ -1465,13 +1482,13 @@ int32_t GraphTable::load_node_and_edge_file(
                   ::paddle::string::join_strings(etype_path_list, delim);
             }
             if (!only_load_reverse_edge) {
-              this->load_edges(etype_path_str, false, etypes[i]);
+              this->load_edges(etype_path_str, false, etypes[i], use_weight);
               if (reverse) {
                 std::string r_etype = get_inverse_etype(etypes[i]);
-                this->load_edges(etype_path_str, true, r_etype);
+                this->load_edges(etype_path_str, true, r_etype, use_weight);
               }
             } else {
-              this->load_edges(etype_path_str, true, etypes[i]);
+              this->load_edges(etype_path_str, true, etypes[i], use_weight);
             }
           } else {
             std::string npath = node_to_nodedir[ntypes[0]];
@@ -1753,9 +1770,8 @@ int32_t GraphTable::build_sampler(int idx, std::string sample_type) {
 }
 
 std::pair<uint64_t, uint64_t> GraphTable::parse_edge_file(
-    const std::string &path, int idx, bool reverse) {
-  std::string sample_type = "random";
-  bool is_weighted = false;
+    const std::string &path, int idx, bool reverse, bool use_weight) {
+  is_weighted_ = use_weight;
   std::ifstream file(path);
   std::string line;
   uint64_t local_count = 0;
@@ -1788,8 +1804,6 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_edge_file(
     size_t last = line.find_last_of('\t');
     if (start != last) {
       weight = std::stof(&line[last + 1]);
-      sample_type = "weighted";
-      is_weighted = true;
     }
 
     if (src_shard_id >= shard_end || src_shard_id < shard_start) {
@@ -1800,7 +1814,7 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_edge_file(
     size_t index = src_shard_id - shard_start;
     auto node = edge_shards[idx][index]->add_graph_node(src_id);
     if (node != NULL) {
-      node->build_edges(is_weighted);
+      node->build_edges(is_weighted_);
       node->add_edge(dst_id, weight);
     }
 
@@ -1813,7 +1827,8 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_edge_file(
 
 int32_t GraphTable::load_edges(const std::string &path,
                                bool reverse_edge,
-                               const std::string &edge_type) {
+                               const std::string &edge_type,
+                               bool use_weight) {
 #ifdef PADDLE_WITH_HETERPS
   if (search_level == 2) total_memory_cost = 0;
 #endif
@@ -1839,8 +1854,8 @@ int32_t GraphTable::load_edges(const std::string &path,
     std::vector<std::future<std::pair<uint64_t, uint64_t>>> tasks;
     for (auto &path : paths) {
       tasks.push_back(load_node_edge_task_pool->enqueue(
-          [&, path, idx, this]() -> std::pair<uint64_t, uint64_t> {
-            return parse_edge_file(path, idx, reverse_edge);
+          [&, i, idx, this]() -> std::pair<uint64_t, uint64_t> {
+            return parse_edge_file(paths[i], idx, reverse_edge, use_weight);
           }));
     }
     for (auto &task : tasks) {
@@ -1850,7 +1865,7 @@ int32_t GraphTable::load_edges(const std::string &path,
     }
   } else {
     for (auto path : paths) {
-      auto res = parse_edge_file(path, idx, reverse_edge);
+      auto res = parse_edge_file(path, idx, reverse_edge, use_weight);
       count += res.first;
       valid_count += res.second;
     }
