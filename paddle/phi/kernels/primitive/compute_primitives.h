@@ -124,6 +124,7 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
     shared[threadIdx.y] = val;
   }
   __syncthreads();
+
   return shared[threadIdx.y];
 }
 
