@@ -29,7 +29,6 @@ class TestSum(unittest.TestCase):
         dense_x = origin_x.detach()
         dense_x.stop_gradient = False
         dense_out = paddle.sum(dense_x, dims, keepdim=keepdim)
-
         if format == "coo":
             sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
         else:
@@ -47,6 +46,12 @@ class TestSum(unittest.TestCase):
             (dense_x.grad * mask).numpy(),
             rtol=1e-05,
         )
+
+    def test_sum_1d(self):
+        self.check_result([5], None, False, 'coo')
+        self.check_result([5], None, True, 'coo')
+        self.check_result([5], 0, True, 'coo')
+        self.check_result([5], 0, False, 'coo')
 
     def test_sum_2d(self):
         self.check_result([2, 5], None, False, 'coo')
