@@ -60,15 +60,6 @@ void FloorDivideKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ElementwisePowKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& y,
-                          DenseTensor* out) {
-  int axis = -1;
-  ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
-}
-
-template <typename T, typename Context>
 void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
@@ -133,14 +124,6 @@ PD_REGISTER_KERNEL(remainder,
                    int64_t) {}
 PD_REGISTER_KERNEL(
     floor_divide, CPU, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ElementwisePowKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
 
 PD_REGISTER_KERNEL(subtract,
                    CPU,
@@ -224,15 +207,6 @@ PD_REGISTER_KERNEL(remainder,
                    phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
     floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::ElementwisePowKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16) {}
 
 #endif
 
@@ -341,10 +315,4 @@ PD_REGISTER_KERNEL(remainder,
                    phi::dtype::float16,
                    int32_t,
                    int64_t) {}
-PD_REGISTER_KERNEL(elementwise_pow,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::ElementwisePowKernel,
-                   float,
-                   phi::dtype::float16) {}
 #endif
