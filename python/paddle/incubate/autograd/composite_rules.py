@@ -169,10 +169,10 @@ def instancenorm_composite(x, scale, bias, epsilon):
     out = difference / sqrt_var
 
     if scale is not None:
-        scale = reshape(scale, x.shape[1])
+        scale = reshape(scale, x.shape[1:2])
         out = out * scale
     if bias is not None:
-        bias = reshape(bias, x.shape[1])
+        bias = reshape(bias, x.shape[1:2])
         out = out + bias
 
     mean_ = reshape(mean_, x.shape[:1])
