@@ -48,7 +48,6 @@ void EmbeddingWithEltwiseAddXpuKernel(
             table_dims[1],
             embed_dim));
     table_lens_cpu.push_back(table_dims[0]);
-    // arg_tables.push_back(table->data<float>());
     if (std::is_same<T, phi::dtype::float16>::value) {
       DenseTensor table_data_fp32_t;
       ctx.template Alloc<float>(&table_data_fp32_t,
