@@ -121,7 +121,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
 
     fc_op->Op()->SetInput("ResidualData", {residual_data->Name()});
     fc_op->Op()->SetOutput("Out", {elementwise_out->Name()});
-    fc_op->Op()->SetAttr("fuse_residual_connection", true);
+    fc_op->Op()->SetAttr("fuse_residual_connection", "elementwise_add");
 
     GraphSafeRemoveNodes(g, {fc_output, elementwise_op});
 

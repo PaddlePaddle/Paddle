@@ -55,7 +55,7 @@ extra {
   }
   attrs {
     name: "fuse_residual_connection"
-    type: BOOLEAN
+    type: STRING
   }
   attrs {
     name: "Scale_in"

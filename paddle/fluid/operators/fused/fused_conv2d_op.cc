@@ -41,11 +41,12 @@ class FusedConvOpMaker : public Conv2DOpMaker {
     AddAttr<std::string>("fuse_activation",
                          "(string, default \"\") Only used in mkldnn kernel")
         .SetDefault("");
-    AddAttr<bool>("fuse_residual_connection",
-                  "(bool, default false) Only used in mkldnn kernel. Used "
-                  "whenever convolution output is as an input to residual "
-                  "connection.")
-        .SetDefault(false);
+    AddAttr<std::string>(
+        "fuse_residual_connection",
+        "(bool, default false) Only used in mkldnn kernel. Used "
+        "whenever convolution output is as an input to residual "
+        "connection.")
+        .SetDefault("");
     AddAttr<bool>("force_fp32_output",
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")

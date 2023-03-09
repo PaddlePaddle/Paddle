@@ -170,7 +170,9 @@ void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
     const bool& force_fp32_output =
         conv_op->Op()->GetAttrIfExists<bool>("force_fp32_output");
     const bool& fuse_residual_conn =
-        conv_op->Op()->GetAttrIfExists<bool>("fuse_residual_connection");
+        !conv_op->Op()
+             ->GetAttrIfExists<std::string>("fuse_residual_connection")
+             .empty();
     const auto& scale_in_eltwise_data =
         conv_op->Op()->GetAttrIfExists<float>("Scale_in_eltwise");
     bool has_activation =
@@ -183,6 +185,7 @@ void Int8ScaleCalculationMkldnnPass::Int8ScaleImpl(
         force_fp32_output ? 1.0f
         : has_activation  ? 1.0f
                           : conv_op->Op()->GetAttrIfExists<float>("Scale_out");
+
     float sum_scale =
         fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
 

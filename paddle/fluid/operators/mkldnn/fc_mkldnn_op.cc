@@ -108,7 +108,7 @@ class FCMKLDNNHandler
     }
 
     if (ctx.HasAttr("fuse_residual_connection") &&
-        ctx.Attr<bool>("fuse_residual_connection")) {
+        !ctx.Attr<std::string>("fuse_residual_connection").empty()) {
       post_operations.append_sum(sum_scale);
     }
 
@@ -194,8 +194,9 @@ class FCMKLDNNHandler
       auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
       bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
       bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-      bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
-                                ctx.Attr<bool>("fuse_residual_connection");
+      bool fuse_residual_conn =
+          ctx.HasAttr("fuse_residual_connection") &&
+          !ctx.Attr<std::string>("fuse_residual_connection").empty();
       auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
                                        ? ctx.Attr<float>("Scale_in_eltwise")
                                        : 1.0f;
@@ -351,7 +352,7 @@ class FCMKLDNNHandler
   std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(
       const ExecutionContext& ctx, phi::DenseTensor* out) {
     if (ctx.HasAttr("fuse_residual_connection") &&
-        ctx.Attr<bool>("fuse_residual_connection")) {
+        !ctx.Attr<std::string>("fuse_residual_connection").empty()) {
       auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
 
       PADDLE_ENFORCE_EQ(
@@ -463,7 +464,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       dst_memory_p =
           std::make_shared<dnnl::memory>(inner_product_cache->dst_mem);
       if (ctx.HasAttr("fuse_residual_connection") &&
-          ctx.Attr<bool>("fuse_residual_connection")) {
+          !ctx.Attr<std::string>("fuse_residual_connection").empty()) {
         auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
         out->ShareDataWith(*residual_param);
       }

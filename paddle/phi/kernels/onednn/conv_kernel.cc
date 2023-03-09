@@ -60,7 +60,7 @@ void ConvKernel(const Context& dev_ctx,
                 is_test,
                 is_BFLOAT16,
                 "",
-                false,
+                "",
                 force_fp32_output,
                 out);
 }

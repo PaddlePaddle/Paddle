@@ -45,7 +45,7 @@ def {
   }
   attrs {
     name: "fuse_residual_connection"
-    type: BOOLEAN
+    type: STRING
   }
   attrs {
     name: "force_fp32_output"

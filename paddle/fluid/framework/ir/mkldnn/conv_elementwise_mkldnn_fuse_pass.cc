@@ -189,7 +189,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
 
     conv_op->Op()->SetInput("ResidualData", {residual_data->Name()});
     conv_op->Op()->SetOutput("Output", {elementwise_out->Name()});
-    conv_op->Op()->SetAttr("fuse_residual_connection", true);
+    conv_op->Op()->SetAttr("fuse_residual_connection", elementwise_type);
 
     GraphSafeRemoveNodes(g, {conv_output, elementwise_op});
 
@@ -282,7 +282,8 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
     residual_conv_op->Op()->SetInput("ResidualData", {projection_node->Name()});
     residual_conv_op->Op()->SetOutput("Output", {elementwise_out->Name()});
 
-    residual_conv_op->Op()->SetAttr("fuse_residual_connection", true);
+    residual_conv_op->Op()->SetAttr("fuse_residual_connection",
+                                    elementwise_type);
 
     GraphSafeRemoveNodes(g, {residual_conv_output, elementwise_op});
 

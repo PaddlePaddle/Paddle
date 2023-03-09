@@ -74,7 +74,7 @@ class TestConv2DBF16Op(TestConv2DOp):
         )
         self.conv_output_float = conv_out
 
-        if self.fuse_residual:
+        if self.fuse_residual != "":
             self.input_residual = np.random.random(
                 self.input_residual_size
             ).astype(np.float32)
@@ -103,7 +103,7 @@ class TestConv2DBF16Op(TestConv2DOp):
             ),
         }
 
-        if self.fuse_residual:
+        if self.fuse_residual != "":
             self.op_type = "fused_conv2d"
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
                 convert_float_to_uint16(self.input_residual)
@@ -157,7 +157,7 @@ class TestConv2DBF16Op(TestConv2DOp):
         self.fuse_activation = "relu"
 
     def init_fuse_residual(self):
-        self.fuse_residual = True
+        self.fuse_residual = "elementwise_add"
 
     def init_infer_or_train(self):
         self.weight_type = np.float32
@@ -172,7 +172,7 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
         self.fuse_activation = None
 
     def init_fuse_residual(self):
-        self.fuse_residual = None
+        self.fuse_residual = ""
 
     def init_additional_attrs(self):
         self.attrs['is_test'] = False
@@ -371,7 +371,7 @@ class TestWith1x1ForceFP32Output(TestConv2DBF16Op):
         self.force_fp32_output = True
 
     def init_fuse_residual(self):
-        self.fuse_residual = False
+        self.fuse_residual = ""
 
 
 class TestWithInput1x1Filter1x1(TestConv2DBF16Op):
