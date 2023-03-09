@@ -181,11 +181,6 @@ bool VScalKernel<float>::CanBeUsed(const int& d) const {
 }
 
 template <>
-bool StrideScalKernel<float>::CanBeUsed(const int& d) const {
-  return true;
-}
-
-template <>
 bool VExpKernel<float>::CanBeUsed(const int& d) const {
   return d > 7;
 }
@@ -276,13 +271,11 @@ bool SoftmaxKernel<float>::CanBeUsed(const int& d) const {
 AWALYS_USE_ME_WITH_DOUBLE(VMul);
 AWALYS_USE_ME_WITH_DOUBLE(VAdd);
 AWALYS_USE_ME_WITH_DOUBLE(VScal);
-AWALYS_USE_ME_WITH_DOUBLE(StrideScal);
 AWALYS_USE_ME_WITH_DOUBLE(VExp);
 AWALYS_USE_ME_WITH_DOUBLE(VSigmoid);
 AWALYS_USE_ME_WITH_DOUBLE(VTanh);
 AWALYS_USE_ME_WITH_DOUBLE(VSquare);
 AWALYS_USE_ME_WITH_DOUBLE(VCopy);
-AWALYS_USE_ME_WITH_DOUBLE(Softmax);
 
 #undef AWALYS_USE_ME_WITH_DOUBLE
 }  // namespace mkl
@@ -300,7 +293,6 @@ REGISTER_MKL_KERNEL(MatMul);
 REGISTER_MKL_KERNEL(VMul);
 REGISTER_MKL_KERNEL(VAdd);
 REGISTER_MKL_KERNEL(VScal);
-REGISTER_MKL_KERNEL(StrideScal);
 REGISTER_MKL_KERNEL(VExp);
 REGISTER_MKL_KERNEL(VSquare);
 REGISTER_MKL_KERNEL(VCopy);
@@ -309,7 +301,6 @@ REGISTER_MKL_KERNEL(VSigmoid);
 REGISTER_MKL_KERNEL(VTanh);
 REGISTER_MKL_KERNEL(SeqPool);
 REGISTER_MKL_KERNEL(EmbSeqPool);
-REGISTER_MKL_KERNEL(Softmax);
 REGISTER_MKL_KERNEL(Sgd);
 
 #undef REGISTER_MKL_KERNEL

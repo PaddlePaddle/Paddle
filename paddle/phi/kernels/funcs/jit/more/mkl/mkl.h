@@ -160,36 +160,6 @@ void StrideASum(const T* x, T* res, int n, int stride);
 template <typename T>
 void StrideScal(const T* a, const T* x, T* y, int n, int stride);
 
-// remain is the product of dimension shapes after the axis dimension
-template <typename T>
-void Softmax(const T* x, T* y, int n, int bs, int remain = 1) {
-  std::vector<T> entities(bs);
-  for (int i = 0; i < bs; ++i) {
-    entities[i] = x[i * n];
-    for (int c = 1; c < n; ++c) {
-      entities[i] = x[i * n + c] > entities[i] ? x[i * n + c] : entities[i];
-    }
-    for (int c = 0; c < n; ++c) {
-      y[i * n + c] = x[i * n + c] - entities[i];
-    }
-  }
-  VExp(y, y, n * bs);
-  for (int i = 0; i < bs; ++i) {
-    T sum;
-    if (remain == 1) {
-      ASum(&y[i * n], &sum, n);
-      sum = static_cast<T>(1) / sum;
-      VScal(&sum, &y[i * n], &y[i * n], n);
-    } else {
-      for (int j = 0; j < remain; ++j) {
-        StrideASum(&y[i * n + j], &sum, n, remain);
-        sum = static_cast<T>(1) / sum;
-        StrideScal(&sum, &y[i * n + j], &y[i * n + j], n, remain);
-      }
-    }
-  }
-}
-
 template <typename T>
 void Sgd(const T* lr,
          const T* param,
@@ -284,7 +254,6 @@ DECLARE_MKL_KERNEL(VAdd);
 
 // AXYN
 DECLARE_MKL_KERNEL(VScal);
-DECLARE_MKL_KERNEL(StrideScal);
 
 // XYN
 DECLARE_MKL_KERNEL(VExp);
