@@ -70,28 +70,17 @@ void SumCooKernel(const Context& dev_ctx,
     }
 
     std::vector<int64_t> dims;
-    if (keep_dim) {
-      for (int i = 0; i < x.dims().size(); ++i) {
-        if (i == dim) {
-          dims.emplace_back(1);
-        } else {
-          dims.emplace_back(x.dims()[i]);
-        }
+    for (int i = 0; i < x.dims().size(); ++i) {
+      if (i != dim) {
+        dims.emplace_back(x.dims()[i]);
+      } else if (keep_dim) {
+        dims.emplace_back(1);
       }
-      out_dims = make_ddim(dims);
-
-      out_indices = Empty<int64_t, Context>(
-          dev_ctx, {x_dims.size(), static_cast<int>(map_indices.size())});
-    } else {
-      for (int i = 0; i < x.dims().size(); ++i) {
-        if (i != dim) {
-          dims.emplace_back(x.dims()[i]);
-        }
-      }
-      out_dims = make_ddim(dims);
-      out_indices = Empty<int64_t, Context>(
-          dev_ctx, {x_dims.size() - 1, static_cast<int>(map_indices.size())});
     }
+    out_dims = make_ddim(dims);
+
+    out_indices = Empty<int64_t, Context>(
+        dev_ctx, {out_dims.size(), static_cast<int>(map_indices.size())});
     out_values =
         Empty<T, Context>(dev_ctx, {static_cast<int>(map_indices.size())});
     auto* out_indices_data = out_indices.data<int64_t>();

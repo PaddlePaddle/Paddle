@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -34,52 +35,52 @@ __global__ void SetValueCudaKernel(const T value,
 template <typename T>
 __global__ void SumCooCudaKernel(const int64_t* x_indices_data,
                                  const T* x_values_data,
-                                 const int64_t* shape,
-                                 const int64_t dims,
+                                 const int64_t x_nnz,
+                                 const int64_t n_dim,
                                  const int64_t axis,
+                                 const int64_t keep_dim,
                                  int64_t* out_indices_data,
                                  T* out_values_data) {
-  //  int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-  //  int stride = blockDim.x * gridDim.x;
-  //
-  //  int64_t out_indices_size = 1;
-  //  for (int i = 0; i < dims; ++i) {
-  //    out_indices_size *= shape[i];
-  //  }
-  //  int64_t* out_indices_count = new int64_t[out_indices_size]();
-  //  T* out_values_sum = new T[out_indices_size]();
-  //
-  //  for (int i = thread_id; i < shape[axis]; i += stride) {
-  //    for (int j = 0; j < dims; ++j) {
-  //      out_indices_data[thread_id * dims + j] = x_indices_data[i * dims + j];
-  //    }
-  //    out_indices_count[x_indices_data[i * dims + axis]]++;
-  //    out_values_sum[x_indices_data[i * dims + axis]] += x_values_data[i];
-  //  }
-  //
-  //  __syncthreads();
-  //
-  //  if (thread_id == 0) {
-  //    int64_t out_indices_count_sum = 0;
-  //    for (int i = 0; i < out_indices_size; ++i) {
-  //      if (out_indices_count[i] > 0) {
-  //        for (int j = 0; j < dims; ++j) {
-  //          out_indices_data[out_indices_count_sum * dims + j] =
-  //              out_indices_data[i * dims + j];
-  //        }
-  //        out_values_data[out_indices_count_sum] = out_values_sum[i];
-  //        out_indices_count_sum++;
-  //      }
-  //    }
-  //    delete[] out_indices_count;
-  //    delete[] out_values_sum;
-  //  }
-  //}
-  CUDA_KERNEL_LOOP_TYPE(index, x_nnz * n_dim, int64_t) {}
+  CUDA_KERNEL_LOOP_TYPE(index, x_nnz, int64_t) {
+    int64_t i = 0;
+    out_values_data[index] = 0;
+    while (i < x_nnz) {
+      bool same = true;
+      for (int j = 0; j < n_dim; ++j) {
+        if (j != axis && x_indices_data[index + j * x_nnz] !=
+                             x_indices_data[i + j * x_nnz]) {
+          same = false;
+          break;
+        }
+      }
+      if (same) {
+        out_values_data[index] += x_values_data[i];
+      }
+      i++;
+    }
+    if (keep_dim) {
+      for (int j = 0; j < n_dim; ++j) {
+        out_indices_data[index + j * x_nnz] = x_indices_data[index + j * x_nnz];
+        if (j == axis) {
+          out_indices_data[index + j * x_nnz] = 0;
+        }
+      }
+    } else {
+      for (int j = 0; j < n_dim; ++j) {
+        if (j < axis) {
+          out_indices_data[index + j * x_nnz] =
+              x_indices_data[index + j * x_nnz];
+        } else if (j > axis) {
+          out_indices_data[index + (j - 1) * x_nnz] =
+              x_indices_data[index + j * x_nnz];
+        }
+      }
+    }
+  }
 }
 
-__global__ void SumAllCsr2DCudaKernel(int64_t* out_crows_data,
-                                      int64_t* out_cols_data) {
+__global__ void SumAllCsrCudaKernel(int64_t* out_crows_data,
+                                    int64_t* out_cols_data) {
   CUDA_KERNEL_LOOP_TYPE(index, 2, int64_t) {
     out_crows_data[index] = index;
     if (index == 0) {
@@ -91,7 +92,7 @@ __global__ void SumAllCsr2DCudaKernel(int64_t* out_crows_data,
 template <typename T>
 __global__ void SumCsr2DCudaKernel(const int64_t* x_crows_data,
                                    const T* x_values_data,
-                                   const int x_dim0,
+                                   const int64_t x_dim0,
                                    int64_t* out_crows_data,
                                    int64_t* out_cols_data,
                                    T* out_values_data) {
@@ -111,8 +112,8 @@ __global__ void SumCsr2DCudaKernel(const int64_t* x_crows_data,
 template <typename T>
 __global__ void SumCsr3DCudaKernel(const int64_t* x_crows_data,
                                    const T* x_values_data,
-                                   const int x_dim0,
-                                   const int x_dim1,
+                                   const int64_t x_dim0,
+                                   const int64_t x_dim1,
                                    int64_t* out_crows_data,
                                    int64_t* out_cols_data,
                                    T* out_values_data) {
@@ -144,7 +145,7 @@ void SumCooKernel(const Context& dev_ctx,
                   DataType dtype,
                   bool keep_dim,
                   SparseCooTensor* out) {
-  size_t n_dim = axis.size();
+  size_t axis_dim = axis.size();
   // create out sparse tensor
   const auto& x_dims = x.dims();
   const auto& x_indices = x.indices();
@@ -152,16 +153,13 @@ void SumCooKernel(const Context& dev_ctx,
   DDim out_dims;
   DenseTensor out_indices;
   DenseTensor out_values;
-  if (n_dim == 0) {
-    std::vector<int64_t> out_indices_shape;
+  if (axis_dim == 0) {
     if (keep_dim) {
       out_dims = make_ddim(std::vector<int64_t>(x_dims.size(), 1));
-      out_indices_shape = {x_dims.size(), 1};
-      out_indices = Empty<int64_t, Context>(dev_ctx, out_indices_shape);
+      out_indices = Empty<int64_t, Context>(dev_ctx, {x_dims.size(), 1});
     } else {
       out_dims = make_ddim({1});
-      out_indices_shape = {1, 1};
-      out_indices = Empty<int64_t, Context>(dev_ctx, out_indices_shape);
+      out_indices = Empty<int64_t, Context>(dev_ctx, {1, 1});
     }
     auto* out_indices_data = out_indices.data<int64_t>();
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
@@ -173,100 +171,42 @@ void SumCooKernel(const Context& dev_ctx,
            dev_ctx.stream()>>>(0, out_indices.dims()[0], out_indices_data);
     out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, true);
   } else {
-    // TODO(zrr1999)
     auto dim = axis[0] < 0 ? x_dims.size() + axis[0] : axis[0];
+    auto n_dim = x.dims().size();
+    std::vector<int64_t> dims;
+    for (int i = 0; i < n_dim; ++i) {
+      if (i == dim) {
+        if (keep_dim) {
+          dims.emplace_back(1);
+        }
+      } else {
+        dims.emplace_back(x.dims()[i]);
+      }
+    }
+    out_dims = make_ddim(dims);
+
+    out_indices = Empty<int64_t, Context>(dev_ctx, {out_dims.size(), x.nnz()});
+    out_values = Empty<T, Context>(dev_ctx, {x.nnz()});
+
     const auto* x_indices_data = x_indices.data<int64_t>();
     const auto* x_values_data = x_values.data<T>();
-    std::map<std::vector<int64_t>, std::vector<int64_t>> map_indices;
-    for (int64_t j = 0; j < x_indices.dims()[1]; ++j) {
-      std::vector<int64_t> pos;
-      for (int64_t i = 0; i < x_indices.dims()[0]; ++i) {
-        if (dim != i) {
-          pos.emplace_back(x_indices_data[j + i * x_indices.dims()[1]]);
-        } else if (keep_dim) {
-          pos.emplace_back(0);
-        }
-      }
-      map_indices[pos].emplace_back(j);
-    }
-
-    std::vector<int64_t> dims;
-    if (keep_dim) {
-      for (int i = 0; i < x.dims().size(); ++i) {
-        if (i == dim) {
-          dims.emplace_back(1);
-        } else {
-          dims.emplace_back(x.dims()[i]);
-        }
-      }
-      out_dims = make_ddim(dims);
-
-      out_indices = Empty<int64_t, Context>(
-          dev_ctx, {x_dims.size(), static_cast<int>(map_indices.size())});
-    } else {
-      for (int i = 0; i < x.dims().size(); ++i) {
-        if (i != dim) {
-          dims.emplace_back(x.dims()[i]);
-        }
-      }
-      out_dims = make_ddim(dims);
-      out_indices = Empty<int64_t, Context>(
-          dev_ctx, {x_dims.size() - 1, static_cast<int>(map_indices.size())});
-    }
-    out_values =
-        Empty<T, Context>(dev_ctx, {static_cast<int>(map_indices.size())});
     auto* out_indices_data = out_indices.data<int64_t>();
     auto* out_values_data = out_values.data<T>();
 
-    auto iter_map_indices = map_indices.begin();
-    for (size_t j = 0; j < map_indices.size(); ++j) {
-      std::vector<int64_t> pos = iter_map_indices->first;
-      std::vector<int64_t> values_index = iter_map_indices->second;
-      iter_map_indices++;
-      T out_value = 0;
-      for (auto index : values_index) {
-        out_value += x_values_data[index];
-      }
-      for (auto i = 0; i < out_indices.dims()[0]; ++i) {
-        out_indices_data[j + i * map_indices.size()] = pos[i];
-      }
-      out_values_data[j] = out_value;
-    }
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.nnz(), 1);
+    SumCooCudaKernel<T><<<config.block_per_grid.x,
+                          config.thread_per_block.x,
+                          0,
+                          dev_ctx.stream()>>>(x_indices_data,
+                                              x_values_data,
+                                              x.nnz(),
+                                              n_dim,
+                                              dim,
+                                              keep_dim,
+                                              out_indices_data,
+                                              out_values_data);
   }
-
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
-
-  // create out sparse tensor
-  //  int64_t x_nnz = x.nnz();
-  //  std::size_t n_dim = perm.size();
-  //  DDim out_dims = x.dims().Sum(perm);
-  //  DenseTensor out_indices = EmptyLike<int64_t, Context>(dev_ctx,
-  //  x.indices()); DenseTensor out_values(x.values());
-  //  out->SetMember(out_indices, out_values, out_dims, x.coalesced());
-  //
-  //  // compute values of indices
-  //  const DenseTensor &x_indices = x.indices();
-  //  const auto *x_indices_data = x_indices.data<int64_t>();
-  //  auto *out_indices_data = out_indices.data<int64_t>();
-  //  int *d_perm;
-  // #ifdef PADDLE_WITH_HIP
-  //  hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) *
-  //  perm.size()); hipMemcpy(
-  //      d_perm, perm.data(), sizeof(int) * perm.size(),
-  //      hipMemcpyHostToDevice);
-  // #else
-  //  cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) *
-  //  perm.size()); cudaMemcpy(
-  //      d_perm, perm.data(), sizeof(int) * perm.size(),
-  //      cudaMemcpyHostToDevice);
-  // #endif
-  //  auto config =
-  //      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz * n_dim, 1);
-  //  SumCooCudaKernel<<<config.block_per_grid.x,
-  //                     config.thread_per_block.x,
-  //                     0,
-  //                     dev_ctx.stream()>>>(
-  //      x_indices_data, d_perm, n_dim, x_nnz, out_indices_data);
 }
 
 template <typename T, typename Context>
@@ -292,10 +232,10 @@ void SumCsrKernel(const Context& dev_ctx,
     auto* out_cols_data = out_cols.data<int64_t>();
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, 2, 1);
-    SumAllCsr2DCudaKernel<<<config.block_per_grid.x,
-                            config.thread_per_block.x,
-                            0,
-                            dev_ctx.stream()>>>(out_crows_data, out_cols_data);
+    SumAllCsrCudaKernel<<<config.block_per_grid.x,
+                          config.thread_per_block.x,
+                          0,
+                          dev_ctx.stream()>>>(out_crows_data, out_cols_data);
 
     out_values = phi::Sum<T>(dev_ctx, x.values(), {}, dtype, true);
   } else {
@@ -346,72 +286,6 @@ void SumCsrKernel(const Context& dev_ctx,
     }
   }
   out->SetMember(out_crows, out_cols, out_values, out_dims);
-
-  // #ifdef PADDLE_WITH_HIP
-  //   hipMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) * perm.size());
-  //   hipMemcpy(
-  //       d_perm, perm.data(), sizeof(int) * perm.size(),
-  //       hipMemcpyHostToDevice);
-  //   hipMalloc(reinterpret_cast<void **>(&d_x_dims),
-  //             sizeof(int64_t) * x.dims().size());
-  //   hipMemcpy(d_x_dims,
-  //             x.dims().Get(),
-  //             sizeof(int64_t) * x.dims().size(),
-  //             hipMemcpyHostToDevice);
-  //   hipMalloc(reinterpret_cast<void **>(&d_out_dims),
-  //             sizeof(int64_t) * out_dims.size());
-  //   hipMemcpy(d_out_dims,
-  //             out_dims.Get(),
-  //             sizeof(int64_t) * out_dims.size(),
-  //             hipMemcpyHostToDevice);
-  // #else
-  //   cudaMalloc(reinterpret_cast<void **>(&d_perm), sizeof(int) *
-  //   perm.size()); cudaMemcpy(
-  //       d_perm, perm.data(), sizeof(int) * perm.size(),
-  //       cudaMemcpyHostToDevice);
-  //   cudaMalloc(reinterpret_cast<void **>(&d_x_dims),
-  //              sizeof(int64_t) * x.dims().size());
-  //   cudaMemcpy(d_x_dims,
-  //              x.dims().Get(),
-  //              sizeof(int64_t) * x.dims().size(),
-  //              cudaMemcpyHostToDevice);
-  //   cudaMalloc(reinterpret_cast<void **>(&d_out_dims),
-  //              sizeof(int64_t) * out_dims.size());
-  //   cudaMemcpy(d_out_dims,
-  //              out_dims.Get(),
-  //              sizeof(int64_t) * out_dims.size(),
-  //              cudaMemcpyHostToDevice);
-  // #endif
-  //   int64_t x_nnz = x.nnz();
-  //   auto config =
-  //       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_dims[0], 1);
-  //   if (perm.size() == 2) {
-  //     SumCsr2DCudaKernel<T><<<config.block_per_grid.x,
-  //                             config.thread_per_block.x,
-  //                             0,
-  //                             dev_ctx.stream()>>>(x_crows_data,
-  //                                                 x_cols_data,
-  //                                                 x_values_data,
-  //                                                 d_perm,
-  //                                                 d_x_dims,
-  //                                                 d_out_dims,
-  //                                                 x_nnz,
-  //                                                 out_crows_data,
-  //                                                 out_cols_data,
-  //                                                 out_values_data);
-  //   } else {
-  //     SumCsr3DCudaKernel<T><<<1, 1, 0, dev_ctx.stream()>>>(x_crows_data,
-  //                                                          x_cols_data,
-  //                                                          x_values_data,
-  //                                                          d_perm,
-  //                                                          d_x_dims,
-  //                                                          d_out_dims,
-  //                                                          perm.size(),
-  //                                                          x_nnz,
-  //                                                          out_crows_data,
-  //                                                          out_cols_data,
-  //                                                          out_values_data);
-  //   }
 }
 }  // namespace sparse
 }  // namespace phi
