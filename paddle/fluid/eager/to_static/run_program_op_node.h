@@ -573,7 +573,7 @@ inline void RunProgramGradAPI(
                                                    *backward_global_block,
                                                    global_inner_scope);
     VLOG(4) << "after backward gc all vars";
-    global_inner_scope->SetCanReuesd(true);
+    global_inner_scope->SetCanReuesd(false); // can't reuse util call `~GradNodeRunProgram`
     details::GcScope(global_inner_scope);
   }
 }
