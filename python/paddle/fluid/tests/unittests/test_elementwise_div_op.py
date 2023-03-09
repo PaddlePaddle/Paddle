@@ -176,6 +176,36 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
         self.x_shape = [12, 13]
         self.y_shape = [12, 13]
 
+    def test_check_gradient(self):
+        check_list = []
+        check_list.append(
+            {
+                'grad': ['X', 'Y'],
+                'no_grad': None,
+                'val_grad': [self.grad_x, self.grad_y],
+            }
+        )
+        check_list.append(
+            {'grad': ['Y'], 'no_grad': set('X'), 'val_grad': [self.grad_y]}
+        )
+        check_list.append(
+            {'grad': ['X'], 'no_grad': set('Y'), 'val_grad': [self.grad_x]}
+        )
+        for check_option in check_list:
+            check_args = [check_option['grad'], 'Out']
+            check_kwargs = {
+                'no_grad_set': check_option['no_grad'],
+                'user_defined_grads': check_option['val_grad'],
+                'user_defined_grad_outputs': [self.grad_out],
+                'check_dygraph': self.check_dygraph,
+                'max_relative_error': 2e-2,
+            }
+            if self.place is None:
+                self.check_grad(*check_args, **check_kwargs)
+            else:
+                check_args.insert(0, self.place)
+                self.check_grad_with_place(*check_args, **check_kwargs)
+
 
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast."
