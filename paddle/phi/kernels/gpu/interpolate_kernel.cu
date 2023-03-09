@@ -82,26 +82,27 @@ __global__ void KeLinearInterpFw(const T* in,
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;  // w
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;  // w_id
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    src_w = (src_w > static_cast<T>(0)) ? src_w : static_cast<T>(0);
-    T w1lambda = align_flag
-                     ? static_cast<T>(static_cast<MT>(src_w) - in_img_idx)
-                     : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
-    T w2lambda = static_cast<T>(1.0) - w1lambda;
+    MT src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
+    src_w = (src_w > 0) ? src_w : 0;
+    MT w1lambda = align_flag ? (src_w - in_img_idx)
+                             : (ratio_w * out_img_idx - in_img_idx);
+    MT w2lambda = 1.0 - w1lambda;
 
     if (data_layout == DataLayout::kNCHW) {
       const T* in_pos =
           &in[out_id_h * out_id_w + channel_id * in_img_size + in_img_idx];
       // linear interpolation
       out[out_id_h * output_w + out_id_w] =
-          w2lambda * in_pos[0] + w1lambda * in_pos[w_id];
+          static_cast<T>(w2lambda * static_cast<MT>(in_pos[0]) +
+                         w1lambda * static_cast<MT>(in_pos[w_id]));
 
     } else {
       const T* in_pos =
           &in[out_id_h * input_w + in_img_idx * num_channels + channel_id];
       // linear interpolation
-      out[out_id_h * output_w + out_id_w] =
-          w2lambda * in_pos[0] + w1lambda * in_pos[w_id * num_channels];
+      out[out_id_h * output_w + out_id_w] = static_cast<T>(
+          w2lambda * static_cast<MT>(in_pos[0]) +
+          w1lambda * static_cast<MT>(in_pos[w_id * num_channels]));
     }
   }
 }
@@ -308,15 +309,18 @@ __global__ void KeBilinearInterpNCHWFw(const T* in,
 template <typename T>
 __device__ __forceinline__ static T Kecubic_interp(
     const T x0, const T x1, const T x2, const T x3, T t) {
-  T coeffs[4];
-  T a = static_cast<T>(-0.75);
-  T x_1 = t;
-  T x_2 = static_cast<T>(1.0) - t;
-  coeffs[0] = funcs::CubicConvolution2<T>(x_1 + static_cast<T>(1.0), a);
-  coeffs[1] = funcs::CubicConvolution1<T>(x_1, a);
-  coeffs[2] = funcs::CubicConvolution1<T>(x_2, a);
-  coeffs[3] = funcs::CubicConvolution2<T>(x_2 + static_cast<T>(1.0), a);
-  return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  MT coeffs[4];
+  MT a = static_cast<MT>(-0.75);
+  MT x_1 = static_cast<MT>(t);
+  MT x_2 = static_cast<MT>(1.0) - static_cast<MT>(t);
+  coeffs[0] = funcs::CubicConvolution2<MT>(x_1 + static_cast<MT>(1.0), a);
+  coeffs[1] = funcs::CubicConvolution1<MT>(x_1, a);
+  coeffs[2] = funcs::CubicConvolution1<MT>(x_2, a);
+  coeffs[3] = funcs::CubicConvolution2<MT>(x_2 + static_cast<MT>(1.0), a);
+  return static_cast<T>(
+      static_cast<MT>(x0) * coeffs[0] + static_cast<MT>(x1) * coeffs[1] +
+      static_cast<MT>(x2) * coeffs[2] + static_cast<MT>(x3) * coeffs[3]);
 }
 
 template <typename T>
@@ -338,6 +342,7 @@ __global__ void KeBicubicInterpFw(const T* in,
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
@@ -357,18 +362,16 @@ __global__ void KeBicubicInterpFw(const T* in,
       channel_id = tid % num_channels;
     }
 
-    T in_img_idy = align_corners
-                       ? static_cast<T>(ratio_h * out_img_idy)
-                       : static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
+    MT in_img_idy = align_corners ? ratio_h * out_img_idy
+                                  : ratio_h * (out_img_idy + 0.5) - 0.5;
     int input_y = floorf(static_cast<float>(in_img_idy));
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    const T y_t = static_cast<T>(static_cast<MT>(in_img_idy) - input_y);
 
-    T in_img_idx = align_corners
-                       ? static_cast<T>(ratio_w * out_img_idx)
-                       : static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
+    const T y_t = static_cast<T>(in_img_idy - input_y);
+
+    MT in_img_idx = align_corners ? ratio_w * out_img_idx
+                                  : ratio_w * (out_img_idx + 0.5) - 0.5;
     int input_x = floorf(static_cast<float>(in_img_idx));
-    const T x_t = static_cast<T>(static_cast<MT>(in_img_idx) - input_x);
+    const T x_t = static_cast<T>(in_img_idx - input_x);
 
     T coefficients[4];
     const T* in_pos_0;
@@ -1460,6 +1463,7 @@ PD_REGISTER_KERNEL(bilinear_interp,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
@@ -1486,6 +1490,7 @@ PD_REGISTER_KERNEL(trilinear_interp,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
@@ -1498,6 +1503,7 @@ PD_REGISTER_KERNEL(linear_interp,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
@@ -1510,6 +1516,7 @@ PD_REGISTER_KERNEL(bicubic_interp,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int) {
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);

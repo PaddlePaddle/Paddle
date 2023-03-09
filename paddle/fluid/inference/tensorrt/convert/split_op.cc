@@ -29,15 +29,15 @@ class SplitOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
+    auto inputs = op_desc.Inputs();
     auto input_dims = input->getDimensions();
-    size_t output_num = op_desc.Output("Out").size();
+    int output_num = op_desc.Output("Out").size();
 
     // Get Attrs
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
-
+    int num = 0;
     std::vector<int> output_lengths =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
-    int num = 0;
     if (op_desc.HasAttr("num")) {
       num = PADDLE_GET_CONST(int, op_desc.GetAttr("num"));
     }
@@ -50,19 +50,34 @@ class SplitOpConverter : public OpConverter {
       axis += (axis < 0) ? input_dims.nbDims : -1;
     }
     bool in_axis_dim_dynamic = false;
-    nvinfer1::ITensor* avg_len_tensor = nullptr;
+    bool sections_tensor_list = false;
+    nvinfer1::ITensor* sections_tensor = nullptr;
+
     // need infer output_lengths
-    if (num > 0 && output_lengths.empty()) {
+    if (inputs.find("SectionsTensorList") != inputs.end() &&
+        op_desc.Input("SectionsTensorList").size() >= 1) {
+      int32_t sections_size = op_desc.Input("SectionsTensorList").size();
+      std::vector<nvinfer1::ITensor*> sections_tensors;
+      for (int32_t i = 0; i < sections_size; ++i) {
+        sections_tensors.push_back(
+            engine_->GetITensor(op_desc.Input("SectionsTensorList")[i]));
+      }
+      sections_tensor = Concat(sections_tensors);
+      sections_tensor_list = true;
+    } else if (!output_lengths.empty()) {
+      sections_tensor = Add1DConstantLayer(output_lengths);
+    } else if (num > 0 && output_lengths.empty()) {
       if (input_dims.d[axis] > 0) {
         int64_t in_axis_dim = input_dims.d[axis];
         size_t out_axis_dim = in_axis_dim / num;
         for (int i = 0; i < num; ++i) {
           output_lengths.push_back(out_axis_dim);
         }
+        sections_tensor = Add1DConstantLayer(output_lengths);
       } else {
         in_axis_dim_dynamic = true;
         auto* num_tensor = Add1DConstantLayer(num);
-        avg_len_tensor =
+        sections_tensor =
             Div(GetEleTensorOfShape(shape_tensor, axis), num_tensor);
       }
     }
@@ -79,20 +94,20 @@ class SplitOpConverter : public OpConverter {
       std::iota(gather_indices.begin(), gather_indices.end(), 0);
       gather_indices[axis] = gather_indices.size();
       std::vector<int32_t> zeros(trt_step_dims.nbDims, 0);
-      auto* zeros_tensor = Add1DConstantLayer(zeros);
+      std::vector<int32_t> stride(trt_step_dims.nbDims, 1);
+      auto zeros_tensor = Add1DConstantLayer(zeros);
+      auto stride_tensor = Add1DConstantLayer(stride);
       // input : [N,C,H,W]
-      int start_point = 0;
-      for (size_t i = 0; i < output_num; i++) {
-        nvinfer1::ITensor* this_len_tensor = nullptr;
-        nvinfer1::ITensor* start_point_tensor = nullptr;
-        if (!in_axis_dim_dynamic) {
-          this_len_tensor = Add1DConstantLayer(output_lengths[i]);
-          start_point_tensor = Add1DConstantLayer(start_point);
-          start_point += output_lengths[i];
+      nvinfer1::ITensor* start_point_tensor = zeros_tensor;
+      nvinfer1::ITensor* this_len_tensor = zeros_tensor;
+      for (int i = 0; i < output_num; i++) {
+        if (sections_tensor_list || !in_axis_dim_dynamic) {
+          start_point_tensor = Sum(start_point_tensor, this_len_tensor);
+          this_len_tensor = Gather(sections_tensor, std::vector<int32_t>{i});
         } else {
-          this_len_tensor = avg_len_tensor;
+          this_len_tensor = sections_tensor;
           auto* i_tensor = Add1DConstantLayer(static_cast<int>(i));
-          start_point_tensor = Prod(i_tensor, avg_len_tensor);
+          start_point_tensor = Prod(i_tensor, sections_tensor);
         }
 
         std::vector<nvinfer1::ITensor*> concat_inputs1 = {zeros_tensor,
@@ -104,11 +119,12 @@ class SplitOpConverter : public OpConverter {
         layer = TRT_ENGINE_ADD_LAYER(engine_,
                                      Slice,
                                      *input,
-                                     trt_step_dims,
-                                     trt_step_dims,
-                                     trt_step_dims);
+                                     nvinfer1::Dims{},
+                                     nvinfer1::Dims{},
+                                     nvinfer1::Dims{});
         layer->setInput(1, *start_tensor);
         layer->setInput(2, *size_tensor);
+        layer->setInput(3, *stride_tensor);
 
         auto output_name = op_desc.Output("Out")[i];
         RreplenishLayerAndOutput(layer, "split", {output_name}, test_mode);
@@ -124,7 +140,7 @@ class SplitOpConverter : public OpConverter {
       for (int i = 0; i < trt_step_dims.nbDims; i++) trt_step_dims.d[i] = 1;
 
       // input : [C,H,W]
-      for (size_t i = 0; i < output_num; i++) {
+      for (int i = 0; i < output_num; i++) {
         trt_start_dims.d[axis] = std::accumulate(
             output_lengths.begin(), output_lengths.begin() + i, 0);
         trt_size_dims.d[axis] = output_lengths[i];
@@ -153,7 +169,7 @@ class SplitOpConverter : public OpConverter {
       layer = engine_->AddPluginV2Ext(&input, 1, plugin);
     }
     std::vector<std::string> output_names;
-    for (size_t i = 0; i < output_num; i++) {
+    for (int i = 0; i < output_num; i++) {
       output_names.push_back(op_desc.Output("Out")[i]);
     }
     RreplenishLayerAndOutput(layer, "split", output_names, test_mode);

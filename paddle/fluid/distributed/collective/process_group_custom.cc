@@ -243,11 +243,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
       numel > 0
           ? paddle::distributed::GetPartialTensor(in_tensor, offset, numel)
           : in_tensor;
-  phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
-                                                     in_tensor_maybe_partial,
-                                                     /*dst_rank*/ rank_,
-                                                     /*cur_rank*/ rank_,
-                                                     size_);
+  phi::distributed::CommStaticCheck::GatherLikeShape(
+      *out_tensor,
+      in_tensor_maybe_partial,
+      /*dst_rank*/ rank_,
+      /*cur_rank*/ rank_,
+      size_,
+      phi::AllocationType::CUSTOM);
   std::vector<phi::DenseTensor> in_wrapper{in_tensor_maybe_partial};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
 
@@ -276,7 +278,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
     int64_t offset,
     int64_t numel,
     bool sync_op) {
-  return AllGather(out_tensor, in_tensor, offset, numel, sync_op);
+  return AllGather(out_tensor, in_tensor, offset, numel, sync_op, false);
 }
 
 // TODO(sunyilun): methods below will be removed later
