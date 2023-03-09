@@ -230,8 +230,6 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 rtol=1e-05,
                 atol=self.atol,
                 err_msg='Output ('
-                + str(i)
-                + " "
                 + fetch_names[i]
                 + ') has diff. \n'
                 + '\nBN     '
@@ -260,7 +258,6 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         places = [core.CUDAPlace(0)]
         for place in places:
             for layout in ["NHWC", "NCHW"]:
-                # for layout in ["NHWC"]:
                 self._compare(place, layout, True)
 
 
