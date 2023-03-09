@@ -98,6 +98,7 @@ void IndexSelectGradKernel(const Context& ctx,
     block_dim = 1;
     grid_dim.x = 1;
   }
+
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     index_select_grad_cuda_kernel<T, int64_t>
