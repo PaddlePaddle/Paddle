@@ -24,7 +24,7 @@ set(FLUID_CORE_NAME "libpaddle")
 
 if(WITH_SETUP_INSTALL)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/env_dict.py.in
-                 ${PADDLE_SOURCE_DIR}/env_dict.py)
+                 ${CMAKE_CURRENT_BINARY_DIR}/env_dict.py)
 else()
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
                  ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
