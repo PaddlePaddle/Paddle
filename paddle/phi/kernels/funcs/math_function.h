@@ -17,12 +17,10 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 namespace funcs {
@@ -56,24 +54,19 @@ struct SetConstant {
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-struct SetConstant<XPUContext, T> {
-  void operator()(const XPUContext& context, phi::DenseTensor* tensor, T num);
-};
-
-template <typename T>
-struct SetConstant<paddle::platform::XPUDeviceContext, T> {
-  void operator()(const paddle::platform::XPUDeviceContext& context,
+struct SetConstant<phi::XPUContext, T> {
+  void operator()(const phi::XPUContext& context,
                   phi::DenseTensor* tensor,
                   T num);
 };
 #endif
 
 template <typename Place>
-void set_constant_with_place(const paddle::platform::DeviceContext& context,
+void set_constant_with_place(const phi::DeviceContext& context,
                              phi::DenseTensor* tensor,
                              float value);
 
-void set_constant(const paddle::platform::DeviceContext& context,
+void set_constant(const phi::DeviceContext& context,
                   phi::DenseTensor* tensor,
                   float value);
 
@@ -109,9 +102,7 @@ struct RowwiseMean {
 #ifdef PADDLE_WITH_XPU
 template <typename U>
 struct TensorSetConstantXPU {
-  TensorSetConstantXPU(phi::DenseTensor* tensor,
-                       U value,
-                       paddle::platform::Place place)
+  TensorSetConstantXPU(phi::DenseTensor* tensor, U value, phi::Place place)
       : tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
@@ -119,15 +110,15 @@ struct TensorSetConstantXPU {
     int numel = tensor_->numel();
     std::unique_ptr<T[]> data_cpu(new T[numel]);
     std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
-    paddle::memory::Copy(place_,
-                         begin,
-                         phi::CPUPlace(),
-                         static_cast<void*>(data_cpu.get()),
-                         numel * sizeof(T));
+    memory_utils::Copy(place_,
+                       begin,
+                       phi::CPUPlace(),
+                       static_cast<void*>(data_cpu.get()),
+                       numel * sizeof(T));
   }
   phi::DenseTensor* tensor_;
   U value_;
-  paddle::platform::Place place_;
+  phi::Place place_;
 };
 #endif
 

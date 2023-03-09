@@ -18,7 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/strings_api.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/pstring.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/string_tensor.h"
@@ -63,7 +63,7 @@ TEST(API, case_convert) {
   std::transform(
       strs[1].begin(), strs[1].end(), expected_results[3].begin(), ::toupper);
   // 3. test API, ascii encoding
-  paddle::experimental::Tensor x(cpu_strings_x);
+  paddle::Tensor x(cpu_strings_x);
   auto lower_out = paddle::experimental::strings::lower(x, false);
   auto upper_out = paddle::experimental::strings::upper(x, false);
 
@@ -111,7 +111,7 @@ TEST(API, case_convert_utf8) {
                                     "óósschloëëóósschloëëóósschloëë",
                                     "ÓÓSSCHLOËËÓÓSSCHLOËËÓÓSSCHLOËË"};
   // 3. test API, ascii encoding
-  paddle::experimental::Tensor x(cpu_strings_x);
+  paddle::Tensor x(cpu_strings_x);
   auto lower_out = paddle::experimental::strings::lower(x, true);
   auto upper_out = paddle::experimental::strings::upper(x, true);
 

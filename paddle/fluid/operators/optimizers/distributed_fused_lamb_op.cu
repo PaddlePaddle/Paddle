@@ -1644,7 +1644,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
             "The nranks must be exactly divided by num_devices."));
     bool local_shard = (nranks > num_devices);
 
-    const auto &ring_ids = ctx.Attr<std::vector<int>>("ring_id");
+    const auto &ring_ids = ctx.Attr<std::vector<int>>("ring_ids");
     auto use_master_param_norm = ctx.Attr<bool>("use_master_param_norm");
     auto is_grad_scaled_by_nranks = ctx.Attr<bool>("is_grad_scaled_by_nranks");
     auto use_hierarchical_allreduce =

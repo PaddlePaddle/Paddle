@@ -1079,7 +1079,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       if (split_inputs.find("SectionsTensorList") != split_inputs.end()) {
         if (desc.Input("SectionsTensorList").size() >= 1) {
-          return false;
+          if (!with_dynamic_shape) {
+            return false;
+          }
         }
       }
       if (!desc.HasAttr("axis")) {
@@ -1087,9 +1089,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
 
-      if (axis == 0) {
+      if (!with_dynamic_shape && axis == 0) {
         VLOG(3) << "Invalid split axis. Split on batch is not supported in "
-                   "TensorRT";
+                   "TensorRT with static shape";
         return false;
       }
       auto* block = desc.Block();
@@ -1418,7 +1420,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
         op_type == "elementwise_pow" || op_type == "elementwise_min" ||
-        op_type == "elementwise_max" || op_type == "elementwise_floordiv") {
+        op_type == "elementwise_max" || op_type == "elementwise_floordiv" ||
+        op_type == "elementwise_mod") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1453,12 +1456,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
           op_type == "elementwise_sub" || op_type == "elementwise_div" ||
           op_type == "elementwise_pow" || op_type == "elementwise_min" ||
-          op_type == "elementwise_max" || op_type == "elementwise_floordiv") {
+          op_type == "elementwise_max" || op_type == "elementwise_floordiv" ||
+          op_type == "elementwise_mod") {
         if (x_var_desc->GetDataType() ==
             paddle::framework::proto::VarType_Type::VarType_Type_BOOL) {
-          VLOG(3) << "These operations "
-                     "(elementwise_add/mul/sub/div/pow/min/max/floordiv) do "
-                     "not support boolean datatype.";
+          VLOG(3)
+              << "These operations "
+                 "(elementwise_add/mul/sub/div/pow/min/max/floordiv/mod) do "
+                 "not support boolean datatype.";
           return false;
         }
       }
@@ -2213,14 +2218,8 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
       }
 
+#if IS_TRT_VERSION_LT(7000)
       auto dtype = x_var_desc->GetDataType();
-#if IS_TRT_VERSION_GE(7000)
-      if (dtype != framework::proto::VarType::INT32 &&
-          dtype != framework::proto::VarType::FP32) {
-        VLOG(3) << "reduce op input data type must be int32 or float32";
-        return false;
-      }
-#else
       if (dtype != framework::proto::VarType::FP32) {
         VLOG(3) << "reduce op input data type must be float32 using TensorRT "
                    "< 7.0";
@@ -2232,18 +2231,19 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "tile") {
       // Paddle-TRT does not support the input tensors.
       auto tile_inputs = desc.Inputs();
-      if (tile_inputs.find("repeat_times_tensor") != tile_inputs.end()) {
-        if (desc.Input("repeat_times_tensor").size() >= 1) {
-          return false;
+      if (!with_dynamic_shape) {
+        if (tile_inputs.find("repeat_times_tensor") != tile_inputs.end()) {
+          if (desc.Input("repeat_times_tensor").size() >= 1) {
+            return false;
+          }
         }
-      }
-      if (tile_inputs.find("RepeatTimes") != tile_inputs.end()) {
-        if (desc.Input("RepeatTimes").size() >= 1) {
-          return false;
+        if (tile_inputs.find("RepeatTimes") != tile_inputs.end()) {
+          if (desc.Input("RepeatTimes").size() >= 1) {
+            return false;
+          }
         }
+        if (!desc.HasAttr("repeat_times")) return false;
       }
-      if (with_dynamic_shape) return false;
-      if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
     }
 #endif
 
@@ -2542,6 +2542,48 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "grid_sampler") {
+#if !IS_TRT_VERSION_GE(8510)
+      VLOG(3) << "grid_sampler is not supported when TensorRT < 8.5.1";
+      return false;
+#else
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the grid_sampler does not support "
+                   "static shape yet";
+        return false;
+      }
+
+      if (!desc.HasAttr("mode") || !desc.HasAttr("padding_mode") ||
+          !desc.HasAttr("align_corners")) {
+        VLOG(3) << "grid_sampler need attributes : mode, padding_mode, "
+                   "align_corners";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto input_name = desc.Input("X")[0];
+      auto* input_desc = block->FindVar(input_name);
+      const auto input_shape = input_desc->GetShape();
+
+      auto grid_name = desc.Input("Grid")[0];
+      auto* grid_desc = block->FindVar(grid_name);
+      const auto grid_shape = grid_desc->GetShape();
+
+      if (input_shape.size() != 4 || grid_shape.size() != 4) {
+        VLOG(3) << "The input and grid tensors must be shape tensors of rank 4 "
+                   "using TRT GridSample layer.";
+        return false;
+      }
+
+#endif
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2606,6 +2648,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_min",
       "elementwise_max",
       "elementwise_floordiv",
+      "elementwise_mod",
       "equal",
       "not_equal",
       "less_than",
@@ -2701,7 +2744,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "expand_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
-      "preln_groupnorm_act"};
+      "preln_groupnorm_act",
+      "grid_sampler"};
 
   std::unordered_set<std::string> teller_set{
       "mul",
@@ -2758,6 +2802,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_min",
       "elementwise_max",
       "elementwise_floordiv",
+      "elementwise_mod",
       "equal",
       "not_equal",
       "less_than",
@@ -2853,7 +2898,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "expand_v2",
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
-      "preln_groupnorm_act"};
+      "preln_groupnorm_act",
+      "grid_sampler"};
 };
 
 struct GenericPluginTeller : public Teller {

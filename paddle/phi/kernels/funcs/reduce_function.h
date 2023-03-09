@@ -415,7 +415,7 @@ struct ReduceConfig {
 #ifdef PADDLE_WITH_XPU_KP
     bool not_higher = x_dim[0] > 1;
 #else
-    int device_id = paddle::platform::GetCurrentDeviceId();
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
     int max_grid_z = phi::backends::gpu::GetGpuMaxGridDimSize(device_id)[2];
     bool not_higher = x_dim[0] >= max_grid_z;
 #endif  // PADDLE_WITH_XPU_KP
@@ -467,10 +467,10 @@ struct ReduceConfig {
       grid_num = details::CeilingDiv(left_num, block_dim->x);
       reduce_num_per_thread = details::CeilingDiv(reduce_num, block_dim->y);
     }
-    int device_id = paddle::platform::GetCurrentDeviceId();
-    int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
     int max_threads_per_mp =
-        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id);
+        phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
     int max_threads = max_threads_per_mp * max_mp;
     int num_threads = block_dim->x * block_dim->y;
     int max_num_blocks = max_threads / num_threads;
@@ -509,10 +509,10 @@ struct ReduceConfig {
     int grid_z = left_num / last_dim_num;
     left_num = last_dim_num;
     grid_dim->z = grid_z;
-    int device_id = paddle::platform::GetCurrentDeviceId();
-    int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
     int max_threads_per_mp =
-        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id);
+        phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
     int max_threads = max_threads_per_mp * max_mp;
     // init
     int num_block = (max_threads / left_num);
@@ -905,14 +905,16 @@ template <typename Tx,
           template <typename>
           class ReduceOp,
           typename TransformOp>
-static typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value,
-                               void>::type
-CubTensorReduceImpl(const Tx* x_data,
-                    Ty* y_data,
-                    const TransformOp& transform,
-                    int reduce_num,
-                    const KPDevice& dev_ctx,
-                    KPStream stream) {
+static
+    typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value &&
+                                !std::is_same<Tx, phi::dtype::bfloat16>::value,
+                            void>::type
+    CubTensorReduceImpl(const Tx* x_data,
+                        Ty* y_data,
+                        const TransformOp& transform,
+                        int reduce_num,
+                        const KPDevice& dev_ctx,
+                        KPStream stream) {
   auto reducer = ReduceOp<Ty>();
   cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
                                                                   transform);
@@ -955,6 +957,23 @@ CubTensorReduceImpl(const Tx* x_data,
                     KPStream stream) {
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
+}
+
+template <typename Tx,
+          typename Ty,
+          template <typename>
+          class ReduceOp,
+          typename TransformOp>
+static typename std::enable_if<std::is_same<Tx, phi::dtype::bfloat16>::value,
+                               void>::type
+CubTensorReduceImpl(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int reduce_num,
+                    const KPDevice& dev_ctx,
+                    KPStream stream) {
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "Tx should not be bfloat16 when using cub::DeviceReduce::Reduce()."));
 }
 #endif  // PADDLE_WITH_XPU_KP
 
@@ -1008,7 +1027,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
 
   config.SetOutputData(y_data, dev_ctx, &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
-  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
+  constexpr bool kIsTxBF16 = std::is_same<Tx, phi::dtype::bfloat16>::value;
+  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16 && !kIsTxBF16;
 #ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
     if (is_mean) {

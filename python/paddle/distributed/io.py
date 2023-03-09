@@ -16,8 +16,173 @@ import os
 
 import paddle
 from paddle.fluid.framework import Program, static_only
-from paddle.fluid.io import load_persistables
 from paddle.framework import core, dygraph_not_support
+
+
+def _load_distributed_persistables(executor, dirname, main_program=None):
+    """
+    customized load_persistables for distributed training.
+    it should be used on parameter server,
+
+    Args:
+        executor(Executor): The executor to run for saving parameters.
+        dirname(str): The load directory path.
+        main_program(Program): The program whose parameters will be
+                            loaded. the main_program must be the pserver_program
+                            get after transpiler.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+
+            paddle.enable_static()
+            exe = fluid.Executor(fluid.CPUPlace())
+            param_path = "./my_paddle_model"
+            t = paddle.distributed.transpiler.DistributeTranspiler()
+            t.transpile(...)
+            pserver_prog = t.get_pserver_program(...)
+            _load_distributed_persistables(executor=exe, dirname=param_path, main_program=pserver_prog)
+    """
+
+    def __is_distributed_part_var(varname):
+        trainer_idx = varname.find(".trainer_")
+        block_idx = varname.find(".block")
+        return trainer_idx or block_idx
+
+    def __load_persistable_vars(executor, dirname, need_load_vars):
+        load_prog = Program()
+        load_block = load_prog.global_block()
+        need_delete_vars = []
+
+        for param in need_load_vars:
+            origin_var = param.origin
+            slice_var = param.slice
+            is_slice = param.is_slice
+            offset = param.offset
+
+            if is_slice:
+                slice = load_block.create_var(
+                    name=slice_var.name,
+                    type=slice_var.type,
+                    shape=slice_var.shape,
+                    dtype=slice_var.dtype,
+                    persistable=True,
+                )
+
+                load_block.append_op(
+                    type='load',
+                    inputs={},
+                    outputs={'Out': [slice]},
+                    attrs={
+                        'file_path': os.path.join(dirname, origin_var.name),
+                        'seek': offset,
+                        'shape': slice.shape,
+                    },
+                )
+            else:
+                origin = load_block.create_var(
+                    name="{}".format(origin_var.name),
+                    type=origin_var.type,
+                    shape=origin_var.shape,
+                    dtype=origin_var.dtype,
+                    persistable=True,
+                )
+                load_block.append_op(
+                    type='load',
+                    inputs={},
+                    outputs={'Out': [origin]},
+                    attrs={'file_path': os.path.join(dirname, origin_var.name)},
+                )
+
+        load_block.append_op(
+            type='delete_var',
+            inputs={'X': need_delete_vars},
+        )
+
+        executor.run(load_prog)
+
+    if not isinstance(main_program, Program):
+        raise TypeError("'main_program' should be an instance of Program.")
+
+    if not main_program._is_distributed:
+        raise ValueError(
+            "'_load_distributed_persistables' just be designed for distributed training."
+        )
+
+    if not main_program._ps_endpoint:
+        raise ValueError(
+            "'_load_distributed_persistables' need current_endpoint set in DistributeTranspiler.transpile"
+        )
+
+    need_load_vars = (
+        main_program._parameters_on_pservers.get_distributed_vars_by_ep(
+            main_program._ps_endpoint
+        )
+    )
+    __load_persistable_vars(executor, dirname, need_load_vars)
+
+
+@dygraph_not_support
+def load_persistables(executor, dirname, main_program=None, filename=None):
+    """
+    :api_attr: Static Graph
+
+    This API filters out all variables with ``persistable==True`` from the
+    given ``main_program`` and then tries to load these variables from the
+    directory ``dirname`` or the file ``filename``.
+
+    Use the ``dirname`` to specify the directory where persistable variables
+    (refer to :ref:`api_guide_model_save_reader_en`) were saved. If variables
+    were saved in separate files, set ``filename`` as None; if all variables
+    were saved in a single file, use ``filename`` to specify the file name.
+
+    Args:
+        executor(Executor): The executor used for loading persistable variables.
+                            See :ref:`api_guide_executor_en` for more details about it.
+        dirname(str): The directory path.
+        main_program(Program, optional): The program whose persistable variables will
+                                    be loaded. If it is None, the ``default_main_program``
+                                    will be used automatically. See :ref:`api_guide_Program_en`
+                                    for more about ``Program``.
+                                    Default: None.
+        filename(str, optional): The file which saved all persistable variables. If variables
+                                 were saved in separated files, set it to None.
+                                 Default: None.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+
+            paddle.enable_static()
+            exe = fluid.Executor(fluid.CPUPlace())
+            param_path = "./my_paddle_model"
+            prog = fluid.default_main_program()
+            paddle.distributed.io.load_persistables(executor=exe, dirname=param_path,
+                                       main_program=None)
+    """
+
+    if main_program and main_program._is_distributed:
+        _load_distributed_persistables(
+            executor, dirname=dirname, main_program=main_program
+        )
+    else:
+        paddle.static.io.load_vars(
+            executor,
+            dirname=dirname,
+            main_program=main_program,
+            predicate=is_persistable,
+            filename=filename,
+        )
 
 
 def _save_distributed_persistables(executor, dirname, main_program):
@@ -48,7 +213,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
             paddle.enable_static()
             exe = paddle.static.Executor(paddle.CPUPlace())
             param_path = "./my_paddle_model"
-            t = distribute_transpiler.DistributeTranspiler()
+            t = paddle.distributed.transpiler.DistributeTranspiler()
             t.transpile(...)
             train_program = t.get_trainer_program()
             _save_distributed_persistables(executor=exe, dirname=param_path, main_program=train_program)
