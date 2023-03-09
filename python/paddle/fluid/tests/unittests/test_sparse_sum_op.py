@@ -18,8 +18,6 @@ import numpy as np
 
 import paddle
 
-paddle.device.set_device("cpu")
-
 
 class TestSum(unittest.TestCase):
     # x: sparse, out: sparse
@@ -37,7 +35,6 @@ class TestSum(unittest.TestCase):
         else:
             sp_x = origin_x.detach().to_sparse_csr()
         sp_x.stop_gradient = False
-        print("——————")
         sp_out = paddle.sparse.sum(sp_x, dims, keepdim=keepdim)
 
         np.testing.assert_allclose(
@@ -45,9 +42,6 @@ class TestSum(unittest.TestCase):
         )
         dense_out.backward()
         sp_out.backward()
-        print(sp_x.shape, dims, keepdim)
-        print(sp_x)
-        print(sp_x.grad)
         np.testing.assert_allclose(
             sp_x.grad.to_dense().numpy(),
             (dense_x.grad * mask).numpy(),
@@ -61,7 +55,6 @@ class TestSum(unittest.TestCase):
         self.check_result([2, 5], 0, False, 'coo')
         self.check_result([2, 5], 1, False, 'coo')
         self.check_result([2, 5], None, True, 'csr')
-        self.check_result([2, 5], -1, True, 'csr')
         self.check_result([2, 5], -1, True, 'csr')
 
     def test_sum_3d(self):
