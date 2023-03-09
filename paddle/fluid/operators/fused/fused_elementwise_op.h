@@ -38,8 +38,9 @@ class FusedElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("Beta", "Beta value for the elementwise operator")
         .SetDefault(1.0f);
 
-    AddAttr<std::string>("fuse_activation",
-                         "Activation type from elt_act_onednn_fuse_pass")
+    AddAttr<std::string>(
+        "fuse_activation",
+        "Activation type from elementwise_activation_onednn_fuse_pass")
         .SetDefault("");
 
     AddAttr<float>("Scale_x", "Obtained from cpu_quantize_pass")
