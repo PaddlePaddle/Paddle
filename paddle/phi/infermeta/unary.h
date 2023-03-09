@@ -39,9 +39,7 @@ void AffineGridInferMeta(const MetaTensor& input,
                          bool align_corners,
                          MetaTensor* output);
 
-void AllGatherInferMeta(const MetaTensor& x,
-                        int nranks,
-                        MetaTensor* out);
+void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,

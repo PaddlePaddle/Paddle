@@ -120,9 +120,7 @@ void AffineGridInferMeta(const MetaTensor& input,
   output->share_lod(input);
 }
 
-void AllGatherInferMeta(const MetaTensor& x,
-                        int nranks,
-                        MetaTensor* out) {
+void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
   auto dim = x.dims();
   dim[0] = dim[0] * nranks;
   if (dim[0] < 0) dim[0] = -1;

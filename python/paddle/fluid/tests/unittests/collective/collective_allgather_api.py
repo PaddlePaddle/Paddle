@@ -19,12 +19,13 @@ import sys
 import test_collective_api_base as test_base
 
 import paddle
+import paddle.distributed as dist
 import paddle.fluid as fluid
 import paddle.fluid.data_feeder as data_feeder
 import paddle.framework as framework
-import paddle.distributed as dist
 
 paddle.enable_static()
+
 
 def all_gather_new(tensor_list, tensor, group=None):
     op_type = 'all_gather'
@@ -75,6 +76,7 @@ def all_gather_new(tensor_list, tensor, group=None):
     )
     tensor_list.clear()
     tensor_list.extend(paddle.split(out, nranks, 0))
+
 
 class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
     def __init__(self):
@@ -127,9 +129,13 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
             args['static_mode'] == 1
         ), "collective_allgather_api only support static graph mode"
         result = (
-            self.get_model_new(train_prog, startup_prog, rank, dtype=args["dtype"])
+            self.get_model_new(
+                train_prog, startup_prog, rank, dtype=args["dtype"]
+            )
             if args["use_comm_context"]
-            else self.get_model(train_prog, startup_prog, rank, dtype=args["dtype"])
+            else self.get_model(
+                train_prog, startup_prog, rank, dtype=args["dtype"]
+            )
         )
         exe = fluid.Executor(place)
         exe.run(startup_prog)

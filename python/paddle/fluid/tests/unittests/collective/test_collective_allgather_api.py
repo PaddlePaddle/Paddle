@@ -66,7 +66,6 @@ class TestCollectiveAllgatherAPI(TestDistBase):
                 need_envs={"USE_COMM_CONTEXT": "1"},
             )
 
-
     def test_allgather_gloo(self):
         dtypes_to_test = [
             "float16",
@@ -151,6 +150,7 @@ class TestCollectiveAllgatherAPI(TestDistBase):
                 static_mode="0",
                 dtype=dtype,
             )
+
 
 if __name__ == "__main__":
     unittest.main()

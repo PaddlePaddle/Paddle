@@ -57,32 +57,33 @@ void AllGatherKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-// TODO(yuwentao01) the embedded macro definition will get an error under windows, need to be solved in phi
+// TODO(yuwentao01) the embedded macro definition will get an error under
+// windows, need to be solved in phi
 #if NCCL_VERSION_CODE >= 21000
 PD_REGISTER_KERNEL(all_gather,
-        GPU,
-        ALL_LAYOUT,
-        phi::AllGatherKernel,
-        float,
-        double,
-        int,
-        uint8_t,
-        int8_t,
-        int64_t,
-        bool,
-        phi::dtype::bfloat16,
-        phi::dtype::float16) {}
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::AllGatherKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int64_t,
+                   bool,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
 #else
 PD_REGISTER_KERNEL(all_gather,
-        GPU,
-        ALL_LAYOUT,
-        phi::AllGatherKernel,
-        float,
-        double,
-        int,
-        uint8_t,
-        int8_t,
-        int64_t,
-        bool,
-        phi::dtype::float16) {}
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::AllGatherKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16) {}
 #endif

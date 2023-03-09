@@ -53,6 +53,7 @@ def broadcast_new(tensor, src, group=None, sync_op=True):
         },
     )
 
+
 class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
