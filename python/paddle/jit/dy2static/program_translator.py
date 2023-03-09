@@ -48,6 +48,7 @@ from .utils import (
     ast_to_source_code,
     func_to_source_code,
     input_specs_compatible,
+    is_paddle_func,
     make_hashable,
     prim_or_cinn_is_enabled,
     type_name,
@@ -150,6 +151,8 @@ def convert_to_static(function):
     """
     Transforms function of dygraph into static function using the cache mechanism.
 
+    Note(dev): It will return function.__func__ if encountering class method.
+
     Args:
         function(callable): The function with dygraph layers that will be converted into static layers.
     """
@@ -158,7 +161,11 @@ def convert_to_static(function):
 
     # Return directly if decorated with @not_to_static and DO NOT Cache it
     options = getattr(function, CONVERSION_OPTIONS, None)
-    if options is not None and options.not_convert:
+    # or ignore paddle api
+    need_skip = (options is not None and options.not_convert) or is_paddle_func(
+        function
+    )
+    if need_skip:
         return function.__func__ if inspect.ismethod(function) else function
 
     with _CACHE_LOCK:
@@ -415,7 +422,7 @@ class StaticFunction:
 
     def _clone(self):
         return self.__class__(
-            self._dygraph_function, self._input_spec, **self._kwargs
+            self.dygraph_function, self._input_spec, **self._kwargs
         )
 
     def __call__(self, *args, **kwargs):
@@ -513,14 +520,7 @@ class StaticFunction:
         Return:
             Outputs of dygraph function.
         """
-        if self._class_instance is not None:
-            dygraph_function = self._dygraph_function.__get__(
-                self._class_instance
-            )
-        else:
-            dygraph_function = self._dygraph_function
-
-        return dygraph_function(*args, **kwargs)
+        return self.dygraph_function(*args, **kwargs)
 
     def _raise_when_property(self):
         """raise RuntimeError when property=True
@@ -586,7 +586,7 @@ class StaticFunction:
         """
         Returns the source code of transformed static function for debugging.
         """
-        static_func = convert_to_static(self._dygraph_function)
+        static_func = convert_to_static(self.dygraph_function)
         source_code = func_to_source_code(static_func)
         return source_code
 
@@ -595,7 +595,10 @@ class StaticFunction:
         """
         Returns the original decorated function.
         """
-        return self._dygraph_function
+        if self._class_instance is not None:
+            return self._dygraph_function.__get__(self._class_instance)
+        else:
+            return self._dygraph_function
 
     @property
     def concrete_program(self):
