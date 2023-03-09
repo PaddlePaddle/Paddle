@@ -85,7 +85,7 @@ template <typename T,
           bool SingleValueIteration,
           bool AddMask,
           bool MaskBroadcastRow>
-void LaunchMultiHeadAttentionKernel(LaunchParams params,
+void LaunchMultiHeadAttentionKernel(const LaunchParams& params,
                                     const phi::GPUContext& ctx) {
   using Attention = AttentionKernel<T,
                                     ArchTag,
@@ -183,7 +183,7 @@ template <typename T,
           int KeysPerBlock,
           bool SingleValueIteration,
           bool AddMask>
-void DispatchFMHAMaskBroadcastRow(LaunchParams params,
+void DispatchFMHAMaskBroadcastRow(const LaunchParams& params,
                                   const phi::GPUContext& ctx) {
   if (params.mask_broadcast_row) {
     LaunchMultiHeadAttentionKernel<T,
@@ -212,7 +212,8 @@ template <typename T,
           int QueriesPerBlock,
           int KeysPerBlock,
           bool SingleValueIteration>
-void DispatchFMHAAddMask(LaunchParams params, const phi::GPUContext& ctx) {
+void DispatchFMHAAddMask(const LaunchParams& params,
+                         const phi::GPUContext& ctx) {
   if (params.mask_ptr != nullptr) {
     DispatchFMHAMaskBroadcastRow<T,
                                  ArchTag,
@@ -237,7 +238,7 @@ template <typename T,
           bool IsAligned,
           int QueriesPerBlock,
           int KeysPerBlock>
-void DispatchFMHASingleValueIteration(LaunchParams params,
+void DispatchFMHASingleValueIteration(const LaunchParams& params,
                                       const phi::GPUContext& ctx) {
   if (params.value_head_size <= KeysPerBlock) {
     DispatchFMHAAddMask<T,
@@ -261,7 +262,8 @@ void DispatchFMHASingleValueIteration(LaunchParams params,
 }
 
 template <typename T, typename ArchTag, bool IsAligned>
-void DispatchFMHABlockSize(LaunchParams params, const phi::GPUContext& ctx) {
+void DispatchFMHABlockSize(const LaunchParams& params,
+                           const phi::GPUContext& ctx) {
   if (params.value_head_size > 64) {
     DispatchFMHASingleValueIteration<T, ArchTag, IsAligned, 32, 128>(params,
                                                                      ctx);
@@ -272,7 +274,8 @@ void DispatchFMHABlockSize(LaunchParams params, const phi::GPUContext& ctx) {
 }
 
 template <typename T, typename ArchTag>
-void DispatchFMHAIsAligned(LaunchParams params, const phi::GPUContext& ctx) {
+void DispatchFMHAIsAligned(const LaunchParams& params,
+                           const phi::GPUContext& ctx) {
   if (reinterpret_cast<uintptr_t>(params.query_ptr) % 16 == 0 &&
       reinterpret_cast<uintptr_t>(params.key_ptr) % 16 == 0 &&
       reinterpret_cast<uintptr_t>(params.value_ptr) % 16 == 0 &&
@@ -295,7 +298,8 @@ void DispatchFMHAIsAligned(LaunchParams params, const phi::GPUContext& ctx) {
 }
 
 template <typename T>
-void DispatchFMHAArchTag(LaunchParams params, const phi::GPUContext& ctx) {
+void DispatchFMHAArchTag(const LaunchParams& params,
+                         const phi::GPUContext& ctx) {
   const int compute_capability = ctx.GetComputeCapability();
   if (compute_capability == 80) {
     DispatchFMHAIsAligned<T, cutlass::arch::Sm80>(params, ctx);
@@ -311,7 +315,7 @@ void DispatchFMHAArchTag(LaunchParams params, const phi::GPUContext& ctx) {
   }
 }
 
-void DispatchFusedMultiheadAttentionKernel(LaunchParams params,
+void DispatchFusedMultiheadAttentionKernel(const LaunchParams& params,
                                            const phi::GPUContext& ctx) {
   if (params.datatype == DataType::FLOAT16) {
     return DispatchFMHAArchTag<cutlass::half_t>(params, ctx);
