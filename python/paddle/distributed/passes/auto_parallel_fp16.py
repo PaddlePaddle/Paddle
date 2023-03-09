@@ -375,7 +375,6 @@ class FP16State:
                     out_var.desc.set_dtype(in_var.dtype)
 
             idx += num_cast_ops + 1
-        print("self.forward_input_cast_ops: ", self.forward_input_cast_ops)
         block._sync_with_cpp()
 
     def _insert_forward_cast_ops(
@@ -411,15 +410,6 @@ class FP16State:
                     self.forward_input_cast_ops[op.desc.original_id()] += [
                         (cast_name, in_var.name, dst_dtype, src_dtype, in_name)
                     ]
-                    print(
-                        "insert forward cast: ",
-                        cast_name,
-                        in_var.name,
-                        dst_dtype,
-                        src_dtype,
-                        in_name,
-                    )
-                    print(str(op))
 
                     in_var_dist_attr = consume_op_attr.get_input_dist_attr(
                         in_var.name
@@ -495,8 +485,7 @@ class FP16State:
             assert out_var.dtype == dst_dtype, "{}, {}".format(
                 str(out_var), dst_dtype
             )
-        if int(forward_op_id) == 610:
-            print("forward_op_id = 610", str(op))
+
         for (
             cast_name,
             src_name,
@@ -504,83 +493,73 @@ class FP16State:
             src_dtype,
             slot_name,
         ) in self.forward_input_cast_ops[forward_op_id]:
-            if int(forward_op_id) == 610:
-                print("forward_op_id = 610 insert: ")
-                print(cast_name, src_name, dst_dtype, src_dtype, slot_name)
-
-            # some forward output is not need by backward computation, e.g. logit in softmax_with_cross_entropy
-            if slot_name not in op.input_names and op.type in [
-                'softmax_with_cross_entropy_grad'
-            ]:
-                continue
 
             # rename input
-            assert src_name in op.input(
-                slot_name
-            ), "var: {} not in op's {}. {}".format(src_name, slot_name, str(op))
-            src_var_dist_attr = grad_op_attr.get_input_dist_attr(src_name)
-            assert src_var_dist_attr is not None
-            op._rename_input(src_name, cast_name)
-            grad_op_attr.set_input_dist_attr(cast_name, src_var_dist_attr)
-            if int(forward_op_id) == 610:
-                print("here0")
+            # some forward output is not need by backward computation, e.g. logit in softmax_with_cross_entropy
+            if slot_name in op.input_names:
+
+                assert src_name in op.input(
+                    slot_name
+                ), "var: {} not in op's {}. {}".format(
+                    src_name, slot_name, str(op)
+                )
+                src_var_dist_attr = grad_op_attr.get_input_dist_attr(src_name)
+                assert src_var_dist_attr is not None
+                op._rename_input(src_name, cast_name)
+                grad_op_attr.set_input_dist_attr(cast_name, src_var_dist_attr)
+
             # create cast grad
             grad_slot_name = slot_name + "@GRAD"
-            if grad_slot_name not in op.output_names:
-                continue
-            if int(forward_op_id) == 610:
-                print("here1")
-            # some forward input maybe stop_gradient=True, e.g. input_mask
-            if len(op.output(grad_slot_name)) == 0:
-                continue
-            assert (
-                len(op.output(grad_slot_name)) == 1
-            ), "[{}], Current Op: {}".format(grad_slot_name, str(op))
-            grad_name = op.output(grad_slot_name)[0]
-            grad = block.var(grad_name)
-            grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)
-            assert grad_dist_attr is not None, "{}".format(grad_name)
-            ref_mesh = grad_dist_attr.process_mesh
-            ref_mapping = grad_dist_attr.dims_mapping
+            if grad_slot_name in op.output_names:
+                # some forward input maybe stop_gradient=True, e.g. input_mask
+                if len(op.output(grad_slot_name)) == 0:
+                    continue
+                assert (
+                    len(op.output(grad_slot_name)) == 1
+                ), "[{}], Current Op: {}".format(grad_slot_name, str(op))
+                grad_name = op.output(grad_slot_name)[0]
+                grad = block.var(grad_name)
+                grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)
+                assert grad_dist_attr is not None, "{}".format(grad_name)
+                ref_mesh = grad_dist_attr.process_mesh
+                ref_mapping = grad_dist_attr.dims_mapping
 
-            cast_grad = block.create_var(
-                name=unique_name.generate_with_ignorable_key(
-                    "".join([cast_name, '@GRAD'])
-                ),
-                dtype=dst_dtype,
-                shape=grad.shape,
-                type=grad.type,
-                persistable=grad.persistable,
-                stop_gradient=grad.stop_gradient,
-            )
-            if int(forward_op_id) == 610:
-                print("here2: ", str(cast_grad))
-            dist_context.set_tensor_dist_attr_for_program(
-                cast_grad, grad_dist_attr
-            )
-            op._rename_output(grad_name, cast_grad.name)
-            grad_op_attr.set_output_dist_attr(cast_grad.name, grad_dist_attr)
+                cast_grad = block.create_var(
+                    name=unique_name.generate_with_ignorable_key(
+                        "".join([cast_name, '@GRAD'])
+                    ),
+                    dtype=dst_dtype,
+                    shape=grad.shape,
+                    type=grad.type,
+                    persistable=grad.persistable,
+                    stop_gradient=grad.stop_gradient,
+                )
+                dist_context.set_tensor_dist_attr_for_program(
+                    cast_grad, grad_dist_attr
+                )
+                op._rename_output(grad_name, cast_grad.name)
+                grad_op_attr.set_output_dist_attr(
+                    cast_grad.name, grad_dist_attr
+                )
 
-            # add cast
-            cast_op = block._insert_op_without_sync(
-                idx + 1,
-                type="cast",
-                inputs={"X": [cast_grad.name]},
-                outputs={"Out": [grad.name]},
-                attrs={
-                    "in_dtype": dst_dtype,
-                    "out_dtype": src_dtype,
-                    OP_ROLE_KEY: OpRole.Backward,
-                },
-            )
-            if int(forward_op_id) == 610:
-                print("here2: ", str(cast_op))
-            grad.desc.set_dtype(src_dtype)
+                # add cast
+                cast_op = block._insert_op_without_sync(
+                    idx + 1,
+                    type="cast",
+                    inputs={"X": [cast_grad.name]},
+                    outputs={"Out": [grad.name]},
+                    attrs={
+                        "in_dtype": dst_dtype,
+                        "out_dtype": src_dtype,
+                        OP_ROLE_KEY: OpRole.Backward,
+                    },
+                )
+                grad.desc.set_dtype(src_dtype)
 
-            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                cast_op, ref_mesh, ref_mapping, dist_context
-            )
-            num_cast_ops += 1
+                naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    cast_op, ref_mesh, ref_mapping, dist_context
+                )
+                num_cast_ops += 1
 
         return num_cast_ops
 
