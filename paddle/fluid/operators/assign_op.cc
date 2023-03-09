@@ -124,7 +124,7 @@ class AssignCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     auto dx_ptr = this->GetOutputPtr(&input_grad);
     std::string dx_name = this->GetOutputName(input_grad);
 
-    VLOG(6) << "Running abs_grad composite func";
+    VLOG(6) << "Running assign_grad composite func";
     prim::assign_grad<prim::DescTensor>(out_grad, dx_ptr);
     this->RecoverOutputName(input_grad, dx_name);
   }
