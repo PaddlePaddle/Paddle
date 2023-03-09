@@ -137,6 +137,4 @@ void SvdKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(svd, CPU, ALL_LAYOUT, phi::SvdKernel, float, double) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
-}
+PD_REGISTER_KERNEL(svd, CPU, ALL_LAYOUT, phi::SvdKernel, float, double) {}
