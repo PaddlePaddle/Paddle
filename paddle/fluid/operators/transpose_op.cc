@@ -143,7 +143,12 @@ class Transpose2Op : public TransposeOp {
       : TransposeOp(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    TransposeOp::InferShape(ctx);
+    using CompatMetaTensor = framework::CompatMetaTensor;
+    CompatMetaTensor x(ctx->GetInputVarPtrs("X")[0], ctx->IsRuntime());
+    CompatMetaTensor out(ctx->GetOutputVarPtrs("Out")[0], ctx->IsRuntime());
+    std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
+    phi::TransposeInferMeta(x, axis, &out);
+
     if (!ctx->HasOutput("XShape")) return;
     const auto &in_dims = ctx->GetInputDim("X");
     std::vector<int64_t> x_shape_dim(in_dims.size() + 1);
@@ -290,10 +295,6 @@ DECLARE_INFER_SHAPE_FUNCTOR(transpose,
                             TransposeInferShapeFunctor,
                             PD_INFER_META(phi::TransposeInferMeta));
 
-DECLARE_INFER_SHAPE_FUNCTOR(transpose2,
-                            Transpose2InferShapeFunctor,
-                            PD_INFER_META(phi::TransposeInferMeta));
-
 DECLARE_INFER_SHAPE_FUNCTOR(transpose_grad,
                             TransposeGradInferShapeFunctor,
                             PD_INFER_META(phi::TransposeGradInferMeta));
@@ -310,6 +311,7 @@ REGISTER_OPERATOR(
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     TransposeInferShapeFunctor);
+
 REGISTER_OPERATOR(transpose_grad,
                   ops::TransposeOpGrad,
                   ops::TransposeGradInferVarType,
@@ -320,7 +322,6 @@ REGISTER_OPERATOR(transpose2,
                   ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
                   ops::Transpose2GradMaker<paddle::imperative::OpBase>,
-                  Transpose2InferShapeFunctor,
                   ops::Transpose2CompositeGradOpMaker);
 REGISTER_OPERATOR(transpose2_grad,
                   ops::Transpose2OpGrad,
