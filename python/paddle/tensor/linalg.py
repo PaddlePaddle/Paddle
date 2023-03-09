@@ -99,6 +99,7 @@ def transpose(x, perm, name=None):
                 'float64',
                 'int32',
                 'int64',
+                'uint16',
                 'complex64',
                 'complex128',
             ],

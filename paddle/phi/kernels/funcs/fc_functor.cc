@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 

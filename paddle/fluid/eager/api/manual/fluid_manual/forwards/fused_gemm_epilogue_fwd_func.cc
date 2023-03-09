@@ -20,10 +20,10 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-paddle::experimental::Tensor fused_gemm_epilogue_dygraph_function(
-    const paddle::experimental::Tensor& X,
-    const paddle::experimental::Tensor& Y,
-    const paddle::experimental::Tensor& Bias,
+paddle::Tensor fused_gemm_epilogue_dygraph_function(
+    const paddle::Tensor& X,
+    const paddle::Tensor& Y,
+    const paddle::Tensor& Bias,
     const paddle::framework::AttributeMap& attr_map) {
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "fused_gemm_epilogue dygraph",
@@ -36,8 +36,7 @@ paddle::experimental::Tensor fused_gemm_epilogue_dygraph_function(
       paddle::imperative::AmpLevel::O0) {
     VLOG(5) << "Check and Prepare For AMP";
 
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{X}, {Y}, {Bias}};
 
     auto amp_dst_dtype =
@@ -90,7 +89,7 @@ paddle::experimental::Tensor fused_gemm_epilogue_dygraph_function(
       true,
       {});
 
-  paddle::experimental::Tensor Out;
+  paddle::Tensor Out;
   egr::EagerUtils::GetOutput(outs["Out"][0], &Out);
 
   {
