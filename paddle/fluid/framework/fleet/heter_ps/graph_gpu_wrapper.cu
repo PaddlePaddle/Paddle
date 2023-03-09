@@ -478,13 +478,15 @@ void GraphGpuWrapper::load_edge_file(
     std::string graph_data_local_path,
     int part_num,
     bool reverse,
-    const std::vector<bool> &is_reverse_edge_map) {
+    const std::vector<bool> &is_reverse_edge_map,
+    bool use_weight) {
   reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->cpu_graph_table_->parse_edge_and_load(etype2files,
                                               graph_data_local_path,
                                               part_num,
                                               reverse,
-                                              is_reverse_edge_map);
+                                              is_reverse_edge_map,
+                                              use_weight);
 }
 
 int GraphGpuWrapper::load_node_file(std::string name, std::string filepath) {
@@ -583,7 +585,8 @@ void GraphGpuWrapper::load_node_and_edge(
                                                   graph_data_local_path,
                                                   part_num,
                                                   reverse,
-                                                  is_reverse_edge_map);
+                                                  is_reverse_edge_map,
+                                                  false);
 }
 
 void GraphGpuWrapper::add_table_feat_conf(std::string table_name,
@@ -756,9 +759,11 @@ void GraphGpuWrapper::build_gpu_graph_fea(GpuPsCommGraphFea &sub_graph_fea,
 }
 
 NeighborSampleResult GraphGpuWrapper::graph_neighbor_sample_v3(
-    NeighborSampleQuery q, bool cpu_switch, bool compress = true) {
+    NeighborSampleQuery q, bool cpu_switch, bool compress,
+    bool weighted) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
-      ->graph_neighbor_sample_v3(q, cpu_switch, compress);
+      ->graph_neighbor_sample_v3(q, cpu_switch, compress,
+                                 weighted);
 }
 
 NeighborSampleResultV2 GraphGpuWrapper::graph_neighbor_sample_all_edge_type(
@@ -767,10 +772,12 @@ NeighborSampleResultV2 GraphGpuWrapper::graph_neighbor_sample_all_edge_type(
     uint64_t *key,
     int sample_size,
     int len,
-    std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs) {
+    std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
+    bool weighted) {
   return reinterpret_cast<GpuPsGraphTable *>(graph_table)
       ->graph_neighbor_sample_all_edge_type(
-          gpu_id, edge_type_len, key, sample_size, len, edge_type_graphs);
+          gpu_id, edge_type_len, key, sample_size, len, edge_type_graphs,
+          weighted);
 }
 
 std::vector<std::shared_ptr<phi::Allocation>>
@@ -861,7 +868,7 @@ std::vector<uint64_t> GraphGpuWrapper::graph_neighbor_sample(
   auto neighbor_sample_res =
       reinterpret_cast<GpuPsGraphTable *>(graph_table)
           ->graph_neighbor_sample_v2(
-              gpu_id, idx, cuda_key, sample_size, key.size(), false, true);
+              gpu_id, idx, cuda_key, sample_size, key.size(), false, true, false);
   int *actual_sample_size = new int[key.size()];
   cudaMemcpy(actual_sample_size,
              neighbor_sample_res.actual_sample_size,

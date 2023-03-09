@@ -95,7 +95,8 @@ class GpuPsGraphTable
   NodeQueryResult graph_node_sample(int gpu_id, int sample_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
                                                 bool cpu_switch,
-                                                bool compress);
+                                                bool compress,
+                                                bool weighted);
   NeighborSampleResult graph_neighbor_sample(int gpu_id,
                                              uint64_t *key,
                                              int sample_size,
@@ -106,14 +107,28 @@ class GpuPsGraphTable
                                                 int sample_size,
                                                 int len,
                                                 bool cpu_query_switch,
-                                                bool compress);
+                                                bool compress,
+                                                bool weighted);
   NeighborSampleResultV2 graph_neighbor_sample_all_edge_type(
       int gpu_id,
       int edge_type_len,
       uint64_t *key,
       int sample_size,
       int len,
-      std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs);
+      std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
+      bool weighted);
+  void weighted_sample(GpuPsCommGraph& graph,
+                       GpuPsNodeInfo* node_info_list,
+                       int* actual_size_array,
+                       uint64_t* sample_array,
+                       int* neighbor_count_ptr,
+                       int cur_gpu_id,
+                       int remote_gpu_id,
+                       int sample_size,
+                       int shard_len,
+                       bool need_neighbor_count,
+                       unsigned long long random_seed,
+                       int default_value);
   std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(
       int gpu_id, int edge_type_len);
   void get_node_degree(int gpu_id,

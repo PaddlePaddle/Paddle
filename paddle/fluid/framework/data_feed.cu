@@ -1572,7 +1572,8 @@ GraphDataGenerator::SampleNeighbors(int64_t *uniq_nodes,
       reinterpret_cast<uint64_t *>(uniq_nodes),
       sample_size,
       len,
-      edge_type_graph_);
+      edge_type_graph_,
+      weighted_sample_);
 
   int *all_sample_count_ptr =
       reinterpret_cast<int *>(sample_res.actual_sample_size_mem->ptr());
@@ -2267,7 +2268,8 @@ int GraphDataGenerator::FillWalkBuf() {
                  (uint64_t)(d_type_keys + start),
                  walk_degree_,
                  tmp_len);
-    auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true);
+    auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true,
+                                                              weighted_sample_);
 
     int step = 1;
     VLOG(2) << "sample edge type: " << path[0] << " step: " << 1;
@@ -2339,7 +2341,8 @@ int GraphDataGenerator::FillWalkBuf() {
                    1,
                    sample_res.total_sample_size);
       int sample_key_len = sample_res.total_sample_size;
-      sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true);
+      sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true,
+                                                           weighted_sample_);
       total_samples += sample_res.total_sample_size;
       if (!sage_mode_) {
         if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
@@ -2513,7 +2516,8 @@ int GraphDataGenerator::FillWalkBufMultiPath() {
                  (uint64_t)(d_type_keys + start),
                  walk_degree_,
                  tmp_len);
-    auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true);
+    auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true,
+                                                              weighted_sample_);
 
     int step = 1;
     VLOG(2) << "sample edge type: " << path[0] << " step: " << 1;
@@ -2583,7 +2587,8 @@ int GraphDataGenerator::FillWalkBufMultiPath() {
                    1,
                    sample_res.total_sample_size);
       int sample_key_len = sample_res.total_sample_size;
-      sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true);
+      sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true,
+                                                           weighted_sample_);
       total_samples += sample_res.total_sample_size;
       if (!sage_mode_) {
         if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
@@ -2964,6 +2969,8 @@ void GraphDataGenerator::SetConfig(
   train_table_cap_ = graph_config.train_table_cap();
   infer_table_cap_ = graph_config.infer_table_cap();
   get_degree_ = graph_config.get_degree();
+  weighted_sample_ = graph_config.weighted_sample();
+
   epoch_finish_ = false;
   VLOG(1) << "Confirm GraphConfig, walk_degree : " << walk_degree_
           << ", walk_len : " << walk_len_ << ", window : " << window_
