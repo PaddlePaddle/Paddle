@@ -576,7 +576,7 @@ class SparseAttention(MultiHeadAttention):
             attn_mask = attn_mask.squeeze()
             if len(attn_mask.shape) == 1:
                 attn_mask = attn_mask.reshape((1, attn_mask.shape[0]))
-        out = paddle.sparse.nn.functional.attention(
+        out, _ = paddle.sparse.nn.functional.attention(
             q, k, v, self.sparse_mask, attn_mask=attn_mask
         )
 
