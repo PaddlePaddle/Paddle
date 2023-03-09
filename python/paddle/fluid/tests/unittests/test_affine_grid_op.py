@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -133,12 +133,10 @@ class TestAffineGridOp(OpTest):
             }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['Theta'], 'Output', no_grad_set=['OutputShape'], check_eager=True
-        )
+        self.check_grad(['Theta'], 'Output', no_grad_set=['OutputShape'])
 
     def initTestCase(self):
         self.theta_shape = (17, 2, 3)
