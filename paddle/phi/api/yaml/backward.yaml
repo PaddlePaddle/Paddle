@@ -804,6 +804,7 @@
   kernel :
     func : log_grad
   backward : log_double_grad
+  composite : log_grad(x, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : log_loss_grad

@@ -2650,7 +2650,6 @@ Scope* OperatorWithKernel::PrepareData(
                           input_names.size(),
                           input_defs.size()));
     for (size_t i = 0; i < input_defs.size(); ++i) {
-      auto& in_def = input_defs.at(i);
       std::string input_name = input_names[i];
       auto iter = ctx->inputs.find(input_name);
       if (iter == ctx->inputs.end()) {
@@ -2659,6 +2658,15 @@ Scope* OperatorWithKernel::PrepareData(
       auto& ins_vector = iter->second;
       bool should_skip_input =
           no_buffer_ins && no_buffer_ins->count(input_name) > 0;
+
+      phi::TensorArgDef in_def = input_defs.at(i);
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      // When the backend of input tensor arg_def is CUSTOM, we need to set it
+      // to the actual backend by expected_kernel_key.
+      if (in_def.backend == phi::Backend::CUSTOM) {
+        in_def.SetBackend(expected_kernel_key.backend());
+      }
+#endif
       prepare_input_data(input_name, &ins_vector, &in_def, should_skip_input);
     }
 #ifdef PADDLE_WITH_MKLDNN

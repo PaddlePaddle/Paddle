@@ -92,8 +92,7 @@ void GetClassInterval(const gpuStream_t& stream,
         num_classes_per_device_ptr,
         num_classes_per_device_ptr,
         num_classes_per_device.numel(),
-        paddle::platform::ToNCCLDataType(paddle::framework::TransToProtoVarType(
-            num_classes_per_device.dtype())),
+        phi::ToNCCLDataType(num_classes_per_device.dtype()),
         ncclSum,
         comm->comm(),
         calcu_stream));
@@ -265,8 +264,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
   int blocks = NumBlocks(N);
   int threads = kNumCUDAThreads;
-  const auto& label_type =
-      paddle::framework::TransToProtoVarType(labels.dtype());
+  const auto& label_type = labels.dtype();
 
   // copy logits to softmax variable since we can't modify logits,
   // and it also be used when calculate grad
@@ -291,7 +289,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
   // theta = acos(x_i)
   // (cos(m1 * theta + m2) - m3)
   // save match_logits, used for gradient computation.
-  if (label_type == paddle::framework::proto::VarType::INT32) {
+  if (label_type == phi::DataType::INT32) {
     typedef int32_t LabelT;
     AddMarginToPositiveLogitsKernel<T>
         <<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
@@ -305,7 +303,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
             N,
             D,
             class_interval.data<int>());
-  } else if (label_type == paddle::framework::proto::VarType::INT64) {
+  } else if (label_type == phi::DataType::INT64) {
     typedef int64_t LabelT;
     AddMarginToPositiveLogitsKernel<T>
         <<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
@@ -357,15 +355,14 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
-          logits_max_buff,
-          logits_max_buff,
-          logits_max.numel(),
-          paddle::platform::ToNCCLDataType(
-              paddle::framework::TransToProtoVarType(logits_max.dtype())),
-          ncclMax,
-          comm->comm(),
-          stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::ncclAllReduce(logits_max_buff,
+                                      logits_max_buff,
+                                      logits_max.numel(),
+                                      phi::ToNCCLDataType(logits_max.dtype()),
+                                      ncclMax,
+                                      comm->comm(),
+                                      stream));
     }
   }
 #endif
@@ -403,8 +400,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
           sum_exp_logits_buff,
           sum_exp_logits_buff,
           sum_exp_logits.numel(),
-          paddle::platform::ToNCCLDataType(
-              paddle::framework::TransToProtoVarType(sum_exp_logits.dtype())),
+          phi::ToNCCLDataType(sum_exp_logits.dtype()),
           ncclSum,
           comm->comm(),
           stream));
@@ -423,7 +419,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
 
   phi::funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, loss, static_cast<T>(0.0));
-  if (label_type == paddle::framework::proto::VarType::INT32) {
+  if (label_type == phi::DataType::INT32) {
     typedef int32_t LabelT;
     HardLabelSoftmaxWithCrossEntropyKernel<T, LabelT>
         <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_ptr,
@@ -433,7 +429,7 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
                                                    N,
                                                    D,
                                                    class_interval.data<int>());
-  } else if (label_type == paddle::framework::proto::VarType::INT64) {
+  } else if (label_type == phi::DataType::INT64) {
     typedef int64_t LabelT;
     HardLabelSoftmaxWithCrossEntropyKernel<T, LabelT>
         <<<blocks, threads, 0, dev_ctx.stream()>>>(loss_ptr,
@@ -458,15 +454,14 @@ void MarginCrossEntropyKernel(const Context& dev_ctx,
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
       task->Wait();
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
-          loss_ptr,
-          loss_ptr,
-          loss->numel(),
-          paddle::platform::ToNCCLDataType(
-              paddle::framework::TransToProtoVarType(loss->dtype())),
-          ncclSum,
-          comm->comm(),
-          stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::ncclAllReduce(loss_ptr,
+                                      loss_ptr,
+                                      loss->numel(),
+                                      phi::ToNCCLDataType(loss->dtype()),
+                                      ncclSum,
+                                      comm->comm(),
+                                      stream));
     }
   }
 #endif

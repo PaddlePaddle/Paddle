@@ -40,6 +40,9 @@ from paddle.incubate.distributed.fleet.base import Mode
 from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
 
 from paddle.incubate.distributed.fleet.parameter_server import version
+from paddle.incubate.distributed.fleet.parameter_server.pslib.optimizer_factory import (
+    DistributedAdam,
+)
 from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     get_sparse_tablenames,
 )
