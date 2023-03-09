@@ -27,7 +27,7 @@ namespace lite {
 // Just tell by the op_types.
 struct SimpleOpTeller : public Teller {
   SimpleOpTeller() {
-    std::vector<std::string> lite_ops = paddle::lite::GetAllOps();
+    std::vector<std::string> lite_ops = paddle::lite_api::GetAllOps();
     auto is_non_inst = [](const std::string& op) -> bool {
       const std::vector<std::string> ops = {"feed", "fetch", "while"};
       return std::find(ops.begin(), ops.end(), op) != ops.end();

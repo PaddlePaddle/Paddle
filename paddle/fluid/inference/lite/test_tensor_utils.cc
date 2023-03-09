@@ -79,7 +79,7 @@ void test_lite_tensor_data_ptr(PrecisionType precision_type) {
                              PrecisionType precision_type,
                              TargetType target_type);
   const int count = 4;
-  paddle::lite::Tensor lite_tensor;
+  paddle::lite_api::Tensor lite_tensor;
   lite_tensor.Resize({count});
   auto* lite_tensor_data = lite_tensor.mutable_data<T>();
   for (size_t i = 0; i < count; ++i) {
@@ -109,7 +109,7 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
   lod_tensor.Resize({4, 1});
   lod_tensor.set_lod(lod);
   // Create lite::Tensor and copy.
-  paddle::lite::Tensor lite_tensor;
+  paddle::lite_api::Tensor lite_tensor;
   paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
   TensorCopyAsync(&lite_api_tensor, lod_tensor, ctx);
   // Copy to LoDTensor.
@@ -134,7 +134,7 @@ void test_tensor_share(const platform::DeviceContext& ctx) {
   lod_tensor.Resize({4, 1});
   lod_tensor.set_lod(lod);
   // Create lite::Tensor and share.
-  paddle::lite::Tensor lite_tensor;
+  paddle::lite_api::Tensor lite_tensor;
   paddle::lite_api::Tensor lite_api_tensor(&lite_tensor);
   TensorDataShare(&lite_api_tensor, &lod_tensor);
   // Copy to LoDTensor.
