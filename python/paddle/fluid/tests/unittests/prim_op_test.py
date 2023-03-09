@@ -82,7 +82,6 @@ class OpTestUtils:
         api,
         op_proto_ins,
         op_proto_attrs,
-        np_inputs,
         kernel_sig,
     ):
         """map from `op proto inputs and attrs` to `api input list and api attrs dict`
@@ -105,7 +104,7 @@ class OpTestUtils:
         def to_defaults_list(params, defaults):
             return [defaults[p] for p in params if p in defaults]
 
-        def parse_attri_value(name, op_inputs, op_proto_attrs, np_inputs):
+        def parse_attri_value(name, op_inputs, op_proto_attrs):
             """parse true value from inputs and attrs, if there is no name passed by OpTest, return Empty
             1. if the name in op_attrs, use the op_attrs[name]
             2. if the name in op_inputs, convert the op_inputs to [type of default value]
@@ -118,12 +117,6 @@ class OpTestUtils:
                     # why don't use numpy().item() : if the Tensor is float64, we will change it to python.float32, where we loss accuracy: [allclose_op]
                     # why we reconstruct a tensor: because we want the tensor in cpu.
                     if in_dygraph_mode():
-                        if isinstance(np_inputs[name], list):
-                            return [
-                                paddle.to_tensor(
-                                    op_inputs[name][0].numpy(), place='cpu'
-                                )
-                            ]
                         return paddle.to_tensor(
                             op_inputs[name][0].numpy(), place='cpu'
                         )
@@ -159,14 +152,10 @@ class OpTestUtils:
         ), "Error happens. contack xiongkun03 to solve."
         inputs_sig, attrs_sig, outputs_sig = kernel_sig
         inputs_and_attrs = inputs_sig + attrs_sig
-        # use tuple to distinguish list(Tensor)
         input_arguments = [
-            tuple(op_proto_ins.get(name, Empty()))
-            if name in np_inputs and isinstance(np_inputs[name], list)
-            else op_proto_ins.get(name, Empty())
-            for name in inputs_sig
+            op_proto_ins.get(name, Empty()) for name in inputs_sig
         ] + [
-            parse_attri_value(name, op_proto_ins, op_proto_attrs, np_inputs)
+            parse_attri_value(name, op_proto_ins, op_proto_attrs)
             for name in attrs_sig
         ]
         results = []
@@ -197,13 +186,13 @@ class OpTestUtils:
     def assumption_assert_and_transform(cls, args, inp_num):
         """
         transform inputs by the following rules:
+            Note: it may not be possible to distinguish list with one Tensor,you should use wrapper to distinguish.
             1. [Tensor] -> Tensor
-            2. (Tensor) -> [Tensor]
-            2. (Tensor, Tensor, ...) -> list of Tensors
+            2. [Tensor, Tensor, ...] -> list of Tensors
             3. None -> None
             4. Others: raise Error
 
-        only support "X" is list or tuple of Tensor, currently don't support other structure like dict.
+        only support "X" is list of Tensor, currently don't support other structure like dict.
         """
         inp_args = [
             [inp] if inp is None else inp for inp in args[:inp_num]
@@ -211,15 +200,10 @@ class OpTestUtils:
         for inp in inp_args:
             assert isinstance(
                 inp, (list, tuple)
-            ), "currently only support `X` is [Tensor] or (Tensor), don't support other structure."
-        args = [
-            inp[0]
-            if isinstance(inp, list)
-            else list(inp)
-            if isinstance(inp, (list, tuple))
-            else inp
-            for inp in inp_args
-        ] + args[inp_num:]
+            ), "currently only support `X` is [Tensor], don't support other structure."
+        args = [inp[0] if len(inp) == 1 else inp for inp in inp_args] + args[
+            inp_num:
+        ]
         return args
 
     @classmethod
@@ -448,7 +432,6 @@ class PrimForwardChecker:
             self.python_api,
             eager_tensor_inputs,
             attrs_outputs,
-            self.inputs,
             self.kernel_sig,
         )
         inputs_sig, _, _ = self.kernel_sig
@@ -589,7 +572,6 @@ class PrimForwardChecker:
                 self.python_api,
                 static_inputs,
                 attrs,
-                self.inputs,
                 self.kernel_sig,
             )
             inputs_sig, _, _ = self.kernel_sig
@@ -659,7 +641,6 @@ class PrimForwardChecker:
             self.python_api,
             eager_tensor_inputs,
             attrs_outputs,
-            self.inputs,
             self.kernel_sig,
         )
         inputs_sig, _, _ = self.kernel_sig
@@ -740,7 +721,6 @@ class PrimForwardChecker:
             self.python_api,
             eager_tensor_inputs,
             attrs_outputs,
-            self.inputs,
             self.kernel_sig,
         )
         inputs_sig, _, _ = self.kernel_sig
@@ -900,7 +880,6 @@ class PrimGradChecker(PrimForwardChecker):
             self.python_api,
             eager_tensor_inputs,
             attrs_outputs,
-            self.inputs,
             self.kernel_sig,
         )
         inputs_sig, _, outputs_sig = self.kernel_sig
@@ -1004,7 +983,6 @@ class PrimGradChecker(PrimForwardChecker):
                 self.python_api,
                 static_inputs,
                 attrs,
-                self.inputs,
                 self.kernel_sig,
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
@@ -1109,7 +1087,6 @@ class PrimGradChecker(PrimForwardChecker):
             self.python_api,
             eager_tensor_inputs,
             attrs_outputs,
-            self.inputs,
             self.kernel_sig,
         )
         inputs_sig, _, outputs_sig = self.kernel_sig
@@ -1221,7 +1198,6 @@ class PrimGradChecker(PrimForwardChecker):
             self.python_api,
             eager_tensor_inputs,
             attrs_outputs,
-            self.inputs,
             self.kernel_sig,
         )
         inputs_sig, _, outputs_sig = self.kernel_sig

@@ -973,7 +973,6 @@ class OpTest(unittest.TestCase):
                 self.python_api,
                 eager_tensor_inputs,
                 attrs_outputs,
-                self.inputs,
                 kernel_sig,
             )
             """ we directly return the cal_python_api value because the value is already tensor.
