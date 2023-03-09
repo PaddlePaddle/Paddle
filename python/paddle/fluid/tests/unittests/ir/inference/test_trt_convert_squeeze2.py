@@ -29,7 +29,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        if len(inputs['in_data'].shape) <= max(attrs[0]['axes']):
+        if len(inputs['in_data'].shape) <= max(self.axes):
             return False
         return True
 
