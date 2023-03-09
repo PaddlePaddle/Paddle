@@ -928,15 +928,6 @@ class Engine:
             acc_step=self._k_steps,
         )
 
-        with open(
-            "./main_fp16.txt.{}".format(paddle.distributed.get_rank()), "w+"
-        ) as f:
-            f.write(str(self.main_program))
-        with open(
-            "./startup_fp16.txt.{}".format(paddle.distributed.get_rank()), "w+"
-        ) as f:
-            f.write(str(self.startup_program))
-
         cbks.on_begin('train')
         for epoch in range(epochs):
             logs = {}
