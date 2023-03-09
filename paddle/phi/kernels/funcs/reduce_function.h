@@ -416,7 +416,7 @@ struct ReduceConfig {
 #ifdef PADDLE_WITH_XPU_KP
     bool not_higher = x_dim[0] > 1;
 #else
-    int device_id = paddle::platform::GetCurrentDeviceId();
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
     int max_grid_z = phi::backends::gpu::GetGpuMaxGridDimSize(device_id)[2];
     bool not_higher = x_dim[0] >= max_grid_z;
 #endif  // PADDLE_WITH_XPU_KP
@@ -438,9 +438,8 @@ struct ReduceConfig {
     constexpr int min_reduce_num_per_thread = 16;
     constexpr int max_reduce_num_per_thread = 256;
     constexpr int max_num_threads = kps::details::kReduceMaxThread;
-
-    int device_id = paddle::platform::GetCurrentDeviceId();
-    int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
 
     // Set block size.
     // 1. If reduce_last_dim == true, all the threads whose threadIdx.y are same
@@ -479,9 +478,9 @@ struct ReduceConfig {
       reduce_num_per_thread_tmp = details::CeilingDiv(reduce_num, block_dim->y);
     }
 
-    // This kernels max occupancy is 75%. So max threads is 2048*3/4=1536
     int max_threads_per_mp =
-        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id) * 3 / 4;
+        phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id) * 3 /
+        4;
     int max_threads = max_threads_per_mp * max_mp;
     int num_threads = block_dim->x * block_dim->y;
     int max_num_blocks = max_threads / num_threads;
@@ -506,12 +505,10 @@ struct ReduceConfig {
     grid_dim->x = grid_num;
     grid_dim->y = std::max(std::min(input_split_num_1, input_split_num_3),
                            input_split_num_2);
-
     // if grid.y > 1, we need launch reduce kernel again.
     if (grid_dim->y > 1) {
       should_reduce_again = true;
     }
-
     reduce_num_per_thread =
         details::CeilingDiv(reduce_num_per_thread_tmp, grid_dim->y);
   }
@@ -526,10 +523,10 @@ struct ReduceConfig {
     int grid_z = left_num / last_dim_num;
     left_num = last_dim_num;
     grid_dim->z = grid_z;
-    int device_id = paddle::platform::GetCurrentDeviceId();
-    int max_mp = paddle::platform::GetGPUMultiProcessors(device_id);
+    int device_id = phi::backends::gpu::GetCurrentDeviceId();
+    int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
     int max_threads_per_mp =
-        paddle::platform::GetGPUMaxThreadsPerMultiProcessor(device_id);
+        phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
     int max_threads = max_threads_per_mp * max_mp;
     // init
     int num_block = (max_threads / left_num);
@@ -624,7 +621,6 @@ __global__ void ReduceAnyKernel(const Tx* x,
     loop_left = min(block.GetLoopSize(), left_num - left_idx);
     stride_left = 1;
     tid = THREAD_ID_X;
-
   } else {
     auto block = ReduceIndexMapping<false>(dim, left_num);
     input_idx = block.BlockIdY() * block.BlockDimY() * reduce_num_per_thread;
@@ -643,17 +639,15 @@ __global__ void ReduceAnyKernel(const Tx* x,
   // 1. reduce for each thread
   MPType input_compute[REDUCE_VEC_SIZE];
   Tx input_reg[REDUCE_VEC_SIZE];
-
   int input_idx_tmp = input_idx;
-  // load REDUCE_VEC_SIZE data once, and then compute
   int bound = min(input_idx_tmp + reduce_num_per_thread * stride, reduce_num);
   for (int i = 0; i < loop_left; i += stride_left) {
     int input_offset = left_index_calculator(left_idx + i);
     const _ptr_ Tx* input = x + input_offset;
     MPType reduce_var = init;
+    // load REDUCE_VEC_SIZE data once, and then compute
 
     input_idx = input_idx_tmp;
-
     for (; input_idx + REDUCE_VEC_SIZE * stride < bound;
          input_idx += REDUCE_VEC_SIZE * stride) {
       kps::ReadDataReduce<Tx,
@@ -673,7 +667,6 @@ __global__ void ReduceAnyKernel(const Tx* x,
                                  stride,
                                  kps::IdentityFunctor<Tx>(),
                                  reduce_last_dim);
-
       kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, TransformOp>(
           &input_compute[0], &input_reg[0], transformer);
       kps::Reduce<MPType,
@@ -702,7 +695,6 @@ __global__ void ReduceAnyKernel(const Tx* x,
                               stride,
                               transformer,
                               reduce_last_dim);
-
     kps::Reduce<MPType,
                 REDUCE_VEC_SIZE,
                 1,
@@ -712,7 +704,6 @@ __global__ void ReduceAnyKernel(const Tx* x,
 
     kps::Reduce<MPType, 1, 1, ReduceOp, kps::details::kGlobalMode>(
         &reduce_var, &reduce_var, reducer, reduce_last_dim);
-
     if (is_mean) {
       reduce_var = reduce_var / static_cast<MPType>(out_reduce_num);
     }
@@ -751,7 +742,6 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
   int block_offset = idy * left_num + idz * reduce_num;
   const _ptr_ Tx* input = x + block_offset;
   Tx reduce_input;
-
   for (; idx < size; idx += stride) {
     MPType reduce_var = init;
     MPType reduce_compute = init;
@@ -778,7 +768,6 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
   if (idx < left_num) {
     MPType reduce_var = init;
     MPType reduce_compute = init;
-
     for (int loop_idx = 0; loop_idx < loop_size; ++loop_idx) {
       kps::ReadData<Tx, Tx, 1, 1, true>(&reduce_input,
                                         input + loop_idx * left_num + idx,
@@ -835,7 +824,6 @@ static void LaunchReduceKernel(const Tx* x_data,
     auto grid_num = config.grid;
     auto block_num = config.block;
 #endif
-
     ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp, OneDimIndexCal>
         <<<grid_num, block_num, 0, stream>>>(
             x_data,
@@ -852,7 +840,6 @@ static void LaunchReduceKernel(const Tx* x_data,
             left_index_calculator,
             dim,
             is_mean && (!config.should_reduce_again));
-
   } else {
     int reduce_rank = config.reduce_strides.size();
     int left_rank = config.left_strides.size();
@@ -924,7 +911,6 @@ static void LaunchReduceKernel(const Tx* x_data,
     auto grid_size = grid;
     auto block_size = block;
 #endif
-
     ReduceAnyKernel<Ty,
                     Ty,
                     MPType,
@@ -954,14 +940,16 @@ template <typename Tx,
           template <typename>
           class ReduceOp,
           typename TransformOp>
-static typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value,
-                               void>::type
-CubTensorReduceImpl(const Tx* x_data,
-                    Ty* y_data,
-                    const TransformOp& transform,
-                    int reduce_num,
-                    const KPDevice& dev_ctx,
-                    KPStream stream) {
+static
+    typename std::enable_if<!std::is_same<Tx, phi::dtype::float16>::value &&
+                                !std::is_same<Tx, phi::dtype::bfloat16>::value,
+                            void>::type
+    CubTensorReduceImpl(const Tx* x_data,
+                        Ty* y_data,
+                        const TransformOp& transform,
+                        int reduce_num,
+                        const KPDevice& dev_ctx,
+                        KPStream stream) {
   auto reducer = ReduceOp<Ty>();
   cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
                                                                   transform);
@@ -1004,6 +992,23 @@ CubTensorReduceImpl(const Tx* x_data,
                     KPStream stream) {
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
+}
+
+template <typename Tx,
+          typename Ty,
+          template <typename>
+          class ReduceOp,
+          typename TransformOp>
+static typename std::enable_if<std::is_same<Tx, phi::dtype::bfloat16>::value,
+                               void>::type
+CubTensorReduceImpl(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int reduce_num,
+                    const KPDevice& dev_ctx,
+                    KPStream stream) {
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "Tx should not be bfloat16 when using cub::DeviceReduce::Reduce()."));
 }
 #endif  // PADDLE_WITH_XPU_KP
 
@@ -1057,7 +1062,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
 
   config.SetOutputData(y_data, dev_ctx, &tmp);
   constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
-  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
+  constexpr bool kIsTxBF16 = std::is_same<Tx, phi::dtype::bfloat16>::value;
+  bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16 && !kIsTxBF16;
 #ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
     if (is_mean) {

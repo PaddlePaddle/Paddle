@@ -52,6 +52,12 @@ class MPTypeTrait<phi::dtype::float16> {
   using Type = float;
 };
 
+template <>
+class MPTypeTrait<phi::dtype::bfloat16> {
+ public:
+  using Type = float;
+};
+
 /**
  * @brief Will be used in BlockYReduce, get the index of reduce_num in shared
  * memory.
@@ -104,6 +110,7 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
       shared[wid] = val;
     }
     __syncthreads();
+
     bool is_mask = threadIdx.x < block_dim_x;
     val = is_mask ? shared[bid * block_dim_x + lane] : (T)(0.0f);
     // val = shared[bid * block_dim_x + lane];
