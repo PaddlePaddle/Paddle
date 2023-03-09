@@ -63,15 +63,15 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                               phi::funcs::SegmentOffsetIter,
                               cub::CountingInputIterator<int64_t>>
       segment_offsets_t(counting_iter, phi::funcs::SegmentOffsetIter(num_cols));
-  MT* sorted_values_ptr;
+  T* sorted_values_ptr;
   int64_t* sorted_indices_ptr;
   DenseTensor temp_values, temp_indices;
-  const MT* input = input_tensor->data<MT>();
-  MT* values = out_tensor->data<T>();
+  const T* input = input_tensor->data<T>();
+  T* values = out_tensor->data<T>();
   int64_t* indices = dev_ctx.template Alloc<int64_t>(indices_tensor);
   temp_values.Resize(dim);
   temp_indices.Resize(dim);
-  sorted_values_ptr = dev_ctx.template Alloc<MT>(&temp_values);
+  sorted_values_ptr = dev_ctx.template Alloc<T>(&temp_values);
   sorted_indices_ptr = dev_ctx.template Alloc<int64_t>(&temp_indices);
   auto err =
       cub::DeviceSegmentedRadixSort::SortPairs(nullptr,
@@ -142,9 +142,9 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
       EigenMatrix<int64_t>::From(static_cast<const DenseTensor>(temp_indices));
   std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(1)};
   dim = phi::make_ddim(odims);
-  auto e_values = EigenMatrix<MT>::From(*out_tensor, dim);
+  auto e_values = EigenMatrix<T>::From(*out_tensor, dim);
   auto e_tmp_values =
-      EigenMatrix<MT>::From(static_cast<const DenseTensor>(temp_values));
+      EigenMatrix<T>::From(static_cast<const DenseTensor>(temp_values));
 
   funcs::EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
       dev, e_indices, e_tmp_indices, slice_indices, slice_sizes);
@@ -165,8 +165,8 @@ void KthvalueKernel(const Context& dev_ctx,
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
   auto out_dims = output->dims();
-  const MT* input_data = x.data<MT>();
-  MT* output_data = dev_ctx.template Alloc<MT>(output);
+  const T* input_data = x.data<T>();
+  T* output_data = dev_ctx.template Alloc<T>(output);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
   // For 0D Tensor
@@ -187,7 +187,7 @@ void KthvalueKernel(const Context& dev_ctx,
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
     PADDLE_ENFORCE_EQ(
-        SortKthvalue<MT>(
+        SortKthvalue<T>(
             dev_ctx, &x, input_width, input_height, k, output, indices),
         true,
         phi::errors::External("KthvalueOP: Error when use cub sorting"));
@@ -224,7 +224,7 @@ void KthvalueKernel(const Context& dev_ctx,
     trans_out_dims[in_dims.size() - 1] = 1;
     DenseTensor trans_input;
     trans_input.Resize(trans_dims);
-    dev_ctx.template Alloc<MT>(&trans_input);
+    dev_ctx.template Alloc<T>(&trans_input);
     int ndims = trans.size();
     funcs::TransCompute<phi::GPUContext, MT>(
         ndims, dev_ctx, x, &trans_input, trans);
@@ -232,18 +232,18 @@ void KthvalueKernel(const Context& dev_ctx,
     trans_ind.Resize(trans_out_dims);
     trans_out.Resize(trans_out_dims);
     dev_ctx.template Alloc<int64_t>(&trans_ind);
-    dev_ctx.template Alloc<MT>(&trans_out);
+    dev_ctx.template Alloc<T>(&trans_out);
     const int64_t input_height =
         phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
     PADDLE_ENFORCE_EQ(
-        SortKthvalue<MT>(dev_ctx,
-                         &trans_input,
-                         input_width,
-                         input_height,
-                         k,
-                         &trans_out,
-                         &trans_ind),
+        SortKthvalue<T>(dev_ctx,
+                        &trans_input,
+                        input_width,
+                        input_height,
+                        k,
+                        &trans_out,
+                        &trans_ind),
         true,
         phi::errors::External("KthvalueOP: Error when use cub sorting"));
     funcs::TransCompute<phi::GPUContext, int64_t>(
