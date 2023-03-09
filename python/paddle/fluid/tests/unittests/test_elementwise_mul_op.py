@@ -35,7 +35,7 @@ class ElementwiseMulOp(OpTest):
         self.init_input_output()
         self.init_kernel_type()
         self.init_axis()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -88,7 +88,7 @@ class ElementwiseMulOp(OpTest):
     def init_axis(self):
         pass
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -98,7 +98,7 @@ class TestElementwiseMulOp_ZeroDim1(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -108,7 +108,7 @@ class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -118,7 +118,7 @@ class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -145,7 +145,7 @@ class TestBF16ElementwiseMulOp(OpTest):
         }
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -159,7 +159,7 @@ class TestBF16ElementwiseMulOp(OpTest):
     def test_check_grad_ingore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_prim=True)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -349,7 +349,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
     def init_dtype(self):
         self.dtype = np.float16
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
