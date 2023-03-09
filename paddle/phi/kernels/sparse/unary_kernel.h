@@ -179,6 +179,10 @@ SparseCooTensor SumCoo(const Context& dev_ctx,
                        const IntArray& axis,
                        DataType dtype,
                        bool keep_dim) {
+  PADDLE_ENFORCE_EQ(
+      dtype,
+      phi::DataType::UNDEFINED,
+      phi::errors::Unimplemented("`dtype` of SumCsrKernel is not supported."));
   unsigned int n_dim = axis.size();
   PADDLE_ENFORCE_LE(n_dim,
                     2,
@@ -197,6 +201,10 @@ SparseCsrTensor SumCsr(const Context& dev_ctx,
                        DataType dtype,
                        bool keep_dim) {
   unsigned int n_dim = axis.size();
+  PADDLE_ENFORCE_EQ(
+      dtype,
+      phi::DataType::UNDEFINED,
+      phi::errors::Unimplemented("`dtype` of SumCsrKernel is not supported."));
   PADDLE_ENFORCE_LE(n_dim,
                     2,
                     phi::errors::Unimplemented(

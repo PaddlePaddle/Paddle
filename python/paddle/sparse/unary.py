@@ -22,6 +22,50 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.layer_helper import LayerHelper
 
+from ..common_ops_import import Variable
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..fluid.layers import utils
+from ..framework import LayerHelper, in_dygraph_mode
+
+
+def _get_reduce_axis(axis, x):
+    """
+    Internal function for max, min, amax and amin.
+    It computes the attribute reduce_all value based on axis.
+    """
+    if axis is not None and not isinstance(axis, list):
+        if isinstance(axis, (tuple, range)):
+            axis = list(axis)
+        elif isinstance(axis, int):
+            axis = [axis]
+        else:
+            raise TypeError(
+                "The type of axis must be int, list or tuple, but received {}".format(
+                    type(axis)
+                )
+            )
+    if axis is None:
+        axis = []
+    if axis == [] or len(axis) == len(x.shape):
+        reduce_all = True
+    else:
+        reduce_all = False
+    return reduce_all, axis
+
+
+def _get_reduce_axis_with_tensor(axis, x):
+    if isinstance(axis, Variable):
+        if axis.shape[0] == len(x.shape):
+            reduce_all = True
+        else:
+            reduce_all = False
+    else:
+        reduce_all, axis = _get_reduce_axis(axis, x)
+        if utils._contain_var(axis):
+            axis = utils._convert_to_tensor_list(axis)
+    return reduce_all, axis
+
+
 __all__ = []
 
 _int_dtype_ = [
@@ -155,10 +199,9 @@ def transpose(x, perm, name=None):
     return _C_ops.sparse_transpose(x, perm)
 
 
-@dygraph_only
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
-    Computes the sum of tensor elements over the given dimension.
+    Computes the sum of sparse tensor elements over the given dimension, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Args:
         x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
@@ -185,37 +228,61 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
             import paddle
 
-            # x is a Tensor with following elements:
-            #    [[0.2, 0.3, 0.5, 0.9]
-            #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the corresponding output tensor.
-            x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
-                                  [0.1, 0.2, 0.6, 0.7]])
-            out1 = paddle.sum(x)  # [3.5]
-            out2 = paddle.sum(x, axis=0)  # [0.3, 0.5, 1.1, 1.6]
-            out3 = paddle.sum(x, axis=-1)  # [1.9, 1.6]
-            out4 = paddle.sum(x, axis=1, keepdim=True)  # [[1.9], [1.6]]
-
-            # y is a Tensor with shape [2, 2, 2] and elements as below:
-            #      [[[1, 2], [3, 4]],
-            #      [[5, 6], [7, 8]]]
-            # Each example is followed by the corresponding output tensor.
-            y = paddle.to_tensor([[[1, 2], [3, 4]],
-                                  [[5, 6], [7, 8]]])
-            out5 = paddle.sum(y, axis=[1, 2]) # [10, 26]
-            out6 = paddle.sum(y, axis=[0, 1]) # [16, 20]
-
-            # x is a Tensor with following elements:
-            #    [[True, True, True, True]
-            #     [False, False, False, False]]
-            # Each example is followed by the corresponding output tensor.
-            x = paddle.to_tensor([[True, True, True, True],
-                                  [False, False, False, False]])
-            out7 = paddle.sum(x)  # [4]
-            out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
-            out9 = paddle.sum(x, axis=1)  # [4, 0]
+            dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
+            sparse_x = dense_x.to_sparse_coo(1)
+            out1 = paddle.sparse.sum(x)  # [1.]
+            out2 = paddle.sparse.sum(x, axis=0)  # [-1., 2.]
+            out3 = paddle.sparse.sum(x, axis=-1)  # [-2., 3.]
+            out4 = paddle.sparse.sum(x, axis=1, keepdim=True)  # [[-2.], [3.]]
     """
-    return _C_ops.sparse_sum(x, axis, dtype, keepdim)
+    dtype_flag = False
+    if dtype is not None:
+        dtype_flag = True
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dygraph_mode():
+        return _C_ops.sparse_sum(x, axis, dtype, keepdim)
+    else:
+        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
+        attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
+
+        if dtype_flag:
+            attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
+
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            'sum',
+        )
+
+        check_type(
+            axis, 'axis', (int, list, tuple, type(None), Variable), 'sum'
+        )
+
+        helper = LayerHelper('sum', **locals())
+        if dtype_flag:
+            out = helper.create_variable_for_type_inference(dtype=dtype)
+        else:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='reduce_sum',
+            inputs={'X': x},
+            outputs={'Out': out},
+            attrs=attrs,
+        )
+        return out
 
 
 @dygraph_only
