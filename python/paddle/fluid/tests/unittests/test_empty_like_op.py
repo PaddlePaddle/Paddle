@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -214,21 +214,30 @@ class TestEmptyLikeOpFP16(unittest.TestCase):
                     self.check_output_with_place(place, atol=1e-3)
 
 
-class TestEmptyLikeOpBP16(unittest.TestCase):
-    def testemptylikebp16(OpTest):
-        def setUp(self):
-            self.op_type = 'empty_like'
-            self.dtype = np.uint16
-            x = np.random.rand([2, 3]).astype(np.float32)
-            out = paddle.empty_like(x)
-            self.inputs = {'X': convert_float_to_uint16(x)}
-            self.outputs = {'Out': convert_float_to_uint16(out)}
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestEmptylikeBFloat16(OpTest):
+    def setUp(self):
+        self.op_type = 'empty_like'
+        self.dtype = np.uint16
+        typea = 'float32'
+        self.__class__.op_type = self.op_type
+        self.python_api = paddle.empty_like
+        x = np.random.random((200, 3)).astype('int32')
+        output = np.empty(x)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(output)}
 
-        def test_check_output(self):
-            self.check_output(atol=1e-3)
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
-        def test_check_grad(self):
-            self.check_grad(['X'], 'Out', max_relative_error=1e-3)
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 class TestEmptyError(unittest.TestCase):

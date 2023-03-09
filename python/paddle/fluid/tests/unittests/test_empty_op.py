@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
@@ -296,21 +297,31 @@ class TestEmptyOpFP16(unittest.TestCase):
                     )
 
 
-class TestEmptyOpBP16(unittest.TestCase):
-    def testemptybp16(OpTest):
-        def setUp(self):
-            self.op_type = 'empty'
-            dtype = 'bfloat16'
-            x = np.random.rand([500, 3]).astype('int32')
-            out = paddle.empty(x, dtype=dtype)
-            self.inputs = {'X': x, 'dtype': dtype}
-            self.outputs = {'Out': out}
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestEmptyBFloat16(OpTest):
+    def setUp(self):
+        self.op_type = 'empty'
+        self.dtype = np.uint16
+        typea = 'float32'
+        self.__class__.op_type = self.op_type
+        self.python_api = paddle.empty
+        shape = np.array([200, 3]).astype('int32')
+        output = np.empty(shape=shape, dtype='float32')
+        self.inputs = {'SHAPE': shape}
+        self.attrs = {'dtype': convert_float_to_uint16(typea)}
+        self.outputs = {'Out': convert_float_to_uint16(output)}
 
-        def test_check_output(self):
-            self.check_output(atol=1e-3)
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
-        def test_check_grad(self):
-            self.check_grad(['X'], 'Out', max_relative_error=1e-3)
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['SHAPE'], 'Out')
 
 
 class TestEmptyError(unittest.TestCase):
