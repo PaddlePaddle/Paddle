@@ -277,7 +277,7 @@ class Communicator {
   virtual void RpcRecvSparse(const std::string &varname,
                              int table_id,
                              Scope *scope);
-  // 7. send gloabl step
+  // 7. send global step
   virtual void SendGlobalStep(const CommContext &ctx,
                               int batches,
                               Scope *send_scope);
@@ -572,7 +572,7 @@ class SyncCommunicator : public HalfAsyncCommunicator {
       : HalfAsyncCommunicator(envs) {}
 
   void InitEnvs() {
-    // enfore to recv after send
+    // enforce to recv after send
     independent_recv_ = false;
     min_send_grad_num_before_recv_ = 0;
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
