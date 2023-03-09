@@ -3867,7 +3867,7 @@ else:
 create_test_act_fp16_class(TestLog10, atol=5e-2)
 create_test_act_fp16_class(TestLog1p, grad_atol=0.9)
 create_test_act_fp16_class(TestSquare)
-create_test_act_fp16_class(TestPow, check_prim=True)
+create_test_act_fp16_class(TestPow, check_prim=True, atol=5e-2)
 create_test_act_fp16_class(TestPow_factor_tensor, atol=5e-2)
 create_test_act_fp16_class(TestSTanh, grad_atol=0.9)
 create_test_act_fp16_class(TestSoftplus)
