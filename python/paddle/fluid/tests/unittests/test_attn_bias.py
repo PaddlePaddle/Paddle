@@ -31,9 +31,10 @@ from paddle.incubate.nn.attn_bias import (
 def all_dtypes():
     dtypes = [paddle.float16, paddle.float32, paddle.float64]
     if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+        dtypes.append(paddle.float16)
         prop = paddle.device.cuda.get_device_properties()
         if prop.major >= 8:
-            return dtypes + [paddle.bfloat16]
+            dtypes.append(paddle.bfloat16)
     return dtypes
 
 
