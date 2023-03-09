@@ -42,7 +42,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     auto shift_in = static_cast<int32_t>(ctx.Attr<float>("Shift_in"));
     auto scale_out = ctx.Attr<float>("Scale_out");
     auto shift_out = static_cast<int32_t>(ctx.Attr<float>("Shift_out"));
-    bool with_shift = shift_in != 0.0f || shift_out != 0.0f;
+    bool with_shift = shift_in != 0 || shift_out != 0;
     auto* output = ctx.Output<phi::DenseTensor>("Output");
 
     PADDLE_ENFORCE_NE(
@@ -81,7 +81,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
                      dev_ctx.GetEngine(),
                      phi::funcs::to_void_cast<float>(&reorder_scale));
 
-    if (shift_in != 0) {
+    if (shift_out != 0) {
       attrs.set_zero_points_mask(DNNL_ARG_DST, mask);
     }
     if (shift_in != 0) {
@@ -118,12 +118,12 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     reorder_args.insert({DNNL_ARG_DST, *dst_memory_p});
     reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scales_mem});
     // shift for SRC
-    if (shift_in != 0.0f) {
+    if (shift_in != 0) {
       reorder_args.insert(
           {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_DST, zero_points_in_mem});
     }
     // shift for DST
-    if (shift_out != 0.0f) {
+    if (shift_out != 0) {
       reorder_args.insert(
           {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_DST, zero_points_out_mem});
     }
