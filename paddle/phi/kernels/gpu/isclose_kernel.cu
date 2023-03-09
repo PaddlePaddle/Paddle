@@ -25,5 +25,4 @@ PD_REGISTER_KERNEL(isclose,
                    phi::IscloseKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
