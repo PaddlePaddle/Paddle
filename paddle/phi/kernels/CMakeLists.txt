@@ -79,9 +79,17 @@ set(COMMON_KERNEL_DEPS
     utf8proc
     gather_scatter_functor)
 
+if(WITH_FLASHATTN)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_dynload_flashattn)
+endif()
+
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl
+                         nccl_comm_context)
+endif()
+if(WITH_GLOO)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} gloo_comm_context)
 endif()
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
 if(WITH_CUDNN_FRONTEND)

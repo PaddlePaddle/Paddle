@@ -19,6 +19,8 @@
 #include "paddle/ir/type_id.h"
 
 namespace ir {
+class Dialect;
+
 ///
 /// \brief Abstract the properties and behaviors common to all Type classes into
 /// an AbstractType class. There are two types in Type system:
@@ -32,8 +34,21 @@ class AbstractType {
   /// \brief Construct an AbstractType by TypeId directly.
   ///
   /// \param type_id The type id of the AbstractType.
+  /// \param dialect The Dialect which the type registered to.
   ///
-  static AbstractType get(TypeId type_id) { return AbstractType(type_id); }
+  static AbstractType get(TypeId type_id, const Dialect &dialect) {
+    return AbstractType(type_id, dialect);
+  }
+
+  ///
+  /// \brief Construct an AbstractType by TypeId directly.
+  ///
+  /// \param dialect The Dialect which the type registered to.
+  ///
+  template <typename T>
+  static AbstractType get(const Dialect &dialect) {
+    return AbstractType(TypeId::get<T>(), dialect);
+  }
 
   ///
   /// \brief Returns the type id of the AbstractType.
@@ -41,6 +56,13 @@ class AbstractType {
   /// \return The type id of the AbstractType.
   ///
   TypeId type_id() const { return type_id_; }
+
+  ///
+  /// \brief Get the dialect this type was registered to.
+  ///
+  /// \return The dialect this type was registered to.
+  ///
+  const Dialect &dialect() const { return dialect_; }
 
   ///
   /// \brief Find the AbstractType instance whose TypeId is type_id from
@@ -58,10 +80,14 @@ class AbstractType {
   /// get method to obtain and manage the AstractType.
   ///
   /// \param type_id The type id of the AbstractType.
+  /// \param dialect The Dialect which the type registered to.
   ///
-  explicit AbstractType(TypeId type_id) : type_id_(type_id) {}
+  explicit AbstractType(TypeId type_id, const Dialect &dialect)
+      : type_id_(type_id), dialect_(dialect) {}
 
   TypeId type_id_;
+
+  const Dialect &dialect_;
 };
 
 struct TypeManager;
@@ -239,13 +265,13 @@ struct TypeManager {
 ///
 /// \brief This macro definition is used to register custom Type class.
 ///
-#define REGISTER_TYPE_2_IRCONTEXT(concrete_type, ir_context)               \
-  ir::AbstractType *abstract_type_##concrete_type = new ir::AbstractType(  \
-      std::move(ir::AbstractType::get(ir::TypeId::get<concrete_type>()))); \
-                                                                           \
-  ir_context->RegisterAbstractType(ir::TypeId::get<concrete_type>(),       \
-                                   abstract_type_##concrete_type);         \
-                                                                           \
-  ir::TypeManager::RegisterType<concrete_type>(ir_context);
+#define REGISTER_TYPE_2_IRCONTEXT(concrete_type, dialect)                 \
+  ir::AbstractType *abstract_type_##concrete_type = new ir::AbstractType( \
+      std::move(ir::AbstractType::get<concrete_type>(*dialect)));         \
+                                                                          \
+  dialect->ir_context()->RegisterAbstractType(                            \
+      ir::TypeId::get<concrete_type>(), abstract_type_##concrete_type);   \
+                                                                          \
+  ir::TypeManager::RegisterType<concrete_type>(dialect->ir_context());
 
 }  // namespace ir

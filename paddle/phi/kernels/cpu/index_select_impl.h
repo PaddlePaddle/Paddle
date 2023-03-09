@@ -62,10 +62,10 @@ void IndexSelectInner(const Context& ctx,
   auto index_size = index.dims()[0];
 
   DenseTensor index_cpu_copy;
-  if (!paddle::platform::is_cpu_place(index.place())) {
+  if (index.place().GetType() != phi::AllocationType::CPU) {
     phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
   }
-  const IndexT* index_data = paddle::platform::is_cpu_place(index.place())
+  const IndexT* index_data = index.place().GetType() == phi::AllocationType::CPU
                                  ? index.data<IndexT>()
                                  : index_cpu_copy.data<IndexT>();
   ctx.template Alloc<T>(output);

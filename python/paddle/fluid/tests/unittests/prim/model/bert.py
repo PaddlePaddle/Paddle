@@ -207,7 +207,7 @@ class BertPooler(nn.Layer):
 
 
 class BertModel(nn.Layer):
-    def __init__(self, config: BertConfig):
+    def __init__(self, config: BertConfig, to_static, enable_cinn):
         super(BertModel, self).__init__()
         self.config = config
         self.pad_token_id = config.pad_token_id
@@ -247,6 +247,13 @@ class BertModel(nn.Layer):
             self.encoder = nn.TransformerEncoder(
                 encoder_layer, config.num_hidden_layers
             )
+            if to_static:
+                build_strategy = paddle.static.BuildStrategy()
+                if enable_cinn:
+                    build_strategy.build_cinn_pass = True
+                self.encoder = paddle.jit.to_static(
+                    self.encoder, None, build_strategy
+                )
         self.pooler = BertPooler(config)
         # self.apply(self.init_weights)
 
@@ -364,10 +371,10 @@ class BertModel(nn.Layer):
 
 
 class Bert(nn.Layer):
-    def __init__(self):
+    def __init__(self, to_static, enable_cinn):
         super(Bert, self).__init__()
         config = BertConfig()
-        self.bert = BertModel(config)
+        self.bert = BertModel(config, to_static, enable_cinn)
         self.cls = BertPretrainingHeads(
             config,
             embedding_weights=self.bert.embeddings.word_embeddings.weight,

@@ -62,6 +62,19 @@ class TransformFlag {
   bool trans_layout_ = true;
 };
 
+static inline phi::TensorArgDef GetKernelInputArgDef(
+    const phi::TensorArgDef& input_def, phi::Backend kernel_backend) {
+  phi::TensorArgDef input_actual_def = input_def;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  // When the backend of input tensor arg_def is CUSTOM, we need to set it to
+  // the actual backend by expected_kernel_key.
+  if (input_actual_def.backend == phi::Backend::CUSTOM) {
+    input_actual_def.SetBackend(kernel_backend);
+  }
+#endif
+  return input_actual_def;
+}
+
 std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,

@@ -181,7 +181,7 @@ class TestSumOp4(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSumOp5(OpTest):
@@ -197,7 +197,24 @@ class TestSumOp5(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestSumOp6(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.cumsum
+        self.enable_cinn = False
+        self.attrs = {'axis': -1, 'flatten': True}
+        self.inputs = {'X': np.random.random((5, 6, 5)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].cumsum()}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSumOp7(OpTest):
@@ -213,7 +230,7 @@ class TestSumOp7(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestCumsumFP16(unittest.TestCase):

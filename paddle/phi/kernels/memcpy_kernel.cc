@@ -62,7 +62,7 @@ void MemcpyD2HKernel(const Context& dev_ctx,
 
     case 1:
       Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
-      // paddle::memory::Copy use async copy for GPUPinnedPlace
+      // Copy use async copy for GPUPinnedPlace
       dev_ctx.Wait();
       break;
 

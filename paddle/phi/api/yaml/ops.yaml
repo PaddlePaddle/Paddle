@@ -170,6 +170,16 @@
     func : bmm
   backward : bmm_grad
 
+- op : broadcast
+  args : (Tensor X, int ring_id = 0, int root = 0)
+  output : Tensor(Out)
+  infer_meta :
+    func : BroadcastBaseInferMeta
+    param: [X]
+  kernel :
+    func : broadcast
+    param: [X, root]
+
 - op : broadcast_tensors
   args: (Tensor[] input)
   output: Tensor[]{input.size()}
@@ -481,6 +491,16 @@
     func : fill_diagonal_tensor
   inplace : (x -> out)
   backward : fill_diagonal_tensor_grad
+
+- op : flash_attn
+  args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false)
+  output : Tensor(out), Tensor(softmax_lse), Tensor(softmax), Tensor(seed_offset)
+  infer_meta :
+    func : FlashAttnInferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn
+  backward : flash_attn_grad
 
 - op : flip
   args : (Tensor x, int[] axis)

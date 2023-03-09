@@ -15,6 +15,7 @@
 import os
 import tempfile
 import unittest
+import warnings
 
 import gradient_checker
 import numpy as np
@@ -30,6 +31,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.inference as paddle_infer
 from paddle import enable_static
+from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.op import Operator
 
 
@@ -749,6 +751,31 @@ class TestSumTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestSumAPIWarnings(unittest.TestCase):
+    def test_warnings(self):
+        with warnings.catch_warnings(record=True) as context:
+            warnings.simplefilter("always")
+            paddle.enable_static()
+            helper = LayerHelper("sum")
+            data = paddle.static.data(
+                name='data', shape=[32, 32], dtype='float32'
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            attrs = {'dim': [1], 'keep_dim': True, 'reduce_all': True}
+            os.environ["FLAGS_print_extra_attrs"] = '1'
+            helper.append_op(
+                type="reduce_sum",
+                inputs={'X': data},
+                outputs={'Out': out},
+                attrs=attrs,
+            )
+            self.assertTrue(
+                "op reduce_sum's attr reduce_all = True is not the default value: False"
+                in str(context[-1].message)
+            )
+            os.environ["FLAGS_print_extra_attrs"] = '0'
 
 
 if __name__ == "__main__":
