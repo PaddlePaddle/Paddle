@@ -29,7 +29,6 @@ else()
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
                  ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 endif()
-
 set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/)
 
 if(WIN32)
