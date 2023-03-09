@@ -35,14 +35,15 @@ __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               int64_t N,
                                               int64_t stride,
                                               int64_t size,
-                                              int64_t delta) {
+                                              int64_t delta,
+                                              void* null_flag) {
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     int64_t pre_idx = idx / (stride * size);
     int64_t dim_idx = idx % (stride * size) / stride;
     IndexT src_dim_idx = index[dim_idx];
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
-    phi::CudaAtomicAdd(&input_grad[input_idx], output_grad[idx]);
+    phi::CudaAtomicAdd(input_grad + input_idx, output_grad[idx]);
   }
 }
 
@@ -97,7 +98,6 @@ void IndexSelectGradKernel(const Context& ctx,
     block_dim = 1;
     grid_dim.x = 1;
   }
-
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
     index_select_grad_cuda_kernel<T, int64_t>
@@ -108,7 +108,8 @@ void IndexSelectGradKernel(const Context& ctx,
                                              out_nums,
                                              stride,
                                              size,
-                                             delta);
+                                             delta,
+                                             nullptr);
   } else {
     const int* index_data = index.data<int>();
     index_select_grad_cuda_kernel<T, int>
@@ -119,7 +120,8 @@ void IndexSelectGradKernel(const Context& ctx,
                                              out_nums,
                                              stride,
                                              size,
-                                             delta);
+                                             delta,
+                                             nullptr);
   }
 }
 
