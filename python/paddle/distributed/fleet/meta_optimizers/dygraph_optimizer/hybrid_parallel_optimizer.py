@@ -73,15 +73,23 @@ class HybridParallelClipGrad:
 
             if not_shared_enable:
                 if p.is_distributed:
-                    if p.dtype == paddle.float16:
+                    if g.dtype in (paddle.float16, paddle.bfloat16):
                         sum_square_dist_fp16.append(sum_square)
-                    elif p.dtype == paddle.float32:
+                    elif g.dtype == paddle.float32:
                         sum_square_dist_fp32.append(sum_square)
+                    else:
+                        raise TypeError(
+                            "Only fp32/fp16/bf16 are supported as dtype of gradients for HybridParallelClipGrad"
+                        )
                 else:
-                    if p.dtype == paddle.float16:
+                    if g.dtype in (paddle.float16, paddle.bfloat16):
                         sum_square_not_dist_fp16.append(sum_square)
-                    elif p.dtype == paddle.float32:
+                    elif g.dtype == paddle.float32:
                         sum_square_not_dist_fp32.append(sum_square)
+                    else:
+                        raise TypeError(
+                            "Only fp32/fp16/bf16 are supported as dtype of gradients for HybridParallelClipGrad"
+                        )
 
         # global norm of distributed FP16 params_and_grads
         if len(sum_square_dist_fp16) == 0:
@@ -163,13 +171,16 @@ class HybridParallelClipGrad:
             y=paddle.maximum(x=global_norm_var_fp32, y=max_global_norm),
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
+        clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
         for p, g in params_grads:
             if g is None:
                 continue
             if getattr(p, 'need_clip', True) is False:
                 continue
-            if p.dtype == paddle.float16:
+            if g.dtype == paddle.float16:
                 g.scale_(clip_var_fp16)
+            elif g.dtype == paddle.bfloat16:
+                g.scale_(clip_var_bf16)
             else:
                 g.scale_(clip_var)
             p._reset_grad_inplace_version(True)
@@ -215,6 +226,22 @@ class HybridParallelOptimizer:
                 # change sharding inner_optimizer's _grad_clip
                 self._inner_opt._inner_optimizer._grad_clip = (
                     HybridParallelClipGrad(self._inner_opt._grad_clip, hcg)
+                )
+            elif (
+                self._inner_opt._parameter_list
+                and not isinstance(self._inner_opt._parameter_list[0], dict)
+                and len(
+                    [
+                        p
+                        for p in self._inner_opt._parameter_list
+                        if p.dtype == paddle.bfloat16
+                    ]
+                )
+                > 0
+            ):
+
+                self._inner_opt._inner_opt._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._inner_opt._grad_clip, hcg
                 )
             else:
                 self._inner_opt._grad_clip = HybridParallelClipGrad(
