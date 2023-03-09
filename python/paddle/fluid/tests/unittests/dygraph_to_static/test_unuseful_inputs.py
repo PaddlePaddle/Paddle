@@ -42,10 +42,8 @@ class Layer0(nn.Layer):
     def forward(self, x):
         out1 = self._linear1(x)
         out2 = self._linear2(x)
-        # out2.stop_gradient = True  如果stop_gradient不报错
         a = [out1, out2]
         b = self.layer1(a)
-        # self.layer1(out1, out2)  也出错
         return b
 
 
