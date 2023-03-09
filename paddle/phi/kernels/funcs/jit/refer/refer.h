@@ -431,17 +431,6 @@ void StrideASum(const T* x, T* res, int n, int stride) {
   }
 }
 
-template <typename T>
-void StrideScal(const T* a, const T* x, T* y, int n, int stride) {
-  for (int i = 0; i < n; ++i) {
-    if (i % stride == 0) {
-      y[i] = x[i] * a[0];
-    } else {
-      y[i] = x[i];
-    }
-  }
-}
-
 // embedding seq pool
 // table is a matrix with (tbl_h, tbl_w)
 // idx is a matrix with (idx_h, idx_w)
@@ -627,9 +616,6 @@ DECLARE_REFER_KERNEL(VSub);
 DECLARE_REFER_KERNEL(VScal);
 DECLARE_REFER_KERNEL(VAddBias);
 
-// const T* a, const T* x, T* y, int n, int stride
-DECLARE_REFER_KERNEL(StrideScal);
-
 // const T* x, T* y, int n
 DECLARE_REFER_KERNEL(VRelu);
 DECLARE_REFER_KERNEL(VIdentity);
@@ -659,7 +645,6 @@ DECLARE_REFER_KERNEL(LayerNorm);
 DECLARE_REFER_KERNEL(NCHW16CMulNC);
 DECLARE_REFER_KERNEL(SeqPool);
 DECLARE_REFER_KERNEL(MatMul);
-DECLARE_REFER_KERNEL(Softmax);
 DECLARE_REFER_KERNEL(EmbSeqPool);
 DECLARE_REFER_KERNEL(Adam);
 DECLARE_REFER_KERNEL(AdamW);
