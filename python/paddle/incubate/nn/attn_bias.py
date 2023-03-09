@@ -29,7 +29,7 @@ import paddle
 
 class AttentionBias(ABC):
     @abstractmethod
-    def materialize(self, shape, dtype):
+    def materialize(self, shape, dtype=paddle.float32):
         raise NotImplementedError()
 
 
@@ -39,7 +39,7 @@ class LowerTriangularMask(AttentionBias):
         tensor = paddle.full(
             shape=shape, fill_value=float("-inf"), dtype=create_as
         )
-        return paddle.triu(tensor, diagonal=1).to(dtype)
+        return paddle.triu(tensor, diagonal=1).astype(dtype)
 
     def add_bias(self, bias):
         return LowerTriangularMaskWithTensorBias(bias)
@@ -75,19 +75,18 @@ class SeqLenInfo:
         )
 
     def split(self, x, batch_sizes=None):
-        if self.seqstart_py[-1] != x.shape[1] or x.shape[0] != 1:
-            raise ValueError("Invalid shape {}".format(x.shape))
+        assert self.seqstart_py[-1] == x.shape[1] and x.shape[0] == 1
         if batch_sizes is None:
             batch_sizes = [1] * (len(self.seqstart_py) - 1)
         split_chunks = []
         it = 0
         for batch_size in batch_sizes:
             split_chunks.append(
-                self.seqstart_py[it + batch_size] - self.seq_start_py[it]
+                self.seqstart_py[it + batch_size] - self.seqstart_py[it]
             )
             it += batch_size
         return [
-            tensor.reshape(bs, -1, *tensor.shape[2:])
+            tensor.reshape([bs, -1, *tensor.shape[2:]])
             for bs, tensor in zip(batch_sizes, x.split(split_chunks, axis=1))
         ]
 
@@ -139,8 +138,9 @@ class BlockDiagonalMask(AttentionBias):
         for (q_start, q_end), (k_start, k_end) in zip(
             self.q_seqinfo.intervals(), self.k_seqinfo.intervals()
         ):
+            sub_shape = [q_end - q_start, k_end - k_start]
             mask[q_start:q_end, k_start:k_end] = self._create_block_mask(
-                (q_end - q_start, k_end - k_start), dtype
+                sub_shape, dtype
             )
         for _ in range(len(shape) - 2):
             mask = mask.unsqueeze(0)
@@ -212,13 +212,13 @@ class BlockDiagonalMask(AttentionBias):
         return BlockDiagonalCausalMask(
             q_seqinfo=self.q_seqinfo,
             k_seqinfo=self.k_seqinfo,
-            batch_sizes=self._batch_sizes,
+            _batch_sizes=self._batch_sizes,
         )
 
 
 @dataclass
 class BlockDiagonalCausalMask(BlockDiagonalMask):
-    def _create_block_mask(shape, dtype=paddle.float32):
+    def _create_block_mask(self, shape, dtype=paddle.float32):
         return LowerTriangularMask().materialize(shape=shape, dtype=dtype)
 
 
@@ -231,7 +231,7 @@ class BlockDiagonalCausalWithOffsetPaddedKeysMask(AttentionBias):
     def _create_block_mask(self, shape, offset=0, dtype=paddle.float32):
         create_as = dtype if dtype is not paddle.bfloat16 else paddle.float32
         tensor = paddle.full(shape, dtype=create_as, fill_value=float('-inf'))
-        return paddle.triu(tensor, diagonal=1 + offset).to(dtype)
+        return paddle.triu(tensor, diagonal=1 + offset).astype(dtype)
 
     def materialize(self, shape, dtype=paddle.float32):
         assert shape[-1] == self.k_seqinfo.seqstart_py[-1]
