@@ -198,5 +198,43 @@ class TestMaxMinAmaxAminAPI6(TestMaxMinAmaxAminAPI):
         self.keepdim = False
 
 
+# test input grad when out is operated like mutiply
+class TestMaxMinAmaxAminAPI7(TestMaxMinAmaxAminAPI):
+    def init_case(self):
+        self.x_np = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]]).astype(
+            np.int32
+        )
+        self.shape = [2, 2, 2]
+        self.dtype = 'int32'
+        self.axis = (0, 1)
+        self.keepdim = False
+
+    # As dygraph is easy to compute gradient, we check the gradient between
+    # paddle API and numpy in dygraph.
+    def test_dygraph(self):
+        def _test_dygraph(func):
+            paddle.disable_static()
+            x = paddle.to_tensor(
+                self.x_np, dtype=self.dtype, stop_gradient=False
+            )
+            out = self._choose_paddle_func(func, x)
+            loss = out * 2
+            grad_tensor = paddle.ones_like(x)
+            paddle.autograd.backward([loss], [grad_tensor], True)
+
+            np.testing.assert_allclose(
+                self.np_out[func], out.numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                self.np_grad[func] * 2, x.grad, rtol=1e-05
+            )
+            paddle.enable_static()
+
+        _test_dygraph('amax')
+        _test_dygraph('amin')
+        _test_dygraph('max')
+        _test_dygraph('min')
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -31,6 +31,34 @@ set(GLOO_LIBRARIES
     "${GLOO_INSTALL_DIR}/lib/libgloo.a"
     CACHE FILEPATH "gloo library." FORCE)
 
+set(GLOO_PATCH_COMMAND "")
+if(WITH_GPU)
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
+                                                  VERSION_GREATER 12.0)
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/device.cc.patch
+         native_dst)
+    set(GLOO_PATCH_COMMAND patch -d ${GLOO_SOURCE_DIR}/gloo/transport/tcp <
+                           ${native_dst})
+  endif()
+endif()
+
+if(CMAKE_COMPILER_IS_GNUCC)
+  execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
+                  OUTPUT_VARIABLE GCC_VERSION)
+  string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
+  list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
+  list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
+  set(GCC_VERSION "${GCC_MAJOR}.${GCC_MINOR}")
+  if(GCC_VERSION GREATER_EQUAL "12.0")
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/device.cc.patch
+         native_dst)
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/types.h.patch
+         types_header)
+    set(GLOO_PATCH_COMMAND
+        patch -d ${GLOO_SOURCE_DIR}/gloo/transport/tcp < ${native_dst} && patch
+        -d ${GLOO_SOURCE_DIR}/gloo/ < ${types_header})
+  endif()
+endif()
 include_directories(${GLOO_INCLUDE_DIR})
 
 if(WITH_ASCEND OR WITH_ASCEND_CL)
@@ -59,6 +87,7 @@ else()
     GIT_TAG ${GLOO_TAG}
     PREFIX "${GLOO_PREFIX_DIR}"
     UPDATE_COMMAND ""
+    PATCH_COMMAND ${GLOO_PATCH_COMMAND}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND
       mkdir -p ${GLOO_SOURCE_DIR}/build && cd ${GLOO_SOURCE_DIR}/build && cmake

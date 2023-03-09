@@ -16,11 +16,11 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 

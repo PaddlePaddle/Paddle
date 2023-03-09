@@ -10,6 +10,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <string>
 #include <vector>
@@ -114,8 +118,7 @@ int tensor_properties_set_grad(TensorObject* self,
       egr::egr_utils_api::IsLeafTensor(self->tensor),
       paddle::platform::errors::Fatal("Only leaf Tensor can be set grad."));
 
-  paddle::experimental::Tensor* grad =
-      egr::EagerUtils::mutable_grad(self->tensor);
+  paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
   PADDLE_ENFORCE(grad != nullptr,
                  paddle::platform::errors::Fatal(
                      "Detected NULL grad"

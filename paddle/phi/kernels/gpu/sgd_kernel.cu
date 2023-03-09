@@ -14,12 +14,12 @@
 
 #include "paddle/phi/kernels/sgd_kernel.h"
 
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace phi {
 
@@ -156,7 +156,7 @@ void SGDDenseParamSparseGradKernel(
   int thread_x = kThreadsPerBlock;
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
-  paddle::framework::MixVector<int64_t> mixv_in_rows(&in_rows);
+  phi::MixVector<int64_t> mixv_in_rows(&in_rows);
   SparseSGDFunctorKernel<<<max_blocks, thread_x, 0, dev_ctx.stream()>>>(
       in_data,
       mixv_in_rows.CUDAData(dev_ctx.GetPlace()),
@@ -187,7 +187,9 @@ PD_REGISTER_KERNEL(sgd,
                    phi::SGDDenseKernel,
                    phi::dtype::float16,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+}
 
 PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    GPU,

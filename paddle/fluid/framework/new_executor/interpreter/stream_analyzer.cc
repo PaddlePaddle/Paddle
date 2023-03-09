@@ -148,6 +148,9 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
   const int stream_priority = op_func_node.stream_priority_;
   ContextManager& ctx_manager = ContextManager::Instance();
 
+  auto dev_ctx = ctx_manager.Get(op_type, place_, stream_priority).get().get();
+  SetDeviceCommContext(op.get(), dev_ctx);
+
   // only gpu/npu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
   if (platform::is_gpu_place(place_) || platform::is_npu_place(place_) ||
@@ -431,8 +434,7 @@ void StreamAnalyzer::ShrinkEventInfo(
 
 platform::DeviceType StreamAnalyzer::GetWaiterType(
     const Instruction& instr) const {
-  if (instr.KernelType() == OpFuncType::kCpuSync ||
-      instr.KernelType() == OpFuncType::kGpuSync) {
+  if (instr.KernelType() == OpFuncType::kCpuSync) {
     return platform::kCPU;
   } else {
     if (platform::is_xpu_place(place_)) {
