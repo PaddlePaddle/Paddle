@@ -121,29 +121,38 @@ class FeedOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
           PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+      framework::Variable* out_var =
+          PADDLE_GET(framework::Variable*, ctx->GetOutputVarPtrs("Out")[0]);
+
       auto& x = x_var->Get<framework::FeedList>();
       int col = ctx->Attrs().Get<int>("col");
-      auto& feed_item = x[col];
-      if (feed_item.index() == 0) {
-        const auto& feed_item = CheckAndGetFeedItem(x, col);
+      const auto& feed_item = CheckAndGetFeedItem(x, col);
+
+      if (feed_item.index() == 0) {  // DenseTensor
         auto& feed_tensor = PADDLE_GET_CONST(phi::DenseTensor, feed_item);
-        ctx->SetOutputDim("Out", feed_tensor.dims());
-      } else if (feed_item.index() == 1) {
+        phi::DenseTensor* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+        phi::DenseTensorMeta meta = out_tensor->meta();
+        meta.dims = feed_tensor.dims();
+        meta.dtype = feed_tensor.dtype();
+        meta.layout = feed_tensor.layout();
+        meta.lod = feed_tensor.lod();
+        out_tensor->set_meta(meta);
+      } else if (feed_item.index() == 1) {  // Strings
         auto& feed_str = PADDLE_GET_CONST(framework::Strings, feed_item);
-        framework::Variable* out_var =
-            PADDLE_GET(framework::Variable*, ctx->GetOutputVarPtrs("Out")[0]);
         out_var->GetMutable<framework::Strings>()->resize(feed_str.size());
-      } else {
+      } else if (feed_item.index() == 2) {  // SparseCooTensor
         auto& feed_sparse_tensor =
             PADDLE_GET_CONST(phi::SparseCooTensor, feed_item);
-        framework::Variable* out_var =
-            PADDLE_GET(framework::Variable*, ctx->GetOutputVarPtrs("Out")[0]);
         out_var->GetMutable<phi::SparseCooTensor>()->set_meta(
             feed_sparse_tensor.meta());
         out_var->GetMutable<phi::SparseCooTensor>()->SetCoalesced(
             feed_sparse_tensor.coalesced());
         out_var->GetMutable<phi::SparseCooTensor>()->SetIndicesDict(
             feed_sparse_tensor.GetIndicesDict());
+      } else {
+        PADDLE_THROW(
+            phi::errors::Unimplemented("Only support DenseTnesor, Strings, and "
+                                       "SparseCooTensor for feed op now."));
       }
     }
   }
@@ -151,7 +160,23 @@ class FeedOp : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
+    const framework::Variable* x_var = ctx.InputVar("X");
+    auto& x = x_var->Get<framework::FeedList>();
+    int col = ctx.Attr<int>("col");
+    auto& feed_item = x[col];
+
+    framework::proto::VarType::Type expected_data_type;
+    if (feed_item.index() == 0) {  // DenseTensor
+      expected_data_type = framework::TransToProtoVarType(
+          PADDLE_GET_CONST(phi::DenseTensor, feed_item).dtype());
+    } else if (feed_item.index() == 2) {  // SparseCooTensor
+      expected_data_type = framework::TransToProtoVarType(
+          PADDLE_GET_CONST(phi::SparseCooTensor, feed_item).dtype());
+    } else {  // Strings
+      expected_data_type = framework::proto::VarType::FP32;
+    }
+
+    return phi::KernelKey(expected_data_type, ctx.GetPlace());
   }
 };
 
@@ -248,13 +273,16 @@ PD_REGISTER_GENERAL_KERNEL(
     ALL_DTYPE) {}
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-namespace paddle {
-namespace operators {
-template void FeedDenseTensorKernel<phi::CustomContext>(
-    const phi::CustomContext& dev_ctx,
-    const phi::ExtendedTensor& x,
-    int col,
-    phi::DenseTensor* out);
-}  // namespace operators
-}  // namespace paddle
+PD_REGISTER_GENERAL_KERNEL(
+    feed_dense_tensor,
+    Custom,
+    ALL_LAYOUT,
+    paddle::operators::FeedDenseTensorKernel<phi::CustomContext>,
+    ALL_DTYPE) {}
+PD_REGISTER_GENERAL_KERNEL(
+    feed_strings,
+    Custom,
+    ALL_LAYOUT,
+    paddle::operators::FeedStringsKernel<phi::CustomContext>,
+    ALL_DTYPE) {}
 #endif

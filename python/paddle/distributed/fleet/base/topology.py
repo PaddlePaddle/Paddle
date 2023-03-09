@@ -17,6 +17,7 @@ from functools import reduce
 from itertools import product
 
 import paddle
+from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
 
 from ..utils.log_util import logger
 
@@ -188,6 +189,7 @@ class HybridCommunicateGroup:
 
         # create p2p_groups
         if self._pp_degree > 1:
+            check_nccl_version_for_p2p()
             self._set_p2p_group()
 
         debug_str = (

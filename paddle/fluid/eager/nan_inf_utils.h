@@ -24,7 +24,7 @@
 
 namespace egr {
 
-using paddle::experimental::Tensor;
+using paddle::Tensor;
 using TupleOfTwoTensors = std::tuple<Tensor, Tensor>;
 using TupleOfThreeTensors = std::tuple<Tensor, Tensor, Tensor>;
 using TupleOfFourTensors = std::tuple<Tensor, Tensor, Tensor, Tensor>;
@@ -59,7 +59,7 @@ void CheckTensorHasNanOrInf(const std::string& api_name,
 
 void CheckTensorHasNanOrInf(
     const std::string& api_name,
-    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>& tensors);
 
 template <typename TupleT, size_t N, size_t Last>

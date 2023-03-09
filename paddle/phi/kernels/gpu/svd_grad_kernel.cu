@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/svd_grad_kernel.h"
 
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/svd_grad_kernel_impl.h"
 
