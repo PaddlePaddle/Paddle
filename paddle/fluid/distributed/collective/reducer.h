@@ -33,10 +33,9 @@
 
 namespace paddle {
 namespace distributed {
-using Tensor = paddle::experimental::Tensor;
-using Scalar = paddle::experimental::ScalarBase<paddle::experimental::Tensor>;
-using IntArray =
-    paddle::experimental::IntArrayBase<paddle::experimental::Tensor>;
+using Tensor = paddle::Tensor;
+using Scalar = paddle::experimental::ScalarBase<paddle::Tensor>;
+using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 using Backend = paddle::experimental::Backend;
 
 std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
