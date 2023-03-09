@@ -243,3 +243,9 @@ file(APPEND ${op_utils_header}
 register_op_utils(op_compat_infos DEPS op_utils)
 
 copy_if_different(${op_utils_header} ${op_utils_header_final})
+
+# add special GetExpectedKernelType
+cc_library(
+  get_expected_kernel_func
+  SRCS get_expected_kernel_func.cc
+  DEPS operator)
