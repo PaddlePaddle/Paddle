@@ -925,8 +925,12 @@ void prod_grad(const Tensor& x,
             }
           }
         }
-        auto out_grad_ = unsqueeze<T>(out_grad, axis_);
-        auto out_ = unsqueeze<T>(out, axis_);
+        auto reshape_dim = std::vector<int64_t>(x_dim);
+        for (auto i : axis_) {
+          reshape_dim[i] = 1;
+        }
+        auto out_grad_ = reshape<T>(out_grad, phi::vectorize(reshape_dim));
+        auto out_ = reshape<T>(out, phi::vectorize(reshape_dim));
         x_grad_tmp = out_grad_.expand(IntArray(x_dim));
         out_tmp = out_.expand(IntArray(x_dim));
       } else {
