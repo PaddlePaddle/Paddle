@@ -160,7 +160,11 @@ inline void ConvertToFusedOp(OpDesc* op) {
       {"conv2d", "fused_conv2d"},
       {"depthwise_conv2d", "fused_conv2d"},
       {"matmul", "fused_matmul"},
-      {"matmul_v2", "fused_matmul"}};
+      {"matmul_v2", "fused_matmul"},
+      {"elementwise_add", "fused_elementwise_add"},
+      {"elementwise_sub", "fused_elementwise_sub"},
+      {"elementwise_mul", "fused_elementwise_mul"},
+      {"elementwise_mul", "fused_elementwise_div"}};
 
   if (op->Type() == "matmul") {
     op->SetAttr("trans_x", op->GetAttr("transpose_X"));

@@ -12,23 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/elementwise_add_kernel.h"
-#include "paddle/phi/kernels/elementwise_divide_kernel.h"
-#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
-#include "paddle/phi/kernels/elementwise_subtract_kernel.h"
-
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
 template <typename T, dnnl::algorithm BINARY_OP>
-void ElementwiseKernel(const OneDNNContext& dev_ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& y,
-                       int axis,
-                       DenseTensor* out) {
+void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            int axis,
+                            DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
+
+  float scale_x = dev_ctx.HasDnnAttr("Scale_x")
+                      ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_x"))
+                      : 1.0f;
+  float scale_y = dev_ctx.HasDnnAttr("Scale_y")
+                      ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_y"))
+                      : 1.0f;
+  float scale_out =
+      dev_ctx.HasDnnAttr("Scale_out")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_out"))
+          : 1.0f;
+
+  dnnl::post_ops post_operations;
+  funcs::AppendActivation(dev_ctx, post_operations);
+  if (dev_ctx.HasDnnAttr("fused_output_scale")) {
+    float scale_alpha =
+        PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"));
+    post_operations.append_eltwise(
+        1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+  }
 
   auto* non_const_x = &x;
   auto* non_const_y = &y;
@@ -40,10 +55,11 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
                                         non_const_x,
                                         non_const_y,
                                         out,
-                                        1.0f,
-                                        1.0f,
-                                        1.0f,
-                                        true);
+                                        scale_x,
+                                        scale_y,
+                                        scale_out,
+                                        true,
+                                        post_operations);
 
   // oneDNN's binary is optimized for broadcasting y into x, so in other case
   // we have to swap tensors to achieve optimal performance
@@ -104,90 +120,94 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
   }
 }
 
-#define DEFINE_ONEDNN_ELEMENTWISE_KERNEL(name, algorithm)      \
-  template <typename T, typename Context>                      \
-  void name##RawKernel(const Context& dev_ctx,                 \
-                       const DenseTensor& x,                   \
-                       const DenseTensor& y,                   \
-                       int axis,                               \
-                       DenseTensor* out) {                     \
-    ElementwiseKernel<T, algorithm>(dev_ctx, x, y, axis, out); \
-  }                                                            \
-  template <typename T, typename Context>                      \
-  void name##Kernel(const Context& dev_ctx,                    \
-                    const DenseTensor& x,                      \
-                    const DenseTensor& y,                      \
-                    DenseTensor* out) {                        \
-    ElementwiseKernel<T, algorithm>(dev_ctx, x, y, -1, out);   \
+#define DEFINE_ONEDNN_ELEMENTWISE_KERNEL(name, algorithm)           \
+  template <typename T, typename Context>                           \
+  void name##RawKernel(const Context& dev_ctx,                      \
+                       const DenseTensor& x,                        \
+                       const DenseTensor& y,                        \
+                       int axis,                                    \
+                       DenseTensor* out) {                          \
+    FusedElementwiseKernel<T, algorithm>(dev_ctx, x, y, axis, out); \
+  }                                                                 \
+  template <typename T, typename Context>                           \
+  void name##Kernel(const Context& dev_ctx,                         \
+                    const DenseTensor& x,                           \
+                    const DenseTensor& y,                           \
+                    DenseTensor* out) {                             \
+    FusedElementwiseKernel<T, algorithm>(dev_ctx, x, y, -1, out);   \
   }
 
-DEFINE_ONEDNN_ELEMENTWISE_KERNEL(Add, dnnl::algorithm::binary_add)
-DEFINE_ONEDNN_ELEMENTWISE_KERNEL(Subtract, dnnl::algorithm::binary_sub)
-DEFINE_ONEDNN_ELEMENTWISE_KERNEL(Multiply, dnnl::algorithm::binary_mul)
-DEFINE_ONEDNN_ELEMENTWISE_KERNEL(Divide, dnnl::algorithm::binary_div)
+DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedAdd, dnnl::algorithm::binary_add)
+DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedSubtract, dnnl::algorithm::binary_sub)
+DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedMultiply, dnnl::algorithm::binary_mul)
+DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedDivide, dnnl::algorithm::binary_div)
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(add_raw,
+PD_REGISTER_KERNEL(fused_add_raw,
                    OneDNN,
                    ONEDNN,
-                   phi::AddRawKernel,
+                   phi::FusedAddRawKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(add,
+PD_REGISTER_KERNEL(fused_add,
                    OneDNN,
                    ONEDNN,
-                   phi::AddKernel,
+                   phi::FusedAddKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(subtract_raw,
+PD_REGISTER_KERNEL(fused_subtract_raw,
                    OneDNN,
                    ONEDNN,
-                   phi::SubtractRawKernel,
+                   phi::FusedSubtractRawKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(subtract,
+PD_REGISTER_KERNEL(fused_subtract,
                    OneDNN,
                    ONEDNN,
-                   phi::SubtractKernel,
+                   phi::FusedSubtractKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(multiply_raw,
+PD_REGISTER_KERNEL(fused_multiply_raw,
                    OneDNN,
                    ONEDNN,
-                   phi::MultiplyRawKernel,
+                   phi::FusedMultiplyRawKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(multiply,
+PD_REGISTER_KERNEL(fused_multiply,
                    OneDNN,
                    ONEDNN,
-                   phi::MultiplyKernel,
+                   phi::FusedMultiplyKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(divide_raw,
+PD_REGISTER_KERNEL(fused_divide_raw,
                    OneDNN,
                    ONEDNN,
-                   phi::DivideRawKernel,
+                   phi::FusedDivideRawKernel,
                    float,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    divide, OneDNN, ONEDNN, phi::DivideKernel, float, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(fused_divide,
+                   OneDNN,
+                   ONEDNN,
+                   phi::FusedDivideKernel,
+                   float,
+                   phi::dtype::bfloat16) {}
