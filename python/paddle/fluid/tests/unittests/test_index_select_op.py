@@ -90,7 +90,7 @@ class TestIndexSelectFP16OP(TestIndexSelectOp):
         self.index_size = 100
 
 
-class TestIndexSelectBF16(OpTest):
+class TestIndexSelectBF16Op(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select
         self.op_type = "index_select"
