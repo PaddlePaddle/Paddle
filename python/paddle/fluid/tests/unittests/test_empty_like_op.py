@@ -223,7 +223,6 @@ class TestEmptylikeBFloat16(OpTest):
     def setUp(self):
         self.op_type = 'empty_like'
         self.dtype = np.uint16
-        typea = 'float32'
         self.__class__.op_type = self.op_type
         self.python_api = paddle.empty_like
         x = np.random.random((200, 3)).astype('int32')
