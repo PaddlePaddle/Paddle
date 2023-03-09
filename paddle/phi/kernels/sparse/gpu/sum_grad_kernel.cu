@@ -17,24 +17,56 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-#include "paddle/phi/kernels/sparse/impl/unary_grad_kernel_impl.h"
 
 namespace phi {
 namespace sparse {
 
-// std::vector<int> get_gpu_grad_perm(std::vector<int> perm) {
-//   std::vector<int> grad_perm(perm.size());
-//   for (unsigned int i = 0; i < perm.size(); ++i) {
-//     grad_perm[perm[i]] = i;
-//   }
-//   return grad_perm;
-// }
 template <typename T>
 __global__ void SetValueCudaKernel(const T* value,
                                    const int64_t length,
                                    T* data) {
   CUDA_KERNEL_LOOP_TYPE(index, length, int64_t) { data[index] = value[0]; }
+}
+
+template <typename T>
+__global__ void SumCsr2DGradCudaKernel(const int64_t* x_crows_data,
+                                       const T* dout_values_data,
+                                       const int64_t x_dim0,
+                                       T* dx_values_data) {
+  // dout_crows_data[index] should be equal to index;
+  CUDA_KERNEL_LOOP_TYPE(index, x_dim0, int64_t) {
+    T value = dout_values_data[index];
+    for (auto i = x_crows_data[index]; i < x_crows_data[index + 1]; ++i) {
+      dx_values_data[i] = value;
+    }
+  }
+}
+
+template <typename T>
+__global__ void SumCsr3DGradCudaKernel(const int64_t* x_crows_data,
+                                       const T* dout_values_data,
+                                       const int64_t x_dim0,
+                                       const int64_t x_dim1,
+                                       T* dx_values_data) {
+  // dout_crows_data[index] should be equal to number;
+  CUDA_KERNEL_LOOP_TYPE(index, x_dim0 * (x_dim1 + 1), int64_t) {
+    int64_t batch = index / (x_dim1 + 1);
+    int64_t number = index % (x_dim1 + 1);
+
+    // compute offset of dx_values_data in every batch
+    int64_t batch_offset = 0;
+    for (int64_t b = 1; b <= batch; ++b) {
+      batch_offset += x_crows_data[b * (x_dim1 + 1) - 1];
+    }
+
+    T value = dout_values_data[index - batch];
+    for (auto i = x_crows_data[index]; i < x_crows_data[index + 1]; ++i) {
+      dx_values_data[i + batch_offset] = value;
+    }
+  }
 }
 
 template <typename T, typename Context>
@@ -43,7 +75,36 @@ void SumCooGradKernel(const Context& dev_ctx,
                       const SparseCooTensor& dout,
                       const IntArray& axis,
                       bool keep_dim,
-                      SparseCooTensor* dx) {}
+                      SparseCooTensor* dx) {
+  EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
+  unsigned int n_dim = axis.size();
+
+  const DenseTensor& x_indices = x.indices();
+  const DenseTensor& dout_indices = dout.indices();
+  const DenseTensor& dout_values = dout.values();
+  const auto* dout_indices_data = dout_indices.data<int64_t>();
+  const auto* dout_values_data = dout_values.data<T>();
+
+  DenseTensor* dx_indices = dx->mutable_indices();
+  DenseTensor* dx_values = dx->mutable_values();
+  *dx_indices = x_indices;
+
+  const auto* dx_indices_data = dx_indices->data<int64_t>();
+  auto* dx_values_data = dx_values->data<T>();
+
+  if (n_dim == 0) {
+    auto config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, dx->nnz(), 1);
+    SetValueCudaKernel<T>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(dout_values_data, dx->nnz(), dx_values_data);
+  } else {
+    *dx_values = dout_values;
+    auto dim = axis[0] < 0 ? x.dims().size() + axis[0] : axis[0];
+  }
+}
 
 template <typename T, typename Context>
 void SumCsrGradKernel(const Context& dev_ctx,
@@ -53,16 +114,19 @@ void SumCsrGradKernel(const Context& dev_ctx,
                       bool keep_dim,
                       SparseCsrTensor* dx) {
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
-  unsigned int n_dim = axis.size();
+  size_t n_dim = axis.size();
 
   const DenseTensor& x_crows = x.crows();
   const DenseTensor& x_cols = x.cols();
   const DenseTensor& dout_values = dout.values();
-  const auto* x_crows_data = x_crows.data<int64_t>();
 
   DenseTensor* dx_crows = dx->mutable_crows();
   DenseTensor* dx_cols = dx->mutable_cols();
   DenseTensor* dx_values = dx->mutable_values();
+
+  const auto* x_crows_data = x_crows.data<int64_t>();
+  const auto* dout_values_data = dout_values.data<T>();
+  auto* dx_values_data = dx_values->data<T>();
 
   *dx_crows = x_crows;
   *dx_cols = x_cols;
@@ -70,46 +134,36 @@ void SumCsrGradKernel(const Context& dev_ctx,
   if (n_dim == 0) {
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, dx->nnz(), 1);
-    SetValueCudaKernel<int64_t><<<config.block_per_grid.x,
-                                  config.thread_per_block.x,
-                                  0,
-                                  dev_ctx.stream()>>>(
-        dout_values.data<T>(), dx->nnz(), dx_values->data<T>());
+    SetValueCudaKernel<T>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(dout_values_data, dx->nnz(), dx_values_data);
   } else {
     PADDLE_ENFORCE_EQ(axis[0],
                       -1,
                       phi::errors::Unimplemented(
                           "`axis` of SumCsrKernel only support None or -1 now."
                           "More number will be supported in the future."));
-
     if (x.dims().size() == 2) {
-      int value_index = 0;
-      for (int k = 0; k < x.dims()[0]; ++k) {
-        if (x_crows_data[k] != x_crows_data[k + 1]) {
-          T value = dout_values.data<T>()[value_index];
-          for (auto i = x_crows_data[k]; i < x_crows_data[k + 1]; ++i) {
-            dx_values->data<T>()[i] = value;
-          }
-          value_index += 1;
-        }
-      }
+      auto config =
+          phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x.dims()[0], 1);
+      SumCsr2DGradCudaKernel<T><<<config.block_per_grid.x,
+                                  config.thread_per_block.x,
+                                  0,
+                                  dev_ctx.stream()>>>(
+          x_crows_data, dout_values_data, x.dims()[0], dx_values_data);
     } else {
-      int dout_value_index = 0;
-      int dx_value_index = 0;
-      for (auto batch = 0; batch < x.dims()[0]; ++batch) {
-        for (auto k = batch * (x.dims()[1] + 1);
-             k < batch * (x.dims()[1] + 1) + x.dims()[1];
-             ++k) {
-          if (x_crows_data[k] != x_crows_data[k + 1]) {
-            T value = dout_values.data<T>()[dout_value_index];
-            for (auto i = x_crows_data[k]; i < x_crows_data[k + 1]; ++i) {
-              dx_values->data<T>()[dx_value_index] = value;
-              dx_value_index++;
-            }
-            dout_value_index++;
-          }
-        }
-      }
+      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+          dev_ctx, x.dims()[0] * (x.dims()[1] + 1), 1);
+      SumCsr3DGradCudaKernel<T><<<config.block_per_grid.x,
+                                  config.thread_per_block.x,
+                                  0,
+                                  dev_ctx.stream()>>>(x_crows_data,
+                                                      dout_values_data,
+                                                      x.dims()[0],
+                                                      x.dims()[1],
+                                                      dx_values_data);
     }
   }
 }
