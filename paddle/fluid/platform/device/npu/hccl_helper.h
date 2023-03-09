@@ -53,16 +53,16 @@ inline HcclDataType ToHCCLDataType(framework::proto::VarType::Type type) {
   }
 }
 
-inline HcclDataType ToHCCLDataType(experimental::DataType type) {
-  if (type == experimental::DataType::FLOAT32) {
+inline HcclDataType ToHCCLDataType(phi::DataType type) {
+  if (type == phi::DataType::FLOAT32) {
     return HCCL_DATA_TYPE_FP32;
-  } else if (type == experimental::DataType::FLOAT16) {
+  } else if (type == phi::DataType::FLOAT16) {
     return HCCL_DATA_TYPE_FP16;
-  } else if (type == experimental::DataType::INT64) {
+  } else if (type == phi::DataType::INT64) {
     return HCCL_DATA_TYPE_INT64;
-  } else if (type == experimental::DataType::INT32) {
+  } else if (type == phi::DataType::INT32) {
     return HCCL_DATA_TYPE_INT32;
-  } else if (type == experimental::DataType::INT8) {
+  } else if (type == phi::DataType::INT8) {
     return HCCL_DATA_TYPE_INT8;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(

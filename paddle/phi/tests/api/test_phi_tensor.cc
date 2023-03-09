@@ -30,12 +30,12 @@ namespace paddle {
 namespace tests {
 
 using Tensor = paddle::Tensor;
-using DataType = paddle::experimental::DataType;
+using DataType = phi::DataType;
 
 template <typename T>
 Tensor InitCPUTensorForTest() {
   std::vector<int64_t> tensor_shape{5, 5};
-  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  DataType dtype = phi::CppTypeToDataType<T>::Type();
   Tensor t1 = paddle::experimental::empty(tensor_shape, dtype, phi::CPUPlace());
   auto* p_data_ptr = t1.data<T>();
   for (int64_t i = 0; i < t1.size(); i++) {
@@ -124,7 +124,7 @@ void TestAPISlice() {
 template <typename T>
 paddle::DataType TestDtype() {
   std::vector<int64_t> tensor_shape = {5, 5};
-  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  DataType dtype = phi::CppTypeToDataType<T>::Type();
   auto t1 = paddle::experimental::empty(tensor_shape, dtype, phi::CPUPlace());
   return t1.type();
 }
@@ -132,7 +132,7 @@ paddle::DataType TestDtype() {
 template <typename T>
 void TestCast(paddle::DataType data_type) {
   std::vector<int64_t> tensor_shape = {5, 5};
-  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  DataType dtype = phi::CppTypeToDataType<T>::Type();
   auto t1 = paddle::experimental::empty(tensor_shape, dtype, phi::CPUPlace());
   auto t2 = t1.cast(data_type);
   CHECK(t2.type() == data_type);

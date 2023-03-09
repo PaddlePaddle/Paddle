@@ -23,14 +23,13 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using DataType = phi::DataType;
 using DataLayout = phi::DataLayout;
 
 using phi::DataTypeToString;
 using phi::SizeOf;
 using phi::TransToPhiDataType;
 
-inline proto::VarType::Type TransToProtoVarType(const DataType& dtype) {
+inline proto::VarType::Type TransToProtoVarType(const phi::DataType& dtype) {
   return static_cast<proto::VarType::Type>(phi::TransToProtoVarType(dtype));
 }
 

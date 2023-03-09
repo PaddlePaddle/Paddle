@@ -47,15 +47,15 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
         const phi::DenseTensor *rho_tensor = nullptr;
         const phi::DenseTensor *momentum_tensor = nullptr;
         const phi::DenseTensor *epsilon_tensor = nullptr;
-        phi::DenseTensor rho_tmp(experimental::DataType::FLOAT32);
+        phi::DenseTensor rho_tmp(phi::DataType::FLOAT32);
         rho_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&rho_tmp, rho);
         rho_tensor = &rho_tmp;
-        phi::DenseTensor momentum_tmp(experimental::DataType::FLOAT32);
+        phi::DenseTensor momentum_tmp(phi::DataType::FLOAT32);
         momentum_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&momentum_tmp, momentum);
         momentum_tensor = &momentum_tmp;
-        phi::DenseTensor epsilon_tmp(experimental::DataType::FLOAT32);
+        phi::DenseTensor epsilon_tmp(phi::DataType::FLOAT32);
         epsilon_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&epsilon_tmp, epsilon);
         epsilon_tensor = &epsilon_tmp;

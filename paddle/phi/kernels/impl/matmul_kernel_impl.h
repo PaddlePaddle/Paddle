@@ -919,11 +919,7 @@ struct MatMulDispatcher<phi::GPUContext, T> {
         MatMulFunctionImplWithBlas<phi::GPUContext, T>);
     tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
     phi::autotune::MatmulCacheKey matmul_cache(
-        x_dims,
-        y_dims,
-        trans_x,
-        trans_y,
-        paddle::experimental::CppTypeToDataType<T>::Type());
+        x_dims, y_dims, trans_x, trans_y, phi::CppTypeToDataType<T>::Type());
     tuner->Run(ctx,
                matmul_cache.GetKey(),
                ctx,

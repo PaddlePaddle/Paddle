@@ -154,13 +154,13 @@ class FusedBatchNormAddActKernel<phi::GPUContext, T>
             /*sizeInBytes=*/&reserve_space_size));
 
     reserve_space->Resize({static_cast<int64_t>(
-        (reserve_space_size + experimental::SizeOf(x->dtype()) - 1) /
-        experimental::SizeOf(x->dtype()))});
+        (reserve_space_size + phi::SizeOf(x->dtype()) - 1) /
+        phi::SizeOf(x->dtype()))});
     reserve_space_ptr =
         dev_ctx.Alloc<T>(reserve_space, reserve_space->numel() * sizeof(T));
-    workspace_tensor.Resize({static_cast<int64_t>(
-        (workspace_size + experimental::SizeOf(x->dtype()) - 1) /
-        experimental::SizeOf(x->dtype()))});
+    workspace_tensor.Resize(
+        {static_cast<int64_t>((workspace_size + phi::SizeOf(x->dtype()) - 1) /
+                              phi::SizeOf(x->dtype()))});
     workspace_ptr = dev_ctx.Alloc<T>(&workspace_tensor,
                                      workspace_tensor.numel() * sizeof(T));
 

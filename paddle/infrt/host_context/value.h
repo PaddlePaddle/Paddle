@@ -96,7 +96,7 @@ using ValueVariantType =
             ::phi::MetaConfig,
             paddle::experimental::Backend,
             phi::DataLayout,
-            paddle::experimental::DataType,
+            phi::DataType,
             ::infrt::phi::DenseTensorMap,
 #endif  // INFRT_WITH_PHI
 #ifdef INFRT_WITH_TRT

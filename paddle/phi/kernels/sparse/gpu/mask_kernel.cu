@@ -165,7 +165,7 @@ void MaskHelperCooGPUKernel(const GPUContext& dev_ctx,
       phi::errors::InvalidArgument("the mask_indices must be 2-D tensor"));
 
   const int32_t sparse_dim = x.sparse_dim();
-  auto indices_dtype = paddle::experimental::CppTypeToDataType<IntT>::Type();
+  auto indices_dtype = phi::CppTypeToDataType<IntT>::Type();
 
   std::vector<IntT> sparse_offsets(sparse_dim);
 

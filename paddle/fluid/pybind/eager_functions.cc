@@ -237,13 +237,13 @@ PyObject* eager_api_get_grads_lists(PyObject* self,
     if (meta && meta->Grad().initialized()) {
       auto& grad = meta->Grad();
       switch (grad.dtype()) {
-        case paddle::experimental::DataType::FLOAT16:
+        case phi::DataType::FLOAT16:
           ret[0].emplace_back(grad);
           break;
-        case paddle::experimental::DataType::BFLOAT16:
+        case phi::DataType::BFLOAT16:
           ret[1].emplace_back(grad);
           break;
-        case paddle::experimental::DataType::FLOAT32:
+        case phi::DataType::FLOAT32:
           ret[2].emplace_back(grad);
           break;
         default:
@@ -276,9 +276,9 @@ PyObject* eager_api_get_grads_types(PyObject* self,
     auto& grad = meta->Grad();
     if (meta && grad.initialized()) {
       if (grad.is_dense_tensor() &&
-          (tensor.dtype() == paddle::experimental::DataType::FLOAT32 ||
-           tensor.dtype() == paddle::experimental::DataType::FLOAT16 ||
-           tensor.dtype() == paddle::experimental::DataType::BFLOAT16)) {
+          (tensor.dtype() == phi::DataType::FLOAT32 ||
+           tensor.dtype() == phi::DataType::FLOAT16 ||
+           tensor.dtype() == phi::DataType::BFLOAT16)) {
         ret.emplace_back(
             paddle::framework::TransToProtoVarType(tensor.dtype()));
       }

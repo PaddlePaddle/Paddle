@@ -50,7 +50,7 @@ void TestCase(const phi::GPUContext& dev_ctx,
               const phi::DDim& dim_out,
               const size_t times,
               Func compute) {
-  phi::DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  phi::DataType dtype = phi::CppTypeToDataType<T>::Type();
   const auto alloc_cpu =
       std::make_unique<paddle::experimental::DefaultAllocator>(phi::CPUPlace());
   const auto alloc_gpu =

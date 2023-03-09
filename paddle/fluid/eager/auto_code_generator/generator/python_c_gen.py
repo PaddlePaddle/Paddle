@@ -52,7 +52,7 @@ atype_to_parsing_function = {
     "std::vector<phi::Scalar>": "CastPyArg2ScalarArray",
     "paddle::experimental::IntArray": "CastPyArg2IntArray",
     "paddle::Place": "CastPyArg2Place",
-    "paddle::experimental::DataType": "CastPyArg2DataType",
+    "phi::DataType": "CastPyArg2DataType",
 }
 
 

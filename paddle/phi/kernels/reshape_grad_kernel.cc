@@ -41,7 +41,7 @@ void ReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
   dev_ctx.Alloc(x_grad, out_grad.dtype());
   auto* src_ptr = out_grad.data();
   auto* dst_ptr = x_grad->data();
-  auto size = out_grad.numel() * paddle::experimental::SizeOf(out_grad.dtype());
+  auto size = out_grad.numel() * phi::SizeOf(out_grad.dtype());
   int ret = xpu::copy(dev_ctx.x_context(),
                       reinterpret_cast<const int8_t*>(src_ptr),
                       reinterpret_cast<int8_t*>(dst_ptr),

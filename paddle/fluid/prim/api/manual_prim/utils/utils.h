@@ -29,12 +29,12 @@ namespace prim {
 // We put some api like utils here
 template <typename T>
 Tensor empty(const paddle::experimental::IntArray& shape,
-             paddle::experimental::DataType dype,
+             phi::DataType dype,
              const paddle::Place& place);
 
 template <typename T>
 Tensor empty_like(const Tensor& x,
-                  paddle::experimental::DataType dtype,
+                  phi::DataType dtype,
                   const paddle::Place& place);
 
 // copy tensor for output ptr, in static need use assigh op
