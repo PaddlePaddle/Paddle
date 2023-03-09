@@ -14,7 +14,7 @@
 
 from paddle.utils import gast
 
-from .utils import (
+from .utils_helper import (
     NodeVarType,
     index_in_list,
     is_dygraph_api,
