@@ -516,7 +516,7 @@ void ResourceManager::GpuResourceReBindStream(void* old_stream,
   // NOTE: stream may be used by multiple predictor, skip resource
   //       operation if resource of new_stream is already exists
   bool new_stream_existed = gpu_resources_.count(new_stream) > 0;
-  if (not new_stream_existed) {
+  if (!new_stream_existed) {
     if (ref_count_[old_stream] == 1) {
       // NOTE: if old_stream is ref_count is 1, old_stream is only
       //       used by current predictor, rebind resource for new_stream
