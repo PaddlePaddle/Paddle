@@ -212,7 +212,6 @@ class Parallelizer:
 
         # apply amp pass on train/eval/predict
         if self._strategy.amp.enable:
-
             config = copy.deepcopy(self._strategy.amp.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -221,7 +220,6 @@ class Parallelizer:
                 self._dist_context.serial_feed_vars["inputs"]
                 + self._dist_context.serial_feed_vars["labels"]
             )
-
             self._logger.info(
                 "Applying AMP-{}-{} ...".format(
                     config["dtype"], config['level']
