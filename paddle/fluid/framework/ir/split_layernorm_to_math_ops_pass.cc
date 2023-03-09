@@ -354,7 +354,11 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     elementwise_mul.SetAttr("axis", -1);
     elementwise_mul.Flush();
     auto* scale = block->Var(layer_norm_scale->Name());
-    scale->SetShape(reduce_dim);
+    std::vector<int64_t> reduce_dim_int64;
+    for (int i : reduce_dim) {
+      reduce_dim_int64.push_back(i);
+    }
+    scale->SetShape(reduce_dim_int64);
     auto elementwise_mul_node = g->CreateOpNode(&elementwise_mul);
     auto* mul_out = block->Var(mul_out_name);
     mul_out->SetShape(input_shape);
@@ -370,7 +374,7 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     elementwise_add1.SetAttr("axis", -1);
     elementwise_add1.Flush();
     auto* bias = block->Var(layer_norm_bias->Name());
-    bias->SetShape(reduce_dim);
+    bias->SetShape(reduce_dim_int64);
     auto elementwise_add1_node = g->CreateOpNode(&elementwise_add1);
 
     IR_NODE_LINK_TO(layer_norm_in, reduce_mean0_node);
