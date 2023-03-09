@@ -26,6 +26,7 @@
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -50,7 +51,6 @@ using VariableIdMap = std::map<std::string, std::vector<int>>;
 // These Op needs set output dtype when register phi kernel, but they didn't
 static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "abs",
-    "accuracy",
     "adam",
     "adamw",
     "all_close",
@@ -58,9 +58,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "angle",
     "any_raw",
     "arg_sort",
-    "argmax",
-    "argmin",
-    "as_real",
     "atan2",
     "auc",
     "bincount",
@@ -68,11 +65,9 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "complex",
     "conv3d_coo",
     "distribute_fpn_proposals",
-    "edit_distance",
     "eig",
     "eig_grad",
     "eigh",
-    "eigvals",
     "ftt_c2r",
     "ftt_r2c",
     "fused_adam",
@@ -83,34 +78,20 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "histogram",
     "instance_norm",
     "is_empty",
-    "is_finite",
     "kthvalue",
     "lamb",
     "layer_norm",
     "layer_norm_grad",
     "less_equal",
     "less_than",
-    "logical_and",
-    "logical_not",
-    "logical_or",
-    "logical_xor",
-    "lstsq",
-    "lu",
-    "matrix_nms",
-    "matrix_rank_tol",
     "merged_adam",
     "mode",
     "momentum",
     "multiclass_nms3",
     "multinomial",
     "nanmedian",
-    "nms",
-    "nonzero",
     "numl",
-    "qr",
-    "qr_grad",
     "rnn",
-    "roi_pool",
     "search_sort",
     "select",
     "send_recv",
@@ -121,7 +102,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "unique",
     "unique_consecutive_flattened_tensor",
     "unique_raw",
-    "viterbi_decode",
     "viterbi_devode",
     "yolo_loss"};
 
@@ -730,6 +710,7 @@ void BuildOpFuncList(const platform::Place& place,
 
         auto& pool = platform::DeviceContextPool::Instance();
         auto* dev_ctx = pool.Get(place);
+        SetDeviceCommContext(op, dev_ctx);
         auto exec_ctx = ExecutionContext(
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
         auto expected_kernel_key = framework::TransPhiKernelKeyToOpKernelType(
@@ -1171,6 +1152,24 @@ void LogDeviceMemoryStats(const platform::Place& place) {
                    "Allocated", place.device)) /
                    1024 / 1024
             << " MB";
+  }
+}
+
+void SetDeviceCommContext(framework::OperatorBase* operator_base,
+                          platform::DeviceContext* dev_ctx) {
+  if (operator_base->HasAttr("ring_id")) {
+    int ring_id = operator_base->Attr<int>("ring_id");
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (comm_context_manager.Has(ring_id)) {
+      auto comm_context = comm_context_manager.Get(ring_id);
+      if (!dev_ctx->GetCommContext()) {
+        dev_ctx->SetCommContext(comm_context);
+      }
+    } else {
+      LOG(WARNING) << "op: " << operator_base->Type()
+                   << ", ring_id: " << ring_id << ", get comm_context failed!";
+    }
   }
 }
 

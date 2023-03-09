@@ -331,7 +331,6 @@ def fill_any_like(x, fill_value, dtype, place=None):
     val = full(x.shape, fill_value, dtype)
     return val
 
-
 @REGISTER_COMPOSITE('unsqueeze2')
 def unsqueeze_composite(x, axis):
     """define composite rule of op unsqueeze"""
@@ -350,3 +349,10 @@ def unsqueeze_composite(x, axis):
         )
     out = reshape(x, x_shape)
     return [out, None]
+
+@REGISTER_COMPOSITE('relu')
+def relu_composite(x):
+    """define composite rule of op relu."""
+    # relu(x) = max(x, 0)
+    return maximum(x, zeros_like(x))
+
