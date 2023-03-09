@@ -142,7 +142,7 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
 
     def setUp(self):
         core._set_prim_backward_enabled(True)
-        self.dtypes = ["float32", "float64"]
+        self.dtypes = ["float16", "float32", "float64"]
         self.shapes = [[], [2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
@@ -160,7 +160,7 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
             blocks = main_program.blocks
             # skip softmax forward decompose
             core._set_prim_forward_blacklist("softmax")
-            paddle.incubate.autograd.to_prim(blocks)
+            paddle.incubate.autograd.primapi.to_prim(blocks)
             z = paddle.static.gradients([y], x)
 
         exe = paddle.static.Executor()
