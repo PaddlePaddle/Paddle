@@ -37,17 +37,9 @@ class FusedElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         "Activation type from elementwise_act_onednn_fuse_pass")
         .SetDefault("");
     AddAttr<float>("fuse_alpha", "Alfa value for the elementwise operator")
-        .SetDefault(1.0f);
+        .SetDefault(0.0f);
     AddAttr<float>("fuse_beta", "Beta value for the elementwise operator")
-        .SetDefault(1.0f);
-
-    AddAttr<float>("scale_x", "Obtained from cpu_quantize_pass")
-        .SetDefault(1.0f);
-    AddAttr<float>("scale_y", "Obtained from cpu_quantize_pass")
-        .SetDefault(1.0f);
-    AddAttr<float>("scale_out", "Obtained from cpu_quantize_pass")
-        .SetDefault(1.0f);
-
+        .SetDefault(0.0f);
     AddAttr<float>("fused_output_scale",
                    "Obtained from operator_scale_onednn_fuse_pass")
         .SetDefault(1.0f);
@@ -56,6 +48,12 @@ class FusedElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         "Obtained from operator_unsqueeze2_onednn_fuse_pass for "
         "elementwise_mul")
         .SetDefault({});
+    AddAttr<float>("scale_x", "Obtained from cpu_quantize_pass")
+        .SetDefault(1.0f);
+    AddAttr<float>("scale_y", "Obtained from cpu_quantize_pass")
+        .SetDefault(1.0f);
+    AddAttr<float>("scale_out", "Obtained from cpu_quantize_pass")
+        .SetDefault(1.0f);
     AddOpComment();
   }
 

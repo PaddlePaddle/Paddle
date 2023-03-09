@@ -85,36 +85,24 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 }  // namespace framework
 }  // namespace paddle
 
-< < < < < < < <
-    HEAD : paddle / fluid / framework / ir / mkldnn /
-           elementwise_activation_onednn_fuse_pass.cc REGISTER_PASS(
-               elementwise_activation_onednn_fuse_pass,
-               paddle::framework::ir::ElementwiseActivationOneDNNPass);
-REGISTER_PASS_CAPABILITY(elementwise_activation_onednn_fuse_pass)
-== == == ==
-    REGISTER_PASS(elementwise_act_onednn_fuse_pass,
-                  paddle::framework::ir::ElementwiseActivationOneDNNPass);
-REGISTER_PASS_CAPABILITY(elementwise_act_onednn_fuse_pass) >>>>>>>>
-    jhulek /
-        Fused_Elementwise_Kernel_And_Op
-    : paddle
-      /
-      fluid / framework / ir / mkldnn /
-      elementwise_act_onednn_fuse_pass.cc.AddCombination(
-          paddle::framework::compatible::OpVersionComparatorCombination()
-              .LE("elementwise_add", 1)
-              .LE("elementwise_sub", 1)
-              .LE("elementwise_mul", 1)
-              .EQ("abs", 0)
-              .LE("clip", 1)
-              .EQ("gelu", 0)
-              .EQ("hard_sigmoid", 0)
-              .LE("hard_swish", 0)
-              .LE("leaky_relu", 1)
-              .LE("mish", 1)
-              .EQ("relu", 0)
-              .EQ("relu6", 0)
-              .EQ("sigmoid", 0)
-              .EQ("sqrt", 0)
-              .EQ("swish", 0)
-              .EQ("tanh", 0));
+REGISTER_PASS(elementwise_act_onednn_fuse_pass,
+              paddle::framework::ir::ElementwiseActivationOneDNNPass);
+REGISTER_PASS_CAPABILITY(elementwise_act_onednn_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .LE("elementwise_add", 1)
+            .LE("elementwise_sub", 1)
+            .LE("elementwise_mul", 1)
+            .EQ("abs", 0)
+            .LE("clip", 1)
+            .EQ("gelu", 0)
+            .EQ("hard_sigmoid", 0)
+            .LE("hard_swish", 0)
+            .LE("leaky_relu", 1)
+            .LE("mish", 1)
+            .EQ("relu", 0)
+            .EQ("relu6", 0)
+            .EQ("sigmoid", 0)
+            .EQ("sqrt", 0)
+            .EQ("swish", 0)
+            .EQ("tanh", 0));
