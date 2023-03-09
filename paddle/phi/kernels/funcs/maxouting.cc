@@ -108,10 +108,8 @@ void MaxOutGradFunctor<DeviceContext, T>::operator()(
 }
 
 template class MaxOutGradFunctor<phi::CPUContext, float>;
-template class MaxOutGradFunctor<phi::CPUContext, phi::dtype::float16>;
 template class MaxOutGradFunctor<phi::CPUContext, double>;
 template class MaxOutFunctor<phi::CPUContext, float>;
-template class MaxOutFunctor<phi::CPUContext, phi::dtype::float16>;
 template class MaxOutFunctor<phi::CPUContext, double>;
 
 }  // namespace funcs
