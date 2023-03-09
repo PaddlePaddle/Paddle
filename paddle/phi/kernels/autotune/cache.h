@@ -90,6 +90,20 @@ class AutoTuneCache {
     return conv_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
+  template <typename T>
+  typename std::enable_if<std::is_same<T, float>::value,
+                          AlgorithmsCacheMap&>::type
+  GetGatherGemmScatter() {
+    return Get(AlgorithmType::kGatherGemmScatterFP32NN);
+  }
+
+  template <typename T>
+  typename std::enable_if<std::is_same<T, phi::dtype::float16>::value,
+                          AlgorithmsCacheMap&>::type
+  GetGatherGemmScatter() {
+    return Get(AlgorithmType::kGatherGemmScatterFP16NN);
+  }
+
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   CudnnFrontendPlanCache& GetConvV8(const AlgorithmType& algo_type) {
     return cudnn_v8_auto_tune_map_[static_cast<int64_t>(algo_type)];

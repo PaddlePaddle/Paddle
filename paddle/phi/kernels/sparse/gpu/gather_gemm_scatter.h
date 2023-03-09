@@ -37,30 +37,17 @@ GatherGemmScatter(const phi::GPUContext& ctx,
                   const int& n,
                   const int& k,
                   const int32_t* a_indices,
-                  const int32_t* b_indices,
                   const int32_t* c_d_indices,
                   T alpha,
                   T beta) {
-  auto* tuner = autotune::MakeGatherGemmScatterTuner<T>(fp16_kernels[0]);
+  auto* tuner = autotune::MakeGatherGemmScatterTuner(fp16_kernels[0]);
   for (auto i = 1; i < fp16_kernels.size(); i++)
     tuner->AddCallBack(fp16_kernels[i]);
 
   size_t key = autotune::GenKey(m / features_num_range, n, k);
 
-  tuner->Run(ctx,
-             key,
-             a,
-             b,
-             c,
-             d,
-             m,
-             n,
-             k,
-             a_indices,
-             b_indices,
-             c_d_indices,
-             alpha,
-             beta);
+  tuner->Run(
+      ctx, key, alpha, beta, ctx, a, b, c, d, m, n, k, a_indices, c_d_indices);
 }
 
 template <typename T>
@@ -74,30 +61,17 @@ GatherGemmScatter(const phi::GPUContext& ctx,
                   const int& n,
                   const int& k,
                   const int32_t* a_indices,
-                  const int32_t* b_indices,
                   const int32_t* c_d_indices,
                   T alpha,
                   T beta) {
-  auto* tuner = autotune::MakeGatherGemmScatterTuner<T>(fp32_kernels[0]);
+  auto* tuner = autotune::MakeGatherGemmScatterTuner(fp32_kernels[0]);
   for (auto i = 1; i < fp32_kernels.size(); i++)
     tuner->AddCallBack(fp32_kernels[i]);
 
   size_t key = autotune::GenKey(m / features_num_range, n, k);
 
-  tuner->Run(ctx,
-             key,
-             a,
-             b,
-             c,
-             d,
-             m,
-             n,
-             k,
-             a_indices,
-             b_indices,
-             c_d_indices,
-             alpha,
-             beta);
+  tuner->Run(
+      ctx, key, alpha, beta, ctx, a, b, c, d, m, n, k, a_indices, c_d_indices);
 }
 
 template <typename T>
@@ -124,7 +98,6 @@ static void dispatchKernel(const GPUContext& dev_ctx,
                       n,
                       k,
                       static_cast<const int32_t*>(a_indices),
-                      nullptr,
                       static_cast<const int32_t*>(c_d_indices),
                       static_cast<phi::dtype::float16>(alpha),
                       static_cast<phi::dtype::float16>(beta));
@@ -138,7 +111,6 @@ static void dispatchKernel(const GPUContext& dev_ctx,
                       n,
                       k,
                       static_cast<const int32_t*>(a_indices),
-                      nullptr,
                       static_cast<const int32_t*>(c_d_indices),
                       static_cast<float>(alpha),
                       static_cast<float>(beta));

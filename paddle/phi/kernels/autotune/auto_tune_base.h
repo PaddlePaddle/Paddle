@@ -177,28 +177,12 @@ class MatmulAutoTuner
   }
 };
 
-template <typename T>
-typename std::enable_if<std::is_same<T, float>::value,
-                        AlgorithmsCacheMap&>::type
-GatherGemmScatterGetCache() {
-  return autotune::AutoTuneCache::Instance().Get(
-      AlgorithmType::kGatherGemmScatterFP32NN);
-}
-
-template <typename T>
-typename std::enable_if<std::is_same<T, phi::dtype::float16>::value,
-                        AlgorithmsCacheMap&>::type
-GatherGemmScatterGetCache() {
-  return autotune::AutoTuneCache::Instance().Get(
-      AlgorithmType::kGatherGemmScatterFP16NN);
-}
-
 template <typename T, typename ReturnType, typename... Args>
 class GatherGemmScatterAutoTuner
-    : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
+    : public AutoTuneBase<T, KernelCallback<T, ReturnType, T, T, Args...>> {
  public:
   static GatherGemmScatterAutoTuner<T, ReturnType, Args...>* Instance(
-      ReturnType (*func)(Args...)) {
+      ReturnType (*func)(T, T, Args...)) {
     static std::once_flag gather_gemm_scatter_init_flag;
     static std::unique_ptr<GatherGemmScatterAutoTuner<T, ReturnType, Args...>>
         instance;
@@ -209,51 +193,67 @@ class GatherGemmScatterAutoTuner
     });
     return instance.get();
   }
+
   void Run(const phi::GPUContext& ctx,
            const size_t key,
-           const T* const a,
-           const T* const b,
-           const T* const c,
-           T* const d,
-           const int& m,
-           const int& n,
-           const int& k,
-           const int32_t* a_indices,
-           const int32_t* b_indices,
-           const int32_t* c_d_indices,
-           T alpha,
-           T beta) {
+           T const alpha,
+           T const beta,
+           Args... args) {
     this->is_init_ = true;
     this->CheckKernelSize();
-    auto& cache = GatherGemmScatterGetCache<T>();
+    auto& cache = AutoTuneCache::Instance().GetGatherGemmScatter<T>();
 
     if (cache.Find(key)) {
       auto best_idx = cache.Get(key);
-      this->kernels_[best_idx].Run(
-          ctx, a, b, c, d, m, n, k, a_indices, c_d_indices, alpha, beta);
+      this->kernels_[best_idx].Run(alpha, beta, args...);
 
     } else {
       // Set alpha to 0 and beta to 1 to avoid changing the value of d when
       // picking the best kernel
-      auto best_idx = this->PickBestKernel(ctx,
-                                           ctx,
-                                           a,
-                                           b,
-                                           c,
-                                           d,
-                                           m,
-                                           n,
-                                           k,
-                                           a_indices,
-                                           c_d_indices,
-                                           static_cast<T>(0),
-                                           static_cast<T>(1));
+      auto best_idx =
+          PickBestKernel(ctx, static_cast<T>(0), static_cast<T>(1), args...);
       cache.Set(key, best_idx);
-      this->kernels_[best_idx].Run(
-          ctx, a, b, c, d, m, n, k, a_indices, c_d_indices, alpha, beta);
+      this->kernels_[best_idx].Run(alpha, beta, args...);
     }
   }
+
+ protected:
+  size_t PickBestKernel(const phi::GPUContext& ctx,
+                        const T& alpha,
+                        const T& beta,
+                        Args&... args) {
+    std::lock_guard<std::mutex> lock(this->mutex_);
+    constexpr size_t NO_KERNEL_WORKS = -1;
+    size_t best_idx = NO_KERNEL_WORKS;
+    float min_time = std::numeric_limits<float>::max();
+
+    // Time cost test estabulished in default stream.
+    for (int i = 0; i < this->kernels_.size(); ++i) {
+      float time = 0;
+      // Some kernels will require more shared memory than available, skip
+      try {
+        time = this->RunAndMeasureKernel(ctx, i, alpha, beta, args...);
+        if (time < min_time) {
+          min_time = time;
+          best_idx = i;
+        }
+      } catch (const std::runtime_error& error) {
+        VLOG(3) << "the kernels_[" << i << "] get error:" << error.what();
+      }
+    }
+    if (best_idx == NO_KERNEL_WORKS) {
+      LOG(ERROR) << "No kernel works!\n";
+      exit(-1);
+    }
+    VLOG(3) << "best kernel idx is " << best_idx;
+    return best_idx;
+  }
 };
+template <typename T, typename ReturnType, typename... Args>
+static GatherGemmScatterAutoTuner<T, ReturnType, Args...>*
+MakeGatherGemmScatterTuner(ReturnType (*func)(T, T, Args...)) {
+  return GatherGemmScatterAutoTuner<T, ReturnType, Args...>::Instance(func);
+}
 
 // Define the auto_tuner inital object.
 #define DEFINE_AUTOTUNER_COMMON_OBJ(name)                                \

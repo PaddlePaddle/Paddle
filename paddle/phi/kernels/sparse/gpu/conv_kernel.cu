@@ -129,6 +129,9 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   if (in_channels % 8 != 0 || out_channels % 8 != 0) {
     if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;
   }
+  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
+    if (std::is_same<T, float>::value) cutlass = false;
+  }
   if (std::is_same<T, double>::value) cutlass = false;
   if (!std::is_same<IntT, int32_t>::value) cutlass = false;
 

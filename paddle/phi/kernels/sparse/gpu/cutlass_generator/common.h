@@ -25,7 +25,9 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 namespace phi {
 namespace sparse {
-typedef void (*fp16_gather_gemm_scatter)(const GPUContext& dev_ctx,
+typedef void (*fp16_gather_gemm_scatter)(phi::dtype::float16 const alpha,
+                                         phi::dtype::float16 const beta,
+                                         const GPUContext& dev_ctx,
                                          const phi::dtype::float16* const a,
                                          const phi::dtype::float16* const b,
                                          const phi::dtype::float16* const c,
@@ -34,10 +36,10 @@ typedef void (*fp16_gather_gemm_scatter)(const GPUContext& dev_ctx,
                                          const int n,
                                          const int k,
                                          const int32_t* a_indices,
-                                         const int32_t* c_d_indices,
-                                         phi::dtype::float16 const alpha,
-                                         phi::dtype::float16 const beta);
-typedef void (*fp32_gather_gemm_scatter)(const GPUContext& dev_ctx,
+                                         const int32_t* c_d_indices);
+typedef void (*fp32_gather_gemm_scatter)(float const alpha,
+                                         float const beta,
+                                         const GPUContext& dev_ctx,
                                          const float* const a,
                                          const float* const b,
                                          const float* const c,
@@ -46,12 +48,20 @@ typedef void (*fp32_gather_gemm_scatter)(const GPUContext& dev_ctx,
                                          const int n,
                                          const int k,
                                          const int32_t* a_indices,
-                                         const int32_t* c_d_indices,
-                                         float const alpha,
-                                         float const beta);
+                                         const int32_t* c_d_indices);
+
+#define GATHER_GEMM_SCATTER_CHECK(status)                      \
+  {                                                            \
+    cutlass::Status error = status;                            \
+    if (error != cutlass::Status::kSuccess) {                  \
+      throw std::runtime_error(cutlassGetStatusString(error)); \
+    }                                                          \
+  }
 
 template <typename T, typename Gemm>
 typename std::enable_if<std::is_same<T, float>::value, void>::type launchKernel(
+    T const alpha,
+    T const beta,
     const GPUContext& dev_ctx,
     const T* const a,
     const T* const b,
@@ -61,9 +71,7 @@ typename std::enable_if<std::is_same<T, float>::value, void>::type launchKernel(
     const int n,
     const int k,
     const int32_t* a_indices,
-    const int32_t* c_d_indices,
-    T const alpha,
-    T const beta) {
+    const int32_t* c_d_indices) {
   cutlass::gemm::GemmCoord problem_size_real({m, n, k});
   int split_k_slices = 1;
   typename Gemm::Arguments arguments{
@@ -90,15 +98,17 @@ typename std::enable_if<std::is_same<T, float>::value, void>::type launchKernel(
   cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
   Gemm gemm_op;
   cutlass::Status status = gemm_op.can_implement(arguments);
-  CUTLASS_CHECK(status);
+  GATHER_GEMM_SCATTER_CHECK(status);
   status = gemm_op.initialize(arguments, workspace.get());
-  CUTLASS_CHECK(status);
+  GATHER_GEMM_SCATTER_CHECK(status);
   gemm_op(dev_ctx.stream());
 }
 
 template <typename T, typename Gemm>
 typename std::enable_if<std::is_same<T, phi::dtype::float16>::value, void>::type
-launchKernel(const GPUContext& dev_ctx,
+launchKernel(T const alpha,
+             T const beta,
+             const GPUContext& dev_ctx,
              const T* const a,
              const T* const b,
              const T* const c,
@@ -107,9 +117,7 @@ launchKernel(const GPUContext& dev_ctx,
              const int n,
              const int k,
              const int32_t* a_indices,
-             const int32_t* c_d_indices,
-             T const alpha,
-             T const beta) {
+             const int32_t* c_d_indices) {
   cutlass::gemm::GemmCoord problem_size_real({m, n, k});
   int split_k_slices = 1;
   typename Gemm::Arguments arguments{
@@ -137,9 +145,9 @@ launchKernel(const GPUContext& dev_ctx,
   cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
   Gemm gemm_op;
   cutlass::Status status = gemm_op.can_implement(arguments);
-  CUTLASS_CHECK(status);
+  GATHER_GEMM_SCATTER_CHECK(status);
   status = gemm_op.initialize(arguments, workspace.get());
-  CUTLASS_CHECK(status);
+  GATHER_GEMM_SCATTER_CHECK(status);
   gemm_op(dev_ctx.stream());
 }
 }  // namespace sparse
