@@ -287,8 +287,22 @@ def is_paddle_api(node):
 
 
 def is_paddle_func(func):
-    m = inspect.getmodule(func)
-    return m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
+    try:
+        if isinstance(func, functools.partial):
+            func = func.func
+
+        # In case of dynamically monkey patch customised function
+        # into paddle class obj, so we consider its class module
+        # path as prefix.
+        if hasattr(func, "__self__"):
+            func = func.__self__
+        elif inspect.ismethod(func):
+            func = func.__func__
+
+        m = inspect.getmodule(func)
+        return m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
+    except Exception:
+        return False
 
 
 # Is numpy_api cannot reuse is_api_in_module because of numpy module problem

@@ -482,6 +482,7 @@ def transpose(x, perm, name=None):
                 'float64',
                 'int32',
                 'int64',
+                'uint16',
                 'complex64',
                 'complex128',
             ],
@@ -3155,7 +3156,15 @@ def tile(x, repeat_times, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'tile',
         )
         if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
