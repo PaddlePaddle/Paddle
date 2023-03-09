@@ -143,7 +143,7 @@ class TestAtan2OpBf16(OpTest):
         self.__class__.op_type = self.op_type
         x1 = np.random.uniform(-1, -0.1, [15, 17]).astype(np.float32)
         x2 = np.random.uniform(0.1, 1, [15, 17]).astype(np.float32)
-        out = paddle.atan2(x1, x2)
+        out = np.arctan2(x1, x2)
 
         self.inputs = {
             'X1': convert_float_to_uint16(x1),
