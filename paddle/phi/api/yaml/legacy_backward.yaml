@@ -724,7 +724,7 @@
     param : [x, y, grad_out]
   kernel :
     func : matmul_double_grad
-  composite : matmul_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x=false, transpose_y=false)
+  composite : matmul_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x, transpose_y)
   backward : matmul_triple_grad
   optional : grad_x_grad, grad_y_grad
 
