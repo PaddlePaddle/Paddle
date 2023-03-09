@@ -423,6 +423,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
+  composite : elementwise_pow_grad(x, y, out_grad, axis)
   kernel :
     func : elementwise_pow_grad
 

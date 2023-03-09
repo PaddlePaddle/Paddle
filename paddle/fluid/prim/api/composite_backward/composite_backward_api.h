@@ -279,6 +279,56 @@ void divide_grad(const Tensor& x,
 }
 
 template <typename T>
+void elementwise_pow_grad(const Tensor& x,
+                          const Tensor& y,
+                          const Tensor& out_grad,
+                          int axis,
+                          Tensor* dx,
+                          Tensor* dy) {
+  if (dy) {
+    // dy = lnx * x^y
+    auto lnx = log<T>(x);
+    auto x_pow_y = elementwise_pow<T>(x, y);
+    auto dy_res = lnx * x_pow_y;
+    if (x.dims() != y.dims()) {
+      // Maybe need reduce here
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dy_res, dy);
+      } else {
+        auto dy_reduce_res =
+            dy_res.sum(phi::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
+        set_output<T>(dy_tmp, dy);
+      }
+    } else {
+      set_output<T>(dy_res, dy);
+    }
+  }  // indicate we will compute dy
+  if (dx) {
+    // dx = y * x^(y-1)
+    auto tmp_z = y - 1.0;
+    auto x_pow_z = elementwise_pow<T>(x, tmp_z);
+    auto dx_res = y * x_pow_z;
+    if (y.dims() != x.dims()) {
+      // Maybe need reduce here
+      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dx_res, dx);
+      } else {
+        auto dx_reduce_res =
+            dx_res.sum(phi::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
+        set_output<T>(dx_tmp, dx);
+      }
+
+    } else {
+      set_output<T>(dx_res, dx);
+    }
+  }  // indicate we will compute dx
+}
+
+template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     // This calculation is important for resnet.
@@ -385,6 +435,14 @@ void expand_grad(const Tensor& x,
     } else {
       by_pass<T>(out_grad, x_grad);
     }
+  }
+}
+
+template <typename T>
+void log_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    // dx = dout / x
+    set_output<T>(out_grad / x, x_grad);
   }
 }
 
