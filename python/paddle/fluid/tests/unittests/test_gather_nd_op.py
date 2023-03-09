@@ -88,13 +88,16 @@ class TestGatherNdOpIndex1(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.init_input()
+
+        self.inputs = {'X': self.xnp, 'Index': self.index}
+
+        self.outputs = {'Out': self.xnp[tuple(self.index.T)]}
         self.enable_cinn = False
-        xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
-        index = np.array([1, 2]).astype("int32")
 
-        self.inputs = {'X': xnp, 'Index': index}
-
-        self.outputs = {'Out': xnp[tuple(index.T)]}
+    def init_input(self):
+        self.xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
+        self.index = np.array([1, 2]).astype("int32")
 
     def test_check_output(self):
         self.check_output(check_eager=False)
@@ -103,9 +106,14 @@ class TestGatherNdOpIndex1(OpTest):
         self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
+class TestGatherNdOpIndex1FP16(TestGatherNdOpIndex1):
+    def init_input(self):
+        self.xnp = np.random.uniform(0, 100, (10, 10)).astype("float16")
+        self.index = np.array([1, 2]).astype("int32")
+
+
 class TestGatherNdOpWithSameIndexAsX(OpTest):
     # Index has same rank as X's rank
-
     def setUp(self):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
