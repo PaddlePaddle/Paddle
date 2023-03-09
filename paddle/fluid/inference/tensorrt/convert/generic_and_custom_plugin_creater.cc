@@ -71,7 +71,8 @@ class CustomPluginCreater : public OpConverter {
     std::list<std::vector<float>> floats_attrs;
 
     for (auto &attr_name_and_type : op_attrs_names) {
-      auto attr_name = attr_name_and_type.substr(0, attr_name_and_type.find_first_of(":"));
+      auto attr_name =
+          attr_name_and_type.substr(0, attr_name_and_type.find_first_of(":"));
       nvinfer1::PluginField plugindata;
 
       // NOTE: to avoid string rewrite by iterator, deep copy here
