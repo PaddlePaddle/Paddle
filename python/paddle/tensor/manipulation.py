@@ -482,7 +482,6 @@ def transpose(x, perm, name=None):
                 'float64',
                 'int32',
                 'int64',
-                'uint16',
                 'complex64',
                 'complex128',
             ],
@@ -1856,14 +1855,7 @@ def stack(x, axis=0, name=None):
                 check_variable_and_dtype(
                     i,
                     'x',
-                    [
-                        'float16',
-                        'float32',
-                        'float64',
-                        'int32',
-                        'int64',
-                        'uint16',
-                    ],
+                    ['float16', 'float32', 'float64', 'int32', 'int64'],
                     'stack',
                 )
 
@@ -1940,7 +1932,8 @@ def split(x, num_or_sections, axis=0, name=None):
             dim = dim.item(0)
         assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
         dim = (len(input.shape) + dim) if dim < 0 else dim
-        if isinstance(num_or_sections, Variable): num_or_sections = num_or_sections.tolist()
+        if isinstance(num_or_sections, Variable):
+            num_or_sections = num_or_sections.tolist()
         if isinstance(num_or_sections, (list, tuple)):
             if utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
@@ -2821,25 +2814,25 @@ def scatter(x, index, updates, overwrite=True, name=None):
 
     .. code-block:: python
 
-        import paddle
+        import numpy as np
         #input:
-        x = paddle.to_tensor([[1, 1], [2, 2], [3, 3]], dtype='float32')
-        index = paddle.to_tensor([2, 1, 0, 1], dtype='int64')
+        x = np.array([[1, 1], [2, 2], [3, 3]])
+        index = np.array([2, 1, 0, 1])
         # shape of updates should be the same as x
         # shape of updates with dim > 1 should be the same as input
-        updates = paddle.to_tensor([[1, 1], [2, 2], [3, 3], [4, 4]], dtype='float32')
+        updates = np.array([[1, 1], [2, 2], [3, 3], [4, 4]])
         overwrite = False
         # calculation:
         if not overwrite:
             for i in range(len(index)):
-                x[index[i]] = paddle.zeros([2])
+                x[index[i]] = np.zeros((2))
         for i in range(len(index)):
             if (overwrite):
                 x[index[i]] = updates[i]
             else:
                 x[index[i]] += updates[i]
         # output:
-        out = paddle.to_tensor([[3, 3], [6, 6], [1, 1]])
+        out = np.array([[3, 3], [6, 6], [1, 1]])
         out.shape # [3, 2]
 
     **NOTICE**: The order in which updates are applied is nondeterministic,
@@ -2849,10 +2842,10 @@ def scatter(x, index, updates, overwrite=True, name=None):
         x (Tensor): The input N-D Tensor with ndim>=1. Data type can be float32, float64.
         index (Tensor): The index is a 1-D or 0-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
         updates (Tensor): Update input with updates parameter based on index. When the index is a 1-D tensor, the updates shape should be the same as input, and dim value with dim > 1 should be the same as input. When the index is a 0-D tensor, the updates should be a (N-1)-D tensor, the ith dim of the updates should be queal with the (i+1)th dim of the input.
-        overwrite (bool, optional): The mode that updating the output when there are same indices.
+        overwrite (bool): The mode that updating the output when there are same indices.
 
             If True, use the overwrite mode to update the output of the same index,
-            if False, use the accumulate mode to update the output of the same index. Default value is True.
+            if False, use the accumulate mode to update the output of the same index.Default value is True.
 
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
@@ -3156,15 +3149,7 @@ def tile(x, repeat_times, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            [
-                'bool',
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-            ],
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
             'tile',
         )
         if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
@@ -4078,7 +4063,7 @@ def tensordot(x, y, axes=2, name=None):
             "The 'axes' with type 'Tensor' in "
             + op_type
             + " is not available in static graph mode, "
-              "please convert its type to int|Tuple|List, or use dynamic graph mode."
+            "please convert its type to int|Tuple|List, or use dynamic graph mode."
         )
 
     axes_x = []
