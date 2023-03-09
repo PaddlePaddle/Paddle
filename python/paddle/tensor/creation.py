@@ -35,7 +35,6 @@ from ..fluid.framework import (
     _in_eager_without_dygraph_check,
     device_guard,
 )
-from ..fluid.layers import utils
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,
@@ -1775,7 +1774,7 @@ def empty(shape, dtype=None, name=None):
     dtype = convert_dtype(dtype)
 
     if in_dygraph_mode():
-        shape = utils.convert_shape_to_list(shape)
+        shape = paddle.utils.convert_shape_to_list(shape)
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
         )
@@ -1797,7 +1796,7 @@ def empty(shape, dtype=None, name=None):
             check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'empty')
 
         attrs = {}
-        utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='empty'
         )
 
@@ -1874,7 +1873,7 @@ def empty_like(x, dtype=None, name=None):
         attrs = {}
         attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
         shape = paddle.shape(x)
-        utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='empty_like'
         )
 

@@ -20,7 +20,6 @@ from paddle.fluid.dygraph.base import _convert_into_variable
 from paddle.fluid.framework import Variable, core
 from paddle.fluid.layers import Print, control_flow, fill_constant
 from paddle.fluid.layers.control_flow import while_loop
-from paddle.fluid.layers.utils import copy_mutable_vars
 from paddle.jit.dy2static.utils import (
     Dygraph2StaticException,
     GetterSetterHelper,
@@ -371,7 +370,10 @@ def _run_paddle_cond(
 
     def new_true_fn():
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
-        helper.set(return_name_ids, copy_mutable_vars(init_args))
+        helper.set(
+            return_name_ids,
+            paddle.utils.copy_mutable_vars(init_args),
+        )
         ret = true_fn()
         # IfExpr will return a non-None return value, so we just return ret.
         # We assume normal return has no return value.
@@ -382,7 +384,10 @@ def _run_paddle_cond(
 
     def new_false_fn():
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
-        helper.set(return_name_ids, copy_mutable_vars(init_args))
+        helper.set(
+            return_name_ids,
+            paddle.utils.copy_mutable_vars(init_args),
+        )
         ret = false_fn()
         if ret is None:
             return helper.get(return_name_ids)
