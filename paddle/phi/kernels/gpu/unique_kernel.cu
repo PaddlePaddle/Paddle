@@ -27,6 +27,8 @@
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unique_functor.h"
@@ -607,8 +609,16 @@ void UniqueKernel(const Context& context,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    unique, GPU, ALL_LAYOUT, phi::UniqueKernel, float, double, int64_t, int) {}
+PD_REGISTER_KERNEL(unique,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UniqueKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(unique_raw,
                    GPU,
@@ -617,4 +627,6 @@ PD_REGISTER_KERNEL(unique_raw,
                    float,
                    double,
                    int64_t,
-                   int) {}
+                   int,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
