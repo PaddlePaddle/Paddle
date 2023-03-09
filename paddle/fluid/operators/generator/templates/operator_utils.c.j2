@@ -68,11 +68,13 @@ AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name
 {% macro add_attr(i, attr, op_name) %}{# inline #}
   {% set name = attr["fluid_name"] %}
   {% set typename = attr["typename"] %}
-  {% if typename is scalar %}
+  {% if typename is scalar and
+  ("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}
 AddInput("{{attr | to_scalar_tensor_name}}", "attribute {{i}} for {{op_name}} op from 0D Tensor.")
     .AsDispensable();
 AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
-  {% elif typename == "IntArray" and attr["is_support_tensor"] is false %}{# the type has been renamed #}
+  {% elif typename == "IntArray" and
+  ("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}{# the type has been renamed #}
     {% if 'tensor_name' in attr or 'manual_flag' not in attr %}
 AddInput("{{attr | to_int_array_tensor_name}}", "attribute {{i}} for {{op_name}} op from 1D integer Tensor.")
     .AsDispensable();
@@ -223,9 +225,11 @@ paddle::small_vector<const char*> inputs {
 {% set typename = attr["typename"] %}
 {%- if attr["fluid_name"] in kernel_args %}
 {% set name = attr["fluid_name"] %}
-{% if typename is scalar %}{# scalar correspond to a dispensable input and an attr in opmaker #}
+{% if typename is scalar and
+("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}{# scalar correspond to a dispensable input and an attr in opmaker #}
 attrs.emplace_back(ctx.HasInput("{{attr | to_scalar_tensor_name}}") ? "{{attr | to_scalar_tensor_name}}" : "{{name}}");
-{%- elif typename == "IntArray" and attr["is_support_tensor"] is false%}
+{%- elif typename == "IntArray" and
+("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}
   {% if 'tensor_name' in attr and  'tensors_name' not in attr %}
 attrs.emplace_back(
   ctx.HasInput("{{attr | to_int_array_tensor_name}}")

@@ -102,7 +102,7 @@ def process_scalar(op_item, scalar_configs):
                     else False
                 )
                 if attr_item['is_support_tensor']:
-                    attr_item['typename'] = (
+                    attr_item['data_type'] = (
                         scalar_config['data_type']
                         if 'data_type' in scalar_config
                         else scalar_map[attr_type]
