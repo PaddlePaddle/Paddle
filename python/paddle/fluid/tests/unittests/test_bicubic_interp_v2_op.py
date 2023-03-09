@@ -190,7 +190,7 @@ class TestBicubicInterpOp(OpTest):
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
         # Skip check_eager while found them in Inputs.
         self.check_eager = True
-        input_np = np.random.random(self.input_shape).astype("float64")
+        input_np = np.random.random(self.input_shape).astype(self.dtype)
         scale_h = 0
         scale_w = 0
         if self.data_layout == "NCHW":
@@ -266,6 +266,7 @@ class TestBicubicInterpOp(OpTest):
         self.scale = []
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
+        self.dtype = np.float64
 
 
 class TestBicubicInterpCase1(TestBicubicInterpOp):
@@ -332,77 +333,6 @@ class TestBicubicInterpCase6(TestBicubicInterpOp):
 
 
 class TestBicubicInterpOpFP16(OpTest):
-    def setUp(self):
-        self.python_api = bicubic_interp_test
-        self.out_size = None
-        self.actual_shape = None
-        self.data_layout = 'NCHW'
-        self.init_test_case()
-        self.op_type = "bicubic_interp_v2"
-        # NOTE(dev): some AsDispensible input is not used under imperative mode.
-        # Skip check_eager while found them in Inputs.
-        self.check_eager = True
-        self.dtype = np.float16
-        input_np = np.random.random(self.input_shape).astype("float16")
-        scale_h = 0
-        scale_w = 0
-        if self.data_layout == "NCHW":
-            in_h = self.input_shape[2]
-            in_w = self.input_shape[3]
-        else:
-            in_h = self.input_shape[1]
-            in_w = self.input_shape[2]
-
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0.0:
-                    scale_h = scale_w = float(self.scale)
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                scale_w = scale_h = self.scale[0]
-            elif isinstance(self.scale, list) and len(self.scale) > 1:
-                scale_w = self.scale[1]
-                scale_h = self.scale[0]
-            out_h = int(in_h * scale_h)
-            out_w = int(in_w * scale_w)
-        else:
-            out_h = self.out_h
-            out_w = self.out_w
-
-        output_np = bicubic_interp_np(
-            input_np,
-            out_h,
-            out_w,
-            scale_h,
-            scale_w,
-            self.out_size,
-            self.actual_shape,
-            self.align_corners,
-            self.data_layout,
-        )
-        self.inputs = {'X': input_np}
-        if self.out_size is not None:
-            self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
-        if self.actual_shape is not None:
-            self.inputs['OutSize'] = self.actual_shape
-            self.check_eager = False
-
-        self.attrs = {
-            'out_h': self.out_h,
-            'out_w': self.out_w,
-            'interp_method': self.interp_method,
-            'align_corners': self.align_corners,
-            'data_layout': self.data_layout,
-        }
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0.0:
-                    self.scale = [self.scale]
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                self.scale = [self.scale[0], self.scale[0]]
-            self.attrs['scale'] = self.scale
-        self.outputs = {'Out': output_np}
-
     def test_check_output(self):
         self.check_output(check_eager=self.check_eager, atol=1e-3)
 
@@ -423,6 +353,7 @@ class TestBicubicInterpOpFP16(OpTest):
         self.scale = []
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
+        self.dtype = np.float16
 
 
 class TestBicubicInterpCase1FP16(TestBicubicInterpOpFP16):

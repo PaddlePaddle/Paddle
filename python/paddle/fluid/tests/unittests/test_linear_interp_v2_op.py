@@ -131,7 +131,7 @@ class TestLinearInterpOp(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "linear_interp_v2"
-        input_np = np.random.random(self.input_shape).astype("float64")
+        input_np = np.random.random(self.input_shape).astype(self.dtype)
 
         scale_w = 0
         if self.data_layout == "NCHW":
@@ -198,6 +198,7 @@ class TestLinearInterpOp(OpTest):
         ).astype("int32")
         self.align_corners = False
         self.align_mode = 1
+        self.dtype = np.float64
 
 
 class TestLinearInterpOpDataLayout(TestLinearInterpOp):
@@ -336,60 +337,6 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
 
 
 class TestLinearInterpOpFP16(OpTest):
-    def setUp(self):
-        self.python_api = linear_interp_test
-        self.out_size = None
-        self.actual_shape = None
-        self.data_layout = 'NCHW'
-        self.init_test_case()
-        self.op_type = "linear_interp_v2"
-        self.dtype = np.float16
-        input_np = np.random.random(self.input_shape).astype("float16")
-
-        scale_w = 0
-        if self.data_layout == "NCHW":
-            in_w = self.input_shape[2]
-        else:
-            in_w = self.input_shape[1]
-
-        if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                self.scale = float(self.scale)
-            if isinstance(self.scale, list):
-                self.scale = float(self.scale[0])
-            out_w = int(in_w * self.scale)
-        else:
-            out_w = self.out_w
-
-        output_np = linear_interp_np(
-            input_np,
-            out_w,
-            self.scale,
-            self.out_size,
-            self.actual_shape,
-            self.align_corners,
-            self.align_mode,
-            self.data_layout,
-        )
-        self.inputs = {'X': input_np}
-        if self.out_size is not None:
-            self.inputs['OutSize'] = self.out_size
-        if self.actual_shape is not None:
-            self.inputs['OutSize'] = self.actual_shape
-
-        self.attrs = {
-            'out_w': self.out_w,
-            'interp_method': self.interp_method,
-            'align_corners': self.align_corners,
-            'align_mode': self.align_mode,
-            'data_layout': self.data_layout,
-        }
-        if self.scale > 0:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                self.scale = [float(self.scale)]
-            self.attrs['scale'] = self.scale
-        self.outputs = {'Out': output_np}
-
     def test_check_output(self):
         if platform.system() == "Linux":
             self.check_output(atol=1e-3, check_eager=True)
@@ -417,6 +364,7 @@ class TestLinearInterpOpFP16(OpTest):
         ).astype("int32")
         self.align_corners = False
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 @unittest.skipIf(

@@ -207,7 +207,7 @@ class TestTrilinearInterpOp(OpTest):
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
         # Skip check_eager while found them in Inputs.
         self.check_eager = True
-        input_np = np.random.random(self.input_shape).astype("float32")
+        input_np = np.random.random(self.input_shape).astype(self.dtype)
 
         scale_w = 0
         scale_h = 0
@@ -301,6 +301,7 @@ class TestTrilinearInterpOp(OpTest):
         self.out_size = np.array([3, 3, 3]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float32
 
 
 class TestTrilinearInterpCase1(TestTrilinearInterpOp):
@@ -430,93 +431,6 @@ class TestTrilinearInterpDatalayout(TestTrilinearInterpOp):
 
 
 class TestNearestInterpOpFP16(OpTest):
-    def setUp(self):
-        self.python_api = trilinear_interp_test
-        self.out_size = None
-        self.actual_shape = None
-        self.data_layout = 'NCDHW'
-        self.init_test_case()
-        self.op_type = "trilinear_interp_v2"
-        # NOTE(dev): some AsDispensible input is not used under imperative mode.
-        # Skip check_eager while found them in Inputs.
-        self.check_eager = True
-        self.dtype = np.float16
-        input_np = np.random.random(self.input_shape).astype("float16")
-
-        scale_w = 0
-        scale_h = 0
-        scale_d = 0
-        if self.data_layout == "NCDHW":
-            in_d = self.input_shape[2]
-            in_h = self.input_shape[3]
-            in_w = self.input_shape[4]
-        else:
-            in_d = self.input_shape[1]
-            in_h = self.input_shape[2]
-            in_w = self.input_shape[3]
-
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0:
-                    scale_d = scale_h = scale_w = float(self.scale)
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                scale_d = scale_w = scale_h = self.scale[0]
-            elif isinstance(self.scale, list) and len(self.scale) > 1:
-                scale_w = self.scale[2]
-                scale_h = self.scale[1]
-                scale_d = self.scale[0]
-            out_d = int(in_d * scale_d)
-            out_h = int(in_h * scale_h)
-            out_w = int(in_w * scale_w)
-        else:
-            out_d = self.out_d
-            out_h = self.out_h
-            out_w = self.out_w
-
-        output_np = trilinear_interp_np(
-            input_np,
-            out_d,
-            out_h,
-            out_w,
-            scale_d,
-            scale_h,
-            scale_w,
-            self.out_size,
-            self.actual_shape,
-            self.align_corners,
-            self.align_mode,
-            self.data_layout,
-        )
-        self.inputs = {'X': input_np}
-        if self.out_size is not None:
-            self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
-        if self.actual_shape is not None:
-            self.inputs['OutSize'] = self.actual_shape
-            self.check_eager = False
-        # c++ end treat NCDHW the same way as NCHW
-        if self.data_layout == 'NCDHW':
-            data_layout = 'NCHW'
-        else:
-            data_layout = 'NHWC'
-        self.attrs = {
-            'out_d': self.out_d,
-            'out_h': self.out_h,
-            'out_w': self.out_w,
-            'interp_method': self.interp_method,
-            'align_corners': self.align_corners,
-            'align_mode': self.align_mode,
-            'data_layout': data_layout,
-        }
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0:
-                    self.scale = [self.scale]
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                self.scale = [self.scale[0], self.scale[0], self.scale[0]]
-            self.attrs['scale'] = self.scale
-        self.outputs = {'Out': output_np}
-
     def test_check_output(self):
         self.check_output(check_eager=self.check_eager, atol=1e-3)
 
@@ -539,6 +453,7 @@ class TestNearestInterpOpFP16(OpTest):
         self.out_size = np.array([3, 3, 3]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestTrilinearInterpCase1FP16(TestNearestInterpOpFP16):

@@ -159,7 +159,7 @@ class TestBilinearInterpOp(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "bilinear_interp_v2"
-        input_np = np.random.random(self.input_shape).astype("float64")
+        input_np = np.random.random(self.input_shape).astype(self.dtype)
 
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
@@ -234,6 +234,7 @@ class TestBilinearInterpOp(OpTest):
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float64
 
 
 class TestBilinearInterpCase1(TestBilinearInterpOp):
@@ -353,74 +354,6 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
 
 
 class TestBilinearInterpOpFP16(OpTest):
-    def setUp(self):
-        self.python_api = bilinear_interp_test
-        self.out_size = None
-        self.actual_shape = None
-        self.data_layout = 'NCHW'
-        self.init_test_case()
-        self.op_type = "bilinear_interp_v2"
-        self.dtype = np.float16
-        input_np = np.random.random(self.input_shape).astype("float16")
-
-        if self.data_layout == "NCHW":
-            in_h = self.input_shape[2]
-            in_w = self.input_shape[3]
-        else:
-            in_h = self.input_shape[1]
-            in_w = self.input_shape[2]
-        scale_h = 0
-        scale_w = 0
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0.0:
-                    scale_h = scale_w = float(self.scale)
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                scale_w = scale_h = self.scale[0]
-            elif isinstance(self.scale, list) and len(self.scale) > 1:
-                scale_w = self.scale[1]
-                scale_h = self.scale[0]
-            out_h = int(in_h * scale_h)
-            out_w = int(in_w * scale_w)
-        else:
-            out_h = self.out_h
-            out_w = self.out_w
-
-        output_np = bilinear_interp_np(
-            input_np,
-            out_h,
-            out_w,
-            0,
-            0,
-            self.out_size,
-            self.actual_shape,
-            self.align_corners,
-            self.align_mode,
-            self.data_layout,
-        )
-        self.inputs = {'X': input_np}
-        if self.out_size is not None:
-            self.inputs['OutSize'] = self.out_size
-        if self.actual_shape is not None:
-            self.inputs['OutSize'] = self.actual_shape
-
-        self.attrs = {
-            'out_h': self.out_h,
-            'out_w': self.out_w,
-            'interp_method': self.interp_method,
-            'align_corners': self.align_corners,
-            'align_mode': self.align_mode,
-            'data_layout': self.data_layout,
-        }
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0.0:
-                    self.scale = [self.scale]
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                self.scale = [self.scale[0], self.scale[0]]
-            self.attrs['scale'] = self.scale
-        self.outputs = {'Out': output_np}
-
     def test_check_output(self):
         self.check_output(check_eager=True, atol=1e-3)
 
@@ -442,6 +375,7 @@ class TestBilinearInterpOpFP16(OpTest):
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestBilinearInterpCase1FP16(TestBilinearInterpOpFP16):

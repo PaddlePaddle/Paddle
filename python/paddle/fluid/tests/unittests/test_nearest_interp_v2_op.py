@@ -211,7 +211,7 @@ class TestNearestInterpOp(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "nearest_interp_v2"
-        input_np = np.random.random(self.input_shape).astype("float64")
+        input_np = np.random.random(self.input_shape).astype(self.dtype)
 
         if self.data_layout == "NCHW" and len(self.input_shape) == 4:
             in_d = 1
@@ -328,6 +328,7 @@ class TestNearestInterpOp(OpTest):
         self.scale = []
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
+        self.dtype = np.float64
 
 
 class TestNearestNeighborInterpCase1(TestNearestInterpOp):
@@ -416,117 +417,6 @@ class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
 
 
 class TestNearestInterpOpFP16(OpTest):
-    def setUp(self):
-        self.python_api = nearest_interp_test
-        self.out_size = None
-        self.actual_shape = None
-        self.data_layout = 'NCHW'
-        self.init_test_case()
-        self.op_type = "nearest_interp_v2"
-        self.dtype = np.float16
-        input_np = np.random.random(self.input_shape).astype("float16")
-
-        if self.data_layout == "NCHW" and len(self.input_shape) == 4:
-            in_d = 1
-            in_h = self.input_shape[2]
-            in_w = self.input_shape[3]
-        else:
-            in_d = 1
-            in_h = self.input_shape[1]
-            in_w = self.input_shape[2]
-
-        if self.data_layout == "NCDHW" and len(self.input_shape) == 5:
-            in_d = self.input_shape[2]
-            in_h = self.input_shape[3]
-            in_w = self.input_shape[4]
-        else:
-            in_d = self.input_shape[1]
-            in_h = self.input_shape[2]
-            in_w = self.input_shape[3]
-        scale_d = 0
-        scale_h = 0
-        scale_w = 0
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0:
-                    scale_d = scale_h = scale_w = float(self.scale)
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                scale_d = scale_w = scale_h = self.scale[0]
-            elif isinstance(self.scale, list) and len(self.scale) > 1:
-                if len(self.scale) == 5:
-                    scale_w = self.scale[2]
-                    scale_h = self.scale[1]
-                    scale_d = self.scale[0]
-                else:
-                    scale_w = self.scale[1]
-                    scale_h = self.scale[0]
-
-            out_h = int(in_h * scale_h)
-            out_w = int(in_w * scale_w)
-            out_d = int(in_d * scale_d)
-        else:
-            if len(self.input_shape) == 5:
-                out_d = self.out_d
-            out_h = self.out_h
-            out_w = self.out_w
-
-        if len(self.input_shape) == 4:
-            output_np = nearest_neighbor_interp_np(
-                input_np,
-                out_h,
-                out_w,
-                scale_h,
-                scale_w,
-                self.out_size,
-                self.actual_shape,
-                self.align_corners,
-                self.data_layout,
-            )
-        elif len(self.input_shape) == 5:
-            output_np = nearest_neighbor_interp3d_np(
-                input_np,
-                out_d,
-                out_h,
-                out_w,
-                scale_d,
-                scale_h,
-                scale_w,
-                self.out_size,
-                self.actual_shape,
-                self.align_corners,
-                self.data_layout,
-            )
-        self.inputs = {'X': input_np}
-        if self.out_size is not None:
-            self.inputs['OutSize'] = self.out_size
-        if self.actual_shape is not None:
-            self.inputs['OutSize'] = self.actual_shape
-        if len(self.input_shape) == 5:
-            self.attrs = {
-                'out_d': self.out_d,
-                'out_h': self.out_h,
-                'out_w': self.out_w,
-                'interp_method': self.interp_method,
-                'align_corners': self.align_corners,
-                'data_layout': self.data_layout,
-            }
-        else:
-            self.attrs = {
-                'out_h': self.out_h,
-                'out_w': self.out_w,
-                'interp_method': self.interp_method,
-                'align_corners': self.align_corners,
-                'data_layout': self.data_layout,
-            }
-        if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
-                if self.scale > 0:
-                    self.scale = [self.scale]
-            if isinstance(self.scale, list) and len(self.scale) == 1:
-                self.scale = [self.scale[0], self.scale[0]]
-            self.attrs['scale'] = self.scale
-        self.outputs = {'Out': output_np}
-
     def test_check_output(self):
         self.check_output(check_eager=True, atol=1e-3)
 
@@ -547,6 +437,7 @@ class TestNearestInterpOpFP16(OpTest):
         self.scale = []
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
+        self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase1FP16(TestNearestInterpOpFP16):
