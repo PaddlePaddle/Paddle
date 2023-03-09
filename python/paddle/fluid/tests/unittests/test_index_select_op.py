@@ -21,12 +21,16 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
+np.random.seed(1024)
+
 
 class TestIndexSelectOp(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select
         self.op_type = "index_select"
+        self.prim_op_type = "comp"
         self.init_dtype_type()
+
         index_np = np.random.randint(
             low=0, high=self.x_shape[self.dim], size=self.index_size
         )
@@ -55,10 +59,10 @@ class TestIndexSelectOp(OpTest):
         self.index_size = 100
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
 
 class TestIndexSelectOpCase2(TestIndexSelectOp):
@@ -68,6 +72,18 @@ class TestIndexSelectOpCase2(TestIndexSelectOp):
         self.dim = -2
         self.x_shape = (10, 10, 4, 10)
         self.index_size = 10
+
+
+class TestIndexSelectOpFp16(TestIndexSelectOp):
+    def init_dtype_type(self):
+        super().init_dtype_type()
+        self.x_type = np.float16
+
+
+class TestIndexSelectOpCase2fp16(TestIndexSelectOpCase2):
+    def init_dtype_type(self):
+        super().init_dtype_type()
+        self.x_type = np.float16
 
 
 class TestIndexSelectOpCaseSingleThread(TestIndexSelectOp):
@@ -89,10 +105,11 @@ class TestIndexSelectAPI(unittest.TestCase):
                 [5.0, 6.0, 7.0, 8.0],
                 [9.0, 10.0, 11.0, 12.0],
             ]
-        )
+        ).astype("float32")
         self.data_index = np.array([0, 1, 1]).astype('int32')
 
     def test_index_select_api(self):
+        paddle.enable_static()
         self.input_data()
 
         # case 1:
@@ -128,6 +145,7 @@ class TestIndexSelectAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
+        paddle.disable_static()
         self.input_data()
         # case 1:
         with fluid.dygraph.guard():
