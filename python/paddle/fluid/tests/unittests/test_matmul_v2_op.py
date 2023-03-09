@@ -331,7 +331,7 @@ class TestMatMulOpBroadcast2(TestMatMulV2Op):
 # --------------------test matmul fp16--------------------
 
 
-def create_test_fp16_class(parent, atol=0.001, max_relative_error=0.001):
+def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )

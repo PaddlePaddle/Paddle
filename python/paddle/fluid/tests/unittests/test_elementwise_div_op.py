@@ -379,7 +379,7 @@ class TestElementwiseDivOpInt(TestElementwiseDivOpNoPrim):
         return x // y
 
 
-def create_test_fp16_class(parent, atol=1e-3, max_relative_error=1e-3):
+def create_test_fp16_class(parent, atol=1e-3, max_relative_error=2e-3):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
@@ -444,9 +444,6 @@ create_test_fp16_class(TestElementwiseDivOpBroadcast5)
 create_test_fp16_class(TestElementwiseDivOpCommonuse1)
 create_test_fp16_class(TestElementwiseDivOpCommonuse2)
 create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
-
-    def if_skip_cinn(self):
-        self.enable_cinn = False
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):

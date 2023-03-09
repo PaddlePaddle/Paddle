@@ -287,7 +287,7 @@ class TestPnormOp6(TestPnormOp):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
 
-def create_test_fp16_class(parent, atol=1e-3, max_relative_error=5e-3):
+def create_test_fp16_class(parent, atol=1e-3, max_relative_error=2e-3):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
