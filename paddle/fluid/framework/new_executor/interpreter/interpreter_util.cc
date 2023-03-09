@@ -58,7 +58,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "angle",
     "any_raw",
     "arg_sort",
-    "as_real",
     "atan2",
     "auc",
     "bincount",

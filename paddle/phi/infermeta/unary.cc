@@ -273,6 +273,7 @@ void AsRealInferMeta(const MetaTensor& input, MetaTensor* output) {
   auto out_dims = phi::make_ddim(out_dims_v);
   output->set_dims(out_dims);
   output->share_lod(input);
+  output->set_dtype(dtype::ToReal(input.dtype()));
 }
 
 void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output) {
