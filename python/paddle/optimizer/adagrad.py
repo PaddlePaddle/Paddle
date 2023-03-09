@@ -13,7 +13,7 @@
 # limitations under the License.
 import warnings
 
-from ..fluid import core, framework
+from ..fluid import framework
 from .optimizer import Optimizer
 
 __all__ = []
@@ -142,16 +142,16 @@ class Adagrad(Optimizer):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._moment_acc_str, master_p)
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Momentum optimizer."
                 )
             self._add_accumulator(
@@ -170,9 +170,8 @@ class Adagrad(Optimizer):
             self._moment_acc_str, param_and_grad[0]
         )
 
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
 
         master_weight = (

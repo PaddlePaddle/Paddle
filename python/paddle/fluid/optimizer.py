@@ -638,6 +638,20 @@ class Optimizer:
                 ), framework.name_scope('scale_with_param_lr'):
                     return self._global_learning_rate() * param_lr
 
+    def _is_dtype_fp16_or_bf16(self, dtype):
+        """
+        check the dtype is fp16 or the dtype is bf16
+        :param dtype: instance of core.VarDesc.VarType
+        :return: True if dtype is one of fp16 or bf16, False otherwise
+        """
+        assert isinstance(
+            dtype, core.VarDesc.VarType
+        ), "The dtype should be an instance of core.VarDesc.VarType."
+        return (
+            dtype == core.VarDesc.VarType.FP16
+            or dtype == core.VarDesc.VarType.BF16
+        )
+
     def _create_master_weight(self, param):
         if param.name in self._master_weights:
             var = self._master_weights[param.name]
@@ -857,8 +871,8 @@ class Optimizer:
         """
         if self._name is not None:
             name = self._name + "_" + name
-        find_master = (
-            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param.dtype
         )
         target_param = (
             self._master_weights[param.name] if find_master else param
@@ -1549,24 +1563,23 @@ class SGDOptimizer(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
 
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
@@ -1869,16 +1882,16 @@ class LarsMomentumOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._velocity_acc_str, master_p)
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Lars optimizer."
                 )
             self._add_accumulator(self._velocity_acc_str, p)
@@ -1898,9 +1911,8 @@ class LarsMomentumOptimizer(Optimizer):
         )
         lr = self._create_param_lr(param_and_grad)
 
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
@@ -2060,16 +2072,16 @@ class AdagradOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._moment_acc_str, master_p)
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Lars optimizer."
                 )
             self._add_accumulator(
@@ -2085,9 +2097,8 @@ class AdagradOptimizer(Optimizer):
             self._moment_acc_str, param_and_grad[0]
         )
 
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
@@ -2683,7 +2694,7 @@ class AdamaxOptimizer(Optimizer):
     def _create_accumulators(self, block, parameters):
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._moment_acc_str, master_p)
                 self._add_accumulator(self._inf_norm_acc_str, master_p)
@@ -2695,11 +2706,11 @@ class AdamaxOptimizer(Optimizer):
                 )
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Lars optimizer."
                 )
             self._add_accumulator(self._moment_acc_str, p)
@@ -2724,9 +2735,8 @@ class AdamaxOptimizer(Optimizer):
             self._beta1_pow_acc_str, param_and_grad[0]
         )
 
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
@@ -3150,7 +3160,7 @@ class AdadeltaOptimizer(Optimizer):
             raise TypeError("block is not instance of framework.Block.")
 
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._avg_squared_grad_acc_str, master_p)
                 self._add_accumulator(
@@ -3158,11 +3168,11 @@ class AdadeltaOptimizer(Optimizer):
                 )
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Lars optimizer."
                 )
             self._add_accumulator(self._avg_squared_grad_acc_str, p)
@@ -3178,9 +3188,9 @@ class AdadeltaOptimizer(Optimizer):
         avg_squared_update_acc = self._get_accumulator_master(
             self._avg_squared_update_acc_str, param_and_grad[0]
         )
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
@@ -3385,18 +3395,18 @@ class RMSPropOptimizer(Optimizer):
             raise TypeError("block is not instance of framework.Block.")
 
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._momentum_acc_str, master_p)
                 self._add_accumulator(self._mean_square_acc_str, master_p)
                 self._add_accumulator(self._mean_grad_acc_str, master_p)
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Lars optimizer."
                 )
             self._add_accumulator(self._momentum_acc_str, p)
@@ -3416,9 +3426,8 @@ class RMSPropOptimizer(Optimizer):
         mean_grad_acc = self._get_accumulator_master(
             self._mean_grad_acc_str, param_and_grad[0]
         )
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
@@ -5935,6 +5944,7 @@ class PipelineOptimizer:
     def _get_var_size(self, var):
         dtype_to_size = {
             core.VarDesc.VarType.FP16: 2,
+            core.VarDesc.VarType.BF16: 2,
             core.VarDesc.VarType.FP32: 4,
             core.VarDesc.VarType.FP64: 8,
             core.VarDesc.VarType.INT16: 2,

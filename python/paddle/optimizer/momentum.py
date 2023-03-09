@@ -211,16 +211,16 @@ class Momentum(Optimizer):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._velocity_acc_str, master_p)
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Momentum optimizer."
                 )
             self._add_accumulator(self._velocity_acc_str, p)
@@ -264,9 +264,8 @@ class Momentum(Optimizer):
                 regularization_method = ""
                 regularization_coeff = 0.0
 
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
@@ -329,7 +328,7 @@ class Momentum(Optimizer):
 
     def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """
-        All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, float32).
+        All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, bf16, float32).
         This function will be overridden in the corresponding optimizer file.
 
         Args:
@@ -367,7 +366,7 @@ class Momentum(Optimizer):
                 self._regularization_coeff_dict['FP32_LODTensor'][
                     param_group_idx
                 ].append(regularization_coeff)
-            elif param.dtype == paddle.float16:
+            elif self._is_dtype_fp16_or_bf16(param.dtype):
                 self._param_dict['FP16_LODTensor'][param_group_idx].append(
                     param
                 )
@@ -390,7 +389,7 @@ class Momentum(Optimizer):
                 ].append(regularization_coeff)
             else:
                 raise ValueError(
-                    "Now multi_tensor_momentum only support fp32 and fp16 parameters and grad is LOD_TENSOR."
+                    "Now multi_tensor_momentum only support fp32, fp16 or bf16 parameters and grad is LOD_TENSOR."
                 )
 
     def _append_optimize_multi_tensor_op(
@@ -421,7 +420,7 @@ class Momentum(Optimizer):
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP32_LODTensor'].append(lr)
                     elif (
-                        param_and_grad[0].dtype == paddle.float16
+                        self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                         and param_and_grad[1].type
                         == core.VarDesc.VarType.LOD_TENSOR
                     ):
@@ -452,7 +451,7 @@ class Momentum(Optimizer):
                         lr = self._create_param_lr(param_and_grad)
                         lr_dict['FP32_LODTensor'].append(lr)
                     elif (
-                        param_and_grad[0].dtype == paddle.float16
+                        self._is_dtype_fp16_or_bf16(param_and_grad[0].dtype)
                         and param_and_grad[1].type
                         == core.VarDesc.VarType.LOD_TENSOR
                     ):
