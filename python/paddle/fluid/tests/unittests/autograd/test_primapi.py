@@ -20,10 +20,12 @@ import autograd.numpy as anp
 import autograd.scipy as ascipy
 import config
 import numpy as np
+import parameterized as param
 import utils
 
 import paddle
-from paddle.incubate.autograd import primx
+from paddle.fluid import core
+from paddle.incubate.autograd import primapi, primx
 
 
 @utils.place(config.DEVICES)
@@ -1032,6 +1034,63 @@ class TestGradWithHigherOrder(unittest.TestCase):
         self.assertEqual(type(actual), type(expected))
         for i, j in zip(actual, expected):
             np.testing.assert_allclose(i, j, rtol=self._rtol, atol=self._atol)
+
+
+class TestToPrim(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+        core._set_prim_forward_enabled(True)
+
+    def tearDown(self):
+        core._set_prim_forward_enabled(False)
+        paddle.disable_static()
+
+    @param.parameterized.expand((({'dropout'},),))
+    def test_blacklist(self, blacklist):
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            paddle.nn.functional.softmax(
+                paddle.nn.functional.dropout(paddle.rand((1,)))
+            )
+        primapi.to_prim(program.blocks, blacklist=blacklist)
+        ops = tuple(op.type for op in program.block(0).ops)
+        self.assertTrue(all(tuple(op in ops for op in blacklist)))
+
+    @param.parameterized.expand((({'dropout'},),))
+    def test_whitelist(self, whitelist):
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            paddle.nn.functional.softmax(
+                paddle.nn.functional.dropout(paddle.rand((1,)))
+            )
+        primapi.to_prim(program.blocks, whitelist=whitelist)
+        ops = tuple(op.type for op in program.block(0).ops)
+        self.assertTrue(all(tuple(op not in ops for op in whitelist)))
+
+    @param.parameterized.expand((({'softmax'}, {'softmax', 'dropout'}),))
+    def test_both_not_empty(self, blacklist, whitelist):
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            paddle.nn.functional.softmax(
+                paddle.nn.functional.dropout(paddle.rand((1,)))
+            )
+        primapi.to_prim(
+            program.blocks, blacklist=blacklist, whitelist=whitelist
+        )
+        ops = tuple(op.type for op in program.block(0).ops)
+        self.assertTrue(all(tuple(op in ops for op in blacklist)))
+
+    @param.parameterized.expand(((('dropout',), 'softmax'),))
+    def test_type_error(self, blacklist, whitelist):
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            paddle.nn.functional.softmax(
+                paddle.nn.functional.dropout(paddle.rand((1,)))
+            )
+        with self.assertRaises(TypeError):
+            primapi.to_prim(
+                program.blocks, blacklist=blacklist, whitelist=whitelist
+            )
 
 
 if __name__ == '__main__':
