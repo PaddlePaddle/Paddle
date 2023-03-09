@@ -16,6 +16,7 @@
 
 #include "paddle/phi/kernels/funcs/maxouting.h"
 #include "paddle/phi/kernels/maxout_kernel.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace phi {
 
@@ -30,6 +31,8 @@ void MaxOutKernel(const Context& dev_ctx,
   }
 
   phi::funcs::MaxOutFunctor<Context, T> maxout_forward;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  phi::funcs::MaxOutFunctor<Context, MPType> maxout_forward;
   maxout_forward(dev_ctx, x, out, groups, axis);
 }
 
