@@ -17,6 +17,9 @@
 #include <type_traits>
 
 namespace ir {
+///
+/// \brief The template function actually called by isa_wrap.
+///
 template <typename Target, typename From, typename Enabler = void>
 struct isa_impl {
   static inline bool call(const From &Val) { return Target::classof(Val); }
@@ -70,80 +73,85 @@ struct isa_wrap<
 /// \brief isa template function, used to determine whether the value is a
 /// Target type. Using method: if (isa<Target_Type>(value)) { ... }.
 ///
-template <class Target, class From>
+template <typename Target, typename From>
 inline bool isa(const From &Val) {
   return isa_wrap<typename std::remove_pointer<Target>::type, From>::call(Val);
 }
 
 ///
-/// \brief cast type deduction by From and To.
+/// \brief Derive cast return type by template parameter From and To.
 ///
-template <class To, class From>
-struct cast_type_deduction {
+template <typename To, typename From>
+struct DeriveRettyWrap {
   typedef To &return_type;
 };
-template <class To, class From>
-struct cast_type_deduction<To, const From> {
+
+template <typename To, typename From>
+struct DeriveRettyWrap<To, const From> {
   typedef const To &return_type;
 };
 
-template <class To, class From>
-struct cast_type_deduction<To, From *> {
+template <typename To, typename From>
+struct DeriveRettyWrap<To, From *> {
   typedef To *return_type;
 };
 
-template <class To, class From>
-struct cast_type_deduction<To, const From *> {
+template <typename To, typename From>
+struct DeriveRettyWrap<To, const From *> {
   typedef const To *return_type;
 };
 
-template <class To, class From>
-struct cast_type_deduction<To, const From *const> {
+template <typename To, typename From>
+struct DeriveRettyWrap<To, const From *const> {
   typedef const To *return_type;
 };
 
-template <class To, class From>
-struct cast_value {
-  static typename cast_type_deduction<To, From>::return_type call(
-      const From &Val) {
-    typename cast_type_deduction<To, From>::return_type Res2 =
-        (typename cast_type_deduction<To, From>::return_type) const_cast<
-            From &>(Val);
-    return Res2;
+template <typename To, typename From>
+struct DeriveRetty {
+  typedef typename DeriveRettyWrap<To, From>::return_type return_type;
+};
+
+///
+/// cast From to To
+///
+template <typename To, typename From>
+struct cast_impl {
+  // This _is_ a simple type, just cast it.
+  static typename DeriveRetty<To, From>::return_type call(const From &Val) {
+    typename DeriveRetty<To, From>::return_type ret =
+        (typename DeriveRetty<To, From>::return_type) const_cast<From &>(Val);
+    return ret;
   }
 };
+
+template <typename To, typename From>
+inline typename DeriveRetty<To, From>::return_type cast(From &Val) {  // NOLINT
+  if (!isa<To>(Val)) {
+    throw("cast<To>() argument of incompatible type!");
+  }
+  return cast_impl<To, From>::call(Val);
+}
+
+template <typename To, typename From>
+inline typename DeriveRetty<To, From *>::return_type cast(From *Val) {
+  if (!isa<To>(Val)) {
+    throw("cast<To>() argument of incompatible type!");
+  }
+  return cast_impl<To, From *>::call(Val);
+}
 
 ///
 /// \brief dyn_cast From to To.
 ///
-template <class To, class From>
-inline typename cast_type_deduction<To, From>::return_type dyn_cast_impl(
+template <typename To, typename From>
+inline std::decay_t<typename DeriveRetty<To, From>::return_type> dyn_cast(
     From &Val) {  // NOLINT
-  if (!isa<To>(Val)) {
-    return nullptr;
-  }
-  return cast_value<To, From>::call(Val);
+  return isa<To>(Val) ? cast<To>(Val) : nullptr;
 }
 
-template <class To, class From>
-inline typename cast_type_deduction<To, From *>::return_type dyn_cast_impl(
-    From *Val) {
-  if (!isa<To>(Val)) {
-    return nullptr;
-  }
-  return cast_value<To, From *>::call(Val);
-}
-
-template <class To, class From>
-inline typename cast_type_deduction<To, From>::return_type dyn_cast(
-    From &Val) {  // NOLINT
-  return dyn_cast_impl<To>(Val);
-}
-
-template <class To, class From>
-inline typename cast_type_deduction<To, From *>::return_type dyn_cast(
-    From *Val) {
-  return dyn_cast_impl<To>(Val);
+template <typename To, typename From>
+inline typename DeriveRetty<To, From *>::return_type dyn_cast(From *Val) {
+  return isa<To>(Val) ? cast<To>(Val) : nullptr;
 }
 
 }  // namespace ir

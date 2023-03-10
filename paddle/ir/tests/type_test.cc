@@ -144,24 +144,25 @@ TEST(type_test, built_in_type) {
 
   ir::DenseTensorType dense_tensor_4 =
       ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, 2);
-  EXPECT_EQ(dense_tensor_4.offset(), 2);
+  EXPECT_EQ(dense_tensor_4.offset() == 2, 1);
   EXPECT_EQ(dense_tensor_4.dtype().isa<ir::Float32Type>(), true);
   EXPECT_EQ(dense_tensor_4.data_layout(), data_layout);
 
   // Test 3: Test isa and dyn_cast.
   EXPECT_EQ(fp16_1.isa<ir::Float16Type>(), true);
   EXPECT_EQ(fp16_1.isa<ir::Float32Type>(), false);
-  EXPECT_EQ(fp16_1.isa<ir::DenseTensorType>(), true);
+  EXPECT_EQ(fp16_1.isa<ir::DenseTensorType>(), false);
   EXPECT_EQ(fp16_1.isa<ir::Type>(), true);
   EXPECT_EQ(dense_tensor_1.isa<ir::DenseTensorType>(), true);
 
   ir::DenseTensorType dense_tensor_cast_1 =
       dense_tensor_1.dyn_cast<ir::DenseTensorType>();
   EXPECT_EQ(dense_tensor_cast_1.isa<ir::DenseTensorType>(), true);
-  EXPECT_EQ(dense_tensor_cast_1.offset(), 0);
-
-  auto int64_cast_1 = ir::dyn_cast<ir::Int64Type>(int64_1);
-  EXPECT_EQ(int64_cast_1.isa<ir::Int64Type>(), true);
+  EXPECT_EQ(dense_tensor_cast_1.offset() == 0, 1);
+  const ir::DenseTensorType dense_tensor_cast_2 =
+      ir::dyn_cast<ir::DenseTensorType>(dense_tensor_1);
+  EXPECT_EQ(dense_tensor_cast_2.isa<ir::DenseTensorType>(), true);
+  EXPECT_EQ(dense_tensor_cast_2.offset() == 0, 1);
 }
 
 // Customize a parameterized TypeStorage IntegerTypeStorage.
@@ -230,7 +231,7 @@ TEST(type_test, custom_type_dialect) {
   EXPECT_EQ(int8.dialect().id(), ir::TypeId::get<IntegerDialect>());
 
   std::vector<ir::Dialect *> dialect_list = ctx->GetRegisteredDialects();
-  EXPECT_EQ(dialect_list.size(), 3);  // integer, builtin, fake
+  EXPECT_EQ(dialect_list.size() == 3, 1);  // integer, builtin, fake
 
   ir::Dialect *dialect_builtin1 = ctx->GetRegisteredDialect("builtin");
   ir::Dialect *dialect_builtin2 =
