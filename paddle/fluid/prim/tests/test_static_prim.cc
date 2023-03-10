@@ -59,7 +59,7 @@ PD_DECLARE_KERNEL(bitwise_not, KPS, ALL_LAYOUT);
 namespace paddle {
 namespace prim {
 
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 struct TestBaseProgram {
  public:
   const framework::ProgramDesc& main_program() { return program_; }
@@ -281,12 +281,14 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
                                      target_block,
                                      grad_sub_block);
   test();
-  std::vector<paddle::experimental::Tensor> muti_fw_input =
-      test.GetMultiForwardInput("X");
-  std::vector<paddle::optional<paddle::experimental::Tensor>>
-      opt_muti_fw_input = test.GetOptionalMultiForwardInput("X");
-  paddle::experimental::Tensor fw_out = test.GetSingleForwardOutput("Out");
-  paddle::experimental::Tensor* fw_out_ptr = test.GetOutputPtr(&fw_out);
+  std::vector<paddle::Tensor> muti_fw_input = test.GetMultiForwardInput("X");
+  paddle::optional<std::vector<paddle::Tensor>> opt_muti_fw_input =
+      test.GetOptionalMultiForwardInput("X");
+  std::vector<paddle::Tensor> opt_inner = opt_muti_fw_input.is_initialized()
+                                              ? opt_muti_fw_input.get()
+                                              : std::vector<paddle::Tensor>{};
+  paddle::Tensor fw_out = test.GetSingleForwardOutput("Out");
+  paddle::Tensor* fw_out_ptr = test.GetOutputPtr(&fw_out);
   std::string fw_out_name = test.GetOutputName(fw_out);
 
   ASSERT_EQ(muti_fw_input.size(), static_cast<std::size_t>(2));
@@ -296,14 +298,10 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
   ASSERT_EQ(
       static_cast<prim::DescTensor*>(muti_fw_input[1].impl().get())->Name(),
       "x1");
-  ASSERT_EQ(opt_muti_fw_input.size(), static_cast<std::size_t>(2));
-  ASSERT_EQ(static_cast<prim::DescTensor*>(
-                opt_muti_fw_input[0].get_ptr()->impl().get())
-                ->Name(),
+  ASSERT_EQ(opt_inner.size(), static_cast<std::size_t>(2));
+  ASSERT_EQ(static_cast<prim::DescTensor*>(opt_inner[0].impl().get())->Name(),
             "x0");
-  ASSERT_EQ(static_cast<prim::DescTensor*>(
-                opt_muti_fw_input[1].get_ptr()->impl().get())
-                ->Name(),
+  ASSERT_EQ(static_cast<prim::DescTensor*>(opt_inner[1].impl().get())->Name(),
             "x1");
   ASSERT_EQ(&fw_out, fw_out_ptr);
   ASSERT_EQ(fw_out_name, "out");
@@ -348,12 +346,11 @@ TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
                                      target_block,
                                      grad_sub_block);
   test();
-  paddle::experimental::Tensor fw_input = test.GetSingleForwardInput("X");
-  paddle::optional<paddle::experimental::Tensor> opt_fw_input =
+  paddle::Tensor fw_input = test.GetSingleForwardInput("X");
+  paddle::optional<paddle::Tensor> opt_fw_input =
       test.GetOptionalSingleForwardInput("X");
-  std::vector<paddle::experimental::Tensor> fw_out =
-      test.GetMultiForwardOutput("Out");
-  std::vector<paddle::experimental::Tensor*> fw_out_ptr(fw_out.size());
+  std::vector<paddle::Tensor> fw_out = test.GetMultiForwardOutput("Out");
+  std::vector<paddle::Tensor*> fw_out_ptr(fw_out.size());
   for (size_t i = 0; i < fw_out.size(); ++i) {
     fw_out_ptr[i] = &fw_out[i];
   }

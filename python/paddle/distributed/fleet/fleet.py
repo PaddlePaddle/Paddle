@@ -1367,6 +1367,10 @@ class Fleet:
                     copy_user_defined_strategy,
                 )
                 can_not_apply_optimizer_list.append(meta_optimizer)
+
+                # meaningless, just for compatibility with other code
+                graph_optimizer = None
+
             else:
                 # compile time
                 distributed_optimizer_list = (

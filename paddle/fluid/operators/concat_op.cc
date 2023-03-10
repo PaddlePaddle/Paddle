@@ -161,22 +161,18 @@ class ConcatCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
  public:
   void Apply() override {
-    std::vector<paddle::experimental::Tensor> input =
-        this->GetMultiForwardInput("X");
-    paddle::optional<paddle::experimental::Tensor> tensor_axis =
+    std::vector<paddle::Tensor> input = this->GetMultiForwardInput("X");
+    paddle::optional<paddle::Tensor> tensor_axis =
         this->GetOptionalSingleForwardInput("AxisTensor");
-    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    std::vector<paddle::experimental::Tensor> input_grad =
-        this->GetMultiForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    std::vector<paddle::Tensor> input_grad = this->GetMultiForwardInput("X");
 
-    std::vector<paddle::experimental::Tensor *> input_grad_ptr(
-        input_grad.size());
+    std::vector<paddle::Tensor *> input_grad_ptr(input_grad.size());
     for (auto sub_tensor : input_grad) {
       input_grad_ptr.push_back(&sub_tensor);
     }
     int axis = static_cast<int>(this->Attr<int>("axis"));
-    std::vector<paddle::experimental::Tensor *> dx_ptr =
-        this->GetOutputPtr(input_grad_ptr);
+    std::vector<paddle::Tensor *> dx_ptr = this->GetOutputPtr(input_grad_ptr);
     std::vector<std::string> dx_name = this->GetOutputName(input_grad);
 
     VLOG(6) << "Runing concat_grad composite func";
