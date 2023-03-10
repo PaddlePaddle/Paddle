@@ -28,7 +28,6 @@ class TestSplitOp(OpTest):
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.dtype = self.get_dtype()
         axis = 1
         if self.dtype == np.uint16:
@@ -71,7 +70,6 @@ class TestSplitOp_2(OpTest):
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}
