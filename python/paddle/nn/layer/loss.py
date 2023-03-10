@@ -1962,12 +1962,12 @@ class GaussianNLLLoss(Layer):
 
     The targets are treated as samples from Gaussian distributions with
     expectations and variances predicted by the neural network. For a
-    ``target`` tensor modelled as having Gaussian distribution with a tensor
+    ``label`` tensor modelled as having Gaussian distribution with a tensor
     of expectations ``input`` and a tensor of positive variances ``var`` the loss is:
 
     .. math::
         \text{loss} = \frac{1}{2}\left(\log\left(\text{max}\left(\text{var},
-        \ \text{eps}\right)\right) + \frac{\left(\text{input} - \text{target}\right)^2}
+        \ \text{eps}\right)\right) + \frac{\left(\text{input} - \text{label}\right)^2}
         {\text{max}\left(\text{var}, \ \text{eps}\right)}\right) + \text{const.}
 
     where :attr:`eps` is used for stability. By default, the constant term of
@@ -1990,7 +1990,7 @@ class GaussianNLLLoss(Layer):
     Shape:
         - Input(Tensor): :math:`(N, *)` or :math:`(*)` where :math:`*` means any number of additional
           dimensions
-        - Target(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
+        - Label(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
           but with one dimension equal to 1 (to allow for broadcasting)
         - Var(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
           with one dimension equal to 1, or same shape as the input but with one fewer
@@ -2008,11 +2008,11 @@ class GaussianNLLLoss(Layer):
             import paddle.nn as nn
 
             input = paddle.randn([5, 2], dtype=paddle.float32)
-            target = paddle.randn([5, 2], dtype=paddle.float32)
+            label = paddle.randn([5, 2], dtype=paddle.float32)
             var = paddle.ones([5, 2], dtype=paddle.float32)
 
             gs_nll_loss = nn.GaussianNLLLoss(full=False, eps=1e-6, reduction='none')
-            loss = gs_nll_loss(input, target, var)
+            loss = gs_nll_loss(input, label, var)
             print(loss)
 
     Note:
@@ -2033,10 +2033,10 @@ class GaussianNLLLoss(Layer):
         self.reduction = reduction
         self.name = name
 
-    def forward(self, input, target, var):
+    def forward(self, input, label, var):
         out = F.gaussian_nll_loss(
             input,
-            target,
+            label,
             var,
             self.full,
             self.eps,

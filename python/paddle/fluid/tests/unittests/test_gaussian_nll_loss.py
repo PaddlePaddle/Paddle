@@ -24,7 +24,7 @@ np.random.seed(10)
 
 
 def ref_gaussian_nll_loss(
-    input, target, var, full=False, eps=1e-6, reduction='none'
+    input, label, var, full=False, eps=1e-6, reduction='none'
 ):
     if var.shape != input.shape:
         if input.shape[:-1] == var.shape:
@@ -42,7 +42,7 @@ def ref_gaussian_nll_loss(
     var = var.copy()
     var = np.clip(var, a_min=eps, a_max=None)
 
-    loss = 0.5 * (np.log(var) + (input - target) ** 2 / var)
+    loss = 0.5 * (np.log(var) + (input - label) ** 2 / var)
     if full:
         loss += 0.5 * np.log(2 * np.pi)
 
@@ -62,24 +62,24 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
         if type in ['float16', 'float64', 'int16', 'int32']:
             dtype = np.dtype(type)
             self.input_np = np.random.random(self.shape).astype(dtype)
-            self.target_np = np.random.random(self.shape).astype(dtype)
+            self.label_np = np.random.random(self.shape).astype(dtype)
             self.var_np = np.ones(self.shape).astype(dtype)
         elif type == 'broadcast1':
             self.shape = [10, 2, 3]
             self.broadcast_shape = [10, 2]
             self.input_np = np.random.random(self.shape).astype(np.float32)
-            self.target_np = np.random.random(self.shape).astype(np.float32)
+            self.label_np = np.random.random(self.shape).astype(np.float32)
             self.var_np = np.ones(self.broadcast_shape).astype(np.float32)
         elif type == 'broadcast2':
             self.shape = [10, 2, 3]
             self.broadcast_shape = [10, 2, 1]
             self.input_np = np.random.random(self.shape).astype(np.float32)
-            self.target_np = np.random.random(self.shape).astype(np.float32)
+            self.label_np = np.random.random(self.shape).astype(np.float32)
             self.var_np = np.ones(self.broadcast_shape).astype(np.float32)
         else:
             dtype = np.dtype('float32')
             self.input_np = np.random.random(self.shape).astype(dtype)
-            self.target_np = np.random.random(self.shape).astype(dtype)
+            self.label_np = np.random.random(self.shape).astype(dtype)
             self.var_np = np.ones(self.shape).astype(dtype)
         if type == 'test_err':
             self.var_np = -np.ones(self.shape).astype(np.float32)
@@ -95,31 +95,31 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
         paddle.disable_static(self.place)
 
         input_x = paddle.to_tensor(self.input_np)
-        target = paddle.to_tensor(self.target_np)
+        label = paddle.to_tensor(self.label_np)
         var = paddle.to_tensor(self.var_np)
         if type == 'test_err':
             self.assertRaises(
                 ValueError,
                 paddle.nn.functional.gaussian_nll_loss,
                 input=input_x,
-                target=target,
+                label=label,
                 var=var,
             )
         else:
             out_ref = ref_gaussian_nll_loss(
                 self.input_np,
-                self.target_np,
+                self.label_np,
                 self.var_np,
                 full=full,
                 reduction=reduction,
             )
             out1 = F.gaussian_nll_loss(
-                input_x, target, var, full=full, reduction=reduction
+                input_x, label, var, full=full, reduction=reduction
             )
             gaussian_nll_loss = paddle.nn.GaussianNLLLoss(
                 full, reduction=reduction
             )
-            out2 = gaussian_nll_loss(input_x, target, var)
+            out2 = gaussian_nll_loss(input_x, label, var)
 
             for r in [out1, out2]:
                 np.allclose(out_ref, r.numpy(), rtol=1e-5, atol=1e-5)
@@ -131,28 +131,28 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             if type == 'float64':
                 input_x = paddle.static.data('Input_x', self.shape, type)
-                target = paddle.static.data('Target', self.shape, type)
+                label = paddle.static.data('Label', self.shape, type)
                 var = paddle.static.data('Var', self.shape, type)
             elif type in ['broadcast1', 'broadcast2']:
                 input_x = paddle.static.data('Input_x', self.shape)
-                target = paddle.static.data('Target', self.shape)
+                label = paddle.static.data('Label', self.shape)
                 var = paddle.static.data('Var', self.broadcast_shape)
             else:
                 input_x = paddle.static.data('Input_x', self.shape, 'float32')
-                target = paddle.static.data('Target', self.shape, 'float32')
+                label = paddle.static.data('Label', self.shape, 'float32')
                 var = paddle.static.data('Var', self.shape, 'float32')
             out1 = F.gaussian_nll_loss(
-                input_x, target, var, full=full, reduction=reduction
+                input_x, label, var, full=full, reduction=reduction
             )
             gaussian_nll_loss = paddle.nn.GaussianNLLLoss(
                 full, reduction=reduction
             )
-            out2 = gaussian_nll_loss(input_x, target, var)
+            out2 = gaussian_nll_loss(input_x, label, var)
             exe = paddle.static.Executor(self.place)
             if not type == 'test_err':
                 out_ref = ref_gaussian_nll_loss(
                     self.input_np,
-                    self.target_np,
+                    self.label_np,
                     self.var_np,
                     full=full,
                     reduction=reduction,
@@ -160,7 +160,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
                 res = exe.run(
                     feed={
                         'Input_x': self.input_np,
-                        'Target': self.target_np,
+                        'Label': self.label_np,
                         'Var': self.var_np,
                     },
                     fetch_list=[out1, out2],
@@ -172,7 +172,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
                     res = exe.run(
                         feed={
                             'Input_x': self.input_np,
-                            'Target': self.target_np,
+                            'Label': self.label_np,
                             'Var': self.var_np,
                         },
                         fetch_list=[out1, out2],

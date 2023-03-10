@@ -3890,18 +3890,18 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
 
 
 def gaussian_nll_loss(
-    input, target, var, full=False, eps=1e-6, reduction='mean', name=None
+    input, label, var, full=False, eps=1e-6, reduction='mean', name=None
 ):
     r"""Gaussian negative log likelihood loss.
 
     The targets are treated as samples from Gaussian distributions with
     expectations and variances predicted by the neural network. For a
-    ``target`` tensor modelled as having Gaussian distribution with a tensor
+    ``label`` tensor modelled as having Gaussian distribution with a tensor
     of expectations ``input`` and a tensor of positive variances ``var`` the loss is:
 
     .. math::
         \text{loss} = \frac{1}{2}\left(\log\left(\text{max}\left(\text{var},
-        \ \text{eps}\right)\right) + \frac{\left(\text{input} - \text{target}\right)^2}
+        \ \text{eps}\right)\right) + \frac{\left(\text{input} - \text{label}\right)^2}
         {\text{max}\left(\text{var}, \ \text{eps}\right)}\right) + \text{const.}
 
     where :attr:`eps` is used for stability. By default, the constant term of
@@ -3911,7 +3911,7 @@ def gaussian_nll_loss(
 
     Args:
         input(Tensor): input tensor, expectation of the Gaussian distribution, available dtype is float32, float64.
-        target(Tensor): target tensor, sample from the Gaussian distribution, available dtype is float32, float64.
+        Label(Tensor): target label tensor, sample from the Gaussian distribution, available dtype is float32, float64.
         var(Tensor): tensor of positive variance(s), one for each of the expectations
             in the input (heteroscedastic), or a single one (homoscedastic), available dtype is float32, float64.
         full(bool, optional): include the constant term in the loss
@@ -3935,13 +3935,13 @@ def gaussian_nll_loss(
             import paddle.nn.functional as F
 
             input = paddle.randn([5, 2], dtype=paddle.float32)
-            target = paddle.randn([5, 2], dtype=paddle.float32)
+            label = paddle.randn([5, 2], dtype=paddle.float32)
             var = paddle.ones([5, 2], dtype=paddle.float32)
 
-            loss = F.gaussian_nll_loss(input, target, var, reduction='none')
+            loss = F.gaussian_nll_loss(input, label, var, reduction='none')
             print(loss)
 
-            loss = F.gaussian_nll_loss(input, target, var, reduction='mean')
+            loss = F.gaussian_nll_loss(input, label, var, reduction='mean')
             print(loss)
 
     Note:
@@ -3975,29 +3975,40 @@ def gaussian_nll_loss(
         raise ValueError(reduction + " is not valid")
 
     # Entries of var must be non-negative
-    # print(paddle.any(var < 0))
     if not in_dygraph_mode():
         check_variable_and_dtype(
             input,
             'Input',
-            ['float32', 'float64'],
+            ['float32', 'float64', 'int32', 'int64'],
             'gaussian_nll_loss',
         )
         check_variable_and_dtype(
-            target,
-            'Target',
-            ['float32', 'float64'],
+            label,
+            'Label',
+            ['float32', 'float64', 'int32', 'int64'],
             'gaussian_nll_loss',
         )
         check_variable_and_dtype(
             var,
             'Var',
-            ['float32', 'float64'],
+            ['float32', 'float64', 'int32', 'int64'],
             'gaussian_nll_loss',
         )
         condition = paddle.all(var > 0)
         Assert(condition, [var], 6)
     else:
+        if input.dtype not in [paddle.float32, paddle.float64]:
+            raise ValueError(
+                "The data type of input Variable must be 'float32' or 'float64'"
+            )
+        if label.dtype not in [paddle.float32, paddle.float64]:
+            raise ValueError(
+                "The data type of label Variable must be 'float32', 'float64'"
+            )
+        if var.dtype not in [paddle.float32, paddle.float64]:
+            raise ValueError(
+                "The data type of var Variable must be 'float32', 'float64'"
+            )
         if paddle.any(var < 0):
             raise ValueError("var has negative entry/entries")
 
@@ -4006,7 +4017,7 @@ def gaussian_nll_loss(
     with paddle.no_grad():
         var = paddle.clip(var, min=eps)
     # Calculate the loss
-    loss = 0.5 * (paddle.log(var) + paddle.square(input - target) / var)
+    loss = 0.5 * (paddle.log(var) + paddle.square(input - label) / var)
     if full:
         loss += 0.5 * math.log(2 * math.pi)
 
