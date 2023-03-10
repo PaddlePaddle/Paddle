@@ -114,9 +114,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
                        table + id_index * row_width,
                        row_width * sizeof(T));
               } else {
-                auto &dev_ctx =
-                    context.template device_context<phi::CPUContext>();
-                auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+                auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
                 blas.VCOPY(row_width,
                            table + id_index * row_width,
                            output + i * row_width);
@@ -147,9 +145,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
                      table + id_index * row_width,
                      row_width * sizeof(T));
             } else {
-              auto &dev_ctx =
-                  context.template device_context<phi::CPUContext>();
-              auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
+              auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(context);
               blas.VCOPY(row_width,
                          table + id_index * row_width,
                          output + i * row_width);
