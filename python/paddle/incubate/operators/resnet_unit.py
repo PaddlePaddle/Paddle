@@ -14,9 +14,9 @@
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers import utils
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn import Layer
 from paddle.nn import initializer as I
@@ -184,7 +184,9 @@ class ResNetUnit(Layer):
         self._stride = stride
         self._stride_z = stride_z
         self._dilation = 1
-        self._kernel_size = utils.convert_to_list(filter_size, 2, 'kernel_size')
+        self._kernel_size = paddle.utils.convert_to_list(
+            filter_size, 2, 'kernel_size'
+        )
         self._padding = (filter_size - 1) // 2
         self._groups = 1
         self._momentum = momentum
