@@ -27,6 +27,7 @@ import subprocess
 import multiprocessing
 import sys
 import logging
+import paddle
 
 from .proto import framework_pb2, data_feed_pb2
 
@@ -1681,7 +1682,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         pass
 
-    @fake_interface_only
+    @_non_static_only_
     def backward(self, retain_graph=False):
         """
         **Notes**:
@@ -1712,13 +1713,21 @@ class Variable(metaclass=VariableMetaClass):
                     # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
                     # there is no one need gradient on it.
                     tmp.stop_gradient=False
-                    inputs.append(tmp)
+                    INPUTS.APPEND(TMP)
                 ret = paddle.add_n(inputs)
                 loss = paddle.sum(ret)
                 loss.backward()
 
         """
-        pass
+        if retain_graph is True:
+            raise AssertionError(
+                "`retain_graph` == True is not supported in @to_static function."
+                "please set retain_graph = False."
+            )
+        param_grad_list = paddle.fluid.backward.append_backward(self)
+        for param, param_grad in param_grad_list:
+            # set grad to simulate dygraph loss.backward() in static mode.
+            setattr(param, "grad", param_grad)
 
     @fake_interface_only
     def gradient(self):
