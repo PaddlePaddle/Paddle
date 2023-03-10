@@ -919,7 +919,6 @@ void maximum_grad(const Tensor& x,
         auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
         set_output<T>(dx_tmp, x_grad);
       }
-
     } else {
       set_output<T>(dx_res, x_grad);
     }
