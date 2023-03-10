@@ -975,6 +975,7 @@ def get_package_data_and_package_dir():
                 )
     if env_dict.get("WITH_PSLIB") == 'ON':
         shutil.copy(env_dict.get("PSLIB_LIB"), libs_path)
+        shutil.copy(env_dict.get("JVM_LIB"), libs_path)
         if os.path.exists(env_dict.get("PSLIB_VERSION_PY")):
             shutil.copy(
                 env_dict.get("PSLIB_VERSION_PY"),
@@ -982,6 +983,7 @@ def get_package_data_and_package_dir():
                 + '/python/paddle/incubate/distributed/fleet/parameter_server/pslib/',
             )
         package_data['paddle.libs'] += ['libps' + ext_suffix]
+        package_data['paddle.libs'] += ['libjvm' + ext_suffix]
     if env_dict.get("WITH_MKLDNN") == 'ON':
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             # only change rpath in Release mode.

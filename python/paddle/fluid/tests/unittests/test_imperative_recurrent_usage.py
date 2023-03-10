@@ -81,7 +81,9 @@ class TestRecurrentFeed(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             in1 = paddle.static.data(name="inp1", shape=[2, 2])
+            in1.stop_gradient = False
             in2 = paddle.static.data(name="inp2", shape=[2, 2])
+            in2.stop_gradient = False
             rt1 = RecurrentTest("RecurrentTest")
             static_sum_out, static_out = rt1(in1, in2)
             fluid.backward.append_backward(static_sum_out)
