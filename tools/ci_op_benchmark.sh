@@ -34,6 +34,12 @@ function LOG {
   echo "[$0:${BASH_LINENO[0]}] $*" >&2
 }
 
+function collect_kernel_registry_info {
+  LOG "[INFO] Collect kernel registry info ..."
+  python ${PADDLE_ROOT}/tools/parse_kernel_info.py
+  [ $? -ne 0 ] && LOG "[FATAL] Collect kernel registry info fail."
+}
+
 # Limit cu file directory
 function match_cu_file_directory {
   LOG "[INFO] run function match_cu_file_directory"
@@ -299,6 +305,7 @@ function gpu_op_benchmark {
   run_op_benchmark_test
   summary_problems
   LOG "[INFO] Op benchmark run success and no error!"
+  collect_kernel_registry_info
   exit 0
 }
 
