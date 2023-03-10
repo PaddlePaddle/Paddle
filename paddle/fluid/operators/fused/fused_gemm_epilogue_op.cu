@@ -85,15 +85,16 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
 
+    void* reserve_data = reserve_space ? reserve_space->data() : nullptr;
+    size_t fuse_type =
+        GetFwdFusedEpilogueType<T>(dev_ctx, activation, reserve_space);
+
     VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
             << "}, out.shape={" << out->dims() << "}, M=" << M << ", N=" << N
             << ", K=" << K << ", trans_x=" << trans_x << ", trans_y=" << trans_y
-            << ", activation=" << activation
+            << ", activation=" << activation << ", fuse_type=" << fuse_type
             << ", reserve_space=" << reserve_space;
 
-    size_t fuse_type =
-        GetFwdFusedEpilogueType<T>(dev_ctx, activation, reserve_space);
-    void* reserve_data = reserve_space ? reserve_space->data() : nullptr;
     auto fued_impl = phi::autotune::MatmulPlanner(
         vectorize(x->dims()),
         vectorize(y->dims()),
