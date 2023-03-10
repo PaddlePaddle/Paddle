@@ -65,15 +65,14 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
 
   const auto src_x_memory = handler.AcquireSrcMemory(non_const_x);
   const auto src_y_memory = handler.AcquireSecondSrcMemory(non_const_y);
-  // (jczaja) For Inplace src and dst should be the same memory object.
+  // For Inplace src and dst should be the same memory object.
   // So x should share buffer with z. But UT mechanics is testing inplace
   // execution for this op not checking that x can be bradcasted to match in
   // shape y tensor.
   // This is wrong as when x is to be broadcasted then z(out) will match the
   // shape of y which is bigger than x. Hence if x is smaller in shape than z
-  // and they share a buffer (of
-  // shape x) then this buffer is not big enough to hold result of elementwise
-  // operation.
+  // and they share a buffer (of shape x) then this buffer is not big enough
+  // to hold result of elementwise operation.
   const bool reuse_x_memory = non_const_x->numel() == out->numel() &&
                               non_const_x->IsSharedBufferWith(*out);
   std::shared_ptr<dnnl::memory> dst_memory;

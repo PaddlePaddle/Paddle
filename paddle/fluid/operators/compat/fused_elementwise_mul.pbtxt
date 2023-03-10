@@ -33,7 +33,7 @@ extra {
   }
   attrs {
     name: "fused_unsqueeze2_axes"
-    type: INTS  
+    type: INTS
   }
   attrs {
     name: "scale_x"
