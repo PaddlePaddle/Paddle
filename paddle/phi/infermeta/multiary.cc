@@ -3062,7 +3062,7 @@ void MoeInferMeta(const MetaTensor& x,
 
 void GraphWeightedSampleNeighborsInferMeta(const MetaTensor& row,
                                            const MetaTensor& col_ptr,
-                                           const MetaTensor& edge_weights,
+                                           const MetaTensor& edge_weight,
                                            const MetaTensor& x,
                                            const MetaTensor& eids,
                                            int sample_size,
@@ -3093,7 +3093,7 @@ void GraphWeightedSampleNeighborsInferMeta(const MetaTensor& row,
 
   GSNShapeCheck(row.dims(), "Row");
   GSNShapeCheck(col_ptr.dims(), "ColPtr");
-  GSNShapeCheck(edge_weights.dims(), "EdgeWeights");
+  GSNShapeCheck(edge_weight.dims(), "EdgeWeight");
   GSNShapeCheck(x.dims(), "X");
   if (return_eids) {
     GSNShapeCheck(eids.dims(), "Eids");
