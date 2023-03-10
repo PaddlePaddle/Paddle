@@ -104,7 +104,7 @@ class TestExpFp32_Prim(OpTest):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -118,7 +118,7 @@ class TestExpFp32_Prim(OpTest):
     def init_shape(self):
         self.shape = [12, 17]
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = True
 
 
@@ -131,7 +131,7 @@ class TestExpPrim_ZeroDim(TestExpFp32_Prim):
     def init_shape(self):
         self.shape = []
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -312,7 +312,7 @@ class TestSilu(TestActivation):
         self.python_api = paddle.nn.functional.silu
         self.init_dtype()
         self.init_shape()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -324,7 +324,7 @@ class TestSilu(TestActivation):
     def init_dtype(self):
         self.dtype = np.float32
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
     def test_check_grad(self):
@@ -335,7 +335,7 @@ class TestSilu_ZeroDim(TestSilu):
     def init_shape(self):
         self.shape = []
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -1932,6 +1932,7 @@ def gelu(x, approximate):
 class TestGeluApproximate(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
+        self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.gelu
         self.init_dtype()
         self.init_shape()
@@ -1939,20 +1940,25 @@ class TestGeluApproximate(TestActivation):
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = gelu(x, approximate)
+        self.enable_cinn = False
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {"approximate": approximate}
 
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestGelu(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
+        self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.gelu
         self.init_dtype()
         self.init_shape()
@@ -1960,20 +1966,30 @@ class TestGelu(TestActivation):
         np.random.seed(2048)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = gelu(x, approximate)
+        self.if_enable_cinn()
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {"approximate": approximate}
 
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestGelu_ZeroDim(TestGelu):
     def init_shape(self):
         self.shape = []
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestGELUAPI(unittest.TestCase):
@@ -3741,7 +3757,7 @@ def create_test_act_fp16_class(
         def init_dtype(self):
             self.dtype = np.float16
 
-        def if_skip_cinn(self):
+        def if_enable_cinn(self):
             self.enable_cinn = enable_cinn
 
         def test_check_output(self):
@@ -3795,7 +3811,7 @@ create_test_act_fp16_class(TestAsinh, grad_atol=0.85)
 create_test_act_fp16_class(TestAtanh, grad_atol=0.85)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu, check_prim=True)
-create_test_act_fp16_class(TestGelu)
+create_test_act_fp16_class(TestGelu, check_prim=True)
 create_test_act_fp16_class(TestBRelu)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, grad_atol=0.85)
