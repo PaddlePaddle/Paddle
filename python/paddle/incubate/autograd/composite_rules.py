@@ -35,15 +35,25 @@ def _composite(op, *args):
 @REGISTER_COMPOSITE('softmax')
 def softmax_composite(x, axis):
     """define composite rule of op softmax"""
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
     if not x.shape:
         # do not return 1, to ensure gradients
         res = exp(x - x)
+        if is_amp:
+            res = cast(res, "float16")
         return res
     max_temp = max(x, axis, keepdim=True)
     max_temp.stop_gradient = True
     molecular = exp(x - max_temp)
     denominator = sum(molecular, axis=axis, keepdim=True)
     res = divide(molecular, denominator)
+    if is_amp:
+        res = cast(res, "float16")
     return res
 
 
@@ -66,7 +76,6 @@ def composite_batchnorm(
     from paddle.fluid.data_feeder import convert_dtype
 
     if convert_dtype(x.dtype) == "float16":
-        print("Running batch_norm in amp")
         is_amp = True
         x = cast(x, "float32")
 
@@ -129,6 +138,12 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     out = (x - mean(x)) / sqrt(var + epsilon))
     var = mean((x-mean(x))^2)
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
 
     axis = tuple(range(begin_norm_axis, len(x.shape)))
     mean_ = mean(x, axis=axis, keepdim=True)
@@ -148,6 +163,8 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
 
     mean_ = reshape(mean_, [-1])
     variance = reshape(variance, [-1])
+    if is_amp:
+        out = cast(out, "float16")
     return out, mean_, variance
 
 
