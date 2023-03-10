@@ -17,6 +17,7 @@
 			*paddle_infer::LayoutConvert*;
 
 			*paddle::experimental*;
+			*paddle::Tensor*;
 			*paddle::internal*;
 			*paddle::get_version*;
 			*paddle::LiteNNAdapterConfig*;
