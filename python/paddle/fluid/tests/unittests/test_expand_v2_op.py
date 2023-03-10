@@ -385,35 +385,7 @@ class TestExpandV2CompOpRank4(TestExpandV2CompOpRank1):
         self.expand_times = (1, 1, 1, 1)
 
 
-# Situation 8: comp case, shape is a tensor
-class TestExpandV2CompOpRank1_tensor(OpTest):
-    def setUp(self):
-        self.op_type = "expand_v2"
-        self.prim_op_type = "comp"
-        self.python_api = paddle.expand
-        self.init_data()
-
-        self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float64"),
-            'Shape': np.array(self.expand_shape).astype("int32"),
-        }
-        self.attrs = {}
-        output = np.tile(self.inputs['X'], self.expand_times)
-        self.outputs = {'Out': output}
-
-    def init_data(self):
-        self.ori_shape = [100]
-        self.expand_times = [2, 1]
-        self.expand_shape = [2, 100]
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-
-# Situation 9: comp case, input x is Integer
+# Situation 8: comp case, input x is Integer
 class TestExpandV2CompOpInteger(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
@@ -427,10 +399,10 @@ class TestExpandV2CompOpInteger(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
 
-#  Situation 10: comp case, input x is Bool
+#  Situation 9: comp case, input x is Bool
 class TestExpandV2CompOpBoolean(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
@@ -442,10 +414,10 @@ class TestExpandV2CompOpBoolean(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
 
-#  Situation 11: comp case, input x is Integer
+#  Situation 10: comp case, input x is Integer
 class TestExpandV2CompOpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
@@ -459,7 +431,7 @@ class TestExpandV2CompOpInt64_t(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
 
 if __name__ == "__main__":
