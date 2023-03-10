@@ -184,7 +184,7 @@ def instancenorm_composite(x, scale, bias, epsilon):
     mean_ = reshape(mean_, x.shape[:1])
     variance = reshape(variance, x.shape[:1])
     if len(x_shape) == 2:
-        out = np.reshape(out, x_shape)
+        out = reshape(out, x_shape)
     return out, mean_, variance
 
 
