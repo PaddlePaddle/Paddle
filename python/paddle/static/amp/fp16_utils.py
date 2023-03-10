@@ -438,6 +438,9 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
         "while",
         "while_grad",
         "cast",
+        "tensor_array_to_tensor",
+        "lod_array_length",
+        "write_to_array",
     }
     global_block = program.global_block()
     keep_fp32_ops = set()
