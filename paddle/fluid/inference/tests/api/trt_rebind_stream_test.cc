@@ -26,7 +26,7 @@ TEST(ReBindStream_single, use_gpu) {
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
-  config1.EnableTensorRtEngine();
+  config.EnableTensorRtEngine();
 
   cudaStream_t stream1, stream2, stream3;
   cudaStreamCreateWithFlags(&stream1, cudaStreamNonBlocking);
