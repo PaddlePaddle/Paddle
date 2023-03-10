@@ -76,9 +76,12 @@ Tensor full<DescTensor>(const IntArray& shape,
     case phi::DataType::FLOAT32:
       op->SetAttr("value", value.to<float>());
       break;
-    case phi::DataType::FLOAT64:
-      op->SetAttr("str_value", std::to_string(value.to<double>()));
+    case phi::DataType::FLOAT64: {
+      std::stringstream ss;
+      ss << std::setprecision(20) << value.to<double>();
+      op->SetAttr("str_value", ss.str());
       break;
+    }
     case phi::DataType::BOOL:
       op->SetAttr("str_value", std::to_string(value.to<bool>()));
       break;
@@ -160,8 +163,8 @@ Tensor cast<DescTensor>(const Tensor& x, DataType dtype) {
                {std::static_pointer_cast<prim::DescTensor>(x.impl())->Name()});
   op->SetOutput(
       "Out", {std::static_pointer_cast<prim::DescTensor>(out.impl())->Name()});
-  op->SetAttr("in_dtype", static_cast<int>(x.dtype()));
-  op->SetAttr("out_dtype", static_cast<int>(dtype));
+  op->SetAttr("in_dtype", paddle::framework::TransToProtoVarType(x.dtype()));
+  op->SetAttr("out_dtype", paddle::framework::TransToProtoVarType(dtype));
   op->CheckAttrs();
   op->InferVarType(block);
   op->InferShape(*block);

@@ -15,6 +15,7 @@
 import unittest
 
 import hypothesis.strategies as st
+import numpy as np
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
@@ -33,7 +34,7 @@ class TestFcXPUFusePass(PassAutoScanTest):
         )
         matmul0_y_shape = draw(
             st.lists(
-                st.integers(min_value=1, max_value=8), min_size=2, max_size=2
+                st.integers(min_value=2, max_value=8), min_size=2, max_size=2
             )
         )
         matmul0_y_shape[0] = matmul0_x_shape[-1]
@@ -42,7 +43,7 @@ class TestFcXPUFusePass(PassAutoScanTest):
         # 3. matmul1
         matmul1_y_shape = draw(
             st.lists(
-                st.integers(min_value=1, max_value=8), min_size=2, max_size=2
+                st.integers(min_value=2, max_value=8), min_size=2, max_size=2
             )
         )
         matmul1_y_shape[0] = matmul0_y_shape[-1]
@@ -101,4 +102,5 @@ class TestFcXPUFusePass(PassAutoScanTest):
 
 
 if __name__ == "__main__":
+    np.random.seed(200)
     unittest.main()

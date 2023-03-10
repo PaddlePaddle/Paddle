@@ -253,13 +253,13 @@ class MatMulCompositeDoubleGradOpMaker : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
   void Apply() override {
     // get inputs
-    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
-    paddle::experimental::Tensor y = this->GetSingleForwardInput("Y");
-    paddle::experimental::Tensor dout =
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor dout =
         this->GetSingleForwardInput(framework::GradVarName("Out"));
-    paddle::optional<paddle::experimental::Tensor> ddx =
+    paddle::optional<paddle::Tensor> ddx =
         this->GetOptionalSingleOutputGrad(framework::GradVarName("X"));
-    paddle::optional<paddle::experimental::Tensor> ddy =
+    paddle::optional<paddle::Tensor> ddy =
         this->GetOptionalSingleOutputGrad(framework::GradVarName("Y"));
 
     // get attr
@@ -267,16 +267,15 @@ class MatMulCompositeDoubleGradOpMaker : public prim::CompositeGradOpMakerBase {
     bool trans_y = this->Attr<bool>("trans_y");
 
     // get output
-    paddle::experimental::Tensor x_grad_t = this->GetSingleInputGrad("X");
-    paddle::experimental::Tensor y_grad_t = this->GetSingleInputGrad("Y");
-    paddle::experimental::Tensor grad_out_grad_t =
+    paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
+    paddle::Tensor y_grad_t = this->GetSingleInputGrad("Y");
+    paddle::Tensor grad_out_grad_t =
         this->GetSingleInputGrad(framework::GradVarName("Out"));
 
     // get output ptr
-    paddle::experimental::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
-    paddle::experimental::Tensor* y_grad = this->GetOutputPtr(&y_grad_t);
-    paddle::experimental::Tensor* grad_out_grad =
-        this->GetOutputPtr(&grad_out_grad_t);
+    paddle::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
+    paddle::Tensor* y_grad = this->GetOutputPtr(&y_grad_t);
+    paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
     // get output orginal name
     std::string x_grad_name = this->GetOutputName(x_grad_t);
     std::string y_grad_name = this->GetOutputName(y_grad_t);
