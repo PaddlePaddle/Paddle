@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+import paddle.fluid.core as core
 
 
 class TestIscloseOp(OpTest):
@@ -166,7 +167,7 @@ class TestIscloseError(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float16')
+                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='int32')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
                 result = paddle.isclose(x, y)
 
@@ -201,6 +202,36 @@ class TestIscloseError(unittest.TestCase):
             result = paddle.isclose(x, y, equal_nan=1)
 
         self.assertRaises(TypeError, test_equal_nan)
+
+
+class TestIscloseOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        x_data = np.random.rand(10, 10).astype('float16')
+        y_data = np.random.rand(10, 10).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
+            y = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
+            out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
+
+
+class TestIscloseOpFloat16(TestIscloseOp):
+    def set_args(self):
+        self.input = np.array([10.1]).astype("float16")
+        self.other = np.array([10]).astype("float16")
+        self.rtol = np.array([0.01]).astype("float64")
+        self.atol = np.array([0]).astype("float64")
+        self.equal_nan = False
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, check_eager=True)
 
 
 class TestIscloseOpFloat32(TestIscloseOp):
