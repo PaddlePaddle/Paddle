@@ -777,8 +777,10 @@ void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
   }
 
   out_w->set_dims(phi::make_ddim(batch_dims_vec));
+  out_w->share_lod(x);
   out_w->set_dtype(x.dtype());
   out_v->set_dims(x_dims);
+  out_v->share_lod(x);
   out_v->set_dtype(x.dtype());
 }
 
