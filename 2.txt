@@ -1,0 +1,159 @@
+./cmake/external/concurrentqueue.cmake:21:    "https://github.com/cameron314/concurrentqueue/archive/refs/tags")
+./cmake/external/cutlass.cmake:19:set(CUTLASS_REPOSITORY https://github.com/NVIDIA/cutlass.git)
+./cmake/external/leveldb.cmake:34:  GIT_REPOSITORY "https://github.com/google/leveldb"
+./cmake/external/brpc.cmake:48:  GIT_REPOSITORY "https://github.com/apache/incubator-brpc"
+./cmake/external/snappy.cmake:42:  GIT_REPOSITORY "https://github.com/google/snappy"
+./cmake/external/cudnn-frontend.cmake:33:set(CUDNN_FRONTEND_REPOSITORY https://github.com/NVIDIA/cudnn-frontend.git)
+./cmake/external/onnxruntime.cmake:44:      "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-win-x64-${ONNXRUNTIME_VERSION}.zip"
+./cmake/external/onnxruntime.cmake:48:      "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-osx-x86_64-${ONNXRUNTIME_VERSION}.tgz"
+./cmake/external/onnxruntime.cmake:52:      "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-x64-${ONNXRUNTIME_VERSION}.tgz"
+./cmake/external/jemalloc.cmake:5:    https://github.com/jemalloc/jemalloc/releases/download/5.1.0/jemalloc-5.1.0.tar.bz2
+./cmake/external/rocksdb.cmake:52:  GIT_REPOSITORY "https://github.com/Thunderbrook/rocksdb"
+./tools/ci_model_benchmark.sh:50:    git clone --depth=1 https://github.com/paddlepaddle/benchmark.git
+./tools/windows/build_compile_environment.bat:90:echo Download package from https://github.com/git-for-windows/git/releases/download/v2.28.0.windows.1/Git-2.28.0-64-bit.exe ...
+./tools/windows/build_compile_environment.bat:91:wget -O Git-2.28.0-64-bit.exe https://github.com/git-for-windows/git/releases/download/v2.28.0.windows.1/Git-2.28.0-64-bit.exe
+./tools/CrossStackProfiler/CspChromeTraceFormatter.py:27:        https://github.com/catapult-project/catapult/blob/master/tracing/README.md
+./tools/timeline.py:43:        https://github.com/catapult-project/catapult/blob/master/tracing/README.md
+./tools/externalError/start.sh:21:    wget --no-check-certificate https://github.com/protocolbuffers/protobuf/releases/download/v3.11.3/protoc-3.11.3-linux-x86_64.zip
+./tools/externalError/start.sh:25:    wget --no-check-certificate https://github.com/protocolbuffers/protobuf/releases/download/v3.11.3/protoc-3.11.3-osx-x86_64.zip
+./AUTHORS.md:121:| [Yulv-git](https://github.com/Yulv-git) | Shuangchi He |
+./AUTHORS.md:122:| [zrr1999](https://github.com/zrr1999) | Rongrui Zhan |
+./ISSUE_TEMPLATE.md:14:   * Check out [this page](https://guides.github.com/features/mastering-markdown/) to find out much more about markdown.
+./python/setup.py.in:847:            'Downloads': 'https://github.com/paddlepaddle/paddle'
+./python/paddle/utils/install_check.py:297:            "\n 3. NVIDIA-NCCL2 is not installed correctly on your system. Please follow instruction on https://github.com/NVIDIA/nccl-tests "
+./python/paddle/static/quantization/post_training_quantization.py:1008:        https://github.com/megvii-research/FQ-ViT/
+./python/paddle/distribution/transform.py:1289:        See details: https://github.com/tensorflow/probability/blob/master/tensorflow_probability/python/bijectors/tanh.py#L69-L80
+./python/paddle/vision/ops.py:1799:    You can also see at https://github.com/pytorch/vision/blob/main/torchvision/ops/misc.py#L68
+./python/paddle/vision/models/_utils.py:25:    You can also see at https://github.com/keras-team/keras/blob/8ecef127f70db723c158dbe9ed3268b3d610ab55/keras/applications/mobilenet_v2.py#L505
+./python/paddle/vision/models/mobilenetv3.py:43:    You can also see at https://github.com/pytorch/vision/blob/main/torchvision/ops/misc.py#L127
+./python/paddle/vision/transforms/functional_tensor.py:97:    https://github.com/python-pillow/Pillow/blob/main/src/libImaging/Convert.c)
+./python/paddle/vision/datasets/mnist.py:241:    Implementation of `Fashion-MNIST <https://github.com/zalandoresearch/fashion-mnist>`_ dataset.
+./python/paddle/nn/functional/loss.py:1675:    An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
+./python/paddle/nn/functional/loss.py:1825:    An operator integrating the open source Warp-Transducer library (https://github.com/b-flo/warp-transducer.git)
+./python/paddle/nn/layer/loss.py:1044:    An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
+./python/paddle/distributed/fleet/layers/mpu/random.py:32:# https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/mpu/random.py
+./python/paddle/distributed/fleet/meta_parallel/parallel_layers/pp_layers.py:16:#     https://github.com/microsoft/DeepSpeed/blob/master/deepspeed/runtime/pipe/module.py
+./python/paddle/distributed/fleet/meta_parallel/pipeline_parallel.py:120:        # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
+./python/paddle/distributed/fleet/meta_parallel/pipeline_parallel.py:540:        # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
+./python/paddle/distributed/fleet/meta_parallel/sharding/group_sharded_optimizer_stage2.py:16:# https://github.com/facebookresearch/fairscale/blob/main/fairscale/optim/oss.py
+./python/paddle/distributed/fleet/meta_parallel/sharding/group_sharded_stage2.py:16:# https://github.com/facebookresearch/fairscale/blob/main/fairscale/nn/data_parallel/sharded_ddp.py
+./python/paddle/distributed/fleet/meta_parallel/sharding/group_sharded_storage.py:16:# https://github.com/facebookresearch/fairscale/blob/main/fairscale/nn/misc/param_bucket.py
+./python/paddle/distributed/auto_parallel/tuner/storable.py:16:# Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/metrics_tracking.py.
+./python/paddle/distributed/auto_parallel/tuner/tunable_variable.py:16:# Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/hyperparameters.py.
+./python/paddle/distributed/auto_parallel/tuner/recorder.py:16:# Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/metrics_tracking.py.
+./python/paddle/distributed/auto_parallel/tuner/tunable_space.py:16:# Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/hyperparameters.py.
+./python/paddle/distributed/auto_parallel/tuner/trial.py:16:# Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/trial.py.
+./python/paddle/distributed/auto_parallel/cost_model.py:97:        # ref: https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md
+./python/paddle/hapi/hub.py:56:        return 'https://github.com/{}/{}/archive/{}.zip'.format(
+./python/paddle/fluid/tests/unittests/tokenizer/tokenizer_utils.py:1320:        Modified from https://github.com/bojone/bert4keras/blob/master/bert4keras/tokenizers.py#L372
+./python/paddle/fluid/tests/unittests/test_gast_with_compatibility.py:155:    # https://github.com/serge-sans-paille/gast/issues/49
+./python/paddle/fluid/tests/unittests/ipu/custom_ops/custom_identity.cc:31:// https://github.com/graphcore/popart/blob/sdk-release-2.5/willow/src/builder.gen.cpp#L620
+./python/paddle/fluid/tests/unittests/ipu/custom_ops/custom_checkpointoutput.cc:31:// https://github.com/graphcore/popart/blob/sdk-release-2.5/willow/src/builder_impl.cpp#L1458
+./python/paddle/fluid/tests/unittests/ipu/custom_ops/custom_nll.cc:45:// https://github.com/graphcore/popart/blob/sdk-release-2.5/willow/src/builder.cpp#L775
+./python/paddle/fluid/tests/unittests/ipu/custom_ops/custom_detach.cc:31:// https://github.com/graphcore/popart/blob/sdk-release-2.5/willow/src/builder.cpp#L502
+./python/paddle/fluid/core.py:42:        # https://github.com/python/cpython/pull/12302
+./python/paddle/fluid/dataloader/worker.py:182:# from https://github.com/numpy/numpy/blob/main/numpy/random/bit_generator.pyx
+./python/paddle/fluid/dataloader/worker.py:187:# https://gist.github.com/imneme/540829265469e673d045
+./python/paddle/fluid/dygraph/varbase_patch_methods.py:1081:        # See details in https://github.com/pybind/pybind11/issues/2537.
+./python/paddle/jit/dy2static/ifelse_transformer.py:42:# See details in https://github.com/serge-sans-paille/gast/
+./python/paddle/jit/dy2static/ast_transformer.py:18:# See details in https://github.com/serge-sans-paille/gast/
+./python/paddle/audio/functional/functional.py:14:# Modified from librosa(https://github.com/librosa/librosa)
+./python/paddle/dataset/image.py:36:# https://github.com/numpy/numpy/issues/12497
+./python/paddle/dataset/wmt16.py:165:    https://github.com/moses-smt/mosesdecoder/blob/master/scripts/tokenizer/tokenizer.perl
+./python/paddle/dataset/wmt16.py:224:    https://github.com/moses-smt/mosesdecoder/blob/master/scripts/tokenizer/tokenizer.perl
+./python/paddle/dataset/wmt16.py:284:    https://github.com/moses-smt/mosesdecoder/blob/master/scripts/tokenizer/tokenizer.perl
+./python/paddle/incubate/distributed/models/moe/moe_layer.py:16:#     https://github.com/laekov/fastmoe/blob/master/fmoe/layers.py
+./python/paddle/incubate/distributed/models/moe/utils.py:16:#     https://github.com/laekov/fastmoe/blob/master/fmoe/functions.py
+./python/paddle/incubate/distributed/models/moe/grad_clip.py:56:        https://github.com/laekov/fastmoe/blob/master/examples/megatron/clip-grad-v2.2.patch
+./python/paddle/incubate/distributed/models/moe/gate/base_gate.py:16:#     https://github.com/laekov/fastmoe/blob/master/fmoe/gates/base_gate.py
+./python/paddle/incubate/distributed/models/moe/gate/switch_gate.py:16:#     https://github.com/laekov/fastmoe/blob/master/fmoe/gates/switch_gate.py
+./python/paddle/incubate/distributed/models/moe/gate/naive_gate.py:16:#     https://github.com/laekov/fastmoe/blob/master/fmoe/gates/naive_gate.py
+./python/paddle/incubate/distributed/models/moe/gate/gshard_gate.py:16:#     https://github.com/laekov/fastmoe/blob/master/fmoe/gates/gshard_gate.py
+./CONTRIBUTING.md:14:   Our development community has been growing fastly; it doesn't make sense for everyone to write into the official repo.  So, please file Pull Requests from your fork.  To make a fork,  just head over to the GitHub page and click the ["Fork" button](https://help.github.com/articles/fork-a-repo/).
+./CONTRIBUTING.md:21:   git clone https://github.com/your-github-account/paddle
+./CONTRIBUTING.md:86:   To create a pull request, please follow [these steps](https://help.github.com/articles/creating-a-pull-request/).
+./CONTRIBUTING.md:88:   If your change is for fixing an issue, please write ["Fixes <issue-URL>"](https://help.github.com/articles/closing-issues-using-keywords/) in the description section of your pull request.  Github would close the issue when the owners merge your pull request.
+./CONTRIBUTING.md:110:- If you don't want your reviewers to get overwhelmed by email notifications, you might reply their comments by [in a batch](https://help.github.com/articles/reviewing-proposed-changes-in-a-pull-request/).
+./CONTRIBUTING.md:131:- For C/C++ code, please follow [`google-test` Primer](https://github.com/google/googletest/blob/master/googletest/docs/primer.md) .
+./CONTRIBUTING.md:138:We use [glog](https://github.com/google/glog) for logging in our C/C++ code.
+./CONTRIBUTING.md:140:For general information, please use `LOG`.  For debug information, please use [`VLOG`](http://htmlpreview.github.io/?https://github.com/google/glog/blob/master/doc/glog.html#verbose).  The reason is at [here](https://groups.google.com/a/chromium.org/d/msg/chromium-dev/3NDNd1KzXeY/AZKMMx37fdQJ).
+./patches/cryptopp/CMakeLists.txt:24:"https://github.com/noloader/cryptopp-cmake.\n"
+./patches/cryptopp/CMakeLists.txt:64:# Also see https://github.com/weidai11/cryptopp/issues/741.
+./paddle/utils/string/printf.h:22://    https://github.com/c42f/tinyformat
+./paddle/utils/string/printf.h:62://    https://github.com/adobe/chromium/blob/master/base/stringprintf.h
+./paddle/utils/string/printf.h:63://    https://github.com/google/protobuf/blob/master/src/google/protobuf/stubs/stringprintf.h
+./paddle/utils/string/printf.h:66:// https://github.com/c42f/tinyformat#compile-time-and-code-bloat,
+./paddle/utils/string/printf.h:77:#include "paddle/utils/string/tinyformat/tinyformat.h"  // https://github.com/c42f/tinyformat
+./paddle/utils/flat_hash_map.h:1:// Copy from https://github.com/skarupke/flat_hash_map
+./paddle/utils/variant.h:2:// https://github.com/mpark/variant/blob/single-header/v1.4.0/variant.hpp
+./paddle/phi/common/thread_data_registry.h:77:// Special case : mac. https://github.com/facebook/react-native/issues/31250
+./paddle/phi/common/pstring.h:6:    https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/platform/tstring.h
+./paddle/phi/common/cpstring_impl.h:6:    https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/platform/ctstring_internal.h
+./paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h:60:    // https://github.com/NVIDIA/cudnn-frontend/blob/main/samples/helpers.cpp
+./paddle/phi/kernels/gpu/multinomial_kernel.cu:17:// https://github.com/ROCmSoftwarePlatform/rocPRIM/issues/202
+./paddle/phi/kernels/gpu/fused_adam_kernel.cu:31:// https://github.com/NVIDIA/apex
+./paddle/phi/kernels/funcs/truncated_normal.h:17:// reference: https://gist.github.com/lakshayg/d80172fe5ae3c5d2c2aedb53c250320e
+./paddle/phi/kernels/funcs/detail/activation_functions.h:196:// https://github.com/ROCm-Developer-Tools/HIP/issues/2186
+./paddle/phi/kernels/funcs/math_function.cu:31:// https://github.com/NVIDIA/cutlass/blob/master/tools/util/include/cutlass/util/device_nchw_to_nhwc.h
+./paddle/phi/kernels/funcs/multi_tensor_apply.h:24:// https://github.com/NVIDIA/apex
+./paddle/phi/kernels/funcs/blas/blas_impl.hip.h:63:  // https://github.com/ROCm-Developer-Tools/HIP/blob/roc-3.5.x/docs/markdown/CUBLAS_API_supported_by_HIP.md
+./paddle/phi/kernels/funcs/blas/blas_impl.h:1589:  // Refer to https://github.com/hfp/libxsmm/blob/master/README.md
+./paddle/phi/backends/onednn/onednn_reuse.h:1560:    // https://github.com/oneapi-src/oneDNN/tree/bkocot/adaptive-pooling/rfcs/20200818-adaptive-pooling
+./paddle/phi/backends/dynload/port.h:30:// https://github.com/google/glog/issues/301
+./paddle/scripts/README.md:68:| `WITH_MKL` | ON | Build with [Intel® MKL](https://software.intel.com/en-us/mkl) and [Intel® MKL-DNN](https://github.com/01org/mkl-dnn) support. |
+./paddle/scripts/README.md:133:Our [book repo](https://github.com/paddlepaddle/book) also provide a docker
+./paddle/scripts/README.md:141:Please refer to https://github.com/paddlepaddle/book if you want to build this
+./paddle/scripts/paddle_build.bat:27:    git clone https://github.com/zhouwei25/tools.git %cache_dir%\tools
+./paddle/scripts/windows_build/series_build.bat:18:echo "begin to download the source code from https://github.com/paddlepaddle/paddle"
+./paddle/infrt/dialect/tensorrt/trt_op_base.td:2:// We learned much from TensorFlow mlir dialect https://github.com/tensorflow/tensorflow/blob/master/tensorflow/compiler/mlir/tensorflow/ir/tf_op_base.td
+./paddle/infrt/dialect/pd/ir/pd_op_base.td:2:// We learned much from TensorFlow mlir dialect https://github.com/tensorflow/tensorflow/blob/master/tensorflow/compiler/mlir/tensorflow/ir/tf_op_base.td
+./paddle/fluid/pybind/tensor_py.h:108:// Ref: https://github.com/pybind/pybind11/issues/1776
+./paddle/fluid/pybind/pybind_variant_caster.h:31:// https://github.com/pybind/pybind11/issues/576#issuecomment-269563199
+./paddle/fluid/pybind/pybind_variant_caster.h:69:      // https://github.com/pybind/pybind11/blob/master/docs/advanced/cast/strings.rst
+./paddle/fluid/pybind/bind_fleet_executor.cc:46:// Ref: https://github.com/pybind/pybind11/issues/1776
+./paddle/fluid/pybind/inference_api.cc:66:// Ref: https://github.com/pybind/pybind11/issues/1776
+./paddle/fluid/pybind/imperative.cc:797:            // https://github.com/python/cpython/blob/24b63c695ae0a95b06379eaadace66735abac1e2/Objects/tupleobject.c#L251
+./paddle/fluid/pybind/slice_utils.h:78:// https://github.com/python/cpython/blob/8d21aa21f2cbc6d50aab3f420bb23be1d081dac4/Objects/sliceobject.c#L103
+./paddle/fluid/pybind/eager_method.cc:1075:  // https://github.com/python/cpython/blob/24b63c695ae0a95b06379eaadace66735abac1e2/Objects/tupleobject.c#L251
+./paddle/fluid/operators/lstm_unit_op.cu:16:https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op_gpu.cu
+./paddle/fluid/operators/fused_softmax_mask_upper_triangle_op.cu:14:// https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/fused_kernels/scaled_upper_triang_masked_softmax.h
+./paddle/fluid/operators/deformable_conv_filter.cu.h:16:// https://github.com/msracver/Deformable-ConvNets/blob/master/faster_rcnn/operator_cxx/deformable_convolution.cu
+./paddle/fluid/operators/deformable_psroi_pooling_op.cu:16:// https://github.com/msracver/Deformable-ConvNets/blob/master/faster_rcnn/operator_cxx/deformable_psroi_pooling.cu
+./paddle/fluid/operators/warpctc_op.cc:90:[warp-ctc](https://github.com/baidu-research/warp-ctc) library, which is used in
+./paddle/fluid/operators/assign_pos_op.cu:16:     https://github.com/laekov/fastmoe/blob/master/cuda/local_exchange.cu
+./paddle/fluid/operators/assign_pos_op.cu:17:     https://github.com/laekov/fastmoe/blob/master/cuda/local_exchange.cuh
+./paddle/fluid/operators/limit_by_capacity_op.cu:16://     https://github.com/laekov/fastmoe/blob/master/cuda/balancing.cu
+./paddle/fluid/operators/limit_by_capacity_op.cu:17://     https://github.com/laekov/fastmoe/blob/master/cuda/balancing.cuh
+./paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h:13:// https://github.com/NVIDIA/FasterTransformer/blob/v4.0/fastertransformer/cuda/masked_multihead_attention.cu
+./paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h:826:    // TODO(wangxi): See this https://github.com/microsoft/unilm/issues/510
+./paddle/fluid/operators/math/inclusive_scan.h:119:// https://github.com/pytorch/pytorch/blob/master/aten/src/ATen/native/ReduceOps.cpp
+./paddle/fluid/operators/number_count_op.cu:16://     https://github.com/laekov/fastmoe/blob/master/cuda/local_exchange.cu
+./paddle/fluid/operators/number_count_op.cu:17://     https://github.com/laekov/fastmoe/blob/master/cuda/local_exchange.cuh
+./paddle/fluid/operators/graph_khop_sampler_op.cu:5:    https://github.com/quiver-team/torch-quiver/blob/main/srcs/cpp/src/quiver/cuda/quiver_sample.cu
+./paddle/fluid/operators/prune_gate_by_capacity_op.cu:16://     https://github.com/laekov/fastmoe/blob/master/cuda/balancing.cu
+./paddle/fluid/operators/prune_gate_by_capacity_op.cu:17://     https://github.com/laekov/fastmoe/blob/master/cuda/balancing.cuh
+./paddle/fluid/operators/jit/gen/jitcode.h:112:    // Learn from https://github.com/intel/mkl-dnn
+./paddle/fluid/operators/deformable_psroi_pooling_op.h:16:// https://github.com/msracver/Deformable-ConvNets/blob/master/faster_rcnn/operator_cxx/deformable_psroi_pooling.cu
+./paddle/fluid/operators/lstm_unit_op.h:16:https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op.h
+./paddle/fluid/operators/truncated_gaussian_random_op.h:26:// reference: https://gist.github.com/lakshayg/d80172fe5ae3c5d2c2aedb53c250320e
+./paddle/fluid/platform/device/ipu/ipu_utils.h:70:// https://github.com/onnx/onnx/blob/master/onnx/onnx-ml.proto3
+./paddle/fluid/platform/denormal.cc:20:// Refer to https://github.com/tensorflow/tensorflow/pull/17141
+./paddle/fluid/inference/tensorrt/plugin/split_op_plugin.cu:108:// https://github.com/onnx/onnx-tensorrt/blob/master/Split.cu
+./paddle/fluid/inference/tests/infer_ut/external-cmake/gtest-cpp.cmake:9:set(GTEST_REPOSITORY https://github.com/google/googletest.git)
+./paddle/fluid/inference/api/paddle_analysis_config.h:707:  /// https://github.com/NVIDIA/TensorRT), with which some models's inference
+./paddle/fluid/inference/experimental/javaapi/readme.md:29:git clone github.com/paddlepaddle/paddle/paddle/fluid/inference/javaapi
+./paddle/fluid/inference/goapi/README.md:16:go get -d -v github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi@${COMMITID}
+./paddle/fluid/inference/goapi/README.md:31:cd ${GOMODCACHE}/github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi\@v0.0.0-20210623023452-0722297d9b8c/
+./paddle/fluid/inference/goapi/config.go:500:/// https://github.com/NVIDIA/TensorRT), with which some models's inference
+./paddle/fluid/inference/goapi/go.mod:1:module github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi
+./paddle/fluid/inference/capi_exp/pd_config.h:448:/// https://github.com/NVIDIA/TensorRT), with which some models's inference
+./paddle/fluid/distributed/ps/thirdparty/round_robin.h:10:// https://github.com/martinus/robin-hood-hashing
+./paddle/fluid/memory/allocation/system_allocator.cc:59:  // refer to https://github.com/01org/mkl-dnn/blob/master/include/dnnl.hpp
+./paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h:16: * This source code refers to https://github.com/rapidsai/cudf
+./paddle/fluid/framework/fleet/heter_ps/cudf/managed.cuh:16: * This source code refers to https://github.com/rapidsai/cudf
+./paddle/fluid/framework/fleet/heter_ps/cudf/hash_functions.cuh:16: * This source code refers to https://github.com/rapidsai/cudf
+./paddle/fluid/framework/fleet/heter_ps/cudf/hash_functions.cuh:27:// https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
+./paddle/fluid/framework/fleet/heter_ps/cudf/managed_allocator.cuh:16: * This source code refers to https://github.com/rapidsai/cudf
+./paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h:78:// Special case : mac. https://github.com/facebook/react-native/issues/31250
+./CMakeLists.txt:243:  set(GIT_URL "https://github.com")
+./setup.py:1500:        download_url='https://github.com/paddlepaddle/paddle',
