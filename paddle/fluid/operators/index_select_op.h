@@ -119,7 +119,8 @@ struct IndexSelectAdd<
                   const T* src_pointer,
                   const T* p_pointer,
                   T* dist_pointer) {
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
   }
 };
