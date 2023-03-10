@@ -2212,34 +2212,16 @@ class OpTest(unittest.TestCase):
                 )
                 if dygraph_outputs is None:
                     # missing KernelSignature, fall back to eager middle output.
-                    dygraph_outs = self._calc_dygraph_output(place)
+                    dygraph_outputs = self._calc_dygraph_output(place)
 
-            # if outputs is None, kernel sig is empty or other error is happens.
-            if not check_dygraph or dygraph_outputs is None:
-                block.append_op(
-                    type=self.op_type,
-                    inputs=inputs,
-                    outputs=outputs,
-                    attrs=attrs_outputs if hasattr(self, "attrs") else None,
-                )
-            else:
-                outputs = dygraph_outputs
+            outputs = dygraph_outputs
 
             if self.dtype == np.uint16:
                 cast_inputs = self._find_var_in_dygraph(
                     outputs, output_names[0]
                 )
-                cast_outputs = block.create_var(
-                    dtype="float32", shape=cast_inputs[0].shape
-                )
-                cast_op = block.append_op(
-                    inputs={"X": cast_inputs},
-                    outputs={"Out": cast_outputs},
-                    type="cast",
-                    attrs={
-                        "in_dtype": core.VarDesc.VarType.BF16,
-                        "out_dtype": core.VarDesc.VarType.FP32,
-                    },
+                cast_outputs = paddle.cast(
+                    cast_inputs, core.VarDesc.VarType.FP32
                 )
                 outputs = {output_names[0]: cast_outputs}
 
@@ -2251,61 +2233,16 @@ class OpTest(unittest.TestCase):
 
             if user_defined_grad_outputs is None:
                 if len(outputs_valid) == 1:
-                    loss = block.create_var(
-                        dtype=self.dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        persistable=False,
-                        stop_gradient=False,
-                        shape=[1],
-                    )
                     for outputs_valid_key in outputs_valid:
-                        block.append_op(
-                            type="mean",
-                            inputs={"X": outputs_valid[outputs_valid_key]},
-                            outputs={"Out": [loss]},
-                            attrs=None,
-                        )
+                        loss = paddle.mean(outputs_valid[outputs_valid_key][0])
                 else:
                     avg_sum = []
                     for cur_loss in outputs_valid:
-                        cur_avg_loss = block.create_var(
-                            dtype=self.dtype,
-                            type=core.VarDesc.VarType.LOD_TENSOR,
-                            persistable=False,
-                            stop_gradient=False,
-                        )
-                        block.append_op(
-                            type="mean",
-                            inputs={"X": outputs_valid[cur_loss]},
-                            outputs={"Out": [cur_avg_loss]},
-                            attrs=None,
-                        )
+                        cur_avg_loss = paddle.mean(outputs_valid[cur_loss][0])
                         avg_sum.append(cur_avg_loss)
-                    loss_sum = block.create_var(
-                        dtype=self.dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        persistable=False,
-                        stop_gradient=False,
-                        shape=[1],
-                    )
-                    block.append_op(
-                        type='sum',
-                        inputs={"X": avg_sum},
-                        outputs={"Out": loss_sum},
-                        attrs=None,
-                    )
-                    loss = block.create_var(
-                        dtype=self.dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        persistable=False,
-                        stop_gradient=False,
-                        shape=[1],
-                    )
-                    block.append_op(
-                        type='scale',
-                        inputs={"X": loss_sum},
-                        outputs={"Out": loss},
-                        attrs={'scale': 1.0 / float(len(avg_sum))},
+                    loss_sum = paddle.add_n(avg_sum)
+                    loss = paddle.scale(
+                        loss_sum, scale=1.0 / float(len(avg_sum))
                     )
                 loss.backward()
 

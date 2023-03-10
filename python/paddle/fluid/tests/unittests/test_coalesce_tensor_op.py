@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -160,7 +160,10 @@ class TestAllocContinuousSpace(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CUDAPlace(0), no_check_set=["FusedOutput"], atol=1e-5
+            place=core.CUDAPlace(0),
+            no_check_set=["FusedOutput"],
+            atol=1e-5,
+            check_dygraph=False,
         )
         self.verify_output(core.CUDAPlace(0))
 
@@ -180,7 +183,10 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CUDAPlace(0), no_check_set=["FusedOutput"], atol=1e-5
+            place=core.CUDAPlace(0),
+            no_check_set=["FusedOutput"],
+            atol=1e-5,
+            check_dygraph=False,
         )
         self.verify_output(core.CUDAPlace(0))
 
