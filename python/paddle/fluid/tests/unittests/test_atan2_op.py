@@ -157,7 +157,7 @@ class TestAtan2OpBf16(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+        self.check_grad_with_place(place, ['X1', 'X2'], 'Out')
 
 
 class TestAtan2Error(unittest.TestCase):
