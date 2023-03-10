@@ -45,7 +45,7 @@ class TestSoftmaxMKLDNNOpInt8(OpTest):
         return np.random.randint(-128, 127, self.shape).astype(self.dtype)
 
     def get_output(self):
-        out = np.apply_along_axis(stable_softmax, self.axis, self.x, -32)
+        out = np.apply_along_axis(stable_softmax, self.axis, self.x, -64)
         return np.round(out * 255).astype(self.out_dtype)
 
     def setUp(self):

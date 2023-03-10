@@ -835,10 +835,9 @@ class SoftmaxV2OneDNNHandler
         errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
-    auto out_md = dnnl::memory::desc(
-        vectorize(x->dims()),
-        funcs::ToOneDNNDataType(DataType::UINT8),
-        funcs::GetPlainOneDNNFormat(vectorize(x->dims()).size()));
+    auto out_md = dnnl::memory::desc(vectorize(x->dims()),
+                                     dnnl::memory::data_type::u8,
+                                     dnnl::memory::format_tag::any);
     out->set_mem_desc(out_md);
 
     dnnl::primitive_attr attrs = {};

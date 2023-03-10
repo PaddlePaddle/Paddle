@@ -43,13 +43,14 @@ void SoftmaxExecute(bool is_inplace,
       astream, {{DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}});
   astream.wait();
 
-  bool is_test = dev_ctx.HasDnnAttr("is_test")
-                     ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
+  bool is_test = dev_ctx.HasDnnAttr("is_test") ? funcs::is_int8<T>()
+                 : PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
+                     ? true
                      : false;
   if (!is_test) {
-    T* out_data = dev_ctx.template Alloc<T>(out);
-    std::for_each(out_data, &out_data[out->numel()], [](T& val) {
-      val = std::max(val, static_cast<T>(exp(-64)));
+    T_out* out_data = dev_ctx.template Alloc<T_out>(out);
+    std::for_each(out_data, &out_data[out->numel()], [](T_out& val) {
+      val = std::max(val, static_cast<T_out>(exp(-64)));
     });
   }
   out->set_mem_desc(dst_memory_p->get_desc());
