@@ -127,7 +127,11 @@ class TestCollectiveAPIRunnerBase:
             shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
         )
         if args['static_mode']:
-            result = self.get_model(train_prog, startup_prog, rank)
+            result = (
+                self.get_model_new(train_prog, startup_prog, rank)
+                if args["use_comm_context"]
+                else self.get_model(train_prog, startup_prog, rank)
+            )
             exe = fluid.Executor(place)
             exe.run(startup_prog)
             fetch_list = []

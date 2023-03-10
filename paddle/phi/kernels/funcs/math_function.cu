@@ -114,21 +114,6 @@ template struct SetConstant<phi::GPUContext, bool>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<float>>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<double>>;
 
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float16>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            bfloat16>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, double>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, uint8_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int16_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int64_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, bool>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::complex<float>>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::complex<double>>;
-
 #define DEFINE_GPU_TRANS(RANK)                                     \
   template struct Transpose<phi::GPUContext, bool, RANK>;          \
   template struct Transpose<phi::GPUContext, unsigned char, RANK>; \
