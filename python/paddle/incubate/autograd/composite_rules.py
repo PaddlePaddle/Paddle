@@ -165,6 +165,8 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     variance = reshape(variance, [-1])
     if is_amp:
         out = cast(out, "float16")
+        mean_ = cast(mean_, "float16")
+        variance = cast(variance, "float16")
     return out, mean_, variance
 
 
@@ -248,6 +250,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
     fix_seed = True if fix_seed is None else fix_seed
     seed = seed if fix_seed else 0
     upscale_in_train = mode == "upscale_in_train"
+
     mask = bernoulli(shape=x.shape, dtype=x.dtype, p=p, seed=seed)
 
     if upscale_in_train:
