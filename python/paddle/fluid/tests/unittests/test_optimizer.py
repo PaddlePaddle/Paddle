@@ -1167,6 +1167,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             prediction = paddle.static.nn.fc(
                 x=[drop_res], size=2, activation='softmax'
             )
+            drop_res.stop_gradient = False
             cost = paddle.nn.functional.cross_entropy(
                 input=prediction,
                 label=input_y,
@@ -1231,6 +1232,7 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
             prediction = paddle.static.nn.fc(
                 x=[drop_res], size=2, activation='softmax'
             )
+            drop_res.stop_gradient = False
             cost = paddle.nn.functional.cross_entropy(
                 input=prediction,
                 label=input_y,

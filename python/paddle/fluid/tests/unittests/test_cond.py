@@ -464,6 +464,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         startup_program = Program()
         with program_guard(main_program, startup_program):
             i = fluid.data(name="i", shape=[1], dtype='float32')
+            i.stop_gradient = False
             a = 2.0 * i
             out = paddle.static.nn.cond(
                 i < 5.0,
