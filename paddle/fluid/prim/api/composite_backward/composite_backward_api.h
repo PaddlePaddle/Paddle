@@ -917,25 +917,6 @@ void batch_norm_grad(const Tensor& x,
                      Tensor* x_grad,
                      Tensor* scale_grad,
                      Tensor* bias_grad) {
-  std::cout << "bn vjp in ************************* x.dtype " << x.dtype()
-            << std::endl;
-  std::cout << "bn vjp in ************************* scale.dtype "
-            << scale.dtype() << std::endl;
-  std::cout << "bn vjp in ************************* bias.dtype " << bias.dtype()
-            << std::endl;
-  // std::cout << "mean_out =**** " <<
-  // *(dynamic_cast<phi::DenseTensor*>(mean_out.get().impl().get())) <<
-  // std::endl; std::cout << "variance_out =**** " <<
-  // *(dynamic_cast<phi::DenseTensor*>(variance_out.get().impl().get())) <<
-  // std::endl;
-
-  std::cout << "bn vjp in ************************* out_grad.dtype "
-            << out_grad.dtype() << std::endl;
-  std::cout << "bn vjp in ************************* momentum " << momentum
-            << std::endl;
-  std::cout << "bn vjp in ************************* epsilon " << epsilon
-            << std::endl;
-
   use_global_stats = is_test || use_global_stats;
 
   DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
@@ -974,10 +955,6 @@ void batch_norm_grad(const Tensor& x,
     mean_data = run_mean;
     rsqrt_var = 1 / (run_var + eps).pow(0.5);
   } else {
-    std::cout << "bn vjp in ************************* saved_mean.dtype "
-              << saved_mean.dtype() << std::endl;
-    std::cout << "bn vjp in ************************* saved_variance.dtype "
-              << saved_variance.dtype() << std::endl;
     mean_data = saved_mean;
     rsqrt_var = saved_variance;
   }
@@ -1048,12 +1025,14 @@ void batch_norm_grad(const Tensor& x,
           auto x_grad_data = scale * rsqrt_var * out_grad_data;
           set_output<T>(x_grad_data, x_grad);
         } else {
-          auto part1 = scale * 1.0 / nhw * rsqrt_var;
-          auto sum_temp1 = sum<T>(out_grad_data, reduce_axis, dtype, false);
-          auto sum_temp2 =
-              sum<T>(out_grad_data * x_sub_mean, reduce_axis, dtype, false);
-          auto part2 = nhw * out_grad_data - sum_temp1 -
-                       x_sub_mean * sum_temp2 * (rsqrt_var * rsqrt_var);
+          auto part1 = scale * rsqrt_var;
+          auto mean_temp1 =
+              sum<T>(out_grad_data, reduce_axis, dtype, false) / nhw;
+
+          auto tmp = out_grad_data * x_sub_mean * rsqrt_var * rsqrt_var / nhw;
+          auto mean_temp2 = sum<T>(tmp, reduce_axis, dtype, false);
+          auto part2 = nhwc_out_grad - mean_temp1 - x_sub_mean * mean_temp2;
+
           auto x_grad_data = part1 * part2;
           if (x.dtype() == phi::DataType::FLOAT16) {
             x_grad_data = cast<T>(x_grad_data, x.dtype());
