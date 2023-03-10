@@ -163,6 +163,7 @@ def instancenorm_composite(x, scale, bias, epsilon):
     if len(x_shape) == 2:
         x = reshape(x, [x.shape[0], x.shape[1], 1, 1])
     n, c, h, w = x.shape
+
     axis = tuple(range(2, len(x.shape)))
     mean_ = mean(x, axis=axis, keepdim=True)
     difference = x - mean_
