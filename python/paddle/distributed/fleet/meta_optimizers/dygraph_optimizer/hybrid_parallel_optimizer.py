@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+
 import paddle
 from paddle import framework
 from paddle.autograd import no_grad
@@ -243,27 +244,46 @@ class HybridParallelOptimizer:
 
     def _step(self, parameters_list):
         mp_group = self._hcg.get_model_parallel_group()
-        src_rank = hcg.get_model_parallel_group_src_rank()
+        src_rank = self._hcg.get_model_parallel_group_src_rank()
         sync_param = None
         mp_sync = os.getenv("FLAGS_mp_sync", False)
 
         if mp_group.nranks > 1 and mp_sync:
-            sync_param = sorted([p for p in parameters_list if self._filter_fn(p)])
+            sync_param = sorted(
+                [p for p in parameters_list if self._filter_fn(p)]
+            )
             for p in sync_param:
-                if p._grad_ivar() is None: continue
-                paddle.distributed.broadcast(p._grad_ivar(), src=src_rank, group=mp_group, sync_op=True)
+                if p._grad_ivar() is None:
+                    continue
+                paddle.distributed.broadcast(
+                    p._grad_ivar(), src=src_rank, group=mp_group, sync_op=True
+                )
 
         self._inner_opt.step()
 
         if mp_group.nranks > 1 and mp_sync:
             for p in sync_param:
-                paddle.distributed.broadcast(p, src=src_rank, group=mp_group, sync_op=True)
+                paddle.distributed.broadcast(
+                    p, src=src_rank, group=mp_group, sync_op=True
+                )
+
                 # support opt state of adam and adamw to broadcast now.
-                if isinstance(self._inner_opt, paddle.[paddle.optimizer.Adam, paddle.optimizer.AdamW]):
-                    moment1 = self._inner_opt._get_accumulator(self._inner_opt._moment1_acc_str, p)
-                    moment2 = self._inner_opt._get_accumulator(self._inner_opt._moment2_acc_str, p)
-                    paddle.distributed.broadcast(moment1, src=src_rank, group=mp_group, sync_op=True)
-                    paddle.distributed.broadcast(moment2, src=src_rank, group=mp_group, sync_op=True)
+                if isinstance(
+                    self._inner_opt,
+                    [paddle.optimizer.Adam, paddle.optimizer.AdamW],
+                ):
+                    moment1 = self._inner_opt._get_accumulator(
+                        self._inner_opt._moment1_acc_str, p
+                    )
+                    moment2 = self._inner_opt._get_accumulator(
+                        self._inner_opt._moment2_acc_str, p
+                    )
+                    paddle.distributed.broadcast(
+                        moment1, src=src_rank, group=mp_group, sync_op=True
+                    )
+                    paddle.distributed.broadcast(
+                        moment2, src=src_rank, group=mp_group, sync_op=True
+                    )
 
     @no_grad()
     @framework.dygraph_only

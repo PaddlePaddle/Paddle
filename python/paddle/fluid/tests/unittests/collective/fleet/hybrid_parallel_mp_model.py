@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
@@ -180,6 +181,87 @@ class SimpleDPNet(fluid.dygraph.Layer):
         x = self.linear3(x)
         x = paddle.matmul(x, self.embedding.weight, transpose_y=True)
         return x
+
+
+class TestDistMPSyncTraning(unittest.TestCase):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 2
+        self.data_parallel_size = 1
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+        }
+        fleet.init(is_collective=True, strategy=strategy)
+
+    def build_model_optimizer(self):
+        hcg = fleet.get_hybrid_communicate_group()
+        word_size = hcg.get_model_parallel_world_size()
+        mp_id = hcg.get_model_parallel_rank()
+        dp_id = hcg.get_data_parallel_rank()
+        rank_id = dist.get_rank()
+        set_random_seed(1024, dp_id, rank_id)
+
+        np_fc1 = np.random.random_sample((hidden_size, inner_size))
+        np_fc2 = np.random.random_sample((inner_size, hidden_size))
+
+        model = SimpleMPNet(
+            vocab_size,
+            hidden_size,
+            inner_size,
+            output_size,
+            np_fc1,
+            np_fc2,
+            mp_id,
+        )
+        optimizer = paddle.optimizer.AdamW(
+            learning_rate=0.1, parameters=model.parameters()
+        )
+
+        model = fleet.distributed_model(model)
+        optimizer = fleet.distributed_optimizer(optimizer)
+
+        return model, optimizer
+
+    def train_batch(self, batchs, model, optimizer):
+        losses = []
+        for batch in batchs:
+            output = model(batch)
+            loss = output.mean()
+            losses.append(loss.numpy())
+            loss.backward()  # do backward
+            optimizer.step()  # update parameters
+            optimizer.clear_grad()
+        return losses
+
+    def test_mp_sync(self):
+        model, optimizer = self.build_model_optimizer()
+        model_state = model.state_dict()
+        opt_state = optimizer.state_dict()
+
+        batchs = []
+        for _ in range(5):
+            np_data = np.random.randint(
+                0,
+                vocab_size,
+                (
+                    batch_size,
+                    seq_length,
+                ),
+            )
+            batchs.append(paddle.to_tensor(np_data))
+
+        losses = self.train_batch(batchs, model, optimizer)
+
+        os.environ["FLAGS_mp_sync"] = True
+        model_sync, optimizer_sync = self.build_model_optimizer()
+        model_sync.set_state_dict(model_state)
+        optimizer_sync.set_state_dict(opt_state)
+        losses_sync = self.train_batch(batchs, model_sync, optimizer_sync)
+
+        for (loss_a, loss_b) in zip(losses, losses_sync):
+            np.testing.assert_allclose(loss_a, loss_b, rtol=1e-6)
 
 
 class TestDistMPTraning(unittest.TestCase):
