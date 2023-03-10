@@ -104,6 +104,8 @@ def GenerateSM80_TensorOp_16816(manifest, cuda_version):
 
     layouts = [
         (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+        (LayoutType.RowMajor, LayoutType.ColumnMajor, LayoutType.RowMajor),
+        (LayoutType.ColumnMajor, LayoutType.RowMajor, LayoutType.RowMajor),
     ]
 
     math_instructions = [
@@ -225,6 +227,8 @@ def GenerateSM80_TensorOp_1688(manifest, cuda_version):
 
     layouts = [
         (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+        (LayoutType.RowMajor, LayoutType.ColumnMajor, LayoutType.RowMajor),
+        (LayoutType.ColumnMajor, LayoutType.RowMajor, LayoutType.RowMajor),
     ]
 
     math_instructions = [
@@ -332,6 +336,8 @@ def GenerateSM80_TensorOp_1688_fast_math(manifest, cuda_version):
 
     layouts = [
         (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+        (LayoutType.RowMajor, LayoutType.ColumnMajor, LayoutType.RowMajor),
+        (LayoutType.ColumnMajor, LayoutType.RowMajor, LayoutType.RowMajor),
     ]
 
     math_instructions = [
@@ -423,6 +429,8 @@ def GenerateSM80_TensorOp_1688_fast_fp32_math(manifest, cuda_version):
 
     layouts = [
         (LayoutType.RowMajor, LayoutType.RowMajor, LayoutType.RowMajor),
+        (LayoutType.RowMajor, LayoutType.ColumnMajor, LayoutType.RowMajor),
+        (LayoutType.ColumnMajor, LayoutType.RowMajor, LayoutType.RowMajor),
     ]
 
     math_instructions = [

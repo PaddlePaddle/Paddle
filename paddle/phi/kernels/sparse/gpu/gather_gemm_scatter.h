@@ -80,8 +80,8 @@ GatherGemmScatterDriver(const phi::GPUContext& ctx,
                         T alpha,
                         T beta) {}
 
-DEFINE_GATHER_GEMM_SCATTER_DRIVER(phi::dtype::float16, fp16_kernels)
-DEFINE_GATHER_GEMM_SCATTER_DRIVER(float, fp32_kernels)
+DEFINE_GATHER_GEMM_SCATTER_DRIVER(phi::dtype::float16, fp16_nn_kernels)
+DEFINE_GATHER_GEMM_SCATTER_DRIVER(float, fp32_nn_kernels)
 
 }  // namespace sparse
 }  // namespace phi

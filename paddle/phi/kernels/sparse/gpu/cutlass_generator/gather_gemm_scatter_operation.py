@@ -75,9 +75,9 @@ struct ${operation_name} {
       ${math_operation},
       ${transform_a},
       ${transform_b},
-      true, // gather a
-      false, // gather b
-      true // scatter d
+      ${gather_a}, // gather a
+      ${gather_b}, // gather b
+      ${scatter_d} // scatter d
     >;
 };
 """
@@ -192,6 +192,13 @@ struct ${operation_name} {
             'math_operation': MathOperationTag[
                 operation.tile_description.math_instruction.math_operation
             ],
+            'gather_a': 'true',
+            'gather_b': (lambda layout: str(layout == 'tn').lower())(
+                operation.layout_name()
+            ),
+            'scatter_d': (lambda layout: str(layout != 'tn').lower())(
+                operation.layout_name()
+            ),
         }
 
         return SubstituteTemplate(gemm_template, values)
