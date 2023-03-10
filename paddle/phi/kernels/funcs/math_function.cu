@@ -86,8 +86,142 @@ __global__ void batch_transpose_kernel(
   }
 }
 
+template <int32_t AccessSize = 1,
+          typename accessType = half,
+          int blockM = 4,
+          int blockN = 128,
+          int padding = 1,
+          int tileM = 32,
+          int tileN = blockN* AccessSize>
+__global__ void batch_transpose_kernel_fp16(
+    half* output, const half* input, int batch, int M, int N) {
+  __shared__ half aTile[tileM][tileN + padding];
+  int vol = M * N;
+  int batch_i = blockIdx.z;
+
+  // g_row_0 , g_col_0 is is the this tile's upper-left element's global row and
+  // col index.
+  int g_row_0 = blockIdx.x * tileM;
+  int g_col_0 = blockIdx.y * tileN;
+
+  int tid_in_block = threadIdx.x + threadIdx.y * blockDim.x;
+  // local column and row read by the current cuda thread
+  int local_row_start = tid_in_block / blockN;
+  int row_step = blockM;
+  int local_col = tid_in_block % blockN;
+
+  for (int ri = local_row_start; ri < tileM; ri += row_step) {
+    int g_row_i = g_row_0 + ri;
+    int g_col_i = g_col_0 + local_col * AccessSize;
+    int input_offset = batch_i * vol + g_row_i * N + g_col_i;
+    if (g_row_i < M && g_col_i < N) {
+      half tmp[AccessSize];
+      *reinterpret_cast<accessType*>(tmp) =
+          *reinterpret_cast<accessType*>(input + input_offset);
+      for (int i = 0; i < AccessSize; i++) {
+        aTile[ri][local_col * AccessSize + i] = tmp[i];
+      }
+    }
+  }
+
+  __syncthreads();
+
+  for (int i = 0; i < AccessSize * (tileM / blockM); i++) {
+    int new_idx = (tid_in_block + i * blockM * blockN) % tileM;
+    int new_idy = (tid_in_block + i * blockM * blockN) / tileM;
+    int g_row_i = g_col_0 + new_idy;
+    int g_col_i = g_row_0 + new_idx;
+
+    if (g_row_i >= N || g_col_i >= M) break;
+    int output_offset = batch_i * vol + g_row_i * M + g_col_i;
+    *(output + output_offset) = aTile[new_idx][new_idy];
+  }
+}
+
+void BatchTransposeFp16(
+    half* output, const half* input, int batch, int M, int N) {
+  auto input_address = reinterpret_cast<std::uintptr_t>(input);
+  if (N % 8 == 0 && input_address % 8 == 0) {
+    const int blockM = 16;
+    const int blockN = 16;
+    const int accessSize = 8;
+    const int tileM = 16;
+    const int tileN = blockN * accessSize;
+    const int padding = 2;
+    assert(N % accessSize == 0);
+    uint3 grid = {(M + tileM - 1) / tileM, (N + tileN - 1) / tileN, batch};
+    uint3 block = {blockM, blockN, 1};
+    batch_transpose_kernel_fp16<accessSize,
+                                float4,
+                                blockM,
+                                blockN,
+                                padding,
+                                tileM,
+                                tileN>
+        <<<grid, block>>>(output, input, batch, M, N);
+  } else if (N % 4 == 0 && input_address % 4 == 0) {
+    const int blockM = 16;
+    const int blockN = 32;
+    const int accessSize = 4;
+    const int tileM = 32;
+    const int tileN = 32 * accessSize;
+    const int padding = 2;
+    assert(N % accessSize == 0);
+    uint3 grid = {(M + tileM - 1) / tileM, (N + tileN - 1) / (tileN), batch};
+    uint3 block = {blockM, blockN, 1};
+    batch_transpose_kernel_fp16<accessSize,
+                                float2,
+                                blockM,
+                                blockN,
+                                padding,
+                                tileM,
+                                tileN>
+        <<<grid, block>>>(output, input, batch, M, N);
+  } else if (N % 2 == 0 && input_address % 2 == 0) {
+    const int blockM = 8;
+    const int blockN = 64;
+    const int accessSize = 2;
+    const int tileM = 32;
+    const int tileN = blockN * accessSize;
+    const int padding = 2;
+    assert(N % accessSize == 0);
+    uint3 grid = {(M + tileM - 1) / tileM, (N + tileN - 1) / (tileN), batch};
+    uint3 block = {blockM, blockN, 1};
+    batch_transpose_kernel_fp16<accessSize,
+                                half2,
+                                blockM,
+                                blockN,
+                                padding,
+                                tileM,
+                                tileN>
+        <<<grid, block>>>(output, input, batch, M, N);
+  } else {
+    const int blockM = 4;
+    const int blockN = 128;
+    const int accessSize = 1;
+    const int tileM = 32;
+    const int tileN = blockN * accessSize;
+    const int padding = 2;
+    assert(N % accessSize == 0);
+    uint3 grid = {(M + tileM - 1) / tileM, (N + tileN - 1) / (tileN), batch};
+    uint3 block = {blockM, blockN, 1};
+    batch_transpose_kernel_fp16<accessSize,
+                                half,
+                                blockM,
+                                blockN,
+                                padding,
+                                tileM,
+                                tileN>
+        <<<grid, block>>>(output, input, batch, M, N);
+  }
+}
+
 template <typename T>
 void BatchTranspose(T* output, const T* input, int batch, int m, int n) {
+  if (std::is_same<T, phi::dtype::float16>::value) {
+    // BatchTransposeFp16((half*)output, (half*)input, batch, m, n);
+    // return;
+  }
   dim3 grid((n + 31) / 32, (m + 31) / 32, batch);
   dim3 block(32, 8);
   batch_transpose_kernel<<<grid, block>>>(output, input, batch, m, n);
