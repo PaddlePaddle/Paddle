@@ -92,7 +92,9 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
             paddle.distributed.all_gather(tensor_list, tindata)
             return tensor_list
 
-    def get_model_new(self, main_prog, startup_program, rank, dtype=None):
+    def get_model_new(
+        self, main_prog, startup_program, rank, dtype=None, reduce_type=None
+    ):
         with fluid.program_guard(main_prog, startup_program):
             tensor_list = []
             tindata = paddle.static.data(
