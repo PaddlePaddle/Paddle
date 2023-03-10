@@ -33,11 +33,9 @@ using Deleter = std::function<void(void*)>;
  * @param shape The dims of the tensor.
  * @param dtype The data type of the tensor, should correspond to data type of
  *              `data`. See PD_FOR_EACH_DATA_TYPE in phi/common/data_type.h
+ * @param layout The data layout of the tensor.
  * @param place The place where the tensor is located, should correspond to
  *              place of `data`.
- * @param layout The data layout of the tensor.
- * @param storage_offset The offset (in bytes) of the tensor data from the
- *                       beginning of `data`.
  * @param deleter A function or function object that will be called to free the
  *                memory buffer.
  *
@@ -45,19 +43,10 @@ using Deleter = std::function<void(void*)>;
  */
 PADDLE_API Tensor from_blob(void* data,
                             const phi::DDim& shape,
-                            DataType dtype,
-                            const Place& place,
-                            phi::DataLayout layout,
-                            size_t storage_offset,
-                            const Deleter& deleter);
-
-inline Tensor from_blob(void* data,
-                        const phi::DDim& shape,
-                        DataType dtype,
-                        const Place& place) {
-  return from_blob(
-      data, shape, dtype, place, phi::DataLayout::NCHW, 0, nullptr);
-}
+                            phi::DataType dtype,
+                            phi::DataLayout layout = phi::DataLayout::NCHW,
+                            const phi::Place& place = phi::Place(),
+                            const Deleter& deleter = nullptr);
 
 }  // namespace experimental
 }  // namespace paddle

@@ -347,8 +347,8 @@ def header_include():
     return """
 #include <tuple>
 
-#include "paddle/phi/api/include/from_blob.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/api/lib/from_blob.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/utils/optional.h"
