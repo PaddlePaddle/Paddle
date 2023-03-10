@@ -16,7 +16,6 @@ import unittest
 
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.utils import flatten
 from paddle.incubate.autograd.primrules import _jvp, _transpose
 
 paddle.enable_static()
@@ -79,14 +78,14 @@ class TestAddPJVPAndTranspose(unittest.TestCase):
             )
 
             jvp_out = _jvp(op, *self.jvp_args)
-            jvp_out = flatten(jvp_out)
+            jvp_out = paddle.utils.flatten(jvp_out)
             for k, v in self.jvp_out_shape_map.items():
                 self.assertEqual(jvp_out[k].shape, v.shape)
 
             # Some prim ops dont have transpose rule
             if hasattr(self, 'transpose_args'):
                 transpose_out = _transpose(op, *self.transpose_args)
-                transpose_out = flatten(transpose_out)
+                transpose_out = paddle.utils.flatten(transpose_out)
                 for k, v in self.transpose_out_shape_map.items():
                     self.assertEqual(transpose_out[k].shape, v.shape)
 

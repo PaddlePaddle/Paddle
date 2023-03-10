@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -474,7 +475,17 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 
   bool transfered = false;
   DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
-
+  phi::Kernel* phi_kernel = op_func_node->phi_kernel_;
+  auto has_infer_varkernel_fn =
+      (phi_kernel && phi_kernel->get_kerneltype_forvar_fn_ != nullptr);
+  phi::AttributeMap infer_attrs{};
+  auto fluid_attrs =
+      static_cast<const framework::OperatorWithKernel*>(op_base)->Attrs();
+  auto phi_kernelkey =
+      framework::TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
+  phi::GetKernelTypeForVarContext infer_varkernel_context =
+      BuildGetKernelTypeForVarContext(
+          phi_kernelkey, fluid_attrs, &infer_attrs, has_infer_varkernel_fn);
   auto apply_data_transform_for_one_parameter =
       [&](const std::string& parameter_name,
           const std::vector<std::string>& argument_names,
@@ -551,11 +562,15 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
             auto kernel_key_for_var =
                 static_cast<const framework::OperatorWithKernel*>(op_base)
                     ->GetKernelTypeForVar(
-                        parameter_name,
-                        *tensor_in,
-                        framework::TransOpKernelTypeToPhiKernelKey(
-                            expected_kernel_key));
-
+                        parameter_name, *tensor_in, phi_kernelkey);
+            if (has_infer_varkernel_fn) {
+              infer_varkernel_context.SetVarName(
+                  const_cast<std::string*>(&parameter_name));
+              infer_varkernel_context.SetDenseTensor(
+                  const_cast<phi::DenseTensor*>(tensor_in));
+              kernel_key_for_var = phi_kernel->get_kerneltype_forvar_fn_(
+                  &infer_varkernel_context);
+            }
             std::unique_ptr<phi::KernelKey>
                 expected_kernel_key_for_argument_def = nullptr;
             if (argument_def &&
@@ -634,7 +649,6 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         }
       };
 
-  phi::Kernel* phi_kernel = op_func_node->phi_kernel_;
   if (phi_kernel && phi_kernel->IsValid() &&
       phi_kernel->GetKernelRegisteredType() ==
           phi::KernelRegisteredType::FUNCTION) {
