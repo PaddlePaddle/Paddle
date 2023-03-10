@@ -337,10 +337,7 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
 
 class TestLinearInterpOpFP16(OpTest):
     def test_check_output(self):
-        if platform.system() == "Linux":
-            self.check_output(atol=1e-3, check_eager=True)
-        else:
-            self.check_output(atol=1e-3, check_eager=True)
+        self.check_output(atol=1e-3, check_eager=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -427,13 +424,8 @@ class TestLinearInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        if platform.system() == "Linux":
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-2, check_eager=True)
-
-        else:
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-2, check_eager=True)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-2, check_eager=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
