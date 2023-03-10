@@ -71,11 +71,10 @@ struct MatmulPlanner {
                 const bool trans_x,
                 const bool trans_y,
                 phi::DataType dtype,
-                int impl_type,
+                size_t impl_type,
                 const void* bias_data = nullptr,
-                void* reserve_data = nullptr) :
-      bias(bias_data),
-      aux_data(reserve_data) {
+                void* reserve_data = nullptr)
+      : bias(bias_data), aux_data(reserve_data) {
     type = impl_type;
     key = GenKey(x_dims,
                  y_dims,
@@ -87,9 +86,9 @@ struct MatmulPlanner {
   int ImplType() const { return type; }
   size_t GetKey() const { return key; }
   size_t GenSubKey(int idx) const { return GenKey(key, idx); }
-  
+
  private:
-  int type;
+  size_t type;
   size_t key;
 };
 

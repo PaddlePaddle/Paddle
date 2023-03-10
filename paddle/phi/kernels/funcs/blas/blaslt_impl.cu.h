@@ -26,6 +26,20 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
+// Set this enum according to
+// https://docs.nvidia.com/cuda/cublas/index.html#cublasltepilogue-t
+enum MatmulFusedType {
+  kMatmul = CUBLASLT_EPILOGUE_DEFAULT,  // No special postprocessing.
+  kMatmulBias = CUBLASLT_EPILOGUE_BIAS,
+  kMatmulRelu = CUBLASLT_EPILOGUE_RELU,
+  kMatmulBiasRelu =
+      CUBLASLT_EPILOGUE_RELU_BIAS,  // Apply bias and then ReLU transform.
+  kMatmulBiasGelu =
+      CUBLASLT_EPILOGUE_GELU_BIAS,  // Apply Bias and then GELU transform.
+  kMatmulBiasReluWithReservedData = CUBLASLT_EPILOGUE_RELU_AUX_BIAS,
+  kMatmulBiasGeluWithReservedData = CUBLASLT_EPILOGUE_GELU_AUX_BIAS
+};
+
 template <typename T>
 cublasComputeType_t GetCudaComputeType() {
   if (std::is_same<T, double>::value) {
@@ -129,7 +143,7 @@ struct MatmulDescriptor {
 
   template <typename T>
   void SetFusedEpiloguePtr(phi::autotune::MatmulPlanner* planner) {
-    if (planner->bias) {
+    if (planner->bias != nullptr) {
       const T* bias_data = static_cast<const T*>(planner->bias);
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
           op_desc,
@@ -137,7 +151,7 @@ struct MatmulDescriptor {
           &bias_data,
           sizeof(bias_data)));
 
-      if (planner->aux_data) {
+      if (planner->aux_data != nullptr) {
         PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
             op_desc,
             CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER,

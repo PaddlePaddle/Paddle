@@ -574,9 +574,9 @@ static cublasLtEpilogue_t GetEpilogueGradType(
     const std::string& activation_grad) {
   if (activation_grad == "none") {
     return CUBLASLT_EPILOGUE_DEFAULT;
-  } else if (activation_grad == "relu") {
+  } else if (activation_grad == "relu_grad") {
     return CUBLASLT_EPILOGUE_DRELU;
-  } else if (activation_grad == "gelu") {
+  } else if (activation_grad == "gelu_grad") {
     return CUBLASLT_EPILOGUE_DGELU;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

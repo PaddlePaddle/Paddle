@@ -74,7 +74,7 @@ class AttnMatMul {
           transA_,
           transB_,
           paddle::experimental::CppTypeToDataType<T>::Type(),
-          static_cast<int>(CUBLASLT_EPILOGUE_BIAS),
+          static_cast<size_t>(phi::funcs::kMatmulBias),
           static_cast<const void*>(bias->data<T>()),
           nullptr);
       phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx_,
@@ -87,19 +87,6 @@ class AttnMatMul {
                                              transA_,
                                              transB_,
                                              &fued_impl);
-
-      // ComputeFusedGemmEpilogueForward<T>(dev_ctx_,
-      //                                    input,
-      //                                    weight,
-      //                                    bias,
-      //                                    bsz_seq_,      // M
-      //                                    output_size_,  // N
-      //                                    input_size_,   // K
-      //                                    transA_,
-      //                                    transB_,
-      //                                    "none",
-      //                                    bias_out,
-      //                                    nullptr);
       return;
     }
 #endif

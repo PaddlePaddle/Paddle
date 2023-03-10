@@ -89,19 +89,6 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
             K_from_y));
 
     auto activation = ctx->Attrs().Get<std::string>("activation");
-
-    if ((activation != "relu") && (activation != "gelu") &&
-        (activation != "none")) {
-      PADDLE_ENFORCE_EQ(
-          true,
-          false,
-          platform::errors::InvalidArgument(
-              "The activation attribute of fused_gemm_epilogue op should be"
-              " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
-              "But received activation=%s.",
-              activation));
-    }
-
     if (activation == "none" && ctx->HasOutput("ReserveSpace")) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The ReserveSpace would not be used when activation = \"none\""));
@@ -275,19 +262,7 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
             dout_mat_dims[0],
             x_mat_dims[0]));
 
-    auto activation_grad = ctx->Attrs().Get<std::string>("activation");
-    if ((activation_grad != "relu") && (activation_grad != "gelu") &&
-        (activation_grad != "none")) {
-      PADDLE_ENFORCE_EQ(
-          true,
-          false,
-          platform::errors::InvalidArgument(
-              "The activation attribute of fused_gemm_epilogue op should be"
-              " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
-              "But received activation=%s.",
-              activation_grad));
-    }
-
+    auto activation_grad = ctx->Attrs().Get<std::string>("activation_grad");
     if (activation_grad != "none" && !ctx->HasInput("ReserveSpace")) {
       PADDLE_ENFORCE_EQ(true,
                         false,
@@ -359,7 +334,7 @@ class FusedGemmEpilogueGradOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
 
     AddAttr<std::string>(
-        "activation",
+        "activation_grad",
         R"DOC((string, default none), The backward activation function. It could be
     one of {none, relu_grad, gelu_grad}. When none is given, The backward Act would
     be null operations)DOC")
@@ -412,7 +387,6 @@ REGISTER_OPERATOR(
     ops::FusedGemmEpilogueOpMaker,
     ops::FusedGemmEpilogueOpGradMaker<paddle::framework::OpDesc>,
     ops::FusedGemmEpilogueOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(fused_gemm_epilogue_grad, ops::FusedGemmEpilogueGradOp);
-// REGISTER_OPERATOR(fused_gemm_epilogue_grad,
-//                   ops::FusedGemmEpilogueGradOp,
-//                   ops::FusedGemmEpilogueGradOpMaker);
+REGISTER_OPERATOR(fused_gemm_epilogue_grad,
+                  ops::FusedGemmEpilogueGradOp,
+                  ops::FusedGemmEpilogueGradOpMaker);

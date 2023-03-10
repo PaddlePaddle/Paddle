@@ -26,25 +26,27 @@ namespace operators {
 #if CUDA_VERSION >= 11060
 
 template <typename T>
-int GetFwdFusedEpilogueType(const phi::GPUContext& ctx,
-                            const std::string& activation,
-                            phi::DenseTensor* reserve_space) {
-  cublasLtEpilogue_t fuse_type = CUBLASLT_EPILOGUE_BIAS;
+size_t GetFwdFusedEpilogueType(const phi::GPUContext& ctx,
+                               const std::string& activation,
+                               phi::DenseTensor* reserve_space) {
+  using FusdType = phi::funcs::MatmulFusedType;
+
+  auto fuse_type = FusdType::kMatmulBias;
   if (activation != "none") {
     if (activation == "relu") {
-      if (!reserve_space) {
-        fuse_type = CUBLASLT_EPILOGUE_RELU_BIAS;
+      if (reserve_space == nullptr) {
+        fuse_type = FusdType::kMatmulBiasRelu;
       } else {
-        fuse_type = CUBLASLT_EPILOGUE_RELU_AUX_BIAS;
+        fuse_type = FusdType::kMatmulBiasReluWithReservedData;
         int64_t reserve_size =
             SizeOf(phi::DataType::BOOL) * phi::product(reserve_space->dims());
         ctx.Alloc(reserve_space, phi::DataType::BOOL, reserve_size);
       }
     } else if (activation == "gelu") {
-      if (!reserve_space) {
-        fuse_type = CUBLASLT_EPILOGUE_GELU_BIAS;
+      if (reserve_space == nullptr) {
+        fuse_type = FusdType::kMatmulBiasGelu;
       } else {
-        fuse_type = CUBLASLT_EPILOGUE_GELU_AUX_BIAS;
+        fuse_type = FusdType::kMatmulBiasGeluWithReservedData;
         int64_t reserve_size = sizeof(T) * phi::product(reserve_space->dims());
         ctx.Alloc<T>(reserve_space, reserve_size);
       }
@@ -55,7 +57,7 @@ int GetFwdFusedEpilogueType(const phi::GPUContext& ctx,
           activation));
     }
   }
-  return static_cast<int>(fuse_type);
+  return static_cast<size_t>(fuse_type);
 }
 
 template <typename DeviceContext, typename T>
@@ -82,12 +84,14 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     int64_t M = trans_x ? x_mat_dims[1] : x_mat_dims[0];
     int64_t K = trans_y ? y->dims()[1] : y->dims()[0];
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
+
     VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
             << "}, out.shape={" << out->dims() << "}, M=" << M << ", N=" << N
             << ", K=" << K << ", trans_x=" << trans_x << ", trans_y=" << trans_y
             << ", activation=" << activation
             << ", reserve_space=" << reserve_space;
-    int fuse_type =
+
+    size_t fuse_type =
         GetFwdFusedEpilogueType<T>(dev_ctx, activation, reserve_space);
     void* reserve_data = reserve_space ? reserve_space->data() : nullptr;
     auto fued_impl = phi::autotune::MatmulPlanner(
@@ -96,9 +100,10 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
         trans_x,
         trans_y,
         paddle::experimental::CppTypeToDataType<T>::Type(),
-        static_cast<int>(fuse_type),
+        fuse_type,
         static_cast<const void*>(bias->data<T>()),
         reserve_data);
+
     phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx,
                                            x->data<T>(),
                                            y->data<T>(),
@@ -127,7 +132,7 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     phi::DenseTensor* dy = ctx.Output<phi::DenseTensor>("DY");
     phi::DenseTensor* dbias = ctx.Output<phi::DenseTensor>("DBias");
 
-    std::string activation_grad = ctx.Attr<std::string>("activation");
+    std::string activation_grad = ctx.Attr<std::string>("activation_grad");
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
 

@@ -924,7 +924,7 @@ struct MatMulDispatcher<phi::GPUContext, T> {
         trans_x,
         trans_y,
         paddle::experimental::CppTypeToDataType<T>::Type(),
-        static_cast<int>(CUBLASLT_EPILOGUE_DEFAULT));
+        static_cast<size_t>(funcs::MatmulFusedType::kMatmul));
     tuner->Run(ctx,
                matmul_planner.GetKey(),
                ctx,
