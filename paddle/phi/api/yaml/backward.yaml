@@ -423,6 +423,7 @@
   kernel :
     func : erf_grad
     data_type : out_grad
+  composite : erf_grad(x, out_grad, x_grad)
 
 - backward_op : erfinv_grad
   forward : erfinv (Tensor x) -> Tensor(out)
