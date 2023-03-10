@@ -112,7 +112,7 @@ void TransposeKernel(const Context& dev_ctx,
   SetInMemDescWithLogicalLayoutFusesSupport(
       dev_ctx, const_cast<DenseTensor*>(&x), x.mem_desc());
 
-  if (axis.size() == 1) {
+  if (axis.size() == 1 || axis.size() == 0) {
     Copy<Context>(dev_ctx, x, x.place(), false, out);
     out->set_mem_desc(x.mem_desc());
     return;
