@@ -131,5 +131,5 @@ void ModeKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     mode, GPU, ALL_LAYOUT, phi::ModeKernel, float, double, int32_t, int64_t) {
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::INT64);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
