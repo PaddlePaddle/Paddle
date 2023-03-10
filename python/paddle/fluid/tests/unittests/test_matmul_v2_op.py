@@ -414,7 +414,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 'Out',
                 no_grad_set=set(['Y']),
                 user_defined_grads=[numeric_grads],
-                max_relative_error=0.05,
+                # max_relative_error=0.05,
             )
 
         def test_check_grad_y(self):
@@ -426,7 +426,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 'Out',
                 no_grad_set=set(['X']),
                 user_defined_grads=[numeric_grads],
-                max_relative_error=0.05,
+                # max_relative_error=0.05,
             )
 
         def test_check_grad(self):
