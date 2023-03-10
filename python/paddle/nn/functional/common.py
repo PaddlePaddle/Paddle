@@ -1747,6 +1747,7 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
             # [[[[0. 0. 0. 0. 0. 0.]
             #    [0. 1. 2. 3. 0. 0.]
             #    [0. 4. 5. 6. 0. 0.]
+            #    [0. 0. 0. 0. 0. 0.]]]]
     """
 
     return pad(
