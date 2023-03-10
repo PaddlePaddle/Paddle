@@ -531,16 +531,6 @@ class CompiledProgram:
             else:
                 self._places = [self._place]
 
-            # Todo(liym27):If optimizer is used in control flow,
-            #  training on multi-places is not supported now, will
-            #  be supported later.
-            if len(self._places) > 1 and _has_optimizer_in_control_flow(
-                self._program
-            ):
-                raise NotImplementedError(
-                    "If optimizer is used in control flow, "
-                    "training on multi-places is not supported now."
-                )
             if isinstance(self._place, core.CUDAPlace):
                 use_device = DeviceType.CUDA
             elif isinstance(self._place, core.XPUPlace):
