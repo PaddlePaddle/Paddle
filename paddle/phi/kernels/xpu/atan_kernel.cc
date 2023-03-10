@@ -36,6 +36,4 @@ void AtanKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    atan, XPU, ALL_LAYOUT, phi::AtanKernel, float, phi::dtype::float16) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::FLOAT64);
-}
+    atan, XPU, ALL_LAYOUT, phi::AtanKernel, float, phi::dtype::float16) {}
