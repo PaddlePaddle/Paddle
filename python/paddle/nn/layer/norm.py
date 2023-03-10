@@ -435,19 +435,9 @@ class GroupNorm(Layer):
 
         param_shape = [self._num_channels]
 
-        # if get_default_dtype() == 'float16':
-        #     self._dtype = 'float32'
-        # else:
-        #     self._dtype = get_default_dtype()
-
-        self._dtype = get_default_dtype()
-
         if weight_attr is False:
             self.weight = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                default_initializer=Constant(1.0),
-                dtype=self._dtype,
+                attr=None, shape=param_shape, default_initializer=Constant(1.0)
             )
             self.weight.stop_gradient = True
         else:
@@ -455,7 +445,6 @@ class GroupNorm(Layer):
                 attr=self._weight_attr,
                 shape=param_shape,
                 default_initializer=Constant(1.0),
-                dtype=self._dtype,
             )
             self.weight.stop_gradient = self._weight_attr is not None and (
                 hasattr(self._weight_attr, "learning_rate")
@@ -468,15 +457,11 @@ class GroupNorm(Layer):
                 shape=param_shape,
                 default_initializer=Constant(0.0),
                 is_bias=True,
-                dtype=self._dtype,
             )
             self.bias.stop_gradient = True
         else:
             self.bias = self.create_parameter(
-                attr=self._bias_attr,
-                shape=param_shape,
-                is_bias=True,
-                dtype=self._dtype,
+                attr=self._bias_attr, shape=param_shape, is_bias=True
             )
             self.bias.stop_gradient = self._bias_attr is not None and (
                 hasattr(self._bias_attr, "learning_rate")

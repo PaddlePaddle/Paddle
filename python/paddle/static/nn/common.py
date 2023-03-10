@@ -695,7 +695,7 @@ def group_norm(
     check_variable_and_dtype(
         input,
         'input',
-        ['float16', 'bfloat16', 'float32', 'float64'],
+        ['float16', 'uint16', 'float32', 'float64'],
         'group_norm',
     )
     # create intput and parameters

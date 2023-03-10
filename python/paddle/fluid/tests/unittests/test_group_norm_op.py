@@ -94,8 +94,8 @@ class TestGroupNormOp(OpTest):
         self.attrs['data_layout'] = self.data_format
 
     def test_check_output(self):
-        atol = 1e-3
-        inplace_atol = 1e-3
+        atol = 0
+        inplace_atol = 0
         place = core.CPUPlace()
 
         self.check_output_with_place(place, atol=atol)
@@ -171,28 +171,23 @@ class TestGroupNormFP16OP(TestGroupNormOp):
         atol = 1e-3
         inplace_atol = 1e-3
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
-            # computation order when multiple threads write the same address. So the
-            # result of group_norm is non-deterministic when datatype is float.
-            # When inplace_atol is not None, the inplace check uses numpy.allclose
-            # to check inplace result instead of numpy.array_equal.
-            # Set to inplace_atol to 0, which means the absolute error is 0, and the
-            # relative error is 1e-05 in numpy.allclose by default.
-            # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
-            self.check_output_with_place(
-                place, atol=atol, inplace_atol=inplace_atol
-            )
+        place = core.CUDAPlace(0)
+        # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
+        # Set to inplace_atol to 0, which means the absolute error is 0, and the
+        # relative error is 1e-05 in numpy.allclose by default.
+        # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         if self.compare_between_place:
             return
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, set(['X', 'Scale', 'Bias']), 'Y', max_relative_error=5e-3
-            )
+
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, set(['X', 'Scale', 'Bias']), 'Y')
 
     def init_test_case(self):
         self.dtype = np.float16
@@ -238,29 +233,24 @@ class TestGroupNormBF16Op(OpTest):
     def test_check_output(self):
         atol = 1e-2
         inplace_atol = 1e-2
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
-            # computation order when multiple threads write the same address. So the
-            # result of group_norm is non-deterministic when datatype is float.
-            # When inplace_atol is not None, the inplace check uses numpy.allclose
-            # to check inplace result instead of numpy.array_equal.
-            # Set to inplace_atol to 0, which means the absolute error is 0, and the
-            # relative error is 1e-05 in numpy.allclose by default.
-            # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
-            self.check_output_with_place(
-                place, atol=atol, inplace_atol=inplace_atol
-            )
+
+        place = core.CUDAPlace(0)
+        # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
+        # Set to inplace_atol to 0, which means the absolute error is 0, and the
+        # relative error is 1e-05 in numpy.allclose by default.
+        # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         if self.compare_between_place:
             return
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, set(['X', 'Scale', 'Bias']), 'Y', numeric_grad_delta=1e-2
-            )
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, set(['X', 'Scale', 'Bias']), 'Y')
 
     def init_test_case(self):
         pass
@@ -304,50 +294,13 @@ class TestGroupNormOpBigEps1(TestGroupNormOp):
         self.attrs['epsilon'] = 0.5
 
 
-class TestGroupNormFP16OpBigEps1(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 1
-        self.attrs['epsilon'] = 0.5
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16OpBigEps1(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.attrs['groups'] = 1
-        self.attrs['epsilon'] = 0.5
-
-
 class TestGroupNormOpBigEps2(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 4
         self.attrs['epsilon'] = 0.5
 
 
-class TestGroupNormFP16OpBigEps2(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 4
-        self.attrs['epsilon'] = 0.5
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16OpBigEps2(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.attrs['groups'] = 4
-        self.attrs['epsilon'] = 0.5
-
-
 class TestGroupNormOpBigEps3(TestGroupNormOp):
-    def init_test_case(self):
-        self.attrs['epsilon'] = 0.5
-
-
-class TestGroupNormFP16OpBigEps3(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['epsilon'] = 0.5
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16OpBigEps3(TestGroupNormBF16Op):
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
 
@@ -363,44 +316,7 @@ class TestGroupNormOpLargeData(TestGroupNormOp):
         self.compare_between_place = True
 
 
-@skip_check_grad_ci(
-    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU
-            are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
-)
-class TestGroupNormFP16OpLargeData(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.shape = (2, 32, 64, 64)
-        self.attrs['groups'] = 8
-        self.compare_between_place = True
-        self.dtype = np.float16
-
-
-@skip_check_grad_ci(
-    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU
-            are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
-)
-class TestGroupNormBF16OpLargeData(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.shape = (2, 32, 64, 64)
-        self.attrs['groups'] = 8
-        self.compare_between_place = True
-
-
 class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
-    def init_test_case(self):
-        self.attrs['groups'] = 1
-        self.data_format = "NHWC"
-
-
-class TestGroupNormFP16Op1_With_NHWC(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 1
-        self.data_format = "NHWC"
-        self.compare_between_place = True
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16Op1_With_NHWC(TestGroupNormBF16Op):
     def init_test_case(self):
         self.attrs['groups'] = 1
         self.data_format = "NHWC"
@@ -412,37 +328,7 @@ class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
-class TestGroupNormFP16Op2_With_NHWC(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 4
-        self.data_format = "NHWC"
-        self.compare_between_place = True
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16Op2_With_NHWC(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.attrs['groups'] = 4
-        self.data_format = "NHWC"
-
-
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
-    def init_test_case(self):
-        self.attrs['groups'] = 1
-        self.attrs['epsilon'] = 0.5
-        self.data_format = "NHWC"
-
-
-class TestGroupNormFP16OpBigEps1_With_NHWC(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 1
-        self.attrs['epsilon'] = 0.5
-        self.data_format = "NHWC"
-        self.compare_between_place = True
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16OpBigEps1_With_NHWC(TestGroupNormBF16Op):
     def init_test_case(self):
         self.attrs['groups'] = 1
         self.attrs['epsilon'] = 0.5
@@ -456,37 +342,7 @@ class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
-class TestGroupNormFP16OpBigEps2_With_NHWC(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['groups'] = 4
-        self.attrs['epsilon'] = 0.5
-        self.data_format = "NHWC"
-        self.compare_between_place = True
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16OpBigEps2_With_NHWC(TestGroupNormBF16Op):
-    def init_test_case(self):
-        self.attrs['groups'] = 4
-        self.attrs['epsilon'] = 0.5
-        self.data_format = "NHWC"
-
-
 class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
-    def init_test_case(self):
-        self.attrs['epsilon'] = 0.5
-        self.data_format = "NHWC"
-
-
-class TestGroupNormFP16OpBigEps3_With_NHWC(TestGroupNormFP16OP):
-    def init_test_case(self):
-        self.attrs['epsilon'] = 0.5
-        self.data_format = "NHWC"
-        self.compare_between_place = True
-        self.dtype = np.float16
-
-
-class TestGroupNormBF16OpBigEps3_With_NHWC(TestGroupNormBF16Op):
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
@@ -630,6 +486,5 @@ class TestGroupNormEager_fp16(unittest.TestCase):
             )
 
 
-# paddle.disable_static()
 if __name__ == '__main__':
     unittest.main()
