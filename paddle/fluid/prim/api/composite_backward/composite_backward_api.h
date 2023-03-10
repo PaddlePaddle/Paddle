@@ -929,8 +929,8 @@ void prod_grad(const Tensor& x,
         for (auto i : axis_) {
           reshape_dim[i] = 1;
         }
-        auto out_grad_ = reshape<T>(out_grad, phi::vectorize(reshape_dim));
-        auto out_ = reshape<T>(out, phi::vectorize(reshape_dim));
+        auto out_grad_ = reshape<T>(out_grad, reshape_dim);
+        auto out_ = reshape<T>(out, reshape_dim);
         x_grad_tmp = out_grad_.expand(IntArray(x_dim));
         out_tmp = out_.expand(IntArray(x_dim));
       } else {
@@ -943,6 +943,7 @@ void prod_grad(const Tensor& x,
   }
 }
 
+template <typename T>
 void erf_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto m_2_sqrt_pi = full<T>(phi::vectorize(x.dims()), M_2_SQRTPI, x.dtype());
