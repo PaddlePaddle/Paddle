@@ -698,8 +698,7 @@ struct DeviceIndependenceTensorOperations {
  private:
   const framework::ExecutionContext& context;
   phi::funcs::BlasT<DeviceContext, T> GetBlas() {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    return phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+    return phi::funcs::GetBlas<DeviceContext, T>(context);
   }
   platform::ForRange<DeviceContext> GetForRange(int numel) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
