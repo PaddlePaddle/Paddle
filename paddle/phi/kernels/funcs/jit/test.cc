@@ -1192,7 +1192,7 @@ TEST(JITKernel_pool, more) {
 #endif
 
 #ifdef PADDLE_WITH_MKLML
-  target_num += 12;
+  target_num += 11;
 #endif
 
   EXPECT_EQ(kers.size(), target_num);
