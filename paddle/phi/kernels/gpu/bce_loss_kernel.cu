@@ -43,11 +43,12 @@ struct BCELossFunctor {
         "Input is expected to be within the interval [0, 1], but received %f.",
         x);
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-    MPType term1 = max(phi::kps::details::Log(static_cast<MPType>(x)), static_cast<MPType>(neg_100));
-    MPType term2 = 
-        max(phi::kps::details::Log(one - static_cast<MPType>(x)), static_cast<MPType>(neg_100));
+    MPType term1 = max(phi::kps::details::Log(static_cast<MPType>(x)),
+                       static_cast<MPType>(neg_100));
+    MPType term2 = max(phi::kps::details::Log(static_cast<MPType>(one) - static_cast<MPType>(x)),
+                       static_cast<MPType>(neg_100));
     return static_cast<T>(
-        ((static_cast<MPType>(label) - static_cast<MPType>(one)) * term2) - 
+        ((static_cast<MPType>(label) - static_cast<MPType>(one)) * term2) -
         (static_cast<MPType>(label) * term1));
   }
 };
