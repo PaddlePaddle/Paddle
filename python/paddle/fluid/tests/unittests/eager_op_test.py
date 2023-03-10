@@ -2327,7 +2327,9 @@ class OpTest(unittest.TestCase):
 
                 if in_dygraph_mode():
                     core.eager.run_backward(
-                        fluid.layers.utils.flatten(outputs), grad_outputs, False
+                        paddle.utils.flatten(outputs),
+                        grad_outputs,
+                        False,
                     )
                     grad_inputs = []
                     for inputs_list in inputs.values():
@@ -2336,8 +2338,8 @@ class OpTest(unittest.TestCase):
                     return grad_inputs
                 else:
                     grad_inputs = paddle.grad(
-                        outputs=fluid.layers.utils.flatten(outputs),
-                        inputs=fluid.layers.utils.flatten(inputs),
+                        outputs=paddle.utils.flatten(outputs),
+                        inputs=paddle.utils.flatten(inputs),
                         grad_outputs=grad_outputs,
                     )
                     return [grad.numpy() for grad in grad_inputs]
