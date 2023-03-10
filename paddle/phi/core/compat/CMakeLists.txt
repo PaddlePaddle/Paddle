@@ -6,6 +6,7 @@ cc_library(
   op_utils
   SRCS op_utils.cc
   DEPS arg_map_context enforce)
+cc_library(get_kerneltype_forvar_utils SRCS get_kerneltype_forvar_utils.cc)
 
 set(convert_utils_deps data_type place op_utils phi_backends)
 
