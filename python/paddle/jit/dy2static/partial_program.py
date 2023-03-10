@@ -18,13 +18,11 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
-from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
 
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
@@ -49,14 +47,14 @@ class NestSequence:
         """
         Flattens the nested sequences into single list.
         """
-        return flatten(self.__raw_input)
+        return paddle.utils.flatten(self.__raw_input)
 
     def restore(self, value_list):
         """
         Restores the nested sequence from value list.
         """
         assert len(self.__input_list) == len(value_list)
-        return pack_sequence_as(self.__raw_input, value_list)
+        return paddle.utils.pack_sequence_as(self.__raw_input, value_list)
 
     def _get_var_ids(self):
         var_ids = []
@@ -277,6 +275,11 @@ class PartialProgramLayer:
             paddle.static.amp.fp16_utils.cast_model_to_fp16(
                 pure_fp16_program, self._amp_list, use_fp16_guard=False
             )
+
+        core.check_and_set_prim_all_enabled()
+        from paddle.incubate.autograd.primapi import to_prim
+
+        to_prim(pure_fp16_program.blocks)
         if is_infer_mode:
             return pure_fp16_program
         else:
@@ -370,7 +373,7 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _train_program_id(self):
-        program_id = _hash_with_id(self._train_program, self)
+        program_id = paddle.utils._hash_with_id(self._train_program, self)
         core._set_cached_executor_build_strategy(
             program_id, self._build_strategy
         )
@@ -378,11 +381,11 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_program_id(self):
-        return _hash_with_id(self._infer_program, self)
+        return paddle.utils._hash_with_id(self._infer_program, self)
 
     @LazyInitialized
     def _train_amp_program_id(self):
-        program_id = _hash_with_id(self._train_amp_program, self)
+        program_id = paddle.utils._hash_with_id(self._train_amp_program, self)
         core._set_cached_executor_build_strategy(
             program_id, self._build_strategy
         )
@@ -390,11 +393,13 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_amp_program_id(self):
-        return _hash_with_id(self._infer_amp_program, self)
+        return paddle.utils._hash_with_id(self._infer_amp_program, self)
 
     @LazyInitialized
     def _train_pure_fp16_program_id(self):
-        program_id = _hash_with_id(self._train_pure_fp16_program, self)
+        program_id = paddle.utils._hash_with_id(
+            self._train_pure_fp16_program, self
+        )
         core._set_cached_executor_build_strategy(
             program_id, self._build_strategy
         )
@@ -402,7 +407,7 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_pure_fp16_program_id(self):
-        return _hash_with_id(self._infer_pure_fp16_program, self)
+        return paddle.utils._hash_with_id(self._infer_pure_fp16_program, self)
 
     @LazyInitialized
     def _param_grad_names(self):
@@ -431,6 +436,8 @@ class PartialProgramLayer:
         """
         Return current train or eval program hash id.
         """
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+
         if self.training:
             if _in_amp_guard():
                 return self._train_amp_program_id
@@ -448,6 +455,8 @@ class PartialProgramLayer:
 
     @property
     def train_program(self):
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+
         if _in_amp_guard():
             return self._train_amp_program
         elif _in_pure_fp16_guard():
@@ -457,6 +466,8 @@ class PartialProgramLayer:
 
     @property
     def infer_program(self):
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+
         if _in_amp_guard():
             return self._infer_amp_program
         elif _in_pure_fp16_guard():
@@ -466,6 +477,8 @@ class PartialProgramLayer:
 
     @property
     def forward_program(self):
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -479,6 +492,8 @@ class PartialProgramLayer:
 
     @property
     def backward_program(self):
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+
         if self.training:
             if _in_amp_guard():
                 progs = self._train_amp_forward_backward_program
@@ -663,6 +678,8 @@ class PartialProgramLayer:
         return self._valid_vars(double_grads)
 
     def _cast_fp16_if_pure_fp16(self, in_vars):
+        from paddle.amp.auto_cast import _in_pure_fp16_guard
+
         if _in_pure_fp16_guard():
             for i, var in enumerate(in_vars):
                 name = var.name
@@ -838,7 +855,7 @@ class PartialProgramLayer:
         """
         assert isinstance(inputs, (tuple, list))
         # Flatten inputs with nested structure into single list.
-        flatten_inputs = flatten(inputs)
+        flatten_inputs = paddle.utils.flatten(inputs)
         # Convert variable into VarBase and feed in training data.
         input_vars = []
         expected_place = framework._current_expected_place()

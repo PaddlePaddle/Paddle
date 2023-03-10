@@ -1,14 +1,19 @@
 # Attach operants to Tensor, this file should be consistent with the declaration in `tensor.h`
+# Assure this file is the subset of `paddle/fluid/prim/api/api.yaml`
+- add
+- subtract
+- multiply
+- divide
+- bitwise_and
+- bitwise_not
+- bitwise_or
+- bitwise_xor
 - unsqueeze
-- pow
 - exp
 - scale
-- multiply
 - matmul
 - expand
-- divide
 - sum
-- add
 - abs
 - assign
 - elementwise_pow
@@ -22,4 +27,3 @@
 - scatter
 - scatter_nd_add
 - tile
-- subtract

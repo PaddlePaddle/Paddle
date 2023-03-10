@@ -569,6 +569,7 @@ def exp(x, name=None):
                 'float64',
                 'complex64',
                 'complex128',
+                'uint16',
             ],
             'exp',
         )
@@ -808,7 +809,7 @@ def sigmoid(x, name=None):
         return _C_ops.sigmoid(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sigmoid'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'sigmoid'
         )
         helper = LayerHelper('sigmoid', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -918,7 +919,7 @@ def sqrt(x, name=None):
         return _C_ops.sqrt(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sqrt'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'sqrt'
         )
         helper = LayerHelper('sqrt', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

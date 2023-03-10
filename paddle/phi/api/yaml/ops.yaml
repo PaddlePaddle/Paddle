@@ -125,6 +125,42 @@
   kernel :
     func : bernoulli
 
+- op : bitwise_and
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_and
+    backend : x
+
+- op : bitwise_not
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : bitwise_not
+    backend : x
+
+- op : bitwise_or
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_or
+    backend : x
+
+- op : bitwise_xor
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : bitwise_xor
+    backend : x
+
 - op : bmm
   args : (Tensor x, Tensor y)
   output : Tensor
@@ -133,6 +169,16 @@
   kernel :
     func : bmm
   backward : bmm_grad
+
+- op : broadcast
+  args : (Tensor X, int ring_id = 0, int root = 0)
+  output : Tensor(Out)
+  infer_meta :
+    func : BroadcastBaseInferMeta
+    param: [X]
+  kernel :
+    func : broadcast
+    param: [X, root]
 
 - op : broadcast_tensors
   args: (Tensor[] input)
@@ -445,6 +491,28 @@
     func : fill_diagonal_tensor
   inplace : (x -> out)
   backward : fill_diagonal_tensor_grad
+
+- op : flash_attn
+  args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false)
+  output : Tensor(out), Tensor(softmax_lse), Tensor(softmax), Tensor(seed_offset)
+  infer_meta :
+    func : FlashAttnInferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn
+    data_type : q
+  backward : flash_attn_grad
+
+- op : flash_attn_raw
+  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false)
+  output : Tensor(out), Tensor(softmax_lse), Tensor(softmax), Tensor(seed_offset)
+  infer_meta :
+    func : FlashAttnInferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_raw
+    data_type : q
+  backward : flash_attn_raw_grad
 
 - op : flip
   args : (Tensor x, int[] axis)

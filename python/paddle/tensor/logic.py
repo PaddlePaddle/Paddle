@@ -357,8 +357,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     .. math::
         \left| x - y \right| \leq atol + rtol \times \left| y \right|
 
-    elementwise, for all elements of :math:`x` and :math:`y`. The behaviour of this
-    operator is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
+    elementwise, for all elements of :math:`x` and :math:`y`. This is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
     two tensors are elementwise equal within a tolerance.
 
     Args:
@@ -431,8 +430,8 @@ def equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
-        y(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
+        x(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
+        y(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -457,7 +456,7 @@ def equal(x, y, name=None):
             )
         )
     if not isinstance(y, Variable):
-        y = full(shape=[1], dtype=x.dtype, fill_value=y)
+        y = full(shape=[], dtype=x.dtype, fill_value=y)
 
     if in_dygraph_mode():
         return _C_ops.equal(x, y)
@@ -465,13 +464,13 @@ def equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "equal",
         )
         helper = LayerHelper("equal", **locals())
@@ -495,8 +494,8 @@ def greater_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -518,13 +517,13 @@ def greater_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "greater_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "greater_equal",
         )
         helper = LayerHelper("greater_equal", **locals())
@@ -548,8 +547,8 @@ def greater_than(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
@@ -571,13 +570,13 @@ def greater_than(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "greater_than",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "greater_than",
         )
         helper = LayerHelper("greater_than", **locals())
@@ -601,8 +600,8 @@ def less_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -625,13 +624,13 @@ def less_equal(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "less_equal",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "less_equal",
         )
         helper = LayerHelper("less_equal", **locals())
@@ -655,8 +654,8 @@ def less_than(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -679,13 +678,13 @@ def less_than(x, y, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "less_than",
         )
         check_variable_and_dtype(
             y,
             "y",
-            ["bool", "float32", "float64", "int32", "int64"],
+            ["bool", "float16", "float32", "float64", "int32", "int64"],
             "less_than",
         )
         helper = LayerHelper("less_than", **locals())
@@ -828,18 +827,26 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
         return out
 
 
-@templatedoc()
 def bitwise_and(x, y, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_and`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X \& Y
+
+    .. note::
+        ``paddle.bitwise_and`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python
@@ -857,18 +864,26 @@ def bitwise_and(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def bitwise_or(x, y, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_or`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X | Y
+
+    .. note::
+        ``paddle.bitwise_or`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python
@@ -887,18 +902,26 @@ def bitwise_or(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def bitwise_xor(x, y, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_xor`` on Tensor ``X`` and ``Y`` .
+
+    .. math::
+        Out = X ^\wedge Y
+
+    .. note::
+        ``paddle.bitwise_xor`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x (Tensor): ${x_comment}
-        y (Tensor): ${y_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        y (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python
@@ -916,17 +939,25 @@ def bitwise_xor(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def bitwise_not(x, out=None, name=None):
-    """
-    ${comment}
+    r"""
+
+    Apply ``bitwise_not`` on Tensor ``X``.
+
+    .. math::
+        Out = \sim X
+
+    .. note::
+        ``paddle.bitwise_not`` supports broadcasting. If you want know more about broadcasting, please refer to please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor.
 
     Args:
-        x(Tensor):  ${x_comment}
-        out(Tensor): ${out_comment}
+        x (Tensor): Input Tensor of ``bitwise_not`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
+        out(Tensor): Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Returns:
-        Tensor: ${out_comment}
+        Tensor: Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
 
     Examples:
         .. code-block:: python
