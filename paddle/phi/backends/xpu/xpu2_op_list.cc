@@ -391,6 +391,7 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::FLOAT32,
                      phi::DataType::BOOL})},
+      {"index_select_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"index_select",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::INT32,
