@@ -40,7 +40,7 @@ void FusedSoftplusKernel(const Context& dev_ctx,
   } else {
     dst_memory_p = handler.AcquireDstMemory(out);
   }
-  auto binary_p = handler.AcquireForwardPrimitive();
+  auto softplus_p = handler.AcquireForwardPrimitive();
 
   auto& astream = OneDNNContext::tls().get_stream();
 
@@ -49,7 +49,7 @@ void FusedSoftplusKernel(const Context& dev_ctx,
       {DNNL_ARG_SRC_1, *beta_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
 
-  binary_p->execute(astream, args);
+  softplus_p->execute(astream, args);
   astream.wait();
 
   out->set_mem_desc(dst_memory_p->get_desc());
