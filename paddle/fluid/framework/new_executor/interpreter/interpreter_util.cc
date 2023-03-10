@@ -92,7 +92,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "search_sort",
     "select",
     "send_recv",
-    "send_ue_recv",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
