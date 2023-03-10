@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -247,12 +248,32 @@ def _conv_nd(
         )
         if bias is not None:
             out = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [pre_bias], 'Y': [bias]},
-                outputs={'Out': [out]},
-                attrs={'axis': channel_dim, 'use_mkldnn': use_mkldnn},
-            )
+            x_shape = list(pre_bias.shape)
+            y_shape = list(bias.shape)
+            if channel_dim == -1 or len(x_shape) == len(y_shape):
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
+                )
+            else:
+                if len(x_shape) > len(y_shape):
+                    padding = len(x_shape) - len(y_shape) - channel_dim
+                    bias = paddle.reshape(
+                        bias, [1] * channel_dim + y_shape + [1] * padding
+                    )
+                else:
+                    padding = len(y_shape) - len(x_shape) - channel_dim
+                    pre_bias = paddle.reshape(
+                        pre_bias, [1] * channel_dim + y_shape + [1] * padding
+                    )
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
+                )
         else:
             out = pre_bias
     return out
@@ -1335,7 +1356,33 @@ def conv2d_transpose(
         )
 
         if bias is not None:
-            out = _add_with_axis(pre_bias, bias, axis=channel_dim)
+            out = helper.create_variable_for_type_inference(x.dtype)
+            x_shape = list(pre_bias.shape)
+            y_shape = list(bias.shape)
+            if channel_dim == -1 or len(x_shape) == len(y_shape):
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1, 'use_mkldnn': False},
+                )
+            else:
+                if len(x_shape) > len(y_shape):
+                    padding = len(x_shape) - len(y_shape) - channel_dim
+                    bias = paddle.reshape(
+                        bias, [1] * channel_dim + y_shape + [1] * padding
+                    )
+                else:
+                    padding = len(y_shape) - len(x_shape) - channel_dim
+                    pre_bias = paddle.reshape(
+                        pre_bias, [1] * channel_dim + y_shape + [1] * padding
+                    )
+                helper.append_op(
+                    type='elementwise_add',
+                    inputs={'X': [pre_bias], 'Y': [bias]},
+                    outputs={'Out': [out]},
+                    attrs={'axis': -1, 'use_mkldnn': False},
+                )
         else:
             out = pre_bias
 
