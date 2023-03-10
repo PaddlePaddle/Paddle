@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layers.utils import map_structure
 
 SEED = 2020
 np.random.seed(SEED)
@@ -231,7 +230,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
 
     def varbase_to_numpy(self, res):
         if isinstance(res, (list, tuple)):
-            res = map_structure(lambda x: x.numpy(), res)
+            res = paddle.utils.map_structure(lambda x: x.numpy(), res)
         else:
             res = [res.numpy()]
         return res

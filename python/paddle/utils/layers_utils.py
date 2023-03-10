@@ -12,24 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import collections
 import copy
-import numpy as np
-from ..framework import Block, Variable, _non_static_mode
-from ..data_feeder import (
-    convert_dtype,
-    check_variable_and_dtype,
-    check_type,
-    check_dtype,
-)
-from ..layer_helper import LayerHelper
-from sys import version_info
-
-from collections.abc import Sequence
-from weakref import WeakKeyDictionary
 from collections import defaultdict
+from collections.abc import Sequence
 from uuid import uuid4
+from weakref import WeakKeyDictionary
+
+import paddle
+
+from ..fluid.data_feeder import check_dtype, convert_dtype
+from ..fluid.framework import Block, Variable, _non_static_mode
 
 
 def convert_to_list(value, n, name, dtype=int):

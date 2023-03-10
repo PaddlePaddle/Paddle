@@ -27,7 +27,6 @@ from ..framework import Variable
 from ..core import VarDesc
 from .. import core
 from .layer_function_generator import templatedoc
-from . import utils
 from ..data_feeder import (
     check_variable_and_dtype,
     check_type,
@@ -36,7 +35,6 @@ from ..data_feeder import (
 )
 from paddle.utils import deprecated
 
-from .utils import check_shape
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [

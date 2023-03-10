@@ -51,7 +51,6 @@ using VariableIdMap = std::map<std::string, std::vector<int>>;
 // These Op needs set output dtype when register phi kernel, but they didn't
 static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "abs",
-    "accuracy",
     "adam",
     "adamw",
     "all_close",
@@ -66,14 +65,11 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "complex",
     "conv3d_coo",
     "distribute_fpn_proposals",
-    "edit_distance",
     "eig",
     "eig_grad",
     "eigh",
-    "eigvals",
     "ftt_c2r",
     "ftt_r2c",
-    "fused_adam",
     "fused_matmul",
     "generate_proposals",
     "graph_sample_neighbors",
@@ -93,14 +89,11 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "multiclass_nms3",
     "multinomial",
     "nanmedian",
-    "numl",
     "rnn",
     "search_sort",
     "select",
     "send_recv",
     "send_ue_recv",
-    "sgd",
-    "svd",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
@@ -1095,7 +1088,9 @@ void FakeInitializeOutputsForFunctionKernel(
       if (out_tensor && !out_tensor->initialized()) {
         phi::TensorArgDef& tensor_arg_def = output_defs[start_idx + offset];
         phi::DataType dtype = tensor_arg_def.dtype;
-        phi::Place place = phi::TransToPhiPlace(tensor_arg_def.backend);
+        phi::Place place = tensor_arg_def.backend == phi::Backend::CUSTOM
+                               ? dev_ctx.GetPlace()
+                               : phi::TransToPhiPlace(tensor_arg_def.backend);
 
         if (dtype == DataType::UNDEFINED ||
             OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
