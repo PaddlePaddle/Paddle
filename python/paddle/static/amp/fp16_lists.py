@@ -195,8 +195,9 @@ else:
         'GPU', core.VarDesc.VarType.FP16
     )
 
+no_kernel_list = core.op_no_kernel_infos()
 unsupported_fp16_list = (
     _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
 )
-
+unsupported_fp16_list -= no_kernel_list
 CustomOpLists = AutoMixedPrecisionLists

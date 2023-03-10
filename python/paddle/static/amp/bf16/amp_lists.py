@@ -114,6 +114,7 @@ gray_list = {
     'split',
 }
 
+no_kernel_list = core.op_no_kernel_infos()
 _, _, _sys_unsupported_bf16_list = core.op_supported_infos(
     'CPU', core.VarDesc.VarType.BF16
 )
@@ -126,4 +127,5 @@ fp32_list |= gray_list_fp16
 fp32_list -= bf16_list
 fp32_list -= gray_list
 unsupported_list -= bf16_list
+unsupported_list -= no_kernel_list
 unsupported_list -= gray_list

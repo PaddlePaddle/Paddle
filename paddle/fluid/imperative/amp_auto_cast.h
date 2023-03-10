@@ -32,7 +32,7 @@ enum class AmpLevel {
   O2,      // almost fp16
   O3,      // fp16
 };
-
+std::unordered_set<std::string> OpNoKernelInfos();
 std::tuple<std::unordered_set<std::string>,
            std::unordered_set<std::string>,
            std::unordered_set<std::string>>

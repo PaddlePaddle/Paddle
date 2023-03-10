@@ -27,6 +27,29 @@ namespace imperative {
 
 class VarBase;
 
+std::unordered_set<std::string> OpNoKernelInfos() {
+  std::unordered_set<std::string> all_ops;
+  const auto& op_info = framework::OpInfoMap::Instance().map();
+  for (auto it = op_info.begin(); it != op_info.end(); it++) {
+    all_ops.emplace(it->first);
+  }
+  std::unordered_set<std::string> no_kernel_ops;
+  auto& all_kernels = framework::OperatorWithKernel::AllOpKernels();
+  for (auto& op : all_ops) {
+    if (!all_kernels.count(op)) {
+      no_kernel_ops.emplace(op);
+    }
+  }
+  auto phi_kernels = phi::KernelFactory::Instance().kernels();
+  for (auto& kernel_pair : phi_kernels) {
+    auto op_type = phi::TransToFluidOpName(kernel_pair.first);
+    if (no_kernel_ops.count(op_type)) {
+      no_kernel_ops.erase(op_type);
+    }
+  }
+  return no_kernel_ops;
+}
+
 // According to the input `place` and `dtype`, this function returns a tuple
 // consists of three sets:
 // 1) All operators registered in the Paddle framework.

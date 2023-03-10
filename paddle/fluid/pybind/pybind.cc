@@ -2040,6 +2040,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("supports_int8", SupportsInt8);
   m.def("supports_vnni", SupportsVNNI);
   m.def("op_supported_infos", imperative::OpSupportedInfos);
+  m.def("op_no_kernel_infos", imperative::OpNoKernelInfos);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("_cuda_synchronize", [](const platform::CUDAPlace &place) {
