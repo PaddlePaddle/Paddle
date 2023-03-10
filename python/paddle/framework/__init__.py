@@ -36,6 +36,16 @@ from ..fluid.dygraph.base import grad  # noqa: F401
 from .io import save  # noqa: F401
 from .io import load  # noqa: F401
 
+from .io_utils import _open_file_buffer  # noqa: F401
+from .io_utils import is_parameter  # noqa: F401
+from .io_utils import is_persistable  # noqa: F401
+from .io_utils import is_belong_to_optimizer  # noqa: F401
+from .io_utils import _clone_var_in_block_  # noqa: F401
+from .io_utils import _pickle_loads_mac
+from .io_utils import _pack_loaded_dict
+from .io_utils import _unpack_saved_dict
+from .io_utils import _load_program_scope
+
 from ..fluid import monkey_patch_variable
 from ..fluid.dygraph import monkey_patch_math_varbase
 from ..fluid.framework import disable_signal_handler  # noqa: F401

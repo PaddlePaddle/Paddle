@@ -40,9 +40,8 @@ class GeneralGrad {
   static GeneralGrad& Instance() { return *general_grad_; }
 
   // Get inputs's / no_grad_vars's GradNodes and InputMeta Info
-  void GetTargetNodesInfo(
-      const std::vector<paddle::experimental::Tensor>& inputs,
-      bool is_no_grad_vars) {
+  void GetTargetNodesInfo(const std::vector<paddle::Tensor>& inputs,
+                          bool is_no_grad_vars) {
     std::string msg = is_no_grad_vars ? "no_grad_vars" : "inputs";
     VLOG(6) << "Running in GetTargetNodesInfo.";
     if (!inputs.empty()) {
@@ -231,32 +230,29 @@ class GeneralGrad {
               (iter->second)->Buffers()[rank_info.first][rank_info.second];
           // save the target result
           results_map_[input_target_node.first] =
-              std::make_shared<paddle::experimental::Tensor>(target_result);
+              std::make_shared<paddle::Tensor>(target_result);
         }
       }
     }  // TODO(jiabin): Some check here.
   }
 
   void SetResultForEnddingNodes(
-      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                           kSlotSmallVectorSize> grad_output,
+      paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
+          grad_output,
       GradNodeBase* node) {
     if (IsEnddingNodes(node)) {
       VLOG(6) << "Set result for endding_nodes_ with grad_output_tensors";
-      results_map_[node] =
-          std::make_shared<paddle::experimental::Tensor>(grad_output[0][0]);
+      results_map_[node] = std::make_shared<paddle::Tensor>(grad_output[0][0]);
     }
   }
 
-  std::shared_ptr<paddle::experimental::Tensor> FetchGradForTensor(
-      const paddle::experimental::Tensor& tensor,
-      egr::GradNodeBase* target_node) {
-    std::shared_ptr<paddle::experimental::Tensor> tmp{
-        std::make_shared<paddle::experimental::Tensor>()};
+  std::shared_ptr<paddle::Tensor> FetchGradForTensor(
+      const paddle::Tensor& tensor, egr::GradNodeBase* target_node) {
+    std::shared_ptr<paddle::Tensor> tmp{std::make_shared<paddle::Tensor>()};
     VLOG(6)
         << "Running in FetchGradForTensor, prepare FetchGrad Hook for tensor: "
         << tensor.name();
-    auto hook = [tmp](const paddle::experimental::Tensor& t) {
+    auto hook = [tmp](const paddle::Tensor& t) {
       auto tmp_grad = tmp.get();
       if (t.defined()) {
         VLOG(6) << "Set impl for FetchGrad Hook for tensor: " << t.name();
@@ -264,8 +260,8 @@ class GeneralGrad {
         tmp_grad->set_autograd_meta(t.mutable_autograd_meta());
         return t;
       } else {
-        VLOG(6) << "Retain NULL paddle::experimental::Tensor in FetchGrad Hook";
-        return paddle::experimental::Tensor();
+        VLOG(6) << "Retain NULL paddle::Tensor in FetchGrad Hook";
+        return paddle::Tensor();
       }
     };
 
@@ -283,8 +279,7 @@ class GeneralGrad {
   // backward graph, use grad node's output as inputs' gradients and no need to
   // register Hook. Please note that endding node must be GradNodeAccumulation
   // after ModifyBackwardGraph function.
-  void RegisterFetchGradHook(
-      const std::vector<paddle::experimental::Tensor>& inputs) {
+  void RegisterFetchGradHook(const std::vector<paddle::Tensor>& inputs) {
     VLOG(6) << "Running in RegisterFetchGradHook.";
     if (!inputs.empty()) {
       size_t num_inputs = inputs.size();
@@ -436,14 +431,14 @@ class GeneralGrad {
     }
   }
 
-  std::vector<paddle::experimental::Tensor> GetResults(
-      const std::vector<paddle::experimental::Tensor>& inputs,
+  std::vector<paddle::Tensor> GetResults(
+      const std::vector<paddle::Tensor>& inputs,
       bool allow_unused,
       bool create_graph) {
     VLOG(6) << "Running in GetResults";
     if (inputs.empty()) return {};
 
-    std::vector<paddle::experimental::Tensor> results;
+    std::vector<paddle::Tensor> results;
     results.reserve(inputs.size());
 
     for (size_t i = 0; i < inputs.size(); ++i) {
@@ -582,8 +577,8 @@ class GeneralGrad {
   }
 
   void PreparedForGeneralGrad(
-      const std::vector<paddle::experimental::Tensor>& inputs,
-      const std::vector<paddle::experimental::Tensor>& no_grad_vars,
+      const std::vector<paddle::Tensor>& inputs,
+      const std::vector<paddle::Tensor>& no_grad_vars,
       const std::deque<GradNodeBase*>& orig_queue,
       std::deque<GradNodeBase*>* queue,
       const std::unordered_map<GradNodeBase*,
@@ -645,8 +640,7 @@ class GeneralGrad {
   std::unordered_map<GradNodeBase* /* next node */,
                      std::unordered_set<GradNodeBase*> /* pre nodes */>
       depending_nodes_;
-  std::unordered_map<GradNodeBase*,
-                     std::shared_ptr<paddle::experimental::Tensor>>
+  std::unordered_map<GradNodeBase*, std::shared_ptr<paddle::Tensor>>
       results_map_;
 
   std::vector<std::shared_ptr<GradNodeBase>> copied_grad_nodes_;

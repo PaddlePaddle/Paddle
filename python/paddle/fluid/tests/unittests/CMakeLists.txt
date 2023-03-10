@@ -1207,6 +1207,7 @@ set(TEST_CINN_OPS
     test_expand_v2_op
     test_reduce_op
     test_slice_op
+    test_stack_op
     test_activation_op
     test_full_like_op
     test_fill_any_like_op
@@ -1216,7 +1217,11 @@ set(TEST_CINN_OPS
     test_elementwise_sub_op
     test_elementwise_div_op
     test_elementwise_mul_op
-    test_gather_nd_op)
+    test_gather_nd_op
+    test_elementwise_pow_op
+    test_transpose_op
+    test_reshape_op
+    test_mean_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
