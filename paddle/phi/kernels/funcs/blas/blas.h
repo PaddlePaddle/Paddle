@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLML
@@ -578,13 +577,6 @@ class BlasT : private Blas<DeviceContext> {
     return static_cast<const Blas<DeviceContext>*>(this);
   }
 };
-
-template <typename DeviceContext, typename T>
-inline BlasT<DeviceContext, T> GetBlas(
-    const paddle::framework::ExecutionContext& exe_ctx) {
-  return BlasT<DeviceContext, T>(
-      exe_ctx.template device_context<DeviceContext>());
-}
 
 template <typename DeviceContext, typename T>
 inline BlasT<DeviceContext, T> GetBlas(const DeviceContext& dev_ctx) {
