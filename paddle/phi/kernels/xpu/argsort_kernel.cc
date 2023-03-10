@@ -249,5 +249,5 @@ PD_REGISTER_KERNEL(argsort,
                    int,
                    int64_t,
                    phi::dtype::float16) {
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::INT64);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
