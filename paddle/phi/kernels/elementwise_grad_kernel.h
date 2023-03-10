@@ -24,7 +24,6 @@ void ElementwiseFMaxGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& y,
                                const DenseTensor& out_grad,
-                               int axis,
                                DenseTensor* x_grad,
                                DenseTensor* y_grad);
 
