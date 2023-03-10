@@ -85,9 +85,8 @@ phi::Place GetPlaceFromPtr(void* data) {
   }
 #else
   PADDLE_THROW(
-      phi::errors::Unimplemented("The GetAllocationTypeFromPointer() method is "
-                                 "only supported when CUDA version >= "
-                                 "10.0."));
+      phi::errors::Unimplemented("The GetPlaceFromPtr() method is only "
+                                 "supported when CUDA version >= 10.0."));
 #endif
 #else
   hipPointerAttribute_t attr;
