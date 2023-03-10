@@ -154,7 +154,12 @@ file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
 
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
-target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
+if(WITH_MKLDNN)
+  target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS}
+                        get_kerneltype_forvar_utils)
+else()
+  target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
+endif()
 
 set(ADD_PHI_KERNELS phi_cpu)
 
