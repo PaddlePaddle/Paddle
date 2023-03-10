@@ -28,7 +28,8 @@
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_ins_map = {
     {"layer_norm", {"X", "Scale", "Bias"}},
-    {"fused_attention", {"Input", "Filter", "Bias", "ResidualData"}},
+    {"conv2d_fusion_cutlass", {"Input", "Filter", "Bias", "ResidualData"}},
+    {"conv2d_fusion", {"Input", "Filter", "Bias", "ResidualData"}},
     {"bincount", {"X", "Weights"}},
     {"fused_attention",
      {"X",
