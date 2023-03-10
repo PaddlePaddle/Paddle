@@ -23,7 +23,7 @@ from ...device import (
     is_compiled_with_cuda,
     is_compiled_with_rocm,
 )
-from ...fluid.layers import utils
+from ...utils import convert_to_list
 from .. import Layer
 from .. import functional as F
 from ..functional.conv import _update_padding_nd
@@ -110,11 +110,9 @@ class _ConvNd(Layer):
         else:
             self._channel_dim = 1
 
-        self._stride = utils.convert_to_list(stride, dims, 'stride')
-        self._dilation = utils.convert_to_list(dilation, dims, 'dilation')
-        self._kernel_size = utils.convert_to_list(
-            kernel_size, dims, 'kernel_size'
-        )
+        self._stride = convert_to_list(stride, dims, 'stride')
+        self._dilation = convert_to_list(dilation, dims, 'dilation')
+        self._kernel_size = convert_to_list(kernel_size, dims, 'kernel_size')
         self._padding = padding
         self._padding_mode = padding_mode
         self.output_padding = output_padding
@@ -133,9 +131,7 @@ class _ConvNd(Layer):
                 raise ValueError("in_channels must be divisible by groups.")
 
             if padding_mode in {'reflect', 'replicate', 'circular'}:
-                _paired_padding = utils.convert_to_list(
-                    padding, dims, 'padding'
-                )
+                _paired_padding = convert_to_list(padding, dims, 'padding')
                 self._reversed_padding_repeated_twice = _reverse_repeat_list(
                     _paired_padding, 2
                 )

@@ -350,7 +350,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
         self.dtype = np.float16
 
     def if_skip_cinn(self):
-        self.enable_cinn = False
+        pass
 
 
 class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
