@@ -632,7 +632,7 @@ def _lower_composite(block, blacklist=[]):
                         )
                         if orig_out.shape and new_out.shape:
                             assert (
-                                -1 in new_out.shape
+                                -1 not in new_out.shape
                             ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
                             assert orig_out.shape == new_out.shape, (
                                 f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
