@@ -22,7 +22,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
-from paddle.fluid.layers.utils import map_structure
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
 
@@ -430,9 +429,11 @@ class PrimForwardChecker:
             args, len(inputs_sig)
         )
         ret = flatten(_as_list(self.python_api(*args)))
-        ret = map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = paddle.utils.map_structure(
+                lambda x: convert_uint16_to_float(x), ret
+            )
         return ret
 
     def get_eager_input_attr_and_inputdict(self, stop_gradient):
@@ -577,7 +578,9 @@ class PrimForwardChecker:
         exe.run(startup_program)
         ret = exe.run(main_program, feed=feed, fetch_list=ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = paddle.utils.map_structure(
+                lambda x: convert_uint16_to_float(x), ret
+            )
         # check static forward
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -640,9 +643,11 @@ class PrimForwardChecker:
         net = PrimNet(self.python_api)
         net = apply_to_static(net, False)
         ret = flatten(_as_list(net(args)))
-        ret = map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = paddle.utils.map_structure(
+                lambda x: convert_uint16_to_float(x), ret
+            )
         # check jit comp forward
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -719,9 +724,11 @@ class PrimForwardChecker:
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
         ret = flatten(_as_list(net(args)))
-        ret = map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = paddle.utils.map_structure(
+                lambda x: convert_uint16_to_float(x), ret
+            )
         # check jit comp forward
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -895,9 +902,11 @@ class PrimGradChecker(PrimForwardChecker):
         ret = paddle.grad(
             ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
         )
-        ret = map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = paddle.utils.map_structure(
+                lambda x: convert_uint16_to_float(x), ret
+            )
         return ret
 
     def check_eager_comp(self):
@@ -1005,7 +1014,7 @@ class PrimGradChecker(PrimForwardChecker):
         exe.run(startup_program)
         actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            actual_ret = map_structure(
+            actual_ret = paddle.utils.map_structure(
                 lambda x: convert_uint16_to_float(x), actual_ret
             )
         # check static grad out
@@ -1104,9 +1113,11 @@ class PrimGradChecker(PrimForwardChecker):
         ret = paddle.grad(
             ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
         )
-        ret = map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = paddle.utils.map_structure(
+                lambda x: convert_uint16_to_float(x), ret
+            )
         # check jit comp grad out
         if len(ret) != len(self.eager_desire):
             msg = (
@@ -1216,9 +1227,11 @@ class PrimGradChecker(PrimForwardChecker):
         ret = paddle.grad(
             ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
         )
-        ret = map_structure(lambda x: x.numpy(), ret)
+        ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
-            ret = map_structure(lambda x: convert_uint16_to_float(x), ret)
+            ret = paddle.utils.map_structure(
+                lambda x: convert_uint16_to_float(x), ret
+            )
         # check jit comp grad out
         if len(ret) != len(self.eager_desire):
             msg = (
