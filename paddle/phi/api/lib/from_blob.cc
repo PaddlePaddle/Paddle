@@ -50,7 +50,7 @@ PADDLE_API Tensor from_blob(void* data,
     PADDLE_ENFORCE_EQ(
         data_place,
         place,
-        phi::errors::InvalidArgument("Specified place ",
+        phi::errors::InvalidArgument("Specified ",
                                      data_place.DebugString(),
                                      " does not match place of data ",
                                      place.DebugString()));
