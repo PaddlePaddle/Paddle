@@ -76,8 +76,8 @@ class CustomPluginCreater : public OpConverter {
       nvinfer1::PluginField plugindata;
 
       // NOTE: to avoid string rewrite by iterator, deep copy here
-      auto plugin_attr_name = new char[attr_name.length() + 1];
-      strcpy(plugin_attr_name, attr_name.c_str());
+      char plugin_attr_name[attr_name.length() + 1] = {0};
+      snprintf(plugin_attr_name, attr_name.length() + 1, attr_name.c_str());
       plugindata.name = plugin_attr_name;
 
       if (op_desc.GetAttrType(attr_name) == framework::proto::AttrType::INT) {
