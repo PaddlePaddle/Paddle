@@ -29,7 +29,7 @@ PD_DECLARE_KERNEL(empty, GPU, ALL_LAYOUT);
 namespace paddle {
 namespace tests {
 
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 using DataType = paddle::experimental::DataType;
 
 template <typename T>
@@ -230,8 +230,7 @@ void TestDataInterface() {
   selected_rows->mutable_value()->Resize(phi::make_ddim({1, 1}));
   selected_rows->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
       static_cast<float>(10.0f);
-  paddle::experimental::Tensor sr_tensor =
-      paddle::experimental::Tensor(selected_rows);
+  paddle::Tensor sr_tensor = paddle::Tensor(selected_rows);
   CHECK(sr_tensor.is_initialized() == true);
   tensor_ptr = sr_tensor.data();
   CHECK(tensor_ptr != nullptr);
@@ -240,7 +239,7 @@ void TestDataInterface() {
 }
 
 void TestJudgeTensorType() {
-  experimental::Tensor test_tensor(phi::CPUPlace(), {1, 1});
+  Tensor test_tensor(phi::CPUPlace(), {1, 1});
   CHECK(test_tensor.is_dense_tensor() == true);
 }
 
