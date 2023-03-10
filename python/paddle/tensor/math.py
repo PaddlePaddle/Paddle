@@ -5114,13 +5114,13 @@ def _trapezoid(y, x=None, dx=None, axis=-1, sum_mode='sum'):
     Integrate along the given axis using the composite trapezoidal rule.
 
     Args:
-        y (Tensor): Input array to integrate.It's data type should be float32, float64.
+        y (Tensor): Input array to integrate. It's data type should be float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
             It's data type should be float32, float64.If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
             default is None.
-        dx (float, optional): The spacing between sample points when x is None.If neither x nor dx is provided then the default is dx = 1
-        axis (int, optional): The axis along which to integrate.The default is -1.
+        dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1
+        axis (int, optional): The axis along which to integrate. The default is -1.
         sum_mode (str): use a different summation.
 
     Returns:
@@ -5180,7 +5180,7 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
     Integrate along the given axis using the composite trapezoidal rule. Use the sum method.
 
     Args:
-        y (Tensor): Input array to integrate.It's data type should be float32, float64.
+        y (Tensor): Input array to integrate. It's data type should be float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
             It's data type should be float32, float64.If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
@@ -5231,7 +5231,7 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
             # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [2., 8.])
     """
-    return _trapezoid(y, x=x, dx=dx, axis=axis, sum_mode='sum')
+    return _trapezoid(y=y, x=x, dx=dx, axis=axis, sum_mode='sum')
 
 
 def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
@@ -5239,7 +5239,7 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
     Integrate along the given axis using the composite trapezoidal rule. Use the cumsum method
 
     Args:
-        y (Tensor): Input array to integrate.It's data type should be float32, float64.
+        y (Tensor): Input array to integrate. It's data type should be float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
             It's data type should be float32, float64.If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
@@ -5256,6 +5256,7 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
 
             import paddle
 
+            paddle.set_device('cpu')
             y = paddle.to_tensor([4, 5, 6], dtype='float32')
 
             print(paddle.cumulative_trapezoid(y))
@@ -5290,4 +5291,4 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
             #        [[0.50000000, 2.        ],
             #         [3.50000000, 8.        ]])
     """
-    return _trapezoid(y, x=x, dx=dx, axis=axis, sum_mode='cumsum')
+    return _trapezoid(y=y, x=x, dx=dx, axis=axis, sum_mode='cumsum')
