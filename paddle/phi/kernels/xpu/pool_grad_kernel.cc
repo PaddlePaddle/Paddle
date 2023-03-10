@@ -112,6 +112,33 @@ void Pool2dGradKernel(const Context& ctx,
           true);
 
     } else if (pooling_type == "avg") {
+      // When output dim is 1 * 1 (1 * 1 * 1 in pool_3d), use scale
+      // and broadcast kernels to get same output, but better performance.
+      // Since the dim is special in particular models,
+      // use 'export XPU_POOLING_GRAD_SPECIAL=1' to open this path
+      if (out_h == 1 && out_w == 1 && std::is_same<T, float>::value &&
+          std::getenv("XPU_POOLING_GRAD_SPECIAL") != nullptr) {
+        xpu::ctx_guard RAII_GUARD(ctx.x_context());
+        float scale = 1.0 / (in_h * in_w);
+        float* scaled_dy = RAII_GUARD.alloc_l3_or_gm<float>(n * c);
+        r = xpu::scale(ctx.x_context(),
+                       dout.data<float>(),
+                       scaled_dy,
+                       n * c,
+                       true,
+                       scale,
+                       0.0);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+
+        r = xpu::broadcast(ctx.x_context(),
+                           scaled_dy,
+                           dx->data<float>(),
+                           {n, c, 1, 1},
+                           {n, c, in_h, in_w});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
+
+        return;
+      }
       r = xpu::adaptive_avg_pool2d_grad<XPUType>(
           ctx.x_context(),
           reinterpret_cast<const XPUType*>(dout.data<T>()),
@@ -267,6 +294,31 @@ void Pool3dGradKernel(const Context& ctx,
           !channel_last);
 
     } else if (pooling_type == "avg") {
+      if (out_d == 1 && out_h == 1 && out_w == 1 &&
+          std::is_same<T, float>::value &&
+          std::getenv("XPU_POOLING_GRAD_SPECIAL") != nullptr) {
+        xpu::ctx_guard RAII_GUARD(ctx.x_context());
+        float scale = 1.0 / (in_d * in_h * in_w);
+        float* scaled_dy = RAII_GUARD.alloc_l3_or_gm<float>(n * c);
+        r = xpu::scale(ctx.x_context(),
+                       dout.data<float>(),
+                       scaled_dy,
+                       n * c,
+                       true,
+                       scale,
+                       0.0);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+
+        r = xpu::broadcast(ctx.x_context(),
+                           scaled_dy,
+                           dx->data<float>(),
+                           {n, c, 1, 1, 1},
+                           {n, c, in_d, in_h, in_w});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
+
+        return;
+      }
+
       r = xpu::adaptive_avg_pool3d_grad<XPUType>(
           ctx.x_context(),
           reinterpret_cast<const XPUType*>(dout.data<T>()),

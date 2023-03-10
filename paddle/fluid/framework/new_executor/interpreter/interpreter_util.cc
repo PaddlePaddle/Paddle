@@ -64,7 +64,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "adamw",
     "all_close",
     "all_raw",
-    "angle",
     "argsort",
     "atan2",
     "auc",
@@ -97,19 +96,16 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "multiclass_nms3",
     "multinomial",
     "nanmedian",
-    "numl",
     "rnn",
     "search_sort",
     "select",
     "send_recv",
     "send_ue_recv",
-    "svd",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
     "unique_raw",
-    "viterbi_devode",
-    "yolo_loss"};
+    "viterbi_devode"};
 
 // These Ops can use InferMeta to infer the output dtype
 static std::set<std::string> OpsWithAvailablePhiInferMeta = {
