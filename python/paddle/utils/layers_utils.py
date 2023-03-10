@@ -12,24 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import collections
 import copy
-import numpy as np
-from ..framework import Block, Variable, _non_static_mode
-from ..data_feeder import (
-    convert_dtype,
-    check_variable_and_dtype,
-    check_type,
-    check_dtype,
-)
-from ..layer_helper import LayerHelper
-from sys import version_info
-
-from collections.abc import Sequence
-from weakref import WeakKeyDictionary
 from collections import defaultdict
+from collections.abc import Sequence
 from uuid import uuid4
+from weakref import WeakKeyDictionary
+
+import paddle
+
+from ..fluid.data_feeder import check_dtype, convert_dtype
+from ..fluid.framework import Block, Variable, _non_static_mode
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -388,7 +380,7 @@ def _contain_var(list_or_tuple):
 
 
 def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
-    from .tensor import fill_constant
+    from ..fluid.layers.tensor import fill_constant
 
     def _get_attr_shape(list_shape):
         attr_shape = []
@@ -443,7 +435,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
     """
     Converts all elements of a list to Variable.
     """
-    from .tensor import fill_constant
+    from ..fluid.layers.tensor import fill_constant
 
     new_list_tensor = []
     for ele in old_list:

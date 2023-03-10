@@ -14,8 +14,7 @@
 
 import paddle
 from paddle.fluid.framework import Variable
-from paddle.fluid.layers.utils import is_sequence, map_structure
-from paddle.utils import gast
+from paddle.utils import gast, is_sequence, map_structure
 
 from .utils import UndefinedVar, create_undefined_variable
 

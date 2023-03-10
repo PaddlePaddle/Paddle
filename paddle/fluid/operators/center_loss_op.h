@@ -86,7 +86,7 @@ class CenterLossKernel : public framework::OpKernel<T> {
     int numel = centers_diffacc.numel();
     std::memset(centers_diffacc_data, 0, sizeof(T) * numel);
 
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     int tLabel;
 
     const T *x_index;
