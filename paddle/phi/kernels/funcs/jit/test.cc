@@ -1185,7 +1185,7 @@ TEST(JITKernel_pool, jitpool) {
 
 TEST(JITKernel_pool, more) {
   const auto& kers = jit::KernelPool::Instance().AllKernels();
-  size_t target_num = 8;
+  size_t target_num = 7;
 
 #ifdef __AVX__
   target_num += 2;
@@ -1200,7 +1200,7 @@ TEST(JITKernel_pool, more) {
 
 TEST(JITKernel_pool, refer) {
   const auto& kers = jit::ReferKernelPool::Instance().AllKernels();
-  EXPECT_EQ(kers.size(), 33UL);
+  EXPECT_EQ(kers.size(), 31UL);
 }
 
 // test helper
@@ -1335,7 +1335,7 @@ TEST(JITKernel_helper, attr) {
       << jit::to_string(jit::kSgd) << jit::to_string(jit::kAdam)
       << jit::to_string(jit::kVSigmoid) << jit::to_string(jit::kVSquare)
       << jit::to_string(jit::kVSub) << jit::to_string(jit::kVTanh);
-  EXPECT_EQ(out.str().size(), 239UL);
+  EXPECT_EQ(out.str().size(), 231UL);
 
   // SeqPoolTypes
   out.str("");
