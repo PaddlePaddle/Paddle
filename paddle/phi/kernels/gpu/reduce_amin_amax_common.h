@@ -92,7 +92,14 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
           reduce_dims,
           false);
 
-  // 3. dx = Div(dout, equal_out)
+  // 3. dx = dout * 1
+  std::vector<const phi::DenseTensor*> mul_inputs = {&new_dout,
+                                                     &equal_out_tensor};
+  std::vector<phi::DenseTensor*> mul_outputs = {&equal_out_tensor};
+  funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+      dev_ctx, mul_inputs, &mul_outputs, 0, funcs::MultiplyFunctor<T>());
+
+  // 4. dx = Div(dx, equal_out)
   std::vector<const phi::DenseTensor*> grad_inputs = {&equal_out_tensor,
                                                       equal_count};
   std::vector<phi::DenseTensor*> grad_outputs = {new_dx_tensor};

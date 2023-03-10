@@ -15,16 +15,21 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
+def accuracy_wrapper(infer, indices, label):
+    return paddle._C_ops.accuracy(infer, indices, label)
+
+
 class TestAccuracyOp(OpTest):
     def setUp(self):
         self.op_type = "accuracy"
+        self.python_api = accuracy_wrapper
         self.dtype = np.float32
         self.init_dtype()
         n = 8192

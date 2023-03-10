@@ -2346,7 +2346,7 @@ PDNode *patterns::ScaleQuant::operator()() {
   return quant_op;
 }
 
-PDNode *patterns::QuantConv::operator()() {
+PDNode *patterns::QuantConv::operator()(const std::string &conv_type) {
   auto quant_in = pattern->NewNode(quant_in_repr())
                       ->AsInput()
                       ->assert_is_op_input("quantize", "Input");
@@ -2354,8 +2354,8 @@ PDNode *patterns::QuantConv::operator()() {
 
   auto conv_in = pattern->NewNode(conv_in_repr())
                      ->AsInput()
-                     ->assert_is_op_input("conv2d", "Input");
-  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+                     ->assert_is_op_input(conv_type, "Input");
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op(conv_type);
   conv_op->assert_more([&](Node *node) {
     return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
            "bfloat16";
@@ -2845,6 +2845,7 @@ PDNode *patterns::Bfloat16Placement::operator()(
                                        "clip",
                                        "concat",
                                        "conv2d",
+                                       "fused_conv2d",
                                        "conv2d_transpose",
                                        "elementwise_add",
                                        "elementwise_mul",

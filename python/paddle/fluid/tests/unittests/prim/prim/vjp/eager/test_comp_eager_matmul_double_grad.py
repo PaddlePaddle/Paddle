@@ -20,7 +20,7 @@ import parameterized as param
 import paddle
 from paddle.fluid import core
 
-core._set_prim_backward_enabled(True)
+core.set_prim_eager_enabled(True)
 
 # vector * vector out.shape = (1)
 # matrix * vector out.shape = (2)
@@ -267,7 +267,7 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
 
     def test_matmul_grad_comp(self):
         def actual(primal0, primal1, trans_0, trans_1, dtype_):
-            core._set_prim_backward_enabled(True)
+            core.set_prim_eager_enabled(True)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype=dtype_, stop_gradient=False)
             y = paddle.to_tensor(primal1, dtype=dtype_, stop_gradient=False)
@@ -287,7 +287,7 @@ class TestMatmulDoubleGradComp(unittest.TestCase):
             )
 
         def desired(primal0, primal1, trans_0, trans_1, dtype_):
-            core._set_prim_backward_enabled(False)
+            core.set_prim_eager_enabled(False)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype=dtype_, stop_gradient=False)
             y = paddle.to_tensor(primal1, dtype=dtype_, stop_gradient=False)
@@ -428,7 +428,7 @@ class TestMatmulTribleGradComp(unittest.TestCase):
 
     def test_matmul_grad_comp(self):
         def actual(primal0, primal1, trans_0, trans_1, dtype_):
-            core._set_prim_backward_enabled(True)
+            core.set_prim_eager_enabled(True)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype=dtype_, stop_gradient=False)
             y = paddle.to_tensor(primal1, dtype=dtype_, stop_gradient=False)
@@ -465,7 +465,7 @@ class TestMatmulTribleGradComp(unittest.TestCase):
             )
 
         def desired(primal0, primal1, trans_0, trans_1, dtype_):
-            core._set_prim_backward_enabled(False)
+            core.set_prim_eager_enabled(False)
             paddle.disable_static()
             x = paddle.to_tensor(primal0, dtype=dtype_, stop_gradient=False)
             y = paddle.to_tensor(primal1, dtype=dtype_, stop_gradient=False)
@@ -549,7 +549,7 @@ class TestMatmulTribleGradComp(unittest.TestCase):
                 atol=TOLERANCE[d_type]['atol'],
             )
 
-    core._set_prim_backward_enabled(False)
+    core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':

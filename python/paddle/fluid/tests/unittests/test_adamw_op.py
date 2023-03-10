@@ -17,7 +17,7 @@ import unittest
 from functools import partial
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -60,10 +60,53 @@ def adamw_step(inputs, attributes):
     return param_out, moment1_out, moment2_out
 
 
+def adamw_wrapper(
+    param,
+    grad,
+    lr,
+    moment1,
+    moment2,
+    beta1_pow,
+    beta2_pow,
+    master_weight=None,
+    found_inf=None,
+    beta1=0.78,
+    beta2=0.836,
+    epsilon=1e-4,
+    lr_ratio=1.0,
+    weight_decay=0.01,
+    with_decay=True,
+    lazy_mode=False,
+):
+    _, _, _, _, _, _ = paddle._C_ops.adamw_(
+        param,
+        grad,
+        lr,
+        moment1,
+        moment2,
+        beta1_pow,
+        beta2_pow,
+        master_weight,
+        found_inf,
+        beta1,
+        beta2,
+        epsilon,
+        lr_ratio,
+        weight_decay,
+        with_decay,
+        lazy_mode,
+        1000,
+        False,
+        False,
+    )
+
+
 class TestAdamW(OpTest):
     def setUp(self):
         '''Test AdamW Op with supplied attributes'''
         self.op_type = "adamw"
+        self.python_api = adamw_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -118,6 +161,8 @@ class TestAdamW2(OpTest):
     def setUp(self):
         '''Test AdamW Op with supplied attributes'''
         self.op_type = "adamw"
+        self.python_api = adamw_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (2, 2)).astype("float32")
         grad = np.random.uniform(-1, 1, (2, 2)).astype("float32")
         moment1 = np.random.uniform(-1, 1, (2, 2)).astype("float32")

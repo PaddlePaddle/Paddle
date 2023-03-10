@@ -19,15 +19,7 @@ from multiprocessing import Manager, Process
 
 import paddle.fluid as fluid
 
-__all__ = [
-    'Role',
-    'RoleMakerBase',
-    'MPISymetricRoleMaker',
-    'UserDefinedRoleMaker',
-    'UserDefinedCollectiveRoleMaker',
-    'PaddleCloudRoleMaker',
-    'GeneralRoleMaker',
-]
+__all__ = []
 
 
 class Role:
@@ -1037,7 +1029,7 @@ class GeneralRoleMaker(RoleMakerBase):
         return "lo"
 
     def __start_kv_server(self, http_server_d, size_d):
-        from paddle.distributed.launch.utils.kv_server import KVServer
+        from paddle.distributed.fleet.utils.http_server import KVServer
 
         http_server = KVServer(int(self._http_ip_port[1]), size_d)
         http_server.start()
