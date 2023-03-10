@@ -66,6 +66,7 @@ class Node {
   virtual void shrink_to_fit() {}
   virtual int get_feature_size() { return 0; }
   virtual size_t get_neighbor_size() { return 0; }
+  virtual bool get_is_weighted() { return is_weighted; }
 
  protected:
   uint64_t id;
