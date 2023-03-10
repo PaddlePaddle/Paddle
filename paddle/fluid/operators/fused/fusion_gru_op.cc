@@ -310,9 +310,10 @@ class FusionGRUKernel : public framework::OpKernel<T> {
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* wh_state_data = wh_data + D * D2;
     T* hidden_out_data = hidden_out->mutable_data<T>(place);
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+
     phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx,
        total_T,

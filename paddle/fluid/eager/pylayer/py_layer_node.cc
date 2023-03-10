@@ -32,18 +32,16 @@ GradNodePyLayer::~GradNodePyLayer() {
   Py_XDECREF(ctx_);
 }
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
 GradNodePyLayer::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    paddle::small_vector<std::vector<paddle::Tensor>,
                          kSlotSmallVectorSize>& grads,  // NOLINT
     bool create_graph,
     bool is_new_grad) {
   pybind11::gil_scoped_acquire gil;
   VLOG(3) << "Running Eager Backward Node: " << name();
 
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       hooked_grads = GradNodePyLayer::ApplyGradientHooks(grads);
 
   paddle::pybind::PyLayerObject* ctx =
@@ -64,7 +62,7 @@ GradNodePyLayer::operator()(
       PyObject* pylist = PyList_New((Py_ssize_t)grads[i].size());
       for (size_t j = 0; j < grads[i].size(); j++) {
         if (ctx->materialize_grads && !grads[i][j].initialized()) {
-          paddle::experimental::Tensor tensor_tmp;
+          paddle::Tensor tensor_tmp;
           auto dense_tensor = std::make_shared<phi::DenseTensor>();
           dense_tensor->set_meta(forward_outputs_meta_[i][j]);
           tensor_tmp.set_impl(dense_tensor);
@@ -84,7 +82,7 @@ GradNodePyLayer::operator()(
       PyTuple_SET_ITEM(backward_args, i, pylist);
     } else {
       if (ctx->materialize_grads && !grads[i][0].initialized()) {
-        paddle::experimental::Tensor tensor_tmp;
+        paddle::Tensor tensor_tmp;
         auto dense_tensor = std::make_shared<phi::DenseTensor>();
         dense_tensor->set_meta(forward_outputs_meta_[i][0]);
         tensor_tmp.set_impl(dense_tensor);
@@ -139,8 +137,7 @@ GradNodePyLayer::operator()(
         outputs_size));
   }
 
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       grad_out;
   grad_out.reserve(ctx->forward_input_tensor_is_duplicable.size());
   for (size_t i = 0; i < ctx->forward_input_tensor_is_duplicable.size(); i++) {
