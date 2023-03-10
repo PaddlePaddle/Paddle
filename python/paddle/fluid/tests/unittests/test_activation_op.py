@@ -1252,7 +1252,6 @@ class TestSqrtComp(TestActivation, TestParameter):
         self.outputs = {'Out': out}
         self.enable_cinn = True
 
-    # TODO(wanghao107) add prim test
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
@@ -1308,7 +1307,6 @@ class TestSqrtCompBF16(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
-        # TODO(wanghao107): add prim test
         self.enable_cinn = False
 
     def init_dtype(self):
@@ -3907,6 +3905,7 @@ create_test_act_fp16_class(TestTanhshrink)
 create_test_act_fp16_class(TestHardShrink)
 create_test_act_fp16_class(TestSoftshrink)
 create_test_act_fp16_class(TestSqrt)
+create_test_act_fp16_class(TestSqrtComp, check_prim=True)
 create_test_act_fp16_class(TestAbs, check_prim=True)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(TestFloor, check_prim=True, grad_check=False)
