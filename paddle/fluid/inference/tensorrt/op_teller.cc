@@ -650,7 +650,42 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 #endif
     }
+    if (op_type == "index_select") {
+      auto gather_inputs = desc.Inputs();
+      if (!with_dynamic_shape) {
+        return false;
+      } else {
+        auto* block = desc.Block();
+        if (block == nullptr) {
+          VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                     "Developers need to check whether block_desc is passed in "
+                     "the pass.";
+          return false;
+        }
 
+        auto index_var_name = desc.Input("Index")[0];
+        auto* index_var_desc = block->FindVar(index_var_name);
+
+        // The index input must be int32 or int64 datatype.
+        if (index_var_desc->GetDataType() !=
+                paddle::framework::proto::VarType_Type::VarType_Type_INT32 &&
+            index_var_desc->GetDataType() !=
+                paddle::framework::proto::VarType_Type::VarType_Type_INT64) {
+          VLOG(3)
+              << "Index select op Index input data type must be int32 or int64";
+          return false;
+        }
+#if !IS_TRT_VERSION_GE(7000)
+        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        const auto x_shape = x_var_desc->GetShape();
+        if (x_shape.size() == 1) {
+          VLOG(3) << "Index select does not support 1-dimensional input in "
+                     "tensorrt";
+          return false;
+        }
+#endif
+      }
+    }
     if (op_type == "take_along_axis") {
 #if IS_TRT_VERSION_GE(8200)
       if (!with_dynamic_shape) return false;
