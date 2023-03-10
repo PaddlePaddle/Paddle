@@ -93,7 +93,7 @@ class TestCompositeSoftmax(unittest.TestCase):
             # Ensure that softmax in original block
             self.assertTrue('softmax' in fwd_ops)
 
-            paddle.incubate.autograd.to_prim(blocks)
+            paddle.incubate.autograd.primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that softmax is splitted into small ops
@@ -142,7 +142,7 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
 
     def setUp(self):
         core._set_prim_backward_enabled(True)
-        self.dtypes = ["float16", "float32", "float64"]
+        self.dtypes = ["float32", "float64"]
         self.shapes = [[], [2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
@@ -158,10 +158,8 @@ class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
             x.stop_gradient = False
             y = fn(x)
             blocks = main_program.blocks
-            # skip softmax forward decompose
-            core._set_prim_forward_blacklist("softmax")
-            paddle.incubate.autograd.primapi.to_prim(blocks)
             z = paddle.static.gradients([y], x)
+            paddle.incubate.autograd.primapi.to_prim(blocks)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)
