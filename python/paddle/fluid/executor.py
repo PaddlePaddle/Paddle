@@ -975,22 +975,8 @@ class Executor:
 
             # Or, compiled the program and run. See `CompiledProgram`
             # for more details.
-            # NOTE: If you use CPU to run the program or Paddle is
-            # CPU version, you need to specify the CPU_NUM, otherwise,
-            # PaddlePaddle will use all the number of the logic core as
-            # the CPU_NUM, in that case, the batch size of the input
-            # should be greater than CPU_NUM, if not, the process will be
-            # failed by an exception.
-
-            # Set place explicitly.
-            # if not use_cuda:
-            #     os.environ['CPU_NUM'] = str(2)
-
-            # If you don't set place and PaddlePaddle is CPU version
-            os.environ['CPU_NUM'] = str(2)
-
             compiled_prog = paddle.static.CompiledProgram(
-                train_program).with_data_parallel(loss_name=loss.name)
+                train_program)
             loss_data, = exe.run(compiled_prog, feed={"X": x}, fetch_list=[loss.name])
 
     """
@@ -1310,14 +1296,7 @@ class Executor:
             self._default_executor.close()
 
     def _run_parallel(
-        self,
-        program,
-        scope,
-        feed,
-        fetch_list,
-        fetch_var_name,
-        return_numpy,
-        return_merged,
+        self, program, scope, feed, fetch_list, fetch_var_name, return_numpy
     ):
         from paddle.optimizer.lr import LRScheduler
 
@@ -1388,7 +1367,7 @@ class Executor:
                 )
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
-        tensors = exe.run(fetch_var_names, return_merged)._move_to_list()
+        tensors = exe.run(fetch_var_names, True)._move_to_list()
         return as_numpy(tensors) if return_numpy else tensors
 
     def run(
@@ -1401,7 +1380,6 @@ class Executor:
         scope=None,
         return_numpy=True,
         use_program_cache=False,
-        return_merged=True,
         use_prune=False,
     ):
         """
@@ -1442,17 +1420,6 @@ class Executor:
                 the input program is :code:`paddle.static.Program`, and the parameters(program, feed Tensor name
                 and fetch_list Tensor) of this interface remains unchanged during running.
                 The default is False.
-            return_merged(bool): This parameter indicates whether fetched Tensors (the Tensors
-                specified in the fetch list) should be merged according to the execution device dimension.
-                If :code:`return_merged` is False, the type of the return value is a two-dimensional list
-                of :code:`Tensor` / :code:`LoDTensorArray` ( :code:`return_numpy` is False) or a two-dimensional
-                list of :code:`numpy.ndarray` ( :code:`return_numpy` is True). If :code:`return_merged` is True,
-                the type of the return value is an one-dimensional list of :code:`Tensor` / :code:`LoDTensorArray`
-                ( :code:`return_numpy` is False) or an one-dimensional list of :code:`numpy.ndarray`
-                ( :code:`return_numpy` is True). Please see Examples 2 for more details. If the lengths of fetched
-                results are variant, please set :code:`return_merged` as False, which denotes that the fetched
-                results will not be merged. The default is True, but it is just for the compatibility, and may
-                use False as default value in the future version.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned.
                 If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
                 which means the operators and variables in program that generate :code:`feed` and are not
@@ -1464,20 +1431,6 @@ class Executor:
         Returns:
 
             List: The fetched result list.
-
-        NOTES:
-            1. If it is multi-card running and the feed parameter is dict type, the input data
-               will be evenly sent to different cards. For example, using two GPUs to run the model,
-               the input sample number is 3, that is, [0, 1, 2], the sample number on GPU0 is 1,
-               that is, [0], and the sample number on GPU1 is 2, that is, [1, 2].
-               If the number of samples is less than the number of devices, the program will
-               throw an exception, so when running the model, you should make sure that the
-               number of samples of the last batch of the data set should be greater than the
-               number of CPU cores or GPU cards, if it is less than, it is recommended that
-               the batch be discarded.
-            2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
-               results are spliced together in dimension 0 for the same Tensor values
-               (Tensors in fetch_list) on different devices.
 
         Examples:
             .. code-block:: python
@@ -1531,43 +1484,21 @@ class Executor:
                 exe.run(paddle.static.default_startup_program())
                 build_strategy = paddle.static.BuildStrategy()
                 binary = paddle.static.CompiledProgram(
-                    paddle.static.default_main_program()).with_data_parallel(
-                        loss_name=loss.name, build_strategy=build_strategy)
+                    paddle.static.default_main_program(), build_strategy=build_strategy)
                 batch_size = 6
                 x = np.random.random(size=(batch_size, 1)).astype('float32')
 
-                # Set return_merged as False to fetch unmerged results:
-                unmerged_prediction, = exe.run(binary,
-                                               feed={'X': x},
-                                               fetch_list=[prediction.name],
-                                               return_merged=False)
-                # If the user uses two GPU cards to run this python code, the printed result will be
-                # (2, 3, class_dim). The first dimension value of the printed result is the number of used
-                # GPU cards, and the second dimension value is the quotient of batch_size and the
-                # number of used GPU cards.
-                print("The unmerged prediction shape: {}".format(
-                    np.array(unmerged_prediction).shape))
-                print(unmerged_prediction)
-
-                # Set return_merged as True to fetch merged results:
-                merged_prediction, = exe.run(binary,
-                                             feed={'X': x},
-                                             fetch_list=[prediction.name],
-                                             return_merged=True)
+                prediction, = exe.run(binary,
+                                      feed={'X': x},
+                                    fetch_list=[prediction.name])
                 # If the user uses two GPU cards to run this python code, the printed result will be
                 # (6, class_dim). The first dimension value of the printed result is the batch_size.
-                print("The merged prediction shape: {}".format(
-                    np.array(merged_prediction).shape))
-                print(merged_prediction)
+                print("The prediction shape: {}".format(
+                    np.array(prediction).shape))
+                print(prediction)
 
                 # Out:
-                # The unmerged prediction shape: (2, 3, 2)
-                # [array([[-0.37620035, -0.19752218],
-                #        [-0.3561043 , -0.18697084],
-                #        [-0.24129935, -0.12669306]], dtype=float32), array([[-0.24489994, -0.12858354],
-                #        [-0.49041364, -0.25748932],
-                #        [-0.44331917, -0.23276259]], dtype=float32)]
-                # The merged prediction shape: (6, 2)
+                # The prediction shape: (6, 2)
                 # [[-0.37789783 -0.19921964]
                 #  [-0.3577645  -0.18863106]
                 #  [-0.24274671 -0.12814042]
@@ -1600,7 +1531,6 @@ class Executor:
             return_numpy=return_numpy,
             use_program_cache=use_program_cache,
             use_prune=use_prune,
-            return_merged=return_merged,
         )
         core.update_autotune_status()
         return res
@@ -1615,7 +1545,6 @@ class Executor:
         scope,
         return_numpy,
         use_program_cache,
-        return_merged,
         use_prune,
     ):
         if self._closed:
@@ -1806,10 +1735,8 @@ class Executor:
                     return False
             return True
 
-        if (
-            return_merged
-            and self._enable_interpreter_core
-            and _can_use_interpreter_core(program, self.place)
+        if self._enable_interpreter_core and _can_use_interpreter_core(
+            program, self.place
         ):
 
             if feed is None:
@@ -1907,7 +1834,6 @@ class Executor:
                     fetch_list=fetch_list,
                     fetch_var_name=fetch_var_name,
                     return_numpy=return_numpy,
-                    return_merged=return_merged,
                 )
 
             return self._run_program(
@@ -1932,7 +1858,6 @@ class Executor:
                 fetch_list=fetch_list,
                 fetch_var_name=fetch_var_name,
                 return_numpy=return_numpy,
-                return_merged=return_merged,
             )
 
     def _run_program(
