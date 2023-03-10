@@ -1941,7 +1941,8 @@ def split(x, num_or_sections, axis=0, name=None):
             dim = dim.item(0)
         assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
         dim = (len(input.shape) + dim) if dim < 0 else dim
-
+        if isinstance(num_or_sections, Variable):
+            num_or_sections = num_or_sections.tolist()
         if isinstance(num_or_sections, (list, tuple)):
             if paddle.utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
