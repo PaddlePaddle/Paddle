@@ -148,8 +148,6 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(scope_name_, graph);
 
   auto* scope = param_scope();
-  PADDLE_ENFORCE_NOT_NULL(
-      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   patterns::SplitLayerNorm layer_norm_pattern(gpd.mutable_pattern(),
@@ -214,7 +212,8 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
         }
       }
     }
-
+    auto* dev_ctx = static_cast<phi::CPUContext*>(
+        platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
     auto reduce_mean0_out_name(
         patterns::PDNodeName("split_layernorm", "reduce0"));
     auto* block = layer_norm_op->Op()->Block();
@@ -274,7 +273,8 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     auto* pow_y_node = graph->CreateVarNode(pow_y);
     auto* pow_y_tensor = scope->Var(pow_y_name)->GetMutable<phi::DenseTensor>();
     pow_y_tensor->Resize(phi::make_ddim({1}));
-    (pow_y_tensor->mutable_data<float>(platform::CPUPlace()))[0] = 2.0f;
+    dev_ctx->Alloc<float>(pow_y_tensor);
+    (pow_y_tensor->data<float>())[0] = 2.0f;
 
     auto reduce_mean1_out_name(
         patterns::PDNodeName("split_layernorm", "reduce1"));
@@ -317,7 +317,8 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     auto* add_y_node = graph->CreateVarNode(add_y);
     auto* add_y_tensor = scope->Var(add_y_name)->GetMutable<phi::DenseTensor>();
     add_y_tensor->Resize(phi::make_ddim({1}));
-    (add_y_tensor->mutable_data<float>(platform::CPUPlace()))[0] = eps;
+    dev_ctx->Alloc<float>(add_y_tensor);
+    (add_y_tensor->data<float>())[0] = eps;
 
     auto sqrt_out_name(patterns::PDNodeName("split_layernorm", "sqrt"));
     OpDesc sqrt(block);
@@ -368,8 +369,9 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     auto* scale_tensor =
         scope->Var(layer_norm_scale->Name())->GetMutable<phi::DenseTensor>();
     new_scale_tensor->Resize(phi::make_ddim(shape_int64));
-    memcpy(new_scale_tensor->mutable_data<float>(platform::CPUPlace()),
-           scale_tensor->mutable_data<float>(platform::CPUPlace()),
+    dev_ctx->Alloc<float>(new_scale_tensor);
+    memcpy(new_scale_tensor->data<float>(),
+           scale_tensor->data<float>(),
            sizeof(float) * feature_size);
     auto* mul_out = block->Var(mul_out_name);
     mul_out->SetShape(input_shape);
@@ -396,8 +398,9 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     auto* bias_tensor =
         scope->Var(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
     new_bias_tensor->Resize(phi::make_ddim(shape_int64));
-    memcpy(new_bias_tensor->mutable_data<float>(platform::CPUPlace()),
-           bias_tensor->mutable_data<float>(platform::CPUPlace()),
+    dev_ctx->Alloc<float>(new_bias_tensor);
+    memcpy(new_bias_tensor->data<float>(),
+           bias_tensor->data<float>(),
            sizeof(float) * feature_size);
     auto elementwise_add1_node = g->CreateOpNode(&elementwise_add1);
 
