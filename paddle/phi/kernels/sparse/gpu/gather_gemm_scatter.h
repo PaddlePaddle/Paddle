@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 
+#include <type_traits>
 #ifdef PADDLE_WITH_CUTLASS
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
@@ -26,96 +27,61 @@ namespace sparse {
 // that shapes in this range share the same key.
 constexpr int features_num_range = 10000;
 
-template <typename T>
-typename std::enable_if<std::is_same<T, phi::dtype::float16>::value, void>::type
-GatherGemmScatter(const phi::GPUContext& ctx,
-                  const T* const a,
-                  const T* const b,
-                  const T* const c,
-                  T* const d,
-                  const int& m,
-                  const int& n,
-                  const int& k,
-                  const int32_t* a_indices,
-                  const int32_t* c_d_indices,
-                  T alpha,
-                  T beta) {
-  auto* tuner = autotune::MakeGatherGemmScatterTuner(fp16_kernels[0]);
-  for (auto i = 1; i < fp16_kernels.size(); i++)
-    tuner->AddCallBack(fp16_kernels[i]);
-
-  size_t key = autotune::GenKey(m / features_num_range, n, k);
-
-  tuner->Run(
-      ctx, key, alpha, beta, ctx, a, b, c, d, m, n, k, a_indices, c_d_indices);
-}
-
-template <typename T>
-typename std::enable_if<std::is_same<T, float>::value, void>::type
-GatherGemmScatter(const phi::GPUContext& ctx,
-                  const T* const a,
-                  const T* const b,
-                  const T* const c,
-                  T* const d,
-                  const int& m,
-                  const int& n,
-                  const int& k,
-                  const int32_t* a_indices,
-                  const int32_t* c_d_indices,
-                  T alpha,
-                  T beta) {
-  auto* tuner = autotune::MakeGatherGemmScatterTuner(fp32_kernels[0]);
-  for (auto i = 1; i < fp32_kernels.size(); i++)
-    tuner->AddCallBack(fp32_kernels[i]);
-
-  size_t key = autotune::GenKey(m / features_num_range, n, k);
-
-  tuner->Run(
-      ctx, key, alpha, beta, ctx, a, b, c, d, m, n, k, a_indices, c_d_indices);
-}
-
-template <typename T>
-static void dispatchKernel(const GPUContext& dev_ctx,
-                           const void* const a,
-                           const void* const b,
-                           const void* const c,
-                           void* const d,
-                           const int m,
-                           const int n,
-                           const int k,
-                           const void* a_indices,
-                           const void* c_d_indices,
-                           const T alpha,
-                           const T beta,
-                           const phi::DataType type) {
-  if (type == phi::DataType::FLOAT16) {
-    GatherGemmScatter(dev_ctx,
-                      static_cast<const phi::dtype::float16*>(a),
-                      static_cast<const phi::dtype::float16*>(b),
-                      static_cast<const phi::dtype::float16*>(c),
-                      static_cast<phi::dtype::float16*>(d),
-                      m,
-                      n,
-                      k,
-                      static_cast<const int32_t*>(a_indices),
-                      static_cast<const int32_t*>(c_d_indices),
-                      static_cast<phi::dtype::float16>(alpha),
-                      static_cast<phi::dtype::float16>(beta));
-  } else if (type == phi::DataType::FLOAT32) {
-    GatherGemmScatter(dev_ctx,
-                      static_cast<const float*>(a),
-                      static_cast<const float*>(b),
-                      static_cast<const float*>(c),
-                      static_cast<float*>(d),
-                      m,
-                      n,
-                      k,
-                      static_cast<const int32_t*>(a_indices),
-                      static_cast<const int32_t*>(c_d_indices),
-                      static_cast<float>(alpha),
-                      static_cast<float>(beta));
+#define DEFINE_GATHER_GEMM_SCATTER_DRIVER(dtype, kernels)                     \
+  template <typename T, typename IntT>                                        \
+  typename std::enable_if<std::is_same<T, dtype>::value &&                    \
+                              std::is_same<IntT, int32_t>::value,             \
+                          void>::type                                         \
+  GatherGemmScatterDriver(const phi::GPUContext& ctx,                         \
+                          const T* const a,                                   \
+                          const T* const b,                                   \
+                          const T* const c,                                   \
+                          T* const d,                                         \
+                          const int& m,                                       \
+                          const int& n,                                       \
+                          const int& k,                                       \
+                          const IntT* a_indices,                              \
+                          const IntT* c_d_indices,                            \
+                          T alpha,                                            \
+                          T beta) {                                           \
+    auto* tuner = autotune::MakeGatherGemmScatterTuner(kernels[0]);           \
+    for (auto i = 1; i < kernels.size(); i++) tuner->AddCallBack(kernels[i]); \
+    size_t key = autotune::GenKey(m / features_num_range, n, k);              \
+    tuner->Run(ctx,                                                           \
+               key,                                                           \
+               alpha,                                                         \
+               beta,                                                          \
+               ctx,                                                           \
+               a,                                                             \
+               b,                                                             \
+               c,                                                             \
+               d,                                                             \
+               m,                                                             \
+               n,                                                             \
+               k,                                                             \
+               a_indices,                                                     \
+               c_d_indices);                                                  \
   }
-}
+
+template <typename T, typename IntT>
+typename std::enable_if<std::is_same<T, double>::value ||
+                            !std::is_same<IntT, int32_t>::value,
+                        void>::type
+GatherGemmScatterDriver(const phi::GPUContext& ctx,
+                        const T* const a,
+                        const T* const b,
+                        const T* const c,
+                        T* const d,
+                        const int& m,
+                        const int& n,
+                        const int& k,
+                        const IntT* a_indices,
+                        const IntT* c_d_indices,
+                        T alpha,
+                        T beta) {}
+
+DEFINE_GATHER_GEMM_SCATTER_DRIVER(phi::dtype::float16, fp16_kernels)
+DEFINE_GATHER_GEMM_SCATTER_DRIVER(float, fp32_kernels)
 
 }  // namespace sparse
 }  // namespace phi

@@ -81,14 +81,14 @@ namespace sparse {
         if 'h' == operations[0].short_math_name():
             self.fp16_kernels_list += (
                 """
-launchKernel<phi::dtype::float16,"""
+launchKernel<"""
                 + configuration_name
                 + "::Gemm>,"
             )
         if 's' == operations[0].short_math_name():
             self.fp32_kernels_list += (
                 """
-launchKernel<float,"""
+launchKernel<"""
                 + configuration_name
                 + "::Gemm>,"
             )
