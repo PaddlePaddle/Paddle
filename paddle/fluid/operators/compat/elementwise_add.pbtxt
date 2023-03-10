@@ -23,16 +23,4 @@ extra {
     name: "Out0_threshold"
     type: FLOAT
   }
-  attrs {
-    name: "scale_x"
-    type: FLOAT
-  }
-  attrs {
-    name: "scale_y"
-    type: FLOAT
-  }
-  attrs {
-    name: "scale_out"
-    type: FLOAT
-  }
 }

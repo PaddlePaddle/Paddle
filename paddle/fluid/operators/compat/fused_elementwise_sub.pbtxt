@@ -16,18 +16,6 @@ def {
 }
 extra {
   attrs {
-    name: "scale_x"
-    type: FLOAT
-  }
-  attrs {
-    name: "scale_y"
-    type: FLOAT
-  }
-  attrs {
-    name: "scale_out"
-    type: FLOAT
-  }
-  attrs {
     name: "fuse_activation"
     type: STRING
   }
@@ -38,9 +26,25 @@ extra {
   attrs {
     name: "fuse_beta"
     type: FLOAT
-  }  
+  }
   attrs {
     name: "fused_output_scale"
+    type: FLOAT
+  }
+  attrs {
+    name: "fused_unsqueeze2_axes"
+    type: INTS
+  }
+  attrs {
+    name: "scale_x"
+    type: FLOAT
+  }
+  attrs {
+    name: "scale_y"
+    type: FLOAT
+  }
+  attrs {
+    name: "scale_out"
     type: FLOAT
   }
 }

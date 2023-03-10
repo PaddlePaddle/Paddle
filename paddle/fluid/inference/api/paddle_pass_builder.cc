@@ -524,6 +524,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fc_xpu_fuse_pass",
       "link_xpu_op_max_pass",
       "delete_op_device_pass",
+      "delete_isolated_node_pass",
   });
   use_xpu_ = true;
 }

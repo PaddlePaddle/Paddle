@@ -1033,7 +1033,6 @@ void CPUQuantizePass::QuantizeElementwise(
     auto input_x_scale = GetScaleValueForNode(elementwise_x, &is_x_unsigned);
     auto input_y_scale = GetScaleValueForNode(elementwise_y, &is_y_unsigned);
 
-    // TODO(sfraczek): add support for different signness
     if (is_x_unsigned != is_y_unsigned) {
       MarkAndLogCannotQuantizeOp(
           elementwise_op, "Elementwise inputs must be of the same type.");
@@ -1046,14 +1045,14 @@ void CPUQuantizePass::QuantizeElementwise(
                   "X",
                   input_x_scale,
                   is_x_unsigned,
-                  "Scale_x");
+                  "scale_x");
     QuantizeInput(g,
                   elementwise_op,
                   elementwise_y,
                   "Y",
                   input_y_scale,
                   is_y_unsigned,
-                  "Scale_y");
+                  "scale_y");
 
     bool is_output_unsigned{false};
     auto output_scale =
@@ -1065,7 +1064,7 @@ void CPUQuantizePass::QuantizeElementwise(
                      "Out",
                      output_scale,
                      is_output_unsigned,
-                     "Scale_out");
+                     "scale_out");
 
     ++quantize_elementwise_count;
   };
@@ -1311,9 +1310,9 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
   QuantizeImmutable(graph, "split", "X");
-  QuantizeElementwise(graph, "elementwise_add");
-  QuantizeElementwise(graph, "elementwise_mul");
-  QuantizeElementwise(graph, "elementwise_sub");
+  QuantizeElementwise(graph, "fused_elementwise_add");
+  QuantizeElementwise(graph, "fused_elementwise_mul");
+  QuantizeElementwise(graph, "fused_elementwise_sub");
   QuantizeFusionGru(graph);
   QuantizeMultiGru(graph);
   QuantizeFusionLSTM(graph);

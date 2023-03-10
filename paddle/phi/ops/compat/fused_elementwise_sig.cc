@@ -18,132 +18,69 @@ namespace phi {
 
 KernelSignature FusedElementwiseAddOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
-  if (axis == -1) {
-    return KernelSignature("fused_add",
-                           {"X", "Y"},
-                           {"fuse_alpha",
-                            "fuse_beta",
-                            "fuse_activation",
-                            "mkldnn_data_type",
-                            "scale_x",
-                            "scale_y",
-                            "scale_out",
-                            "fused_output_scale"},
-                           {"Out"});
-  }
-  return KernelSignature("fused_add_raw",
+  return KernelSignature("fused_elementwise_add",
                          {"X", "Y"},
                          {"axis",
+                          "fuse_activation",
                           "fuse_alpha",
                           "fuse_beta",
-                          "fuse_activation",
-                          "mkldnn_data_type",
+                          "fused_output_scale",
+                          "fused_unsqueeze2_axes",
                           "scale_x",
                           "scale_y",
-                          "scale_out",
-                          "fused_output_scale"},
+                          "scale_out"},
                          {"Out"});
 }
 
 KernelSignature FusedElementwiseSubOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
-  if (axis == -1) {
-    return KernelSignature("fused_subtract",
-                           {"X", "Y"},
-                           {"fuse_alpha",
-                            "fuse_beta",
-                            "fuse_activation",
-                            "mkldnn_data_type",
-                            "scale_x",
-                            "scale_y",
-                            "scale_out",
-                            "fused_output_scale"},
-                           {"Out"});
-  }
-  return KernelSignature("fused_subtract_raw",
+  return KernelSignature("fused_elementwise_sub",
                          {"X", "Y"},
                          {"axis",
+                          "fuse_activation",
                           "fuse_alpha",
                           "fuse_beta",
-                          "fuse_activation",
-                          "mkldnn_data_type",
+                          "fused_output_scale",
+                          "fused_unsqueeze2_axes",
                           "scale_x",
                           "scale_y",
-                          "scale_out",
-                          "fused_output_scale"},
+                          "scale_out"},
                          {"Out"});
 }
 
 KernelSignature FusedElementwiseMulOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
-  if (axis == -1) {
-    return KernelSignature("fused_multiply",
-                           {"X", "Y"},
-                           {"fuse_alpha",
-                            "fuse_beta",
-                            "fuse_activation",
-                            "mkldnn_data_type",
-                            "scale_x",
-                            "scale_y",
-                            "scale_out",
-                            "fused_output_scale",
-                            "fused_unsqueeze2_axes"},
-                           {"Out"});
-  }
-  return KernelSignature("fused_multiply_raw",
+  return KernelSignature("fused_elementwise_mul",
                          {"X", "Y"},
                          {"axis",
+                          "fuse_activation",
                           "fuse_alpha",
                           "fuse_beta",
-                          "fuse_activation",
-                          "mkldnn_data_type",
+                          "fused_output_scale",
+                          "fused_unsqueeze2_axes",
                           "scale_x",
                           "scale_y",
-                          "scale_out",
-                          "fused_output_scale",
-                          "fused_unsqueeze2_axes"},
+                          "scale_out"},
                          {"Out"});
 }
 
 KernelSignature FusedElementwiseDivOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
-  if (axis == -1) {
-    return KernelSignature("fused_divide",
-                           {"X", "Y"},
-                           {"fuse_alpha",
-                            "fuse_beta",
-                            "fuse_activation",
-                            "mkldnn_data_type",
-                            "scale_x",
-                            "scale_y",
-                            "scale_out",
-                            "fused_output_scale"},
-                           {"Out"});
-  }
-  return KernelSignature("fused_divide_raw",
+  return KernelSignature("fused_elementwise_div",
                          {"X", "Y"},
                          {"axis",
-                          "fuse_fuse_alpha",
-                          "fuse_beta",
                           "fuse_activation",
-                          "mkldnn_data_type",
+                          "fuse_alpha",
+                          "fuse_beta",
+                          "fused_output_scale",
+                          "fused_unsqueeze2_axes",
                           "scale_x",
                           "scale_y",
-                          "scale_out",
-                          "fused_output_scale"},
+                          "scale_out"},
                          {"Out"});
 }
 
 }  // namespace phi
-
-PD_REGISTER_BASE_KERNEL_NAME(fused_elementwise_add, fused_add);
-PD_REGISTER_BASE_KERNEL_NAME(fused_elementwise_sub, fused_subtract);
-PD_REGISTER_BASE_KERNEL_NAME(fused_elementwise_mul, fused_multiply);
-PD_REGISTER_BASE_KERNEL_NAME(fused_elementwise_div, fused_divide);
 
 PD_REGISTER_ARG_MAPPING_FN(fused_elementwise_add,
                            phi::FusedElementwiseAddOpArgumentMapping);

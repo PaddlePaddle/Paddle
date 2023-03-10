@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,28 +21,24 @@ template <typename T, dnnl::algorithm BINARY_OP>
 void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& y,
-                            int axis,
+                            const int axis,
+                            const std::string& fuse_activation,
+                            const float fuse_alpha,
+                            const float fuse_beta,
+                            const float fused_output_scale,
+                            const std::vector<int>& fused_unsqueeze2_axes,
+                            const float scale_x,
+                            const float scale_y,
+                            const float scale_out,
                             DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
 
-  float scale_x = dev_ctx.HasDnnAttr("scale_x")
-                      ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_x"))
-                      : 1.0f;
-  float scale_y = dev_ctx.HasDnnAttr("scale_y")
-                      ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_y"))
-                      : 1.0f;
-  float scale_out =
-      dev_ctx.HasDnnAttr("scale_out")
-          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_out"))
-          : 1.0f;
-
   dnnl::post_ops post_operations;
-  funcs::AppendActivation(dev_ctx, post_operations);
-  if (dev_ctx.HasDnnAttr("fused_output_scale")) {
-    float scale_alpha =
-        PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"));
+  funcs::AppendActivation(
+      dev_ctx, post_operations, 1.0f, fuse_activation, fuse_alpha, fuse_beta);
+  if (fused_output_scale != 1.0) {
     post_operations.append_eltwise(
-        1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+        1.0, dnnl::algorithm::eltwise_linear, fused_output_scale, 0.0f);
   }
 
   auto* non_const_x = &x;
@@ -69,15 +65,14 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
 
   const auto src_x_memory = handler.AcquireSrcMemory(non_const_x);
   const auto src_y_memory = handler.AcquireSecondSrcMemory(non_const_y);
-  // (jczaja) For Inplace src and dst should be the same memory object.
+  // For Inplace src and dst should be the same memory object.
   // So x should share buffer with z. But UT mechanics is testing inplace
   // execution for this op not checking that x can be bradcasted to match in
   // shape y tensor.
   // This is wrong as when x is to be broadcasted then z(out) will match the
   // shape of y which is bigger than x. Hence if x is smaller in shape than z
-  // and they share a buffer (of
-  // shape x) then this buffer is not big enough to hold result of elementwise
-  // operation.
+  // and they share a buffer (of shape x) then this buffer is not big enough
+  // to hold result of elementwise operation.
   const bool reuse_x_memory = non_const_x->numel() == out->numel() &&
                               non_const_x->IsSharedBufferWith(*out);
   std::shared_ptr<dnnl::memory> dst_memory;
@@ -108,33 +103,51 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
   binary_prim->execute(astream, args);
   astream.wait();
 
-  if (handler.use_broadcasting_hack == false) {
-    funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
-        dev_ctx, out, dst_memory->get_desc());
-  } else {
-    auto dims = dst_memory->get_desc().dims();
+  auto out_md = dst_memory->get_desc();
+
+  if (handler.use_broadcasting_hack) {
+    auto dims = out_md.dims();
     dims.insert(dims.begin(), non_const_x->dims()[0]);
     dims[1] /= dims[0];
-    funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
-        dev_ctx, out, dst_memory->get_desc().reshape(dims));
+    out_md = out_md.reshape(dims);
+  }
+
+  if (fused_unsqueeze2_axes.empty()) {
+    out->set_mem_desc(out_md);
+  } else {
+    funcs::SetOutMemDescWithUnsqueeze2FuseSupport(
+        fused_unsqueeze2_axes, out, out_md);
   }
 }
 
-#define DEFINE_ONEDNN_ELEMENTWISE_KERNEL(name, algorithm)           \
-  template <typename T, typename Context>                           \
-  void name##RawKernel(const Context& dev_ctx,                      \
-                       const DenseTensor& x,                        \
-                       const DenseTensor& y,                        \
-                       int axis,                                    \
-                       DenseTensor* out) {                          \
-    FusedElementwiseKernel<T, algorithm>(dev_ctx, x, y, axis, out); \
-  }                                                                 \
-  template <typename T, typename Context>                           \
-  void name##Kernel(const Context& dev_ctx,                         \
-                    const DenseTensor& x,                           \
-                    const DenseTensor& y,                           \
-                    DenseTensor* out) {                             \
-    FusedElementwiseKernel<T, algorithm>(dev_ctx, x, y, -1, out);   \
+#define DEFINE_ONEDNN_ELEMENTWISE_KERNEL(name, algorithm)          \
+  template <typename T, typename Context>                          \
+  void name##Kernel(const Context& dev_ctx,                        \
+                    const DenseTensor& x,                          \
+                    const DenseTensor& y,                          \
+                    const int axis,                                \
+                    const std::string& fuse_activation,            \
+                    const float fuse_alpha,                        \
+                    const float fuse_beta,                         \
+                    const float fused_output_scale,                \
+                    const std::vector<int>& fused_unsqueeze2_axes, \
+                    const float scale_x,                           \
+                    const float scale_y,                           \
+                    const float scale_out,                         \
+                    DenseTensor* out) {                            \
+    FusedElementwiseKernel<T, algorithm>(dev_ctx,                  \
+                                         x,                        \
+                                         y,                        \
+                                         axis,                     \
+                                         fuse_activation,          \
+                                         fuse_alpha,               \
+                                         fuse_beta,                \
+                                         fused_output_scale,       \
+                                         fused_unsqueeze2_axes,    \
+                                         scale_x,                  \
+                                         scale_y,                  \
+                                         scale_out,                \
+                                         out);                     \
   }
 
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedAdd, dnnl::algorithm::binary_add)
@@ -144,16 +157,7 @@ DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedDivide, dnnl::algorithm::binary_div)
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(fused_add_raw,
-                   OneDNN,
-                   ONEDNN,
-                   phi::FusedAddRawKernel,
-                   float,
-                   phi::dtype::bfloat16,
-                   int8_t,
-                   uint8_t) {}
-
-PD_REGISTER_KERNEL(fused_add,
+PD_REGISTER_KERNEL(fused_elementwise_add,
                    OneDNN,
                    ONEDNN,
                    phi::FusedAddKernel,
@@ -162,16 +166,7 @@ PD_REGISTER_KERNEL(fused_add,
                    int8_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(fused_subtract_raw,
-                   OneDNN,
-                   ONEDNN,
-                   phi::FusedSubtractRawKernel,
-                   float,
-                   phi::dtype::bfloat16,
-                   int8_t,
-                   uint8_t) {}
-
-PD_REGISTER_KERNEL(fused_subtract,
+PD_REGISTER_KERNEL(fused_elementwise_sub,
                    OneDNN,
                    ONEDNN,
                    phi::FusedSubtractKernel,
@@ -180,16 +175,7 @@ PD_REGISTER_KERNEL(fused_subtract,
                    int8_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(fused_multiply_raw,
-                   OneDNN,
-                   ONEDNN,
-                   phi::FusedMultiplyRawKernel,
-                   float,
-                   phi::dtype::bfloat16,
-                   int8_t,
-                   uint8_t) {}
-
-PD_REGISTER_KERNEL(fused_multiply,
+PD_REGISTER_KERNEL(fused_elementwise_mul,
                    OneDNN,
                    ONEDNN,
                    phi::FusedMultiplyKernel,
@@ -198,14 +184,7 @@ PD_REGISTER_KERNEL(fused_multiply,
                    int8_t,
                    uint8_t) {}
 
-PD_REGISTER_KERNEL(fused_divide_raw,
-                   OneDNN,
-                   ONEDNN,
-                   phi::FusedDivideRawKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(fused_divide,
+PD_REGISTER_KERNEL(fused_elementwise_div,
                    OneDNN,
                    ONEDNN,
                    phi::FusedDivideKernel,

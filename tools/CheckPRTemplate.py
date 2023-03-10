@@ -112,7 +112,7 @@ def pull_request_event_template(event, repo, *args, **kwargs):
     sha = event["head"]["sha"]
     title = event["title"]
     pr_user = event["user"]["login"]
-    print(f'接收数据：pr_num: {pr_num}, title: {title}, user: {pr_user}')
+    print(f'receive data : pr_num: {pr_num}, title: {title}, user: {pr_user}')
     if repo in pr_effect_repos:
         CHECK_TEMPLATE = REPO_TEMPLATE[repo]
         global check_pr_template
