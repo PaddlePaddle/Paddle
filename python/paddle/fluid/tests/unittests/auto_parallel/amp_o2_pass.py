@@ -20,6 +20,7 @@ from get_gpt_model import FakeDataset, generate_model
 
 import paddle
 from paddle.distributed.fleet import auto
+from paddle.framework import core
 
 paddle.enable_static()
 
@@ -73,29 +74,24 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         self.init(engine)
         return engine
 
-    def check_param_grad_fuse_overlap(self, program):
-        num_op = 0
-        num_coalesce = 0
-        num_reduce = 0
-        num_broadcast = 0
-        for op in program.global_block().ops:
-            if op.type == "nop" or op.type == "depend":
-                num_op += 1
-            elif op.type == "coalesce_tensor":
-                num_coalesce += 1
-            elif op.type == "c_reduce_sum":
-                num_reduce += 1
-            elif op.type == "c_broadcast":
-                num_broadcast += 1
+    def check_bf16(self, program):
+        num_bf16 = 0
+        num_fp16 = 0
+        num_fp32 = 0
 
-        if paddle.distributed.get_rank() == 0:
-            self.assertEqual(num_op, 22)
-        else:
-            self.assertEqual(num_op, 54)
+        for p in program.all_parameters():
+            if p.dtype == core.VarDesc.VarType.FP32:
+                num_fp32 += 1
+            if p.dtype == core.VarDesc.VarType.FP16:
+                num_fp16 += 1
+            if p.dtype == core.VarDesc.VarType.BF16:
+                num_bf16 += 1
 
-        self.assertEqual(num_coalesce, 5)
-        self.assertEqual(num_reduce, 14)
-        self.assertEqual(num_broadcast, 2)
+        print(num_bf16, num_fp16, num_fp32)
+
+        # self.assertEqual(num_coalesce, 5)
+        # self.assertEqual(num_reduce, 14)
+        # self.assertEqual(num_broadcast, 2)
 
     def test_param_grad_fuse_overlap(self):
         # std
@@ -123,7 +119,7 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         loss1 = mp_bf16_history.history['loss'][0]
         np.testing.assert_allclose(loss0, loss1, atol=1e-3, rtol=1e-2)
 
-        # self.check_param_grad_fuse_overlap(sharding_engine.main_program)
+        self.check_bf16(mp_bf16_engine.main_program)
 
 
 if __name__ == "__main__":
