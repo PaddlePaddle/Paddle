@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
+
 def test_static_layer(
     place, input_np, label_np, reduction='mean', weight_np=None
 ):
@@ -302,6 +303,7 @@ class TestBceLossOpFloat16(OpTest):
 
     def init_test_case(self):
         self.shape = [10, 10]
+
 
 if __name__ == "__main__":
     paddle.enable_static()

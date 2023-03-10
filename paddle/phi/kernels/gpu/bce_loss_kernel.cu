@@ -17,9 +17,9 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -44,8 +44,11 @@ struct BCELossFunctor {
         x);
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     MPType term1 = max(phi::kps::details::Log(static_cast<MPType>(x)), static_cast<MPType>(neg_100));
-    MPType term2 = max(phi::kps::details::Log(one - static_cast<MPType>(x)), static_cast<MPType>(neg_100));
-    return static_cast<T>(((static_cast<MPType>(label) - static_cast<MPType>(one)) * term2) - (static_cast<MPType>(label) * term1));
+    MPType term2 = 
+        max(phi::kps::details::Log(one - static_cast<MPType>(x)), static_cast<MPType>(neg_100));
+    return static_cast<T>(
+        ((static_cast<MPType>(label) - static_cast<MPType>(one)) * term2) - 
+        (static_cast<MPType>(label) * term1));
   }
 };
 
