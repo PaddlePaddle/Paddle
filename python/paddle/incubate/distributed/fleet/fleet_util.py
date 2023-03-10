@@ -1295,7 +1295,9 @@ class FleetUtil:
         hours = os.popen("echo -n " + hours).read().split(" ")
         split_interval = int(split_interval)
         split_per_pass = int(split_per_pass)
-        splits_per_day = 24 * 60 // split_interval
+        splits_per_day = (
+            (int(hours[-1]) - int(hours[0]) + 1) * 60 // split_interval
+        )
         pass_per_day = splits_per_day // split_per_pass
         left_train_hour = int(hours[0])
         right_train_hour = int(hours[-1])
