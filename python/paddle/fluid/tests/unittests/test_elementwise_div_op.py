@@ -38,7 +38,7 @@ class ElementwiseDivOp(OpTest):
         self.init_dtype()
         self.init_shape()
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
         x = self.gen_data(self.x_shape).astype(self.val_dtype)
         y = self.gen_data(self.y_shape).astype(self.val_dtype)
@@ -64,7 +64,7 @@ class ElementwiseDivOp(OpTest):
         self.grad_x = grad_x
         self.grad_y = grad_y
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
     def init_args(self):
@@ -136,7 +136,7 @@ class TestElementwiseDivPrimOpFp32(ElementwiseDivOp):
         self.dtype = np.float32
         self.val_dtype = np.float32
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -145,7 +145,7 @@ class TestElementwiseDivOp_ZeroDim1(ElementwiseDivOp):
         self.x_shape = []
         self.y_shape = []
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -163,7 +163,7 @@ class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
     def compute_gradient_y(self, grad_out, out, y):
         return np.sum(-1 * grad_out * out / y.reshape([1, 1]))
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -181,7 +181,7 @@ class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
     def compute_gradient_y(self, grad_out, out, y):
         return -1 * grad_out * out / y
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -375,7 +375,7 @@ class TestElementwiseDivOpXsizeLessThanYsize(ElementwiseDivOp):
     def compute_gradient_x(self, grad_out, y):
         return np.sum(grad_out / y, axis=(0, 1))
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -399,7 +399,7 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
         self.dtype = np.float16
         self.val_dtype = np.float16
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
