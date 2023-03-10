@@ -308,7 +308,6 @@ class FleetWrapper {
                            bool load_combine);
 
   void PrintTableStat(uint64_t table_id, uint32_t pass_id, size_t threshold);
-  int64_t GetSavedFeasignSize(const uint64_t table_id);
   void SetFileNumOneShard(const uint64_t table_id, int file_num);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff

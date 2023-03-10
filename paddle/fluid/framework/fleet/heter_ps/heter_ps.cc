@@ -20,6 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#if defined(PADDLE_WITH_CUDA)
 HeterPsBase* HeterPsBase::get_instance(
     size_t capacity,
     std::shared_ptr<HeterPsResource> resource,
@@ -56,46 +57,21 @@ HeterPs<GPUAccessor, GPUOptimizer>::HeterPs(
     size_t capacity,
     std::shared_ptr<HeterPsResource> resource,
     const GPUAccessor& gpu_accessor) {
-#if defined(PADDLE_WITH_XPU_KP)
-  comm_ = std::make_shared<HeterComm<FidKey, FeatureValue, FeaturePushValue, GPUAccessor>>(
-      capacity, resource);
-#else
   comm_ = std::make_shared<HeterComm<FeatureKey, float*, float*, GPUAccessor>>(
       capacity, resource);
   opt_ = GPUOptimizer<GPUAccessor>(gpu_accessor);
-#endif
 }
 
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 HeterPs<GPUAccessor, GPUOptimizer>::~HeterPs() {}
 
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>
-#if defined(PADDLE_WITH_XPU_KP)
-void HeterPs<GPUAccessor, GPUOptimizer>::pull_sparse(int num,
-                                                     FidKey* d_keys,
-                                                     FeatureValue* d_vals,
-                                                     size_t len) {
-#else
 void HeterPs<GPUAccessor, GPUOptimizer>::pull_sparse(int num,
                                                      FeatureKey* d_keys,
                                                      float* d_vals,
                                                      size_t len) {
-#endif                                
   comm_->pull_sparse(num, d_keys, d_vals, len);
 }
-
-#if defined(PADDLE_WITH_XPU_KP)
-template <typename GPUAccessor, template <typename T> class GPUOptimizer>
-void HeterPs<GPUAccessor, GPUOptimizer>::build_ps(int num,
-                                                  FidKey* h_keys,
-                                                  FeatureValue* h_vals
-                                                  size_t len,
-                                                  size_t chunk_size,
-                                                  int stream_num) {
-  comm_->build_ps(
-      num, h_keys, h_vals, len, chunk_size, stream_num, -1);
-}
-#endif
 
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 int HeterPs<GPUAccessor, GPUOptimizer>::get_index_by_devid(int devid) {
@@ -124,20 +100,67 @@ void HeterPs<GPUAccessor, GPUOptimizer>::show_one_table(int gpu_num) {
 }
 
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>
-#if defined(PADDLE_WITH_XPU_KP)
-void HeterPs<GPUAccessor, GPUOptimizer>::push_sparse(int num,
-                                                     FidKey* d_keys,
-                                                     FeaturePushValue* d_grads,
-                                                     size_t len) {
-#else
 void HeterPs<GPUAccessor, GPUOptimizer>::push_sparse(int num,
                                                      FeatureKey* d_keys,
                                                      float* d_grads,
                                                      size_t len) {
-#endif
   comm_->push_sparse(num, d_keys, d_grads, len);
   // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
 }
+#endif
+
+#if defined(PADDLE_WITH_XPU_KP)
+HeterPsBase* HeterPsBase::get_instance(
+    size_t capacity, std::shared_ptr<HeterPsResource> resource) {
+  return new HeterPs(capacity, resource);
+}
+
+HeterPs::HeterPs(size_t capacity, std::shared_ptr<HeterPsResource> resource) {
+  comm_ =
+      std::make_shared<HeterComm<FidKey, FeatureValue, FeaturePushValue>>(
+          capacity, resource);
+}
+
+HeterPs::~HeterPs() {}
+
+void HeterPs::pull_sparse(int num, FidKey* d_keys, FeatureValue* d_vals,
+                          size_t len) {
+  comm_->pull_sparse(num, d_keys, d_vals, len);
+}
+
+
+void HeterPs::build_ps(int num,
+                      FidKey* h_keys,
+                      FeatureValue* h_vals
+                      size_t len,
+                      size_t chunk_size,
+                      int stream_num) {
+  comm_->build_ps(
+      num, h_keys, h_vals, len, chunk_size, stream_num, -1);
+}
+
+int HeterPs::get_index_by_devid(int devid) {
+  return comm_->get_index_by_devid(devid);
+}
+
+void HeterPs::set_sparse_sgd(const OptimizerConfig& optimizer_config) {
+  comm_->set_sparse_sgd(optimizer_config);
+}
+
+void HeterPs::set_embedx_sgd(const OptimizerConfig& optimizer_config) {
+  comm_->set_embedx_sgd(optimizer_config);
+}
+
+void HeterPs::end_pass() { comm_->end_pass(); }
+
+void HeterPs::show_one_table(int gpu_num) { comm_->show_one_table(gpu_num); }
+
+void HeterPs::push_sparse(int num, FidKey* d_keys,
+                          FeaturePushValue* d_grads, size_t len) {
+  comm_->push_sparse(num, d_keys, d_grads, len);
+  // comm_->push_sparse_multi_node(num, d_keys, d_grads, len, opt_);
+}
+#endif
 
 }  // end namespace framework
 }  // end namespace paddle

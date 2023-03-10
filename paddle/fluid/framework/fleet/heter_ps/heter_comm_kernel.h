@@ -29,6 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#if defined(PADDLE_WITH_CUDA)
 struct DynamicGradMerger {
   template <typename T>
   CUB_RUNTIME_FUNCTION __forceinline__ __device__ T
@@ -97,12 +98,13 @@ struct DynamicGradMerger {
     }
   }
 };
-
+#endif
 class HeterCommKernel {
  public:
   HeterCommKernel() {}
   explicit HeterCommKernel(const int block_size) : block_size_(block_size) {}
 
+#if defined(PADDLE_WITH_CUDA)
   template <typename T, typename StreamType>
   void fill_idx(T* idx, int64_t len, const StreamType& stream);
 
@@ -147,6 +149,52 @@ class HeterCommKernel {
                   T* idx,
                   int64_t len,
                   const StreamType& stream);
+#elif defined(PADDLE_WITH_XPU_KP)
+  template <typename T, typename StreamType>
+  void fill_idx(T* idx, long long len, const StreamType& stream);
+
+  template <typename T, typename StreamType>
+  void calc_shard_offset(T* idx,
+                         T* left,
+                         T* right,
+                         long long len,
+                         int total_devs,
+                         const StreamType& stream);
+
+  template <typename KeyType, typename T, typename StreamType>
+  void calc_shard_index(KeyType* d_keys,
+                        long long len,
+                        T* shard_index,
+
+                        int total_devs,
+                        const StreamType& stream);
+
+  template <typename KeyType, typename T, typename StreamType>
+  void fill_shard_key(KeyType* d_shard_keys,
+                      KeyType* d_keys,
+                      T* idx,
+                      long long len,
+                      const StreamType& stream);
+
+  template <typename KeyType,
+            typename GradType,
+            typename T,
+            typename StreamType>
+  void fill_shard_grads(KeyType* d_shard_keys,
+                        KeyType* d_keys,
+                        GradType* d_shard_grads,
+                        GradType* d_grads,
+                        T* idx,
+                        long long len,
+                        const StreamType& stream);
+
+  template <typename ValType, typename T, typename StreamType>
+  void fill_dvals(ValType* d_shard_vals,
+                  ValType* d_vals,
+                  T* idx,
+                  long long len,
+                  const StreamType& stream);
+#endif
 
 #if defined(PADDLE_WITH_XPU_KP)
   template <typename ValType, typename T, typename StreamType>
@@ -262,6 +310,7 @@ void sum_fidseq_add_grad(
                               const StreamType& stream,
                               const GPUAccessor& gpu_accessor);
 
+#if defined(PADDLE_WITH_CUDA)
   template <typename KeyType, typename StreamType, typename GPUAccessor>
   void merge_gradient(const KeyType* d_shard_keys,
                       const uint32_t* offset,
@@ -275,6 +324,7 @@ void sum_fidseq_add_grad(
                       const DynamicGradMerger& merger,
                       const StreamType& stream,
                       const GPUAccessor& gpu_accessor);
+#endif
 
   template <typename T, typename StreamType>
   void dy_mf_fill_dvals(float* d_shard_vals,

@@ -24,7 +24,7 @@ limitations under the License. */
 #include <chrono>
 
 #ifdef PADDLE_WITH_PSLIB
-#include "common_value.h"  // NOLINT
+#include "common/common_value.h"  // NOLINT
 #endif
 
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
@@ -116,6 +116,7 @@ class XPUCacheArray {
     ofs << data_ss.str();
     ofs.close();    
   }
+  void print_collision(int i) {}
 
   void set_xpu_id(uint32_t xpu_id) { xpu_id_ = xpu_id; }
   void set_xpu_idx(uint32_t xpu_idx) { xpu_idx_ = xpu_idx; }
@@ -277,7 +278,9 @@ class HashTable {
 #endif
 
   int size() { return container_->size(); }
+#if defined(PADDLE_WITH_CUDA)
   thrust::pair<KeyType, ValType>* data() { return container_->data(); }
+#endif
   void set_feature_value_size(size_t pull_feature_value_size,
                               size_t push_grad_value_size) {
     pull_feature_value_size_ = pull_feature_value_size;
@@ -290,7 +293,9 @@ class HashTable {
     return container_->prefetch(dev_id, stream);
   }
 
+#if defined(PADDLE_WITH_CUDA)
   void clear(cudaStream_t stream = 0) { container_->clear_async(stream); }
+#endif
 
   void show_collision(int id) { return container_->print_collision(id); }
   // infer mode

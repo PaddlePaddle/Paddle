@@ -29,7 +29,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_PSLIB
-#include "downpour_accessor.h"  // NOLINT
+#include "table/downpour_accessor.h"  // NOLINT
 #include "pslib.h"              // NOLINT
 #endif
 
@@ -49,6 +49,7 @@ typedef uint32_t FidKey;
 // adagrad: embed_sgd_dim=1, embedx_sgd_dim=1,embedx_dim=n
 // adam std:  embed_sgd_dim=4, embedx_sgd_dim=n*2+2,embedx_dim=n
 // adam shared:  embed_sgd_dim=4, embedx_sgd_dim=4,embedx_dim=n
+#if defined(PADDLE_WITH_CUDA)
 class CommonFeatureValueAccessor {
  public:
   struct CommonFeatureValue {
@@ -282,7 +283,7 @@ class CommonFeatureValueAccessor {
     return 0;
   }
 
-#ifdef PADDLE_WITH_PSCORE
+#if defined(PADDLE_WITH_PSCORE)
   // // build阶段从cpu_val赋值给gpu_val
   __host__ void BuildFill(
       float* gpu_val,
@@ -337,7 +338,7 @@ class CommonFeatureValueAccessor {
   }
 #endif
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB)
   // build阶段从cpu_val赋值给gpu_val
   template <typename ShowClickType>
   __host__ void BuildFill(float* gpu_val,
@@ -399,7 +400,7 @@ class CommonFeatureValueAccessor {
   }
 #endif
 
-#ifdef PADDLE_WITH_PSCORE
+#if defined(PADDLE_WITH_PSCORE)
   // dump_to_cpu阶段从gpu_val赋值给cpu_val
   __host__ void DumpFill(float* gpu_val,
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
@@ -446,7 +447,7 @@ class CommonFeatureValueAccessor {
   }
 #endif
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB)
   // dump_to_cpu阶段从gpu_val赋值给cpu_val
   // gpu_val is firstly copied to mem
   // so gpu_val is in mem, not in hbm
@@ -713,6 +714,7 @@ class CommonFeatureValueAccessor {
   CommonPushValue common_push_value;
   CommonPullValue common_pull_value;
 };
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 struct FeatureValue {
@@ -835,6 +837,7 @@ struct FeaturePushValue {
 };
 #endif
 
+#if defined(PADDLE_WITH_CUDA)
 class VirtualAccessor {
  public:
   virtual int Configure(std::unordered_map<std::string, float> config) = 0;
@@ -845,7 +848,7 @@ class VirtualAccessor {
 
   virtual size_t GetPullValueSize(int& mf_dim) = 0;  // NOLINT
 
-#ifdef PADDLE_WITH_PSCORE
+#if defined(PADDLE_WITH_PSCORE)
   virtual void BuildFill(void* gpu_val,
                          void* cpu_val,
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
@@ -856,7 +859,7 @@ class VirtualAccessor {
                         int mf_dim) = 0;
 #endif
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB)
   virtual void BuildFill(
       float* gpu_val,
       void* cpu_val,
@@ -966,7 +969,7 @@ class AccessorWrapper : public VirtualAccessor {
 
   GPUAccessor* AccessorPtr() { return &gpu_accessor_; }
 
-#ifdef PADDLE_WITH_PSCORE
+#if defined(PADDLE_WITH_PSCORE)
   virtual void BuildFill(void* gpu_val,
                          void* cpu_val,
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
@@ -982,7 +985,7 @@ class AccessorWrapper : public VirtualAccessor {
   }
 #endif
 
-#ifdef PADDLE_WITH_PSLIB
+#if defined(PADDLE_WITH_PSLIB)
   virtual void BuildFill(
       float* gpu_val,
       void* cpu_val,
@@ -1235,6 +1238,7 @@ class GlobalAccessorFactory {
  private:
   VirtualAccessor* accessor_wrapper_ptr_ = nullptr;
 };
+#endif
 
 }  // end namespace framework
 }  // end namespace paddle

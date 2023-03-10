@@ -1177,6 +1177,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::merge_grad(
   sync_stream(stream);
 }
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename KeyType,
           typename ValType,
           typename GradType,
@@ -1487,6 +1488,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::segment_merge_grad(
                                              stream));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
 }
+#endif
 
 template <typename KeyType,
           typename ValType,

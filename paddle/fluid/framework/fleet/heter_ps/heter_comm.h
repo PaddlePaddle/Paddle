@@ -696,7 +696,9 @@ class HeterComm {
  protected:
   int topo_aware_{0};
   std::vector<LocalStorage> storage_;
+#if defined(PADDLE_WITH_CUDA)
   DynamicGradMerger merger_;
+#endif
   int device_num_ = 8;
   int multi_node_{0};
   int rank_id_ = 0;
