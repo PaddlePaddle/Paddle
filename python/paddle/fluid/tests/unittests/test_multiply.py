@@ -216,5 +216,22 @@ class TestMultiplyInplaceApi(TestMultiplyApi):
         return x.numpy()
 
 
+class TestMultiplyInplaceError(unittest.TestCase):
+    def test_errors(self):
+        paddle.disable_static()
+        # test dynamic computation graph: inputs must be broadcastable
+        x_data = np.random.rand(3, 4)
+        y_data = np.random.rand(2, 3, 4)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        def multiply_shape_error():
+            with paddle.no_grad():
+                x.multiply_(y)
+
+        self.assertRaises(ValueError, multiply_shape_error)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

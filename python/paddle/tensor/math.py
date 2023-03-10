@@ -919,11 +919,7 @@ def multiply_(x, y, name=None):
             )
         )
 
-    if in_dygraph_mode():
-        return _C_ops.multiply_(x, y)
-    else:
-        out = _elementwise_op_in_dygraph(x, y, axis=axis, op_name=op_type)
-        return out
+    return _C_ops.multiply_(x, y)
 
 
 @dygraph_only
