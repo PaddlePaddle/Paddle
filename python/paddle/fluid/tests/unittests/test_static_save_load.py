@@ -31,7 +31,7 @@ from paddle.fluid.optimizer import Adam
 paddle.enable_static()
 
 
-class SimpleLSTMRNN(fluid.Layer):
+class SimpleLSTMRNN(paddle.nn.Layer):
     def __init__(
         self,
         name_scope,
@@ -153,7 +153,7 @@ class SimpleLSTMRNN(fluid.Layer):
         return real_res, last_hidden, last_cell
 
 
-class PtbModel(fluid.Layer):
+class PtbModel(paddle.nn.Layer):
     def __init__(
         self,
         name_scope,

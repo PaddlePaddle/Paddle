@@ -46,7 +46,7 @@ from paddle.fluid.optimizer import (
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
         super().__init__()
 

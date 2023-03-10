@@ -21,7 +21,6 @@ import tempfile
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,
 )
@@ -44,7 +43,7 @@ momentum_rate = 0.9
 l2_decay = 1e-4
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
         super().__init__()
 

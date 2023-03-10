@@ -27,7 +27,7 @@ from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import Linear
 
 
-class DMF(fluid.Layer):
+class DMF(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._user_latent = Linear(1000, 256)
@@ -78,7 +78,7 @@ class DMF(fluid.Layer):
         return paddle.multiply(users, items)
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._user_latent = Linear(1000, 256)
@@ -111,7 +111,7 @@ class MLP(fluid.Layer):
         return match_vec
 
 
-class DeepCF(fluid.Layer):
+class DeepCF(paddle.nn.Layer):
     def __init__(self, num_users, num_items, matrix):
         super().__init__()
         self._num_users = num_users

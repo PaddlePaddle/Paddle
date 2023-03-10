@@ -22,7 +22,7 @@ from paddle.nn import Embedding
 from paddle.tensor import random
 
 
-class AutoPruneLayer0(fluid.Layer):
+class AutoPruneLayer0(paddle.nn.Layer):
     def __init__(self, input_size):
         super().__init__()
         self.linear1 = paddle.nn.Linear(
@@ -50,7 +50,7 @@ class AutoPruneLayer0(fluid.Layer):
         return d
 
 
-class AutoPruneLayer1(fluid.Layer):
+class AutoPruneLayer1(paddle.nn.Layer):
     def __init__(self, input_size):
         super().__init__()
         self.linear1 = paddle.nn.Linear(
@@ -79,7 +79,7 @@ class AutoPruneLayer1(fluid.Layer):
         return d
 
 
-class AutoPruneLayer2(fluid.Layer):
+class AutoPruneLayer2(paddle.nn.Layer):
     def __init__(self, input_size):
         super().__init__()
         self.linear = paddle.nn.Linear(input_size, 10)
@@ -98,7 +98,7 @@ class AutoPruneLayer2(fluid.Layer):
         return loss
 
 
-class AutoPruneLayer3(fluid.Layer):
+class AutoPruneLayer3(paddle.nn.Layer):
     def __init__(self, input_size):
         super().__init__()
         self.linear = paddle.nn.Linear(input_size, 20)
@@ -117,7 +117,7 @@ class AutoPruneLayer3(fluid.Layer):
             return loss, part1, part2
 
 
-class MyLayer(fluid.Layer):
+class MyLayer(paddle.nn.Layer):
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
         super().__init__(dtype=dtype)
         self.embed0 = Embedding(vocab_size, size)
@@ -139,7 +139,7 @@ class MyLayer(fluid.Layer):
         return loss
 
 
-class MyLayer2(fluid.Layer):
+class MyLayer2(paddle.nn.Layer):
     def __init__(self, input_size, vocab_size, size, dtype="float32"):
         super().__init__(dtype=dtype)
         self.embed0 = Embedding(vocab_size, size)

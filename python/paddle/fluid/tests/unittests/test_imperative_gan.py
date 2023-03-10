@@ -25,7 +25,7 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.nn import Linear
 
 
-class Discriminator(fluid.Layer):
+class Discriminator(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._fc1 = Linear(1, 32)
@@ -38,7 +38,7 @@ class Discriminator(fluid.Layer):
         return x
 
 
-class Generator(fluid.Layer):
+class Generator(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self._fc1 = Linear(2, 64)

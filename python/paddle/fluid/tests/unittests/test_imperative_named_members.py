@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 
 
-class MyLayer(fluid.Layer):
+class MyLayer(paddle.nn.Layer):
     def __init__(self, num_channel, dim, num_filter=5):
         super().__init__()
         self.fc = paddle.nn.Linear(dim, dim)

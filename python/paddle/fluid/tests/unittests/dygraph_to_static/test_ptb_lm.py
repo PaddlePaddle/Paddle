@@ -28,7 +28,7 @@ PRINT_STEP = 20
 SEED = 2020
 
 
-class SimpleLSTMRNN(fluid.Layer):
+class SimpleLSTMRNN(paddle.nn.Layer):
     def __init__(
         self, hidden_size, num_steps, num_layers=2, init_scale=0.1, dropout=None
     ):
@@ -128,7 +128,7 @@ class SimpleLSTMRNN(fluid.Layer):
         return real_res, last_hidden, last_cell
 
 
-class PtbModel(fluid.Layer):
+class PtbModel(paddle.nn.Layer):
     def __init__(
         self,
         hidden_size,

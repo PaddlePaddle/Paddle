@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 
 
-class ConvBNLayer(fluid.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,

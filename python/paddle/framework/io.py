@@ -305,7 +305,9 @@ def _pickle_save(obj, f, protocol):
         return layer
 
     _parse_every_object(
-        obj, lambda v: isinstance(v, fluid.Layer), create_layer_dispatch_table
+        obj,
+        lambda v: isinstance(v, paddle.nn.Layer),
+        create_layer_dispatch_table,
     )
 
     def add_dispatch_table():
@@ -378,7 +380,7 @@ def _is_state_dict(obj):
             return isinstance(
                 obj,
                 (
-                    fluid.Layer,
+                    paddle.nn.Layer,
                     Program,
                     core.VarBase,
                     core.eager.Tensor,
@@ -500,7 +502,7 @@ def _parse_every_object(obj, condition_func, convert_func):
 
 def _parse_load_result(obj, return_numpy):
     def is_layer(obj):
-        return isinstance(obj, fluid.Layer)
+        return isinstance(obj, paddle.nn.Layer)
 
     def parse_layer(obj):
         temp_dict = _parse_load_result(obj.__dict__, False)

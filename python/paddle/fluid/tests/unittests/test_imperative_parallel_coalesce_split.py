@@ -24,7 +24,7 @@ from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 
 
-class MyLayer(fluid.Layer):
+class MyLayer(paddle.nn.Layer):
     def __init__(self, name_scope):
         super().__init__(name_scope)
 

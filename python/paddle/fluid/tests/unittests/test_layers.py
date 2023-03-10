@@ -80,7 +80,7 @@ class LayerTest(unittest.TestCase):
 
 class TestLayer(LayerTest):
     def test_custom_layer_with_kwargs(self):
-        class CustomLayer(fluid.Layer):
+        class CustomLayer(paddle.nn.Layer):
             def __init__(self, input_size, linear1_size=4):
                 super().__init__()
                 self.linear1 = paddle.nn.Linear(

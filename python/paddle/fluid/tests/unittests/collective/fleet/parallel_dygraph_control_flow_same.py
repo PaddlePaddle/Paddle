@@ -16,7 +16,6 @@ import numpy as np
 from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import Linear
 
@@ -27,7 +26,7 @@ batch_size = 4
 batch_num = 1000
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.net_a = paddle.nn.Sequential(

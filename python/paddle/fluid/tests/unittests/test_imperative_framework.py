@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self, input_size):
         super().__init__()
         self._linear1 = paddle.nn.Linear(
