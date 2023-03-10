@@ -29,6 +29,16 @@
     data_type : x
   optional : bias, x_max
 
+- op : frobenius_norm
+  args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMetaBase
+  kernel :
+    func : frobenius_norm
+    param : [x, axis, keepdim, reduce_all]
+  backward : frobenius_norm_grad
+
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)
   output : Tensor

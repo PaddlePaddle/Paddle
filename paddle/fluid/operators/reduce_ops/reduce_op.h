@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/generator/get_expected_kernel_func.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 // only can include the headers in paddle/phi/api dirs
@@ -613,29 +612,28 @@ class ReduceOp : public framework::OperatorWithKernel {
 
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    // // choose cudnn kernel if the runtime supported.
-    // auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    // choose cudnn kernel if the runtime supported.
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    // // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
-    // if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5 ||
-    //     !HasOptimizedOneDNNKernel(ctx)) {
-    //   this->SetDnnFallback(true);
-    // }
-    // // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5 ||
+        !HasOptimizedOneDNNKernel(ctx)) {
+      this->SetDnnFallback(true);
+    }
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-    // if (input_data_type == framework::proto::VarType::FP16) {
-    //   PADDLE_ENFORCE_EQ(
-    //       platform::is_gpu_place(ctx.GetPlace()) ||
-    //           platform::is_npu_place(ctx.GetPlace()) ||
-    //           platform::is_mlu_place(ctx.GetPlace()) ||
-    //           platform::is_xpu_place(ctx.GetPlace()) ||
-    //           platform::is_custom_place(ctx.GetPlace()),
-    //       true,
-    //       platform::errors::InvalidArgument(
-    //           "float16 can only be used on GPU or NPU or MLU or XPU place"));
-    // }
-    // return phi::KernelKey(input_data_type, ctx.GetPlace());
-    return ReduceGetExpectedKernelType(ctx, this);
+    if (input_data_type == framework::proto::VarType::FP16) {
+      PADDLE_ENFORCE_EQ(
+          platform::is_gpu_place(ctx.GetPlace()) ||
+              platform::is_npu_place(ctx.GetPlace()) ||
+              platform::is_mlu_place(ctx.GetPlace()) ||
+              platform::is_xpu_place(ctx.GetPlace()) ||
+              platform::is_custom_place(ctx.GetPlace()),
+          true,
+          platform::errors::InvalidArgument(
+              "float16 can only be used on GPU or NPU or MLU or XPU place"));
+    }
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -695,22 +693,21 @@ class ReduceGradOp : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    // int out_dtype = ctx.Attr<int>("out_dtype");
-    // auto input_data_type =
-    //     (out_dtype >= 0)
-    //         ? static_cast<framework::proto::VarType::Type>(out_dtype)
-    //         : OperatorWithKernel::IndicateVarDataType(
-    //               ctx, framework::GradVarName("Out"));
+    int out_dtype = ctx.Attr<int>("out_dtype");
+    auto input_data_type =
+        (out_dtype >= 0)
+            ? static_cast<framework::proto::VarType::Type>(out_dtype)
+            : OperatorWithKernel::IndicateVarDataType(
+                  ctx, framework::GradVarName("Out"));
 
-    // // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
-    // // max 5D tensor is supported
-    // if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5) {
-    //   dnn_fallback_ = true;
-    // }
-    // // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    // max 5D tensor is supported
+    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5) {
+      dnn_fallback_ = true;
+    }
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-    // return phi::KernelKey(input_data_type, ctx.GetPlace());
-    return ReduceGradGetExpectedKernelType(ctx, this);
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
