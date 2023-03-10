@@ -33,6 +33,7 @@ class FusionGroupPassTest(PassTest):
 
             # subgraph with only 1 op node
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
+            tmp_0.stop_gradient = False
             tmp_1 = paddle.matmul(tmp_0, self.feed_vars[2])
             # subgraph with 2 op nodes
             tmp_2 = paddle.nn.functional.relu(tmp_0 + tmp_1)
@@ -48,10 +49,11 @@ class FusionGroupPassTest(PassTest):
         self.pass_names = "fusion_group_pass"
         self.fused_op_type = "fusion_group"
 
-    def _prepare_feed_vars(self, shape, dtype, num_data):
+    def _prepare_feed_vars(self, shape, dtype, num_data, stop_gradient=True):
         feed_vars = []
         for i in range(num_data):
             var = fluid.data(name=("data" + str(i)), shape=shape, dtype=dtype)
+            var.stop_gradient = stop_gradient
             feed_vars.append(var)
         return feed_vars
 
@@ -82,7 +84,7 @@ class FusionGroupPassTest(PassTest):
 class FusionGroupPassComplicatedTest(FusionGroupPassTest):
     def build_program(self, dtype):
         with fluid.program_guard(self.main_program, self.startup_program):
-            self.feed_vars = self._prepare_feed_vars([32, 64], dtype, 5)
+            self.feed_vars = self._prepare_feed_vars([32, 64], dtype, 5, False)
 
             one = layers.fill_constant(shape=[1], dtype=dtype, value=1.0)
             tmp_0 = one * self.feed_vars[0]
@@ -138,6 +140,7 @@ class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
 
             # subgraph with 2 op nodes
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
+            tmp_0.stop_gradient = False
             tmp_1 = paddle.cast(tmp_0, dtype="float16")
             zero = layers.fill_constant(shape=[128], dtype="float16", value=0)
             # TODO(xreki): fix precision problem when using softmax of float16.
@@ -168,6 +171,7 @@ class FusionGroupPassSumTest(FusionGroupPassTest):
             tmp_0 = paddle.add_n(
                 [self.feed_vars[0], self.feed_vars[1], self.feed_vars[2]]
             )
+            tmp_0.stop_gradient = False
             tmp_1 = paddle.sqrt(tmp_0)
             tmp_2 = paddle.matmul(tmp_0, self.feed_vars[3])
             # subgraph with 2 op nodes
@@ -185,6 +189,7 @@ class FusionGroupPassCastTest(FusionGroupPassTest):
             self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
 
             tmp_0 = paddle.add(self.feed_vars[0], self.feed_vars[1])
+            tmp_0.stop_gradient = False
             tmp_1 = paddle.cast(tmp_0, dtype="float64")
             tmp_2 = paddle.cast(tmp_1, dtype="float32")
 
@@ -206,6 +211,7 @@ class FusionGroupPassFillConstantTest(FusionGroupPassTest):
             self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
 
             tmp_0 = paddle.add(self.feed_vars[0], self.feed_vars[1])
+            tmp_0.stop_gradient = False
             tmp_1 = layers.fill_constant(shape=[2, 2], dtype=dtype, value=2.0)
             tmp_2 = paddle.scale(
                 tmp_1, scale=3.0, bias=1.0, bias_after_scale=True

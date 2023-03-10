@@ -24,8 +24,7 @@ from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
-from paddle.fluid.layers.utils import flatten
-from paddle.utils import gast
+from paddle.utils import flatten, gast
 
 from . import error, logging_utils
 from .ast_transformer import DygraphToStaticAst
