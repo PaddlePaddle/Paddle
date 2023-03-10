@@ -141,10 +141,6 @@ SplitLayerNormPass::SplitLayerNormPass() {
 }
 
 void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
-                              "The input graph of "
-                              "LayerNormFusePass should not be nullptr."));
   FusePassBase::Init(scope_name_, graph);
 
   auto* scope = param_scope();
