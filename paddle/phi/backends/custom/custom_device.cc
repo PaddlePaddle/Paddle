@@ -619,13 +619,13 @@ class CustomDevice : public DeviceInterface {
   case in:                     \
     return C_DataType::ret
     switch (data_type) {
-      return_result(phi::DataType::FLOAT64, FLOAT64);
-      return_result(phi::DataType::FLOAT32, FLOAT32);
-      return_result(phi::DataType::FLOAT16, FLOAT16);
-      return_result(phi::DataType::INT64, INT64);
-      return_result(phi::DataType::INT32, INT32);
-      return_result(phi::DataType::INT16, INT16);
-      return_result(phi::DataType::INT8, INT8);
+      return_result(paddle::experimental::DataType::FLOAT64, FLOAT64);
+      return_result(paddle::experimental::DataType::FLOAT32, FLOAT32);
+      return_result(paddle::experimental::DataType::FLOAT16, FLOAT16);
+      return_result(paddle::experimental::DataType::INT64, INT64);
+      return_result(paddle::experimental::DataType::INT32, INT32);
+      return_result(paddle::experimental::DataType::INT16, INT16);
+      return_result(paddle::experimental::DataType::INT8, INT8);
       default: {
         PADDLE_THROW(phi::errors::Unavailable(
             "DataType is not supported on %s.", Type()));
