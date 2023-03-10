@@ -640,15 +640,14 @@ __global__ void ReduceAnyKernel(const Tx* x,
   MPType input_compute[REDUCE_VEC_SIZE];
   Tx input_reg[REDUCE_VEC_SIZE];
   int input_idx_tmp = input_idx;
-  int bound = min(input_idx_tmp + reduce_num_per_thread * stride, reduce_num);
   for (int i = 0; i < loop_left; i += stride_left) {
     int input_offset = left_index_calculator(left_idx + i);
     const _ptr_ Tx* input = x + input_offset;
     MPType reduce_var = init;
     // load REDUCE_VEC_SIZE data once, and then compute
-
     input_idx = input_idx_tmp;
-    for (; input_idx + REDUCE_VEC_SIZE * stride < bound;
+    int bound = min(input_idx_tmp + reduce_num_per_thread * stride, reduce_num);
+    for (; input_idx + REDUCE_VEC_SIZE * block_size < bound;
          input_idx += REDUCE_VEC_SIZE * stride) {
       kps::ReadDataReduce<Tx,
                           Tx,
