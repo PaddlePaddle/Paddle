@@ -51,22 +51,12 @@ class Geometric(Distribution):
           from paddle.distribution.geometric import Geometric
 
           # probability input
-          probs = paddle.full(shape=(),file_value=0.2, dtype=paddle.float32)
+          probs = paddle.full(shape=(1,), fill_value=0.2, dtype=paddle.float32)
           dist = Geometric(probs)
-          dist.sample((2,2))
-          #Tensor(shape=[2, 2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [[[0.82210195],
-                     [3.06319213]],
-
-                    [[2.74386835],
-                     [2.70396948]]])
-          dist.rsample((2,2))
-          Tensor(shape=[2, 2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [[[9.46812630 ],
-                     [4.16647911 ]],
-
-                    [[0.80256897 ],
-                     [20.91611290]]])
+          dist.sample((2, 2))
+          #Tensor(shape=[2, 2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[[2.09490776],[0.00561932]],[[0.17222938],[5.50346899]]])
+          dist.rsample((2, 2))
+          #Tensor(shape=[2, 2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,[[[6.05133677],[9.59971237]],[[1.72454977],[0.30767119]]])
           dist.pmf(2)
           # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[0.16000001])
           dist.log_pmf(2)
@@ -75,8 +65,9 @@ class Geometric(Distribution):
           # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, [0.59039998])
           dist.entropy()
           # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,[2.50201201])
-          other_probs = paddle.full(shape=(),fill_value=0.3, dtype=paddle.float32)
+          other_probs = paddle.full(shape=(1,), fill_value=0.3, dtype=paddle.float32)
           other_dist = Geometric(other_probs)
+          dist.kl_divergence(other_dist)
           # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, [0.08109304])
 
     """
