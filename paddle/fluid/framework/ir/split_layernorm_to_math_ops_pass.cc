@@ -181,11 +181,13 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
         PADDLE_GET_CONST(float, layer_norm_op->Op()->GetAttr("epsilon"));
     if (begin_norm_axis < 0) begin_norm_axis += input_shape.size();
     std::vector<int32_t> reduce_dim;
+    std::vector<int64_t> shape_int64;
     int feature_size = 1;
     for (int i = begin_norm_axis; i < static_cast<int>(input_shape.size());
          i++) {
       feature_size *= input_shape[i];
       reduce_dim.push_back(i);
+      shape_int64.push_back(input_shape[i]);
     }
 
     // small feature size has low performance
@@ -346,35 +348,57 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     auto* div_out_node = graph->CreateVarNode(div_out);
 
     auto mul_out_name(patterns::PDNodeName("split_layernorm", "mul"));
+    auto new_scale_name(patterns::PDNodeName("split_layernorm", "new_scale"));
     OpDesc elementwise_mul(block);
     elementwise_mul.SetType("elementwise_mul");
     elementwise_mul.SetInput("X", {div_out_name});
-    elementwise_mul.SetInput("Y", {layer_norm_scale->Name()});
+    elementwise_mul.SetInput("Y", {new_scale_name});
     elementwise_mul.SetOutput("Out", {mul_out_name});
     elementwise_mul.SetAttr("axis", -1);
     elementwise_mul.Flush();
-    auto* scale = block->Var(layer_norm_scale->Name());
-    std::vector<int64_t> reduce_dim_int64;
-    for (int i : reduce_dim) {
-      reduce_dim_int64.push_back(i);
-    }
-    scale->SetShape(reduce_dim_int64);
     auto elementwise_mul_node = g->CreateOpNode(&elementwise_mul);
+    auto* scale = block->Var(new_scale_name);
+    scale->SetShape(shape_int64);
+    scale->SetDataType(layer_norm_scale->Var()->GetDataType());
+    scale->SetLoDLevel(layer_norm_scale->Var()->GetLoDLevel());
+    scale->SetPersistable(true);
+    auto* new_scale_node = graph->CreateVarNode(scale);
+    auto* new_scale_tensor =
+        scope->Var(new_scale_name)->GetMutable<phi::DenseTensor>();
+    auto* scale_tensor =
+        scope->Var(layer_norm_scale->Name())->GetMutable<phi::DenseTensor>();
+    new_scale_tensor->Resize(phi::make_ddim(shape_int64));
+    memcpy(new_scale_tensor->mutable_data<float>(platform::CPUPlace()),
+           scale_tensor->mutable_data<float>(platform::CPUPlace()),
+           sizeof(float) * feature_size);
     auto* mul_out = block->Var(mul_out_name);
     mul_out->SetShape(input_shape);
     mul_out->SetDataType(input_var->GetDataType());
     mul_out->SetLoDLevel(layer_norm_in->Var()->GetLoDLevel());
     auto* mul_out_node = graph->CreateVarNode(mul_out);
 
+    auto new_bias_name(patterns::PDNodeName("split_layernorm", "new_bias"));
     OpDesc elementwise_add1(block);
     elementwise_add1.SetType("elementwise_add");
     elementwise_add1.SetInput("X", {mul_out_name});
-    elementwise_add1.SetInput("Y", {layer_norm_bias->Name()});
+    elementwise_add1.SetInput("Y", {new_bias_name});
     elementwise_add1.SetOutput("Out", {layer_norm_out->Name()});
     elementwise_add1.SetAttr("axis", -1);
     elementwise_add1.Flush();
-    auto* bias = block->Var(layer_norm_bias->Name());
-    bias->SetShape(reduce_dim_int64);
+    auto* new_bias = block->Var(new_bias_name);
+    new_bias->SetShape(shape_int64);
+    new_bias->SetDataType(layer_norm_bias->Var()->GetDataType());
+    new_bias->SetLoDLevel(layer_norm_bias->Var()->GetLoDLevel());
+    new_bias->SetPersistable(true);
+    auto* new_bias_node = graph->CreateVarNode(new_bias);
+    auto* new_bias_tensor =
+        scope->Var(new_bias_name)->GetMutable<phi::DenseTensor>();
+    auto* bias_tensor =
+        scope->Var(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
+    new_bias_tensor->Resize(phi::make_ddim(shape_int64));
+    memcpy(new_bias_tensor->mutable_data<float>(platform::CPUPlace()),
+           bias_tensor->mutable_data<float>(platform::CPUPlace()),
+           sizeof(float) * feature_size);
     auto elementwise_add1_node = g->CreateOpNode(&elementwise_add1);
 
     IR_NODE_LINK_TO(layer_norm_in, reduce_mean0_node);
@@ -396,13 +420,13 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     IR_NODE_LINK_TO(sub_out_node, elementwise_div_node);
     IR_NODE_LINK_TO(elementwise_div_node, div_out_node);
     IR_NODE_LINK_TO(div_out_node, elementwise_mul_node);
-    IR_NODE_LINK_TO(layer_norm_scale, elementwise_mul_node);
+    IR_NODE_LINK_TO(new_scale_node, elementwise_mul_node);
     IR_NODE_LINK_TO(elementwise_mul_node, mul_out_node);
     IR_NODE_LINK_TO(mul_out_node, elementwise_add1_node);
-    IR_NODE_LINK_TO(layer_norm_bias, elementwise_add1_node);
+    IR_NODE_LINK_TO(new_bias_node, elementwise_add1_node);
     IR_NODE_LINK_TO(elementwise_add1_node, layer_norm_out);
 
-    GraphSafeRemoveNodes(g, {layer_norm_op});
+    GraphSafeRemoveNodes(g, {layer_norm_op, layer_norm_bias, layer_norm_scale});
     found_layer_norm_count++;
   };
 
