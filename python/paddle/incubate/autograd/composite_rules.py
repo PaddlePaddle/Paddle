@@ -159,6 +159,10 @@ def instancenorm_composite(x, scale, bias, epsilon):
     var = mean((x-mean(x))^2)
     """
 
+    x_shape = x.shape
+    if len(x_shape) == 2:
+        x = reshape(x, [x.shape[0], x.shape[1], 1, 1])
+    n, c, h, w = x.shape
     axis = tuple(range(2, len(x.shape)))
     mean_ = mean(x, axis=axis, keepdim=True)
     difference = x - mean_
@@ -169,14 +173,18 @@ def instancenorm_composite(x, scale, bias, epsilon):
     out = difference / sqrt_var
 
     if scale is not None:
-        scale = reshape(scale, x.shape[1:2])
-        out = out * scale
+        scale_tile = reshape(scale, [1, c, 1, 1])
+        scale_tile = tile(scale_tile, [n, 1, h, w])
+        out = out * scale_tile
     if bias is not None:
-        bias = reshape(bias, x.shape[1:2])
-        out = out + bias
+        bias_tile = reshape(bias, [1, c, 1, 1])
+        bias_tile = tile(bias_tile, [n, 1, h, w])
+        out = out + bias_tile
 
     mean_ = reshape(mean_, x.shape[:1])
     variance = reshape(variance, x.shape[:1])
+    if len(x_shape) == 2:
+        out = np.reshape(out, x_shape)
     return out, mean_, variance
 
 
