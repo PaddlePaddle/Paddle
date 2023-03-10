@@ -190,7 +190,6 @@ def custom_write_stub(resource, pyfile):
                     assert isinstance(spec.loader, importlib.abc.Loader)
                     spec.loader.exec_module(mod)
                 except ImportError:
-                    print('using custom operator only')
                     mod = types.ModuleType(__name__)
 
             # load custom op shared library with abs path
@@ -290,7 +289,7 @@ class VersionManager:
         self.version = self.hasher(version_field)
 
     def hasher(self, version_field):
-        from paddle.fluid.layers.utils import flatten
+        from paddle.utils import flatten
 
         md5 = hashlib.md5()
         for field in version_field._fields:

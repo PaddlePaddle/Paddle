@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import collections
 from collections import defaultdict
 from collections.abc import Iterable
@@ -126,6 +125,50 @@ _dy2st_enable_standalone_executor_ = os.environ.get(
 _cuda_graph_enable_standalone_executor_ = os.environ.get(
     'FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR', 0
 )
+
+
+# special_op_attrs, extra_op_attrs are prepared for printing warnings
+# when turning on FLAGS_print_extra_attrs
+special_op_attrs = {
+    "elementwise_add": [{"axis": -1}],
+    "elementwise_sub": [{"axis": -1}],
+    "elementwise_mul": [{"axis": -1}],
+    "elementwise_div": [{"axis": -1}],
+    "elementwise_max": [{"axis": -1}],
+    "elementwise_min": [{"axis": -1}],
+    "elementwise_pow": [{"axis": -1}],
+    "elementwise_mod": [{"axis": -1}],
+    "elementwise_floordiv": [{"axis": -1}],
+    "less_than": [{"axis": -1}],
+    "less_equal": [{"axis": -1}],
+    "greater_than": [{"axis": -1}],
+    "greater_equal": [{"axis": -1}],
+    "equal": [{"axis": -1}],
+    "not_equal": [{"axis": -1}],
+    "amax": [{"reduce_all": False}],
+    "amin": [{"reduce_all": False}],
+    "any": [{"reduce_all": False}],
+    "frobenius_norm": [{"reduce_all": False}],
+    "logsumexp": [{"reduce_all": False}],
+    "reduce_max": [{"reduce_all": False}],
+    "reduce_min": [{"reduce_all": False}],
+    "reduce_mean": [{"reduce_all": False}],
+    "reduce_prod": [{"reduce_all": False}],
+    "reduce_sum": [{"reduce_all": False}],
+}
+
+extra_op_attrs = {
+    "gather": ["overwrite"],
+    "graph_reindex": ["flag_buffer_hashtable"],
+    "graph_sample_neighbors": ["flag_perm_buffer"],
+    "relu6": ["threshold"],
+    "swish": ["beta"],
+    "hsigmoid_loss": ["remote_prefetch"],
+    "max_pool2d_with_index": ["global_pooling"],
+    "uniform": ["diag_num"],
+    "unique": ["is_sorted"],
+}
+
 
 # Some explanation of our execution system 2022.03
 # For now we have 3 kinds of execution system, since we refactored dygraph mode to
@@ -3064,6 +3107,11 @@ class Operator:
                     attr_val = op_attrs[attr_name]
                     self._update_desc_attr(attr_name, attr_val)
                 for attr_name in extra_attrs_map.keys():
+                    if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
+                        warnings.warn(
+                            "op %s use extra_attr: %s" % (type, attr_name)
+                        )
+
                     if (attr_name not in op_attrs) or (
                         op_attrs[attr_name] is None
                     ):
@@ -3072,6 +3120,34 @@ class Operator:
                         )
                     else:
                         self._update_desc_attr(attr_name, op_attrs[attr_name])
+
+                if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
+                    if type in extra_op_attrs:
+                        attrs = extra_op_attrs.get(type, [])
+                        for attr in attrs:
+                            if attr in op_attrs.keys():
+                                warnings.warn(
+                                    "op %s use extra_attr: %s" % (type, attr)
+                                )
+
+                    if type in special_op_attrs:
+                        attrs = special_op_attrs.get(type, [])
+                        for attr in attrs:
+                            a_name = list(attr.keys())[0]
+                            default_value = list(attr.values())[0]
+                            if (
+                                a_name in op_attrs.keys()
+                                and default_value != op_attrs[a_name]
+                            ):
+                                warnings.warn(
+                                    "op %s's attr %s = %s is not the default value: %s"
+                                    % (
+                                        type,
+                                        a_name,
+                                        op_attrs[a_name],
+                                        default_value,
+                                    )
+                                )
 
             # proto.attrs doesn't include ipu_index
             if core.is_compiled_with_ipu():
@@ -3998,6 +4074,9 @@ class Block:
             param = EagerParamBase(*args, **kwargs)
         else:
             param = Parameter(global_block, *args, **kwargs)
+        # NOTE(Aurelius84): we deliver stop_gradient in append_op, so we
+        # need recorde it state and reset it back after calling this API
+        stop_gradient = param.stop_gradient
 
         if 'initializer' in kwargs:
 
@@ -4033,6 +4112,7 @@ class Block:
                 pass
             else:
                 initializer(param, self)
+        param.stop_gradient = stop_gradient
         return param
 
     def append_op(self, *args, **kwargs):
@@ -4042,10 +4122,10 @@ class Block:
         Returns:
             Operator: the append Operator.
         """
+        op_type = kwargs.get("type", None)
         if _non_static_mode():
             attrs = kwargs.get("attrs", {})
             inplace_map = kwargs.get("inplace_map", None)
-            type = kwargs.get("type", None)
             warnings.warn(
                 "Op `%s` is executed through `append_op` under the dynamic mode, "
                 "the corresponding API implementation needs to be upgraded to "
@@ -4055,7 +4135,7 @@ class Block:
             op = Operator(
                 block=self,
                 desc=None,
-                type=type,
+                type=op_type,
                 inputs=None,
                 outputs=None,
                 attrs=attrs,
@@ -4067,7 +4147,7 @@ class Block:
             # currently, we only support stop_gradient in dygraph mode.
 
             _dygraph_tracer().trace_op(
-                type,
+                op_type,
                 kwargs.get("inputs", {}),
                 kwargs.get("outputs", {}),
                 attrs if attrs else {},
@@ -4076,18 +4156,43 @@ class Block:
             )
         else:
             from paddle.fluid.dygraph.base import param_guard
+            from .layers.utils import flatten
+
+            def pass_stop_gradient(ins, outs):
+                """
+                Set out.stop_gradient = True if all inputs stop_gradient is True.
+                """
+                need_reset = True
+                for var in flatten(ins):
+                    if getattr(var, 'stop_gradient', None) is False:
+                        need_reset = False
+                        break
+                if need_reset:
+                    for var in flatten(outs):
+                        if isinstance(var, Variable):
+                            var.stop_gradient = True
 
             op_desc = self.desc.append_op()
+            inputs = kwargs.get("inputs", None)
+            outputs = kwargs.get("outputs", None)
             # NOTE(Aurelius84): In case of @to_static, all VarBase(s) should
             # be converted into Variable(s) with same name and block location.
             # This is ONE and ONLY logic of type transformation of dy2static.
-            inputs = kwargs.get("inputs", None)
-            outputs = kwargs.get("outputs", None)
+            ignore_ops = {
+                'conditional_block',
+                'conditional_block_grad',
+                'recurrent',
+                'recurrent_grad',
+                'while',
+                'while_grad',
+            }
+            if op_type not in ignore_ops:
+                pass_stop_gradient(inputs, outputs)
             with param_guard(inputs), param_guard(outputs):
                 op = Operator(
                     block=self,
                     desc=op_desc,
-                    type=kwargs.get("type", None),
+                    type=op_type,
                     inputs=inputs,
                     outputs=outputs,
                     attrs=kwargs.get("attrs", None),
@@ -7516,6 +7621,18 @@ def _dygraph_guard(tracer):
     if tracer is not None:
         core._switch_tracer(tracer)
 
+    try:
+        yield
+    finally:
+        if tmp_tracer is not None:
+            core._switch_tracer(tmp_tracer)
+        global_var._dygraph_tracer_ = tmp_tracer
+
+
+@signature_safe_contextmanager
+def _static_guard():
+    tmp_tracer = global_var._dygraph_tracer_
+    global_var._dygraph_tracer_ = None
     try:
         yield
     finally:

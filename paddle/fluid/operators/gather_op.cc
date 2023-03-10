@@ -140,12 +140,12 @@ class GatherCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
  protected:
   void Apply() override {
-    paddle::experimental::Tensor index = this->GetSingleForwardInput("Index");
-    paddle::optional<paddle::experimental::Tensor> tensor_axis =
+    paddle::Tensor index = this->GetSingleForwardInput("Index");
+    paddle::optional<paddle::Tensor> tensor_axis =
         this->GetOptionalSingleForwardInput("Axis");
-    paddle::experimental::Tensor x = this->GetSingleForwardInput("X");
-    paddle::experimental::Tensor dout = this->GetSingleOutputGrad("Out");
-    paddle::experimental::Tensor dx = this->GetSingleInputGrad("X");
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor dout = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
     auto* dx_ptr = this->GetOutputPtr(&dx);
     std::string dx_name = this->GetOutputName(*dx_ptr);
     int axis = static_cast<int>(this->Attr<int>("axis"));

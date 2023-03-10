@@ -38,6 +38,10 @@ PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(subtract, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_and, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_or, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_xor, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_not, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, GPU, ALL_LAYOUT);
@@ -47,11 +51,15 @@ PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(subtract, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
 PD_DECLARE_KERNEL(concat, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_and, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_or, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_xor, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_not, KPS, ALL_LAYOUT);
 #endif
 namespace paddle {
 namespace prim {
 
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 struct TestBaseProgram {
  public:
   const framework::ProgramDesc& main_program() { return program_; }
@@ -204,13 +212,11 @@ TEST(StaticPrim, TanhBackwardComposite) {
   ASSERT_EQ(target_block->AllOps()[0]->Outputs().at("Out")[0], "b");
   ASSERT_EQ(target_block->AllOps()[0]->Outputs().at("Out")[0], "b");
 
-  ASSERT_EQ(grad_ops[0]->Type(), "pow");
+  ASSERT_EQ(grad_ops[0]->Type(), "elementwise_mul");
   ASSERT_EQ(grad_ops[0]->Inputs().at("X").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[0]->Inputs().at("Y").size(), static_cast<std::size_t>(1));
+  ASSERT_EQ(grad_ops[0]->Inputs().at("Y")[0], "b");
   ASSERT_EQ(grad_ops[0]->Inputs().at("X")[0], "b");
-  ASSERT_EQ(PADDLE_GET_CONST(float, grad_ops[0]->GetAttr("factor")),
-            static_cast<float>(2.0));
-  ASSERT_EQ(grad_ops[0]->Outputs().at("Out").size(),
-            static_cast<std::size_t>(1));
 
   ASSERT_EQ(grad_ops[1]->Type(), "fill_constant");
   ASSERT_EQ(PADDLE_GET_CONST(int, grad_ops[1]->GetAttr("dtype")),
@@ -275,12 +281,14 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
                                      target_block,
                                      grad_sub_block);
   test();
-  std::vector<paddle::experimental::Tensor> muti_fw_input =
-      test.GetMultiForwardInput("X");
-  std::vector<paddle::optional<paddle::experimental::Tensor>>
-      opt_muti_fw_input = test.GetOptionalMultiForwardInput("X");
-  paddle::experimental::Tensor fw_out = test.GetSingleForwardOutput("Out");
-  paddle::experimental::Tensor* fw_out_ptr = test.GetOutputPtr(&fw_out);
+  std::vector<paddle::Tensor> muti_fw_input = test.GetMultiForwardInput("X");
+  paddle::optional<std::vector<paddle::Tensor>> opt_muti_fw_input =
+      test.GetOptionalMultiForwardInput("X");
+  std::vector<paddle::Tensor> opt_inner = opt_muti_fw_input.is_initialized()
+                                              ? opt_muti_fw_input.get()
+                                              : std::vector<paddle::Tensor>{};
+  paddle::Tensor fw_out = test.GetSingleForwardOutput("Out");
+  paddle::Tensor* fw_out_ptr = test.GetOutputPtr(&fw_out);
   std::string fw_out_name = test.GetOutputName(fw_out);
 
   ASSERT_EQ(muti_fw_input.size(), static_cast<std::size_t>(2));
@@ -290,14 +298,10 @@ TEST(StaticCompositeGradMaker, TestMutiInputMethod) {
   ASSERT_EQ(
       static_cast<prim::DescTensor*>(muti_fw_input[1].impl().get())->Name(),
       "x1");
-  ASSERT_EQ(opt_muti_fw_input.size(), static_cast<std::size_t>(2));
-  ASSERT_EQ(static_cast<prim::DescTensor*>(
-                opt_muti_fw_input[0].get_ptr()->impl().get())
-                ->Name(),
+  ASSERT_EQ(opt_inner.size(), static_cast<std::size_t>(2));
+  ASSERT_EQ(static_cast<prim::DescTensor*>(opt_inner[0].impl().get())->Name(),
             "x0");
-  ASSERT_EQ(static_cast<prim::DescTensor*>(
-                opt_muti_fw_input[1].get_ptr()->impl().get())
-                ->Name(),
+  ASSERT_EQ(static_cast<prim::DescTensor*>(opt_inner[1].impl().get())->Name(),
             "x1");
   ASSERT_EQ(&fw_out, fw_out_ptr);
   ASSERT_EQ(fw_out_name, "out");
@@ -342,12 +346,11 @@ TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
                                      target_block,
                                      grad_sub_block);
   test();
-  paddle::experimental::Tensor fw_input = test.GetSingleForwardInput("X");
-  paddle::optional<paddle::experimental::Tensor> opt_fw_input =
+  paddle::Tensor fw_input = test.GetSingleForwardInput("X");
+  paddle::optional<paddle::Tensor> opt_fw_input =
       test.GetOptionalSingleForwardInput("X");
-  std::vector<paddle::experimental::Tensor> fw_out =
-      test.GetMultiForwardOutput("Out");
-  std::vector<paddle::experimental::Tensor*> fw_out_ptr(fw_out.size());
+  std::vector<paddle::Tensor> fw_out = test.GetMultiForwardOutput("Out");
+  std::vector<paddle::Tensor*> fw_out_ptr(fw_out.size());
   for (size_t i = 0; i < fw_out.size(); ++i) {
     fw_out_ptr[i] = &fw_out[i];
   }
@@ -364,6 +367,68 @@ TEST(StaticCompositeGradMaker, TestMutiOutputMethod) {
   ASSERT_EQ(fw_out_name[1], "out2");
 }
 
+TEST(StaticCompositeGradMaker, LogicalOperantsTest) {
+  // Initialized environment
+  FLAGS_tensor_operants_mode = "static";
+  paddle::OperantsManager::Instance().static_operants.reset(
+      new paddle::prim::StaticTensorOperants());
+
+  TestBaseProgram base_program = TestBaseProgram();
+  auto* target_block = base_program.GetBlock(0);
+  std::vector<int64_t> shape = {2, 2};
+  StaticCompositeContext::Instance().SetBlock(target_block);
+  Tensor x0 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::INT32, phi::CPUPlace());
+  std::string x0_name =
+      std::static_pointer_cast<prim::DescTensor>(x0.impl())->Name();
+  Tensor x1 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::INT32, phi::CPUPlace());
+  std::string x1_name =
+      std::static_pointer_cast<prim::DescTensor>(x1.impl())->Name();
+  Tensor x2 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::INT32, phi::CPUPlace());
+  std::string x2_name =
+      std::static_pointer_cast<prim::DescTensor>(x2.impl())->Name();
+  Tensor x3 = prim::empty<prim::DescTensor>(
+      shape, phi::DataType::INT32, phi::CPUPlace());
+  std::string x3_name =
+      std::static_pointer_cast<prim::DescTensor>(x3.impl())->Name();
+
+  Tensor out_not = ~x0;
+  Tensor out_and = out_not & x1;
+  Tensor out_or = out_and | x2;
+  Tensor out_xor = out_or ^ x3;
+
+  ASSERT_EQ(target_block->AllOps().size(), static_cast<std::size_t>(4));
+  ASSERT_EQ(target_block->AllOps()[0]->Type(), "bitwise_not");
+  ASSERT_EQ(target_block->AllOps()[0]->Inputs().at("X").size(),
+            static_cast<std::size_t>(1));
+  ASSERT_EQ(target_block->AllOps()[0]->Inputs().at("X")[0], x0_name);
+  ASSERT_EQ(target_block->AllOps()[0]->Outputs().at("Out").size(),
+            std::size_t(1));
+
+  ASSERT_EQ(target_block->AllOps()[1]->Type(), "bitwise_and");
+  ASSERT_EQ(target_block->AllOps()[1]->Inputs().at("Y").size(),
+            static_cast<std::size_t>(1));
+  ASSERT_EQ(target_block->AllOps()[1]->Inputs().at("Y")[0], x1_name);
+  ASSERT_EQ(target_block->AllOps()[1]->Outputs().at("Out").size(),
+            std::size_t(1));
+
+  ASSERT_EQ(target_block->AllOps()[2]->Type(), "bitwise_or");
+  ASSERT_EQ(target_block->AllOps()[2]->Inputs().at("Y").size(),
+            static_cast<std::size_t>(1));
+  ASSERT_EQ(target_block->AllOps()[2]->Inputs().at("Y")[0], x2_name);
+  ASSERT_EQ(target_block->AllOps()[2]->Outputs().at("Out").size(),
+            std::size_t(1));
+
+  ASSERT_EQ(target_block->AllOps()[3]->Type(), "bitwise_xor");
+  ASSERT_EQ(target_block->AllOps()[3]->Inputs().at("Y").size(),
+            static_cast<std::size_t>(1));
+  ASSERT_EQ(target_block->AllOps()[3]->Inputs().at("Y")[0], x3_name);
+  ASSERT_EQ(target_block->AllOps()[3]->Outputs().at("Out").size(),
+            std::size_t(1));
+}
+
 TEST(StaticPrim, TestFlags) {
   PrimCommonUtils::SetBwdPrimEnabled(true);
   ASSERT_TRUE(PrimCommonUtils::IsBwdPrimEnabled());
@@ -376,7 +441,11 @@ TEST(StaticPrim, TestFlags) {
 USE_OP_ITSELF(fill_constant);
 USE_OP_ITSELF(tanh);
 USE_OP_ITSELF(tanh_grad);
-USE_OP_ITSELF(pow);
 USE_OP_ITSELF(elementwise_mul);
 USE_OP_ITSELF(elementwise_sub);
+USE_OP_ITSELF(elementwise_pow);
 USE_OP_ITSELF(scale);
+USE_OP_ITSELF(bitwise_xor);
+USE_OP_ITSELF(bitwise_and);
+USE_OP_ITSELF(bitwise_not);
+USE_OP_ITSELF(bitwise_or);

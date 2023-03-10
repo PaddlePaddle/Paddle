@@ -611,7 +611,7 @@ The best trial is: [{}], whose configuration is following:
 
     def tune(self):
         """
-        Performs the search for best hyperparameter configuations
+        Performs the search for best hyperparameter configurations
         for the selected optimization pass(es).
         """
 

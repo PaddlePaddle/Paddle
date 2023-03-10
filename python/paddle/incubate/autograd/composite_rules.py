@@ -20,6 +20,7 @@
 import functools
 import operator
 
+import paddle.framework.dtype as dtypes
 from paddle.fluid import core
 
 from .primitives import *  # noqa: F403
@@ -115,7 +116,7 @@ def composite_batchnorm(
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
 
-    # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op defination.
+    # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op definition.
     reserve_space = None
 
     return y, run_mean_, run_var_, batch_mean_, batch_var_, reserve_space
@@ -191,6 +192,46 @@ def mean_composite(x, axis, keepdim):
     return divide(sum_x, norm)
 
 
+@REGISTER_COMPOSITE('stack')
+def stack_composite(x, axis):
+    """
+    define composite rule of op stack
+    unsqueeze each dimension of the input (use reshape), and then concat
+    """
+    x_shape = x[0].shape
+    if axis < 0:
+        axis += len(x_shape) + 1
+    out_shape = x_shape[:axis] + (1,) + x_shape[axis:]
+    out = concat([reshape(item, out_shape) for item in x], axis)
+    return out
+
+
+@REGISTER_COMPOSITE('flatten_contiguous_range')
+def flatten_contiguous_range_composite(x, start_axis, stop_axis):
+    """
+    define composite rule of op flatten, flatten_contiguous_range -> flatten.
+    CINN doesn't need xshape for backward pass, return none instead of xshape.
+    shape_out is the parameter of reshape, get from start_axis and stop_axis.
+    out = reshape(x, shape=shape_out), xshape
+    """
+    shape_in = x.shape
+    start_dim = start_axis if len(shape_in) != 0 else 0
+    end_dim = stop_axis if len(shape_in) != 0 else 0
+    assert start_dim <= end_dim
+    if len(shape_in) == 0 or start_dim == end_dim:
+        return reshape(x, shape=shape_in), None
+    slice_numel = 1
+    for i in range(start_dim, end_dim + 1):
+        slice_numel *= shape_in[i]
+    shape_out = []
+    for i in range(start_dim):
+        shape_out.append(shape_in[i])
+    shape_out.append(slice_numel)
+    for i in range(end_dim + 1, len(shape_in)):
+        shape_out.append(shape_in[i])
+    return reshape(x, shape=shape_out), None
+
+
 @REGISTER_COMPOSITE('dropout')
 def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
     """define composite rule of op dropout.
@@ -232,3 +273,67 @@ def bernoulli(shape, dtype, p, seed=0):
         ),
         dtype,
     )
+
+
+@REGISTER_COMPOSITE('hard_swish')
+def hard_swish_composite(x):
+    """define composite rule of op hard_swish.
+    offset=3, threshold=6, scale=6
+    out = minimum(
+        maxmum(x + offset, 0), threshold
+    ) * x / scale
+    """
+    offset = 3.0
+    threshold = 6.0
+    scale = 6.0
+    res = (
+        minimum(
+            maximum(
+                x + full(x.shape, offset, dtype=x.dtype),
+                full(x.shape, 0.0, dtype=x.dtype),
+            ),
+            full(x.shape, threshold, dtype=x.dtype),
+        )
+        * x
+        / full(x.shape, scale, dtype=x.dtype)
+    )
+    return res
+
+
+@REGISTER_COMPOSITE('sigmoid')
+def sigmoid_composite(x):
+    """
+    define composite rule of op sigmoid
+    res = 1 / (1 + exp(-x))
+    """
+    sum_temp = 1 + exp(-x)
+    res = 1 / sum_temp
+    return res
+
+
+@REGISTER_COMPOSITE('silu')
+def silu_composite(x):
+    """
+    define composite rule of op silu
+    res = x / (1 + exp(-x))
+    """
+    sum_temp = 1 + exp(-x)
+    res = x / sum_temp
+    return res
+
+
+@REGISTER_COMPOSITE('fill_any_like')
+def fill_any_like(x, fill_value, dtype, place=None):
+    """define composite rule of op full_like."""
+    """op name: full_like  op type name: fill_any_like."""
+    """arg place is not used, add it here to keep same as python api."""
+    dtype = dtypes.dtype(dtype)
+    val = full(x.shape, fill_value, dtype)
+    return val
+
+
+@REGISTER_COMPOSITE('relu')
+def relu_composite(x):
+    """define composite rule of op relu."""
+    # relu(x) = max(x, 0)
+    return maximum(x, zeros_like(x))

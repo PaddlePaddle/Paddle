@@ -126,7 +126,7 @@ function(inference_analysis_api_int8_test target install_dir filename)
     --refer_result=${install_dir}/result.txt
     --accuracy=0.8
     --batch_size=5
-    --enable_int8=true)
+    --enable_int8_ptq=true)
 endfunction()
 
 function(inference_multiple_models_analysis_api_test target install_dir
@@ -159,7 +159,7 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir
     --infer_data=${data_path}
     --warmup_batch_size=${WARMUP_BATCH_SIZE}
     --batch_size=50
-    --enable_int8=true
+    --enable_int8_ptq=true
     --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
     --iterations=2)
 endfunction()
@@ -197,7 +197,7 @@ function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME
     --infer_data=${data_path}
     --warmup_batch_size=10
     --batch_size=300
-    --enable_int8=true
+    --enable_int8_ptq=true
     --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
     --iterations=1)
 endfunction()
@@ -221,7 +221,7 @@ function(
   fp32_model_dir
   int8_model_dir
   data_path
-  enable_quant_int8)
+  enable_int8_qat)
   inference_analysis_test_run(
     ${TARGET_NAME}
     COMMAND
@@ -231,8 +231,7 @@ function(
     --int8_model=${int8_model_dir}
     --infer_data=${data_path}
     --batch_size=50
-    --enable_int8=true
-    --enable_quant_int8=${enable_quant_int8}
+    --enable_int8_qat=${enable_int8_qat}
     --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
     --with_accuracy_layer=false
     --iterations=2)
@@ -271,8 +270,15 @@ function(inference_analysis_api_lexical_bfloat16_test_run TARGET_NAME
     --iterations=2)
 endfunction()
 
-function(inference_analysis_api_lexical_int8_test_run TARGET_NAME test_binary
-         infer_model data_path fuse_multi_gru)
+function(
+  inference_analysis_api_lexical_int8_test_run
+  TARGET_NAME
+  test_binary
+  infer_model
+  data_path
+  enable_int8_ptq
+  enable_int8_qat
+  fuse_multi_gru)
   inference_analysis_test_run(
     ${TARGET_NAME}
     COMMAND
@@ -284,8 +290,9 @@ function(inference_analysis_api_lexical_int8_test_run TARGET_NAME test_binary
     --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
     --with_accuracy_layer=true
     --use_analysis=true
-    --enable_int8=true
-    --quantized_accuracy=0.01
+    --enable_int8_ptq=${enable_int8_ptq}
+    --enable_int8_qat=${enable_int8_qat}
+    --quantized_accuracy=0.015
     --fuse_multi_gru=${fuse_multi_gru}
     --iterations=4)
 endfunction()
@@ -638,21 +645,18 @@ if(WITH_MKLDNN)
     ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
   # resnet101 int8
-  # TODO(grygielski) Enable after MKL-DNN 1.0 merge
   set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
   download_int8_data_without_verify(${INT8_RESNET101_MODEL_DIR}
                                     "Res101_int8_model.tar.gz")
   #   inference_analysis_api_int8_test_run(test_analyzer_int8_resnet101 ${INT8_IMG_CLASS_TEST_APP} ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
   # vgg16 int8
-  # TODO(grygielski) Enable after MKL-DNN 1.0 merge
   set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
   download_int8_data_without_verify(${INT8_VGG16_MODEL_DIR}
                                     "VGG16_int8_model.tar.gz")
   #  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
   # vgg19 int8
-  # TODO(grygielski) Enable after MKL-DNN 1.0 merge
   set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
   download_int8_data_without_verify(${INT8_VGG19_MODEL_DIR}
                                     "VGG19_int8_model.tar.gz")
@@ -685,7 +689,7 @@ if(WITH_MKLDNN)
     --infer_data=${IMAGENET_DATA_PATH}
     --warmup_batch_size=50
     --batch_size=1
-    --enable_int8=true
+    --enable_int8_ptq=true
     --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
     --iterations=100
     --with_accuracy_layer=false)
@@ -775,12 +779,37 @@ if(WITH_MKLDNN)
     ${GRU_DATA_PATH})
   # run post-training quantization lexical analysis test
   inference_analysis_api_lexical_int8_test_run(
-    test_analyzer_lexical_gru_int8 ${LEXICAL_TEST_APP} ${GRU_MODEL_PATH}
-    ${GRU_DATA_PATH} false)
+    test_analyzer_lexical_gru_int8
+    ${LEXICAL_TEST_APP}
+    ${GRU_MODEL_PATH}
+    ${GRU_DATA_PATH}
+    true # enable_int8_ptq
+    false # enable_int8_qat
+    false) # fuse_multi_gru
   # run post-training quantization lexical analysis test with multi_gru fuse
   inference_analysis_api_lexical_int8_test_run(
-    test_analyzer_lexical_gru_int8_multi_gru ${LEXICAL_TEST_APP}
-    ${GRU_MODEL_PATH} ${GRU_DATA_PATH} true)
+    test_analyzer_lexical_gru_int8_multi_gru
+    ${LEXICAL_TEST_APP}
+    ${GRU_MODEL_PATH}
+    ${GRU_DATA_PATH}
+    true # enable_int8_ptq
+    false # enable_int8_qat
+    true) # fuse_multi_gru
+
+  # run qat gru test
+  set(QAT_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
+  set(QAT_GRU_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant/GRU_quant2")
+  download_quant_data(${QAT_GRU_MODEL_DIR} ${QAT_GRU_MODEL_ARCHIVE}
+                      cf207f8076dcfb8b74d8b6bdddf9090c)
+
+  inference_analysis_api_lexical_int8_test_run(
+    test_analyzer_lexical_gru_qat_int8
+    ${LEXICAL_TEST_APP}
+    "${QAT_GRU_MODEL_DIR}/GRU_quant_acc"
+    ${GRU_DATA_PATH}
+    false # enable_int8_ptq
+    true # enable_int8_qat
+    false) # fuse_multi_gru
 
   ### optimized FP32 vs. Quant INT8 tests
 

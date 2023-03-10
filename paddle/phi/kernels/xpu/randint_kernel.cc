@@ -16,8 +16,8 @@
 
 #include <random>
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -47,11 +47,11 @@ void RandintRawKernel(const Context& dev_ctx,
   for (int64_t i = 0; i < numel; ++i) {
     data_cpu[i] = dist(*engine);
   }
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       data,
-                       phi::CPUPlace(),
-                       reinterpret_cast<void*>(data_cpu.get()),
-                       size * sizeof(T));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     data,
+                     phi::CPUPlace(),
+                     reinterpret_cast<void*>(data_cpu.get()),
+                     size * sizeof(T));
 }
 
 template <typename T, typename Context>

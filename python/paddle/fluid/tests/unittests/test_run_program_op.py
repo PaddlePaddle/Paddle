@@ -27,7 +27,6 @@ from paddle.fluid.executor import (
     _is_enable_standalone_executor,
 )
 from paddle.fluid.framework import global_var
-from paddle.fluid.layers.utils import _hash_with_id
 
 paddle.enable_static()
 
@@ -145,7 +144,7 @@ class RunProgramOpTest(unittest.TestCase):
             'end_op_index',
             self.fwd_op_num,
             'program_id',
-            _hash_with_id(self.program_desc, self),
+            paddle.utils._hash_with_id(self.program_desc, self),
         ]
 
     def get_param_grad_names(self):

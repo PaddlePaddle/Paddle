@@ -22,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
@@ -404,8 +404,7 @@ void TestFusedAdamBase(const std::vector<std::vector<int64_t>> &shapes,
                        float weight_decay = 0.1,
                        size_t steps = 5,
                        uint64_t seed = 10) {
-  const auto &ctx =
-      *paddle::platform::DeviceContextPool::Instance().GetByPlace(PlaceType());
+  const auto &ctx = *phi::DeviceContextPool::Instance().GetByPlace(PlaceType());
   using Context = typename std::remove_const<
       typename std::remove_pointer<decltype(&ctx)>::type>::type;
   ctx.GetGenerator()->SetCurrentSeed(seed);

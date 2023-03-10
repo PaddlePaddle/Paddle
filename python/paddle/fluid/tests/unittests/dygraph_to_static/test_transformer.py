@@ -172,7 +172,7 @@ def train_static(args, batch_generator):
                     model_path = os.path.join(
                         args.save_static_model_path, "transformer"
                     )
-                    fluid.save(train_prog, model_path)
+                    paddle.static.save(train_prog, model_path)
                 break
     return np.array(avg_loss)
 

@@ -365,6 +365,17 @@
   outputs :
     out : Out
 
+- op : cumsum
+  backward: cumsum_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    axis:
+      data_type : int
+      tensor_name: AxisTensor
+
 - op : data_norm
   backward : data_norm_grad
   extra :
@@ -562,6 +573,13 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : expand_as (expand_as_v2)
+  inputs :
+    x : X
+    y : Y
+  outputs :
+    out : Out
+
 - op : expm1
   backward : expm1_grad
   inputs :
@@ -752,6 +770,16 @@
   extra :
     attrs : [bool use_cudnn = true]
 
+- op : group_norm
+  inputs :
+    x : X
+    scale : Scale
+    bias : Bias
+  outputs :
+    y : Y
+    mean : Mean
+    variance : Variance
+
 - op : gru
   backward : gru_grad
   extra :
@@ -762,11 +790,6 @@
     x : X
   outputs :
     out : Out
-
-- op : hard_swish
-  backward : hard_swish_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
 
 - op : hardshrink (hard_shrink)
   backward : hardshrink_grad (hard_shrink_grad)
@@ -781,6 +804,15 @@
     x : X
   outputs :
     out : Out
+
+- op : hardswish (hard_swish)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  backward : hard_swish_grad
+  extra :
+    attrs : [bool use_mkldnn = false]
 
 - op : hardtanh (brelu)
   backward : hardtanh_grad (brelu_grad)
@@ -826,6 +858,16 @@
   backward : inplace_abn_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+
+- op : instance_norm
+  inputs :
+    x : X
+    scale : Scale
+    bias : Bias
+  outputs :
+    y : Y
+    saved_mean : SavedMean
+    saved_variance : SavedVariance
 
 - op : inverse
   inputs :
@@ -1172,6 +1214,12 @@
     {input : X, label : Label, weight : Weight}
   outputs :
     {out : Out, total_weight : Total_weight}
+
+- op : nonzero (where_index)
+  inputs :
+    condition : Condition
+  outputs :
+    out : Out
 
 - op : not_equal
   inputs :
@@ -1552,7 +1600,7 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
-  backward : softplus_grad
+  backward : softplus_grad, softplus_double_grad
   inputs :
     x : X
   outputs :
