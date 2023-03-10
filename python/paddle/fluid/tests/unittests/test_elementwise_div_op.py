@@ -65,7 +65,7 @@ class ElementwiseDivOp(OpTest):
         self.grad_y = grad_y
 
     def if_skip_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
     def init_args(self):
         self.check_dygraph = True
@@ -136,14 +136,14 @@ class TestElementwiseDivPrimOpFp32(ElementwiseDivOp):
         self.dtype = np.float32
         self.val_dtype = np.float32
 
-    def if_skip_cinn(self):
-        pass
-
 
 class TestElementwiseDivOp_ZeroDim1(ElementwiseDivOp):
     def init_shape(self):
         self.x_shape = []
         self.y_shape = []
+
+    def if_skip_cinn(self):
+        pass
 
 
 class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
@@ -160,6 +160,9 @@ class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
     def compute_gradient_y(self, grad_out, out, y):
         return np.sum(-1 * grad_out * out / y.reshape([1, 1]))
 
+    def if_skip_cinn(self):
+        pass
+
 
 class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
     def init_shape(self):
@@ -174,6 +177,9 @@ class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
 
     def compute_gradient_y(self, grad_out, out, y):
         return -1 * grad_out * out / y
+
+    def if_skip_cinn(self):
+        pass
 
 
 @unittest.skipIf(
