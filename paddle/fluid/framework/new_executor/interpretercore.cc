@@ -204,6 +204,8 @@ void InterpreterCore::RunImpl() {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
   }
 
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+
   if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
       (sync_op_num_ == 0)) {
     VLOG(4) << "Tracing Instruction List";
@@ -1022,7 +1024,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
-  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
   unfinished_op_number_ = vec_instr.size();
   if (unfinished_op_number_ == 0) {
     VLOG(4) << "No op to run, return";
