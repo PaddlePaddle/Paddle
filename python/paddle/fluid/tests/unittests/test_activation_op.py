@@ -52,6 +52,7 @@ class TestSqrtOpError(unittest.TestCase):
 class TestActivation(OpTest):
     def setUp(self):
         self.op_type = "exp"
+        self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
         self.init_kernel_type()
@@ -129,20 +130,6 @@ class TestExpFp32_Prim(OpTest):
 class TestExpFp64_Prim(TestExpFp32_Prim):
     def init_dtype(self):
         self.dtype = np.float64
-
-
-class TestExpFp16_Prim(TestExpFp32_Prim):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, only_check_prim=True)
-
-    def if_skip_cinn(self):
-        self.enable_cinn = True
 
 
 class TestExpPrim_ZeroDim(TestExpFp32_Prim):
@@ -1230,7 +1217,6 @@ class TestSqrtBF16(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
-        # TODO(wanghao107): add prim test
         self.enable_cinn = False
 
     def init_dtype(self):
@@ -1245,7 +1231,9 @@ class TestSqrtBF16(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_eager=True, check_prim=True
+        )
 
 
 class TestRsqrt(TestActivation):
@@ -1284,6 +1272,9 @@ class TestRsqrt_ZeroDim(TestRsqrt):
 class TestAbs(TestActivation):
     def setUp(self):
         self.op_type = "abs"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.abs
+        self.enable_cinn = False
         self.init_dtype()
         self.init_shape()
 
@@ -1305,7 +1296,7 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestAbs_ZeroDim(TestAbs):
@@ -1711,8 +1702,11 @@ class TestRound_ZeroDim(TestRound):
 class TestRelu(TestActivation):
     def setUp(self):
         self.op_type = "relu"
+        self.python_api = paddle.nn.functional.relu
+        self.prim_op_type = "comp"
         self.init_dtype()
         self.init_shape()
+        self.skip_cinn()
 
         np.random.seed(1024)
         if self.dtype == np.uint16:
@@ -1733,12 +1727,21 @@ class TestRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
 
 class TestRelu_ZeroDim(TestRelu):
     def init_shape(self):
         self.shape = []
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
 
 class TestReluAPI(unittest.TestCase):
@@ -2244,27 +2247,6 @@ class TestHardSwish_ZeroDim(TestHardSwish):
         self.shape = []
 
 
-class TestHardSwishFP16(TestHardSwish):
-    def setUp(self):
-        super().setUp()
-        self.enable_cinn = False
-
-    def if_only_check_prim(self):
-        return True
-
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-class TestHardSwish_ZeroDim_FP16(TestHardSwishFP16):
-    def setUp(self):
-        super().setUp()
-        self.enable_cinn = False
-
-    def init_shape(self):
-        self.shape = []
-
-
 class TestHardswishAPI(unittest.TestCase):
     # test paddle.nn.Hardswish, paddle.nn.functional.hardswish
     def setUp(self):
@@ -2611,9 +2593,14 @@ class TestLog(TestActivation):
     def setUp(self):
         self.op_type = "log"
         self.check_eager = True
+        self.prim_op_type = "prim"
         self.python_api = paddle.log
         self.init_dtype()
         self.init_shape()
+
+        if len(self.shape) == 0:
+            # for 0-D tensor, skip cinn testing
+            self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -2625,7 +2612,7 @@ class TestLog(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
 
     def test_error(self):
         in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
@@ -3801,7 +3788,7 @@ def create_test_act_fp16_class(
     globals()[cls_name] = TestActFp16
 
 
-create_test_act_fp16_class(TestActivation)
+create_test_act_fp16_class(TestActivation, check_prim=True)
 create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid, check_prim=True)
 create_test_act_fp16_class(TestSilu, check_prim=True)
@@ -3811,7 +3798,7 @@ create_test_act_fp16_class(TestTanhshrink)
 create_test_act_fp16_class(TestHardShrink)
 create_test_act_fp16_class(TestSoftshrink)
 create_test_act_fp16_class(TestSqrt)
-create_test_act_fp16_class(TestAbs)
+create_test_act_fp16_class(TestAbs, check_prim=True)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(TestFloor, check_prim=True, grad_check=False)
 create_test_act_fp16_class(TestCos, grad_atol=0.85)
@@ -3826,7 +3813,7 @@ create_test_act_fp16_class(TestAcosh, grad_atol=0.85)
 create_test_act_fp16_class(TestAsinh, grad_atol=0.85)
 create_test_act_fp16_class(TestAtanh, grad_atol=0.85)
 create_test_act_fp16_class(TestRound, grad_check=False)
-create_test_act_fp16_class(TestRelu)
+create_test_act_fp16_class(TestRelu, check_prim=True)
 create_test_act_fp16_class(TestGelu)
 create_test_act_fp16_class(TestBRelu)
 create_test_act_fp16_class(TestRelu6)
@@ -3834,7 +3821,7 @@ create_test_act_fp16_class(TestSoftRelu, grad_atol=0.85)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestCELU)
 create_test_act_fp16_class(TestReciprocal)
-create_test_act_fp16_class(TestLog)
+create_test_act_fp16_class(TestLog, check_prim=True)
 if core.is_compiled_with_rocm():
     create_test_act_fp16_class(TestLog2, atol=5e-2, grad_atol=0.85)
 else:
@@ -3850,7 +3837,7 @@ create_test_act_fp16_class(TestSoftsign)
 create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish, grad_atol=0.85)
-create_test_act_fp16_class(TestHardSwish)
+create_test_act_fp16_class(TestHardSwish, check_prim=True)
 create_test_act_fp16_class(TestMish, grad_atol=0.9)
 
 

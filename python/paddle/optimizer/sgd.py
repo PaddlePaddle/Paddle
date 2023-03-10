@@ -14,13 +14,11 @@
 
 import warnings
 
-import paddle
 from paddle import _C_ops
 
-from ..fluid import core, framework, unique_name
+from ..fluid import framework
 from ..fluid.dygraph import no_grad
 from ..fluid.framework import in_dygraph_mode
-from ..fluid.layer_helper import LayerHelper
 from .optimizer import Optimizer
 
 __all__ = []
@@ -94,34 +92,6 @@ class SGD(Optimizer):
         self._multi_precision = multi_precision
         self._master_weights = {}
 
-    def _create_master_weight(self, param):
-        if param.name in self._master_weights:
-            var = self._master_weights[param.name]
-        else:
-            assert isinstance(self.helper, LayerHelper)
-
-            var_name = param.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
-            var = paddle.static.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True,
-            )
-            block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32,
-                },
-            )
-            self._master_weights[param.name] = var
-        return var
-
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
         if isinstance(parameters, dict):
@@ -129,15 +99,15 @@ class SGD(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 continue
             if (
-                p.dtype == core.VarDesc.VarType.FP16
+                self._is_dtype_fp16_or_bf16(p.dtype)
                 and not self._multi_precision
             ):
                 warnings.warn(
-                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
 
@@ -146,9 +116,8 @@ class SGD(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        find_master = (
-            self._multi_precision
-            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
         )
         master_weight = (
             self._master_weights[param_and_grad[0].name]
