@@ -478,6 +478,26 @@ class API_TestSplit6(unittest.TestCase):
             np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
 
 
+class API_TestSplit7(unittest.TestCase):
+    def test_out(self):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                input_1 = np.random.random([5, 4]).astype("int32")
+                # input is a variable which shape is [5, 4]
+                input = paddle.to_tensor(input_1)
+                n = paddle.full([1], 5, dtype='int32')
+                out = paddle.split(input, n)
+                exe = paddle.static.Executor(place=place)
+                re = exe.run(fetch_list=[out])
+                re = re[0]
+                ex_out = np.split(input_1, [5])
+                ex_out = ex_out[0]
+                np.testing.assert_allclose(ex_out, re, rtol=1e-05)
+
+
 class API_TestDygraphFluidSplit(unittest.TestCase):
     def test_out1(self):
         with fluid.dygraph.guard():
