@@ -1274,7 +1274,11 @@ class TestRsqrt(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.0005, check_eager=True, check_prim=True
+            ['X'],
+            'Out',
+            max_relative_error=0.0005,
+            check_eager=True,
+            check_prim=True,
         )
 
 
