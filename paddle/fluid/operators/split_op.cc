@@ -212,7 +212,7 @@ class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
  public:
   void Apply() override {
-    std::vector<paddle::optional<paddle::Tensor>> tensor_sections =
+    paddle::optional<std::vector<paddle::Tensor>> tensor_sections =
         this->GetOptionalMultiForwardInput("SectionsTensorList");
     paddle::optional<paddle::Tensor> tensor_axis =
         this->GetOptionalSingleForwardInput("AxisTensor");
@@ -225,18 +225,10 @@ class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     std::string dx_name = this->GetOutputName(input_grad);
     std::vector<paddle::Tensor> out_grad = this->GetMultiOutputGrad("Out");
 
-    for (int i = 0; i < tensor_sections.size(); ++i) {
-      if (tensor_sections[i].is_initialized()) {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "We don't support dynamic sections from tensor for split composite "
-            "grad for now. "));
-      }
-    }
-
-    if (tensor_axis.is_initialized()) {
+    if (tensor_axis.is_initialized() || tensor_sections.is_initialized()) {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "We don't support dynamic index from tensor for split composite "
-          "grad for now. "));
+          "We don't support dynamic index or sections from tensor for split "
+          "composite grad for now. "));
     } else {
       if (sections.size() > 0) {
         VLOG(6) << "Runing split_grad composite func";

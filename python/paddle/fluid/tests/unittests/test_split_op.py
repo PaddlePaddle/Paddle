@@ -28,6 +28,7 @@ class TestSplitOp(OpTest):
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.dtype = self.get_dtype()
         axis = 1
         if self.dtype == np.uint16:
@@ -70,6 +71,7 @@ class TestSplitOp_2(OpTest):
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}
@@ -108,8 +110,6 @@ class TestSplitOp_AxisTensor(OpTest):
         self.python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
-        self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {
@@ -138,7 +138,7 @@ class TestSplitOp_AxisTensor(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
+        self.check_grad(['X'], ['out0', 'out1', 'out2'])
 
 
 # attr(sections) is list containing Tensor
@@ -147,8 +147,6 @@ class TestSplitOp_SectionsTensor(OpTest):
         self.python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
-        self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}
@@ -188,7 +186,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
+        self.check_grad(['X'], ['out0', 'out1', 'out2'])
 
 
 class TestSplitOp_unk_section(OpTest):
@@ -197,6 +195,7 @@ class TestSplitOp_unk_section(OpTest):
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}
