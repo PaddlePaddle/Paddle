@@ -210,10 +210,10 @@ PD_REGISTER_KERNEL(dropout,
                    float,
                    double,
                    phi::dtype::bfloat16) {
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::UINT8);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
 
 PD_REGISTER_KERNEL(
     dropout_nd, CPU, ALL_LAYOUT, phi::DropoutNdKernel, float, double) {
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::UINT8);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
