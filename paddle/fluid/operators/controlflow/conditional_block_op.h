@@ -90,6 +90,13 @@ class ConditionalOp : public framework::OperatorBase {
       platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
       res = cpu_tensor.data<bool>()[0];
 #endif
+    } else if (platform::is_xpu_place(ips[0]->place())) {
+#ifdef PADDLE_WITH_XPU
+      phi::DenseTensor cpu_tensor;
+      framework::TensorCopy(*ips[0], platform::CPUPlace(), &cpu_tensor);
+      platform::DeviceContextPool::Instance().Get(ips[0]->place())->Wait();
+      res = cpu_tensor.data<bool>()[0];
+#endif
     } else if (platform::is_custom_place(ips[0]->place())) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       phi::DenseTensor cpu_tensor;
