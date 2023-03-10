@@ -50,8 +50,10 @@ class HybridParallelClipGrad:
     @no_grad()
     def _dygraph_clip(self, params_grads):
         sum_square_dist_fp16 = []
+        sum_square_dist_bf16 = []
         sum_square_dist_fp32 = []
         sum_square_not_dist_fp16 = []
+        sum_square_not_dist_bf16 = []
         sum_square_not_dist_fp32 = []
 
         for p, g in params_grads:
@@ -73,8 +75,10 @@ class HybridParallelClipGrad:
 
             if not_shared_enable:
                 if p.is_distributed:
-                    if g.dtype in (paddle.float16, paddle.bfloat16):
+                    if g.dtype == paddle.float16:
                         sum_square_dist_fp16.append(sum_square)
+                    elif g.dtype == paddle.bfloat16:
+                        sum_square_dist_bf16.append(sum_square)
                     elif g.dtype == paddle.float32:
                         sum_square_dist_fp32.append(sum_square)
                     else:
@@ -82,8 +86,10 @@ class HybridParallelClipGrad:
                             "Only fp32/fp16/bf16 are supported as dtype of gradients for HybridParallelClipGrad"
                         )
                 else:
-                    if g.dtype in (paddle.float16, paddle.bfloat16):
+                    if g.dtype == paddle.float16:
                         sum_square_not_dist_fp16.append(sum_square)
+                    if g.dtype == paddle.bfloat16:
+                        sum_square_not_dist_bf16.append(sum_square)
                     elif g.dtype == paddle.float32:
                         sum_square_not_dist_fp32.append(sum_square)
                     else:
@@ -115,6 +121,30 @@ class HybridParallelClipGrad:
                 global_norm_not_dist_fp16, dtype=paddle.float32
             )
 
+        # global norm of distributed BF16 params_and_grads
+        if len(sum_square_dist_bf16) == 0:
+            global_norm_dist_bf16 = paddle.to_tensor(
+                [0.0], dtype=paddle.float32
+            )
+        else:
+            global_norm_dist_bf16 = paddle.concat(sum_square_dist_bf16)
+            global_norm_dist_bf16 = paddle.sum(global_norm_dist_bf16)
+            global_norm_dist_bf16 = paddle.cast(
+                global_norm_dist_bf16, dtype=paddle.float32
+            )
+
+        # global norm of non-distributed FP16 params_and_grads
+        if len(sum_square_not_dist_bf16) == 0:
+            global_norm_not_dist_bf16 = paddle.to_tensor(
+                [0.0], dtype=paddle.float32
+            )
+        else:
+            global_norm_not_dist_bf16 = paddle.concat(sum_square_not_dist_bf16)
+            global_norm_not_dist_bf16 = paddle.sum(global_norm_not_dist_bf16)
+            global_norm_not_dist_bf16 = paddle.cast(
+                global_norm_not_dist_bf16, dtype=paddle.float32
+            )
+
         # global norm of distributed FP32 params_and_grads
         global_norm_dist_fp32 = (
             paddle.concat(sum_square_dist_fp32)
@@ -131,9 +161,15 @@ class HybridParallelClipGrad:
         )
         global_norm_not_dist_fp32 = paddle.sum(global_norm_not_dist_fp32)
 
-        global_norm_var_dist = global_norm_dist_fp16 + global_norm_dist_fp32
+        global_norm_var_dist = (
+            global_norm_dist_fp16
+            + global_norm_dist_bf16
+            + global_norm_dist_fp32
+        )
         global_norm_var_not_dist = (
-            global_norm_not_dist_fp16 + global_norm_not_dist_fp32
+            global_norm_not_dist_fp16
+            + global_norm_not_dist_bf16
+            + global_norm_not_dist_fp32
         )
 
         # add all reduce to get global norm of distributed params_and_grads
@@ -168,7 +204,8 @@ class HybridParallelClipGrad:
         )
         clip_var = paddle.divide(
             x=max_global_norm,
-            y=paddle.maximum(x=global_norm_var_fp32, y=max_global_norm),
+            y=paddle.maximum(x=global_norm_var_fp32, y=max_global_norm)
+            + paddle.to_tensor([1.0e-6], dtype=paddle.float32),
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
         clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
@@ -234,7 +271,7 @@ class HybridParallelOptimizer:
                     [
                         p
                         for p in self._inner_opt._parameter_list
-                        if p.dtype == paddle.bfloat16
+                        if hasattr(p, "main_grad")
                     ]
                 )
                 > 0
