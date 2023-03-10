@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <vector>
 
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -35,8 +37,9 @@ struct BCELossGradFunctor {
   }
 
   HOSTDEVICE inline T operator()(const T x, const T label, const T dout) const {
-    T term1 = max((one - x) * x, eps);
-    return (dout * (x - label) / term1);
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    MPType term1 = max((static_cast<MPType>(one) - static_cast<MPType>(x)) * static_cast<MPType>(x), static_cast<MPType>(eps));
+    return static_cast<T>(static_cast<MPType>(dout) * (static_cast<MPType>(x) - static_cast<MPType>(label)) / term1);
   }
 };
 
@@ -55,5 +58,9 @@ void BCELossGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    bce_loss_grad, GPU, ALL_LAYOUT, phi::BCELossGradKernel, float, double) {}
+PD_REGISTER_KERNEL(bce_loss_grad,
+                   GPU, ALL_LAYOUT,
+                   phi::BCELossGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

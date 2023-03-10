@@ -19,7 +19,7 @@ from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
-
+import paddle.fluid.core as core
 
 def test_static_layer(
     place, input_np, label_np, reduction='mean', weight_np=None
@@ -278,6 +278,30 @@ class TestBceLossOpCase2(OpTest):
     def init_test_cast(self):
         self.shape = [2, 3, 20]
 
+
+class TestBceLossOpFloat16(OpTest):
+    def setUp(self):
+        self.init_test_case()
+        self.op_type = "bce_loss"
+        self.python_api = bce_wrapper
+        input_np = np.random.uniform(0.1, 0.8, self.shape).astype("float16")
+        label_np = np.random.randint(0, 2, self.shape).astype("float16")
+        output_np = bce_loss(input_np, label_np)
+
+        self.inputs = {'X': input_np, 'Label': label_np}
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+    def init_test_case(self):
+        self.shape = [10, 10]
 
 if __name__ == "__main__":
     paddle.enable_static()
