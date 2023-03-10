@@ -109,6 +109,21 @@ class TestSplitsFloat32(TestSplitsAPI):
         )
 
 
+class TestSplitsTensor(TestSplitsAPI):
+    """
+    Test num_or_sections which is a tensor and data type is float32.
+    """
+    def set_input(self):
+        self.shape = [2, 3, 4]
+        self.num_or_sections = paddle.to_tensor(2)
+        self.x_np = np.random.uniform(-1, 1, self.shape).astype('float32')
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+
 class TestSplitsInt32(TestSplitsAPI):
     """
     Test data type int32.
