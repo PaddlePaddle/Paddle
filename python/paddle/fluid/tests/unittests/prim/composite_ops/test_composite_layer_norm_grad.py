@@ -185,7 +185,7 @@ def dygraph_fused_backward(x, norm_shape, w, b, y_g):
 
 class TestCompositelayer_norm(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float32", "float16"]
+        self.dtypes = ["float16", "float32"]
         self.n_shape = [[4], [64, 128], [64]]
         self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
         self.shape2s = [[4], [64 * 128], [64]]
@@ -413,7 +413,6 @@ class TestCompositelayer_norm(unittest.TestCase):
                 self.compare_comp_forward()
 
 
-'''
 class TestCompositelayer_normPrimBackward(unittest.TestCase):
     def setUp(self):
         core._set_prim_backward_enabled(True)
@@ -713,7 +712,7 @@ class TestCompositeNumpylayer_norm(unittest.TestCase):
                     self.shape3s[t],
                 )
                 self.compare_backward()
-'''
+
 
 if __name__ == '__main__':
     unittest.main()

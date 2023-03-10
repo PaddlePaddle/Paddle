@@ -903,8 +903,8 @@ void layer_norm_grad(const Tensor& x,
       scale_cast =
           full<T>(std::vector<int64_t>({1, shape_2}), 1.0, x_cast.dtype());
     }
-    auto dx_end = (scale_cast * sqrt_var_1 * out_grad_cast);
-    auto d_mean_0 = -(scale_cast * sqrt_var_1 * out_grad_cast)
+    auto dx_end = (sqrt_var_1 * out_grad_cast * scale_cast);
+    auto d_mean_0 = -(sqrt_var_1 * out_grad_cast * scale_cast)
                          .sum(std::vector<int64_t>({1}), x_cast.dtype(), true);
     auto d_mean = 1.0 / (shape_2 * d_mean_0 + epsilon);
     auto d_std_1 = (-(div_var)*x_sub_mean * out_grad_cast * scale_cast)
