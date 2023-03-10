@@ -176,6 +176,9 @@ RunCustomOpNode::operator()(
       egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
   auto grad_outputs_names = paddle::framework::OpMetaInfoHelper::GetOutputs(
       egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
+  const auto& grad_inplace_map =
+      paddle::framework::OpMetaInfoHelper::GetInplaceMap(
+          egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
   auto map = egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
   auto kernel_map = egr::Controller::Instance().GetOpMetaInfoMap();
 
@@ -239,8 +242,10 @@ RunCustomOpNode::operator()(
   }
   VLOG(7) << "Run Kernel of Grad Custom Op: " << op_type_ << "_grad";
 
+  ctx.MapPlainOutputs(grad_inputs_name, grad_outputs_names, grad_inplace_map);
   (*paddle::framework::OpMetaInfoHelper::GetKernelFn(
       kernel_map.at(op_type_)[1]))(&ctx);
+  ctx.AssignInplaceOutputs();
 
   VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
   std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
@@ -267,6 +272,24 @@ RunCustomOpNode::operator()(
     require_any_grad =
         require_any_grad || egr::EagerUtils::ComputeRequireGrad(
                                 trace_backward, &(ins_auto_grad_metas[i]));
+  }
+
+  // handle inplace case
+  for (size_t i = 0; i < ctx.InputRange().size(); i++) {
+    if (grad_inplace_map.find(grad_inputs_name[i]) != grad_inplace_map.end()) {
+      size_t input_size =
+          ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
+      size_t start_idx = ctx.InputRangeAt(i).first;
+      for (size_t j = 0; j < input_size; j++) {
+        egr::EagerUtils::CheckInplace(ctx.InputAt(start_idx + j),
+                                      ins_auto_grad_metas[i][j],
+                                      require_any_grad);
+        // Bump Inplace Version
+        ctx.MutableInputAt(start_idx + j)->bump_inplace_version();
+        VLOG(3) << "Tensor(" << ctx.InputAt(start_idx + j).name()
+                << ") uses Inplace Strategy.";
+      }
+    }
   }
 
   auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();

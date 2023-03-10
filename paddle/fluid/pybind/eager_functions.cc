@@ -532,7 +532,18 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                   meta_info_map.at(op_type)[0]));
     ctx.EmplaceBackAttrs(res_attrs);
     const auto& vec_map = meta_info_map.at(op_type);
+
+    // handle inplace case
+    const auto& inputs = paddle::framework::OpMetaInfoHelper::GetInputs(
+        meta_info_map.at(op_type)[0]);
+    const auto& outputs = paddle::framework::OpMetaInfoHelper::GetOutputs(
+        meta_info_map.at(op_type)[0]);
+    const auto& inplace_map =
+        paddle::framework::OpMetaInfoHelper::GetInplaceMap(
+            meta_info_map.at(op_type)[0]);
+    ctx.MapPlainOutputs(inputs, outputs, inplace_map);
     (*paddle::framework::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
+    ctx.AssignInplaceOutputs();
 
     VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
     std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
@@ -558,6 +569,25 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
           require_any_grad || egr::EagerUtils::ComputeRequireGrad(
                                   trace_backward, &(ins_auto_grad_metas[i]));
     }
+
+    // handle inplace case
+    for (size_t i = 0; i < ctx.InputRange().size(); i++) {
+      if (inplace_map.find(inputs[i]) != inplace_map.end()) {
+        size_t input_size =
+            ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
+        size_t start_idx = ctx.InputRangeAt(i).first;
+        for (size_t j = 0; j < input_size; j++) {
+          egr::EagerUtils::CheckInplace(ctx.InputAt(start_idx + j),
+                                        ins_auto_grad_metas[i][j],
+                                        require_any_grad);
+          // Bump Inplace Version
+          ctx.MutableInputAt(start_idx + j)->bump_inplace_version();
+          VLOG(3) << "Tensor(" << ctx.InputAt(start_idx + j).name()
+                  << ") uses Inplace Strategy.";
+        }
+      }
+    }
+
     if (require_any_grad && (vec_map.size() > 1)) {
       VLOG(6) << " Construct Grad for Custom Op: " << op_type;
       ConstructFwdAndBwdMap(vec_map, op_type);

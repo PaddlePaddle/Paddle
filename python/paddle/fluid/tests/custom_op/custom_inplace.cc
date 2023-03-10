@@ -71,30 +71,3 @@ PD_BUILD_GRAD_OP(custom_add)
     .Outputs({paddle::Grad("X"), paddle::Grad("Y")})
     .Inplace({{paddle::Grad("Out"), paddle::Grad("X")}})
     .SetKernelFn(PD_KERNEL(AddBackward));
-
-// 采取什么注册形式？
-// PD_BUILD_OP(custom_add)
-//     .Inputs({"X", "Y"})
-//     .Outputs({"Out"})
-//     .SetKernelFn(PD_KERNEL(AddForward))
-//     .Inplace({"X": "Out"});
-
-// 一种两难的境地：
-// 1. 将输出全部以指针的方式放到函数里，面对多个输出的情况，无法处理
-// 2. 将输出全部放到返回值里，没办法处理 inplace，输出设置为 vector<Tensor *>
-// 或者 vector<Tensor> 都不可以，因为总有 Tensor 需要指针或者需要 Tensor 做拷贝
-// custom_add(Tensor* x, const Tensor& y)
-
-// PD_BUILD_OP(custom_add)
-//     .Inputs({"X", "Y"})
-//     .Outputs({Inplace("X")})
-//     .SetKernelFn(PD_KERNEL(AddForward))
-
-// (out_grad -> x_grad)
-// vector<Tensor> custom_add(const Tensor& x, const Tensor& y, Tensor* out_grad)
-// out_grad: inplace, y_grad: vector<Tensor>
-
-// PD_BUILD_GRAD_OP(custom_add)
-//     .Inputs({"X", "Y", paddle::Grad(Inplace("X"))})
-//     .Outputs({Inplace(paddle::Grad(Inplace("X"))), paddle::Grad("Y")})
-//     .SetKernelFn(PD_KERNEL(AddBackward))
