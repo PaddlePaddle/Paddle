@@ -924,6 +924,7 @@ void maximum_grad(const Tensor& x,
       set_output<T>(dx_res, x_grad);
     }
   }
+
   if (y_grad) {
     auto y_tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
     auto dy_res = out_grad * y_tmp;
