@@ -230,7 +230,8 @@ class GatherGemmScatterAutoTuner
     // Time cost test estabulished in default stream.
     for (int i = 0; i < this->kernels_.size(); ++i) {
       float time = 0;
-      // Some kernels will require more shared memory than available, skip
+      // Some kernels may require more shared memory than available, skip these
+      // kernels.
       try {
         time = this->RunAndMeasureKernel(ctx, i, alpha, beta, args...);
         if (time < min_time) {
@@ -289,7 +290,6 @@ MakeGatherGemmScatterTuner(ReturnType (*func)(T, T, Args...)) {
 
 DEFINE_AUTOTUNER(Transpose)
 DEFINE_AUTOTUNER_FN(Matmul)
-DEFINE_AUTOTUNER_FN(GatherGemmScatter)
 
 #undef DEFINE_AUTOTUNER_COMMON_OBJECT
 #undef DEFINE_AUTOTUNER_FN

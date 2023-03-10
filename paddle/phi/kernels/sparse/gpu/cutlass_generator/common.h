@@ -38,7 +38,6 @@ namespace sparse {
                          const int k,               \
                          const int32_t* a_indices,  \
                          const int32_t* c_d_indices);
-p
 #define GATHER_GEMM_SCATTER_CHECK(status)                      \
   {                                                            \
     cutlass::Status error = status;                            \
