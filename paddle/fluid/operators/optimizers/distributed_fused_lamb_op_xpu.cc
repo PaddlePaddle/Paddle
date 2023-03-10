@@ -61,7 +61,7 @@ static void MultiTensorUpdateLambParamAndBetaPows(
     float beta1,
     float beta2,
     bool kHasMasterParam) {
-  using xpu_fp16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+//   using xpu_fp16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
   //   constexpr bool kHasMasterParam =
   //         !(std::is_same<ParamT, MasterT>::value);
   bool has_beta_pow = (beta1pow != nullptr);
@@ -366,11 +366,13 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
       // Inplace addto
       if (has_fp32_param) {
         if (rounded_step == 1) {
-          memory::Copy(place,
-                       fp32_acc_grad,
-                       place,
-                       fp32_grad,
-                       fp32_numel * sizeof(float));
+        //   memory::Copy(place,
+        //                fp32_acc_grad,
+        //                place,
+        //                fp32_grad,
+        //                fp32_numel * sizeof(float));
+            int r = xpu::copy(xpu_ctx, fp32_grad, fp32_acc_grad, fp32_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
         } else {
           //   LaunchElementwiseAddWithCastKernel(dev_ctx,
           //                                      fp32_grad,
@@ -379,13 +381,8 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
           //                                      fp32_numel,
           //                                      stream);
           // Todo:
-          int r = xpu::broadcast_add(xpu_ctx,
-                                     fp32_grad,
-                                     fp32_acc_grad,
-                                     fp32_acc_grad,
-                                     {fp32_numel},
-                                     {fp32_numel});
-          PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+          int r = xpu::elementwiseadd_with_cast(xpu_ctx, fp32_grad, fp32_acc_grad, fp32_acc_grad, fp32_numel);
+          PADDLE_ENFORCE_XDNN_SUCCESS(r, "elementwiseadd_with_cast");
         }
       }
 
@@ -399,53 +396,42 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
             //                                    fp16_numel,
             //                                    stream);
             // Todo:
-            int r = xpu::broadcast_add<xpu_fp16>(xpu_ctx,
-                                                 fp16_grad,
-                                                 fp16_acc_grad,
-                                                 fp16_acc_grad,
-                                                 {fp16_numel},
-                                                 {fp16_numel});
-            PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+            int r = xpu::elementwiseadd_with_cast<xpu_fp16, xpu_fp16, xpu_fp16>(xpu_ctx, fp16_grad, fp16_acc_grad, fp16_acc_grad, fp16_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "elementwiseadd_with_cast");
           } else {
-            memory::Copy(place,
-                         fp16_acc_grad,
-                         place,
-                         fp16_grad,
-                         fp16_numel * sizeof(float16));
-          }
-        } else {  // acc_steps >= 3
-          float *fp32_acc_grad_tmp = RAII_GUARD.alloc<float>(fp16_numel);
-          if (rounded_step == 0) {
-            // LaunchElementwiseAddWithCastKernel(dev_ctx,
-            //                                    fp16_grad,
-            //                                    master_acc_grad,
-            //                                    fp16_acc_grad,
-            //                                    fp16_numel,
-            //                                    stream);
-            // Todo:
-            int r = xpu::cast<xpu_fp16, float>(
-                xpu_ctx, fp16_grad, fp32_acc_grad_tmp, fp16_numel);
-            PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-            r = xpu::broadcast_add<float>(xpu_ctx,
-                                          fp32_acc_grad_tmp,
-                                          master_acc_grad,
-                                          master_acc_grad,
-                                          {fp16_numel},
-                                          {fp16_numel});
-            PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
-            r = xpu::cast<float, xpu_fp16>(
-                xpu_ctx, master_acc_grad, fp16_acc_grad, fp16_numel);
-            PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-          } else if (rounded_step == 1) {
             // memory::Copy(place,
             //              fp16_acc_grad,
             //              place,
             //              fp16_grad,
             //              fp16_numel * sizeof(float16));
-            int r = xpu::cast<xpu_fp16, float>(
-                xpu_ctx, fp16_grad, master_acc_grad, fp16_numel);
-            PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+            int r = xpu::copy(xpu_ctx, fp16_grad, fp16_acc_grad, fp16_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+          }
+        } else {  // acc_steps >= 3
+        //   float *fp32_acc_grad_tmp = RAII_GUARD.alloc<float>(fp16_numel);
+          if (rounded_step == 0) {
+            // fp32 转化为 fp16 更新
+            // fp16_acc_grad = master_acc_grad + fp16_grad （fp16 = float + fp16)
+            // LaunchElementwiseAddWithCastKernel(dev_ctx,
+            //                                    fp16_grad,
+            //                                    master_acc_grad,
+            //                                    fp16_acc_grad,
+            //                                    fp16_numel,
+            //                                    stream);
+            // Todo:
+            int r = xpu::elementwiseadd_with_cast<float, xpu_fp16, xpu_fp16>(xpu_ctx, master_acc_grad, fp16_grad, fp16_acc_grad, fp16_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "elementwiseadd_with_cast");
+          } else if (rounded_step == 1) {
+            // copy: fp16_grad ===> fp16_acc_grad (fp16 ==> fp16)
+            // memory::Copy(place,
+            //              fp16_acc_grad,
+            //              place,
+            //              fp16_grad,
+            //              fp16_numel * sizeof(float16));
+            int r = xpu::copy(xpu_ctx, fp16_grad, fp16_acc_grad, fp16_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
           } else if (rounded_step == 2) {
+            // master_acc_grad = fp16_acc_grad + fp16_grad （float = fp16 + fp16)
             // LaunchElementwiseAddWithCastKernel(dev_ctx,
             //                                    fp16_grad,
             //                                    fp16_acc_grad,
@@ -453,17 +439,10 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
             //                                    fp16_numel,
             //                                    stream);
             // Todo:
-            int r = xpu::cast<xpu_fp16, float>(
-                xpu_ctx, fp16_grad, fp32_acc_grad_tmp, fp16_numel);
-            PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-            r = xpu::broadcast_add<float>(xpu_ctx,
-                                          fp32_acc_grad_tmp,
-                                          master_acc_grad,
-                                          master_acc_grad,
-                                          {fp16_numel},
-                                          {fp16_numel});
-            PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+            int r = xpu::elementwiseadd_with_cast<xpu_fp16, xpu_fp16, float>(xpu_ctx, fp16_acc_grad, fp16_grad, master_acc_grad, fp16_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "elementwiseadd_with_cast");
           } else {
+            // master_acc_grad = master_acc_grad + fp16_grad (float = float + fp16)
             // LaunchElementwiseAddWithCastKernel(dev_ctx,
             //                                    fp16_grad,
             //                                    master_acc_grad,
@@ -471,16 +450,8 @@ class DistributedFusedLambOpKernel<phi::XPUContext, T>
             //                                    fp16_numel,
             //                                    stream);
             // Todo:
-            int r = xpu::cast<xpu_fp16, float>(
-                xpu_ctx, fp16_grad, fp32_acc_grad_tmp, fp16_numel);
-            PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-            r = xpu::broadcast_add<float>(xpu_ctx,
-                                          fp32_acc_grad_tmp,
-                                          master_acc_grad,
-                                          master_acc_grad,
-                                          {fp16_numel},
-                                          {fp16_numel});
-            PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+            int r = xpu::elementwiseadd_with_cast<float, xpu_fp16, float>(xpu_ctx, master_acc_grad, fp16_grad, master_acc_grad, fp16_numel);
+            PADDLE_ENFORCE_XDNN_SUCCESS(r, "elementwiseadd_with_cast");
           }
         }
       }
