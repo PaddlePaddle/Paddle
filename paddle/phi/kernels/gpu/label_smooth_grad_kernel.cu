@@ -15,12 +15,13 @@
 #include "paddle/phi/kernels/label_smooth_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-
 namespace phi {
 template <typename T>
 struct LabelSmoothGradFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   T epsilon;
 
   __forceinline__ LabelSmoothGradFunctor(float epsilon_data) {
@@ -28,7 +29,7 @@ struct LabelSmoothGradFunctor {
   }
 
   __device__ __forceinline__ T operator()(const T x) const {
-    return static_cast<T>(1 - epsilon) * x;
+    return static_cast<T>(1 - epsilon) * static_cast<MPType>(x);
   }
 };
 
@@ -52,4 +53,5 @@ PD_REGISTER_KERNEL(label_smooth_grad,
                    ALL_LAYOUT,
                    phi::LabelSmoothGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}
