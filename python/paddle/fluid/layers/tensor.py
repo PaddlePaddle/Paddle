@@ -38,7 +38,6 @@ from paddle.utils import deprecated
 
 from .utils import check_shape
 from paddle import _C_ops, _legacy_C_ops
-from paddle.tensor import fill_constant
 
 __all__ = [
     'fill_constant_batch_size_like',
