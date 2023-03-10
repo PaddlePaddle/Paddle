@@ -128,6 +128,7 @@ class TestLinearInterpOp(OpTest):
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
+        self.dtype = np.float64
         self.init_test_case()
         self.op_type = "linear_interp_v2"
         input_np = np.random.random(self.input_shape).astype(self.dtype)
@@ -197,7 +198,6 @@ class TestLinearInterpOp(OpTest):
         ).astype("int32")
         self.align_corners = False
         self.align_mode = 1
-        self.dtype = np.float64
 
 
 class TestLinearInterpOpDataLayout(TestLinearInterpOp):

@@ -209,6 +209,7 @@ class TestNearestInterpOp(OpTest):
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
+        self.dtype = np.float64
         self.init_test_case()
         self.op_type = "nearest_interp_v2"
         input_np = np.random.random(self.input_shape).astype(self.dtype)
@@ -328,7 +329,6 @@ class TestNearestInterpOp(OpTest):
         self.scale = []
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
-        self.dtype = np.float64
 
 
 class TestNearestNeighborInterpCase1(TestNearestInterpOp):
@@ -449,6 +449,7 @@ class TestNearestNeighborInterpCase1FP16(TestNearestInterpOpFP16):
         self.out_w = 1
         self.scale = []
         self.align_corners = True
+        self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase2FP16(TestNearestInterpOpFP16):
@@ -459,6 +460,7 @@ class TestNearestNeighborInterpCase2FP16(TestNearestInterpOpFP16):
         self.out_w = 12
         self.scale = []
         self.align_corners = True
+        self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase3FP16(TestNearestInterpOpFP16):
@@ -469,6 +471,7 @@ class TestNearestNeighborInterpCase3FP16(TestNearestInterpOpFP16):
         self.out_w = 32
         self.scale = []
         self.align_corners = True
+        self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase4FP16(TestNearestInterpOpFP16):
@@ -480,6 +483,7 @@ class TestNearestNeighborInterpCase4FP16(TestNearestInterpOpFP16):
         self.scale = []
         self.out_size = np.array([2, 2]).astype("int32")
         self.align_corners = True
+        self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase5FP16(TestNearestInterpOpFP16):
@@ -491,6 +495,7 @@ class TestNearestNeighborInterpCase5FP16(TestNearestInterpOpFP16):
         self.scale = []
         self.out_size = np.array([11, 11]).astype("int32")
         self.align_corners = True
+        self.dtype = np.float16
 
 
 class TestNearestNeighborInterpCase6FP16(TestNearestInterpOpFP16):
@@ -502,6 +507,7 @@ class TestNearestNeighborInterpCase6FP16(TestNearestInterpOpFP16):
         self.scale = []
         self.out_size = np.array([65, 129]).astype("int32")
         self.align_corners = True
+        self.dtype = np.float16
 
 
 @unittest.skipIf(

@@ -157,6 +157,7 @@ class TestBilinearInterpOp(OpTest):
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
+        self.dtype = np.float64
         self.init_test_case()
         self.op_type = "bilinear_interp_v2"
         input_np = np.random.random(self.input_shape).astype(self.dtype)
@@ -234,7 +235,6 @@ class TestBilinearInterpOp(OpTest):
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
-        self.dtype = np.float64
 
 
 class TestBilinearInterpCase1(TestBilinearInterpOp):
@@ -387,6 +387,7 @@ class TestBilinearInterpCase1FP16(TestBilinearInterpOpFP16):
         self.scale = 0.0
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestBilinearInterpCase2FP16(TestBilinearInterpOpFP16):
@@ -398,6 +399,7 @@ class TestBilinearInterpCase2FP16(TestBilinearInterpOpFP16):
         self.scale = 0.0
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestBilinearInterpCase3FP16(TestBilinearInterpOpFP16):
@@ -409,6 +411,7 @@ class TestBilinearInterpCase3FP16(TestBilinearInterpOpFP16):
         self.scale = 0.0
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestBilinearInterpCase4FP16(TestBilinearInterpOpFP16):
@@ -421,6 +424,7 @@ class TestBilinearInterpCase4FP16(TestBilinearInterpOpFP16):
         self.out_size = np.array([2, 2]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestBilinearInterpCase5FP16(TestBilinearInterpOpFP16):
@@ -433,6 +437,7 @@ class TestBilinearInterpCase5FP16(TestBilinearInterpOpFP16):
         self.out_size = np.array([11, 11]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestBilinearInterpCase6FP16(TestBilinearInterpOpFP16):
@@ -445,6 +450,7 @@ class TestBilinearInterpCase6FP16(TestBilinearInterpOpFP16):
         self.out_size = np.array([65, 33]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestBilinearInterpCase7FP16(TestBilinearInterpOpFP16):
@@ -456,6 +462,7 @@ class TestBilinearInterpCase7FP16(TestBilinearInterpOpFP16):
         self.scale = [2.0, 0.5]
         self.align_corners = False
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 @unittest.skipIf(

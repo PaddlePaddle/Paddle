@@ -185,6 +185,7 @@ class TestBicubicInterpOp(OpTest):
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCHW'
+        self.dtype = np.float64
         self.init_test_case()
         self.op_type = "bicubic_interp_v2"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
@@ -266,7 +267,6 @@ class TestBicubicInterpOp(OpTest):
         self.scale = []
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
-        self.dtype = np.float64
 
 
 class TestBicubicInterpCase1(TestBicubicInterpOp):
@@ -364,6 +364,7 @@ class TestBicubicInterpCase1FP16(TestBicubicInterpOpFP16):
         self.out_w = 1
         self.scale = []
         self.align_corners = True
+        self.dtype = np.float16
 
 
 # this case will cause accuracy loss （backward:0.008773442)
@@ -385,6 +386,7 @@ class TestBicubicInterpCase3FP16(TestBicubicInterpOpFP16):
         self.out_w = 32
         self.scale = []
         self.align_corners = False
+        self.dtype = np.float16
 
 
 class TestBicubicInterpCase4FP16(TestBicubicInterpOpFP16):
@@ -396,6 +398,7 @@ class TestBicubicInterpCase4FP16(TestBicubicInterpOpFP16):
         self.scale = []
         self.out_size = np.array([2, 2]).astype("int32")
         self.align_corners = True
+        self.dtype = np.float16
 
 
 class TestBicubicInterpCase5FP16(TestBicubicInterpOpFP16):
@@ -407,6 +410,7 @@ class TestBicubicInterpCase5FP16(TestBicubicInterpOpFP16):
         self.scale = []
         self.out_size = np.array([6, 4]).astype("int32")
         self.align_corners = False
+        self.dtype = np.float16
 
 
 class TestBicubicInterpCase6FP16(TestBicubicInterpOpFP16):
@@ -418,6 +422,7 @@ class TestBicubicInterpCase6FP16(TestBicubicInterpOpFP16):
         self.scale = 0
         self.out_size = np.array([64, 32]).astype("int32")
         self.align_corners = False
+        self.dtype = np.float16
 
 
 @unittest.skipIf(

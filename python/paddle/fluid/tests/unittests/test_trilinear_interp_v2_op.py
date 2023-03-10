@@ -202,6 +202,7 @@ class TestTrilinearInterpOp(OpTest):
         self.out_size = None
         self.actual_shape = None
         self.data_layout = 'NCDHW'
+        self.dtype = np.float32
         self.init_test_case()
         self.op_type = "trilinear_interp_v2"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
@@ -301,7 +302,6 @@ class TestTrilinearInterpOp(OpTest):
         self.out_size = np.array([3, 3, 3]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
-        self.dtype = np.float32
 
 
 class TestTrilinearInterpCase1(TestTrilinearInterpOp):
@@ -466,6 +466,7 @@ class TestTrilinearInterpCase1FP16(TestTrilinearInterpOpFP16):
         self.scale = []
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestTrilinearInterpCase2FP16(TestTrilinearInterpOpFP16):
@@ -478,6 +479,7 @@ class TestTrilinearInterpCase2FP16(TestTrilinearInterpOpFP16):
         self.scale = []
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestTrilinearInterpCase3FP16(TestTrilinearInterpOpFP16):
@@ -490,6 +492,7 @@ class TestTrilinearInterpCase3FP16(TestTrilinearInterpOpFP16):
         self.scale = []
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestTrilinearInterpCase4FP16(TestTrilinearInterpOpFP16):
@@ -503,6 +506,7 @@ class TestTrilinearInterpCase4FP16(TestTrilinearInterpOpFP16):
         self.out_size = np.array([2, 2, 2]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestTrilinearInterpCase5FP16(TestTrilinearInterpOpFP16):
@@ -516,6 +520,7 @@ class TestTrilinearInterpCase5FP16(TestTrilinearInterpOpFP16):
         self.out_size = np.array([11, 11, 11]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 class TestTrilinearInterpCase6FP16(TestTrilinearInterpOpFP16):
@@ -529,6 +534,7 @@ class TestTrilinearInterpCase6FP16(TestTrilinearInterpOpFP16):
         self.out_size = np.array([17, 9, 5]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
+        self.dtype = np.float16
 
 
 @unittest.skipIf(
