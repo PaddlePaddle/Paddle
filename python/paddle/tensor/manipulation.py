@@ -4079,7 +4079,7 @@ def tensordot(x, y, axes=2, name=None):
             "The 'axes' with type 'Tensor' in "
             + op_type
             + " is not available in static graph mode, "
-              "please convert its type to int|Tuple|List, or use dynamic graph mode."
+            "please convert its type to int|Tuple|List, or use dynamic graph mode."
         )
 
     axes_x = []
