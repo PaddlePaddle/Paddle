@@ -332,7 +332,7 @@ class TestBicubicInterpCase6(TestBicubicInterpOp):
         self.align_corners = False
 
 
-class TestBicubicInterpOpFP16(OpTest):
+class TestBicubicInterpOpFP16(TestBicubicInterpOp):
     def test_check_output(self):
         self.check_output(check_eager=self.check_eager, atol=1e-3)
 

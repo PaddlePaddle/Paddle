@@ -416,7 +416,7 @@ class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
         self.align_corners = True
 
 
-class TestNearestInterpOpFP16(OpTest):
+class TestNearestInterpOpFP16(TestNearestInterpOp):
     def test_check_output(self):
         self.check_output(check_eager=True, atol=1e-3)
 

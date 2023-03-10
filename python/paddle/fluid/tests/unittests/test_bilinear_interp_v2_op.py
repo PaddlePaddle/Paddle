@@ -353,7 +353,7 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
         self.data_layout = "NHWC"
 
 
-class TestBilinearInterpOpFP16(OpTest):
+class TestBilinearInterpOpFP16(TestBilinearInterpOp):
     def test_check_output(self):
         self.check_output(check_eager=True, atol=1e-3)
 

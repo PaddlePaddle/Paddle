@@ -335,7 +335,7 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             np.testing.assert_allclose(interp.numpy(), expect, rtol=1e-05)
 
 
-class TestLinearInterpOpFP16(OpTest):
+class TestLinearInterpOpFP16(TestLinearInterpOp):
     def test_check_output(self):
         self.check_output(atol=1e-3, check_eager=True)
 

@@ -430,7 +430,7 @@ class TestTrilinearInterpDatalayout(TestTrilinearInterpOp):
         self.data_layout = "NDHWC"
 
 
-class TestNearestInterpOpFP16(OpTest):
+class TestTrilinearInterpOpFP16(TestTrilinearInterpOp):
     def test_check_output(self):
         self.check_output(check_eager=self.check_eager, atol=1e-3)
 
@@ -456,7 +456,7 @@ class TestNearestInterpOpFP16(OpTest):
         self.dtype = np.float16
 
 
-class TestTrilinearInterpCase1FP16(TestNearestInterpOpFP16):
+class TestTrilinearInterpCase1FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 1, 7, 8, 9]
@@ -468,7 +468,7 @@ class TestTrilinearInterpCase1FP16(TestNearestInterpOpFP16):
         self.align_mode = 1
 
 
-class TestTrilinearInterpCase2FP16(TestNearestInterpOpFP16):
+class TestTrilinearInterpCase2FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 9, 6, 8]
@@ -480,7 +480,7 @@ class TestTrilinearInterpCase2FP16(TestNearestInterpOpFP16):
         self.align_mode = 1
 
 
-class TestTrilinearInterpCase3FP16(TestNearestInterpOpFP16):
+class TestTrilinearInterpCase3FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [3, 2, 16, 8, 4]
@@ -492,7 +492,7 @@ class TestTrilinearInterpCase3FP16(TestNearestInterpOpFP16):
         self.align_mode = 1
 
 
-class TestTrilinearInterpCase4FP16(TestNearestInterpOpFP16):
+class TestTrilinearInterpCase4FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [4, 1, 7, 8, 9]
@@ -505,7 +505,7 @@ class TestTrilinearInterpCase4FP16(TestNearestInterpOpFP16):
         self.align_mode = 1
 
 
-class TestTrilinearInterpCase5FP16(TestNearestInterpOpFP16):
+class TestTrilinearInterpCase5FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [3, 3, 9, 6, 8]
@@ -518,7 +518,7 @@ class TestTrilinearInterpCase5FP16(TestNearestInterpOpFP16):
         self.align_mode = 1
 
 
-class TestTrilinearInterpCase6FP16(TestNearestInterpOpFP16):
+class TestTrilinearInterpCase6FP16(TestTrilinearInterpOpFP16):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [1, 1, 16, 8, 4]
