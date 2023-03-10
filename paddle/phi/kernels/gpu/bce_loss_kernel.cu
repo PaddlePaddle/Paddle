@@ -45,7 +45,8 @@ struct BCELossFunctor {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     MPType term1 = max(phi::kps::details::Log(static_cast<MPType>(x)),
                        static_cast<MPType>(neg_100));
-    MPType term2 = max(phi::kps::details::Log(static_cast<MPType>(one) - static_cast<MPType>(x)),
+    MPType term2 = max(phi::kps::details::Log(static_cast<MPType>(one) -
+                                              static_cast<MPType>(x)),
                        static_cast<MPType>(neg_100));
     return static_cast<T>(
         ((static_cast<MPType>(label) - static_cast<MPType>(one)) * term2) -
