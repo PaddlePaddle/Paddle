@@ -596,6 +596,18 @@ class TestVariableSlice(unittest.TestCase):
 
 
 class TestListIndex(unittest.TestCase):
+    # note(chenjianye):
+    # Non-tuple sequence for multidimensional indexing is supported in numpy < 1.24.
+    # For List case, the outermost `[]` will be treated as tuple `()` in version less than 1.24,
+    # which is used to wrap index elements for multiple axes.
+    # And from 1.24, this will be treat as a whole and only works on one axis.
+    #
+    # e.g. x[[[0],[1]]] = x[([0],[1])] = x[[0],[1]] (in version < 1.24)
+    #      x[[[0],[1]]] = x[array([[0],[1]])] (in version >= 1.24)
+    #
+    # Whether the paddle behavior in this case will change is still up for debate.
+    # Here, we just modify the code to remove the impact of numpy version changes.
+
     def setUp(self):
         np.random.seed(2022)
 
@@ -637,7 +649,7 @@ class TestListIndex(unittest.TestCase):
                 exe.run(paddle.static.default_startup_program())
                 fetch_list = [y.name]
 
-                getitem_np = array[index_mod]
+                getitem_np = array[tuple(index_mod)]
                 getitem_pp = exe.run(
                     prog, feed={x.name: array}, fetch_list=fetch_list
                 )
@@ -659,7 +671,7 @@ class TestListIndex(unittest.TestCase):
             pt = paddle.to_tensor(array)
             index_mod = (index % (array.shape[-1])).tolist()
             try:
-                getitem_np = array[index_mod]
+                getitem_np = array[tuple(index_mod)]
 
             except:
                 with self.assertRaises(ValueError):
@@ -844,8 +856,12 @@ class TestListIndex(unittest.TestCase):
         exe.run(paddle.static.default_startup_program())
         fetch_list = [y.name]
         array2 = array.copy()
-
         try:
+            index = (
+                tuple(index)
+                if isinstance(index, list) and isinstance(index[0], list)
+                else index
+            )
             array2[index] = value_np
         except:
             with self.assertRaises(ValueError):
