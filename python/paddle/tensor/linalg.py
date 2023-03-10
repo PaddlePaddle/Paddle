@@ -676,7 +676,7 @@ def dist(x, y, p=2, name=None):
 
     Args:
         x (Tensor): 1-D to 6-D Tensor, its data type is float16, float32 or float64.
-        y (Tensor): 1-D to 6-D Tensor, its data type is flaot16, float32 or float64.
+        y (Tensor): 1-D to 6-D Tensor, its data type is float16, float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
         name (str, optional): The default value is `None`. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
