@@ -22,7 +22,7 @@ from util import SubstituteTemplate
 # https://github.com/NVIDIA/cutlass/tree/master/examples
 
 CommonCutlassConvKernelDeclare = """
-cutlass::Status ${kernel_func_name}(const ConvAllParams& params) {
+cutlass::Status ${kernel_func_name}(const ConvAllParams params) {
   using kernel_base =
   typename cutlass::conv::kernel::DefaultConv2d${conv_kind_name}<
     ${element_a},
@@ -121,7 +121,7 @@ std::vector<std::function<cutlass::Status(const ConvAllParams)>>
 std::map<std::vector<int>, int> map_problem_${func_name};
 std::mutex ${func_name}_mutex;
 
-void ${func_name}(const ConvAllParams& params) {
+void ${func_name}(const ConvAllParams params) {
   int batch = params.batch;
   int ic = params.ic;
   int ih = params.ih;
@@ -160,7 +160,7 @@ void ${func_name}(const ConvAllParams& params) {
 # this function is invoked by phi kernel
 
 CommonWrapperForPhi = """
-void ${op_name}(const ConvAllParams& params) {
+void ${op_name}(const ConvAllParams params) {
     ${dispatch_body}
 }
 """
