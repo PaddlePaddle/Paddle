@@ -25,17 +25,19 @@ namespace phi {
 template <typename T>
 struct LabelSmoothFunctor {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  T epsilon;
-  T label_dim;
+  MPType epsilon;
+  MPType label_dim;
 
   __forceinline__ LabelSmoothFunctor(float epsilon_data, int label_dim_data) {
-    epsilon = static_cast<T>(epsilon_data);
-    label_dim = static_cast<T>(label_dim_data);
+    epsilon = static_cast<MPType>(epsilon_data);
+    label_dim = static_cast<MPType>(label_dim_data);
   }
 
   __device__ __forceinline__ T operator()(const T x) const {
-    return (static_cast<T>(1 - epsilon) * static_cast<MPType>(x) +
-            static_cast<T>(epsilon / label_dim));
+    return static_cast<T>(
+        static_cast<MPType>(static_cast<MPType>(1) - epsilon) *
+            static_cast<MPType>(x) +
+        static_cast<MPType>(epsilon / label_dim));
   }
 };
 
