@@ -3979,19 +3979,19 @@ def gaussian_nll_loss(
         check_variable_and_dtype(
             input,
             'Input',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64'],
             'gaussian_nll_loss',
         )
         check_variable_and_dtype(
             label,
             'Label',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64'],
             'gaussian_nll_loss',
         )
         check_variable_and_dtype(
             var,
             'Var',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64'],
             'gaussian_nll_loss',
         )
         condition = paddle.all(var > 0)
