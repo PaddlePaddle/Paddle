@@ -189,20 +189,13 @@ class ParallelExecutor:
             else framework.default_main_program()
         )
 
-        self._compiled_program = compiler.CompiledProgram(main_program)
+        self._compiled_program = compiler.CompiledProgram(
+            main_program, build_strategy=build_strategy
+        )
         if share_vars_from:
             assert isinstance(
                 share_vars_from, ParallelExecutor
             ), "The share_vars_from should be ParallelExecutor."
-
-        self._compiled_program.with_data_parallel(
-            loss_name=loss_name,
-            build_strategy=build_strategy,
-            exec_strategy=exec_strategy,
-            share_vars_from=share_vars_from._compiled_program
-            if share_vars_from
-            else None,
-        )
 
         self._place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
         self._exe = executor.Executor(self._place)
