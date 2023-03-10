@@ -150,11 +150,13 @@ class TestReduceMeanOp(OpTest):
     def setUp(self):
         self.op_type = 'reduce_mean'
         self.python_api = reduce_mean_wrapper
+        self.prim_op_type = "comp"
         self.dtype = 'float64'
         self.shape = [2, 3, 4, 5]
         self.axis = [0]
         self.keepdim = False
         self.set_attrs()
+        self.if_enable_cinn()
 
         np.random.seed(10)
         x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -173,20 +175,23 @@ class TestReduceMeanOp(OpTest):
     def set_attrs(self):
         pass
 
+    def if_enable_cinn(self):
+        pass
+
     def test_check_output(self):
         if self.dtype != 'float16':
-            self.check_output(check_eager=True)
+            self.check_output(check_eager=True, check_prim=True)
         else:
             place = paddle.CUDAPlace(0)
-            self.check_output_with_place(place=place)
+            self.check_output_with_place(place=place, check_prim=True)
 
     def test_check_grad(self):
         if self.dtype != 'float16':
-            self.check_grad(['X'], ['Out'], check_eager=True)
+            self.check_grad(['X'], ['Out'], check_eager=True, check_prim=True)
         else:
             place = paddle.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X'], ['Out'], numeric_grad_delta=0.5
+                place, ['X'], ['Out'], numeric_grad_delta=0.5, check_prim=True
             )
 
 
@@ -199,11 +204,13 @@ class TestReduceMeanBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'reduce_mean'
         self.python_api = reduce_mean_wrapper
+        self.prim_op_type = "comp"
         self.dtype = np.uint16
         self.shape = [2, 3, 4, 5]
         self.axis = [0]
         self.keepdim = False
         self.set_attrs()
+        self.enable_cinn = False
 
         np.random.seed(10)
         x_np = np.random.uniform(-1, 1, self.shape).astype(np.float32)
@@ -224,12 +231,12 @@ class TestReduceMeanBF16Op(OpTest):
 
     def test_check_output(self):
         place = paddle.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_prim=True)
 
     def test_check_grad(self):
         place = paddle.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], ['Out'], numeric_grad_delta=0.05
+            place, ['X'], ['Out'], numeric_grad_delta=0.05, check_prim=True
         )
 
 
@@ -237,6 +244,7 @@ class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
     def setUp(self):
         self.op_type = 'reduce_mean'
         self.python_api = reduce_mean_wrapper
+        self.prim_op_type = "comp"
         self.dtype = 'float64'
         self.shape = [2, 3, 4, 5]
 
@@ -281,6 +289,9 @@ class TestReduceMeanOpShape6DFP16(TestReduceMeanOp):
     def set_attrs(self):
         self.shape = [2, 3, 4, 5, 6, 7]
         self.dtype = 'float16'
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestReduceMeanOpAxisAll(TestReduceMeanOp):
