@@ -66,20 +66,12 @@ KernelSignature ElementwiseDivOpArgumentMapping(
 
 KernelSignature ElementwiseMaxOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
-  if (axis == -1) {
-    return KernelSignature("maximum", {"X", "Y"}, {}, {"Out"});
-  }
-  return KernelSignature("maximum_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature("maximum", {"X", "Y"}, {}, {"Out"});
 }
 
 KernelSignature ElementwiseMinOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  int axis = paddle::any_cast<int>(ctx.Attr("axis"));
-  if (axis == -1) {
-    return KernelSignature("minimum", {"X", "Y"}, {}, {"Out"});
-  }
-  return KernelSignature("minimum_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature("minimum", {"X", "Y"}, {}, {"Out"});
 }
 
 KernelSignature ElementwiseModOpArgumentMapping(
@@ -210,13 +202,13 @@ KernelSignature ElementwiseMulTripleGradOpArgumentMapping(
 KernelSignature ElementwiseMaxGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "maximum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
+      "maximum_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseMinGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "minimum_grad", {"X", "Y", "Out@GRAD"}, {"axis"}, {"X@GRAD", "Y@GRAD"});
+      "minimum_grad", {"X", "Y", "Out@GRAD"}, {}, {"X@GRAD", "Y@GRAD"});
 }
 
 KernelSignature ElementwiseHeavisideGradOpArgumentMapping(

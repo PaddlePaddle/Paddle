@@ -840,6 +840,8 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
                 ]:
                     self.op_type = op_type
                     for axis in [-1 if len(shape) == 1 else 1]:
+                        if op_type in ["elementwise_min", "elementwise_max"]:
+                            axis = -1
                         self.dims = len(shape)
                         dics = [{"axis": axis}]
                         ops_config = [

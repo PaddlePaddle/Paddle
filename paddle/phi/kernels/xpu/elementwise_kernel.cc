@@ -40,12 +40,12 @@ void FloorDivideRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MaximumRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      int axis,
-                      DenseTensor* out) {
+void MaximumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  int axis = -1;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -59,12 +59,12 @@ void MaximumRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void MinimumRawKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      int axis,
-                      DenseTensor* out) {
+void MinimumKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  int axis = -1;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -123,18 +123,10 @@ PD_REGISTER_KERNEL(floor_divide_raw,
                    phi::FloorDivideRawKernel,
                    float,
                    phi::dtype::float16) {}
-PD_REGISTER_KERNEL(maximum_raw,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::MaximumRawKernel,
-                   float,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(minimum_raw,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::MinimumRawKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    maximum, XPU, ALL_LAYOUT, phi::MaximumKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    minimum, XPU, ALL_LAYOUT, phi::MinimumKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(remainder_raw,
                    XPU,
                    ALL_LAYOUT,

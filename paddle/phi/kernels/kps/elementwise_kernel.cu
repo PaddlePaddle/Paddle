@@ -23,25 +23,39 @@
 namespace phi {
 
 // Create the definition of Maximum
-DEFINE_CUDA_ELEMENTWISE_OP(Maximum)
 template <typename T, typename Context>
 void MaximumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  int axis = -1;
-  MaximumRawKernel<T>(dev_ctx, x, y, axis, out);
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, -1, funcs::MaximumFunctor<T>());
 }
 
 // Create the definition of Minimum
-DEFINE_CUDA_ELEMENTWISE_OP(Minimum)
 template <typename T, typename Context>
 void MinimumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  int axis = -1;
-  MinimumRawKernel<T>(dev_ctx, x, y, axis, out);
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+      dev_ctx, inputs, &outputs, -1, funcs::MinimumFunctor<T>());
 }
 // Create the definition of Remainder
 DEFINE_CUDA_ELEMENTWISE_OP(Remainder)
@@ -87,12 +101,6 @@ void ElementwisePowKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(maximum, KPS, ALL_LAYOUT, phi::MaximumKernel, float) {}
-PD_REGISTER_KERNEL(maximum_raw, KPS, ALL_LAYOUT, phi::MaximumRawKernel, float) {
-}
-PD_REGISTER_KERNEL(minimum, KPS, ALL_LAYOUT, phi::MinimumKernel, float) {}
-PD_REGISTER_KERNEL(minimum_raw, KPS, ALL_LAYOUT, phi::MinimumRawKernel, float) {
-}
 PD_REGISTER_KERNEL(floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int) {
 }
 PD_REGISTER_KERNEL(
@@ -129,20 +137,20 @@ PD_REGISTER_KERNEL(fmin,
                    float16,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(maximum_raw,
+PD_REGISTER_KERNEL(maximum,
                    KPS,
                    ALL_LAYOUT,
-                   phi::MaximumRawKernel,
+                   phi::MaximumKernel,
                    float,
                    double,
                    int,
                    int64_t,
                    float16,
                    bfloat16) {}
-PD_REGISTER_KERNEL(minimum_raw,
+PD_REGISTER_KERNEL(minimum,
                    KPS,
                    ALL_LAYOUT,
-                   phi::MinimumRawKernel,
+                   phi::MinimumKernel,
                    float,
                    double,
                    int,

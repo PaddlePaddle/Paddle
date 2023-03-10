@@ -108,38 +108,6 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
                 'Out': np.maximum(self.inputs['X'], self.inputs['Y'])
             }
 
-    class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
-        def init_input_output(self):
-            x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(self.dtype)
-            sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
-            y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-                self.dtype
-            )
-            self.inputs = {'X': x, 'Y': y}
-
-            self.attrs = {'axis': 0}
-            self.outputs = {
-                'Out': np.maximum(
-                    self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
-                )
-            }
-
-    class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
-        def init_input_output(self):
-            x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(self.dtype)
-            sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
-            y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
-                self.dtype
-            )
-            self.inputs = {'X': x, 'Y': y}
-
-            self.attrs = {'axis': 1}
-            self.outputs = {
-                'Out': np.maximum(
-                    self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
-                )
-            }
-
     class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (1, 3, 100)).astype(self.dtype)
@@ -152,22 +120,6 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
             self.outputs = {
                 'Out': np.maximum(
                     self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
-                )
-            }
-
-    class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
-        def init_input_output(self):
-            x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(self.dtype)
-            sgn = np.random.choice([-1, 1], (50, 2)).astype(self.dtype)
-            y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (50, 2)).astype(
-                self.dtype
-            )
-            self.inputs = {'X': x, 'Y': y}
-
-            self.attrs = {'axis': 1}
-            self.outputs = {
-                'Out': np.maximum(
-                    self.inputs['X'], self.inputs['Y'].reshape(1, 50, 2, 1)
                 )
             }
 
