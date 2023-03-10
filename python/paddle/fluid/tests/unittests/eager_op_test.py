@@ -52,8 +52,6 @@ from white_list import (
 
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
-eager_core_ops_args_info = paddle._C_ops.get_core_ops_args_info()
-
 
 @signature_safe_contextmanager
 def paddle_static_guard():
@@ -718,11 +716,9 @@ class OpTest(unittest.TestCase):
 
             if is_input:
                 v = self._create_var_from_numpy(np_value_temp)
-
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
-                    if hasattr(v, "retain_grads"):
-                        v.retain_grads()
+                    v.retain_grads()
 
                 if has_lod:
                     v.value().get_tensor().set_recursive_sequence_lengths(
@@ -882,6 +878,8 @@ class OpTest(unittest.TestCase):
             )
             if not kernel_sig:
                 return None
+            if not hasattr(self, "python_api"):
+                print(kernel_sig)
             assert hasattr(self, "python_api"), (
                 "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
                 % self.op_type
@@ -1592,10 +1590,9 @@ class OpTest(unittest.TestCase):
 
             def calculate_output(self):
                 # we only check end2end api when check_dygraph=True
-                if self.op_test.op_type in eager_core_ops_args_info:
-                    self.is_python_api_test = True
-                    dygraph_outs = self.op_test._calc_python_api_output(place)
-                else:
+                self.is_python_api_test = True
+                dygraph_outs = self.op_test._calc_python_api_output(place)
+                if dygraph_outs is None:
                     self.is_python_api_test = False
                     # missing KernelSignature, fall back to eager middle output.
                     dygraph_outs = self.op_test._calc_dygraph_output(
@@ -2213,6 +2210,10 @@ class OpTest(unittest.TestCase):
                 dygraph_outputs = self._calc_python_api_output(
                     place, inputs, outputs
                 )
+                if dygraph_outputs is None:
+                    # missing KernelSignature, fall back to eager middle output.
+                    dygraph_outs = self._calc_dygraph_output(place)
+
             # if outputs is None, kernel sig is empty or other error is happens.
             if not check_dygraph or dygraph_outputs is None:
                 block.append_op(
