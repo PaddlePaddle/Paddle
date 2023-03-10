@@ -51,7 +51,5 @@ PD_REGISTER_KERNEL(is_empty,
                    float,
                    double,
                    int,
-                   int64_t) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
+                   int64_t) {}
 #endif
