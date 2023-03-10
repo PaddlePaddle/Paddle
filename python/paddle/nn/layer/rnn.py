@@ -1224,7 +1224,7 @@ class BiRNN(Layer):
     Parameters:
         cell_fw (RNNCellBase): A RNNCellBase instance used for forward RNN.
         cell_bw (RNNCellBase): A RNNCellBase instance used for backward RNN.
-        time_major (bool): Whether the first dimension of the input means the
+        time_major (bool, optional): Whether the first dimension of the input means the
             time steps. Defaults to False.
 
     Inputs:
