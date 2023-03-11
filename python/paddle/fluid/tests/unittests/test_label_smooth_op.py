@@ -48,9 +48,25 @@ class TestLabelSmoothOp(OpTest):
 
 
 # Add FP16 test
-class TestLabelSmoothFP16OP(TestLabelSmoothOp):
+class TestLabelSmoothFP16OP(OpTest):
     def config(self):
         self.dtype = np.float16
+        self.op_type = "label_smooth"
+        self.python_api = paddle.nn.functional.label_smooth
+        self.epsilon = 0.1
+        batch_size, self.label_dim = 10, 12
+        self.label = np.zeros((batch_size, self.label_dim)).astype("float64")
+        nonzero_index = np.random.randint(self.label_dim, size=(batch_size))
+        self.label[np.arange(batch_size), nonzero_index] = 1
+
+    def setUp(self):
+        self.config()
+        smoothed_label = (
+            1 - self.epsilon
+        ) * self.label + self.epsilon / self.label_dim
+        self.inputs = {'X': self.label}
+        self.attrs = {'epsilon': self.epsilon}
+        self.outputs = {'Out': smoothed_label}
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
