@@ -5260,15 +5260,15 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
             y = paddle.to_tensor([4, 5, 6], dtype='float32')
 
             print(paddle.cumulative_trapezoid(y))
-            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [4.50000000, 10.       ])
+            # # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            # #        [4.50000000, 10.       ])
 
-            print(paddle.cumulative_trapezoid(y, dx=2.))
-            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [9. , 20.])
+            # print(paddle.cumulative_trapezoid(y, dx=2.))
+            # # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            # #        [9. , 20.])
 
-            y = paddle.to_tensor([4, 5, 6], dtype='float32')
-            x = paddle.to_tensor([1, 2, 3], dtype='float32')
+            # y = paddle.to_tensor([4, 5, 6], dtype='float32')
+            # x = paddle.to_tensor([1, 2, 3], dtype='float32')
 
             print(paddle.cumulative_trapezoid(y, x))
             # # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
