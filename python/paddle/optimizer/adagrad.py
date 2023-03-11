@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
 
 from ..fluid import framework
 from .optimizer import Optimizer
@@ -126,6 +127,8 @@ class Adagrad(Optimizer):
         )
         self.type = "adagrad"
         self._epsilon = epsilon
+        self._multi_precision = False
+        self._master_weights = {}
         self.initial_accumulator_value = initial_accumulator_value
         self._default_dict = {
             'epsilon': epsilon,
@@ -139,6 +142,18 @@ class Adagrad(Optimizer):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._moment_acc_str, master_p)
+                continue
+            if (
+                self._is_dtype_fp16_or_bf16(p.dtype)
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Momentum optimizer."
+                )
             self._add_accumulator(
                 self._moment_acc_str,
                 p,
@@ -151,20 +166,39 @@ class Adagrad(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        moment_acc = self._get_accumulator(
+        moment_acc = self._get_accumulator_master(
             self._moment_acc_str, param_and_grad[0]
         )
+
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
+        )
+
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
+
         # Create the adagrad optimizer op
+        inputs = {
+            "Param": param_and_grad[0],
+            "Grad": param_and_grad[1],
+            "Moment": moment_acc,
+            "LearningRate": self._create_param_lr(param_and_grad),
+        }
+
+        outputs = {"ParamOut": param_and_grad[0], "MomentOut": moment_acc}
+
+        if find_master:
+            inputs["MasterParam"] = master_weight
+            outputs["MasterParamOut"] = master_weight
+
         adagrad_op = block.append_op(
             type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Moment": moment_acc,
-                "LearningRate": self._create_param_lr(param_and_grad),
-            },
-            outputs={"ParamOut": param_and_grad[0], "MomentOut": moment_acc},
-            attrs={"epsilon": self._epsilon},
+            inputs=inputs,
+            outputs=outputs,
+            attrs={"epsilon": self._epsilon, "multi_precision": find_master},
             stop_gradient=True,
         )
 

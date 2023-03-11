@@ -34,9 +34,8 @@ from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import _get_paddle_place, _non_static_mode
-from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.layers import collective
-from paddle.fluid.layers.utils import flatten
+from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.metric import Metric
@@ -223,7 +222,7 @@ def prepare_distributed_context(place=None):
         )
 
     place = _get_paddle_place(place)
-    strategy = fluid.dygraph.parallel.ParallelStrategy()
+    strategy = paddle.distributed.parallel.ParallelStrategy()
     strategy.nranks = paddle.distributed.ParallelEnv().nranks
     strategy.local_rank = paddle.distributed.ParallelEnv().local_rank
     strategy.trainer_endpoints = (
@@ -781,7 +780,7 @@ class DynamicGraphAdapter:
 
         if self._nranks > 1:
             dist.init_parallel_env()
-            stradegy = fluid.dygraph.parallel.ParallelStrategy()
+            stradegy = paddle.distributed.parallel.ParallelStrategy()
             stradegy.nranks = paddle.distributed.ParallelEnv().nranks
             stradegy.local_rank = paddle.distributed.ParallelEnv().local_rank
             stradegy.trainer_endpoints = (
@@ -790,9 +789,7 @@ class DynamicGraphAdapter:
             stradegy.current_endpoint = (
                 paddle.distributed.ParallelEnv().current_endpoint
             )
-            self.ddp_model = fluid.dygraph.parallel.DataParallel(
-                self.model.network, stradegy
-            )
+            self.ddp_model = paddle.DataParallel(self.model.network, stradegy)
 
     @property
     def mode(self):
@@ -2295,7 +2292,7 @@ class Model:
             # 4. custumed iterator yield separated inputs and labels:
             #   ([input1, input2, ...], [label1, lable2, ...])
             # To handle all of these, flatten (nested) list to list.
-            data = flatten(data)
+            data = paddle.utils.flatten(data)
             # LoDTensor.shape is callable, where LoDTensor comes from
             # DataLoader in static graph
 

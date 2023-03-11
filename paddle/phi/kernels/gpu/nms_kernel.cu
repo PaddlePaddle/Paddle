@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/nms_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -83,12 +82,12 @@ void NMSKernel(const Context& dev_ctx,
   NMS<T><<<grid, block, 0, dev_ctx.stream()>>>(
       boxes.data<T>(), threshold, num_boxes, mask_dev);
   std::vector<uint64_t> mask_host(num_boxes * blocks_per_line);
-  paddle::memory::Copy(phi::CPUPlace(),
-                       mask_host.data(),
-                       dev_ctx.GetPlace(),
-                       mask_dev,
-                       num_boxes * blocks_per_line * sizeof(uint64_t),
-                       dev_ctx.stream());
+  memory_utils::Copy(phi::CPUPlace(),
+                     mask_host.data(),
+                     dev_ctx.GetPlace(),
+                     mask_dev,
+                     num_boxes * blocks_per_line * sizeof(uint64_t),
+                     dev_ctx.stream());
   std::vector<int64_t> remv(blocks_per_line);
   std::vector<int64_t> keep_boxes_idxs(num_boxes);
   int64_t* output_host = keep_boxes_idxs.data();
@@ -106,12 +105,14 @@ void NMSKernel(const Context& dev_ctx,
   }
   output->Resize(phi::make_ddim({last_box_num}));
   auto* output_data = dev_ctx.template Alloc<int64_t>(output);
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       output_data,
-                       phi::CPUPlace(),
-                       output_host,
-                       sizeof(int64_t) * last_box_num,
-                       dev_ctx.stream());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     output_data,
+                     phi::CPUPlace(),
+                     output_host,
+                     sizeof(int64_t) * last_box_num,
+                     dev_ctx.stream());
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(nms, GPU, ALL_LAYOUT, phi::NMSKernel, float, double) {}
+PD_REGISTER_KERNEL(nms, GPU, ALL_LAYOUT, phi::NMSKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::INT64);
+}

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
 from paddle import _C_ops
 
 from ..fluid import framework
@@ -130,6 +132,8 @@ class Adadelta(Optimizer):
             grad_clip=grad_clip,
             name=name,
         )
+        self._multi_precision = False
+        self._master_weights = {}
         self.type = "adadelta"
         self._epsilon = epsilon
         self._rho = rho
@@ -145,6 +149,21 @@ class Adadelta(Optimizer):
             parameters = parameters.get('params')
 
         for p in parameters:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._avg_squared_grad_acc_str, master_p)
+                self._add_accumulator(
+                    self._avg_squared_update_acc_str, master_p
+                )
+                continue
+            if (
+                self._is_dtype_fp16_or_bf16(p.dtype)
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Lars optimizer."
+                )
             self._add_accumulator(self._avg_squared_grad_acc_str, p)
             self._add_accumulator(self._avg_squared_update_acc_str, p)
 
@@ -152,11 +171,19 @@ class Adadelta(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        avg_squared_grad_acc = self._get_accumulator(
+        avg_squared_grad_acc = self._get_accumulator_master(
             self._avg_squared_grad_acc_str, param_and_grad[0]
         )
-        avg_squared_update_acc = self._get_accumulator(
+        avg_squared_update_acc = self._get_accumulator_master(
             self._avg_squared_update_acc_str, param_and_grad[0]
+        )
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
         )
 
         if in_dygraph_mode():
@@ -166,8 +193,10 @@ class Adadelta(Optimizer):
                     param_and_grad[1],
                     avg_squared_grad_acc,
                     avg_squared_update_acc,
+                    master_weight,
                     self._rho,
                     self._epsilon,
+                    find_master,
                 )
             return None
         else:
@@ -175,20 +204,29 @@ class Adadelta(Optimizer):
                 raise TypeError("block is not instance of framework.Block.")
 
             # Create the adadelta optimizer op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "AvgSquaredGrad": avg_squared_grad_acc,
+                "AvgSquaredUpdate": avg_squared_update_acc,
+            }
+            outputs = {
+                "ParamOut": param_and_grad[0],
+                "AvgSquaredGradOut": avg_squared_grad_acc,
+                "AvgSquaredUpdateOut": avg_squared_update_acc,
+            }
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
             adadelta_op = block.append_op(
                 type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "AvgSquaredGrad": avg_squared_grad_acc,
-                    "AvgSquaredUpdate": avg_squared_update_acc,
+                inputs=inputs,
+                outputs=outputs,
+                attrs={
+                    "epsilon": self._epsilon,
+                    "rho": self._rho,
+                    "multi_precision": find_master,
                 },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "AvgSquaredGradOut": avg_squared_grad_acc,
-                    "AvgSquaredUpdateOut": avg_squared_update_acc,
-                },
-                attrs={"epsilon": self._epsilon, "rho": self._rho},
                 stop_gradient=True,
             )
 

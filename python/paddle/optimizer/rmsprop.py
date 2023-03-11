@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
 from paddle import _C_ops
 
 from ..fluid import framework
@@ -184,6 +186,8 @@ class RMSProp(Optimizer):
         self._epsilon = epsilon
         self._momentum = momentum
         self._centered = centered
+        self._multi_precision = False
+        self._master_weights = {}
         self._default_dict = {
             'rho': rho,
             'epsilon': epsilon,
@@ -199,6 +203,20 @@ class RMSProp(Optimizer):
             parameters = parameters.get('params')
 
         for p in parameters:
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._momentum_acc_str, master_p)
+                self._add_accumulator(self._mean_square_acc_str, master_p)
+                self._add_accumulator(self._mean_grad_acc_str, master_p)
+                continue
+            if (
+                self._is_dtype_fp16_or_bf16(p.dtype)
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Lars optimizer."
+                )
             self._add_accumulator(self._momentum_acc_str, p)
             self._add_accumulator(self._mean_square_acc_str, p)
             self._add_accumulator(self._mean_grad_acc_str, p)
@@ -210,14 +228,22 @@ class RMSProp(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        momentum_acc = self._get_accumulator(
+        momentum_acc = self._get_accumulator_master(
             self._momentum_acc_str, param_and_grad[0]
         )
-        mean_square_acc = self._get_accumulator(
+        mean_square_acc = self._get_accumulator_master(
             self._mean_square_acc_str, param_and_grad[0]
         )
-        mean_grad_acc = self._get_accumulator(
+        mean_grad_acc = self._get_accumulator_master(
             self._mean_grad_acc_str, param_and_grad[0]
+        )
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
         )
 
         if in_dygraph_mode():
@@ -228,29 +254,38 @@ class RMSProp(Optimizer):
                 momentum_acc,
                 self._create_param_lr(param_and_grad),
                 mean_grad_acc,
+                master_weight,
                 self._epsilon,
                 self._rho,
                 self._momentum,
                 self._centered,
+                find_master,
             )
             return None
         else:
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": momentum_acc,
+                "MeanSquare": mean_square_acc,
+                "MeanGrad": mean_grad_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            }
+
+            outputs = {
+                "ParamOut": param_and_grad[0],
+                "MomentOut": momentum_acc,
+                "MeanSquareOut": mean_square_acc,
+                "MeanGradOut": mean_grad_acc,
+            }
+
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
             rmsprop_op = block.append_op(
                 type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "Moment": momentum_acc,
-                    "MeanSquare": mean_square_acc,
-                    "MeanGrad": mean_grad_acc,
-                    "LearningRate": self._create_param_lr(param_and_grad),
-                },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "MomentOut": momentum_acc,
-                    "MeanSquareOut": mean_square_acc,
-                    "MeanGradOut": mean_grad_acc,
-                },
+                inputs=inputs,
+                outputs=outputs,
                 attrs={
                     "epsilon": self._epsilon,
                     "decay": self._rho,

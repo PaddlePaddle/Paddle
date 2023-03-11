@@ -23,4 +23,6 @@ using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
 PD_REGISTER_KERNEL(
-    as_real, CPU, ALL_LAYOUT, phi::AsRealKernel, complex64, complex128) {}
+    as_real, CPU, ALL_LAYOUT, phi::AsRealKernel, complex64, complex128) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+}

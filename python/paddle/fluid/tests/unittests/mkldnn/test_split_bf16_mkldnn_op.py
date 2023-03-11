@@ -67,16 +67,6 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
         self.check_output_with_place(core.CPUPlace())
 
 
-# TODO jakpiase enable grad check(concat op)
-#    def test_check_grad(self):
-#        self.check_grad_with_place(
-#            core.CPUPlace(), ["X"],
-#            "Out",
-#            chck_dgrph=
-#            user_defined_grads=[self.inputs['X']],
-#            user_defined_grad_outputs=self.out[0])
-
-
 class TestSplitNumBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
     def init_data(self):
         self.x = np.random.random((4, 8, 5, 3)).astype("uint16")

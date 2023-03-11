@@ -982,7 +982,7 @@ def dropout(
     dropout probability.
 
     Args:
-        x (Tensor): The input tensor. The data type is float32 or float64.
+        x (Tensor): The input tensor. The data type is float16, float32 or float64.
         p (float|int, optional): Probability of setting units to zero. Default: 0.5.
         axis (int|list|tuple, optional): The axis along which the dropout is performed. Default: None.
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
@@ -1201,7 +1201,9 @@ def dropout(
             return out
     else:  # sometimes called dropout_nd #TODO: optimize with c++
         if not in_dynamic_mode():
-            check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'dropout')
+            check_variable_and_dtype(
+                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+            )
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
@@ -1269,7 +1271,7 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
 
     Args:
         x (Tensor):  The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C].
-                     The data type is float32 or float64.
+                     The data type is float16, float32 or float64.
         p (float, optional): Probability of setting units to zero. Default: 0.5.
         training (bool, optional): A flag indicating whether it is in train phrase or not. Default: True.
         data_format (str, optional): Specify the data format of the input, and the data format of the output will be consistent with that of the input. An optional string from `NCHW` or `NHWC` . When it is `NCHW` , the data is stored in the order of: [batch_size, input_channels, input_height, input_width]. Default: `NCHW` .
@@ -1384,7 +1386,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     Alpha Dropout fits well to SELU activate function by randomly setting activations to the negative saturation value.
 
     Args:
-        x (Tensor): The input tensor. The data type is float32 or float64.
+        x (Tensor): The input tensor. The data type is float16, float32 or float64.
         p (float | int): Probability of setting units to zero. Default 0.5.
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -1416,7 +1418,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
     if not in_dynamic_mode():
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'alpha_dropout'
+            x, 'x', ['float16', 'float32', 'float64'], 'alpha_dropout'
         )
 
     if training:

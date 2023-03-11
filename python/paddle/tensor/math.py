@@ -32,7 +32,6 @@ from ..fluid.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -121,8 +120,8 @@ def _get_reduce_axis_with_tensor(axis, x):
             reduce_all = False
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)
-        if utils._contain_var(axis):
-            axis = utils._convert_to_tensor_list(axis)
+        if paddle.utils._contain_var(axis):
+            axis = paddle.utils._convert_to_tensor_list(axis)
     return reduce_all, axis
 
 
@@ -135,7 +134,7 @@ def log(x, name=None):
         Out = \ln(x)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
         name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
@@ -156,7 +155,9 @@ def log(x, name=None):
     if in_dygraph_mode():
         return _C_ops.log(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "log"
+        )
         inputs = {'X': [x]}
         helper = LayerHelper('log', **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -490,16 +491,36 @@ def _elementwise_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(original_op_type)
     assert y is not None, 'y cannot be None in {}'.format(original_op_type)
+    bf16_and_complex_supported_ops = [
+        "elementwise_add",
+        "elementwise_sub",
+        "elementwise_mul",
+        "elementwise_div",
+    ]
+    if original_op_type in bf16_and_complex_supported_ops:
+        data_type = [
+            'uint16',
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'complex64',
+            'complex128',
+        ]
+    else:
+        data_type = ['float16', 'float32', 'float64', 'int32', 'int64', 'bool']
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        data_type,
         original_op_type,
     )
     check_variable_and_dtype(
         y,
         'y',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        data_type,
         original_op_type,
     )
 
@@ -727,6 +748,9 @@ def floor_divide(x, y, name=None):
 
     .. math::
         out = trunc(x / y)
+
+    - :math:`x`: Multidimensional Tensor.
+    - :math:`y`: Multidimensional Tensor.
 
     Note:
         ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
@@ -1349,7 +1373,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is float16, float32, float64, int32 or int64.
         axis (int|list|tuple, optional): The dimensions along which the nansum is performed. If
             :attr:`None`, nansum all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
@@ -1392,7 +1416,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             out6 = paddle.nansum(y, axis=[0, 1]) # [9, 18]
     """
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'nansum'
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'nansum'
     )
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
 
@@ -2107,7 +2131,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
        logsumexp(x) = \log\sum exp(x)
 
     Args:
-        x (Tensor): The input Tensor with data type float32 or float64, which
+        x (Tensor): The input Tensor with data type float16, float32 or float64, which
             have no more than 4 dimensions.
         axis (int|list|tuple, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
@@ -2146,7 +2170,9 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'logsumexp')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'logsumexp'
+        )
 
         helper = LayerHelper('logsumexp', **locals())
         attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all': reduce_all}
@@ -2292,8 +2318,8 @@ def max(x, axis=None, keepdim=False, name=None):
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max'
         )
-        if not isinstance(axis, Variable) and utils._contain_var(axis):
-            axis = utils._convert_to_tensor_list(axis)
+        if not isinstance(axis, Variable) and paddle.utils._contain_var(axis):
+            axis = paddle.utils._convert_to_tensor_list(axis)
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
@@ -2628,7 +2654,7 @@ def log1p(x, name=None):
         Out = \ln(x+1)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2647,7 +2673,9 @@ def log1p(x, name=None):
     if in_dygraph_mode():
         return _C_ops.log1p(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "log1p"
+        )
         inputs = {'X': [x]}
         helper = LayerHelper('log1p', **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -2770,11 +2798,11 @@ def clip(x, min=None, max=None, name=None):
         Out = MIN(MAX(x, min), max)
 
     Args:
-        x (Tensor): An N-D Tensor with data type float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor with data type float16, float32, float64, int32 or int64.
         min (float|int|Tensor, optional): The lower bound with type ``float`` , ``int`` or a ``Tensor``
-            with shape [1] and type ``int32``, ``float32``, ``float64``.
+            with shape [1] and type ``int32``, ``float16``, ``float32``, ``float64``.
         max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``Tensor``
-            with shape [1] and type ``int32``, ``float32``, ``float64``.
+            with shape [1] and type ``int32``, ``float16``, ``float32``, ``float64``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2803,6 +2831,9 @@ def clip(x, min=None, max=None, name=None):
     elif x_dtype == 'paddle.int64':
         min_ = np.iinfo(np.int64).min
         max_ = np.iinfo(np.int64).max - 2**39
+    elif x_dtype == 'paddle.float16':
+        min_ = float(np.finfo(np.float16).min)
+        max_ = float(np.finfo(np.float16).max)
     else:
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
@@ -2822,7 +2853,7 @@ def clip(x, min=None, max=None, name=None):
                 check_dtype(
                     min.dtype,
                     'min',
-                    ['float32', 'float64', 'int32'],
+                    ['float16', 'float32', 'float64', 'int32'],
                     'clip',
                     '(When the type of min in clip is Variable.)',
                 )
@@ -2832,13 +2863,13 @@ def clip(x, min=None, max=None, name=None):
                 check_dtype(
                     max.dtype,
                     'max',
-                    ['float32', 'float64', 'int32'],
+                    ['float16', 'float32', 'float64', 'int32'],
                     'clip',
                     '(When the type of max in clip is Variable.)',
                 )
 
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'clip'
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'clip'
         )
 
         inputs = {'X': x}
@@ -3205,6 +3236,12 @@ def cumsum(x, axis=None, dtype=None, name=None):
             axis = -1
         return _C_ops.cumsum(x, axis, flatten, False, False)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'cumsum',
+        )
         check_type(x, 'x', (Variable), 'cumsum')
         locals_var = locals().copy()
         kwargs = dict()
@@ -3861,7 +3898,7 @@ def conj(x, name=None):
 
     Args:
         x (Tensor): The input Tensor which hold the complex numbers.
-            Optional data types are: complex64, complex128, float32, float64, int32 or int64.
+            Optional data types are:float16, complex64, complex128, float32, float64, int32 or int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3889,7 +3926,15 @@ def conj(x, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'complex64',
+                'complex128',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'conj',
         )
 
