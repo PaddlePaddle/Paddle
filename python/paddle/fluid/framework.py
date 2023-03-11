@@ -4156,7 +4156,7 @@ class Block:
             )
         else:
             from paddle.fluid.dygraph.base import param_guard
-            from .layers.utils import flatten
+            from paddle.utils import flatten
 
             def pass_stop_gradient(ins, outs):
                 """
