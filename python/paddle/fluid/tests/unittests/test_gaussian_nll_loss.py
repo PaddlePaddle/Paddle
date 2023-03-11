@@ -59,7 +59,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
 
     def setUp(self, type=None):
         self.shape = [10, 2]
-        if type in ['float16', 'float64', 'int16', 'int32']:
+        if type in ['float16', 'float64', 'int32', 'int64']:
             dtype = np.dtype(type)
             self.input_np = np.random.random(self.shape).astype(dtype)
             self.label_np = np.random.random(self.shape).astype(dtype)
@@ -97,7 +97,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
         input_x = paddle.to_tensor(self.input_np)
         label = paddle.to_tensor(self.label_np)
         var = paddle.to_tensor(self.var_np)
-        if type == 'test_err':
+        if type in ['test_err', 'int32', 'int64']:
             self.assertRaises(
                 ValueError,
                 paddle.nn.functional.gaussian_nll_loss,
@@ -129,7 +129,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
         self.setUp(type)
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            if type == 'float64':
+            if type in ['int32', 'int64', 'float64']:
                 input_x = paddle.static.data('Input_x', self.shape, type)
                 label = paddle.static.data('Label', self.shape, type)
                 var = paddle.static.data('Var', self.shape, type)
@@ -149,7 +149,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
             )
             out2 = gaussian_nll_loss(input_x, label, var)
             exe = paddle.static.Executor(self.place)
-            if not type == 'test_err':
+            if type not in ['test_err', 'int32', 'int64']:
                 out_ref = ref_gaussian_nll_loss(
                     self.input_np,
                     self.label_np,
@@ -204,6 +204,10 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
     def test_error(self):
         self.test_dynamic_case('test_err')
         self.test_static_case('test_err')
+
+    def test_int(self):
+        self.test_dynamic_case('int64')
+        self.test_dynamic_case('int32')
 
 
 if __name__ == "__main__":
