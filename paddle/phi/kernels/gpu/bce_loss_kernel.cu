@@ -40,7 +40,8 @@ struct BCELossFunctor {
   HOSTDEVICE inline T operator()(const T x, const T label) const {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     PADDLE_ENFORCE(
-        (static_cast<MPType>(x) >= static_cast<MPType>(0)) && (static_cast<MPType>(x) <= static_cast<MPType>(one)),
+        (static_cast<MPType>(x) >= static_cast<MPType>(0)) &&
+            (static_cast<MPType>(x) <= static_cast<MPType>(one)),
         "Input is expected to be within the interval [0, 1], but received %f.",
         x);
     MPType term1 = max(phi::kps::details::Log(static_cast<MPType>(x)),
