@@ -42,7 +42,6 @@ from .layer_function_generator import (
     _generate_doc_string_,
 )
 from .tensor import zeros
-from . import utils
 from .. import unique_name
 from .. import core
 from ...utils import deprecated
