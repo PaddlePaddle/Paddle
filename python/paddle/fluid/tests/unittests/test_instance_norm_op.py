@@ -130,14 +130,17 @@ class TestInstanceNormOp(OpTest):
     def test_check_grad(self):
         if hasattr(self, 'attrs'):
             self.check_grad(
-                ['X', 'scale', 'bias'],
-                'Out',
+                ['X', 'Scale', 'Bias'],
+                'Y',
                 check_eager=False,
                 check_prim=True,
             )
         else:
             self.check_grad(
-                ['X', 'scale', 'bias'], 'Out', check_eager=True, check_prim=True
+                ['X', 'Scale', 'Bias'],
+                'Y',
+                check_eager=True,
+                check_prim=True,
             )
 
     def init_test_case(self):

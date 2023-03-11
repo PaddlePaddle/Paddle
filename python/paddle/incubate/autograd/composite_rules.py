@@ -175,11 +175,9 @@ def instancenorm_composite(x, scale, bias, epsilon):
 
     if scale is not None:
         scale_tile = reshape(scale, [1, c, 1, 1])
-        scale_tile = tile(scale_tile, [n, 1, h, w])
         out = out * scale_tile
     if bias is not None:
         bias_tile = reshape(bias, [1, c, 1, 1])
-        bias_tile = tile(bias_tile, [n, 1, h, w])
         out = out + bias_tile
 
     mean_ = reshape(mean_, x.shape[:1])
