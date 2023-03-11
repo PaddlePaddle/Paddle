@@ -23,15 +23,16 @@
 namespace phi {
 template <typename T>
 struct LabelSmoothGradFunctor {
-  T epsilon;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  MT epsilon;
 
   __forceinline__ LabelSmoothGradFunctor(float epsilon_data) {
-    epsilon = static_cast<T>(epsilon_data);
+    epsilon = static_cast<MT>(epsilon_data);
   }
 
   __device__ __forceinline__ T operator()(const T x) const {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    return static_cast<T>((1 - static_cast<MT>(epsilon)) * static_cast<MT>(x));
+    return static_cast<T>((1 - epsilon) * static_cast<MT>(x));
   }
 };
 

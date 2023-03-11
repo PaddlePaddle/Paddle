@@ -18,15 +18,19 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+import paddle.fluid.core as core
 
 
 class TestLabelSmoothOp(OpTest):
     def config(self):
+        self.init_data_type()
         self.op_type = "label_smooth"
         self.python_api = paddle.nn.functional.label_smooth
         self.epsilon = 0.1
         batch_size, self.label_dim = 10, 12
-        self.label = np.zeros((batch_size, self.label_dim)).astype("float64")
+        self.label = np.zeros((batch_size, self.label_dim)).astype(
+            self.data_type
+        )
         nonzero_index = np.random.randint(self.label_dim, size=(batch_size))
         self.label[np.arange(batch_size), nonzero_index] = 1
 
@@ -38,6 +42,9 @@ class TestLabelSmoothOp(OpTest):
         self.inputs = {'X': self.label}
         self.attrs = {'epsilon': self.epsilon}
         self.outputs = {'Out': smoothed_label}
+
+    def init_data_type(self):
+        self.data_type = "float64"
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -78,29 +85,49 @@ class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
         )
 
 
-class TestLabelSmoothFP16(unittest.TestCase):
-    def check_main(self, x_np, dtype):
-        paddle.disable_static()
-        x = paddle.to_tensor(x_np.astype(dtype))
-        x.stop_gradient = False
-        y = paddle.nn.functional.label_smooth(x, epsilon=0.1)
-        x_g = paddle.grad(y, [x])
-        y_np = y.numpy().astype('float32')
-        x_g_np = x_g[0].numpy().astype('float32')
+class TestLabelSmoothFP16(TestLabelSmoothOp):
+    def init_data_type(self):
+        self.data_type = "float16"
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_grad_with_place(
+                place, ['X'], 'Out', max_relative_error=1e-3
+            )
+
+
+class TestLabelSmoothStaticFP16(unittest.TestCase):
+    def test_fp16(self):
         paddle.enable_static()
-        return y_np, x_g_np
 
-    def test_main(self):
-        if not paddle.is_compiled_with_cuda():
-            return
+        epsilon = 0.1
+        shape = [10, 12]
+        batch_size, label_dim = shape
+        label = np.zeros((batch_size, label_dim)).astype("float16")
+        nonzero_index = np.random.randint(label_dim, size=(batch_size))
+        label[np.arange(batch_size), nonzero_index] = 1
+        output_np = (1 - epsilon) * label + epsilon / label_dim
 
-        np.random.seed(20)
-        x_np = np.random.random([10, 12])
-        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
-        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x_data = paddle.static.data(shape=shape, name='x', dtype='float16')
+            out = paddle.nn.functional.label_smooth(x_data, epsilon=epsilon)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                output_pd = exe.run(feed={'x': label}, fetch_list=[out])[0]
+                np.testing.assert_allclose(
+                    output_pd, output_np, rtol=1e-3, atol=1e-3
+                )
 
-        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
-        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=1e-03)
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
