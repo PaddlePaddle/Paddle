@@ -26,14 +26,14 @@ from ...common_ops_import import Variable
 from ...device import get_cudnn_version
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.layers.utils import (
+from ...framework import no_grad
+from ...tensor.manipulation import squeeze, unsqueeze
+from ...utils import (
     _contain_var,
     _convert_to_tensor_list,
     _is_symmetric_padding,
     convert_to_list,
 )
-from ...framework import no_grad
-from ...tensor.manipulation import squeeze, unsqueeze
 
 __all__ = []
 

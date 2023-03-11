@@ -257,6 +257,17 @@ void PowTripleGradKernel(const Context& dev_ctx,
                          DenseTensor* out_d_x,
                          DenseTensor* out_d_dout,
                          DenseTensor* out_d_ddx);
+
+template <typename T, typename Context>
+void SoftplusDoubleGradKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& dout,
+                              const DenseTensor& ddx,
+                              float beta,
+                              float threshold,
+                              DenseTensor* dx,
+                              DenseTensor* ddout);
+
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Cos);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Tan);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Acos);
