@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+import paddle.fluid.core as core
 
 
 class TestLabelSmoothOp(OpTest):
@@ -46,24 +47,16 @@ class TestLabelSmoothOp(OpTest):
         self.check_grad(["X"], "Out", check_eager=True)
 
 
+# Add FP16 test
 class TestLabelSmoothFP16OP(TestLabelSmoothOp):
     def config(self):
-        self.op_type = "label_smooth"
         self.dtype = np.float16
-        self.python_api = paddle.nn.functional.label_smooth
-        self.epsilon = 0.1
-        batch_size, self.label_dim = 10, 12
-        self.label = np.zeros((batch_size, self.label_dim)).astype(self.dtype)
-        nonzero_index = np.random.randint(self.label_dim, size=(batch_size))
-        self.label[np.arange(batch_size), nonzero_index] = 1
 
-    def setUp(self):
-        self.config()
-        dist = np.random.random((1, self.label_dim))
-        smoothed_label = (1 - self.epsilon) * self.label + self.epsilon * dist
-        self.inputs = {'X': self.label, 'PriorDist': dist}
-        self.attrs = {'epsilon': self.epsilon}
-        self.outputs = {'Out': smoothed_label}
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=1e-5)
 
 
 class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
