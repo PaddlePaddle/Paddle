@@ -215,7 +215,7 @@ class TestExpandV2FP32Op(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, max_relative_error=1e-2)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 #  Situation 8: input x is Float16
@@ -233,14 +233,10 @@ class TestExpandV2FP16Op(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output()
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, max_relative_error=1e-2
-        )
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 #  Situation 8: input x is BF16
@@ -258,13 +254,11 @@ class TestExpandV2BF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-1)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'], 'Out', check_prim=True, max_relative_error=1e0
-        )
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
 class TestExpandV2Error(unittest.TestCase):

@@ -183,16 +183,12 @@ class TestTopkOp7(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-class TestTopkFP32Op(OpTest):
-    def init_args(self):
-        self.k = 3
-        self.axis = 1
-        self.largest = True
-
+class TestTopkFP32Op(TestTopkOp):
     def setUp(self):
         self.op_type = "top_k_v2"
         self.python_api = paddle.topk
         self.dtype = np.float32
+        self.prim_op_type = "prim"
         self.input_data = np.random.rand(10, 20).astype(self.dtype)
         self.init_args()
         self.inputs = {'X': self.input_data}
@@ -202,25 +198,13 @@ class TestTopkFP32Op(OpTest):
         )
         self.outputs = {'Out': output, 'Indices': indices}
 
-    def test_check_output(self):
-        self.check_output(check_eager=True)
 
-    def test_check_grad(self):
-        self.check_grad(
-            set(['X']), 'Out', check_eager=True, max_relative_error=1e0
-        )
-
-
-class TestTopkFP16Op(OpTest):
-    def init_args(self):
-        self.k = 3
-        self.axis = 1
-        self.largest = True
-
+class TestTopkFP16Op(TestTopkOp):
     def setUp(self):
         self.op_type = "top_k_v2"
         self.python_api = paddle.topk
         self.dtype = np.float16
+        self.prim_op_type = "prim"
         self.input_data = np.random.rand(10, 20).astype(self.dtype)
         self.init_args()
         self.inputs = {'X': self.input_data}
@@ -230,25 +214,13 @@ class TestTopkFP16Op(OpTest):
         )
         self.outputs = {'Out': output, 'Indices': indices}
 
-    def test_check_output(self):
-        self.check_output(check_eager=True)
 
-    def test_check_grad(self):
-        self.check_grad(
-            set(['X']), 'Out', check_eager=True, max_relative_error=1e0
-        )
-
-
-class TestTopkBF16Op(OpTest):
-    def init_args(self):
-        self.k = 3
-        self.axis = 1
-        self.largest = True
-
+class TestTopkBF16Op(TestTopkOp):
     def setUp(self):
         self.op_type = "top_k_v2"
         self.python_api = paddle.topk
         self.dtype = np.uint16
+        self.prim_op_type = "prim"
         self.input_data = np.random.rand(10, 20).astype(np.float32)
         self.init_args()
         self.inputs = {'X': convert_float_to_uint16(self.input_data)}
@@ -263,13 +235,11 @@ class TestTopkBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-2, check_eager=True)
+        self.check_output_with_place(place, check_eager=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, set(['X']), 'Out', check_eager=True, max_relative_error=1e0
-        )
+        self.check_grad_with_place(place, set(['X']), 'Out', check_eager=True)
 
 
 class TestTopKAPI(unittest.TestCase):
