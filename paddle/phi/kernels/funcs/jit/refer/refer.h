@@ -354,19 +354,6 @@ void LayerNorm(T* x,
 }
 
 template <typename T>
-void NCHW16CMulNC(const T* x, const T* y, T* z, int height, int width) {
-  int offset = 0;
-  for (int h = 0; h < height; ++h) {
-    for (int w = 0; w < width; ++w) {
-      for (int i = 0; i < 16; ++i) {
-        z[i + offset] = y[i] * x[i + offset];
-      }
-      offset += ZMM_FLOAT_BLOCK;
-    }
-  }
-}
-
-template <typename T>
 void SeqPool(const T* x, T* y, const seq_pool_attr_t* attr) {
   for (int w = 0; w < attr->w; ++w) {
     const T* src = x + w;
@@ -642,7 +629,6 @@ DECLARE_REFER_KERNEL(StrideASum);
 // others
 DECLARE_REFER_KERNEL(CRFDecoding);
 DECLARE_REFER_KERNEL(LayerNorm);
-DECLARE_REFER_KERNEL(NCHW16CMulNC);
 DECLARE_REFER_KERNEL(SeqPool);
 DECLARE_REFER_KERNEL(MatMul);
 DECLARE_REFER_KERNEL(EmbSeqPool);

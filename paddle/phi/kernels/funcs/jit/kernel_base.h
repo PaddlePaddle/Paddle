@@ -37,7 +37,6 @@ typedef enum {
   kLSTMC1H1,
   kLayerNorm,
   kMatMul,
-  kNCHW16CMulNC,
   kSeqPool,
   kStrideASum,
   kVAdd,
@@ -345,15 +344,6 @@ struct LayerNormTuple {
   typedef int attr_type;
   typedef void (*func_type)(
       T*, T*, T*, T*, const T*, const T*, int, const float, int);
-};
-
-// nChw16c = nChw16c .* NC
-template <typename T>
-struct NCHW16CMulNCTuple {
-  static constexpr KernelType kernel_type = kNCHW16CMulNC;
-  typedef T data_type;
-  typedef int attr_type;
-  typedef void (*func_type)(const T*, const T*, T*, int, int);
 };
 
 // Just for adding to kernel pool without template

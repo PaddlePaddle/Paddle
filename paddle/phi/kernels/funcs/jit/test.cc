@@ -412,62 +412,6 @@ void TestKernelGRU() {
 }
 
 template <typename KernelTuple, typename PlaceType>
-void TestKernelNCHW16CMulNC() {
-  using T = typename KernelTuple::data_type;
-  VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
-  const int n = 3, c = 16 * 4, h = 10, w = 10;
-  auto ref = jit::GetReferFunc<KernelTuple>();
-  EXPECT_TRUE(ref != nullptr);
-  int sz = n * c * h * w;
-  std::vector<T> x(sz), y(n * c), zref(sz);
-  std::vector<T> ztgt(sz), zjit(sz);
-  RandomVec<T>(sz, x.data());
-  RandomVec<T>(n * c, y.data());
-
-  const T* x_data = x.data();
-  const T* y_data = y.data();
-  T* zref_data = zref.data();
-  T* ztgt_data = ztgt.data();
-  T* zjit_data = zjit.data();
-  constexpr int simd_width = ZMM_FLOAT_BLOCK;
-  int C = c / simd_width;
-  auto tgt = jit::KernelFuncs<KernelTuple, PlaceType>::Cache().At(0);
-  auto funcs = jit::GetAllCandidateFuncs<KernelTuple, PlaceType>(0);
-  EXPECT_GT(funcs.size(), 0UL);
-  auto jitcode = funcs[0];
-  EXPECT_TRUE(tgt != nullptr);
-
-  if (std::is_same<T, float>::value &&
-      phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f)) {
-    EXPECT_TRUE(jitcode != nullptr);
-  }
-  for (int ni = 0; ni < n; ni++) {
-    for (int ci = 0; ci < C; ci++) {
-      auto ptr_x =
-          x_data + ni * C * h * w * simd_width + ci * h * w * simd_width;
-      auto ptr_y = y_data + ni * C * simd_width + ci * simd_width;
-      auto ptr_zref =
-          zref_data + ni * C * h * w * simd_width + ci * h * w * simd_width;
-      auto ptr_ztgt =
-          ztgt_data + ni * C * h * w * simd_width + ci * h * w * simd_width;
-
-      ref(ptr_x, ptr_y, ptr_zref, h, w);
-      tgt(ptr_x, ptr_y, ptr_ztgt, h, w);
-
-      if (jitcode) {
-        auto ptr_zjit =
-            zjit_data + ni * C * h * w * simd_width + ci * h * w * simd_width;
-        jitcode(ptr_x, ptr_y, ptr_zjit, h, w);
-      }
-    }
-  }
-  ExpectEQ<T>(ztgt_data, zref_data, sz);
-  if (jitcode) {
-    ExpectEQ<T>(zjit_data, zref_data, sz);
-  }
-}
-
-template <typename KernelTuple, typename PlaceType>
 void TestKernelLayerNorm() {
   using T = typename KernelTuple::data_type;
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
@@ -1326,16 +1270,16 @@ TEST(JITKernel_helper, attr) {
       << jit::to_string(jit::kHSum) << jit::to_string(jit::kHMax)
       << jit::to_string(jit::kLSTMCtHt) << jit::to_string(jit::kLSTMC1H1)
       << jit::to_string(jit::kLayerNorm) << jit::to_string(jit::kMatMul)
-      << jit::to_string(jit::kNCHW16CMulNC) << jit::to_string(jit::kSeqPool)
-      << jit::to_string(jit::kVAdd) << jit::to_string(jit::kVAddBias)
-      << jit::to_string(jit::kVAddRelu) << jit::to_string(jit::kVBroadcast)
-      << jit::to_string(jit::kVCopy) << jit::to_string(jit::kVExp)
-      << jit::to_string(jit::kVIdentity) << jit::to_string(jit::kVMul)
-      << jit::to_string(jit::kVRelu) << jit::to_string(jit::kVScal)
-      << jit::to_string(jit::kSgd) << jit::to_string(jit::kAdam)
-      << jit::to_string(jit::kVSigmoid) << jit::to_string(jit::kVSquare)
-      << jit::to_string(jit::kVSub) << jit::to_string(jit::kVTanh);
-  EXPECT_EQ(out.str().size(), 231UL);
+      << jit::to_string(jit::kSeqPool) << jit::to_string(jit::kVAdd)
+      << jit::to_string(jit::kVAddBias) << jit::to_string(jit::kVAddRelu)
+      << jit::to_string(jit::kVBroadcast) << jit::to_string(jit::kVCopy)
+      << jit::to_string(jit::kVExp) << jit::to_string(jit::kVIdentity)
+      << jit::to_string(jit::kVMul) << jit::to_string(jit::kVRelu)
+      << jit::to_string(jit::kVScal) << jit::to_string(jit::kSgd)
+      << jit::to_string(jit::kAdam) << jit::to_string(jit::kVSigmoid)
+      << jit::to_string(jit::kVSquare) << jit::to_string(jit::kVSub)
+      << jit::to_string(jit::kVTanh);
+  EXPECT_EQ(out.str().size(), 219UL);
 
   // SeqPoolTypes
   out.str("");
@@ -1574,7 +1518,6 @@ TEST_CPU_KERNEL(GRUH1);
 TEST_CPU_KERNEL(GRUHtPart1);
 TEST_CPU_KERNEL(GRUHtPart2);
 
-TEST_CPU_KERNEL(NCHW16CMulNC);
 TEST_CPU_KERNEL(LayerNorm);
 TEST_CPU_KERNEL(CRFDecoding);
 

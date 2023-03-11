@@ -54,7 +54,6 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kGRUHtPart2);
     ONE_CASE(kCRFDecoding);
     ONE_CASE(kLayerNorm);
-    ONE_CASE(kNCHW16CMulNC);
     ONE_CASE(kSeqPool);
     ONE_CASE(kMatMul);
     ONE_CASE(kHMax);
