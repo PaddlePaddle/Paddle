@@ -130,7 +130,7 @@ __global__ void naive_conv2d_kernel(const half *input,
   }
 }
 
-float conv2d_diff_gpu(const ConvAllParamsparams, OpType op_type) {
+float conv2d_diff_gpu(const ConvAllParams params, OpType op_type) {
   const half *input = params.input;
   const half *weight = params.weight;
   const half *bias = params.bias;
@@ -232,7 +232,7 @@ std::string OpType2String(OpType op_type) {
 
 int ProfileToGetBestConfig(
     const std::vector<std::function<cutlass::Status(ConvAllParams)>> &all_func,
-    const ConvAllParamsparams,
+    const ConvAllParams params,
     OpType op_type) {
   constexpr int WARMUP = 10;
   constexpr int REPEAT = 100;
