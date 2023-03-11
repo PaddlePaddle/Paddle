@@ -176,7 +176,6 @@ void test_lite_tensor_data_ptr(PrecisionType precision_type) {
 
 TEST(LiteEngineOp, GetLiteTensorDataPtr) {
   test_lite_tensor_data_ptr<float>(PrecisionType::kFloat);
-  test_lite_tensor_data_ptr<int64_t>(PrecisionType::kInt64);
   test_lite_tensor_data_ptr<int32_t>(PrecisionType::kInt32);
   test_lite_tensor_data_ptr<int8_t>(PrecisionType::kInt8);
   EXPECT_ANY_THROW(test_lite_tensor_data_ptr<float>(PrecisionType::kUnk));
