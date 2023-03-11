@@ -2504,6 +2504,14 @@ void SlotRecordInMemoryDataFeed::AssignFeedVar(const Scope& scope) {
 
 void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
                                               int num) {
+  // set ins id
+  if (parse_ins_id_) {
+    ins_id_vec_.clear();
+    ins_id_vec_.resize(num);
+    for (int i = 0; i < num; ++i) {
+      ins_id_vec_[i] = ins_vec[i]->ins_id_;
+    }
+  }
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   paddle::platform::SetDeviceId(place_.GetDeviceId());
   pack_->pack_instance(ins_vec, num);
