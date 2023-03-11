@@ -84,7 +84,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   if(WITH_ARM)
     set(LITE_BUILD_COMMAND ${CMAKE_COMMAND} --build . --target
                            publish_inference -j)
-    message(WARNING "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
+    message(STATUS "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
     set(LITE_OPTIONAL_ARGS
         -DWITH_MKL=OFF
         -DLITE_WITH_CUDA=OFF
@@ -137,6 +137,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   else()
     set(LITE_BUILD_COMMAND ${CMAKE_COMMAND} --build . --target
                            publish_inference -j)
+    message(STATUS "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
     set(LITE_OPTIONAL_ARGS
         -DWITH_MKL=ON
         -DLITE_WITH_CUDA=OFF

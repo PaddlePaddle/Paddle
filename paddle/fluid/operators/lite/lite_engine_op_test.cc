@@ -32,7 +32,6 @@ using paddle::inference::lite::serialize_params;
 namespace paddle {
 namespace operators {
 
-#if defined(PADDLE_WITH_CUDA)
 TEST(LiteEngineOp, engine_op) {
   framework::ProgramDesc program;
   auto* block_ = program.Proto()->mutable_blocks(0);
@@ -61,40 +60,32 @@ TEST(LiteEngineOp, engine_op) {
   fetch->SetOutput("Out", std::vector<std::string>({"out"}));
   fetch->SetAttr("col", 0);
   // Set inputs' variable shape in BlockDesc
-  AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4}), true);
-  AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({2, 4}), true);
-  AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 4}), false);
+  AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4}));
+  AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({2, 4}));
+  AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 4}));
   AddFetchListToBlockDesc(block_, "out");
   *block_->add_ops() = *feed1->Proto();
   *block_->add_ops() = *feed0->Proto();
   *block_->add_ops() = *elt_add->Proto();
   *block_->add_ops() = *fetch->Proto();
   framework::Scope scope;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::CUDAPlace place;
-  phi::GPUContext ctx(place);
-  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                       .GetAllocator(place, ctx.stream())
-                       .get());
-  ctx.PartialInitWithAllocator();
-#else
   platform::CPUPlace place;
   phi::CPUContext ctx(place);
-#endif
   // Prepare variables.
-  CreateTensor(&scope, "x", std::vector<int64_t>({2, 4}), true);
-  CreateTensor(&scope, "y", std::vector<int64_t>({2, 4}), true);
-  CreateTensor(&scope, "out", std::vector<int64_t>({2, 4}), false);
+  CreateTensor(&scope, "x", std::vector<int64_t>({2, 4}));
+  CreateTensor(&scope, "y", std::vector<int64_t>({2, 4}));
+  CreateTensor(&scope, "out", std::vector<int64_t>({2, 4}));
 
   ASSERT_EQ(block_->ops_size(), 4);
 
   std::vector<std::string> repetitive_params{"x", "y"};
   inference::lite::EngineConfig config;
   config.valid_places = {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
-#endif
+#if defined(PADDLE_WITH_ARM)
+    paddle::lite_api::Place({TARGET(kARM), PRECISION(kFloat)}),
+#else
     paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
+#endif
     paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
   };
   serialize_params(&(config.param), &scope, repetitive_params);
@@ -121,7 +112,6 @@ TEST(LiteEngineOp, engine_op) {
   // engine_op->Run(scope, place);
   // LOG(INFO) << "done";
 }
-#endif
 
 }  // namespace operators
 }  // namespace paddle
