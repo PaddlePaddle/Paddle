@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/abs_kernel.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/trunc_kernel.h"
@@ -88,6 +89,7 @@ DEFINE_SPARSE_UNARY_KERNEL(Log1p)
 DEFINE_SPARSE_UNARY_KERNEL(Relu)
 DEFINE_SPARSE_UNARY_KERNEL(Abs)
 DEFINE_SPARSE_UNARY_KERNEL(Expm1)
+DEFINE_SPARSE_UNARY_KERNEL(Isnan)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Relu6Raw, threshold)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
