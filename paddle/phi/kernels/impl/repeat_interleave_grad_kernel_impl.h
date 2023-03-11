@@ -91,12 +91,11 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                         repeats_tensor.dims()[0],
                         x_grad->dims()[dim]));
 
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(repeats_tensor.dtype());
+  const auto& index_type = repeats_tensor.dtype();
 
   bool index_type_match =
-      index_type == paddle::framework::proto::VarType::INT32 ||
-      index_type == paddle::framework::proto::VarType::INT64;
+      index_type == phi::DataType::INT32 ||
+      index_type == phi::DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     phi::errors::InvalidArgument(
@@ -104,9 +103,9 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                         "desires to be %s or %s",
                         paddle::framework::DataTypeToString(index_type),
                         paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT32),
+                            phi::DataType::INT32),
                         paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT64)));
+                            phi::DataType::INT64)));
 #if defined(__NVCC__) || defined(__HIPCC__)
 
   auto output_dim = out_grad.dims();
