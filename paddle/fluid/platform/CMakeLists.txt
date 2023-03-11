@@ -415,3 +415,13 @@ if(WITH_CUSTOM_DEVICE)
       ${DEVICE_EVENT_LIBS} device_event_custom_device
       CACHE INTERNAL "device event libs")
 endif()
+
+cc_library(
+  init_extension
+  SRCS init_extension.cc
+  DEPS init)
+
+cc_test(
+  init_extension_test
+  SRCS init_extension_test.cc
+  DEPS init_extension)

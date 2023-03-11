@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -11,16 +11,21 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #pragma once
+namespace paddle {
+namespace framework {
 
-// All paddle apis in C++ frontend
-#include "paddle/phi/api/all.h"
-// Python bindings for the C++ frontend
-#ifndef PADDLE_ON_INFERENCE
-#include "paddle/utils/pybind.h"
-#endif
-// For initialization of DeviceContextPool and MemoryMethod
-#include "paddle/fluid/platform/init_extension.h"
+class InitExtension {
+ public:
+  InitExtension();
+};
 
-static paddle::framework::InitExtension g_init_extension;
+#define REGISTER_FILE_SYMBOLS(name) \
+  int RegisterSymbolsFor##name() { return 0; }
+
+#define DECLARE_FILE_SYMBOLS(name)       \
+  extern int RegisterSymbolsFor##name(); \
+  UNUSED static int use_file_##name = RegisterSymbolsFor##name()
+
+}  // namespace framework
+}  // namespace paddle
