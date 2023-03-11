@@ -3208,7 +3208,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
             data = paddle.reshape(data, (3, 4))
 
             y = paddle.cumsum(data)
-            # [ 0  1  3  6 10 15 21 28 36 45 55 66]
+            # [ 0  1  3  6 10 15 21 28 36 45 55 66 ]
 
             y = paddle.cumsum(data, axis=0)
             # [[ 0  1  2  3]
