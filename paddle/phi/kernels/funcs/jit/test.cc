@@ -1110,7 +1110,7 @@ TEST(JITKernel_pool, jitcreator) {
 #if defined(_WIN32) || defined(__APPLE__) || defined(__OSX__)
   EXPECT_EQ(jitcreators.size(), 0UL);
 #else
-  EXPECT_EQ(jitcreators.size(), 27UL);
+  EXPECT_EQ(jitcreators.size(), 26UL);
 #endif
 }
 
@@ -1144,7 +1144,7 @@ TEST(JITKernel_pool, more) {
 
 TEST(JITKernel_pool, refer) {
   const auto& kers = jit::ReferKernelPool::Instance().AllKernels();
-  EXPECT_EQ(kers.size(), 31UL);
+  EXPECT_EQ(kers.size(), 30UL);
 }
 
 // test helper
@@ -1279,7 +1279,7 @@ TEST(JITKernel_helper, attr) {
       << jit::to_string(jit::kAdam) << jit::to_string(jit::kVSigmoid)
       << jit::to_string(jit::kVSquare) << jit::to_string(jit::kVSub)
       << jit::to_string(jit::kVTanh);
-  EXPECT_EQ(out.str().size(), 219UL);
+  EXPECT_EQ(out.str().size(), 218UL);
 
   // SeqPoolTypes
   out.str("");
