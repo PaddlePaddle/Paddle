@@ -37,6 +37,7 @@ class LinearQuanterDequanter(Layer):
 
     @staticmethod
     def from_quanter(quanter):
+        assert quanter is not None
         return LinearQuanterDequanter(
             LinearQuanter.from_quanter(quanter),
             LinearDequanter.from_quanter(quanter),
@@ -208,6 +209,8 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
             self, quanter_name
         ), f"{quanter_name} is not attribute of current layer."
         quanter = getattr(self, quanter_name)
+        if quanter is None:
+            return None
         quanter = LinearQuanterDequanter.from_quanter(quanter)
         setattr(self, quanter_name, quanter)
         self._sub_layers[quanter_name] = quanter
@@ -224,9 +227,10 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         assert not self.converted, "The model should be converted only once."
         for weight_name, quanter_name in self.weights_to_quanters():
             qdq = self._convert_quanter_to_qdq(quanter_name)
-            self._quant_weights(weight_name, qdq._quanter)
-            qdq._quanter = None
-            qdq._sub_layers['_quanter'] = None
+            if qdq is not None:
+                self._quant_weights(weight_name, qdq._quanter)
+                qdq._quanter = None
+                qdq._sub_layers['_quanter'] = None
 
         for quanter_name in self.activation_quanters():
             self._convert_quanter_to_qdq(quanter_name)

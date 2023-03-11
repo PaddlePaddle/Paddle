@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle.fluid as fluid
 
@@ -39,10 +39,10 @@ class TestExpandOpRank1(OpTest):
         self.expand_times = [2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestExpandOpRank2_Corner(TestExpandOpRank1):
@@ -104,10 +104,10 @@ class TestExpandOpRank1_tensor_attr(OpTest):
         self.infer_expand_times = [-1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestExpandOpRank2_Corner_tensor_attr(TestExpandOpRank1_tensor_attr):
@@ -146,10 +146,10 @@ class TestExpandOpRank1_tensor(OpTest):
         self.expand_times = [2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestExpandOpRank2_tensor(TestExpandOpRank1_tensor):
@@ -170,7 +170,7 @@ class TestExpandOpInteger(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 # Situation 5: input x is Bool
@@ -183,7 +183,7 @@ class TestExpandOpBoolean(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 # Situation 56: input x is Integer
@@ -198,7 +198,7 @@ class TestExpandOpInt64_t(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == "__main__":

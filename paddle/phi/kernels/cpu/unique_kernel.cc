@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <climits>
+
 #include "paddle/phi/kernels/unique_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
