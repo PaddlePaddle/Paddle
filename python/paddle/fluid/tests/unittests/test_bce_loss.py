@@ -299,7 +299,7 @@ class TestBceLossOpFloat16(OpTest):
                 self.check_output_with_place(place, check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X', 'Label'], 'Out')
 
     def init_test_case(self):
         self.shape = [10, 10]
