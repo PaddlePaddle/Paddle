@@ -28,7 +28,7 @@ void MaximumGradKernel(const Context& dev_ctx,
                        DenseTensor* dx,
                        DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
+  int axis = -1;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
@@ -53,7 +53,7 @@ void MinimumGradKernel(const Context& dev_ctx,
                        DenseTensor* dx,
                        DenseTensor* dy) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
+  int axis = -1;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
               const XPUType* y,
