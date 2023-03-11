@@ -943,6 +943,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             with paddle.static.program_guard(main_program, startup_program):
                 x = paddle.static.data(name="x", shape=[4, 4], dtype='float32')
                 y = paddle.static.data(name="y", shape=[4, 4], dtype='float32')
+                x.stop_gradient = False
+                y.stop_gradient = False
 
                 label = paddle.static.data(
                     name="label", shape=[4, 1], dtype='int64'
