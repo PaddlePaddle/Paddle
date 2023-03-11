@@ -164,7 +164,8 @@ void test_lite_tensor_data_ptr(PrecisionType precision_type) {
           unique_key);
   CHECK_NOTNULL(engine_0);
   auto lite_api_tensor = engine_0->GetInput(0);
-  lite_api_tensor->Resize(std::vector<int64_t>({lite_tensor_data.size()}));
+  lite_api_tensor->Resize(
+      std::vector<int64_t>({static_cast<int>(lite_tensor_data.size())}));
   lite_api_tensor->CopyFromCpu(lite_tensor_data.data());
   T* data = static_cast<T*>(GetLiteTensorDataPtr(
       lite_api_tensor.get(), precision_type, TargetType::kHost));
@@ -211,7 +212,8 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
           unique_key);
   CHECK_NOTNULL(engine_0);
   auto lite_api_tensor = engine_0->GetInput(0);
-  lite_api_tensor->Resize(std::vector<int64_t>({vector.size()}));
+  lite_api_tensor->Resize(
+      std::vector<int64_t>({static_cast<int>(vector.size())}));
   lite_api_tensor->CopyFromCpu(vector.data());
   TensorCopyAsync(lite_api_tensor.get(), lod_tensor, ctx);
   // Copy to LoDTensor.
@@ -252,7 +254,8 @@ void test_tensor_share(const platform::DeviceContext& ctx) {
           unique_key);
   CHECK_NOTNULL(engine_0);
   auto lite_api_tensor = engine_0->GetInput(0);
-  lite_api_tensor->Resize(std::vector<int64_t>({vector.size()}));
+  lite_api_tensor->Resize(
+      std::vector<int64_t>({static_cast<int>(vector.size())}));
   lite_api_tensor->CopyFromCpu(vector.data());
   TensorDataShare(lite_api_tensor.get(), &lod_tensor);
   // Copy to LoDTensor.
