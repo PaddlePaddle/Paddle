@@ -5259,7 +5259,7 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
             # paddle.set_device('cpu')
             y = paddle.to_tensor([4, 5, 6], dtype='float32')
 
-            print(paddle.cumulative_trapezoid(y))
+            # print(paddle.cumulative_trapezoid(y))
             # # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             # #        [4.50000000, 10.       ])
 
