@@ -686,10 +686,16 @@ def binary_cross_entropy(
             return out
     else:
         check_variable_and_dtype(
-            input, 'input', ['float16', 'float32', 'float64'], 'binary_cross_entropy'
+            input,
+            'input',
+            ['float16', 'float32', 'float64'],
+            'binary_cross_entropy',
         )
         check_variable_and_dtype(
-            label, 'label', ['float16', 'float32', 'float64'], 'binary_cross_entropy'
+            label,
+            'label',
+            ['float16', 'float32', 'float64'],
+            'binary_cross_entropy',
         )
 
         sub_name = name if weight is None and reduction == 'none' else None
