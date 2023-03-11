@@ -302,13 +302,13 @@ class TestEmbedOpError(unittest.TestCase):
 class TestEmbeddingFP16OP(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"
-        self.dtype = "float16"
+        self.dtype = np.float16
         self.python_api = paddle.nn.functional.embedding
         self.__class__.op_type = self.op_type
         table = np.random.random((17, 31)).astype(np.float32)
         ids = np.random.randint(0, 17, 4).astype(self.id_dtype())
         self.inputs = {'W': table.astype(self.dtype), 'Ids': ids}
-        self.outputs = {'Out': table[ids].astype(self.dtype)}
+        self.outputs = {'Out': table[ids]}
 
     def id_dtype(self):
         return "int64"
@@ -321,7 +321,7 @@ class TestEmbeddingFP16OP(OpTest):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
-            ['X'],
+            ['W'],
             'Out',
             no_grad_set=set('Ids'),
             max_relative_error=1e-2,
