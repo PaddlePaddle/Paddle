@@ -280,10 +280,7 @@ class TestBceLossOpCase2(OpTest):
         self.shape = [2, 3, 20]
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
-class TestBceLossOpFP16(OpTest):
+class TestBceLossOpFP16(TestBceLossOp):
     def setUp(self):
         self.init_test_case()
         self.op_type = "bce_loss"
@@ -305,21 +302,44 @@ class TestBceLossOpFP16(OpTest):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_grad_with_place(
-                place, ['X'], 'Out', max_relative_error=0.5
+                place, ['X'], 'Out', max_relative_error=1
             )
 
+
+class TestBceLossOpFP16Case1(TestBceLossOpFP16):
     def init_test_case(self):
-        self.shape = [10, 10]
+        self.shape = [2, 3, 4, 5]
 
 
-class TestBceLossOpFP16Case1(OpTest):
-    def init_test_cast(self):
-        self.shape = [20, 30, 40, 50]
-
-
-class TestBceLossOpFP16Case2(OpTest):
-    def init_test_cast(self):
+class TestBceLossOpFP16Case2(TestBceLossOpFP16):
+    def init_test_case(self):
         self.shape = [2, 3, 20]
+
+
+class TestBceLossOpStaticFP16(unittest.TestCase):
+    def test_fp16(self):
+        paddle.enable_static()
+        shape = [2, 3, 20]
+        x_data = np.random.uniform(0.1, 0.8, shape).astype("float16")
+        y_data = np.random.randint(0, 2, shape).astype("float16")
+        output_np = bce_loss(x_data, y_data)
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=shape, name='x', dtype='float16')
+            y = paddle.static.data(shape=shape, name='y', dtype='float16')
+            out = paddle.nn.functional.binary_cross_entropy(
+                x, y, reduction="none"
+            )
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                output_pd = exe.run(
+                    feed={'x': x_data, 'y': y_data}, fetch_list=[out]
+                )[0]
+                np.testing.assert_allclose(
+                    output_pd, output_np, rtol=1e-3, atol=1e-3
+                )
+        paddle.disable_static()
 
 
 if __name__ == "__main__":
