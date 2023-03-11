@@ -46,6 +46,26 @@ class TestLabelSmoothOp(OpTest):
         self.check_grad(["X"], "Out", check_eager=True)
 
 
+class TestLabelSmoothFP16OP(TestLabelSmoothOp):
+    def config(self):
+        self.op_type = "label_smooth"
+        self.dtype = np.float16
+        self.python_api = paddle.nn.functional.label_smooth
+        self.epsilon = 0.1
+        batch_size, self.label_dim = 10, 12
+        self.label = np.zeros((batch_size, self.label_dim)).astype(self.dtype)
+        nonzero_index = np.random.randint(self.label_dim, size=(batch_size))
+        self.label[np.arange(batch_size), nonzero_index] = 1
+
+    def setUp(self):
+        self.config()
+        dist = np.random.random((1, self.label_dim))
+        smoothed_label = (1 - self.epsilon) * self.label + self.epsilon * dist
+        self.inputs = {'X': self.label, 'PriorDist': dist}
+        self.attrs = {'epsilon': self.epsilon}
+        self.outputs = {'Out': smoothed_label}
+
+
 class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
     def setUp(self):
         self.config()
