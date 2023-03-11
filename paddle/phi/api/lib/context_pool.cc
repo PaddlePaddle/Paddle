@@ -22,8 +22,6 @@ limitations under the License. */
 #include "paddle/phi/core/cuda_stream.h"
 #endif
 
-#include "paddle/fluid/platform/init.h"
-
 namespace paddle {
 namespace experimental {
 
@@ -35,9 +33,6 @@ DeviceContextPool& DeviceContextPool::Instance() {
 const phi::DeviceContext* DeviceContextPool::Get(const Place& place) {
   auto it = context_map_.find(place);
   if (it == context_map_.end()) {
-    if (!phi::DeviceContextPool::IsInitialized()) {
-      paddle::framework::InitDevices();
-    }
     // only when we need the specific DeviceContext, get and cache it
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     {
