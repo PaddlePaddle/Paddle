@@ -101,6 +101,7 @@ cc_library(
   infermeta_utils
   SRCS infermeta_utils.cc
   DEPS meta_tensor)
+
 cc_library(
   selected_rows
   SRCS selected_rows_impl.cc selected_rows.cc
