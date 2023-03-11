@@ -31,8 +31,6 @@ typedef enum {
   kGRUH1,
   kGRUHtPart1,
   kGRUHtPart2,
-  kHSum,  // horizontal max
-  kHMax,  // horizontal sum
   kLSTMCtHt,
   kLSTMC1H1,
   kLayerNorm,
@@ -91,10 +89,6 @@ struct XYNTuple {
   typedef void (*func_type)(const T*, T*, int);
 };
 
-// x, returned value, n
-template <typename T>
-struct XRNTuple : public XYNTuple<T> {};
-
 // x, returned value, n, stride
 template <typename T>
 struct XRNSTuple {
@@ -125,9 +119,6 @@ DECLARE_KERNELTUPLE(XYNTuple, VExp);
 DECLARE_KERNELTUPLE(XYNTuple, VSigmoid);
 DECLARE_KERNELTUPLE(XYNTuple, VTanh);
 DECLARE_KERNELTUPLE(XYNTuple, VCopy);
-
-DECLARE_KERNELTUPLE(XRNTuple, HMax);
-DECLARE_KERNELTUPLE(XRNTuple, HSum);
 
 DECLARE_KERNELTUPLE(XRNSTuple, StrideASum);
 

@@ -172,17 +172,6 @@ void BenchKernelAXYN() {
 }
 
 template <typename KernelTuple, typename PlaceType>
-void BenchKernelXRN() {
-  using T = typename KernelTuple::data_type;
-  for (int d : TestSizes()) {
-    phi::DenseTensor x;
-    RandomVec<T>(d, x.mutable_data<T>({d}, PlaceType()));
-    T res;
-    BenchAllImpls<KernelTuple, PlaceType>(d, x.data<T>(), &res, d);
-  }
-}
-
-template <typename KernelTuple, typename PlaceType>
 void BenchKernelXYN() {
   using T = typename KernelTuple::data_type;
   for (int d : TestSizes()) {
@@ -498,9 +487,6 @@ void BenchKernelVBroadcast() {
 #define BenchKernelVTanh BenchKernelXYN
 #define BenchKernelVCopy BenchKernelXYN
 
-#define BenchKernelHMax BenchKernelXRN
-#define BenchKernelHSum BenchKernelXRN
-
 #define BenchKernelLSTMCtHt BenchKernelLSTM
 #define BenchKernelLSTMC1H1 BenchKernelLSTM
 
@@ -533,10 +519,6 @@ BENCH_FP32_CPU(VExp);
 BENCH_FP32_CPU(VSigmoid);
 BENCH_FP32_CPU(VTanh);
 BENCH_FP32_CPU(VCopy);
-
-// xrn
-BENCH_FP32_CPU(HMax);
-BENCH_FP32_CPU(HSum);
 
 // LSTM
 BENCH_FP32_CPU(LSTMCtHt);

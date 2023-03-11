@@ -395,22 +395,6 @@ void MatMul(const T* A, const T* B, T* C, const matmul_attr_t* attr) {
 }
 
 template <typename T>
-void HMax(const T* x, T* res, int n) {
-  res[0] = x[0];
-  for (int i = 1; i < n; ++i) {
-    res[0] = res[0] < x[i] ? x[i] : res[0];
-  }
-}
-
-template <typename T>
-void HSum(const T* x, T* res, int n) {
-  res[0] = x[0];
-  for (int i = 1; i < n; ++i) {
-    res[0] += x[i];
-  }
-}
-
-template <typename T>
 void StrideASum(const T* x, T* res, int n, int stride) {
   res[0] = x[0];
   for (int i = stride; i < n; i += stride) {
@@ -620,9 +604,6 @@ DECLARE_REFER_KERNEL(LSTMC1H1);
 DECLARE_REFER_KERNEL(GRUH1);
 DECLARE_REFER_KERNEL(GRUHtPart1);
 DECLARE_REFER_KERNEL(GRUHtPart2);
-
-DECLARE_REFER_KERNEL(HMax);
-DECLARE_REFER_KERNEL(HSum);
 
 DECLARE_REFER_KERNEL(StrideASum);
 

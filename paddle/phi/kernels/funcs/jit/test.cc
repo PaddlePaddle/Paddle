@@ -228,33 +228,6 @@ void TestKernelXYN() {
 }
 
 template <typename KernelTuple, typename PlaceType>
-void TestKernelXRN() {
-  using T = typename KernelTuple::data_type;
-  VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
-  auto last_acc = FLAGS_acc;
-  FLAGS_acc = 1e-4;
-  for (int d : TestSizes()) {
-    auto ref = jit::GetReferFunc<KernelTuple>();
-    EXPECT_TRUE(ref != nullptr);
-    std::vector<T> x(d);
-    RandomVec<T>(d, x.data());
-    T ref_res;
-    ref(x.data(), &ref_res, d);
-
-    auto verifier = [](const typename KernelTuple::func_type tgt,
-                       const std::vector<T>& x,
-                       const T ref_res) {
-      EXPECT_TRUE(tgt != nullptr);
-      T tgt_res;
-      tgt(x.data(), &tgt_res, x.size());
-      ExpectEQ<T>(&tgt_res, &ref_res, 1);
-    };
-    TestAllImpls<KernelTuple, PlaceType>(d, verifier, x, ref_res);
-  }
-  FLAGS_acc = last_acc;
-}
-
-template <typename KernelTuple, typename PlaceType>
 void TestKernelLSTM() {
   using T = typename KernelTuple::data_type;
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
@@ -1267,7 +1240,6 @@ TEST(JITKernel_helper, attr) {
   out << jit::to_string(jit::kNone) << jit::to_string(jit::kCRFDecoding)
       << jit::to_string(jit::kEmbSeqPool) << jit::to_string(jit::kGRUH1)
       << jit::to_string(jit::kGRUHtPart1) << jit::to_string(jit::kGRUHtPart2)
-      << jit::to_string(jit::kHSum) << jit::to_string(jit::kHMax)
       << jit::to_string(jit::kLSTMCtHt) << jit::to_string(jit::kLSTMC1H1)
       << jit::to_string(jit::kLayerNorm) << jit::to_string(jit::kMatMul)
       << jit::to_string(jit::kSeqPool) << jit::to_string(jit::kVAdd)
@@ -1279,7 +1251,7 @@ TEST(JITKernel_helper, attr) {
       << jit::to_string(jit::kAdam) << jit::to_string(jit::kVSigmoid)
       << jit::to_string(jit::kVSquare) << jit::to_string(jit::kVSub)
       << jit::to_string(jit::kVTanh);
-  EXPECT_EQ(out.str().size(), 218UL);
+  EXPECT_EQ(out.str().size(), 208UL);
 
   // SeqPoolTypes
   out.str("");
@@ -1476,9 +1448,6 @@ TEST(JITKernel_key, sgd) {
 #define TestKernelVTanh TestKernelXYN
 #define TestKernelVCopy TestKernelXYN
 
-#define TestKernelHMax TestKernelXRN
-#define TestKernelHSum TestKernelXRN
-
 #define TestKernelLSTMCtHt TestKernelLSTM
 #define TestKernelLSTMC1H1 TestKernelLSTM
 
@@ -1507,9 +1476,6 @@ TEST_CPU_KERNEL(VExp);
 TEST_CPU_KERNEL(VSigmoid);
 TEST_CPU_KERNEL(VTanh);
 TEST_CPU_KERNEL(VCopy);
-
-TEST_CPU_KERNEL(HMax);
-TEST_CPU_KERNEL(HSum);
 
 TEST_CPU_KERNEL(LSTMCtHt);
 TEST_CPU_KERNEL(LSTMC1H1);
