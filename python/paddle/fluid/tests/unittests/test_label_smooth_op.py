@@ -75,7 +75,12 @@ class TestLabelSmoothFP16OP(OpTest):
                 self.check_output_with_place(place, check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad()
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad_with_place(
+                    place, ['X'], 'Out', check_eager=True
+                )
 
 
 class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
