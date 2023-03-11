@@ -303,7 +303,7 @@ class TestBceLossOpFloat16(OpTest):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_grad_with_place(place, ['X'], 'Out')
-        
+
     def init_test_case(self):
         self.shape = [10, 10]
 
