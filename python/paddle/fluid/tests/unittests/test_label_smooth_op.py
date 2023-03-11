@@ -25,9 +25,10 @@ class TestLabelSmoothOp(OpTest):
     def config(self):
         self.op_type = "label_smooth"
         self.python_api = paddle.nn.functional.label_smooth
+        self.init_dtype()
         self.epsilon = 0.1
         batch_size, self.label_dim = 10, 12
-        self.label = np.zeros((batch_size, self.label_dim)).astype("float64")
+        self.label = np.zeros((batch_size, self.label_dim)).astype(self.dtype)
         nonzero_index = np.random.randint(self.label_dim, size=(batch_size))
         self.label[np.arange(batch_size), nonzero_index] = 1
 
@@ -40,6 +41,9 @@ class TestLabelSmoothOp(OpTest):
         self.attrs = {'epsilon': self.epsilon}
         self.outputs = {'Out': smoothed_label}
 
+    def init_dtype(self):
+        self.dtype = np.float64
+
     def test_check_output(self):
         self.check_output(check_eager=True)
 
@@ -47,32 +51,14 @@ class TestLabelSmoothOp(OpTest):
         self.check_grad(["X"], "Out", check_eager=True)
 
 
-# Add FP16 test
-class TestLabelSmoothFP16OP(OpTest):
-    def setUp(self):
-        self.init_value()
-        self.op_type = "label_smooth"
-        self.__class__.op_type = self.op_type
-        self.python_api = paddle.nn.functional.label_smooth
-        smoothed_label = (
-            1 - self.epsilon
-        ) * self.label + self.epsilon / self.label_dim
-        self.inputs = {'X': self.label}
-        self.attrs = {'epsilon': self.epsilon}
-        self.outputs = {'Out': smoothed_label}
+class TestLabelSmoothFP32OP(TestLabelSmoothOp):
+    def init_dtype(self):
+        self.dtype = np.float32
 
-    def init_value(self):
+
+class TestLabelSmoothFP16OP(TestLabelSmoothOp):
+    def init_dtype(self):
         self.dtype = np.float16
-        self.epsilon = 0.1
-        self.batch_size = 10
-        self.label_dim = 12
-        self.label = np.zeros((self.batch_size, self.label_dim)).astype(
-            self.dtype
-        )
-        nonzero_index = np.random.randint(
-            self.label_dim, size=(self.batch_size)
-        )
-        self.label[np.arange(self.batch_size), nonzero_index] = 1
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
