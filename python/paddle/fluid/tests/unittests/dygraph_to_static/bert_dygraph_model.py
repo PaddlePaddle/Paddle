@@ -16,9 +16,8 @@ from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import Layer
 from paddle.jit.api import to_static
-from paddle.nn import Linear
+from paddle.nn import Layer, Linear
 
 
 class PositionwiseFeedForwardLayer(Layer):
