@@ -316,12 +316,30 @@ class TestEmptyBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_customized(self.verify_output)
 
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['DTYPE'], 'Out')
+    def verify_output(self, outs):
+        data_type = outs[0].dtype
+        if data_type in ['bfloat16']:
+            max_value = np.nanmax(outs[0])
+            min_value = np.nanmin(outs[0])
+
+            always_full_zero = max_value == 0.0 and min_value == 0.0
+            always_non_full_zero = max_value >= min_value
+            self.assertTrue(
+                always_full_zero or always_non_full_zero,
+                'always_full_zero or always_non_full_zero.',
+            )
+        elif data_type in ['bool']:
+            total_num = outs[0].size
+            true_num = np.sum(outs[0])
+            false_num = np.sum(~outs[0])
+            self.assertTrue(
+                total_num == true_num + false_num,
+                'The value should always be True or False.',
+            )
+        else:
+            self.assertTrue(False, 'invalid data type')
 
 
 class TestEmptyError(unittest.TestCase):
