@@ -813,8 +813,6 @@ void InterpreterCore::Convert(
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
   }
 
-  BuildSkipShareLoDInfo();
-
   bool inplaced = false;
   for (const Instruction& inst : vec_instruction_) {
     if (inst.OpBase()->Type() == "share_buffer" ||
@@ -854,6 +852,10 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
           break;
         }
       }
+    }
+    if (can_skip_lod) {
+      VLOG(8) << "skip share lod for: " << vec_instruction_[i].OpBase()->Type()
+              << " (" << i << ")";
     }
     vec_instruction_[i].InnerInferShapeContext()->SetSkipLoD(can_skip_lod);
   }
@@ -1297,6 +1299,7 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
       VLOG(4) << "RUN impl";
       RunImpl();
     }
+    BuildSkipShareLoDInfo();
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should
