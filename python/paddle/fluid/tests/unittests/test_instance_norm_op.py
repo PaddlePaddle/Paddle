@@ -122,26 +122,14 @@ class TestInstanceNormOp(OpTest):
         }
 
     def test_check_output(self):
-        if hasattr(self, 'attrs'):
-            self.check_output(check_eager=False, check_prim=True)
-        else:
-            self.check_output(check_eager=True, check_prim=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        if hasattr(self, 'attrs'):
-            self.check_grad(
-                ['X', 'Scale', 'Bias'],
-                'Y',
-                check_eager=False,
-                check_prim=True,
-            )
-        else:
-            self.check_grad(
-                ['X', 'Scale', 'Bias'],
-                'Y',
-                check_eager=True,
-                check_prim=True,
-            )
+        self.check_grad(
+            ['X', 'Scale', 'Bias'],
+            'Y',
+            check_prim=True,
+        )
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -149,7 +137,7 @@ class TestInstanceNormOp(OpTest):
         self.c = self.shape[1]
         self.h = self.shape[2]
         self.w = self.shape[3]
-        self.epsilon = 1e-5
+        self.epsilon = 1e-05
 
     def init_dtype(self):
         self.dtype = np.float64
