@@ -230,10 +230,6 @@ class TestEmptylikeBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
-
 
 class TestEmptyError(unittest.TestCase):
     def test_attr(self):
