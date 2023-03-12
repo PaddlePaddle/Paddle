@@ -309,9 +309,10 @@ class TestEmptyBF16Op(OpTest):
         self.__class__.op_type = self.op_type
         self.python_api = paddle.empty
         shape = np.array([200, 3]).astype('int32')
-        output = np.empty(shape=shape, dtype='float32')
-        self.inputs = {'SHAPE': shape}
-        self.attrs = {'DTYPE': 'float32'}
+        dtype_inner = convert_np_dtype_to_dtype_('float32')
+        output = np.zeros(shape).astype('float32')
+        self.inputs = {"ShapeTensor": shape}
+        self.attrs = {'shape': shape, 'dtype': 'dtype_inner'}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
