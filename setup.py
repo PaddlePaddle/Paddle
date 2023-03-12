@@ -244,6 +244,10 @@ class DevelopCommand(DevelopCommandBase):
             shutil.copytree(
                 distributed_proto_binary_path, distributed_proto_source_path
             )
+        shutil.copy(
+            paddle_binary_dir + '/python/paddle/fluid/libpaddle.so',
+            paddle_source_dir + '/python/paddle/fluid/',
+        )
         dynamic_library_binary_path = paddle_binary_dir + '/python/paddle/libs/'
         dynamic_library_source_path = paddle_source_dir + '/python/paddle/libs/'
         for lib_so in os.listdir(dynamic_library_binary_path):
