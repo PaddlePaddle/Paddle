@@ -16,7 +16,7 @@ import platform
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
 import paddle.fluid as fluid
@@ -401,7 +401,7 @@ class TestResizeLinearOpUint8(OpTest):
 
 class TestLinearInterpOpError(unittest.TestCase):
     def test_error(self):
-        with paddle.fluid.framework._static_guard():
+        with paddle_static_guard():
             with program_guard(Program(), Program()):
 
                 def input_shape_error():
