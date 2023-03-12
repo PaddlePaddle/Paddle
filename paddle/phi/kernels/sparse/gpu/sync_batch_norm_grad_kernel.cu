@@ -80,4 +80,7 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::INT64);
+}
 #endif
