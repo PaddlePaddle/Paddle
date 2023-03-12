@@ -141,19 +141,41 @@ class TestAtan2OpBf16(OpTest):
         self.python_api = paddle.atan2
         self.dtype = np.uint16
         self.__class__.op_type = self.op_type
-        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
-        x2 = np.random.uniform(0.1, 1, [15, 17]).astype('float32')
-        out = np.arctan2(x1, x2)
+        x = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
+        y = np.random.uniform(0.1, 1, [15, 17]).astype('float32')
+        out = np.arctan2(x, y)
 
         self.inputs = {
-            'X1': convert_float_to_uint16(x1),
-            'X2': convert_float_to_uint16(x2),
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place)
+
+    def test_check_grad_x(self):
+        place = core.CUDAPlace(0)
+        numeric_grads = self.get_numeric_grad(place, 'X')
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            no_grad_set=set(['Y']),
+            user_defined_grads=[numeric_grads],
+        )
+
+    def test_check_grad_y(self):
+        place = core.CUDAPlace(0)
+        numeric_grads = self.get_numeric_grad(place, 'Y')
+        self.check_grad_with_place(
+            place,
+            ['Y'],
+            'Out',
+            no_grad_set=set(['X']),
+            user_defined_grads=[numeric_grads],
+        )
 
 
 class TestAtan2Error(unittest.TestCase):
