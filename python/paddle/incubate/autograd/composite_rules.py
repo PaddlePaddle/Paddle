@@ -180,8 +180,8 @@ def instancenorm_composite(x, scale, bias, epsilon):
         bias_tile = reshape(bias, [1, c, 1, 1])
         out = out + bias_tile
 
-    mean_ = reshape(mean_, x.shape[:2])
-    variance = reshape(variance, x.shape[:2])
+    mean_ = reshape(mean_, [-1])
+    variance = reshape(variance, [-1])
     if len(x_shape) == 2:
         out = reshape(out, x_shape)
     return out, mean_, variance
