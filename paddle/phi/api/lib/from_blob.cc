@@ -78,9 +78,7 @@ phi::Place GetPlaceFromPtr(void* data) {
 #if CUDA_VERSION >= 10000
   cudaPointerAttributes attr;
   cudaError_t status = cudaPointerGetAttributes(&attr, data);
-  PADDLE_ENFORCE_EQ(
-      status, cudaSuccess, "Get Attributes from CUDA Pointer failed");
-  if (attr.type == cudaMemoryTypeDevice) {
+  if (status == cudaSuccess && attr.type == cudaMemoryTypeDevice) {
     return phi::GPUPlace(attr.device);
   }
 #else
@@ -91,9 +89,7 @@ phi::Place GetPlaceFromPtr(void* data) {
 #else
   hipPointerAttribute_t attr;
   hipError_t status = hipPointerGetAttributes(&attr, data);
-  PADDLE_ENFORCE_EQ(
-      status, hipSuccess, "Get Attributes from HIP Pointer failed");
-  if (attr.memoryType == hipMemoryTypeDevice) {
+  if (status == hipSuccess && attr.memoryType == hipMemoryTypeDevice) {
     return phi::GPUPlace(attr.device);
   }
 #endif
