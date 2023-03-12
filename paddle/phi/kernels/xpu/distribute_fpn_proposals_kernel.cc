@@ -32,11 +32,11 @@ static void Sort(const XPUContext& dev_ctx,
   scores_slice_cpu.Resize({value.numel()});
   T* scores_slice_cpu_data = dev_ctx.template HostAlloc<T>(&scores_slice_cpu);
 
-  paddle::memory::Copy(cpu_place,
-                       scores_slice_cpu_data,
-                       place,
-                       value_data,
-                       sizeof(T) * value.numel());
+  memory_utils::Copy(cpu_place,
+                     scores_slice_cpu_data,
+                     place,
+                     value_data,
+                     sizeof(T) * value.numel());
   // Sort index
   DenseTensor index_t;
   index_t.Resize({value.numel()});
@@ -52,7 +52,7 @@ static void Sort(const XPUContext& dev_ctx,
   std::sort(index, index + value.numel(), compare);
   index_out->Resize({index_t.numel()});
   int* idx_out = dev_ctx.template Alloc<int>(index_out);
-  paddle::memory::Copy(
+  memory_utils::Copy(
       place, idx_out, cpu_place, index, sizeof(T) * index_t.numel());
 }
 

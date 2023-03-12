@@ -417,9 +417,9 @@ class SliceCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
  public:
   void Apply() override {
-    paddle::experimental::Tensor input = this->GetSingleForwardInput("Input");
-    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    paddle::experimental::Tensor input_grad = this->GetSingleInputGrad("Input");
+    paddle::Tensor input = this->GetSingleForwardInput("Input");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor input_grad = this->GetSingleInputGrad("Input");
 
     auto dx_ptr = this->GetOutputPtr(&input_grad);
     std::string dx_name = this->GetOutputName(input_grad);

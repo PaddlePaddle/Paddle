@@ -67,14 +67,13 @@ namespace phi {
   }
 
 template <typename T, typename Context>
-void FMaxRawKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& y,
-                   int axis,
-                   DenseTensor* out) {
+void FMaxKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                const DenseTensor& y,
+                DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   funcs::ElementwiseCompute<funcs::FMaxFunctor<T>, T, T>(
-      dev_ctx, x, y, axis, funcs::FMaxFunctor<T>(), out);
+      dev_ctx, x, y, -1, funcs::FMaxFunctor<T>(), out);
 }
 
 template <typename T, typename Context>

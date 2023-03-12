@@ -15,13 +15,43 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
+import paddle
+
+
+def adamx_wrapper(
+    param,
+    grad,
+    lr,
+    moment,
+    inf_norm,
+    beta1_pow=None,
+    master_weight=None,
+    beta1=0.78,
+    beta2=0.899,
+    epsilon=1e-5,
+):
+    return paddle._C_ops.adamax_(
+        param,
+        grad,
+        lr,
+        moment,
+        inf_norm,
+        beta1_pow,
+        master_weight,
+        beta1,
+        beta2,
+        epsilon,
+    )
 
 
 class TestAdamaxOp1(OpTest):
     def setUp(self):
         '''Test Adamax Operator with supplied attributes'''
         self.op_type = "adamax"
+        self.python_api = adamx_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -64,6 +94,8 @@ class TestAdamaxOp2(OpTest):
 
     def setUp(self):
         self.op_type = "adamax"
+        self.python_api = adamx_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         moment = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -102,6 +134,8 @@ class TestAdamaxOpMultipleSteps(OpTest):
     def setUp(self):
         '''Test Adamax Operator with supplied attributes'''
         self.op_type = "adamax"
+        self.python_api = adamx_wrapper
+        self.python_out_sig = ['Out']
         self.num_steps = 10
 
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -200,6 +234,269 @@ class TestAdamaxOpV2(unittest.TestCase):
         with self.assertRaises(ValueError):
             adam = paddle.optimizer.Adamax(
                 0.1, epsilon=-1, parameters=linear.parameters()
+            )
+
+
+class TestAdamaxOpMultiPrecison(unittest.TestCase):
+    def _test_adamax_op_dygraph_place_amp(self, place, use_amp=False):
+        import paddle
+
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device(place)
+        input = paddle.randn((5, 5))
+
+        model = paddle.nn.Linear(5, 5)
+        optimizer = paddle.optimizer.Adamax(
+            0.1, beta1=0.1, parameters=model.parameters()
+        )
+        optimizer._multi_precision = use_amp
+        for idx in range(2):
+            if place == 'gpu' and use_amp:
+                model = paddle.amp.decorate(models=model, level='O2')
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+
+            if place == 'gpu' and use_amp:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.step(optimizer)
+                optimizer.clear_grad()
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+        paddle.enable_static()
+
+    def _get_places(self):
+        import paddle
+
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        return places
+
+    def test_main(self):
+        for place in self._get_places():
+            use_amp_list = [True, False]
+            for use_amp in use_amp_list:
+                self._test_adamax_op_dygraph_place_amp(place, use_amp)
+
+
+class TestAdamaxMultiPrecision2_0(unittest.TestCase):
+    def dygraph_adamax_mp(self, mp, use_amp):
+        paddle.disable_static()
+        paddle.seed(100)
+        paddle.set_device('gpu')
+        input = paddle.randn((2, 2))
+        model = paddle.nn.Linear(2, 2)
+        optimizer = paddle.optimizer.Adamax(0.5, parameters=model.parameters())
+        optimizer._multi_precision = mp
+        if use_amp:
+            model = paddle.amp.decorate(models=model, level='O2')
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+
+        for idx in range(5):
+            if use_amp:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.minimize(optimizer, scaled)
+                optimizer.clear_grad()
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+
+        return output, model.parameters()
+
+    def static_adamax_mp(self, mp, use_amp):
+        paddle.enable_static()
+        paddle.seed(100)
+        np.random.seed(100)
+        exe = paddle.static.Executor('gpu')
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        optimizer = paddle.optimizer.Adamax(0.1)
+        optimizer._multi_precision = mp
+        if use_amp:
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                init_loss_scaling=128.0,
+                use_dynamic_loss_scaling=True,
+                use_pure_fp16=True,
+                use_fp16_guard=False,
+            )
+        with paddle.static.program_guard(train_program, startup_program):
+            if use_amp:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float16'
+                )
+            else:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float32'
+                )
+            hidden = paddle.static.nn.fc(x=data, size=10)
+            loss = paddle.mean(hidden)
+            optimizer.minimize(loss)
+        exe.run(startup_program)
+
+        if use_amp:
+            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            x = np.random.random(size=(2, 2)).astype('float16')
+        else:
+            x = np.random.random(size=(2, 2)).astype('float32')
+        out = []
+        for idx in range(5):
+            (loss_data,) = exe.run(
+                train_program, feed={"X": x}, fetch_list=[loss.name]
+            )
+            out.append(loss_data)
+        return out
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        "Test dygraph mode"
+        output1_dy, params1_dy = self.dygraph_adamax_mp(use_amp=True, mp=True)
+        output2_dy, params2_dy = self.dygraph_adamax_mp(use_amp=False, mp=False)
+        np.testing.assert_allclose(
+            output1_dy.astype('float32').numpy(),
+            output2_dy.astype('float32').numpy(),
+            rtol=1e-05,
+            atol=0.1,
+        )
+        for idx in range(len(params1_dy)):
+            np.testing.assert_allclose(
+                params1_dy[idx].astype('float32').numpy(),
+                params2_dy[idx].astype('float32').numpy(),
+                rtol=1e-05,
+                atol=0.1,
+            )
+        "Test static mode"
+        output1_st = self.static_adamax_mp(use_amp=True, mp=True)
+        output2_st = self.static_adamax_mp(use_amp=False, mp=False)
+        for idx in range(len(output1_st)):
+            np.testing.assert_allclose(
+                output1_st[idx].astype('float32'),
+                output2_st[idx].astype('float32'),
+                rtol=1e-05,
+                atol=0.1,
+            )
+
+
+class TestAdamaxMultiPrecision1_0(unittest.TestCase):
+    def dygraph_adamax_mp(self, use_amp, mp):
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device('gpu')
+        input = paddle.randn((2, 2))
+        model = paddle.nn.Linear(2, 2)
+        optimizer = paddle.fluid.optimizer.Adamax(
+            learning_rate=0.001, parameter_list=model.parameters()
+        )
+        optimizer._multi_precision = mp
+        if use_amp:
+            model = paddle.amp.decorate(models=model, level='O2')
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+
+        for idx in range(5):
+            if use_amp:
+                with paddle.amp.auto_cast(level='O2'):
+                    output = model(input)
+                    loss = paddle.mean(output)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.minimize(optimizer, scaled)
+                optimizer.clear_gradients()
+            else:
+                output = model(input)
+                loss = paddle.mean(output)
+                optimizer.minimize(loss)
+                optimizer.clear_gradients()
+
+        return output, model.parameters()
+
+    def static_adamax_mp(self, use_amp, mp):
+        paddle.enable_static()
+        paddle.seed(100)
+        np.random.seed(100)
+        exe = paddle.static.Executor('gpu')
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        optimizer = paddle.fluid.optimizer.Adamax(learning_rate=0.001)
+        optimizer._multi_precision = mp
+        if use_amp:
+            optimizer = paddle.static.amp.decorate(
+                optimizer,
+                init_loss_scaling=128.0,
+                use_dynamic_loss_scaling=True,
+                use_pure_fp16=True,
+                use_fp16_guard=False,
+            )
+        with paddle.static.program_guard(train_program, startup_program):
+            if use_amp:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float16'
+                )
+            else:
+                data = paddle.static.data(
+                    shape=[2, 2], name='X', dtype='float32'
+                )
+            hidden = paddle.static.nn.fc(x=data, size=10)
+            loss = paddle.mean(hidden)
+            optimizer.minimize(loss)
+        exe.run(startup_program)
+
+        if use_amp:
+            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            x = np.random.random(size=(2, 2)).astype('float16')
+        else:
+            x = np.random.random(size=(2, 2)).astype('float32')
+        out = []
+        for idx in range(5):
+            (loss_data,) = exe.run(
+                train_program, feed={"X": x}, fetch_list=[loss.name]
+            )
+            out.append(loss_data)
+        return out
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        "Test dygraph mode"
+        output1_dy, params1_dy = self.dygraph_adamax_mp(use_amp=True, mp=True)
+        output2_dy, params2_dy = self.dygraph_adamax_mp(use_amp=False, mp=False)
+        np.testing.assert_allclose(
+            output1_dy.astype('float32').numpy(),
+            output2_dy.astype('float32').numpy(),
+            rtol=1e-05,
+            atol=0.1,
+        )
+        for idx in range(len(params1_dy)):
+            np.testing.assert_allclose(
+                params1_dy[idx].astype('float32').numpy(),
+                params2_dy[idx].astype('float32').numpy(),
+                rtol=1e-05,
+                atol=0.1,
+            )
+        "Test static mode"
+        output1_st = self.static_adamax_mp(use_amp=True, mp=True)
+        output2_st = self.static_adamax_mp(use_amp=False, mp=False)
+        for idx in range(len(output1_st)):
+            np.testing.assert_allclose(
+                output1_st[idx].astype('float32'),
+                output2_st[idx].astype('float32'),
+                rtol=1e-05,
+                atol=0.1,
             )
 
 

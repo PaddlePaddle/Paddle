@@ -18,6 +18,40 @@
 
 namespace phi {
 
+void SetOutMemDescWithLogicalLayoutFusesSupport(
+    const OneDNNContext& dev_ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  const auto fused_unsqueeze2_axes =
+      dev_ctx.HasDnnAttr("fused_unsqueeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_unsqueeze2_axes"))
+          : std::vector<int>();
+  const auto fused_reshape2_shape =
+      dev_ctx.HasDnnAttr("fused_reshape2_shape")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_reshape2_shape"))
+          : std::vector<int>();
+  const auto fused_squeeze2_axes =
+      dev_ctx.HasDnnAttr("fused_squeeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_squeeze2_axes"))
+          : std::vector<int>();
+
+  if (!fused_unsqueeze2_axes.empty()) {
+    funcs::SetOutMemDescWithUnsqueeze2FuseSupport(
+        fused_unsqueeze2_axes, out, out_md);
+  } else if (!fused_reshape2_shape.empty()) {
+    funcs::SetOutMemDescWithReshape2FuseSupport(
+        fused_reshape2_shape, out, out_md);
+  } else if (!fused_squeeze2_axes.empty()) {
+    out->set_mem_desc(out_md);
+    out->Resize(make_ddim(out_md.dims()));
+  } else {
+    out->set_mem_desc(out_md);
+  }
+}
+
 void SetInMemDescWithSqueeze2FuseSupport(
     const std::vector<int> fused_squeeze2_axes,
     DenseTensor* in,
@@ -71,14 +105,14 @@ void TransposeKernel(const Context& dev_ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == AllocationType::CPU,
-      true,
+      dev_ctx.GetPlace().GetType(),
+      AllocationType::CPU,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
   SetInMemDescWithLogicalLayoutFusesSupport(
       dev_ctx, const_cast<DenseTensor*>(&x), x.mem_desc());
 
-  if (axis.size() == 1) {
+  if (axis.size() == 1 || axis.size() == 0) {
     Copy<Context>(dev_ctx, x, x.place(), false, out);
     out->set_mem_desc(x.mem_desc());
     return;
@@ -135,14 +169,7 @@ void TransposeKernel(const Context& dev_ctx,
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
       x.mem_desc(), funcs::to_void_cast(x.data<T>()));
 
-  // a trick is used here to fake transpose of out_md, so later it will be
-  // "untransposed", leaving output data in plain format tag
-  std::vector<int64_t> fake_strides(axis.size());
-  int total_stride = 1;
-  for (int i = static_cast<int>(x_vec_dims.size()) - 1; i >= 0; --i) {
-    fake_strides[axis[i]] = total_stride;
-    total_stride *= x_vec_dims[axis[i]];
-  }
+  auto fake_strides = funcs::FakeTransposeStrides(x_vec_dims, axis);
   auto dst_md = dnnl::memory::desc(x_vec_dims, out_type, fake_strides);
   auto reorder_dst_memory_p =
       reorder_handler.AcquireDstMemory(out, dst_md, dev_ctx.GetPlace());
@@ -161,10 +188,11 @@ void TransposeKernel(const Context& dev_ctx,
     permute_axis[axis[i]] = i;
   }
 
-  funcs::SetOutMemDescWithLogicalLayoutFusesSupport(
+  SetOutMemDescWithLogicalLayoutFusesSupport(
       dev_ctx,
       out,
-      reorder_dst_memory_p->get_desc().permute_axes(permute_axis));
+      reorder_dst_memory_p->get_desc().permute_axes(
+          funcs::TransposeToPermuteAxes(axis)));
 }
 }  // namespace phi
 

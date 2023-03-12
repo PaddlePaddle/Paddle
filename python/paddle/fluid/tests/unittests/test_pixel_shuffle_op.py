@@ -140,6 +140,44 @@ class TestPixelShuffleAPI(unittest.TestCase):
             assert np.allclose(res_1, self.out_1_np)
             assert np.allclose(res_2, self.out_2_np)
 
+    def test_api_fp16(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                self.x_1_np = np.random.random([2, 9, 4, 4]).astype("float16")
+                self.x_2_np = np.random.random([2, 4, 4, 9]).astype("float16")
+                x_1 = paddle.fluid.data(
+                    name="x", shape=[2, 9, 4, 4], dtype="float16"
+                )
+                x_2 = paddle.fluid.data(
+                    name="x2", shape=[2, 4, 4, 9], dtype="float16"
+                )
+                # init instance
+                ps_1 = paddle.nn.PixelShuffle(3)
+                ps_2 = paddle.nn.PixelShuffle(3, "NHWC")
+                out_1 = ps_1(x_1)
+                out_2 = ps_2(x_2)
+                out_1_np = pixel_shuffle_np(self.x_1_np, 3)
+                out_2_np = pixel_shuffle_np(self.x_2_np, 3, "NHWC")
+                exe = paddle.static.Executor(place=place)
+                res_1 = exe.run(
+                    fluid.default_main_program(),
+                    feed={"x": self.x_1_np},
+                    fetch_list=out_1,
+                    use_prune=True,
+                )
+                res_2 = exe.run(
+                    fluid.default_main_program(),
+                    feed={"x2": self.x_2_np},
+                    fetch_list=out_2,
+                    use_prune=True,
+                )
+                assert np.allclose(res_1, out_1_np)
+                assert np.allclose(res_2, out_2_np)
+
     # same test between layer and functional in this op.
     def test_static_graph_layer(self):
         for use_cuda in (
