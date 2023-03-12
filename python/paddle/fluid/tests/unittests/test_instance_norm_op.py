@@ -141,7 +141,7 @@ class TestInstanceNormOp(OpTest):
         self.epsilon = 1e-05
 
     def init_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.float32
 
 
 class TestInstanceNormOpTraining(unittest.TestCase):
