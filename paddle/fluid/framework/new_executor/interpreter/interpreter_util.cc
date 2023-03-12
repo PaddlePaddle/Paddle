@@ -72,7 +72,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "group_norm",
     "histogram",
     "instance_norm",
-    "kthvalue",
     "lamb",
     "layer_norm",
     "layer_norm_grad",
