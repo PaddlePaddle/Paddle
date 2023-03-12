@@ -15,7 +15,8 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from testsuite import create_op
 
 import paddle
 import paddle.fluid.core as core
@@ -136,6 +137,16 @@ class TestAtan2API(unittest.TestCase):
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestAtan2OpBf16(OpTest):
+    def get_numeric_grad(self, place, check_name):
+        scope = core.Scope()
+        self._check_grad_helper()
+        op = create_op(
+            scope, self.op_type, self.inputs, self.outputs, self.attrs
+        )
+        return get_numeric_gradient(
+            place, scope, op, self.inputs_fp32, check_name, ['Out']
+        )
+
     def setUp(self):
         self.op_type = 'atan2'
         self.python_api = paddle.atan2
