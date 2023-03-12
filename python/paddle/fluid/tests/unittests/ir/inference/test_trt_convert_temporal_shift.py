@@ -25,12 +25,31 @@ import paddle.inference as paddle_infer
 
 class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        compile_version = paddle_infer.get_trt_compile_version()
+        runtime_version = paddle_infer.get_trt_runtime_version()
+        if (
+            compile_version[0] * 1000
+            + compile_version[1] * 100
+            + compile_version[2] * 10
+            < 8200
+        ):
+            return False
+        if (
+            runtime_version[0] * 1000
+            + runtime_version[1] * 100
+            + runtime_version[2] * 10
+            < 8200
+        ):
+            return False
         return True
 
     def sample_program_configs(self):
         def generate_input1(attrs):
             T = attrs[0]["seg_num"]
-            return np.random.rand(3 * T, 10, 64, 64).astype(np.float32)
+            shape = [2 * T, 10, 64, 64]
+            return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                np.float32
+            )
 
         for shift_value in [0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.49]:
             for T in range(2, 5):
@@ -71,11 +90,16 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [6, 10, 64, 64]}
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [20, 10, 64, 64]
+            t = attrs[0]['seg_num']
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [2 * t, 10, 64, 64]
             }
-            self.dynamic_shape.opt_input_shape = {"input_data": [6, 10, 64, 64]}
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [5 * t, 10, 64, 64]
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [3 * t, 10, 64, 64]
+            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -83,6 +107,14 @@ class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, is_dynamic_shape):
+            valid_version = (8, 2, 0)
+            compile_version = paddle_infer.get_trt_compile_version()
+            runtime_version = paddle_infer.get_trt_runtime_version()
+            self.assertTrue(compile_version == runtime_version)
+            if compile_version < valid_version:
+                return 0, 3
+            if is_dynamic_shape:
+                return 1, 2
             return 0, 3
 
         attrs = [
