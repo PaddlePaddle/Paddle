@@ -61,7 +61,7 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    phi::SyncBatchNormGradKernel,
                    float,
                    phi::dtype::float16) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }
 #else
 PD_REGISTER_KERNEL(sync_batch_norm_grad,
@@ -71,6 +71,6 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    float,
                    double,
                    phi::dtype::float16) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }
 #endif
