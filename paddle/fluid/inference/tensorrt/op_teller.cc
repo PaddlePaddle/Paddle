@@ -2589,6 +2589,35 @@ struct SimpleOpTypeSetTeller : public Teller {
       VLOG(3) << "temporal_shift is not supported when TensorRT < 8.2";
       return false;
 #endif
+
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the temporal shift does not support "
+                   "static shape yet";
+        return false;
+      }
+
+      if (!desc.HasAttr("shift_ratio") || !desc.HasAttr("seg_num")) {
+        VLOG(3) << "temporal shift need attributes : shift_ratio and seg_num";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+
+      auto input_name = desc.Input("X")[0];
+      auto* input_desc = block->FindVar(input_name);
+      const auto input_shape = input_desc->GetShape();
+
+      if (input_shape.size() != 4) {
+        VLOG(3) << "The input and grid tensors must be shape tensors of rank 4 "
+                   "using TRT TemporalShift layer.";
+        return false;
+      }
     }
 
     if (use_no_calib_int8) {
@@ -2907,7 +2936,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act",
-      "temporal_shift"
+      "temporal_shift",
       "grid_sampler"};
 };
 

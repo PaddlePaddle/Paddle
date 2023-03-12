@@ -154,8 +154,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
                                                     "bilinear_interp",
                                                     "bilinear_interp_v2",
                                                     "nearest_interp",
-                                                    "nearest_interp_v2",
-                                                    "temporal_shift"};
+                                                    "nearest_interp_v2"};
   // Ops must run under the original layout even though it has
   // data_format/data_layout attribute, otherwise it will be very troublesome!
   std::unordered_set<std::string> must_original_layout_ops{
