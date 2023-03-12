@@ -92,7 +92,7 @@ cudaDataType_t ToCudaDataType() {
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "DataType %s is unsupported for CUDA.",
-        paddle::experimental::DataTypeToString(
+        phi::DataTypeToString(
             paddle::experimental::CppTypeToDataType<T>::Type())));
   }
 }

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/lamb_functors.h"
 
@@ -255,7 +256,7 @@ void ComputeImpl(const Context& dev_ctx,
     auto pn = phi::funcs::ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
     auto tn =
         phi::funcs::ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
-    auto dtype = paddle::experimental::DataTypeToString(
+    auto dtype = phi::DataTypeToString(
         paddle::experimental::CppTypeToDataType<T>::Type());
     VLOG(1) << "Param " << dtype << " " << name << " pn = " << pn[0]
             << " , tn = " << tn[0];
