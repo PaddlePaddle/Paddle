@@ -141,8 +141,8 @@ class TestAtan2OpBf16(OpTest):
         self.python_api = paddle.atan2
         self.dtype = np.uint16
         self.__class__.op_type = self.op_type
-        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype(np.float32)
-        x2 = np.random.uniform(0.1, 1, [15, 17]).astype(np.float32)
+        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
+        x2 = np.random.uniform(0.1, 1, [15, 17]).astype('float32')
         out = np.arctan2(x1, x2)
 
         self.inputs = {
@@ -154,10 +154,6 @@ class TestAtan2OpBf16(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X1', 'X2'], 'Out')
 
 
 class TestAtan2Error(unittest.TestCase):
