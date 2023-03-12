@@ -58,7 +58,7 @@ class ExpandOpConverter : public OpConverter {
       }
     } else if (op_type_ == "expand_as_v2") {
       if (inputs.find("Y") != inputs.end()) {
-        shape_tensor = engine_->GetITensor(op_desc.Input("Shape")[0]);
+        shape_tensor = engine_->GetITensor(op_desc.Input("Y")[0]);
         shape_rank = shape_tensor->getDimensions().nbDims;
       } else {
         std::vector<int32_t> shape = PADDLE_GET_CONST(
