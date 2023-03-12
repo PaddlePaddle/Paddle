@@ -101,9 +101,9 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                     phi::errors::InvalidArgument(
                         "Input(Repeats) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        phi::DataTypeToString(index_type),
-                        phi::DataTypeToString(DataType::INT32),
-                        phi::DataTypeToString(DataType::INT64)));
+                        DataTypeToString(index_type),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
 #if defined(__NVCC__) || defined(__HIPCC__)
 
   auto output_dim = out_grad.dims();

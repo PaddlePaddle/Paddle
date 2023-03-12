@@ -258,7 +258,7 @@ inline std::string DataTypeToString(const DataType& dtype) {
 
 namespace phi {
 using DataType = paddle::experimental::DataType;
-using paddle::experimental::DataTypeToString;
+using DataTypeToString = paddle::experimental::DataTypeToString;
 using paddle::experimental::SizeOf;
 }  // namespace phi
 
