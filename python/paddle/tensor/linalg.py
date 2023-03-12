@@ -1333,8 +1333,8 @@ def cross(x, y, axis=9, name=None):
     If `axis` is not given, it defaults to the first axis found with the length 3.
 
     Args:
-        x (Tensor): The first input tensor, the data type is float16, float32, float64.
-        y (Tensor): The second input tensor, the data type is float16, float32, float64.
+        x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64.
+        y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64.
         axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1370,13 +1370,13 @@ def cross(x, y, axis=9, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64'],
+            ['float16', 'float32', 'float64', "int32", "int64"],
             'cross',
         )
         check_variable_and_dtype(
             y,
             'y',
-            ['float16', 'float32', 'float64'],
+            ['float16', 'float32', 'float64', "int32", "int64"],
             'cross',
         )
         helper = LayerHelper("cross", **locals())
