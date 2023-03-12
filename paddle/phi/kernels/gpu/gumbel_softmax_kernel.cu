@@ -124,7 +124,6 @@ __global__ void AddGumbelNoiseCUDAKernel(const T* input_data,
                                          int64_t n) {
   int index = threadIdx.x + blockIdx.x * blockDim.x;
   int step = blockDim.x * gridDim.x;
-  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int64_t i = index; i < n; i += step) {
     MPType gumbel_noise = -log(-log(noise[i]));
     output_data[i] = static_cast<T>(
