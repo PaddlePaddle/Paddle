@@ -72,7 +72,7 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    phi::sparse::SyncBatchNormCooGradKernel,
                    float,
                    phi::dtype::float16) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 #else
 PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
@@ -82,6 +82,6 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    float,
                    double,
                    phi::dtype::float16) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 #endif
