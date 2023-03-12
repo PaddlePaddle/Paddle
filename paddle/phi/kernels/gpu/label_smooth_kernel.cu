@@ -48,10 +48,14 @@ __global__ void LabelSmoothRunDistKernel(const int N,
                                          const T* src,
                                          const T* dist_data,
                                          T* dst) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   CUDA_KERNEL_LOOP(idx, N) {
     int dist_idx = idx % dist_numel;
-    dst[idx] = static_cast<T>(1 - epsilon) * src[idx] +
-               static_cast<T>(epsilon) * dist_data[dist_idx];
+    dst[idx] =
+        static_cast<T>((static_cast<MPType>(1) - static_cast<MPType>(epsilon)) *
+                           static_cast<MPType>(src[idx]) +
+                       static_cast<MPType>(epsilon) *
+                           static_cast<MPType>(dist_data[dist_idx]));
   }
 }
 
