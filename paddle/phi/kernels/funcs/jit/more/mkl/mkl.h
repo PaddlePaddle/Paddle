@@ -155,9 +155,6 @@ template <typename T>
 void ASum(const T* x, T* res, int n);
 
 template <typename T>
-void StrideASum(const T* x, T* res, int n, int stride);
-
-template <typename T>
 void Sgd(const T* lr,
          const T* param,
          const T* grad,

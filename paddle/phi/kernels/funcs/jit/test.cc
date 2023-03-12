@@ -688,36 +688,6 @@ void TestKernelMatMul() {
 }
 
 template <typename KernelTuple, typename PlaceType>
-void TestKernelStrideASum() {
-  using T = typename KernelTuple::data_type;
-  VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
-  for (int d : TestSizes()) {
-    for (int m : {1, 2, 3}) {  // stride
-      if (m > d || d % m != 0) {
-        continue;
-      }
-      auto ref = jit::GetReferFunc<KernelTuple>();
-      EXPECT_TRUE(ref != nullptr);
-      std::vector<T> x(d);
-      RandomVec<T>(d, x.data());
-      T ref_res;
-      ref(x.data(), &ref_res, d, m);
-
-      auto verifier = [](const typename KernelTuple::func_type tgt,
-                         const std::vector<T>& x,
-                         const T ref_res,
-                         const int m) {
-        EXPECT_TRUE(tgt != nullptr);
-        T tgt_res;
-        tgt(x.data(), &tgt_res, x.size(), m);
-        ExpectEQ<T>(&tgt_res, &ref_res, 1);
-      };
-      TestAllImpls<KernelTuple, PlaceType>(d, verifier, x, ref_res, m);
-    }
-  }
-}
-
-template <typename KernelTuple, typename PlaceType>
 void TestKernelAdam() {
   using T = typename KernelTuple::data_type;
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
@@ -1494,5 +1464,3 @@ TEST_CPU_KERNEL(Adam);
 TEST_CPU_KERNEL(AdamW);
 TEST_CPU_KERNEL(Sgd);
 TEST_CPU_KERNEL(VBroadcast);
-
-TEST_CPU_KERNEL(StrideASum);

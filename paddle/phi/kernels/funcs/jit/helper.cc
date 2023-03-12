@@ -58,7 +58,6 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kMatMul);
     ONE_CASE(kAdam);
     ONE_CASE(kAdamW);
-    ONE_CASE(kStrideASum);
     ONE_CASE(kEmbSeqPool);
     ONE_CASE(kSgd);
     default:

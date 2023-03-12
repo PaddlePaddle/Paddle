@@ -394,14 +394,6 @@ void MatMul(const T* A, const T* B, T* C, const matmul_attr_t* attr) {
   }
 }
 
-template <typename T>
-void StrideASum(const T* x, T* res, int n, int stride) {
-  res[0] = x[0];
-  for (int i = stride; i < n; i += stride) {
-    res[0] += std::abs(x[i]);
-  }
-}
-
 // embedding seq pool
 // table is a matrix with (tbl_h, tbl_w)
 // idx is a matrix with (idx_h, idx_w)
@@ -604,8 +596,6 @@ DECLARE_REFER_KERNEL(LSTMC1H1);
 DECLARE_REFER_KERNEL(GRUH1);
 DECLARE_REFER_KERNEL(GRUHtPart1);
 DECLARE_REFER_KERNEL(GRUHtPart2);
-
-DECLARE_REFER_KERNEL(StrideASum);
 
 // others
 DECLARE_REFER_KERNEL(CRFDecoding);

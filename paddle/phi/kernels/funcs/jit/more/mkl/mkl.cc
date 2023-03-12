@@ -154,16 +154,6 @@ void ASum<double>(const double* x, double* res, int n) {
   res[0] = phi::dynload::cblas_dasum(n, x, 1);
 }
 
-template <>
-void StrideASum<float>(const float* x, float* res, int n, int stride) {
-  res[0] = phi::dynload::cblas_sasum(n / stride, x, stride);
-}
-
-template <>
-void StrideASum<double>(const double* x, double* res, int n, int stride) {
-  res[0] = phi::dynload::cblas_dasum(n / stride, x, stride);
-}
-
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512
 template <>
 bool VMulKernel<float>::CanBeUsed(const int& d) const {

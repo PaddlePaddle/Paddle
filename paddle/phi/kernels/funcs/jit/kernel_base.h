@@ -36,7 +36,6 @@ typedef enum {
   kLayerNorm,
   kMatMul,
   kSeqPool,
-  kStrideASum,
   kVAdd,
   kVAddBias,
   kVAddRelu,
@@ -119,8 +118,6 @@ DECLARE_KERNELTUPLE(XYNTuple, VExp);
 DECLARE_KERNELTUPLE(XYNTuple, VSigmoid);
 DECLARE_KERNELTUPLE(XYNTuple, VTanh);
 DECLARE_KERNELTUPLE(XYNTuple, VCopy);
-
-DECLARE_KERNELTUPLE(XRNSTuple, StrideASum);
 
 typedef struct {
   void* gates;  // gates: x_ch, x_ih, x_fh, x_oh
