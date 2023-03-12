@@ -227,23 +227,23 @@ class DevelopCommand(DevelopCommandBase):
     def run(self):
         # copy proto and .so to python_source_dir
         fluid_proto_binary_path = (
-            paddle_binary_dir + '/python/paddle/fluid/proto'
+            paddle_binary_dir + '/python/paddle/fluid/proto/'
         )
         fluid_proto_source_path = (
-            paddle_source_dir + '/python/paddle/fluid/proto'
+            paddle_source_dir + '/python/paddle/fluid/proto/'
         )
         distributed_proto_binary_path = (
-            paddle_binary_dir + '/python/paddle/distributed/fleet/proto'
+            paddle_binary_dir + '/python/paddle/distributed/fleet/proto/'
         )
         distributed_proto_source_path = (
-            paddle_source_dir + '/python/paddle/distributed/fleet/proto'
+            paddle_source_dir + '/python/paddle/distributed/fleet/proto/'
         )
-        if not os.path.exists(fluid_proto_source_path):
-            shutil.copytree(fluid_proto_binary_path, fluid_proto_source_path)
-        if not os.path.exists(distributed_proto_source_path):
-            shutil.copytree(
-                distributed_proto_binary_path, distributed_proto_source_path
-            )
+        os.system("rm -rf {}".format(fluid_proto_source_path))
+        shutil.copytree(fluid_proto_binary_path, fluid_proto_source_path)
+        os.system("rm -rf {}".format(distributed_proto_source_path))
+        shutil.copytree(
+            distributed_proto_binary_path, distributed_proto_source_path
+        )
         shutil.copy(
             paddle_binary_dir + '/python/paddle/fluid/libpaddle.so',
             paddle_source_dir + '/python/paddle/fluid/',
