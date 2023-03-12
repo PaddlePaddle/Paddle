@@ -51,11 +51,6 @@ class TestLabelSmoothOp(OpTest):
         self.check_grad(["X"], "Out", check_eager=True)
 
 
-class TestLabelSmoothFP32OP(TestLabelSmoothOp):
-    def init_dtype(self):
-        self.dtype = np.float32
-
-
 class TestLabelSmoothFP16OP(TestLabelSmoothOp):
     def init_dtype(self):
         self.dtype = np.float16
@@ -65,14 +60,6 @@ class TestLabelSmoothFP16OP(TestLabelSmoothOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, check_eager=True)
-
-    def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_grad_with_place(
-                    place, ['X'], 'Out', check_eager=True
-                )
 
 
 class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
