@@ -1,1 +1,5 @@
 version.py
+python/paddle/distributed/fleet/proto/
+python/paddle/fluid/proto
+python/paddle/version/
+python/paddle/libs/*.so*
