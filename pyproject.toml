@@ -29,6 +29,7 @@ exclude = [
 ]
 target-version = "py37"
 select = [
+    # Pyupgrade
     "UP001",
     "UP003",
     "UP007",
@@ -47,6 +48,12 @@ select = [
     "UP033",
     "UP035",
     "UP036",
+
+    # NumPy-specific rules
+    "NPY001",
+]
+unfixable = [
+    "NPY001"
 ]
 
 [tool.ruff.per-file-ignores]
