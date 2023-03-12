@@ -1087,7 +1087,7 @@ TEST(JITKernel_pool, more) {
 
 TEST(JITKernel_pool, refer) {
   const auto& kers = jit::ReferKernelPool::Instance().AllKernels();
-  EXPECT_EQ(kers.size(), 28UL);
+  EXPECT_EQ(kers.size(), 27UL);
 }
 
 // test helper
