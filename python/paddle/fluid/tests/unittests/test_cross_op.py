@@ -65,7 +65,7 @@ class TestCrossOpCase1(TestCrossOp):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
 
-class TestCrossOpCase2(TestCrossOp):
+class TestCrossFP16Op(TestCrossOp):
     def initTestCase(self):
         self.shape = (2048, 3)
         self.dtype = np.float16
