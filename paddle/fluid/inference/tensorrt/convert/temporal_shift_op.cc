@@ -37,7 +37,8 @@ class TemporalShiftOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
 #if IS_TRT_VERSION_GE(8200)
-    VLOG(3) << "convert a fluid transpose op to tensorrt tranpose layer";
+
+    VLOG(3) << "convert a fluid temporal shift op to tensorrt temporal layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -62,16 +63,17 @@ class TemporalShiftOpConverter : public OpConverter {
 
     auto input_dims = input->getDimensions();
 
-    const int NT = input_dims.d[0];
     const int C = input_dims.d[1];
     const int H = input_dims.d[2];
     const int W = input_dims.d[3];
-    const int N = NT / T;
+    std::cout << "C: " << C << " H: " << H << " W: " << W
+              << "shift_ratio: " << shift_ratio << " T: " << T << std::endl;
 
     // Reshape input to [N,T,C,H,W]
     auto reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    nvinfer1::Dims reshape_dims{5, { N, T, C, H, W }};
+    nvinfer1::Dims reshape_dims{5, { -1, T, C, H, W }};
     reshape_layer->setReshapeDimensions(reshape_dims);
+    input = reshape_layer->getOutput(0);
 
     // Pad input to [N,T+2,C,H,W]
     std::vector<int> pre_pad_v{0, 1, 0, 0, 0};
@@ -101,11 +103,7 @@ class TemporalShiftOpConverter : public OpConverter {
                              nvinfer1::ElementWiseOperation::kSUM)
             ->getOutput(0);
 
-    std::vector<int> input_shape_v(dims, 0);
-    for (int i = 0; i < dims; i++) {
-      input_shape_v[i] = input->getDimensions().d[i];
-    }
-    auto const input_shape = Add1DConstantLayer(input_shape_v);
+    auto const input_shape = Shape(input);
 
     size = TRT_ENGINE_ADD_LAYER(engine_,
                                 ElementWise,
@@ -126,36 +124,67 @@ class TemporalShiftOpConverter : public OpConverter {
                              stride);
     slice_layer->setInput(1, *start);
     slice_layer->setInput(2, *size);
+#if IS_TRT_VERSION_GE(8500)
+    slice_layer->setMode(nvinfer1::SampleMode::kFILL);
+#else
     slice_layer->setMode(nvinfer1::SliceMode::kFILL);
-
+#endif
+    
     // Slice Padded Tensor
-    int slice_c = static_cast<int>(C * shift_ratio);
-    int slice_c2 = static_cast<int>(C * shift_ratio * 2);
-    auto slice_start1 = nvinfer1::Dims{5, { 0, 0, 0, 0, 0 }};
-    auto slice_start2 = nvinfer1::Dims{5, { 0, 2, slice_c, 0, 0 }};
-    auto slice_start3 = nvinfer1::Dims{5, { 0, 1, slice_c2, 0, 0 }};
-    auto slice_size = nvinfer1::Dims{5, { N, T, slice_c, H, W }};
-    auto slice_size2 = nvinfer1::Dims{5, { N, T, C - slice_c2, H, W }};
-    auto slice_stride = nvinfer1::Dims{5, { 1, 1, 1, 1, 1 }};
+    const int slice_c = static_cast<int>(C * shift_ratio);
+    const int slice_c2 = static_cast<int>(C * shift_ratio * 2);
 
-    auto* slice1_layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                              Slice,
-                                              *slice_layer->getOutput(0),
-                                              slice_start1,
-                                              slice_size,
-                                              slice_stride);
-    auto* slice2_layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                              Slice,
-                                              *slice_layer->getOutput(0),
-                                              slice_start2,
-                                              slice_size,
-                                              slice_stride);
-    auto* slice3_layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                              Slice,
-                                              *slice_layer->getOutput(0),
-                                              slice_start3,
-                                              slice_size2,
-                                              slice_stride);
+    nvinfer1::ITensor* slice_start1 = Add1DConstantLayer(zeros_v);
+    nvinfer1::ITensor* slice_start2 =
+        Add1DConstantLayer(std::vector<int>{0, 2, slice_c, 0, 0});
+    nvinfer1::ITensor* slice_start3 =
+        Add1DConstantLayer(std::vector<int>{0, 1, slice_c2, 0, 0});
+    
+    nvinfer1::ITensor* slice_size_base = Shape(input);
+    nvinfer1::ITensor* sub_size1 =
+        Add1DConstantLayer(std::vector<int>{0, 0, C - slice_c, 0, 0});
+    nvinfer1::ITensor* sub_size2 = Add1DConstantLayer(
+        std::vector<int>{0, 0, C + slice_c - slice_c2, 0, 0});
+    nvinfer1::ITensor* sub_size3 =
+        Add1DConstantLayer(std::vector<int>{0, 0, slice_c2, 0, 0});
+    // [N, T, C, H, W] - [0, 0, C - slice_c, 0, 0] = [N, T, slice_c, H, W]
+    nvinfer1::ITensor* slice_size1 =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             ElementWise,
+                             *slice_size_base,
+                             *sub_size1,
+                             nvinfer1::ElementWiseOperation::kSUB)
+            ->getOutput(0);
+
+    nvinfer1::ITensor* slice_size2 =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             ElementWise,
+                             *slice_size_base,
+                             *sub_size2,
+                             nvinfer1::ElementWiseOperation::kSUB)
+            ->getOutput(0);
+    nvinfer1::ITensor* slice_size3 =
+        TRT_ENGINE_ADD_LAYER(engine_,
+                             ElementWise,
+                             *slice_size_base,
+                             *sub_size3,
+                             nvinfer1::ElementWiseOperation::kSUB)
+            ->getOutput(0);
+    
+    auto* slice1_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Slice, *slice_layer->getOutput(0), dummy, dummy, stride);
+    slice1_layer->setInput(1, *slice_start1);
+    slice1_layer->setInput(2, *slice_size1);
+    
+    auto* slice2_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Slice, *slice_layer->getOutput(0), dummy, dummy, stride);
+    slice2_layer->setInput(1, *slice_start2);
+    slice2_layer->setInput(2, *slice_size2);
+    
+    auto* slice3_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Slice, *slice_layer->getOutput(0), dummy, dummy, stride);
+    slice3_layer->setInput(1, *slice_start3);
+    slice3_layer->setInput(2, *slice_size3);
 
     // Concatenate slices along the third dimension (C)
     nvinfer1::IConcatenationLayer* concat_layer;
@@ -173,16 +202,15 @@ class TemporalShiftOpConverter : public OpConverter {
           TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs, 3);
       concat_layer->setAxis(2);
     }
-
+    
     // Reshape output to [N*T,C,H,W]
-    nvinfer1::Dims output_shape{4, { N * T, C, H, W }};
     auto* reshape_layer3 =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *concat_layer->getOutput(0));
-    reshape_layer3->setReshapeDimensions(output_shape);
-
+    reshape_layer3->setReshapeDimensions(input_dims);
+    
     // Set output
     auto output_name = op_desc.Output("Out")[0];
-
+    
     if (data_format == "NHWC") {
       // Transpose output to [N*T,C,H,W] -> [N*T,H,W,C]
       auto transpose_layer2 =
