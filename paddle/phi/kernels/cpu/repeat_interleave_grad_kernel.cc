@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/repeat_interleave_grad_kernel.h"
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
