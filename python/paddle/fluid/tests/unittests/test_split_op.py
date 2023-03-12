@@ -539,6 +539,36 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
+    def test_out3(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([4, 6, 6]).astype("int32")
+            # input is a variable which shape is [4, 6, 6]
+            input = paddle.to_tensor(input_1)
+            x0, x1, x2 = paddle.split(input, paddle.to_tensor([2, 2, 2]), axis=1)
+            x0_out = x0.numpy()
+            x1_out = x1.numpy()
+            x2_out = x2.numpy()
+            ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
+            # input is a variable which shape is [4, 6, 6]
+            input = paddle.to_tensor(input_1)
+            input.stop_gradient = False
+            x0, x1, x2 = paddle.split(input, paddle.to_tensor([2, 2, 2]), axis=1)
+            eager_x0_out = x0.numpy()
+            eager_x1_out = x1.numpy()
+            eager_x2_out = x2.numpy()
+            loss = x0.sum()
+            loss.backward()
+            manul_grad = np.zeros_like(input_1)
+            manul_grad[:, :2, :] = 1
+            np.testing.assert_allclose(input.gradient(), manul_grad, rtol=1e-05)
+            np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
+            np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
+
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
 
 class API_TestDygraphSplit(unittest.TestCase):
     def test_out1(self):
