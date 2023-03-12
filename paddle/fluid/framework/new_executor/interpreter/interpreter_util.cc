@@ -117,7 +117,8 @@ static std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
     "fused_attention",
     "fused_attention_grad",
     "fused_batch_norm_act",
-    "fused_batch_norm_act_grad"};
+    "fused_batch_norm_act_grad",
+    "sequence_pool"};
 
 // NOTE(Ruibiao): SingleStreamGuard make some multi-strem op (i.e.,
 // c_allreduce_sum) run in single stream. It is dedicated to BuildOpFuncList
