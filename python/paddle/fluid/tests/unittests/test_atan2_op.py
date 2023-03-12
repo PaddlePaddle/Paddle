@@ -15,8 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
-from testsuite import create_op
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -137,56 +136,33 @@ class TestAtan2API(unittest.TestCase):
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestAtan2OpBf16(OpTest):
-    def get_numeric_grad(self, place, check_name):
-        scope = core.Scope()
-        self._check_grad_helper()
-        op = create_op(
-            scope, self.op_type, self.inputs, self.outputs, self.attrs
-        )
-        return get_numeric_gradient(
-            place, scope, op, self.inputs_fp32, check_name, ['Out']
-        )
-
     def setUp(self):
         self.op_type = 'atan2'
         self.python_api = paddle.atan2
         self.dtype = np.uint16
         self.__class__.op_type = self.op_type
-        x = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
-        y = np.random.uniform(0.1, 1, [15, 17]).astype('float32')
-        out = np.arctan2(x, y)
+        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
+        x2 = np.random.uniform(0.1, 1, [15, 17]).astype('float32')
+        out = np.arctan2(x1, x2)
 
         self.inputs = {
-            'X': convert_float_to_uint16(x),
-            'Y': convert_float_to_uint16(y),
+            'X1': convert_float_to_uint16(x1),
+            'X2': convert_float_to_uint16(x2),
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
-
-    def test_check_grad_x(self):
-        place = core.CUDAPlace(0)
-        numeric_grads = self.get_numeric_grad(place, 'X')
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-            no_grad_set=set(['Y']),
-            user_defined_grads=[numeric_grads],
-        )
-
-    def test_check_grad_y(self):
-        place = core.CUDAPlace(0)
-        numeric_grads = self.get_numeric_grad(place, 'Y')
-        self.check_grad_with_place(
-            place,
-            ['Y'],
-            'Out',
-            no_grad_set=set(['X']),
-            user_defined_grads=[numeric_grads],
-        )
+    def test_check_grad(self):
+        if self.dtype not in [np.int32, np.int64]:
+            self.check_grad(
+                ['X1', 'X2'],
+                'Out',
+                user_defined_grads=atan2_grad(
+                    self.inputs['X1'],
+                    self.inputs['X2'],
+                    1 / self.inputs['X1'].size,
+                ),
+                check_eager=True,
+            )
 
 
 class TestAtan2Error(unittest.TestCase):
