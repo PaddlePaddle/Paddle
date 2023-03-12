@@ -61,6 +61,9 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    phi::SyncBatchNormGradKernel,
                    float,
                    phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::INT64);
+}
 #else
 PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    GPU,
