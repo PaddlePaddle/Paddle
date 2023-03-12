@@ -535,8 +535,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       grad_op->SetInput("{{attr | to_int_array_tensors_name}}", this->Input("{{attr | to_int_array_tensors_name}}"));
     }
         {% endif %}
-      {% elif attr["typename"] == "Scalar" and "is_support_tensor" not 
-         in attr %}
+      {% elif attr["typename"] is scalar and 
+      ("is_support_tensor" not in attr or attr["is_support_tensor"] is false)%}
     if (this->HasInput("{{attr | to_scalar_tensor_name}}")) {
       grad_op->SetInput("{{attr | to_scalar_tensor_name}}", this->Input("{{attr | to_scalar_tensor_name}}"));
     }
@@ -602,7 +602,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       grad_op->SetInput("{{fw_attr | to_int_array_tensors_name}}", this->Input("{{fw_attr | to_int_array_tensors_name}}"));
     }
         {% endif %}
-      {% elif fw_attr["typename"] == "Scalar" %}
+      {% elif fw_attr["typename"] is scalar and
+         ("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}
     if (this->HasInput("{{fw_attr | to_scalar_tensor_name}}")) {
       grad_op->SetInput("{{fw_attr | to_scalar_tensor_name}}", this->Input("{{fw_attr | to_scalar_tensor_name}}"));
     }
