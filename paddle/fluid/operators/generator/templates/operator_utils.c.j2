@@ -535,7 +535,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       grad_op->SetInput("{{attr | to_int_array_tensors_name}}", this->Input("{{attr | to_int_array_tensors_name}}"));
     }
         {% endif %}
-      {% elif attr["typename"] == "Scalar" %}
+      {% elif attr["typename"] == "Scalar" and "is_support_tensor" not 
+         in attr %}
     if (this->HasInput("{{attr | to_scalar_tensor_name}}")) {
       grad_op->SetInput("{{attr | to_scalar_tensor_name}}", this->Input("{{attr | to_scalar_tensor_name}}"));
     }

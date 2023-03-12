@@ -60,6 +60,21 @@
   extra :
     attrs : [bool use_cudnn = true]
 
+- op : all (reduce_all)
+  inputs:
+    x : X
+  attrs:
+    { axis : dim,  keepdim : keep_dim}
+  outputs:
+    out : Out
+  int_array:
+    axis :
+      data_type : int
+      support_tensor : true
+  keep_signature : [all]
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : allclose
   inputs :
     {x : Input, y : Other}
@@ -1128,11 +1143,6 @@
   int_array:
     axis :
       data_type : int
-      support_tensor : true
-  get_expected_kerneltype :
-    fw_invoke : ReduceGetExpectedKernelType
-    bw_invoke0 : ReduceGradGetExpectedKernelType
-  keep_signature : [max, max_grad]
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1380,10 +1390,6 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
-
-- op : reduce_all
-  extra :
-    attrs : [bool use_mkldnn = false]
 
 - op : reduce_amax
   backward : reduce_amax_grad
