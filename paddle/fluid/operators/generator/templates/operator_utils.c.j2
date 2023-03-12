@@ -85,7 +85,7 @@ AddInput("{{attr | to_int_array_tensors_name}}", "attribute {{i}} for {{op_name}
     .AsDispensable();
     {% endif %}
   AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
-  {% elif typename == "IntArray" and attr["is_support_tensor"] is true %}
+  {% elif "is_support_tensor" in attr and attr["is_support_tensor"] %}
 AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
   {% else %}
 AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_type}}), attribute {{i}} for {{op_name}} op.")
