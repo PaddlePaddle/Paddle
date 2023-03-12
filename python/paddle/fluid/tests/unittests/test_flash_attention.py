@@ -61,11 +61,60 @@ class TestFlashAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (2, 128, 8, 16)
-        self.blocksize = 2
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
+
+    def test_raw(self):
+        print(
+            f"Test Raw case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+        )
+
+        paddle.disable_static()
+
+        query = np.random.random(self.shape)
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        q_ = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        out_ = attention_naive(q_, q_, q_, self.causal)
+
+        scale = 1.0 / np.sqrt(q.shape[-1])
+
+        bs = self.shape[0]
+        ms = self.shape[1]
+        nh = self.shape[2]
+        hd = self.shape[3]
+        cu_q = paddle.arange(0, (bs + 1) * ms, ms, dtype='int32')
+
+        qq = paddle.reshape(q, [bs * ms, nh, hd])
+        out, _, _, _ = paddle._C_ops.flash_attn_raw(
+            qq,
+            qq,
+            qq,
+            cu_q,
+            cu_q,
+            ms,
+            ms,
+            scale,
+            self.dropout,
+            self.causal,
+            self.return_softmax,
+        )
+        out_ = paddle.reshape(out_, [bs * ms, nh, hd])
+
+        np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
+
+        out.backward()
+        out_.backward()
+
+        np.testing.assert_allclose(
+            q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
+        )
 
     def test_all(self):
         print(
@@ -152,7 +201,6 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (2, 128, 8, 16)
-        self.blocksize = 2
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
@@ -163,7 +211,6 @@ class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (2, 256, 8, 16)
-        self.blocksize = 2
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False
@@ -174,7 +221,6 @@ class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (2, 512, 8, 16)
-        self.blocksize = 2
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = True
@@ -185,7 +231,6 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)
-        self.blocksize = 2
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False

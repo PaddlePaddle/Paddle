@@ -27,7 +27,6 @@ from ..fluid.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -376,10 +375,10 @@ def slice(input, axes, starts, ends):
             infer_flags = list(-1 for i in range(len(axes)))
         elif isinstance(starts, (list, tuple)):
             attrs['starts'] = []
-            if utils._contain_var(starts):
-                inputs['StartsTensorList'] = utils._convert_to_tensor_list(
-                    starts
-                )
+            if paddle.utils._contain_var(starts):
+                inputs[
+                    'StartsTensorList'
+                ] = paddle.utils._convert_to_tensor_list(starts)
                 for i, dim in enumerate(starts):
                     if isinstance(dim, Variable):
                         attrs['starts'].append(-1)
@@ -396,8 +395,10 @@ def slice(input, axes, starts, ends):
             infer_flags = list(-1 for i in range(len(axes)))
         elif isinstance(ends, (list, tuple)):
             attrs['ends'] = []
-            if utils._contain_var(ends):
-                inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
+            if paddle.utils._contain_var(ends):
+                inputs['EndsTensorList'] = paddle.utils._convert_to_tensor_list(
+                    ends
+                )
                 for i, dim in enumerate(ends):
                     if isinstance(dim, Variable):
                         attrs['ends'].append(-1)
@@ -793,7 +794,7 @@ def crop(x, shape=None, offsets=None, name=None):
         offsets.stop_gradient = True
         ipts['Offsets'] = offsets
         attrs['offsets'] = [-1] * len(x.shape)
-    elif utils._contain_var(offsets):
+    elif paddle.utils._contain_var(offsets):
         new_offsets_tensor = []
         offsets_attr = []
         for dim in offsets:
@@ -817,7 +818,7 @@ def crop(x, shape=None, offsets=None, name=None):
     if isinstance(shape, Variable):
         shape.stop_gradient = True
         ipts['Shape'] = shape
-    elif utils._contain_var(shape):
+    elif paddle.utils._contain_var(shape):
         new_shape_tensor = []
         shape_attr = []
         for dim_size in shape:
@@ -1942,7 +1943,7 @@ def split(x, num_or_sections, axis=0, name=None):
         dim = (len(input.shape) + dim) if dim < 0 else dim
 
         if isinstance(num_or_sections, (list, tuple)):
-            if utils._contain_var(num_or_sections):
+            if paddle.utils._contain_var(num_or_sections):
                 for index, item in enumerate(num_or_sections):
                     if isinstance(item, Variable):
                         num_or_sections[index] = num_or_sections[index].numpy()[
@@ -2043,7 +2044,7 @@ def split(x, num_or_sections, axis=0, name=None):
                     num_or_sections,
                 )
             )
-            if utils._contain_var(num_or_sections):
+            if paddle.utils._contain_var(num_or_sections):
                 inputs['SectionsTensorList'] = _get_SectionsTensorList(
                     num_or_sections
                 )
@@ -2213,8 +2214,8 @@ def squeeze(x, axis=None, name=None):
             axes.stop_gradient = True
             attrs["axes"] = axes
         elif isinstance(axes, (list, tuple)):
-            if utils._contain_var(axes):
-                attrs["axes"] = utils._convert_to_tensor_list(axes)
+            if paddle.utils._contain_var(axes):
+                attrs["axes"] = paddle.utils._convert_to_tensor_list(axes)
             else:
                 attrs["axes"] = axes
 
@@ -2613,8 +2614,10 @@ def unsqueeze(x, axis, name=None):
             axes.stop_gradient = True
             inputs["AxesTensor"] = axes
         elif isinstance(axes, (list, tuple)):
-            if utils._contain_var(axes):
-                inputs["AxesTensorList"] = utils._convert_to_tensor_list(axes)
+            if paddle.utils._contain_var(axes):
+                inputs["AxesTensorList"] = paddle.utils._convert_to_tensor_list(
+                    axes
+                )
             else:
                 attrs["axes"] = axes
 
@@ -3197,10 +3200,10 @@ def tile(x, repeat_times, name=None):
             attrs['repeat_times'] = [-1]
         elif isinstance(repeat_times, (list, tuple)):
             attrs['repeat_times'] = get_attr_repeat_times(repeat_times)
-            if utils._contain_var(repeat_times):
-                inputs['repeat_times_tensor'] = utils._convert_to_tensor_list(
-                    repeat_times
-                )
+            if paddle.utils._contain_var(repeat_times):
+                inputs[
+                    'repeat_times_tensor'
+                ] = paddle.utils._convert_to_tensor_list(repeat_times)
 
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -3351,10 +3354,10 @@ def broadcast_to(x, shape, name=None):
             inputs['Shape'] = shape
         elif isinstance(shape, (list, tuple)):
             attrs['shape'] = get_attr_expand_shape(shape)
-            if utils._contain_var(shape):
-                inputs['expand_shapes_tensor'] = utils._convert_to_tensor_list(
-                    shape
-                )
+            if paddle.utils._contain_var(shape):
+                inputs[
+                    'expand_shapes_tensor'
+                ] = paddle.utils._convert_to_tensor_list(shape)
 
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -3445,10 +3448,10 @@ def expand(x, shape, name=None):
             inputs['Shape'] = shape
         elif isinstance(shape, (list, tuple)):
             attrs['shape'] = get_attr_expand_shape(shape)
-            if utils._contain_var(shape):
-                inputs['expand_shapes_tensor'] = utils._convert_to_tensor_list(
-                    shape
-                )
+            if paddle.utils._contain_var(shape):
+                inputs[
+                    'expand_shapes_tensor'
+                ] = paddle.utils._convert_to_tensor_list(shape)
 
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -3602,8 +3605,10 @@ def reshape(x, shape, name=None):
             inputs["Shape"] = shape
         elif isinstance(shape, (list, tuple)):
             attrs["shape"] = get_attr_shape(shape)
-            if utils._contain_var(shape):
-                inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
+            if paddle.utils._contain_var(shape):
+                inputs['ShapeTensor'] = paddle.utils._convert_to_tensor_list(
+                    shape
+                )
 
         helper = LayerHelper("reshape2", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -3894,7 +3899,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             inputs['StartsTensor'] = starts
         elif isinstance(starts, (list, tuple)):
             attrs['starts'] = []
-            if utils._contain_var(starts):
+            if paddle.utils._contain_var(starts):
                 inputs['StartsTensorList'] = get_new_list_tensor(starts)
                 for i, dim in enumerate(starts):
                     if isinstance(dim, Variable):
@@ -3911,7 +3916,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             inputs['EndsTensor'] = ends
         elif isinstance(ends, (list, tuple)):
             attrs['ends'] = []
-            if utils._contain_var(ends):
+            if paddle.utils._contain_var(ends):
                 inputs['EndsTensorList'] = get_new_list_tensor(ends)
                 for i, dim in enumerate(ends):
                     if isinstance(dim, Variable):
@@ -3928,7 +3933,7 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
             inputs['StridesTensor'] = strides
         elif isinstance(strides, (list, tuple)):
             attrs['strides'] = []
-            if utils._contain_var(strides):
+            if paddle.utils._contain_var(strides):
                 inputs['StridesTensorList'] = get_new_list_tensor(strides)
                 for i, dim in enumerate(strides):
                     if isinstance(dim, Variable):

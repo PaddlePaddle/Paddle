@@ -1079,7 +1079,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       if (split_inputs.find("SectionsTensorList") != split_inputs.end()) {
         if (desc.Input("SectionsTensorList").size() >= 1) {
-          return false;
+          if (!with_dynamic_shape) {
+            return false;
+          }
         }
       }
       if (!desc.HasAttr("axis")) {
@@ -1087,9 +1089,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
 
-      if (axis == 0) {
+      if (!with_dynamic_shape && axis == 0) {
         VLOG(3) << "Invalid split axis. Split on batch is not supported in "
-                   "TensorRT";
+                   "TensorRT with static shape";
         return false;
       }
       auto* block = desc.Block();

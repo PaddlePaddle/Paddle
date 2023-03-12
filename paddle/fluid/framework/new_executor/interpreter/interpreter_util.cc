@@ -55,7 +55,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "adamw",
     "all_close",
     "all_raw",
-    "angle",
     "any_raw",
     "arg_sort",
     "atan2",
@@ -70,7 +69,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "eigh",
     "ftt_c2r",
     "ftt_r2c",
-    "fused_adam",
     "fused_matmul",
     "generate_proposals",
     "graph_sample_neighbors",
@@ -90,20 +88,16 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "multiclass_nms3",
     "multinomial",
     "nanmedian",
-    "numl",
     "rnn",
     "search_sort",
     "select",
     "send_recv",
     "send_ue_recv",
-    "sgd",
-    "svd",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
     "unique_raw",
-    "viterbi_devode",
-    "yolo_loss"};
+    "viterbi_devode"};
 
 // These Ops can use InferMeta to infer the output dtype
 static std::set<std::string> OpsWithAvailablePhiInferMeta = {
@@ -1092,7 +1086,9 @@ void FakeInitializeOutputsForFunctionKernel(
       if (out_tensor && !out_tensor->initialized()) {
         phi::TensorArgDef& tensor_arg_def = output_defs[start_idx + offset];
         phi::DataType dtype = tensor_arg_def.dtype;
-        phi::Place place = phi::TransToPhiPlace(tensor_arg_def.backend);
+        phi::Place place = tensor_arg_def.backend == phi::Backend::CUSTOM
+                               ? dev_ctx.GetPlace()
+                               : phi::TransToPhiPlace(tensor_arg_def.backend);
 
         if (dtype == DataType::UNDEFINED ||
             OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
