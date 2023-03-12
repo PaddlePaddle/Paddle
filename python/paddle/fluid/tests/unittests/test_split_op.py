@@ -538,7 +538,6 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
         np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
-
     def test_out3(self):
         with fluid.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
@@ -564,12 +563,9 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
             np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
             np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
-
         np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
-
-
 class API_TestDygraphSplit(unittest.TestCase):
     def test_out1(self):
         with fluid.dygraph.guard():
