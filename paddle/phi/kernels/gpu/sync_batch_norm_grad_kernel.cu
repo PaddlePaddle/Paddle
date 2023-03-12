@@ -69,7 +69,5 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
-                   phi::dtype::float16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
-}
+                   
 #endif
