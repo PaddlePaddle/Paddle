@@ -16,7 +16,7 @@ if(WITH_GPU)
   nv_test(
     test_from_blob
     SRCS test_from_blob.cc
-    DEPS ${COMMON_API_TEST_DEPS})
+    DEPS phi_backends ${COMMON_API_TEST_DEPS})
 elseif(WITH_ROCM)
   hip_test(
     test_phi_tensor
@@ -33,7 +33,7 @@ elseif(WITH_ROCM)
   hip_test(
     test_from_blob
     SRCS test_from_blob.cc
-    DEPS ${COMMON_API_TEST_DEPS})
+    DEPS phi_backends ${COMMON_API_TEST_DEPS})
 else()
   cc_test(
     test_phi_tensor
@@ -42,7 +42,7 @@ else()
   cc_test(
     test_from_blob
     SRCS test_from_blob.cc
-    DEPS ${COMMON_API_TEST_DEPS})
+    DEPS phi_backends ${COMMON_API_TEST_DEPS})
 endif()
 
 cc_test(
