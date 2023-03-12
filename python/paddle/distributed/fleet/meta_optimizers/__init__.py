@@ -22,7 +22,6 @@ from .pipeline_optimizer import PipelineOptimizer
 from .localsgd_optimizer import LocalSGDOptimizer
 from .localsgd_optimizer import AdaptiveLocalSGDOptimizer
 from .lars_optimizer import LarsOptimizer
-from .parameter_server_graph_optimizer import ParameterServerGraphOptimizer
 from .dgc_optimizer import DGCOptimizer
 from .dgc_optimizer import DGCMomentumOptimizer
 from .lamb_optimizer import LambOptimizer

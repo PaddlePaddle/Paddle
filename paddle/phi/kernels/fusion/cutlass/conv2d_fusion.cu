@@ -64,7 +64,7 @@ void Conv2dFusionKernel(const Context& ctx,
     pad_w0 = paddings[2];
     pad_w1 = paddings[3];
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Attr paddins in conv2d_fusion must have 2 or 4 elements, but now have "
         "%u elements.",
         paddings.size()));
@@ -111,7 +111,7 @@ void Conv2dFusionKernel(const Context& ctx,
       params.residual = reinterpret_cast<const half*>(residual->data<T>());
       Conv2dBiasAddRelu(params);
     } else {
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Cutlass now only support relu activation in a residual block"));
     }
   } else if (activation == "relu") {

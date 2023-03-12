@@ -220,7 +220,7 @@ if(WITH_XPU)
   cc_library(
     xpu_pass_utils
     SRCS xpu/pass_utils.cc
-    DEPS pass)
+    DEPS pass xpu_quant_utils)
   set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils)
   pass_library(embedding_with_eltwise_add_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
@@ -232,6 +232,8 @@ if(WITH_XPU)
   pass_library(generate_sequence_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(link_xpu_op_max_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(delete_isolated_node_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -483,12 +485,11 @@ if(WITH_MKLDNN)
     test_cpu_bfloat16_pass
     SRCS mkldnn/cpu_bfloat16_pass_tester.cc
     DEPS cpu_bfloat16_pass)
+endif()
+
+if(WITH_XPU)
   cc_test(
-    test_multi_gru_fuse_pass
-    SRCS mkldnn/multi_gru_fuse_pass_tester.cc
-    DEPS multi_gru_fuse_pass)
-  cc_test(
-    test_multi_gru_seq_fuse_pass
-    SRCS mkldnn/multi_gru_seq_fuse_pass_tester.cc
-    DEPS multi_gru_seq_fuse_pass)
+    test_delete_isolated_node_pass
+    SRCS xpu/delete_isolated_node_pass_test.cc
+    DEPS delete_isolated_node_pass)
 endif()

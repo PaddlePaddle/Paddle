@@ -22,6 +22,7 @@ from paddle.tensor import atan  # noqa: F401
 from paddle.tensor import atanh  # noqa: F401
 from paddle.tensor import broadcast_shape  # noqa: F401
 from paddle.tensor import broadcast_to  # noqa: F401
+from paddle.tensor import concat  # noqa: F401
 from paddle.tensor import cos  # noqa: F401
 from paddle.tensor import cosh  # noqa: F401
 from paddle.tensor import cumprod  # noqa: F401
@@ -59,6 +60,7 @@ from paddle.tensor import tanh  # noqa: F401
 from paddle.tensor import uniform  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
 from paddle.tensor.creation import assign  # noqa: F401
+from paddle.tensor.creation import zeros_like  # noqa: F401
 from paddle.tensor.manipulation import cast  # noqa: F401
 from paddle.tensor.math import maximum  # noqa: F401
 from paddle.tensor.math import minimum  # noqa: F401
@@ -88,9 +90,9 @@ math_op = [
     'logcumsumexp',
     'logit',
     'max',
+    'maximum',
     'min',
     'minimum',
-    'maximum'
 ]
 
 trigonometric_op = [
@@ -122,7 +124,9 @@ others = [
     'fill_constant',
     'reshape',
     'full',
+    'concat',
     'uniform',
     'greater_equal',
+    'zeros_like',
 ]
 """

@@ -36,6 +36,10 @@ class TrtConvertElementwiseTestOneInputSpecialCase0(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
+                )
             else:
                 return np.random.random(shape).astype(np.float32)
 
@@ -44,6 +48,10 @@ class TrtConvertElementwiseTestOneInputSpecialCase0(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=[1, 32, 1, 1], dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(
+                    low=0.1, high=1.0, size=[1, 32, 1, 1]
+                ).astype(np.float32)
             else:
                 return np.random.randn(1, 32, 1, 1).astype(np.float32)
 
@@ -58,6 +66,7 @@ class TrtConvertElementwiseTestOneInputSpecialCase0(TrtLayerAutoScanTest):
                     "elementwise_min",
                     "elementwise_max",
                     "elementwise_floordiv",
+                    "elementwise_mod",
                 ]:
                     for axis in [-1]:
                         self.dims = len(shape)
@@ -169,6 +178,10 @@ class TrtConvertElementwiseTestOneInputSpecialCase1(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
                 )
+            if op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
+                )
             else:
                 return np.random.random(shape).astype(np.float32)
 
@@ -177,6 +190,10 @@ class TrtConvertElementwiseTestOneInputSpecialCase1(TrtLayerAutoScanTest):
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=[1], dtype=np.int32
+                )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=[1]).astype(
+                    np.float32
                 )
             else:
                 return np.random.randn(1).astype(np.float32)
@@ -191,6 +208,7 @@ class TrtConvertElementwiseTestOneInputSpecialCase1(TrtLayerAutoScanTest):
                 "elementwise_min",
                 "elementwise_max",
                 "elementwise_floordiv",
+                "elementwise_mod",
             ]:
                 for axis in [-1]:
                     self.dims = len(shape)
@@ -290,6 +308,10 @@ class TrtConvertElementwiseTestOneInput(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
+                )
             else:
                 return np.random.random(shape).astype(np.float32)
 
@@ -298,6 +320,10 @@ class TrtConvertElementwiseTestOneInput(TrtLayerAutoScanTest):
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=[32], dtype=np.int32
+                )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=[32]).astype(
+                    np.float32
                 )
             else:
                 return np.random.randn(32).astype(np.float32)
@@ -318,6 +344,7 @@ class TrtConvertElementwiseTestOneInput(TrtLayerAutoScanTest):
                     "elementwise_min",
                     "elementwise_max",
                     "elementwise_floordiv",
+                    "elementwise_mod",
                 ]:
                     for axis in [-1 if len(shape) == 1 else 1]:
                         self.dims = len(shape)
@@ -442,6 +469,10 @@ class TrtConvertElementwiseTestTwoInputWithoutBroadcast(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
+                )
             else:
                 return np.random.random(shape).astype(np.float32)
 
@@ -455,6 +486,7 @@ class TrtConvertElementwiseTestTwoInputWithoutBroadcast(TrtLayerAutoScanTest):
                 "elementwise_min",
                 "elementwise_max",
                 "elementwise_floordiv",
+                "elementwise_mod",
             ]:
                 for axis in [0, -1]:
                     self.dims = len(shape)
@@ -605,6 +637,10 @@ class TrtConvertElementwiseTestTwoInputWithBroadcast(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
+                )
             else:
                 return np.random.random(shape).astype(np.float32)
 
@@ -651,6 +687,7 @@ class TrtConvertElementwiseTestTwoInputWithBroadcast(TrtLayerAutoScanTest):
                     "elementwise_min",
                     "elementwise_max",
                     "elementwise_floordiv",
+                    "elementwise_mod",
                 ]:
                     for axis in axis_list[j][i]:
                         self.shape1 = input1_shape
@@ -763,6 +800,10 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
                 return np.random.randint(
                     low=1, high=10000, size=shape, dtype=np.int32
                 )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                    np.float32
+                )
             else:
                 return np.random.random(shape).astype(np.float32)
 
@@ -771,6 +812,10 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
             if op_type == "elementwise_floordiv":
                 return np.random.randint(
                     low=1, high=10000, size=[32], dtype=np.int32
+                )
+            elif op_type == "elementwise_mod":
+                return np.random.uniform(low=0.1, high=1.0, size=[32]).astype(
+                    np.float32
                 )
             else:
                 return np.random.rand(32).astype(np.float32)
@@ -791,6 +836,7 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
                     "elementwise_min",
                     "elementwise_max",
                     "elementwise_floordiv",
+                    "elementwise_mod",
                 ]:
                     self.op_type = op_type
                     for axis in [-1 if len(shape) == 1 else 1]:
@@ -840,8 +886,8 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
             # The input.dims[1] must be equal to the weight's length.
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [4]}
-                self.dynamic_shape.max_input_shape = {"input_data": [256]}
-                self.dynamic_shape.opt_input_shape = {"input_data": [16]}
+                self.dynamic_shape.max_input_shape = {"input_data": [64]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [32]}
             elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {"input_data": [1, 32]}
                 self.dynamic_shape.max_input_shape = {"input_data": [4, 32]}
