@@ -60,9 +60,9 @@ TEST(LiteEngineOp, engine_op) {
   fetch->SetOutput("Out", std::vector<std::string>({"out"}));
   fetch->SetAttr("col", 0);
   // Set inputs' variable shape in BlockDesc
-  AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4}));
-  AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({2, 4}));
-  AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 4}));
+  AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4}), true);
+  AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({2, 4}), true);
+  AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 4}), false);
   AddFetchListToBlockDesc(block_, "out");
   *block_->add_ops() = *feed1->Proto();
   *block_->add_ops() = *feed0->Proto();
