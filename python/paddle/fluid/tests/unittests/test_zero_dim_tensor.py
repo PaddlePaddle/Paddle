@@ -3063,8 +3063,8 @@ class TestSundryAPIStatic(unittest.TestCase):
     @prog_scope()
     def test_unsqueeze(self):
         x1 = paddle.full([], 2)
-        out1 = paddle.unsqueeze(x1, axis=0)
         x1.stop_gradient = False
+        out1 = paddle.unsqueeze(x1, axis=0)
         paddle.static.append_backward(out1.sum())
 
         x2 = paddle.full([], 3)
