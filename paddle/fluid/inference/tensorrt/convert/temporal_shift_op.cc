@@ -66,8 +66,6 @@ class TemporalShiftOpConverter : public OpConverter {
     const int C = input_dims.d[1];
     const int H = input_dims.d[2];
     const int W = input_dims.d[3];
-    std::cout << "C: " << C << " H: " << H << " W: " << W
-              << "shift_ratio: " << shift_ratio << " T: " << T << std::endl;
 
     // Reshape input to [N,T,C,H,W]
     auto reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
@@ -129,7 +127,7 @@ class TemporalShiftOpConverter : public OpConverter {
 #else
     slice_layer->setMode(nvinfer1::SliceMode::kFILL);
 #endif
-    
+
     // Slice Padded Tensor
     const int slice_c = static_cast<int>(C * shift_ratio);
     const int slice_c2 = static_cast<int>(C * shift_ratio * 2);
@@ -139,7 +137,7 @@ class TemporalShiftOpConverter : public OpConverter {
         Add1DConstantLayer(std::vector<int>{0, 2, slice_c, 0, 0});
     nvinfer1::ITensor* slice_start3 =
         Add1DConstantLayer(std::vector<int>{0, 1, slice_c2, 0, 0});
-    
+
     nvinfer1::ITensor* slice_size_base = Shape(input);
     nvinfer1::ITensor* sub_size1 =
         Add1DConstantLayer(std::vector<int>{0, 0, C - slice_c, 0, 0});
@@ -170,17 +168,17 @@ class TemporalShiftOpConverter : public OpConverter {
                              *sub_size3,
                              nvinfer1::ElementWiseOperation::kSUB)
             ->getOutput(0);
-    
+
     auto* slice1_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Slice, *slice_layer->getOutput(0), dummy, dummy, stride);
     slice1_layer->setInput(1, *slice_start1);
     slice1_layer->setInput(2, *slice_size1);
-    
+
     auto* slice2_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Slice, *slice_layer->getOutput(0), dummy, dummy, stride);
     slice2_layer->setInput(1, *slice_start2);
     slice2_layer->setInput(2, *slice_size2);
-    
+
     auto* slice3_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Slice, *slice_layer->getOutput(0), dummy, dummy, stride);
     slice3_layer->setInput(1, *slice_start3);
@@ -202,15 +200,15 @@ class TemporalShiftOpConverter : public OpConverter {
           TRT_ENGINE_ADD_LAYER(engine_, Concatenation, concat_inputs, 3);
       concat_layer->setAxis(2);
     }
-    
+
     // Reshape output to [N*T,C,H,W]
     auto* reshape_layer3 =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *concat_layer->getOutput(0));
     reshape_layer3->setReshapeDimensions(input_dims);
-    
+
     // Set output
     auto output_name = op_desc.Output("Out")[0];
-    
+
     if (data_format == "NHWC") {
       // Transpose output to [N*T,C,H,W] -> [N*T,H,W,C]
       auto transpose_layer2 =
