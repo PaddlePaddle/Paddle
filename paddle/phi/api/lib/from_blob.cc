@@ -90,7 +90,7 @@ phi::Place GetPlaceFromPtr(void* data) {
 #endif
 #else
   hipPointerAttribute_t attr;
-  hipError_t status = hipPointerGetAttributes(&attr, ptr);
+  hipError_t status = hipPointerGetAttributes(&attr, data);
   PADDLE_ENFORCE_EQ(
       status, hipSuccess, "Get Attributes from HIP Pointer failed");
   if (attr.memoryType == hipMemoryTypeDevice) {
