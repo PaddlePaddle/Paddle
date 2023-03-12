@@ -3060,6 +3060,57 @@ void MoeInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
+void FusedGLUInferMeta(const MetaTensor& x,
+                       const MetaTensor& weight,
+                       const MetaTensor& bias,
+                       const std::string& act_type,
+                       const bool requires_grad,
+                       MetaTensor* out,
+                       MetaTensor* matmul_result0,
+                       MetaTensor* matmul_result1) {
+  auto x_mat_dims = phi::flatten_to_2d(x.dims(), x.dims().size() - 1);
+  const int64_t k = x_mat_dims[1];
+  const int64_t n = weight.dims()[1];
+  PADDLE_ENFORCE_EQ(
+      k,
+      weight.dims()[0],
+      phi::errors::InvalidArgument("The matmul dim is not matched, the x "
+                                   "dim[1] should be equal to weight dim[0]"));
+
+  if (act_type != "sigmoid" && act_type != "swish" && act_type != "gelu") {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Currently FusedGLU Kernel only accept act_type with `sigmoid`, "
+        "`swish`, `gelu`. "));
+    return;
+  }
+
+  if ((n % 2) != 0) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The output channels should be divided by 2. "));
+    return;
+  }
+
+  std::vector<int64_t> out_dims_vec;
+  const std::vector<int64_t> x_dims_vec = phi::vectorize(x.dims());
+  out_dims_vec.assign(x_dims_vec.begin(), x_dims_vec.end() - 1);
+  out_dims_vec.push_back(n / 2);
+  auto out_dims = phi::make_ddim(out_dims_vec);
+  out->set_dims(out_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+
+  matmul_result0->set_dims(out_dims);
+  matmul_result0->share_lod(x);
+  matmul_result0->set_dtype(x.dtype());
+  matmul_result0->set_layout(x.layout());
+
+  matmul_result1->set_dims(out_dims);
+  matmul_result1->share_lod(x);
+  matmul_result1->set_dtype(x.dtype());
+  matmul_result1->set_layout(x.layout());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

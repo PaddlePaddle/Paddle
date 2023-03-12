@@ -6,7 +6,8 @@ exclude: |
         paddle/fluid/distributed/ps/thirdparty/round_robin.h|
         python/paddle/utils/gast/.+|
         python/paddle/fluid/tests/unittests/npu/.+|
-        python/paddle/fluid/tests/unittests/mlu/.+
+        python/paddle/fluid/tests/unittests/mlu/.+|
+        paddle/phi/kernels/fusion/cutlass/fused_glu/.+
     )$
 repos:
 # Common hooks
