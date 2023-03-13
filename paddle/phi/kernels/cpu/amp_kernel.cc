@@ -112,6 +112,7 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    phi::CheckFiniteAndUnscaleKernel,
                    float,
                    double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(1).SetDataType(phi::DataType::BOOL);
 }
 
