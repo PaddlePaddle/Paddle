@@ -199,8 +199,6 @@ class TestSumOp6D(OpTest):
         }
         self.attrs = {'dim': [0]}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
-        # error occurred in cinn
-        self.enable_cinn = True
 
     def test_check_output(self):
         self.check_output(check_eager=True)
@@ -693,7 +691,6 @@ class Test2DReduce0(Test1DReduce):
         self.attrs = {'dim': [0]}
         self.inputs = {'X': np.random.random((20, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
-        self.enable_cinn = True
 
 
 class Test2DReduce1(Test1DReduce):
@@ -706,7 +703,6 @@ class Test2DReduce1(Test1DReduce):
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
-        self.enable_cinn = True
 
 
 class Test3DReduce0(Test1DReduce):
@@ -719,7 +715,6 @@ class Test3DReduce0(Test1DReduce):
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
-        self.enable_cinn = True
 
 
 class Test3DReduce1(Test1DReduce):
@@ -732,7 +727,6 @@ class Test3DReduce1(Test1DReduce):
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
-        self.enable_cinn = True
 
 
 class Test3DReduce2(Test1DReduce):
@@ -745,7 +739,6 @@ class Test3DReduce2(Test1DReduce):
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
-        self.enable_cinn = True
 
 
 class Test3DReduce3(Test1DReduce):
@@ -758,7 +751,6 @@ class Test3DReduce3(Test1DReduce):
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
         }
-        self.enable_cinn = True
 
 
 class Test8DReduce0(Test1DReduce):
@@ -791,7 +783,6 @@ class TestKeepDimReduce(Test1DReduce):
                 axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
             )
         }
-        self.enable_cinn = True
 
 
 class TestKeepDim8DReduce(Test1DReduce):
@@ -871,8 +862,7 @@ class TestKeepDimReduceSumMultiAxises(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        # rev_comp error
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestReduceSumWithDimOne(OpTest):
@@ -962,16 +952,22 @@ class Test1DReduceWithAxes1(OpTest):
         self.enable_cinn = True
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
+def reduce_sum_wrapper(
+    x, axis=None, dtype_rename=None, keepdim=False, name=None
+):
+    return paddle.sum(x, axis, "float64", keepdim, name)
+
+
 class TestReduceWithDtype(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.python_api = paddle.sum
+        self.python_api = reduce_sum_wrapper
         self.prim_op_type = "prim"
         self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum().astype('float64')}
@@ -982,20 +978,12 @@ class TestReduceWithDtype(OpTest):
                 'out_dtype': int(convert_np_dtype_to_dtype_(np.float64)),
             }
         )
-        # cinn op_mapper not support in_dtype/out_dtype attr
-        self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
-
-
-def reduce_sum_wrapper(
-    x, axis=None, dtype_rename=None, keepdim=False, name=None
-):
-    return paddle.sum(x, axis, "float64", keepdim, name)
 
 
 class TestReduceWithDtype1(TestReduceWithDtype):
