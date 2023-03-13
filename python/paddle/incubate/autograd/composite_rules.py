@@ -396,6 +396,6 @@ def unsqueeze_composite(x, axis):
 @REGISTER_COMPOSITE('rsqrt')
 def rsqrt_composite(x):
     """define composite rule of op rsqrt."""
-    # rsqrt(x) = x^(-1/2)
+    # rsqrt(x) = x^(-0.5)
     y = full(x.shape, -0.5, x.dtype)
     return pow(x, y)
