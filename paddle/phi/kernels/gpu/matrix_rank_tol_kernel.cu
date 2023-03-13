@@ -445,6 +445,8 @@ PD_REGISTER_KERNEL(matrix_rank_tol,  // cuda_only
                    ALL_LAYOUT,
                    phi::MatrixRankTolKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}
 
 #endif  // not PADDLE_WITH_HIP

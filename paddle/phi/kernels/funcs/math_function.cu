@@ -114,20 +114,17 @@ template struct SetConstant<phi::GPUContext, bool>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<float>>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<double>>;
 
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float16>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            bfloat16>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, double>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, uint8_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int16_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int64_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, bool>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::complex<float>>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::complex<double>>;
+template struct SetConstant<phi::GPUPinnedContext, float16>;
+template struct SetConstant<phi::GPUPinnedContext, bfloat16>;
+template struct SetConstant<phi::GPUPinnedContext, float>;
+template struct SetConstant<phi::GPUPinnedContext, double>;
+template struct SetConstant<phi::GPUPinnedContext, uint8_t>;
+template struct SetConstant<phi::GPUPinnedContext, int>;
+template struct SetConstant<phi::GPUPinnedContext, int16_t>;
+template struct SetConstant<phi::GPUPinnedContext, int64_t>;
+template struct SetConstant<phi::GPUPinnedContext, bool>;
+template struct SetConstant<phi::GPUPinnedContext, phi::dtype::complex<float>>;
+template struct SetConstant<phi::GPUPinnedContext, phi::dtype::complex<double>>;
 
 #define DEFINE_GPU_TRANS(RANK)                                     \
   template struct Transpose<phi::GPUContext, bool, RANK>;          \

@@ -318,4 +318,7 @@ void MatrixNMSKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    matrix_nms, CPU, ALL_LAYOUT, phi::MatrixNMSKernel, float, double) {}
+    matrix_nms, CPU, ALL_LAYOUT, phi::MatrixNMSKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}

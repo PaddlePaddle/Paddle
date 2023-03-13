@@ -16,8 +16,42 @@ from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.data_feeder as data_feeder
+import paddle.framework as framework
 
 paddle.enable_static()
+
+
+def broadcast_new(tensor, src, group=None, sync_op=True):
+    op_type = 'broadcast'
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        op_type,
+    )
+
+    helper = framework.LayerHelper(op_type, **locals())
+    ring_id = 0 if group is None else group.id
+
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={
+            'root': src,
+            'ring_id': ring_id,
+        },
+    )
 
 
 class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
@@ -31,6 +65,15 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
             )
             tindata.desc.set_need_check_feed(False)
             paddle.distributed.broadcast(tindata, src=1)
+            return [tindata]
+
+    def get_model_new(self, main_prog, startup_program, rank, dtype=None):
+        with fluid.program_guard(main_prog, startup_program):
+            tindata = paddle.static.data(
+                name="tindata", shape=[-1, 10, 1000], dtype=dtype
+            )
+            tindata.desc.set_need_check_feed(False)
+            broadcast_new(tindata, src=1)
             return [tindata]
 
 
