@@ -273,6 +273,7 @@ void AsRealInferMeta(const MetaTensor& input, MetaTensor* output) {
   auto out_dims = phi::make_ddim(out_dims_v);
   output->set_dims(out_dims);
   output->share_lod(input);
+  output->set_dtype(dtype::ToReal(input.dtype()));
 }
 
 void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output) {
@@ -353,6 +354,11 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
   output_dim[out_batch_size_dim] = x.dims()[x_batch_size_dim];
   out->set_dims(output_dim);
+}
+
+void BroadcastBaseInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
 }
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
@@ -4228,7 +4234,9 @@ void TransposeInferMeta(const MetaTensor& x,
   int x_rank = x_dims.size();
   int axis_size = axis.size();
 
-  PADDLE_ENFORCE_EQ(
+  // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
+  // axis_size
+  PADDLE_ENFORCE_GE(
       x_rank,
       axis_size,
       errors::InvalidArgument("The input tensor's dimension "

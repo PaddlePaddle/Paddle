@@ -14,6 +14,7 @@
 
 import ast
 import atexit
+import builtins
 import copy
 import functools
 import importlib.util
@@ -23,6 +24,7 @@ import shutil
 import sys
 import tempfile
 import textwrap
+import types
 import warnings
 from importlib.machinery import SourceFileLoader
 
@@ -48,6 +50,31 @@ ALREADY_D2S = '__already_d2s'
 ARGS_NAME = '__args'
 # NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
 ORIGI_INFO = "Original information of source code for ast node."
+
+DEL_TEMP_DIR = True  # A flag to avoid atexit.register more than once
+FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
+FOR_ITER_TUPLE_PREFIX = '__for_loop_iter_tuple'
+FOR_ITER_TARGET_PREFIX = '__for_loop_iter_target'
+FOR_ITER_ITERATOR_PREFIX = '__for_loop_iter_iterator'
+FOR_ITER_TUPLE_INDEX_PREFIX = '__for_loop_iter_tuple_index'
+FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
+FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
+FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
+
+RE_PYNAME = '[a-zA-Z0-9_]+'
+RE_PYMODULE = r'[a-zA-Z0-9_]+\.'
+
+# Assign not support float64, use float32 value as magic number.
+RETURN_NO_VALUE_VAR_NAME = "__no_value_return_var"
+RETURN_NO_VALUE_MAGIC_NUM = 1.77113e27
+
+TRUE_FUNC_PREFIX = 'true_fn'
+FALSE_FUNC_PREFIX = 'false_fn'
+
+WHILE_CONDITION_PREFIX = 'while_condition'
+WHILE_BODY_PREFIX = 'while_body'
+FOR_CONDITION_PREFIX = 'for_loop_condition'
+FOR_BODY_PREFIX = 'for_loop_body'
 
 
 class BaseNodeVisitor(gast.NodeVisitor):
@@ -80,19 +107,6 @@ dygraph_class_to_static_api = {
     "PiecewiseDecay": "piecewise_decay",
     "PolynomialDecay": "polynomial_decay",
 }
-
-DEL_TEMP_DIR = True  # A flag to avoid atexit.register more than once
-FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
-FOR_ITER_TUPLE_PREFIX = '__for_loop_iter_tuple'
-FOR_ITER_TARGET_PREFIX = '__for_loop_iter_target'
-FOR_ITER_ITERATOR_PREFIX = '__for_loop_iter_iterator'
-FOR_ITER_TUPLE_INDEX_PREFIX = '__for_loop_iter_tuple_index'
-FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
-FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
-FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
-
-RE_PYNAME = '[a-zA-Z0-9_]+'
-RE_PYMODULE = r'[a-zA-Z0-9_]+\.'
 
 
 def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
@@ -143,10 +157,6 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
 
 
 def create_undefined_variable():
-    from paddle.jit.dy2static.return_transformer import (
-        RETURN_NO_VALUE_MAGIC_NUM,
-    )
-
     var = data_layer_not_check(
         unique_name.generate("undefined_var"), [1], "float64"
     )
@@ -287,8 +297,22 @@ def is_paddle_api(node):
 
 
 def is_paddle_func(func):
-    m = inspect.getmodule(func)
-    return m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
+    try:
+        if isinstance(func, functools.partial):
+            func = func.func
+
+        # In case of dynamically monkey patch customised function
+        # into paddle class obj, so we consider its class module
+        # path as prefix.
+        if hasattr(func, "__self__"):
+            func = func.__self__
+        elif inspect.ismethod(func):
+            func = func.__func__
+
+        m = inspect.getmodule(func)
+        return m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
+    except Exception:
+        return False
 
 
 # Is numpy_api cannot reuse is_api_in_module because of numpy module problem
@@ -1207,16 +1231,6 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             """NOTE: why we need merge w_vars and push_pop_vars here ?
             because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
             """
-            from paddle.jit.dy2static.ifelse_transformer import (
-                FALSE_FUNC_PREFIX,
-                TRUE_FUNC_PREFIX,
-            )
-            from paddle.jit.dy2static.loop_transformer import (
-                FOR_BODY_PREFIX,
-                FOR_CONDITION_PREFIX,
-                WHILE_BODY_PREFIX,
-            )
-
             control_flow_function_def = [
                 WHILE_BODY_PREFIX,
                 WHILE_BODY_PREFIX,
@@ -1301,6 +1315,15 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         if isinstance(node.ctx, write_context):
             name = ast_to_source_code(node).strip()
             self._current_name_scope().w_vars.add(name)
+
+    def visit_Subscript(self, node):
+        self.generic_visit(node)
+        write_context = (gast.Store, gast.AugStore, gast.Del)
+        if isinstance(node.ctx, write_context):
+            while isinstance(node.value, gast.Subscript):
+                node = node.value
+            if isinstance(node.value, gast.Name):
+                self._current_name_scope().w_vars.add(node.value.id)
 
     def visit_Call(self, node):
         self.generic_visit(node)
@@ -1545,3 +1568,19 @@ def prim_or_cinn_is_enabled(build_strategy):
         elif value.lower() in ['true', '1']:
             return True
     return False
+
+
+def is_builtin(func, name=None):
+    """predict whether a function is a builtin function with name={name}.
+    if name == None, then any builtin function will return True
+    """
+
+    def name_judge():
+        return name is None or func.__name__ == name
+
+    if isinstance(func, types.BuiltinFunctionType) and name_judge():
+        return True
+    elif func in builtins.__dict__.values() and name_judge():
+        return True
+    else:
+        return False

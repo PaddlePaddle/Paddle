@@ -78,14 +78,31 @@ OpSupportedInfos(const std::string& place,
     }
   }
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto is_custom_place = [&](const std::string& place) {
+    return is_target_place.count(place) && place != "CPU" && place != "GPU" &&
+           place != "XPU";
+  };
+#endif
   auto phi_kernels = phi::KernelFactory::Instance().kernels();
   for (auto& kernel_pair : phi_kernels) {
     auto op_type = phi::TransToFluidOpName(kernel_pair.first);
     for (auto& info_pair : kernel_pair.second) {
-      framework::OpKernelType kernel_type =
-          framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
-      if (is_target_place[query_place](kernel_type.place_) &&
-          kernel_type.data_type_ == dtype && all_ops.count(op_type)) {
+      if (dtype != framework::TransToProtoVarType(info_pair.first.dtype()) ||
+          all_ops.count(op_type) == 0) {
+        continue;
+      }
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      if (info_pair.first.backend() == phi::Backend::CUSTOM) {
+        if (is_custom_place(query_place)) {
+          VLOG(4) << op_type << " " << supported_ops.size();
+          supported_ops.emplace(op_type);
+        }
+        continue;
+      }
+#endif
+      if (is_target_place[query_place](
+              phi::TransToPhiPlace(info_pair.first.backend(), false))) {
         VLOG(4) << op_type << " " << supported_ops.size();
         supported_ops.emplace(op_type);
       }

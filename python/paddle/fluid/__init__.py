@@ -51,7 +51,6 @@ from .data import *
 from . import trainer_desc
 
 from . import io
-from . import evaluator
 from . import initializer
 from .initializer import set_global_initializer
 from . import layers
