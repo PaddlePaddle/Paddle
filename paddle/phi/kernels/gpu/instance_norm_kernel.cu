@@ -226,8 +226,20 @@ void InstanceNormKernel(const Context &dev_ctx,
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
 PD_REGISTER_KERNEL(
-    instance_norm, GPU, ALL_LAYOUT, phi::InstanceNormKernel, float) {}
+    instance_norm, GPU, ALL_LAYOUT, phi::InstanceNormKernel, float) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+}
 #else
 PD_REGISTER_KERNEL(
-    instance_norm, GPU, ALL_LAYOUT, phi::InstanceNormKernel, float, double) {}
+    instance_norm, GPU, ALL_LAYOUT, phi::InstanceNormKernel, float, double) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 #endif
