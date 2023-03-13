@@ -230,13 +230,8 @@ class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
           "We don't support dynamic index or sections from tensor for split "
           "composite grad for now. "));
     } else {
-      if (sections.size() > 0) {
-        VLOG(6) << "Runing split_grad composite func";
-        prim::split_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
-      } else {
-        VLOG(6) << "Runing split_with_num_grad composite func";
-        prim::split_with_num_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
-      }
+      VLOG(6) << "Runing split_grad composite func";
+      prim::split_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
       this->RecoverOutputName(input_grad, dx_name);
     }
   }

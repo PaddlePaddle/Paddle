@@ -870,16 +870,6 @@ void split_grad(const std::vector<Tensor>& out_grad,
 }
 
 template <typename T>
-void split_with_num_grad(const std::vector<Tensor>& out_grad,
-                         const Scalar& axis,
-                         Tensor* x_grad) {
-  if (x_grad) {
-    auto grad = concat<T>(out_grad, axis);
-    set_output<T>(grad, x_grad);
-  }
-}
-
-template <typename T>
 void topk_grad(const Tensor& x,
                const Tensor& indices,
                const Tensor& out_grad,
