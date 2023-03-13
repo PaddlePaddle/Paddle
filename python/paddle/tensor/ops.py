@@ -921,7 +921,7 @@ def sqrt(x, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'uint16', 'float32', 'float64', 'uint16'],
+            ['float16', 'uint16', 'float32', 'float64'],
             'sqrt',
         )
         helper = LayerHelper('sqrt', **locals())
