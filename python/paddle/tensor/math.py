@@ -907,9 +907,6 @@ def multiply_(x, y, name=None):
     assert (
         _dygraph_tracer()._has_grad is False
     ), "The current inplace version of multiply_ needs to be used in the context of paddle.no_grad() since inplace multiply_grad is not yet supported."
-    op_type = 'elementwise_mul'
-    act = None
-    axis = -1
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
