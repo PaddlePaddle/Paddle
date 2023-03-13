@@ -216,6 +216,12 @@ def expand_v2_composite(x, shape):
             assert size_out % size_in == 0
             repeat = int(size_out / size_in)
         repeat_times.append(repeat)
+    '''
+    Under the static graph, the tile op will set the expanded dimension to -1 when expanding the tensor,
+    which will result in failure to pass the shape check.
+    So for tensors that need to expand the dimension,
+    reshape will be used in advance.
+    '''
     if dim_in < dim_out:
         shape_in_expand = []
         for i in range(dim_out - dim_in):
