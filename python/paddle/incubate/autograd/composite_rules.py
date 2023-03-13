@@ -335,6 +335,12 @@ def fill_any_like(x, fill_value, dtype, place=None):
 @REGISTER_COMPOSITE('squeeze2')
 def squeeze2_composite(x, axis):
     """define composite rule of squeeze"""
+    """
+    canonicalize dim within range 0 to rank and
+    determine new shape after squeeze op
+    if axis not specified, remove all dims equal to 1
+    otherwise, remove dims equal to 1 in axis
+    """
 
     def canonicalize_dim(rank, idx):
         assert rank > 0
