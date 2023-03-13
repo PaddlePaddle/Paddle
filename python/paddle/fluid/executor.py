@@ -1367,6 +1367,7 @@ class Executor:
                 )
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
+        raise Exception("no parallel")
         tensors = exe.run(fetch_var_names, True)._move_to_list()
         return as_numpy(tensors) if return_numpy else tensors
 
