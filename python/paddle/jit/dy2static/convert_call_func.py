@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import builtins
 import collections
 import copy
 import functools
@@ -20,13 +19,9 @@ import inspect
 import logging
 import pdb
 import re
-import types
 from typing import Any, List
 
 import numpy
-
-from paddle.jit.dy2static.logging_utils import TranslatorLogger
-from paddle.jit.dy2static.utils import is_paddle_func, unwrap
 
 from .convert_operators import (
     convert_enumerate,
@@ -35,13 +30,19 @@ from .convert_operators import (
     convert_range,
     convert_zip,
 )
+from .logging_utils import TranslatorLogger
+from .program_translator import (
+    CONVERSION_OPTIONS,
+    StaticFunction,
+    convert_to_static,
+    unwrap_decorators,
+)
+from .utils import is_builtin, is_paddle_func, unwrap
 
 __all__ = []
 
 
 translator_logger = TranslatorLogger()
-
-CONVERSION_OPTIONS = "__jst_not_to_static"
 
 
 class ConversionOptions:
@@ -69,22 +70,6 @@ class ConversionOptions:
                     type(func)
                 )
             )
-
-
-def is_builtin(func, name=None):
-    """predict whether a function is a builtin function with name={name}.
-    if name == None, then any builtin function will return True
-    """
-
-    def name_judge():
-        return name is None or func.__name__ == name
-
-    if isinstance(func, types.BuiltinFunctionType) and name_judge():
-        return True
-    elif func in builtins.__dict__.values() and name_judge():
-        return True
-    else:
-        return False
 
 
 def builtin_modules():
@@ -197,13 +182,6 @@ def convert_call(func):
             #  [1. 1. 1.]]
 
     """
-    # NOTE(Aurelius84): Fix it after all files migrating into jit.
-    from paddle.jit.dy2static.program_translator import (
-        StaticFunction,
-        convert_to_static,
-        unwrap_decorators,
-    )
-
     translator_logger.log(
         1, "Convert callable object: convert {}.".format(func)
     )

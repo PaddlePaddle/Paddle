@@ -437,6 +437,7 @@ class TestMKLDNNExpOp(TestActivation):
 # Check if primitives already exist in backward
 class TestMKLDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
     def setUp(self):
+        paddle.enable_static()
         super().setUp()
 
         np.random.seed(123)
