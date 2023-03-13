@@ -137,9 +137,8 @@ class TestElementwiseMaxFP16Op_ZeroDim3(TestElementwiseOp):
 @unittest.skipIf(
     core.is_compiled_with_cuda()
     and (
-        core.cudnn_version()
-        < 8100
-        #        or paddle.device.cuda.get_device_capability()[0] < 8
+        core.cudnn_version() < 8100
+        or paddle.device.cuda.get_device_capability()[0] < 8
     ),
     "run test when gpu is availble and the minimum cudnn version is 8.1.0 and gpu's compute capability is at least 8.0.",
 )
@@ -168,6 +167,31 @@ class TestElementwiseBF16Op(OpTest):
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+        else:
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+
+
+class TestElementwiseMaxBF16Op_ZeroDim1(TestElementwiseBF16Op):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        x = np.random.uniform(0.1, 1, []).astype("float32")
+        y = np.random.uniform(0.1, 1, []).astype("float32")
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(np.maximum(x, y))}
+
+    def test_check_grad_normal(self):
+        if hasattr(self, 'attrs'):
             self.check_grad(
                 ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_eager=False
             )
@@ -185,19 +209,6 @@ class TestElementwiseBF16Op(OpTest):
         self.check_grad(
             ['X'], 'Out', numeric_grad_delta=0.05, no_grad_set=set('Y')
         )
-
-
-class TestElementwiseMaxBF16Op_ZeroDim1(TestElementwiseBF16Op):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.uniform(0.1, 1, []).astype("float32")
-        y = np.random.uniform(0.1, 1, []).astype("float32")
-        self.inputs = {
-            'X': convert_float_to_uint16(x),
-            'Y': convert_float_to_uint16(y),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(np.maximum(x, y))}
 
 
 class TestElementwiseMaxBF16Op_scalar(TestElementwiseBF16Op):
