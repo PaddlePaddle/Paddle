@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
