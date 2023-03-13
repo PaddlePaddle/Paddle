@@ -128,6 +128,11 @@ void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
   out->set_dims(dim);
 }
 
+void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -4871,6 +4876,11 @@ void UnStackInferMeta(const MetaTensor& x,
     outs[i]->set_dims(phi::make_ddim(vec));
     outs[i]->set_dtype(x.dtype());
   }
+}
+
+void ReduceBaseInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
 }
 
 void ChannelShuffleInferMeta(const MetaTensor& x,

@@ -41,6 +41,8 @@ void AffineGridInferMeta(const MetaTensor& input,
 
 void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
+void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -66,6 +68,8 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
                             MetaTensor* out);
 
 void BroadcastBaseInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void ReduceBaseInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
