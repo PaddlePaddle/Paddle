@@ -1195,6 +1195,13 @@ def get_headers():
                 '*.h', paddle_source_dir + '/paddle/utils', recursive=True
             )
         )
+        + list(  # phi init headers
+            find_files(
+                'init_extension.h',
+                paddle_source_dir + '/paddle/fluid/platform',
+                recursive=True,
+            )
+        )
     )  # paddle utils headers
 
     jit_layer_headers = [
