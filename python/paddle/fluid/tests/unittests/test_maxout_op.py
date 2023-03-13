@@ -139,17 +139,9 @@ class TestMaxoutAPI(unittest.TestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestMaxOutOpFP16(OpTest):
-    def setUp(self):
-        self.op_type = "maxout"
-        self.python_api = paddle.nn.functional.maxout
-        input_np = np.random.uniform(-1, 1, [2, 6, 5, 4]).astype(np.float16)
-        self.groups = 2
-        self.axis = 1
-        output_np = maxout_forward_naive(input_np, self.groups, self.axis)
-        self.attrs = {'groups': self.groups, 'axis': self.axis}
-        self.inputs = {'X': input_np}
-        self.outputs = {'Out': output_np}
+class TestMaxOutOpFP16(TestMaxOutOp):
+    def set_attrs(self):
+        self.dtype = 'float16'
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -157,13 +149,9 @@ class TestMaxOutOpFP16(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        print(1)
         self.check_grad_with_place(
             place, ['X'], 'Out', max_relative_error=0.001
         )
-
-    def set_attrs(self):
-        pass
 
 
 class TestMaxoutFP16Case1(TestMaxOutOpFP16):
@@ -180,7 +168,6 @@ class TestMaxoutFP16Case2(TestMaxOutOpFP16):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMaxoutStaticAPIFP16(unittest.TestCase):
-    # test paddle.nn.Maxout, paddle.nn.functional.maxout
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [2, 6, 5, 4]).astype(np.float16)
         self.groups = 2
@@ -189,7 +176,7 @@ class TestMaxoutStaticAPIFP16(unittest.TestCase):
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
             out = F.maxout(x, self.groups, self.axis)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
