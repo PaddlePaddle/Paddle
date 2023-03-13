@@ -1730,7 +1730,7 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         data_format(str, optional): An string from: "NHWC", "NCHW". Specify the data format of
             the input data. Default: "NCHW".
         name(str, optional): The default value is None. Normally there is no need for user
-            to set this property.
+            to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, padded with 0 according to pad and data type is same as input.
@@ -1739,12 +1739,11 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn.functional as F
-
-            x_shape = (1, 1, 2, 3)
-            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            x_shape = paddle.to_tensor([1, 1, 2, 3])
+            x = paddle.arange(paddle.prod(x_shape), dtype="float32").reshape(x_shape) + 1
             y = F.zeropad2d(x, [1, 2, 1, 1])
+            print(y)
             # [[[[0. 0. 0. 0. 0. 0.]
             #    [0. 1. 2. 3. 0. 0.]
             #    [0. 4. 5. 6. 0. 0.]
