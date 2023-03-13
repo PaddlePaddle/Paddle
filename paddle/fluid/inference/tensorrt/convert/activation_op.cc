@@ -36,10 +36,9 @@ class ActivationOpConverter : public OpConverter {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
-    VLOG(3)
-        << "convert a fluid Activation op to tensorrt activation layer whose "
-           "type is "
-        << op_type_;
+    VLOG(3) << "convert a Activation op to tensorrt activation layer whose "
+               "type is "
+            << op_type_;
     auto* input_tensor = engine_->GetITensor(op_desc.Input("X")[0]);
 
     auto op_pair = ops.find(op_type_);
