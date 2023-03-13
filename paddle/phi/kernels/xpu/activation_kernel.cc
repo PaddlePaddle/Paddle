@@ -15,10 +15,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/activation_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
-
-#include "paddle/fluid/memory/memory.h"
 
 namespace phi {
 
@@ -207,11 +206,11 @@ void PowKernel(const Context& dev_ctx,
   T* factor_data = RAII_GUARD.alloc_l3_or_gm<T>(1);
   PADDLE_ENFORCE_NOT_NULL(
       factor_data, errors::External("XPU alloc_l3_or_gm returns nullptr"));
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       static_cast<void*>(factor_data),
-                       phi::CPUPlace(),
-                       static_cast<void*>(&pow_factor),
-                       sizeof(T));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     static_cast<void*>(factor_data),
+                     phi::CPUPlace(),
+                     static_cast<void*>(&pow_factor),
+                     sizeof(T));
 
   auto x_dims = vectorize<int>(x.dims());
   // use [1] to replace [], because xpu not support []

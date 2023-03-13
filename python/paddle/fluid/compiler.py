@@ -417,12 +417,6 @@ class CompiledProgram:
             )
             self._exec_strategy.num_threads = 1
 
-        if self._build_strategy.num_trainers > 1:
-            assert self._is_data_parallel, (
-                "If you use multi-trainer to train the model, you should use "
-                "the data parallel model, i.e. calling with_data_parallel function."
-            )
-
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
         # TODO(gongwb): let user to set them once.
@@ -537,16 +531,6 @@ class CompiledProgram:
             else:
                 self._places = [self._place]
 
-            # Todo(liym27):If optimizer is used in control flow,
-            #  training on multi-places is not supported now, will
-            #  be supported later.
-            if len(self._places) > 1 and _has_optimizer_in_control_flow(
-                self._program
-            ):
-                raise NotImplementedError(
-                    "If optimizer is used in control flow, "
-                    "training on multi-places is not supported now."
-                )
             if isinstance(self._place, core.CUDAPlace):
                 use_device = DeviceType.CUDA
             elif isinstance(self._place, core.XPUPlace):

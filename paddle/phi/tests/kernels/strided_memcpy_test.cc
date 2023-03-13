@@ -15,8 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 namespace phi {
 namespace tests {
@@ -96,7 +95,7 @@ TEST(StridedMemcpy, GPUCrop) {
   auto src_allocation = phi::memory_utils::Alloc(gpu0, sizeof(src));
 
   int* gpu_src = reinterpret_cast<int*>(src_allocation->ptr());
-  paddle::memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx->stream());
+  memory_utils::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx->stream());
 
   phi::DDim src_stride({5, 1});
 
@@ -110,7 +109,7 @@ TEST(StridedMemcpy, GPUCrop) {
   phi::funcs::StridedMemcpy<int>(
       *ctx, gpu_src + 1, src_stride, dst_dim, dst_stride, gpu_dst);
 
-  paddle::memory::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx->stream());
+  memory_utils::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx->stream());
   ctx->Wait();
 
   ASSERT_EQ(1, dst[0]);
@@ -135,7 +134,7 @@ TEST(StridedMemcpy, GPUConcat) {
 
   auto gpu_src_allocation = phi::memory_utils::Alloc(gpu0, sizeof(src));
   int* gpu_src = reinterpret_cast<int*>(gpu_src_allocation->ptr());
-  paddle::memory::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx->stream());
+  memory_utils::Copy(gpu0, gpu_src, cpu, src, sizeof(src), ctx->stream());
 
   int dst[8];
   auto gpu_dst_allocation = phi::memory_utils::Alloc(gpu0, sizeof(dst));
@@ -150,7 +149,7 @@ TEST(StridedMemcpy, GPUConcat) {
   phi::funcs::StridedMemcpy<int>(
       *ctx, gpu_src, src_stride, dst_dim, dst_stride, gpu_dst + 2);
 
-  paddle::memory::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx->stream());
+  memory_utils::Copy(cpu, dst, gpu0, gpu_dst, sizeof(dst), ctx->stream());
   ctx->Wait();
 
   // clang-format off

@@ -133,7 +133,7 @@ endif()
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context custom_kernel context_pool)
+  DEPS device_context custom_kernel context_pool memcpy)
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
@@ -159,7 +159,6 @@ cc_library(
        cudnn_workspace_helper
        ${XPU_CTX_DEPS}
        ${MLU_CTX_DEPS}
-       eigen3
        phi_backends
        phi_device_context
        generator)
