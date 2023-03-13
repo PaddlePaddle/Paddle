@@ -184,8 +184,13 @@ class TestNormBF16Op(OpTest):
         self.check_output_with_place(core.CUDAPlace(0), atol=1e-2)
 
     def test_check_grad(self):
-        self.check_output_with_place(
-            core.CUDAPlace(0), ['X'], 'Out', max_relative_error=1e-2
+        self.check_grad_with_place(
+            core.CUDAPlace(0),
+            ['X'],
+            'Out',
+            user_defined_grads=self.gradient,
+            check_eager=True,
+            max_relative_error=1e-2,
         )
 
     def init_test_case(self):
