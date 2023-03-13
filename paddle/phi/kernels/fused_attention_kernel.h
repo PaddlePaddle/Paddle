@@ -23,7 +23,8 @@ namespace phi {
  * @param ctx                device context
  * @param x                  The input tensor.
  * @param ln_scale           (optional) Scale is a 1-dimensional tensor of size
- *                           H. Here, H represents the last dimension of its input tensor.
+ *                           H. Here, H represents the last dimension of its
+ * input tensor.
  * @param ln_bias            (optional) Bias is a 1-dimensional tensor of size
  *                           H. Here, H represents the last dimension of its
  * input tensor.
@@ -34,45 +35,53 @@ namespace phi {
  * @param out_linear_w       The out_linear weight tensor.
  * @param out_linear_bias    (optional) The out_linear bias tensor.
  * @param ln2scale           (optional) Scale is a 1-dimensional tensor of size
- *                           H. Here, H represents the last dimension of its input tensor.
+ *                           H. Here, H represents the last dimension of its
+ * input tensor.
  * @param ln2bias            (optional) Bias is a 1-dimensional tensor of size
- *                           H. Here, H represents the last dimension of its input tensor.
+ *                           H. Here, H represents the last dimension of its
+ * input tensor.
  * @param num_heads          The number head for multi_head_attention.
-* @param transpose_qkv_wb    The qkv_w shape is (h, 3h), do transpose to it.
-* @param pre_layer_norm      if true, the attention op uses pre_layer_norm
-*                            architecure, else, uses post_layer_norm architecuture. [default false].
-* @param epsilon             Constant for numerical stability [default 1e-5].
-* @param attn_dropout_rate   Probability of setting units to zero.
-* @param is_test             (bool, default false) Set to true for inference
-*                            only, false " for training. Some layers may run faster when this is true.
-* @param attn_dropout_fix_seed A flag indicating whether to use a fixed seed to
-*                            generate " random mask. NOTE: DO NOT set this flag
-*                            to true in training. Setting this flag to true is only useful in unittest or
-*                            for debug that always the same output units will be dropped."
-* @param attn_dropout_seed   Dropout random seed.
-* @param attn_dropout_implementation ["downgrade_in_infer"|"upscale_in_train"]
-*                            There are two kinds of ways to implement dropout
-*                            (the mask below is a tensor have the same shape
-* with input the value of mask is 0 or 1, the ratio of 0 is dropout_rate)
-*                            1. downgrade_in_infer(default), downgrade the
-*                               outcome at inference time train: out = input * mask inference: out = input *
-*                               (1.0 - dropout_rate)
-*                            2. upscale_in_train, upscale the outcome at
-*                               training time, do nothing in inference train: out = input * mask / ( 1.0 -
-*                               dropout_rate ) inference: out = input dropout op can be removed from the
-*                               program. the program will be efficient
-* @param dropout_rate        Probability of setting units to zero.
-* @param dropout_fix_seed    A flag indicating whether to use a fixed seed to
-*                            generate " random mask. NOTE: DO NOT set this flag
-*                            to true in training. Setting this flag to true is only useful in unittest or
-*                            for debug that always the same output units will be dropped.
-* @param dropout_seed        Dropout random seed.
-* @param dropout_implementation dropout_implementation
-*                               ["downgrade_in_infer"|"upscale_in_train"] The
-*                               meaning is the same as 'attn_dropout_implementation'
-* @param ln2_epsilon         Constant for numerical stability [default 1e-5].
-* @param add_residual        Whether to add residual.
-* @param ring_id             ring id for tensor model parallel. distributed training and inference
+ * @param transpose_qkv_wb    The qkv_w shape is (h, 3h), do transpose to it.
+ * @param pre_layer_norm      if true, the attention op uses pre_layer_norm
+ *                            architecure, else, uses post_layer_norm
+ * architecuture. [default false].
+ * @param epsilon             Constant for numerical stability [default 1e-5].
+ * @param attn_dropout_rate   Probability of setting units to zero.
+ * @param is_test             (bool, default false) Set to true for inference
+ *                            only, false " for training. Some layers may run
+ * faster when this is true.
+ * @param attn_dropout_fix_seed A flag indicating whether to use a fixed seed to
+ *                            generate " random mask. NOTE: DO NOT set this flag
+ *                            to true in training. Setting this flag to true is
+ * only useful in unittest or for debug that always the same output units will
+ * be dropped."
+ * @param attn_dropout_seed   Dropout random seed.
+ * @param attn_dropout_implementation ["downgrade_in_infer"|"upscale_in_train"]
+ *                            There are two kinds of ways to implement dropout
+ *                            (the mask below is a tensor have the same shape
+ * with input the value of mask is 0 or 1, the ratio of 0 is dropout_rate)
+ *                            1. downgrade_in_infer(default), downgrade the
+ *                               outcome at inference time train: out = input *
+ * mask inference: out = input * (1.0 - dropout_rate)
+ *                            2. upscale_in_train, upscale the outcome at
+ *                               training time, do nothing in inference train:
+ * out = input * mask / ( 1.0 - dropout_rate ) inference: out = input dropout op
+ * can be removed from the program. the program will be efficient
+ * @param dropout_rate        Probability of setting units to zero.
+ * @param dropout_fix_seed    A flag indicating whether to use a fixed seed to
+ *                            generate " random mask. NOTE: DO NOT set this flag
+ *                            to true in training. Setting this flag to true is
+ * only useful in unittest or for debug that always the same output units will
+ * be dropped.
+ * @param dropout_seed        Dropout random seed.
+ * @param dropout_implementation dropout_implementation
+ *                               ["downgrade_in_infer"|"upscale_in_train"] The
+ *                               meaning is the same as
+ * 'attn_dropout_implementation'
+ * @param ln2_epsilon         Constant for numerical stability [default 1e-5].
+ * @param add_residual        Whether to add residual.
+ * @param ring_id             ring id for tensor model parallel. distributed
+ * training and inference
  * @param ln_mean            Mean of the current mini batch.
  * @param ln_variance        Variance of the current mini batch.
  * @param ln_out             The output tensor after layer_norm.
