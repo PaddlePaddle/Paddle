@@ -180,4 +180,7 @@ PD_REGISTER_KERNEL(distribute_fpn_proposals,
                    XPU,
                    ALL_LAYOUT,
                    phi::DistributeFpnProposalsKernel,
-                   float) {}
+                   float) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}
