@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,12 +20,16 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SoftplusKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    float beta,
-                    float threshold,
-                    DenseTensor* out) {
-  funcs::SoftplusOneDNNHandler<T> handler(dev_ctx, &x, beta);
+void FusedSoftplusKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         float beta,
+                         float threshold,
+                         const std::string& fuse_activation,
+                         const float fuse_alpha,
+                         const float fuse_beta,
+                         DenseTensor* out) {
+  funcs::SoftplusOneDNNHandler<T> handler(
+      dev_ctx, &x, beta, fuse_activation, fuse_alpha, fuse_beta);
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);
   auto beta_memory_p = handler.AcquireBetaMemory(&beta);
@@ -53,9 +57,9 @@ void SoftplusKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(softplus,
+PD_REGISTER_KERNEL(fused_softplus,
                    OneDNN,
                    ONEDNN,
-                   phi::SoftplusKernel,
+                   phi::FusedSoftplusKernel,
                    float,
                    phi::dtype::bfloat16) {}
