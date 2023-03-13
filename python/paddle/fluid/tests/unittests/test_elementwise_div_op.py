@@ -65,7 +65,7 @@ class ElementwiseDivOp(OpTest):
         self.grad_y = grad_y
 
     def if_enable_cinn(self):
-        pass
+        self.enable_cinn = True
 
     def init_args(self):
         self.check_dygraph = True
@@ -136,9 +136,6 @@ class TestElementwiseDivPrimOpFp32(ElementwiseDivOp):
         self.dtype = np.float32
         self.val_dtype = np.float32
 
-    def if_enable_cinn(self):
-        pass
-
 
 class TestElementwiseDivOp_ZeroDim1(ElementwiseDivOp):
     def init_shape(self):
@@ -207,6 +204,9 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
     # elementwise_pow does't support bfloat16
     def if_check_prim(self):
         self.check_prim = False
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 @skip_check_grad_ci(
@@ -375,9 +375,6 @@ class TestElementwiseDivOpXsizeLessThanYsize(ElementwiseDivOp):
     def compute_gradient_x(self, grad_out, y):
         return np.sum(grad_out / y, axis=(0, 1))
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseDivOpInt(ElementwiseDivOp):
     def init_dtype(self):
@@ -400,7 +397,7 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
         self.val_dtype = np.float16
 
     def if_enable_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
