@@ -227,19 +227,13 @@ void InstanceNormKernel(const Context &dev_ctx,
 // MIOPEN do not support double
 PD_REGISTER_KERNEL(
     instance_norm, GPU, ALL_LAYOUT, phi::InstanceNormKernel, float) {
-  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
-  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
-  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
-  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }
 #else
 PD_REGISTER_KERNEL(
     instance_norm, GPU, ALL_LAYOUT, phi::InstanceNormKernel, float, double) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
-    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
-  }
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif
