@@ -38,7 +38,7 @@ class ElementwiseDivOp(OpTest):
         self.init_dtype()
         self.init_shape()
         self.if_check_prim()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
         x = self.gen_data(self.x_shape).astype(self.val_dtype)
         y = self.gen_data(self.y_shape).astype(self.val_dtype)
@@ -64,8 +64,8 @@ class ElementwiseDivOp(OpTest):
         self.grad_x = grad_x
         self.grad_y = grad_y
 
-    def if_skip_cinn(self):
-        self.enable_cinn = False
+    def if_enable_cinn(self):
+        self.enable_cinn = True
 
     def init_args(self):
         self.check_dygraph = True
@@ -136,14 +136,14 @@ class TestElementwiseDivPrimOpFp32(ElementwiseDivOp):
         self.dtype = np.float32
         self.val_dtype = np.float32
 
-    def if_skip_cinn(self):
-        pass
-
 
 class TestElementwiseDivOp_ZeroDim1(ElementwiseDivOp):
     def init_shape(self):
         self.x_shape = []
         self.y_shape = []
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
@@ -160,6 +160,9 @@ class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
     def compute_gradient_y(self, grad_out, out, y):
         return np.sum(-1 * grad_out * out / y.reshape([1, 1]))
 
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
 
 class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
     def init_shape(self):
@@ -174,6 +177,9 @@ class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
 
     def compute_gradient_y(self, grad_out, out, y):
         return -1 * grad_out * out / y
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 @unittest.skipIf(
@@ -198,6 +204,9 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
     # elementwise_pow does't support bfloat16
     def if_check_prim(self):
         self.check_prim = False
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 @skip_check_grad_ci(
@@ -367,7 +376,7 @@ class TestElementwiseDivOpXsizeLessThanYsize(ElementwiseDivOp):
         return np.sum(grad_out / y, axis=(0, 1))
 
 
-class TestElementwiseDivOpInt(TestElementwiseDivOpNoPrim):
+class TestElementwiseDivOpInt(ElementwiseDivOp):
     def init_dtype(self):
         self.dtype = np.int32
         self.val_dtype = np.int32
@@ -393,6 +402,9 @@ def create_test_fp16_class(parent, atol=1e-3, max_relative_error=2e-3):
                 self.check_output(atol=atol)
             else:
                 self.check_output_with_place(self.place, atol=atol)
+                
+        def if_enable_cinn(self):
+            self.enable_cinn = True
 
         def test_check_gradient(self):
             check_list = []

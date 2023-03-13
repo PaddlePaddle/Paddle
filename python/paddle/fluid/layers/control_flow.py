@@ -25,12 +25,11 @@ from ..framework import (
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
-from .utils import (
+from ...utils import (
     assert_same_structure,
     map_structure,
     hold_mutable_vars,
     copy_mutable_vars,
-    padding_to_same_structure,
     is_sequence,
     pack_sequence_as,
     flatten,
