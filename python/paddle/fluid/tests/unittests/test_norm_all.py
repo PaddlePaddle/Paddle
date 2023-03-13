@@ -287,18 +287,13 @@ class TestPnormOp6(TestPnormOp):
         self.check_grad(['X'], 'Out', user_defined_grads=self.gradient)
 
 
-def create_test_fp16_class(parent, atol=1e-3, max_relative_error=2e-3):
+def create_test_fp16_class(parent, max_relative_error=2e-3):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
-    class TestPnormOpFP16(parent):
+    class TestPnormFP16Op(parent):
         def init_dtype(self):
             self.dtype = "float16"
-
-        def test_check_output(self):
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=atol)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -312,8 +307,8 @@ def create_test_fp16_class(parent, atol=1e-3, max_relative_error=2e-3):
                 )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
-    TestPnormOpFP16.__name__ = cls_name
-    globals()[cls_name] = TestPnormOpFP16
+    TestPnormFP16Op.__name__ = cls_name
+    globals()[cls_name] = TestPnormFP16Op
 
 
 create_test_fp16_class(TestPnormOp)

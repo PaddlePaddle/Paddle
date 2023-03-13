@@ -388,20 +388,14 @@ class TestElementwiseDivOpInt(ElementwiseDivOp):
         return x // y
 
 
-def create_test_fp16_class(parent, atol=1e-3, max_relative_error=2e-3):
+def create_test_fp16_class(parent, max_relative_error=2e-3):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
-    class TestElementwiseDivOpFp16(parent):
+    class TestElementwiseDivFP16Op(parent):
         def init_dtype(self):
             self.dtype = np.float16
             self.val_dtype = np.float16
-
-        def test_check_output(self):
-            if self.place is None:
-                self.check_output(atol=atol)
-            else:
-                self.check_output_with_place(self.place, atol=atol)
 
         def if_enable_cinn(self):
             self.enable_cinn = True
@@ -437,8 +431,8 @@ def create_test_fp16_class(parent, atol=1e-3, max_relative_error=2e-3):
                     self.check_grad_with_place(*check_args, **check_kwargs)
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
-    TestElementwiseDivOpFp16.__name__ = cls_name
-    globals()[cls_name] = TestElementwiseDivOpFp16
+    TestElementwiseDivFP16Op.__name__ = cls_name
+    globals()[cls_name] = TestElementwiseDivFP16Op
 
 
 create_test_fp16_class(ElementwiseDivOp)
