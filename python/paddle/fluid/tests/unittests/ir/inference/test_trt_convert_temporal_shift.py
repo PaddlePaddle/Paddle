@@ -25,22 +25,6 @@ import paddle.inference as paddle_infer
 
 class TrtConvertTemporalShiftTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        compile_version = paddle_infer.get_trt_compile_version()
-        runtime_version = paddle_infer.get_trt_runtime_version()
-        if (
-            compile_version[0] * 1000
-            + compile_version[1] * 100
-            + compile_version[2] * 10
-            < 8200
-        ):
-            return False
-        if (
-            runtime_version[0] * 1000
-            + runtime_version[1] * 100
-            + runtime_version[2] * 10
-            < 8200
-        ):
-            return False
         return True
 
     def sample_program_configs(self):
