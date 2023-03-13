@@ -350,7 +350,7 @@ def index_select(x, index, axis=0, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'],
             'paddle.tensor.search.index_select',
         )
         check_variable_and_dtype(
