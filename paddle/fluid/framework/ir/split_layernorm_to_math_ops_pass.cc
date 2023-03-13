@@ -189,7 +189,7 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
     if (feature_size > FEATURE_SIZE_THRESHOLD) {
       return;
     }
-    // since gamma and beta are constant var, dynamic shape should be useless
+    // since gamma and beta are constant vars, dynamic shape should be useless
     auto min_input_shape =
         Get<std::map<std::string, std::vector<int>>>("min_input_shape");
     if (min_input_shape.find(layer_norm_in->Name()) != min_input_shape.end()) {
