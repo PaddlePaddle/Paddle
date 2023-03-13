@@ -37,6 +37,7 @@ namespace sparse {
                          const int n,               \
                          const int k,               \
                          const int32_t* a_indices,  \
+                         const int32_t* b_indices,  \
                          const int32_t* c_d_indices);
 #define GATHER_GEMM_SCATTER_CHECK(status)                      \
   {                                                            \
@@ -45,6 +46,8 @@ namespace sparse {
       throw std::runtime_error(cutlassGetStatusString(error)); \
     }                                                          \
   }
+#define GET_STRIDE(layout, cols, rows) \
+  std::is_same<layout, cutlass::layout::RowMajor>::value ? cols : rows
 #define DEFINE_LAUNCH_KERNEL(dtype, cutlass_type)                          \
   template <typename Gemm>                                                 \
   void launchKernel(dtype const alpha,                                     \
@@ -58,6 +61,7 @@ namespace sparse {
                     const int n,                                           \
                     const int k,                                           \
                     const int32_t* a_indices,                              \
+                    const int32_t* b_indices,                              \
                     const int32_t* c_d_indices) {                          \
     cutlass::gemm::GemmCoord problem_size_real({m, n, k});                 \
     int split_k_slices = 1;                                                \
@@ -71,16 +75,28 @@ namespace sparse {
         reinterpret_cast<const cutlass_type* const>(b),                    \
         reinterpret_cast<const cutlass_type* const>(c),                    \
         reinterpret_cast<cutlass_type* const>(d),                          \
-        cutlass::layout::RowMajor().capacity(problem_size_real.mk()),      \
-        cutlass::layout::RowMajor().capacity(problem_size_real.kn()),      \
-        cutlass::layout::RowMajor().capacity(problem_size_real.mn()),      \
-        cutlass::layout::RowMajor().capacity(problem_size_real.mn()),      \
-        problem_size_real.k(),                                             \
-        problem_size_real.n(),                                             \
-        problem_size_real.n(),                                             \
-        problem_size_real.n(),                                             \
+        typename Gemm::Base::LayoutA().capacity(problem_size_real.mk()),   \
+        typename Gemm::Base::LayoutB().capacity(problem_size_real.kn()),   \
+        typename Gemm::Base::LayoutC().capacity(problem_size_real.mn()),   \
+        typename Gemm::Base::LayoutC().capacity(problem_size_real.mn()),   \
+        std::is_same<typename Gemm::Base::LayoutA,                         \
+                     cutlass::layout::RowMajor>::value                     \
+            ? problem_size_real.k()                                        \
+            : problem_size_real.m(),                                       \
+        std::is_same<typename Gemm::Base::LayoutB,                         \
+                     cutlass::layout::RowMajor>::value                     \
+            ? problem_size_real.n()                                        \
+            : problem_size_real.k(),                                       \
+        std::is_same<typename Gemm::Base::LayoutC,                         \
+                     cutlass::layout::RowMajor>::value                     \
+            ? problem_size_real.n()                                        \
+            : problem_size_real.m(),                                       \
+        std::is_same<typename Gemm::Base::LayoutC,                         \
+                     cutlass::layout::RowMajor>::value                     \
+            ? problem_size_real.n()                                        \
+            : problem_size_real.m(),                                       \
         a_indices,                                                         \
-        nullptr,                                                           \
+        b_indices,                                                         \
         c_d_indices};                                                      \
     size_t workspace_size = Gemm::get_workspace_size(arguments);           \
     cutlass::device_memory::allocation<uint8_t> workspace(workspace_size); \

@@ -41,6 +41,7 @@ constexpr int features_num_range = 10000;
                           const int& n,                                       \
                           const int& k,                                       \
                           const IntT* a_indices,                              \
+                          const IntT* b_indices,                              \
                           const IntT* c_d_indices,                            \
                           T alpha,                                            \
                           T beta) {                                           \
@@ -60,6 +61,7 @@ constexpr int features_num_range = 10000;
                n,                                                             \
                k,                                                             \
                a_indices,                                                     \
+               b_indices,                                                     \
                c_d_indices);                                                  \
   }
 
@@ -76,6 +78,7 @@ GatherGemmScatterDriver(const phi::GPUContext& ctx,
                         const int& n,
                         const int& k,
                         const IntT* a_indices,
+                        const IntT* b_indices,
                         const IntT* c_d_indices,
                         T alpha,
                         T beta) {}

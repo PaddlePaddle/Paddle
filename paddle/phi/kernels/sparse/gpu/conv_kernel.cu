@@ -163,6 +163,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                               N,
                               K,
                               gather_indices,
+                              static_cast<const IntT*>(nullptr),
                               scatter_indices,
                               static_cast<T>(1.0),
                               static_cast<T>(1.0));
