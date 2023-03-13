@@ -2828,10 +2828,10 @@ def clip(x, min=None, max=None, name=None):
     x_dtype = str(x.dtype)
     if x_dtype == 'paddle.int32':
         min_ = np.iinfo(np.int32).min
-        max_ = np.iinfo(np.int32).max - 2 ** 7
+        max_ = np.iinfo(np.int32).max - 2**7
     elif x_dtype == 'paddle.int64':
         min_ = np.iinfo(np.int64).min
-        max_ = np.iinfo(np.int64).max - 2 ** 39
+        max_ = np.iinfo(np.int64).max - 2**39
     elif x_dtype == 'paddle.float16':
         min_ = float(np.finfo(np.float16).min)
         max_ = float(np.finfo(np.float16).max)
@@ -5101,7 +5101,7 @@ def frexp(x, name=None):
     )
 
     # 0填充
-    mantissa = paddle.divide(input_x, 2 ** exponent)
+    mantissa = paddle.divide(input_x, 2**exponent)
     # 计算exponent
     exponent = paddle.where(
         (mantissa >= 1),
