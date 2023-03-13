@@ -320,26 +320,22 @@ def is_paddle_func(func, ignore_white_list=True):
     def in_white_list(module, func_name):
         if func_name is None:
             return False
-        return (module.__name__ + '.' + func_name) in AS_NOT_INNER_FUNC_LIST
+        return (module.__name__ + '.' + func_name) in INNER_FUNC_WHITE_LIST
 
     try:
         if isinstance(func, functools.partial):
             func = func.func
 
         func_name = getattr(func, '__name__', None)
-        # In case of dynamically monkey patch customised function
-        # into paddle class obj, so we consider its class module
-        # path as prefix.
-        if hasattr(func, "__self__"):
-            func = func.__self__
-            func_name = func.__class__.__name__
-        elif inspect.ismethod(func):
+        if inspect.ismethod(func):
+            func_name = func.__self__.__class__.__name__
             func = func.__func__
 
         m = inspect.getmodule(func)
         flag = m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
         if ignore_white_list:
             flag = flag and not in_white_list(m, func_name)
+        # breakpoint()
         return flag
     except Exception:
         return False
