@@ -31,4 +31,6 @@ void ClipByNormKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    clip_by_norm, CPU, ALL_LAYOUT, phi::ClipByNormKernel, float) {}
+    clip_by_norm, CPU, ALL_LAYOUT, phi::ClipByNormKernel, float) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
