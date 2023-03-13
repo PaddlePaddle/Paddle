@@ -129,6 +129,13 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     out = (x - mean(x)) / sqrt(var + epsilon))
     var = mean((x-mean(x))^2)
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        print("Running layer_norm in amp")
+        is_amp = True
+        x = cast(x, "float32")
 
     axis = tuple(range(begin_norm_axis, len(x.shape)))
     mean_ = mean(x, axis=axis, keepdim=True)
@@ -148,6 +155,9 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
 
     mean_ = reshape(mean_, [-1])
     variance = reshape(variance, [-1])
+    if is_amp:
+        out = cast(out, "float16")
+
     return out, mean_, variance
 
 
@@ -244,6 +254,8 @@ def stack_composite(x, axis):
 def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     """
     define composite rule of op flatten, flatten_contiguous_range -> flatten.
+
+    xshape is the dim with 0 added to the front of x, keep the shape information of x to calculate the grad.
     CINN doesn't need xshape for backward pass, return none instead of xshape.
     shape_out is the parameter of reshape, get from start_axis and stop_axis.
     out = reshape(x, shape=shape_out), xshape
