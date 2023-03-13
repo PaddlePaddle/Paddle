@@ -335,7 +335,7 @@ def is_paddle_func(func, ignore_white_list=True):
         flag = m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
         if ignore_white_list:
             flag = flag and not in_white_list(m, func_name)
-        # breakpoint()
+
         return flag
     except Exception:
         return False
