@@ -20,13 +20,13 @@ from paddle.fluid.dygraph.base import _convert_into_variable
 from paddle.fluid.framework import Variable, core
 from paddle.fluid.layers import Print, control_flow, fill_constant
 from paddle.fluid.layers.control_flow import while_loop
-from paddle.jit.dy2static.utils import (
+
+from .utils import (
+    RETURN_NO_VALUE_VAR_NAME,
     Dygraph2StaticException,
     GetterSetterHelper,
     UndefinedVar,
 )
-
-from .return_transformer import RETURN_NO_VALUE_VAR_NAME
 from .variable_trans_func import to_static_variable
 
 __all__ = []
