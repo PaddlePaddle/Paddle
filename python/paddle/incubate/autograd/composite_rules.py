@@ -341,7 +341,8 @@ def relu_composite(x):
 
 @REGISTER_COMPOSITE('where')
 def where_composite(condition, x, y):
-    """define composite rule of op relu."""
+    """define composite rule of op where"""
+    """using cast and broadcast_to to implement where op"""
     x_exp = broadcast_to(x, condition.shape)
     y_exp = broadcast_to(y, condition.shape)
     condition_int = cast(condition, x.dtype)
