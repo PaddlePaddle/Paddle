@@ -1250,15 +1250,6 @@
   output : Tensor(out)
   invoke : full_like(x, 1, dtype, place)
 
-- op : p_norm
-  args : (Tensor x,  float porder,  int axis,  float epsilon,  bool keepdim,  bool asvector=false)
-  output : Tensor(out)
-  infer_meta :
-    func : PNormInferMeta
-  kernel :
-    func : p_norm
-  backward : p_norm_grad
-
 - op : pad
   args : (Tensor x, int[] paddings, Scalar pad_value)
   output : Tensor
