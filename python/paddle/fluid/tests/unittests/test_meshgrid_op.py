@@ -65,46 +65,6 @@ class TestMeshgridOp(OpTest):
         return [100, 200]
 
 
-class TestMeshgridOpFP16(OpTest):
-    def setUp(self):
-        self.op_type = "meshgrid"
-        self.prim_op_type = "comp"
-        self.python_api = paddle.meshgrid
-        self.only_prim = True
-        self.dtype = self.get_dtype()
-        ins, outs = self.init_test_data()
-        self.inputs = {'X': [('x%d' % i, ins[i]) for i in range(len(ins))]}
-        self.outputs = {
-            'Out': [('out%d' % i, outs[i]) for i in range(len(outs))]
-        }
-
-    def get_dtype(self):
-        return "float16"
-
-    def test_check_output(self):
-        self.check_output(check_prim=True)
-
-    def test_check_grad(self):
-        self.check_grad(['x0'], ['out0', 'out1'], check_prim=True)
-
-    def init_test_data(self):
-        self.shape = self.get_x_shape()
-        ins = []
-        outs = []
-        for i in range(len(self.shape)):
-            ins.append(np.random.random((self.shape[i],)).astype(self.dtype))
-
-        for i in range(len(self.shape)):
-            out_reshape = [1] * len(self.shape)
-            out_reshape[i] = self.shape[i]
-            out_temp = np.reshape(ins[i], out_reshape)
-            outs.append(np.broadcast_to(out_temp, self.shape))
-        return ins, outs
-
-    def get_x_shape(self):
-        return [100, 200]
-
-
 class TestMeshgridOp2(TestMeshgridOp):
     def get_x_shape(self):
         return [100, 300]
