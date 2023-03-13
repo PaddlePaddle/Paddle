@@ -83,4 +83,6 @@ PD_REGISTER_KERNEL(nonzero,
                    int16_t,
                    bool,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::INT64);
+}
