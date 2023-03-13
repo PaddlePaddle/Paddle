@@ -1127,7 +1127,7 @@ def dropout(
     if isinstance(p, (int, float)):
         # fast return for p == 0
         if p == 0:
-            return x
+            return paddle.assign(x)
         elif p < 0 or p > 1:
             raise ValueError("p argument should between 0 and 1")
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
@@ -1161,7 +1161,7 @@ def dropout(
         else:
             helper = LayerHelper('dropout', **locals())
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+                x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'dropout'
             )
 
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
