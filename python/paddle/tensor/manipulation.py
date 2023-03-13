@@ -1976,8 +1976,10 @@ def split(x, num_or_sections, axis=0, name=None):
             'split',
         )
         check_type(
-            num_or_sections, 'num_or_sections', (list, int, tuple), 'split'
+            num_or_sections, 'num_or_sections', (list, int, tuple, Variable), 'split'
         )
+        if isinstance(num_or_sections, Variable):
+            check_dtype(num_or_sections.dtype, 'num_or_sections', ['int32', 'int64'], 'split')
         check_type(dim, 'dim', (int, Variable), 'split')
         if isinstance(dim, Variable):
             check_dtype(dim.dtype, 'dim', ['int32', 'int64'], 'split')
