@@ -342,4 +342,7 @@ PD_REGISTER_KERNEL(group_norm,
                    phi::GroupNormKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+}

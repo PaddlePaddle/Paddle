@@ -484,5 +484,5 @@ PD_REGISTER_KERNEL(graph_sample_neighbors,
                    phi::GraphSampleNeighborsKernel,
                    int,
                    int64_t) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
 }
