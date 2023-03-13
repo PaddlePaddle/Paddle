@@ -97,17 +97,18 @@ class TestInstanceNormOp(OpTest):
         self.op_type = "instance_norm"
         self.prim_op_type = "comp"
         self.python_api = instance_norm_wrapper
+        self.fw_comp_rtol = 1e-05
+        self.fw_comp_atol = 1e-05
+        self.rev_comp_rtol = 1e-05
+        self.rev_comp_atol = 1e-05
         self.init_test_case()
         self.init_dtype()
         scale_shape = [self.c]
         mean_shape = [self.n * self.c]
         np.random.seed()
-        x_np = np.random.random(self.shape).astype(self.dtype)
-        scale_np = np.ones(scale_shape).astype(self.dtype)
-        bias_np = np.zeros(scale_shape).astype(self.dtype)
-        # x_np = np.random.random_sample(self.shape).astype(self.dtype)
-        # scale_np = np.random.random_sample(scale_shape).astype(self.dtype)
-        # bias_np = np.random.random_sample(scale_shape).astype(self.dtype)
+        x_np = np.random.random_sample(self.shape).astype(self.dtype)
+        scale_np = np.random.random_sample(scale_shape).astype(self.dtype)
+        bias_np = np.random.random_sample(scale_shape).astype(self.dtype)
         mean_np, var_np = _cal_mean_variance(x_np, self.epsilon, mean_shape)
         ref_y_np, ref_mean_np, ref_var_np = _reference_instance_norm_naive(
             x_np, scale_np, bias_np, self.epsilon, mean_np, var_np
