@@ -31,12 +31,10 @@ template <typename T, typename IndexT>
 __global__ void index_select_grad_cuda_kernel(const T* output_grad,
                                               T* input_grad,
                                               const IndexT* index,
-                                              int64_t nums,
                                               int64_t N,
                                               int64_t stride,
                                               int64_t size,
-                                              int64_t delta,
-                                              void* null_flag) {
+                                              int64_t delta) {
   CUDA_KERNEL_LOOP_TYPE(idx, N, int64_t) {
     int64_t pre_idx = idx / (stride * size);
     int64_t dim_idx = idx % (stride * size) / stride;
@@ -105,24 +103,20 @@ void IndexSelectGradKernel(const Context& ctx,
         <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
                                              in_grad_data,
                                              index_data,
-                                             index_nums,
                                              out_nums,
                                              stride,
                                              size,
-                                             delta,
-                                             nullptr);
+                                             delta);
   } else {
     const int* index_data = index.data<int>();
     index_select_grad_cuda_kernel<T, int>
         <<<grid_dim, block_dim, 0, stream>>>(output_grad_data,
                                              in_grad_data,
                                              index_data,
-                                             index_nums,
                                              out_nums,
                                              stride,
                                              size,
-                                             delta,
-                                             nullptr);
+                                             delta);
   }
 }
 
