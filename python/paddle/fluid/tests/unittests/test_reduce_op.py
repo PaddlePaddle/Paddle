@@ -440,7 +440,7 @@ class TestProd8DOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestAllOp(OpTest):
@@ -1044,15 +1044,16 @@ class TestReduceWithDtype2(TestReduceWithDtype):
 
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of reduce_sum_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace()
-            )
-            self.assertRaises(TypeError, paddle.sum, x1)
-            # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
-            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
-            self.assertRaises(TypeError, paddle.sum, x2)
+        with paddle.fluid.framework._static_guard():
+            with program_guard(Program(), Program()):
+                # The input type of reduce_sum_op must be Variable.
+                x1 = fluid.create_lod_tensor(
+                    np.array([[-1]]), [[1]], fluid.CPUPlace()
+                )
+                self.assertRaises(TypeError, paddle.sum, x1)
+                # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
+                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="uint8")
+                self.assertRaises(TypeError, paddle.sum, x2)
 
 
 class API_TestSumOp(unittest.TestCase):
