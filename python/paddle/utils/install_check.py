@@ -308,3 +308,4 @@ def run_check():
                 device_str
             )
         )
+        raise e
