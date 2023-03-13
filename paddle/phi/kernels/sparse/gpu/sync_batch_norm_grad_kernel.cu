@@ -71,9 +71,7 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    ALL_LAYOUT,
                    phi::sparse::SyncBatchNormCooGradKernel,
                    float,
-                   phi::dtype::float16) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
+                   phi::dtype::float16) {}
 #else
 PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    GPU,
@@ -81,7 +79,5 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    phi::sparse::SyncBatchNormCooGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
+                   phi::dtype::float16) {}
 #endif
