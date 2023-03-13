@@ -29,9 +29,7 @@ class TestRollOp(OpTest):
         self.init_dtype_type()
         self.attrs = {'shifts': self.shifts, 'axis': self.axis}
         x = np.random.random(self.x_shape).astype(self.dtype)
-        out = np.roll(
-            self.inputs['X'], self.attrs['shifts'], self.attrs['axis']
-        )
+        out = np.roll(x, self.attrs['shifts'], self.attrs['axis'])
         if self.dtype == np.uint16:
             # test for bfloat16
             x = convert_float_to_uint16(x)
