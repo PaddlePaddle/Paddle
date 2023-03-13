@@ -99,6 +99,30 @@ file(
   "install(DIRECTORY xpu/include xpu/lib \n"
   "        DESTINATION ${XPU_INSTALL_DIR})\n")
 
+#ExternalProject_Add(
+#  ${XPU_PROJECT}
+#  ${EXTERNAL_PROJECT_LOG_ARGS}
+#  PREFIX ${SNAPPY_PREFIX_DIR}
+#  DOWNLOAD_DIR ${XPU_DOWNLOAD_DIR}
+#  DOWNLOAD_COMMAND
+#    wget ${XPU_CHECK_DEPENCE_URL} && bash check_xpu_dependence.sh
+#    ${XPU_BASE_URL} ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} && bash
+#    pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL}
+#    ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} && wget
+#    ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
+#    ${XPU_XFT_DIR_NAME}
+#  DOWNLOAD_NO_PROGRESS 1
+#  UPDATE_COMMAND ""
+#  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
+#  CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${XPU_INSTALL_ROOT}
+#  BUILD_BYPRODUCTS ${XPU_API_LIB}
+#  BUILD_BYPRODUCTS ${XPU_RT_LIB})
+
+#NOTE(mayang02): change the XPU_XFT_LOCAL_PATH to your_own_xft_out_path
+set(XPU_XFT_LOCAL_PATH "/home/disk2/mayang02/baidu/xpu/xft/output")
+set(XPU_XFT_INC_LOCAL_PATH "${XPU_XFT_LOCAL_PATH}/include")
+set(XPU_XFT_LIB_LOCAL_PATH "${XPU_XFT_LOCAL_PATH}/so/libxft.so")
+
 ExternalProject_Add(
   ${XPU_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -108,9 +132,9 @@ ExternalProject_Add(
     wget ${XPU_CHECK_DEPENCE_URL} && bash check_xpu_dependence.sh
     ${XPU_BASE_URL} ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} && bash
     pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL}
-    ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} && wget
-    ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
-    ${XPU_XFT_DIR_NAME}
+    ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} && cp -r
+    ${XPU_XFT_INC_LOCAL_PATH} xpu/include/xft && cp -r ${XPU_XFT_LIB_LOCAL_PATH}
+    xpu/lib/
   DOWNLOAD_NO_PROGRESS 1
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
@@ -142,6 +166,8 @@ if(WITH_XPU_XFT)
   message(STATUS "Compile with XPU XFT!")
   add_definitions(-DPADDLE_WITH_XPU_XFT)
 
+  set(XPU_XFT_INC_DIR "${XPU_INC_DIR}/xft")
+  include_directories(${XPU_XFT_INC_DIR})
   set(XPU_XFT_LIB "${XPU_LIB_DIR}/${XPU_XFT_LIB_NAME}")
 endif()
 
