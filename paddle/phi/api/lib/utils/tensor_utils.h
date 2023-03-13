@@ -20,12 +20,5 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
-namespace experimental {
-
-std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
-    const phi::DenseTensor& src);
-
-phi::IntArray MakePhiIntArray(const phi::DenseTensor& src);
-
-}  // namespace experimental
+namespace experimental {}  // namespace experimental
 }  // namespace paddle
