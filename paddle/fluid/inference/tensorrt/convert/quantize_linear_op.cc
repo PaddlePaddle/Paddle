@@ -11,7 +11,6 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-
 namespace paddle {
 namespace inference {
 namespace tensorrt {
@@ -19,8 +18,8 @@ namespace tensorrt {
 class QuantizeLinearOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                        const framework::Scope& scope,
-                        bool test_model) override {
+                  const framework::Scope& scope,
+                  bool test_model) override {
     VLOG(4) << "convert a quantize_linear op to tensorrt IQuantizeLayer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -31,13 +30,13 @@ class QuantizeLinearOpConverter : public OpConverter {
     PADDLE_ENFORCE_NOT_NULL(
         scale_var,
         platform::errors::NotFound("Can not find %s presistale var in scope.",
-                                    op_desc.Input("Scale")[0]));
+                                   op_desc.Input("Scale")[0]));
 
     auto* scale_t = scale_var->GetMutable<phi::DenseTensor>();
 
     std::vector<float> fp32_data(scale_t->numel(), 0);
     for (int i = 0; i < scale_t->numel(); ++i) {
-        fp32_data[i] = scale_t->data<float>()[i] / 127.;
+      fp32_data[i] = scale_t->data<float>()[i] / 127.;
     }
 
     nvinfer1::Dims a;
@@ -47,7 +46,7 @@ class QuantizeLinearOpConverter : public OpConverter {
 
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("quant_axis"));
     if (axis == -1) {
-    axis = 1;
+      axis = 1;
     }
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Quantize, *x, *scale);
     layer->setAxis(axis);
@@ -60,6 +59,5 @@ class QuantizeLinearOpConverter : public OpConverter {
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-
 
 REGISTER_TRT_OP_CONVERTER(quantize_linear, QuantizeLinearOpConverter);

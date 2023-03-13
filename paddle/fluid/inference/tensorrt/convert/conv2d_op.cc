@@ -53,11 +53,12 @@ void ConvertConv2d(TensorRTEngine* engine,
   int filter_w;
   if (Y_v) {
     Y_t = Y_v->GetMutable<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(Y_t->dims().size(),
-                    4UL,
-                    platform::errors::InvalidArgument(
-                        "The conv2d filter's dims size should be 4, but got %d",
-                        Y_t->dims().size()));
+    PADDLE_ENFORCE_EQ(
+        Y_t->dims().size(),
+        4UL,
+        platform::errors::InvalidArgument(
+            "The conv2d filter's dims size should be 4, but got %d",
+            Y_t->dims().size()));
     n_output = Y_t->dims()[0];
     n_input = Y_t->dims()[1];
     filter_h = Y_t->dims()[2];
@@ -220,7 +221,7 @@ class Conv2dOpConverter : public OpConverter {
         [](nvinfer1::IConvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
           layer->setDilation(dilations);
         },
-        
+
         "conv2d");
   }
 };
