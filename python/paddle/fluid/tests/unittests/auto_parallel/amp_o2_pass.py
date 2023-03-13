@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
+import re
 import unittest
 
 import numpy as np
@@ -23,6 +25,18 @@ from paddle.distributed.fleet import auto
 from paddle.framework import core
 
 paddle.enable_static()
+
+
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
 
 
 def apply_pass(use_amp=False, amp_dtype="bfloat16"):
@@ -105,6 +119,9 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         loss0 = mp_history.history['loss'][0]
 
         # bf16
+        if not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000:
+            return
+
         mp_bf16_engine = self.get_engine(use_amp=True)
         mp_bf16_history = mp_bf16_engine.fit(
             self.dataset,
