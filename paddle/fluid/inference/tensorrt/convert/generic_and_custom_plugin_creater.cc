@@ -76,7 +76,7 @@ class CustomPluginCreater : public OpConverter {
       nvinfer1::PluginField plugindata;
 
       // NOTE: to avoid string rewrite by iterator, deep copy here
-      std::vector<char> plugin_attr_name(attr_name.length() + 1) = {0};
+      std::vector<char> plugin_attr_name(attr_name.length() + 1, 0);
       snprintf(
           plugin_attr_name.data(), attr_name.length() + 1, attr_name.c_str());
       plugindata.name = plugin_attr_name.data();
