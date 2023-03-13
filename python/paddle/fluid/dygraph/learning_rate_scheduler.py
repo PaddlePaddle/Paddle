@@ -14,6 +14,7 @@
 
 import math
 import warnings
+import numpy as np
 
 import paddle
 from .. import unique_name
@@ -92,12 +93,12 @@ class LearningRateDecay:
                 continue
             value = self.__dict__[key]
             if isinstance(value, Variable):
-                assert value.shape == [
-                    1
-                ], "shape of Variable in state_dict must be [1] {}".format(
+                assert (
+                    value.size == 1
+                ), "the size of Variable in state_dict must be 1, but its shape is {} whose size is not 1".format(
                     value.shape
                 )
-                value = value.numpy()[0]
+                value = value.item()
             state_dict[key] = value
 
         return state_dict
@@ -953,10 +954,9 @@ class ReduceLROnPlateau(LearningRateDecay):
 
         # loss must be 1-D Tensor with shape [1]
         check_type(loss, 'loss', Variable, 'ReduceLROnPlateau.step')
-        assert len(loss.shape) == 1 and loss.shape[0] == 1, (
-            "the loss.shape "
-            "should be (1L,), but the current loss.shape is {}. Maybe that "
-            "you should call paddle.mean to process it first.".format(
+        assert np.prod(loss.shape) == 1, (
+            "The number of elements of loss should be 1, but the current loss.shape is {}, whose number of elements is not 1. "
+            "Maybe that you should call paddle.mean to process it first.".format(
                 loss.shape
             )
         )

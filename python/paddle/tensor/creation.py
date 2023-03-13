@@ -551,7 +551,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             return data
 
         if np.isscalar(data) and not isinstance(data, str):
-            data = np.array([data])
+            data = np.array(data)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
             if data.dtype == np.object_:
@@ -709,13 +709,13 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                                 (0D-Tensor)
                     default_dtype
         Python Number ───────────────► paddle.Tensor
-                                        (1D-Tensor)
+                                        (0D-Tensor)
                     Keep dtype
         np.ndarray ───────────► paddle.Tensor
 
     Args:
-        data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
-            Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor.
+        data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor. Can be a scalar, list, tuple,
+            numpy\.ndarray, paddle\.Tensor. When input a scalar, output is 0D Tensor.
         dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
             'complex64' , 'complex128'. Default: None, infers dtype from ``data``
@@ -738,16 +738,16 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         # <class 'paddle.Tensor'>
 
         paddle.to_tensor(1)
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=True,
         #        [1])
 
         x = paddle.to_tensor(1, stop_gradient=False)
         print(x)
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=False,
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=False,
         #        [1])
 
         paddle.to_tensor(x)  # A new tensor will be created with default stop_gradient=True
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=True,
         #        [1])
 
         paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)

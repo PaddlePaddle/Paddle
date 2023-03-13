@@ -50,7 +50,7 @@ class TestRad2degAPI(unittest.TestCase):
                 feed={'input': self.x_np},
                 fetch_list=[out],
             )
-            self.assertTrue((np.array(out[0]) == self.out_np).all())
+            np.testing.assert_allclose(self.out_np, res[0], rtol=1e-05)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -63,9 +63,9 @@ class TestRad2degAPI(unittest.TestCase):
 
 class TestRad2degAPI2(TestRad2degAPI):
     def setUp(self):
-        self.x_np = np.pi / 2
+        self.x_np = [np.pi / 2]
         self.x_shape = [1]
-        self.out_np = 90
+        self.out_np = [90]
         self.x_dtype = 'float32'
 
     def test_dygraph(self):
@@ -82,7 +82,7 @@ class TestRad2degAPI3(TestRad2degAPI):
     # Test input data type is int
     def setUp(self):
         self.x_np = 1
-        self.x_shape = [1]
+        self.x_shape = []
         self.out_np = 180 / np.pi
         self.x_dtype = 'int64'
 

@@ -76,7 +76,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
         self.place = [paddle.CPUPlace()]
         self.axis = 0
         self.value_np = 99.0
-        self.value_shape = [1]
+        self.value_shape = []
         self.x_feed = copy.deepcopy(self.x_np)
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
@@ -175,7 +175,7 @@ class TestPutAlongAxisAPICase2(TestPutAlongAxisAPI):
         self.place = [paddle.CPUPlace()]
         self.axis = 0
         self.value_np = 99.0
-        self.value_shape = [1]
+        self.value_shape = []
         self.x_feed = copy.deepcopy(self.x_np)
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
@@ -192,7 +192,7 @@ class TestPutAlongAxisAPICase3(TestPutAlongAxisAPI):
         self.x_np = np.random.random(self.shape).astype(np.float32)
         self.place = [paddle.CPUPlace()]
         self.axis = 0
-        self.value_np = 99.0
+        self.value_np = [99.0]
         self.value_shape = [1]
         self.x_feed = copy.deepcopy(self.x_np)
         if core.is_compiled_with_cuda():

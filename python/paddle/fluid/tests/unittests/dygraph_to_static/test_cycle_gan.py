@@ -669,7 +669,7 @@ def train(args, to_static):
                     cyc_B_loss,
                     idt_loss_B,
                 ]
-                cur_batch_loss = [x.numpy()[0] for x in cur_batch_loss]
+                cur_batch_loss = [float(x) for x in cur_batch_loss]
 
                 batch_time = time.time() - s_time
                 t_time += batch_time

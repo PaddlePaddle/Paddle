@@ -1404,12 +1404,11 @@ class ReduceOnPlateau(LRScheduler):
         else:
             self.last_epoch = epoch
 
-        # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
+        # loss must be float, numpy.ndarray or 0-D Tensor with shape []
         if isinstance(metrics, (core.eager.Tensor, numpy.ndarray)):
-            assert len(metrics.shape) == 1 and metrics.shape[0] == 1, (
-                "the metrics.shape "
-                "should be (1L,), but the current metrics.shape is {}. Maybe that "
-                "you should call paddle.mean to process it first.".format(
+            assert numpy.prod(metrics.shape) == 1, (
+                "The number of elements of metrics should be 1, but the current metrics.shape is {}, whose number of elements is not 1. "
+                "Maybe that you should call paddle.mean to process it first.".format(
                     metrics.shape
                 )
             )

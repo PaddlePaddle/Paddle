@@ -71,12 +71,11 @@ class TestNumelAPI(unittest.TestCase):
                 },
                 fetch_list=[out_1, out_2],
             )
-            # TODO(zhouwei): will change shape [1] to [] to support zero-dim
             assert np.array_equal(
-                res_1, np.array([np.size(input_1)]).astype("int64")
+                res_1, np.array(np.size(input_1)).astype("int64")
             )
             assert np.array_equal(
-                res_2, np.array([np.size(input_2)]).astype("int64")
+                res_2, np.array(np.size(input_2)).astype("int64")
             )
 
     def test_numel_imperative(self):

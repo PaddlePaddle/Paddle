@@ -99,8 +99,8 @@ class TestFeedData(unittest.TestCase):
                 self._test_feed_data_shape_mismatch(use_cuda)
             self.assertEqual(
                 str(shape_mismatch_err.exception),
-                "The fed Variable %r should have dimensions = %r, "
-                "shape = %r, but received fed shape %r on each device"
+                "The feed Variable %r should have dimensions = %r, "
+                "shape = %r, but received feed shape is %r on each device"
                 % (
                     'data',
                     len(in_shape_tuple),

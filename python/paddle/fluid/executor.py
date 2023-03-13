@@ -238,8 +238,8 @@ def check_feed_shape_type(var, feed, num_places=1):
         diff_shape = core.diff_tensor_shape(feed, var.desc, num_places)
         if diff_shape is not None:
             raise ValueError(
-                'The fed Variable %r should have dimensions = %d, shape = '
-                '%r, but received fed shape %r on each device'
+                'The feed Variable %r should have dimensions = %d, shape = '
+                '%r, but received feed shape is %r on each device'
                 % (var.name, len(var.shape), var.shape, diff_shape)
             )
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
@@ -608,7 +608,7 @@ def _as_lodtensor(data, place, dtype=None):
             else dtype
         )
         if np.isscalar(data):
-            data = np.array([data]).astype(dtype)
+            data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
             if data.dtype == np.object_:

@@ -1474,6 +1474,9 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
         if serial_tensor.is_parameter:
             continue
         dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
+        print("==========update_op_dims_mapping_by_default_dist_impl=======")
+        print(arg_name)
+        print(dims_mapping)
         if arg_name not in xshape_arg_names:
             if len(dims_mapping) > 1:
                 for idx, mapping in enumerate(dims_mapping[1:]):

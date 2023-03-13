@@ -25,10 +25,7 @@ from paddle.fluid.backward import _append_grad_suffix_, _as_list
 
 
 def _product(t):
-    if isinstance(t, int):
-        return t
-    else:
-        return np.product(t)
+    return int(np.product(t))
 
 
 def dtype_to_np_dtype(dtype):
@@ -85,6 +82,7 @@ def var_to_np_array_in_scope(scope, place, name):
 
 def make_jacobian(x, y_size, np_dtype):
     if isinstance(x, fluid.framework.Variable):
+        print(x, y_size)
         return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
     elif isinstance(x, Sequence):
         jacobians = list(

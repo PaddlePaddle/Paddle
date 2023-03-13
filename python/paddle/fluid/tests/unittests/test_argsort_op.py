@@ -52,7 +52,7 @@ class PyArgsort:
         out = (
             np.array(self.indices, dtype=self.indices.dtype),
             np.array(self.sorted_x, dtype=self.sorted_x.dtype),
-            np.array([self.loss], dtype=self.loss.dtype),
+            np.array(self.loss, dtype=self.loss.dtype),
         )
         return out
 
@@ -178,7 +178,7 @@ class TestArgsortOpCPU(unittest.TestCase):
 
                 f[...] = o
                 dout_dfeed = (y_pos - y_neg) / (delta * 2)
-                g[...] = dout_dfeed[0]
+                g[...] = dout_dfeed
 
         return grad_list
 

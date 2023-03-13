@@ -110,7 +110,7 @@ class TestNNMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_ret.shape, [])
 
     def test_NNMseLoss_sum(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -156,7 +156,7 @@ class TestNNMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_ret.shape, [])
 
     def test_NNMseLoss_none(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -202,7 +202,7 @@ class TestNNMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_ret.shape, dim)
 
 
 class TestNNFunctionalMseLoss(unittest.TestCase):
@@ -246,7 +246,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_ret.shape, [])
 
     def test_NNFunctionalMseLoss_sum(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -288,7 +288,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_ret.shape, [])
 
     def test_NNFunctionalMseLoss_none(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -330,7 +330,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_ret.shape, dim)
 
 
 if __name__ == "__main__":

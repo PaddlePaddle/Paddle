@@ -28,13 +28,14 @@ struct EigenDim {
   using Type = Eigen::DSizes<Eigen::DenseIndex, D>;
 
   static Type From(const DDim& dims) {
-    PADDLE_ENFORCE_EQ(arity(dims),
-                      D,
-                      phi::errors::InvalidArgument(
-                          "Input dimension size should be equal to %d, but "
-                          "received dimension size is %d.",
-                          arity(dims),
-                          D));
+    PADDLE_ENFORCE_EQ(
+        arity(dims),
+        D,
+        phi::errors::InvalidArgument(
+            "Input Tensor dimension size should be equal to %d, but "
+            "received Tensor dimension size is %d.",
+            D,
+            arity(dims)));
     Type ret;
     for (int64_t d = 0; d < arity(dims); d++) {
       ret[d] = dims[d];

@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 
 class TestExecutor(unittest.TestCase):
     def net(self):
-        lr = fluid.data(name="lr", shape=[1], dtype='float32')
+        lr = fluid.data(name="lr", shape=[], dtype='float32')
         x = fluid.data(name="x", shape=[None, 1], dtype='float32')
         y = fluid.data(name="y", shape=[None, 1], dtype='float32')
         y_predict = paddle.static.nn.fc(x, size=1)

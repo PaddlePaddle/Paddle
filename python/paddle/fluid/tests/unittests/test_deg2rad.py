@@ -50,7 +50,7 @@ class TestDeg2radAPI(unittest.TestCase):
                 feed={'input': self.x_np},
                 fetch_list=[out],
             )
-            self.assertTrue((np.array(out[0]) == self.out_np).all())
+            np.testing.assert_allclose(self.out_np, res[0], rtol=1e-05)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -65,7 +65,7 @@ class TestDeg2radAPI2(TestDeg2radAPI):
     # Test input data type is int
     def setUp(self):
         self.x_np = 180
-        self.x_shape = [1]
+        self.x_shape = []
         self.out_np = np.pi
         self.x_dtype = 'int64'
 

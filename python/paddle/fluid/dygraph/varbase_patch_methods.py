@@ -728,7 +728,7 @@ def monkey_patch_varbase():
         return framework.default_main_program().global_block()
 
     def __nonzero__(self):
-        numel = np.prod(self.shape)
+        numel = int(np.prod(self.shape))
         assert (
             numel == 1
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."

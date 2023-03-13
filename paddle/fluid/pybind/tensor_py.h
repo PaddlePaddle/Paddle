@@ -989,14 +989,33 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   auto tensor_dtype = framework::TransToProtoVarType(tensor.dtype());
   size_t sizeof_dtype = framework::SizeOfType(tensor_dtype);
 
-  std::vector<size_t> py_dims(tensor_dims.size());
-  std::vector<size_t> py_strides(tensor_dims.size());
+  std::vector<size_t> py_dims;
+  std::vector<size_t> py_strides;
 
   size_t numel = 1;
-  for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-    py_dims[i] = static_cast<size_t>(tensor_dims[i]);
-    py_strides[i] = sizeof_dtype * numel;
-    numel *= py_dims[i];
+  if (tensor_dims.size() == 0) {
+    py_dims.resize(0);
+    py_strides.resize(0);
+    // 0D Tensor, will remove in future
+    /*
+    VLOG(0) << "Warning:: 0D Tensor cannot be used as Tensor.numpy()[0], Now "
+               "0D will be changed to 1D numpy to avoid this problem, but it's "
+               "not correct and will be removed in future. Please change "
+               "'Tensor.numpy()[0]' to 'float(Tensor)' or "
+               "'Tensor.numpy().item()' as soon as possible.";
+
+    py_dims.resize(1);
+    py_strides.resize(1);
+    py_dims = {1};
+    py_strides = {1};*/
+  } else {
+    py_dims.resize(tensor_dims.size());
+    py_strides.resize(tensor_dims.size());
+    for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+      py_dims[i] = static_cast<size_t>(tensor_dims[i]);
+      py_strides[i] = sizeof_dtype * numel;
+      numel *= py_dims[i];
+    }
   }
 
   const void *tensor_buf_ptr = tensor.data();
