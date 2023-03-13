@@ -269,5 +269,33 @@ class TestNotToConvert2(TestRecursiveCall2):
         self.assertIn("if x.shape[0] > 1", self.dygraph_func.code)
 
 
+# Situation 3 : test to_static for paddle api
+def forward(self, x):
+    if x.shape[0] > 1:
+        x = x + 1
+    return x
+
+
+class TestConvertPaddleAPI(unittest.TestCase):
+    def test_functional_api(self):
+        func = paddle.nn.functional.relu
+        func = paddle.jit.to_static(func)
+        self.assertNotIn("_jst.IfElse", func.code)
+        self.assertIn("if in_dygraph_mode()", func.code)
+
+    def test_class_api(self):
+        bn = paddle.nn.SyncBatchNorm(2)
+        paddle.jit.to_static(bn)
+        self.assertNotIn("_jst.IfElse", bn.forward.code)
+        self.assertIn("if in_dygraph_mode()", bn.forward.code)
+
+    def test_class_patch_api(self):
+        paddle.nn.SyncBatchNorm.forward = forward
+        bn = paddle.nn.SyncBatchNorm(2)
+        paddle.jit.to_static(bn)
+        self.assertNotIn("_jst.IfElse", bn.forward.code)
+        self.assertIn("if x.shape[0] > 1", bn.forward.code)
+
+
 if __name__ == '__main__':
     unittest.main()

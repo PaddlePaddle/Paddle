@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -79,6 +79,54 @@ class TestIndexSelectOpCaseSingleThread(TestIndexSelectOp):
         self.dim = -2
         self.x_shape = (10, 10, 4, 10)
         self.index_size = 10
+
+
+class TestIndexSelectFP16OP(TestIndexSelectOp):
+    def init_dtype_type(self):
+        self.dim = 1
+        self.x_type = np.float16
+        self.index_type = np.int64
+        self.x_shape = (100, 4, 5)
+        self.index_size = 100
+
+
+class TestIndexSelectBF16Op(OpTest):
+    def setUp(self):
+        self.python_api = paddle.index_select
+        self.op_type = "index_select"
+        self.init_dtype_type()
+        index_np = np.random.randint(
+            low=0, high=self.x_shape[self.dim], size=self.index_size
+        )
+        x_np = np.random.random(self.x_shape).astype(np.float32)
+        self.inputs = {'X': convert_float_to_uint16(x_np), 'Index': index_np}
+        self.attrs = {'dim': self.dim}
+        outer_loop = np.prod(self.x_shape[: self.dim])
+        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+        x_np_reshape = np.reshape(x_np, tuple(x_reshape))
+        out_list = []
+        for i in range(outer_loop):
+            for j in range(self.index_size):
+                out_list.append(x_np_reshape[i, index_np[j]])
+        self.out_shape = list(self.x_shape)
+        self.out_shape[self.dim] = self.index_size
+        self.out_shape = tuple(self.out_shape)
+
+        out = np.reshape(out_list, self.out_shape)
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def init_dtype_type(self):
+        self.dim = 1
+        self.x_type = np.uint16
+        self.index_type = np.int64
+        self.x_shape = (100, 4, 5)
+        self.index_size = 100
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestIndexSelectAPI(unittest.TestCase):
