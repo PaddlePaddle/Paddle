@@ -23,7 +23,6 @@ from paddle.fluid.compiler import BuildStrategy
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
-from paddle.fluid.layers.utils import _hash_with_id
 
 from . import logging_utils
 from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
