@@ -23,8 +23,24 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 import paddle.inference as paddle_infer
 
 
-class TrtConvertPad3d(TrtLayerAutoScanTest):
+class TrtConvertPad3dListPadding(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        compile_version = paddle_infer.get_trt_compile_version()
+        runtime_version = paddle_infer.get_trt_runtime_version()
+        if (
+                compile_version[0] * 1000
+                + compile_version[1] * 100
+                + compile_version[2] * 10
+                < 8200
+        ):
+            return False
+        if (
+                runtime_version[0] * 1000
+                + runtime_version[1] * 100
+                + runtime_version[2] * 10
+                < 8200
+        ):
+            return False
         return True
 
     def sample_program_configs(self):
@@ -41,72 +57,38 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
                 [1, 1, 1, 1, 1, 1],
                 [0, 0, -1, -1, 1, 1],
             ]:
-                for mode in ['list', 'list']:
-                    for pad_mode in ['constant', 'reflect', 'replicate']:
-                        if mode == 'list':
-                            dics = [
-                                {
-                                    "value": value,
-                                    "data_format": "NCDHW",
-                                    "mode": pad_mode,
-                                    "paddings": paddings,
-                                },
-                                {},
-                            ]
-                            ops_config = [
-                                {
-                                    "op_type": "pad3d",
-                                    "op_inputs": {"X": ["input_data"]},
-                                    "op_outputs": {"Out": ["output_data"]},
-                                    "op_attrs": dics[0],
-                                }
-                            ]
-                            ops = self.generate_op_config(ops_config)
-                            inputs = {
-                                "input_data": TensorConfig(
-                                    data_gen=partial(generate_input1)
-                                )
-                            }
-                        else:
-                            dics = [
-                                {
-                                    "value": value,
-                                    "data_format": "NCDHW",
-                                    "mode": pad_mode,
-                                    "paddings": paddings,
-                                },
-                                {},
-                            ]
-                            ops_config = [
-                                {
-                                    "op_type": "pad3d",
-                                    "op_inputs": {
-                                        "X": ["input_data"],
-                                        "Paddings": ["input_padding"],
-                                    },
-                                    "op_outputs": {"Out": ["output_data"]},
-                                    "op_attrs": dics[0],
-                                }
-                            ]
-                            ops = self.generate_op_config(ops_config)
-                            inputs = {
-                                "input_data": TensorConfig(
-                                    data_gen=partial(generate_input1)
-                                ),
-                                "input_padding": TensorConfig(
-                                    data_gen=partial(
-                                        generate_paddings, paddings
-                                    )
-                                ),
-                            }
-
-                        program_config = ProgramConfig(
-                            ops=ops,
-                            weights={},
-                            inputs=inputs,
-                            outputs=["output_data"],
+                for pad_mode in ['constant', 'reflect', 'replicate']:
+                    dics = [
+                        {
+                            "value": value,
+                            "data_format": "NCDHW",
+                            "mode": pad_mode,
+                            "paddings": paddings,
+                        },
+                        {},
+                    ]
+                    ops_config = [
+                        {
+                            "op_type": "pad3d",
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": {"Out": ["output_data"]},
+                            "op_attrs": dics[0],
+                        }
+                    ]
+                    ops = self.generate_op_config(ops_config)
+                    inputs = {
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input1)
                         )
-                        yield program_config
+                    }
+
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs=inputs,
+                        outputs=["output_data"],
+                    )
+                    yield program_config
 
     def sample_predictor_configs(
             self, program_config
@@ -128,10 +110,15 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if not dynamic_shape:
+            valid_version = (8, 2, 0)
+            compile_version = paddle_infer.get_trt_compile_version()
+            runtime_version = paddle_infer.get_trt_runtime_version()
+            self.assertTrue(compile_version == runtime_version)
+            if compile_version < valid_version:
                 return 0, 3
-            else:
+            if dynamic_shape:
                 return 1, 2
+            return 0, 3
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -139,16 +126,16 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
 
         # for static_shape test
         # "len(attrs[0]['paddings']) == 6" means padding is a list
-        # if len(attrs[0]['paddings']) == 6:
-        #     clear_dynamic_shape()
-        #     self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        #     yield self.create_inference_config(), generate_trt_nodes_num(
-        #         attrs, False
-        #     ), 1e-5
-        #     self.trt_param.precision = paddle_infer.PrecisionType.Half
-        #     yield self.create_inference_config(), generate_trt_nodes_num(
-        #         attrs, False
-        #     ), 1e-3
+        if len(attrs[0]['paddings']) == 6:
+            clear_dynamic_shape()
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-5
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, False
+            ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -163,6 +150,42 @@ class TrtConvertPad3d(TrtLayerAutoScanTest):
 
     def test(self):
         self.run_test()
+
+
+"""
+else:
+    dics = [
+        {
+            "value": value,
+            "data_format": "NCDHW",
+            "mode": pad_mode,
+            "paddings": paddings,
+        },
+        {},
+    ]
+    ops_config = [
+        {
+            "op_type": "pad3d",
+            "op_inputs": {
+                "X": ["input_data"],
+                "Paddings": ["input_padding"],
+            },
+            "op_outputs": {"Out": ["output_data"]},
+            "op_attrs": dics[0],
+        }
+    ]
+    ops = self.generate_op_config(ops_config)
+    inputs = {
+        "input_data": TensorConfig(
+            data_gen=partial(generate_input1)
+        ),
+        "input_padding": TensorConfig(
+            data_gen=partial(
+                generate_paddings, paddings
+            )
+        ),
+    }
+"""
 
 
 if __name__ == "__main__":
