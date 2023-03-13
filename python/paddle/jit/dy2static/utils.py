@@ -320,7 +320,7 @@ def is_paddle_func(func, ignore_white_list=True):
     def in_white_list(module, func_name):
         if func_name is None:
             return False
-        return (module.__name__ + '.' + func_name) in INNER_FUNC_WHITE_LIST
+        return (module.__name__ + '.' + func_name) in AS_NOT_INNER_FUNC_LIST
 
     try:
         if isinstance(func, functools.partial):
