@@ -28,8 +28,7 @@ using CUDAGraph = phi::backends::gpu::CUDAGraph;
 
 void BeginCUDAGraphCapture(phi::GPUPlace place,
                            cudaStreamCaptureMode mode,
-                           int64_t pool_id = CUDAGraph::kInvalidPoolID,
-                           bool create_cuda_graph_stream = false);
+                           int64_t pool_id = CUDAGraph::kInvalidPoolID);
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
 #endif
 

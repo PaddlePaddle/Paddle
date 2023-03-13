@@ -42,34 +42,36 @@ void InitCUDNNRelatedHandle(phi::GPUContext* dev_ctx) {
 
 void BeginCUDAGraphCapture(phi::GPUPlace place,
                            cudaStreamCaptureMode mode,
-                           int64_t pool_id,
-                           bool create_cuda_graph_stream) {
-  phi::DeviceContext* mutable_dev_ctx;
+                           int64_t pool_id) {
+  auto* mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+  auto all_capturing_dev_ctxs =
+      phi::backends::gpu::CUDAGraphContextManager::Instance()
+          .GetAllCapturingDeviceContexts();
+  // create_cuda_graph_stream: Whether to create a new stream to
+  // capture cuda graph, usually used in multi-stream scenarios.
+  // Can only be used for new executor in static mode, that is,
+  // FLAGS_new_executor_use_cuda_graph needs to be set to True.
+  bool create_cuda_graph_stream = false;
+  if (FLAGS_new_executor_use_cuda_graph &&
+      (all_capturing_dev_ctxs.size() > 1 ||
+       (all_capturing_dev_ctxs.size() == 1 &&
+        (*(all_capturing_dev_ctxs.begin()) != mutable_dev_ctx)))) {
+    create_cuda_graph_stream = true;
+  }
   if (create_cuda_graph_stream) {
-    PADDLE_ENFORCE_EQ(FLAGS_new_executor_use_cuda_graph,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "FLAGS_new_executor_use_cuda_graph must be True when "
-                          "create_cuda_graph_stream is set to True"));
+    VLOG(4) << "create a new stream to capture cuda graph.";
     if (pool_id <= CUDAGraph::kInvalidPoolID) {
       pool_id = CUDAGraph::UniqueMemoryPoolID();
     }
-    VLOG(4) << "create a new stream to capture cuda graph.";
-    mutable_dev_ctx = phi::backends::gpu::CUDAGraphContextManager::Instance()
-                          .Get(pool_id, place, 0)
-                          .get()
-                          .get();
-    auto all_capturing_dev_ctxs =
-        phi::backends::gpu::CUDAGraphContextManager::Instance()
-            .GetAllCapturingDeviceContexts();
+    mutable_dev_ctx =
+        phi::backends::gpu::CUDAGraphContextManager::Instance().Get(
+            pool_id, place, 0);
     for (auto iter = all_capturing_dev_ctxs.begin();
          iter != all_capturing_dev_ctxs.end();
          ++iter) {
       auto* capturing_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
       InitCUDNNRelatedHandle(capturing_dev_ctx);
     }
-  } else {
-    mutable_dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   }
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
   InitCUDNNRelatedHandle(dev_ctx);
@@ -103,9 +105,6 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
             dev_ctx->GetPlace(), platform::GenerateDeviceEventFlag());
     cuda_graph_event->Record(dev_ctx);
 
-    auto all_capturing_dev_ctxs =
-        phi::backends::gpu::CUDAGraphContextManager::Instance()
-            .GetAllCapturingDeviceContexts();
     for (auto iter = all_capturing_dev_ctxs.begin();
          iter != all_capturing_dev_ctxs.end();
          ++iter) {
@@ -136,10 +135,9 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
   if (create_cuda_graph_stream) {
     // join all other streams back to origin cuda graph stream.
     int64_t pool_id = CUDAGraph::CapturingPoolID();
-    mutable_dev_ctx = phi::backends::gpu::CUDAGraphContextManager::Instance()
-                          .Get(pool_id, place, 0)
-                          .get()
-                          .get();
+    mutable_dev_ctx =
+        phi::backends::gpu::CUDAGraphContextManager::Instance().Get(
+            pool_id, place, 0);
     auto* cuda_graph_dev_ctx =
         reinterpret_cast<phi::GPUContext*>(mutable_dev_ctx);
     auto all_capturing_dev_ctxs =

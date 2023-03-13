@@ -49,13 +49,13 @@ class TestCustomStream(unittest.TestCase):
         op_index_for_stream2 = [7, 8, 10, 11]
         ops = prog.global_block().ops
         for op_index in op_index_for_stream1:
+            ops[op_index].dist_attr.execution_stream = "s1"
             ops[op_index].dist_attr.stream_priority = 0
         for op_index in op_index_for_stream2:
             ops[op_index].dist_attr.execution_stream = "s2"
             ops[op_index].dist_attr.stream_priority = -1
 
     def run_program(self, use_cuda_graph=False, apply_custom_stream=False):
-        # paddle.seed(2022)
         seed = 100
 
         batch_size = 1
@@ -97,7 +97,7 @@ class TestCustomStream(unittest.TestCase):
 
                 if batch_id == 1 and use_cuda_graph:
                     cuda_graph = CUDAGraph(place, mode="global")
-                    cuda_graph.capture_begin(create_cuda_graph_stream=True)
+                    cuda_graph.capture_begin()
                     exe.run(main)
                     cuda_graph.capture_end()
 

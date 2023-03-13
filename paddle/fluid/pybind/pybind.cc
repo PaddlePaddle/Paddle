@@ -809,14 +809,9 @@ PYBIND11_MODULE(libpaddle, m) {
 #ifdef PADDLE_WITH_CUDA
   py::class_<phi::backends::gpu::CUDAGraph>(m, "CUDAGraph")
       .def_static("begin_capture",
-                  [](platform::CUDAPlace place,
-                     int mode,
-                     bool create_cuda_graph_stream) {
+                  [](platform::CUDAPlace place, int mode) {
                     platform::BeginCUDAGraphCapture(
-                        place,
-                        static_cast<cudaStreamCaptureMode>(mode),
-                        phi::backends::gpu::CUDAGraph::kInvalidPoolID,
-                        create_cuda_graph_stream);
+                        place, static_cast<cudaStreamCaptureMode>(mode));
                   })
       .def_static("end_capture", &platform::EndCUDAGraphCapture)
       .def_static("gen_new_memory_pool_id",

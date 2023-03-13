@@ -49,9 +49,7 @@ class CUDAGraphContextManager {
     return *cuda_graph_ctx_manager;
   }
 
-  std::shared_future<std::unique_ptr<DeviceContext>> Get(int64_t pool_id,
-                                                         const Place &place,
-                                                         int stream_priority) {
+  DeviceContext *Get(int64_t pool_id, const Place &place, int stream_priority) {
     std::lock_guard<std::mutex> lk(ctx_mtx_);
     VLOG(6) << "Get cuda graph device context for " << place;
 
@@ -63,7 +61,7 @@ class CUDAGraphContextManager {
           /*disable_setting_default_stream_for_allocator=*/true,
           stream_priority);
     }
-    return ctxs[place];
+    return ctxs[place].get().get();
   }
 
   void RecordCapturingDeviceContext(DeviceContext *dev_ctx) {

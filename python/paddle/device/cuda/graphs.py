@@ -55,19 +55,8 @@ class CUDAGraph:
         assert mode in ALL_MODES
         self._mode = ALL_MODES.index(mode)
 
-    def capture_begin(self, create_cuda_graph_stream=False):
-        """
-        Begin to capture cuda graph.
-
-        :create_cuda_graph_stream: Whether to create a new stream to
-        capture cuda graph, usually used in multi-stream scenarios.
-        Can only be used for new executor in static mode, that is,
-        FLAGS_new_executor_use_cuda_graph needs to be set to True.
-        The default value of create_cuda_graph_stream is False.
-        """
-        CoreCUDAGraph.begin_capture(
-            self._place, self._mode, create_cuda_graph_stream
-        )
+    def capture_begin(self):
+        CoreCUDAGraph.begin_capture(self._place, self._mode)
 
     def capture_end(self):
         self._graph = CoreCUDAGraph.end_capture()
