@@ -120,7 +120,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     // shift for SRC
     if (shift_in != 0) {
       reorder_args.insert(
-          {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_DST, zero_points_in_mem});
+          {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, zero_points_in_mem});
     }
     // shift for DST
     if (shift_out != 0) {
