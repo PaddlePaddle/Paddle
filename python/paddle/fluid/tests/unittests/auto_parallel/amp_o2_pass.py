@@ -119,10 +119,10 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         loss0 = mp_history.history['loss'][0]
 
         # bf16
+        mp_bf16_engine = self.get_engine(use_amp=True)
         if not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000:
             return
 
-        mp_bf16_engine = self.get_engine(use_amp=True)
         mp_bf16_history = mp_bf16_engine.fit(
             self.dataset,
             3,
