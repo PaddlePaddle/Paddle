@@ -1761,7 +1761,7 @@ class TestReluAPI(unittest.TestCase):
     def test_static_api(self):
         with paddle_static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.statc.data('X', [10, 12], dtype="float32")
+                x = paddle.static.data('X', [10, 12], dtype="float32")
                 out1 = self.relu(x)
                 m = paddle.nn.ReLU()
                 out2 = m(x)
