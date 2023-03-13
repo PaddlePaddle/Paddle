@@ -575,9 +575,12 @@ __global__ void FillActualNeighbors(int64_t *vals,
                                     int64_t *actual_vals_dst,
                                     int *actual_sample_size,
                                     int *cumsum_actual_sample_size,
+                                    float *weights,
+                                    float *actual_weights,
                                     int sample_size,
                                     int len,
-                                    int mod) {
+                                    int mod,
+                                    bool return_weight) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     int offset1 = cumsum_actual_sample_size[i];
@@ -586,6 +589,9 @@ __global__ void FillActualNeighbors(int64_t *vals,
     for (int j = 0; j < actual_sample_size[i]; j++) {
       actual_vals[offset1 + j] = vals[offset2 + j];
       actual_vals_dst[offset1 + j] = dst_id;
+      if (return_weight) {
+        actual_weights[offset1 + j] = weights[offset2 + j];
+      }
     }
   }
 }
@@ -640,7 +646,12 @@ int GraphDataGenerator::FillGraphIdShowClkTensor(int uniq_instance,
       feed_vec_[1]->mutable_data<int64_t>({uniq_instance}, this->place_);
   clk_tensor_ptr_ =
       feed_vec_[2]->mutable_data<int64_t>({uniq_instance}, this->place_);
-  int index_offset = 3 + slot_num_ * 2 + 5 * samples_.size();
+  int index_offset = 0;
+  if (!return_weight_) {
+    index_offset = 3 + slot_num_ * 2 + 5 * samples_.size();
+  } else {
+    index_offset = 3 + slot_num_ * 2 + 6 * samples_.size();  // add edge weights
+  }
   index_tensor_ptr_ = feed_vec_[index_offset]->mutable_data<int>(
       {total_instance}, this->place_);
   if (get_degree_) {
@@ -654,13 +665,15 @@ int GraphDataGenerator::FillGraphIdShowClkTensor(int uniq_instance,
   int64_t *edges_src_tensor_ptr_[len_samples];
   int64_t *edges_dst_tensor_ptr_[len_samples];
   int *edges_split_tensor_ptr_[len_samples];
+  float *edges_weight_tensor_ptr_[len_samples];
 
   std::vector<std::vector<int>> edges_split_num_for_graph =
       edges_split_num_vec_[index];
   std::vector<std::shared_ptr<phi::Allocation>> graph_edges =
       graph_edges_vec_[index];
+  int graph_edges_index = 0;
   for (int i = 0; i < len_samples; i++) {
-    int offset = 3 + 2 * slot_num_ + 5 * i;
+    int offset = return_weight_ ? (3 + 2 * slot_num_ + 6 * i) : (3 + 2 * slot_num_ + 5 * i);
     std::vector<int> edges_split_num = edges_split_num_for_graph[i];
 
     int neighbor_len = edges_split_num[edge_to_id_len_ + 2];
@@ -674,6 +687,10 @@ int GraphDataGenerator::FillGraphIdShowClkTensor(int uniq_instance,
         {neighbor_len, 1}, this->place_);
     edges_split_tensor_ptr_[i] = feed_vec_[offset + 4]->mutable_data<int>(
         {edge_to_id_len_}, this->place_);
+    if (return_weight_) {
+      edges_weight_tensor_ptr_[i] = feed_vec_[offset + 5]->mutable_data<float>(
+          {neighbor_len, 1}, this->place_);
+    }
 
     // [edges_split_num, next_num_nodes, num_nodes, neighbor_len]
     cudaMemcpyAsync(next_num_nodes_tensor_ptr_[i],
@@ -692,15 +709,22 @@ int GraphDataGenerator::FillGraphIdShowClkTensor(int uniq_instance,
                     cudaMemcpyHostToDevice,
                     train_stream_);
     cudaMemcpyAsync(edges_src_tensor_ptr_[i],
-                    graph_edges[i * 2]->ptr(),
+                    graph_edges[graph_edges_index++]->ptr(),
                     sizeof(int64_t) * neighbor_len,
                     cudaMemcpyDeviceToDevice,
                     train_stream_);
     cudaMemcpyAsync(edges_dst_tensor_ptr_[i],
-                    graph_edges[i * 2 + 1]->ptr(),
+                    graph_edges[graph_edges_index++]->ptr(),
                     sizeof(int64_t) * neighbor_len,
                     cudaMemcpyDeviceToDevice,
                     train_stream_);
+    if (return_weight_) {
+      cudaMemcpyAsync(edges_weight_tensor_ptr_[i],
+                      graph_edges[graph_edges_index++]->ptr(),
+                      sizeof(float) * neighbor_len,
+                      cudaMemcpyDeviceToDevice,
+                      train_stream_);
+    }
   }
 
   cudaMemcpyAsync(id_tensor_ptr_,
@@ -1573,7 +1597,8 @@ GraphDataGenerator::SampleNeighbors(int64_t *uniq_nodes,
       sample_size,
       len,
       edge_type_graph_,
-      weighted_sample_);
+      weighted_sample_,
+      return_weight_);
 
   int *all_sample_count_ptr =
       reinterpret_cast<int *>(sample_res.actual_sample_size_mem->ptr());
@@ -1634,6 +1659,19 @@ GraphDataGenerator::SampleNeighbors(int64_t *uniq_nodes,
       reinterpret_cast<int64_t *>(final_sample_val_dst->ptr());
   int64_t *all_sample_val_ptr =
       reinterpret_cast<int64_t *>(sample_res.val_mem->ptr());
+
+  std::shared_ptr<phi::Allocation> final_sample_weight;
+  float *final_sample_weight_ptr = nullptr, *all_sample_weight_ptr = nullptr;
+  if (return_weight_) {
+    final_sample_weight = memory::AllocShared(
+        place_,
+        all_sample_size * sizeof(float),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+    final_sample_weight_ptr =
+        reinterpret_cast<float*>(final_sample_weight->ptr());
+    all_sample_weight_ptr =
+        reinterpret_cast<float*>(sample_res.weight_mem->ptr());
+  }
   FillActualNeighbors<<<GET_BLOCKS(len * edge_to_id_len_),
                         CUDA_NUM_THREADS,
                         0,
@@ -1642,15 +1680,21 @@ GraphDataGenerator::SampleNeighbors(int64_t *uniq_nodes,
                                           final_sample_val_dst_ptr,
                                           all_sample_count_ptr,
                                           cumsum_actual_sample_size_ptr,
+                                          all_sample_weight_ptr,
+                                          final_sample_weight_ptr,
                                           sample_size,
                                           len * edge_to_id_len_,
-                                          len);
+                                          len,
+                                          return_weight_);
   *neighbor_len = all_sample_size;
   cudaStreamSynchronize(sample_stream_);
 
   std::vector<std::shared_ptr<phi::Allocation>> sample_results;
   sample_results.emplace_back(final_sample_val);
   sample_results.emplace_back(final_sample_val_dst);
+  if (return_weight_) {
+    sample_results.emplace_back(final_sample_weight);
+  }
   return sample_results;
 }
 
@@ -1827,7 +1871,7 @@ std::shared_ptr<phi::Allocation> GraphDataGenerator::GenerateSampleGraph(
 
   for (int i = 0; i < len_samples; i++) {
     edges_split_num.clear();
-    std::shared_ptr<phi::Allocation> neighbors, reindex_dst;
+    std::shared_ptr<phi::Allocation> neighbors, reindex_dst, weights;
     int64_t neighbors_len = 0;
     if (i == 0) {
       auto sample_results = SampleNeighbors(uniq_nodes_data,
@@ -1837,6 +1881,9 @@ std::shared_ptr<phi::Allocation> GraphDataGenerator::GenerateSampleGraph(
                                             &neighbors_len);
       neighbors = sample_results[0];
       reindex_dst = sample_results[1];
+      if (return_weight_) {
+        weights = sample_results[2];
+      }
       edges_split_num.push_back(uniq_len);
     } else {
       int64_t *final_nodes_data =
@@ -1848,6 +1895,9 @@ std::shared_ptr<phi::Allocation> GraphDataGenerator::GenerateSampleGraph(
                                             &neighbors_len);
       neighbors = sample_results[0];
       reindex_dst = sample_results[1];
+      if (return_weight_) {
+        weights = sample_results[2];
+      }
       edges_split_num.push_back(final_nodes_len_vec[i - 1]);
     }
 
@@ -1878,6 +1928,9 @@ std::shared_ptr<phi::Allocation> GraphDataGenerator::GenerateSampleGraph(
     edges_split_num.emplace_back(neighbors_len);
     graph_edges.emplace_back(neighbors);
     graph_edges.emplace_back(reindex_dst);
+    if (return_weight_) {
+      graph_edges.emplace_back(weights);
+    }
     edges_split_num_for_graph.emplace_back(edges_split_num);
   }
   graph_edges_vec_.emplace_back(graph_edges);
@@ -2720,7 +2773,9 @@ void GraphDataGenerator::AllocResource(
   if (!sage_mode_) {
     slot_num_ = (feed_vec.size() - 3) / 2;
   } else {
-    slot_num_ = (feed_vec.size() - 4 - samples_.size() * 5) / 2;
+    int offset = get_degree_ ? 5 : 4;
+    int sample_offset = return_weight_ ? 6 : 5;
+    slot_num_ = (feed_vec.size() - offset - samples_.size() * sample_offset) / 2;
   }
 
   // infer_node_type_start_ = std::vector<int>(h_device_keys_.size(), 0);
@@ -2970,6 +3025,7 @@ void GraphDataGenerator::SetConfig(
   infer_table_cap_ = graph_config.infer_table_cap();
   get_degree_ = graph_config.get_degree();
   weighted_sample_ = graph_config.weighted_sample();
+  return_weight_ = graph_config.return_weight();
 
   epoch_finish_ = false;
   VLOG(1) << "Confirm GraphConfig, walk_degree : " << walk_degree_

@@ -116,7 +116,8 @@ class GpuPsGraphTable
       int sample_size,
       int len,
       std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs,
-      bool weighted);
+      bool weighted,
+      bool return_weight);
   void weighted_sample(GpuPsCommGraph& graph,
                        GpuPsNodeInfo* node_info_list,
                        int* actual_size_array,
@@ -128,7 +129,9 @@ class GpuPsGraphTable
                        int shard_len,
                        bool need_neighbor_count,
                        unsigned long long random_seed,
-                       int default_value);
+                       int default_value,
+                       float* weight_array,
+                       bool return_weight);
   std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(
       int gpu_id, int edge_type_len);
   void get_node_degree(int gpu_id,
@@ -182,8 +185,10 @@ class GpuPsGraphTable
                                                int *h_right,
                                                uint64_t *src_sample_res,
                                                int *actual_sample_size,
+                                               float *weight,
                                                int edge_type_len,
-                                               int len);
+                                               int len,
+                                               bool return_weight);
   int init_cpu_table(const paddle::distributed::GraphParameter &graph,
                      int gpu_num = 8);
   gpuStream_t get_local_stream(int gpu_id) {

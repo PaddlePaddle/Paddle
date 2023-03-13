@@ -1086,6 +1086,7 @@ class GraphDataGenerator {
   std::string infer_node_type_;
   bool get_degree_;
   bool weighted_sample_;
+  bool return_weight_;
 };
 
 class DataFeed {

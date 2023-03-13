@@ -1136,6 +1136,9 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.graph_config.weighted_sample = config.get(
             "weighted_sample", False
         )
+        self.proto_desc.graph_config.return_weight = config.get(
+            "return_weight", False
+        )
         self.dataset.set_gpu_graph_mode(True)
 
     def set_pass_id(self, pass_id):
