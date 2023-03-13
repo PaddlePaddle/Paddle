@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/complex_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/complex_kernel_impl.h"
