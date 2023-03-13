@@ -34,7 +34,7 @@ class AllReduceOp : public framework::OperatorWithKernel {
   }
 };
 
-class AllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+class AllReduceV1OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor), tensor to be allreduced.");
@@ -71,7 +71,7 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(allreduce,
                              ops::AllReduceOp,
-                             ops::AllReduceOpMaker);
+                             ops::AllReduceV1OpMaker);
 
 REGISTER_OP_CPU_KERNEL(allreduce,
                        ops::AllReduceOpKernel<phi::CPUContext, float>,

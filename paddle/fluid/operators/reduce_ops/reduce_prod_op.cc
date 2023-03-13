@@ -29,7 +29,7 @@ class OpBase;
 
 namespace ops = paddle::operators;
 
-class ReduceProdOpMaker : public ops::ReduceOpMaker {
+class ReduceProdOpMaker : public ops::ReduceBaseOpMaker {
  protected:
   virtual std::string GetName() const { return "reduce_prod"; }
   virtual std::string GetOpType() const { return "Reduce reduce_prod"; }

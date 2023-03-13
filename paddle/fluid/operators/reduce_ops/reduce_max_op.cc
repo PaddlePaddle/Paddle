@@ -19,7 +19,7 @@
 
 namespace ops = paddle::operators;
 
-class ReduceMaxOpMaker : public ops::ReduceOpMaker {
+class ReduceMaxOpMaker : public ops::ReduceBaseOpMaker {
  protected:
   virtual std::string GetName() const { return "reduce_max"; }
   virtual std::string GetOpType() const { return "Reduce reduce_max"; }

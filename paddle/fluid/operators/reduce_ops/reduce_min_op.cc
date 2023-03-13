@@ -19,7 +19,7 @@
 
 namespace ops = paddle::operators;
 
-class ReduceMinOpMaker : public ops::ReduceOpMaker {
+class ReduceMinOpMaker : public ops::ReduceBaseOpMaker {
  protected:
   virtual std::string GetName() const { return "reduce_min"; }
   virtual std::string GetOpType() const { return "Reduce reduce_min"; }

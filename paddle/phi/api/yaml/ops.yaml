@@ -1132,16 +1132,6 @@
   inplace : (x -> out)
   backward : reciprocal_grad
 
-- op : reduce_v2
-  args : (Tensor X, int ring_id = 0, int root_id = 0, int reduce_type = 0)
-  output : Tensor(Out)
-  infer_meta :
-    func : ReduceBaseInferMeta
-    param: [X]
-  kernel :
-    func : reduce_v2
-    param: [X, root_id, reduce_type]
-
 - op : relu
   args : (Tensor x)
   output : Tensor(out)

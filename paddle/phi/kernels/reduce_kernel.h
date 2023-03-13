@@ -21,10 +21,10 @@ namespace phi {
 enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd };
 
 template <typename T, typename Context>
-void ReduceV2Kernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    int root_id,
-                    int reduce_type,
-                    DenseTensor* out);
+void ReduceKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int root_id,
+                  int reduce_type,
+                  DenseTensor* out);
 
 }  // namespace phi

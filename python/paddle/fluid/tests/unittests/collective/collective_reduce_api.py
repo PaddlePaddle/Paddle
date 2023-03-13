@@ -24,7 +24,7 @@ paddle.enable_static()
 
 
 def reduce_new(tensor, dst, reduce_type=str(dist.ReduceOp.SUM), group=None):
-    op_type = "reduce_v2"
+    op_type = "reduce"
     data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',

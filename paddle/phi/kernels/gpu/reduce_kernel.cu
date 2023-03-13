@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/reduce_v2_kernel.h"
+#include "paddle/phi/kernels/reduce_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -24,11 +24,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ReduceV2Kernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    int root,
-                    int reduce_type,
-                    DenseTensor* out) {
+void ReduceKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int root,
+                  int reduce_type,
+                  DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
@@ -69,10 +69,10 @@ void ReduceV2Kernel(const Context& dev_ctx,
 }  // namespace phi
 
 #if NCCL_VERSION_CODE >= 21000
-PD_REGISTER_KERNEL(reduce_v2,
+PD_REGISTER_KERNEL(reduce,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ReduceV2Kernel,
+                   phi::ReduceKernel,
                    float,
                    double,
                    int,
@@ -83,10 +83,10 @@ PD_REGISTER_KERNEL(reduce_v2,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 #else
-PD_REGISTER_KERNEL(reduce_v2,
+PD_REGISTER_KERNEL(reduce,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ReduceV2Kernel,
+                   phi::ReduceKernel,
                    float,
                    double,
                    int,

@@ -126,6 +126,16 @@
     backend : x
     force_backend : force_cpu
 
+- op : reduce
+  args : (Tensor X, int ring_id = 0, int root_id = 0, int reduce_type = 0)
+  output : Tensor(Out)
+  infer_meta :
+    func : DistReduceInferMeta
+    param: [X]
+  kernel :
+    func : reduce
+    param: [X, root_id, reduce_type]
+
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})
   output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}

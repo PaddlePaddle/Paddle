@@ -4878,7 +4878,7 @@ void UnStackInferMeta(const MetaTensor& x,
   }
 }
 
-void ReduceBaseInferMeta(const MetaTensor& x, MetaTensor* out) {
+void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(x.dtype());
   out->set_dims(x.dims());
 }

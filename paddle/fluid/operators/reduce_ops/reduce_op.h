@@ -711,7 +711,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+class ReduceBaseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() final {
     AddInput("X",
@@ -870,7 +870,7 @@ struct DivideFunctor {
 namespace ops = paddle::operators;
 
 #define REGISTER_REDUCE_OP(op_name)                                           \
-  class __##op_name##Maker__ : public ops::ReduceOpMaker {                    \
+  class __##op_name##Maker__ : public ops::ReduceBaseOpMaker {                \
    protected:                                                                 \
     virtual std::string GetName() const { return #op_name; }                  \
     virtual std::string GetOpType() const { return "Reduce " #op_name; }      \
@@ -885,7 +885,7 @@ namespace ops = paddle::operators;
   REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
 
 #define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name, ...)                    \
-  class __##op_name##Maker__ : public ops::ReduceOpMaker {               \
+  class __##op_name##Maker__ : public ops::ReduceBaseOpMaker {           \
    protected:                                                            \
     virtual std::string GetName() const { return #op_name; }             \
     virtual std::string GetOpType() const { return "Reduce " #op_name; } \

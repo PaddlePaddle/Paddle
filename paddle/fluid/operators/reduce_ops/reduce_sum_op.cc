@@ -128,7 +128,7 @@ class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-class ReduceSumOpMaker : public ops::ReduceOpMaker {
+class ReduceSumOpMaker : public ops::ReduceBaseOpMaker {
  protected:
   virtual std::string GetName() const { return "reduce_sum"; }
   virtual std::string GetOpType() const { return "Reduce reduce_sum"; }

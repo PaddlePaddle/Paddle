@@ -26,7 +26,7 @@ class TestCollectiveAllreduceAPI(TestDistBase):
     def _setup_config(self):
         pass
 
-    def itest_allreduce_nccl(self):
+    def test_allreduce_nccl(self):
         if paddle.fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "collective_allreduce_api.py", "allreduce", "nccl"
@@ -62,18 +62,18 @@ class TestCollectiveAllreduceAPI(TestDistBase):
                     need_envs={"USE_COMM_CONTEXT": "1"},
                 )
 
-    def itest_allreduce_bkcl(self):
+    def test_allreduce_bkcl(self):
         if paddle.fluid.core.is_compiled_with_xpu():
             self.check_with_place(
                 "collective_allreduce_api.py", "allreduce", "bkcl"
             )
 
-    def itest_allreduce_gloo(self):
+    def test_allreduce_gloo(self):
         self.check_with_place(
             "collective_allreduce_api.py", "allreduce", "gloo", "2"
         )
 
-    def itest_allreduce_gloo_with_comm_context(self):
+    def test_allreduce_gloo_with_comm_context(self):
         dtypes_to_test = [
             "float16",
             "float32",
@@ -102,7 +102,7 @@ class TestCollectiveAllreduceAPI(TestDistBase):
                     need_envs={"USE_COMM_CONTEXT": "1"},
                 )
 
-    def itest_allreduce_nccl_dygraph(self):
+    def test_allreduce_nccl_dygraph(self):
         dtypes_to_test = [
             "float16",
             "float32",
@@ -124,7 +124,7 @@ class TestCollectiveAllreduceAPI(TestDistBase):
                 dtype=dtype,
             )
 
-    def itest_allreduce_gloo_dygraph(self):
+    def test_allreduce_gloo_dygraph(self):
         dtypes_to_test = [
             "float16",
             "float32",

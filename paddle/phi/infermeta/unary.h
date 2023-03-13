@@ -69,7 +69,7 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
 void BroadcastBaseInferMeta(const MetaTensor& x, MetaTensor* out);
 
-void ReduceBaseInferMeta(const MetaTensor& x, MetaTensor* out);
+void DistReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
