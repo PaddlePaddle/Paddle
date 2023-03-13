@@ -226,6 +226,43 @@ def expand_v2_composite(x, shape):
     return tile(x, repeat_times=repeat_times)
 
 
+@REGISTER_COMPOSITE('expand_as_v2')
+def expand_as_v2_composite(x, y, target_shape):
+    """
+    define composite rule of op expnad_as_v2, expand_as_v2->expand_as
+    repeat_times = target_shape / x.shape
+    out = tile(x, repeat_times = repeat_times)
+    """
+    shape_in = x.shape
+    if y is not None:
+        target_shape = y.shape
+    assert target_shape is not None
+    dim_out = len(target_shape)
+    dim_in = len(shape_in)
+    assert dim_in <= dim_out and dim_out >= 0
+    repeat_times = []
+    for i in range(dim_out):
+        offset = dim_out - i
+        dim = dim_in - offset
+        size_in = shape_in[dim] if dim >= 0 else 1
+        size_out = target_shape[i]
+        if size_out == -1:
+            assert dim >= 0
+            repeat = 1
+        else:
+            assert size_out % size_in == 0
+            repeat = int(size_out / size_in)
+        repeat_times.append(repeat)
+    if dim_in < dim_out:
+        shape_in_expand = []
+        for i in range(dim_out - dim_in):
+            shape_in_expand.append(1)
+        shape_in_expand.extend(shape_in)
+        x_reshape = reshape(x, shape_in_expand)
+        return tile(x_reshape, repeat_times=repeat_times)
+    return tile(x, repeat_times=repeat_times)
+
+
 @REGISTER_COMPOSITE('stack')
 def stack_composite(x, axis):
     """
