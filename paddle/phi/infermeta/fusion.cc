@@ -114,4 +114,108 @@ void MultiEncoderXPUInferMeta(
   }
 }
 
+void FusedMultiTransformerXpuInferMeta(
+    const MetaTensor& X,
+    const std::vector<const MetaTensor*>& LnScale,
+    const std::vector<const MetaTensor*>& LnBias,
+    const std::vector<const MetaTensor*>& QKVW,
+    const std::vector<const MetaTensor*>& QKVWMax,
+    const std::vector<const MetaTensor*>& QKVBias,
+    const std::vector<const MetaTensor*>& OutLinearW,
+    const std::vector<const MetaTensor*>& OutLinearWMax,
+    const std::vector<const MetaTensor*>& OutLinearBias,
+    const std::vector<const MetaTensor*>& FFNLnScale,
+    const std::vector<const MetaTensor*>& FFNLnBias,
+    const std::vector<const MetaTensor*>& FFN1Weight,
+    const std::vector<const MetaTensor*>& FFN1WeightMax,
+    const std::vector<const MetaTensor*>& FFN1Bias,
+    const std::vector<const MetaTensor*>& FFN2Weight,
+    const std::vector<const MetaTensor*>& FFN2WeightMax,
+    const std::vector<const MetaTensor*>& FFN2Bias,
+    const std::vector<const MetaTensor*>& CacheKV,
+    const std::vector<const MetaTensor*>& PreCaches,
+    const std::vector<const MetaTensor*>& RotaryPosEmb,
+    const std::vector<const MetaTensor*>& TimeStep,
+    const std::vector<const MetaTensor*>& SeqLengths,
+    const std::vector<const MetaTensor*>& SrcMask,
+    bool pre_layer_norm,
+    int rotary_emb_dims,
+    float epsilon,
+    float dropout_rate,
+    bool is_test,
+    const std::string& dropout_implementation,
+    const std::string& act_method,
+    bool trans_qkvw,
+    int ring_id,
+    MetaTensor* Out,
+    std::vector<MetaTensor*> CacheKVOut) {
+  auto x_dim = X.dims();
+  auto y_dim = QKVW[0]->dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      3,
+      phi::errors::InvalidArgument("The dimensions of x must be 3"
+                                   "(batch_size, seq_len, dim_embed),"
+                                   "but received dimensions of"
+                                   "Input is [%d]",
+                                   x_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      y_dim.size(),
+      4,
+      phi::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
+                                   "(3, num_head, dim_head, dim_embed),"
+                                   "but received dimensions of"
+                                   "Input is [%d]",
+                                   y_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dim[2],
+      trans_qkvw ? y_dim[3] : y_dim[0],
+      phi::errors::InvalidArgument(
+          "ShapeError: the dimension of x_dim[2] and y_dim[3](trans_qkvw is "
+          "true) or y_dim[0](trans_qkvw is false)"
+          "must be equal. But received: the shape "
+          "of input x = [%s], and the shape of "
+          "input qkv_weight = [%s]",
+          x_dim,
+          y_dim));
+  if (CacheKV.size() > 0) {
+    const auto& c_dim = CacheKV[0]->dims();
+    PADDLE_ENFORCE_EQ(
+        c_dim.size(),
+        5,
+        phi::errors::InvalidArgument("The CacheKV must be 5 dims, but got %d",
+                                     c_dim.size()));
+    PADDLE_ENFORCE_EQ(c_dim[0],
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The first dim of CacheKV must be 2, but got %d",
+                          c_dim[0]));  // 2
+    PADDLE_ENFORCE_EQ(c_dim[1],
+                      x_dim[0],
+                      phi::errors::InvalidArgument(
+                          "The second dim of CacheKV must be equal with "
+                          "batch size %d, but got %d",
+                          x_dim[0],
+                          c_dim[1]));  // batch_size
+    PADDLE_ENFORCE_EQ(c_dim[2],
+                      trans_qkvw ? y_dim[1] : y_dim[2],
+                      phi::errors::InvalidArgument(
+                          "The third dim of CacheKV must be equal with num "
+                          "head %d, but got %d",
+                          trans_qkvw ? y_dim[1] : y_dim[2],
+                          c_dim[2]));  // num_head
+    PADDLE_ENFORCE_EQ(c_dim[4],
+                      trans_qkvw ? y_dim[2] : y_dim[3],
+                      phi::errors::InvalidArgument(
+                          "The fifth dim of CacheKV must be equal with head "
+                          "size %d, but got %d",
+                          trans_qkvw ? y_dim[2] : y_dim[3],
+                          c_dim[4]));  // head_size
+  }
+
+  Out->set_dims(x_dim);
+  Out->set_dtype(X.dtype());
+  Out->set_layout(X.layout());
+}
+
 }  // namespace phi
