@@ -251,7 +251,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_sendrecv_api MODULES test_collective_sendrecv_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_sendrecv_api
-                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "900" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(

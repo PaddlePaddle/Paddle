@@ -122,6 +122,52 @@ void RandintInferMeta(
   out->set_dtype(dtype);
 }
 
+void RecvV3InferMeta(int peer,
+                     DataType dtype,
+                     MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for recv_v3 op must be non-negative.", peer));
+  // auto data_type = phi::TransToPhiDataType(dtype);
+  out->set_dtype(dtype);
+}
+
+void RecvV3ArrayInferMeta(int peer,
+                          DataType dtype,
+                          const std::vector<int>& out_shape,
+                          MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for recv_v3 op must be non-negative.", peer));
+
+  PADDLE_ENFORCE_GE(out_shape.size(),
+                    1,
+                    errors::InvalidArgument(
+                        "The size of the output shape must be greater than 0 "
+                        "but the value given is %d.",
+                        out_shape.size()));
+
+  for (size_t i = 0; i < out_shape.size(); ++i) {
+      PADDLE_ENFORCE_GE(out_shape[i],
+              1,
+              errors::InvalidArgument(
+                  "The shape attribute for recv must be set "
+                  "explicitly, but the %dth element is %d which "
+                  "is less than 1. Or dynamic_shape should be "
+                  "set to True for both send_v2 and recv_v2.",
+                  i,
+                  out_shape[i]));
+      //out->at(i)->set_dtype(dtype);
+      //out->at(i)->set_dims(phi::make_ddim({out_shape[i]}));
+  }
+  out->set_dtype(dtype);
+  out->set_dims(phi::make_ddim(out_shape));
+}
+
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
                                       float std,

@@ -427,6 +427,7 @@ void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
                                  bool keep_dim,
                                  MetaTensor* out,
                                  MetaConfig config = MetaConfig());
+void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
 void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,
@@ -469,6 +470,12 @@ void RReluInferMeta(const MetaTensor& x,
 void RReluGradInferMeta(const MetaTensor& out_grad,
                         const MetaTensor& noise,
                         MetaTensor* x_grad);
+
+void SendV3InferMeta(const MetaTensor& x, int peer);
+
+void SendV3ArrayInferMeta(const std::vector<const MetaTensor*>& x,
+                          int peer,
+                          MetaTensor* out);
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 

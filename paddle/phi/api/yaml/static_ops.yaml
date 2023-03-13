@@ -126,6 +126,28 @@
     backend : x
     force_backend : force_cpu
 
+- op : recv_v3
+  args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, bool dynamic_shape = false)
+  output : Tensor(Out)
+  infer_meta :
+    func : RecvV3InferMeta
+    param : [peer, dtype]
+  kernel :
+    func : recv_v3
+    param : [peer, dtype, dynamic_shape]
+    data_type : dtype
+
+- op : recv_v3_array
+  args : (int ring_id = 0, int peer = 0, DataType dtype = DataType::FLOAT32, int[] out_shape = {})
+  output : Tensor(Out)
+  infer_meta :
+    func : RecvV3ArrayInferMeta
+    param : [peer, dtype, out_shape]
+  kernel :
+    func : recv_v3_array
+    param : [peer, dtype, out_shape]
+    data_type : dtype
+
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})
   output : Tensor[](out){x.size()}, Tensor[](xout){x.size()}

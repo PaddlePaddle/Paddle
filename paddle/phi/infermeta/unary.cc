@@ -3101,6 +3101,20 @@ void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
   ReduceIntArrayAxisInferMetaBase(x, axis, keep_dim, reduce_all, out, config);
 }
 
+void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  auto dim = x.dims();
+  if (dim[0] > 0 || dim[0] < -1) {
+    PADDLE_ENFORCE_EQ(
+        dim[0] % nranks,
+        0,
+        errors::InvalidArgument(
+            "dim[0] (%d) is not divisible by nranks(%d)", dim[0], nranks));
+    dim[0] /= nranks;
+  }
+  out->set_dims(dim);
+  out->set_dtype(x.dtype());
+}
+
 void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,
                                int dim,
@@ -3320,6 +3334,25 @@ void RReluGradInferMeta(const MetaTensor& out_grad,
   x_grad->set_dims(do_dims);
   x_grad->set_dtype(out_grad.dtype());
   x_grad->share_lod(out_grad);
+}
+
+void SendV3InferMeta(const MetaTensor& x, int peer) {
+  LOG(INFO) << "SendBaseInferMeta begin";
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for send_v3 op must be non-negative.", peer));
+}
+
+void SendV3ArrayInferMeta(const std::vector<const MetaTensor*>& x,
+                          int peer,
+                          MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      peer,
+      0,
+      errors::InvalidArgument(
+          "The peer (%d) for send_v3 op must be non-negative.", peer));
 }
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {

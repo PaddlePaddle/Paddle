@@ -1122,6 +1122,16 @@
   inplace : (x -> out)
   backward : reciprocal_grad
 
+- op : reduce_scatter
+  args : (Tensor X, int ring_id = 0, int nranks = 1)
+  output : Tensor(Out)
+  infer_meta :
+    func : ReduceScatterInferMeta
+    param: [X, nranks]
+  kernel :
+    func : reduce_scatter
+    param: [X, nranks]
+
 - op : relu
   args : (Tensor x)
   output : Tensor(out)
