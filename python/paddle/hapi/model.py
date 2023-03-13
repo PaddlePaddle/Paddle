@@ -34,7 +34,6 @@ from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import _get_paddle_place, _non_static_mode
-from paddle.fluid.layers.utils import flatten
 from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -2292,7 +2291,7 @@ class Model:
             # 4. custumed iterator yield separated inputs and labels:
             #   ([input1, input2, ...], [label1, lable2, ...])
             # To handle all of these, flatten (nested) list to list.
-            data = flatten(data)
+            data = paddle.utils.flatten(data)
             # LoDTensor.shape is callable, where LoDTensor comes from
             # DataLoader in static graph
 

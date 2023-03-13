@@ -287,8 +287,22 @@ def is_paddle_api(node):
 
 
 def is_paddle_func(func):
-    m = inspect.getmodule(func)
-    return m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
+    try:
+        if isinstance(func, functools.partial):
+            func = func.func
+
+        # In case of dynamically monkey patch customised function
+        # into paddle class obj, so we consider its class module
+        # path as prefix.
+        if hasattr(func, "__self__"):
+            func = func.__self__
+        elif inspect.ismethod(func):
+            func = func.__func__
+
+        m = inspect.getmodule(func)
+        return m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
+    except Exception:
+        return False
 
 
 # Is numpy_api cannot reuse is_api_in_module because of numpy module problem
@@ -1301,6 +1315,15 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         if isinstance(node.ctx, write_context):
             name = ast_to_source_code(node).strip()
             self._current_name_scope().w_vars.add(name)
+
+    def visit_Subscript(self, node):
+        self.generic_visit(node)
+        write_context = (gast.Store, gast.AugStore, gast.Del)
+        if isinstance(node.ctx, write_context):
+            while isinstance(node.value, gast.Subscript):
+                node = node.value
+            if isinstance(node.value, gast.Name):
+                self._current_name_scope().w_vars.add(node.value.id)
 
     def visit_Call(self, node):
         self.generic_visit(node)

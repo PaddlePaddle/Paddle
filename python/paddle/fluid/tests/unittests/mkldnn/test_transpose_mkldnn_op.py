@@ -87,5 +87,11 @@ class TestCase4(TestTransposeMKLDNN):
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
+class TestCase_ZeroDim(TestTransposeMKLDNN):
+    def initTestCase(self):
+        self.shape = ()
+        self.axis = ()
+
+
 if __name__ == '__main__':
     unittest.main()
