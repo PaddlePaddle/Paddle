@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, _set_use_system_allocator
+from eager_op_test import OpTest, _set_use_system_allocator
 
 import paddle
 import paddle.fluid as fluid
