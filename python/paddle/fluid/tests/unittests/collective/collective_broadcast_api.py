@@ -67,7 +67,14 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
             paddle.distributed.broadcast(tindata, src=1)
             return [tindata]
 
-    def get_model_new(self, main_prog, startup_program, rank, dtype='float32'):
+    def get_model_new(
+        self,
+        main_prog,
+        startup_program,
+        rank,
+        dtype='float32',
+        reduce_type=None,
+    ):
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[-1, 10, 1000], dtype=dtype
