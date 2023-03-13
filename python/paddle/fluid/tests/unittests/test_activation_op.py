@@ -2928,14 +2928,12 @@ class TestPow(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager, check_prim=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'], 'Out', check_eager=self.check_eager, check_prim=True
-        )
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestPow_ZeroDim(TestPow):
