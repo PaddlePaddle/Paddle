@@ -26,6 +26,7 @@ from .framework import (
     _in_eager_without_dygraph_check,
 )
 from .framework import _cpu_num, _cuda_ids
+from ..utils import deprecated
 
 __all__ = ['DataFeeder']
 
@@ -451,6 +452,11 @@ class DataFeeder:
             ret_dict[each_name] = each_converter.done()
         return ret_dict
 
+    @deprecated(
+        since="2.5.0",
+        level=1,
+        reason="since parallel_executor is removed, there's no need to maintain this api",
+    )
     def feed_parallel(self, iterable, num_places=None):
         """
         Similar with feed function, feed_parallel is used with multiple devices (CPU|GPU).
@@ -474,7 +480,10 @@ class DataFeeder:
             ..  code-block:: python
 
                 import numpy as np
+                import paddle
                 import paddle.fluid as fluid
+
+                paddle.enable_static()
 
                 def generate_reader(batch_size, base=0, factor=1):
                     def _reader():
@@ -488,20 +497,13 @@ class DataFeeder:
                 z = paddle.add(x, y)
 
                 feeder = fluid.DataFeeder(['x','y'], fluid.CPUPlace())
-                place_num = 2
-                places = [fluid.CPUPlace() for x in range(place_num)]
                 data = []
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(fluid.default_startup_program())
-                program = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(places=places)
+                program = fluid.CompiledProgram(fluid.default_main_program())
 
-                # print sample feed_parallel r result
-                # for item in list(feeder.feed_parallel([generate_reader(5, 0, 1), generate_reader(3, 10, 2)], 2)):
-                #     print(item['x'])
-                #     print(item['y'])
-
-                reader_list = [generate_reader(5, 0, 1), generate_reader(3, 10, 2)]
-                res = exe.run(program=program, feed=list(feeder.feed_parallel(reader_list, 2)), fetch_list=[z])
+                reader_list = [generate_reader(5, 0, 1)]
+                res = exe.run(program=program, feed=list(feeder.feed_parallel(reader_list, 1)), fetch_list=[z])
                 print(res)
 
         """
@@ -538,6 +540,11 @@ class DataFeeder:
         else:
             return _cpu_num()
 
+    @deprecated(
+        since="2.5.0",
+        level=1,
+        reason="since parallel_executor is removed, there's no need to maintain this api",
+    )
     def decorate_reader(
         self, reader, multi_devices, num_places=None, drop_last=True
     ):
@@ -570,6 +577,8 @@ class DataFeeder:
                 import paddle.fluid as fluid
                 import paddle.fluid.compiler as compiler
 
+                paddle.enable_static()
+
                 def reader():
                     def _mini_batch(batch_size):
                         for i in range(batch_size):
@@ -578,21 +587,18 @@ class DataFeeder:
                     for _ in range(10):
                         yield _mini_batch(np.random.randint(1, 10))
 
-                place_num = 3
-                places = [fluid.CPUPlace() for _ in range(place_num)]
-
                 # a simple network sample
                 data = fluid.data(name='data', shape=[None, 4, 4], dtype='float32')
                 label = fluid.data(name='label', shape=[None, 1], dtype='int64')
                 hidden = paddle.static.nn.fc(x=data, size=10)
 
-                feeder = fluid.DataFeeder(place=places[0], feed_list=[data, label])
-                reader = feeder.decorate_reader(reader, multi_devices=True, num_places=3, drop_last=True)
+                feeder = fluid.DataFeeder(place=fluid.CPUPlace(), feed_list=[data, label])
+                reader = feeder.decorate_reader(reader, multi_devices=True, num_places=1, drop_last=True)
 
-                exe = fluid.Executor(places[0])
+                exe = fluid.Executor()
                 exe.run(fluid.default_startup_program())
                 compiled_prog = compiler.CompiledProgram(
-                         fluid.default_main_program()).with_data_parallel(places=places)
+                            fluid.default_main_program())
 
                 for i,data in enumerate(reader()):
                     # print data if you like

@@ -82,18 +82,6 @@ def _has_optimize_op(block):
     return False
 
 
-def _has_optimizer_in_control_flow(program):
-    if not program:
-        program = framework.default_main_program()
-    for op in program.global_block().ops:
-        if op.type == "conditional_block_grad":
-            sub_block = program.block(op._block_attr_id("sub_block"))
-            if _has_optimize_op(sub_block):
-                return True
-
-    return False
-
-
 def _should_broadcast_or_not_exists(program, var_name):
     block = program.global_block()
     var = block.vars.get(var_name, None)
