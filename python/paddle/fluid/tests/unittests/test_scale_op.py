@@ -176,7 +176,6 @@ class TestScaleBF16Op(OpTest):
             'Out',
             numeric_grad_delta=0.8,
             check_eager=True,
-            # max_relative_error=2e-2,
         )
 
 

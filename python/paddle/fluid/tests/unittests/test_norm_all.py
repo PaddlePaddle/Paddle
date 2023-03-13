@@ -344,7 +344,6 @@ class TestPnormBF16Op(OpTest):
             'Out',
             user_defined_grads=self.gradient,
             check_eager=True,
-            # max_relative_error=0.02,
         )
 
     def init_test_case(self):

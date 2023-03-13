@@ -359,7 +359,7 @@ class TestSumBF16Op(OpTest):
         self.check_grad(
             ['x0'],
             'Out',
-            check_dygraph=False,  # max_relative_error=0.5
+            check_dygraph=False,
         )
 
 

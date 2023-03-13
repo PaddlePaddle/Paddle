@@ -227,7 +227,6 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
                 'user_defined_grad_outputs': [self.grad_out],
                 'check_dygraph': self.check_dygraph,
             }
-            # 'max_relative_error': 2e-2,
             if self.place is None:
                 self.check_grad(*check_args, **check_kwargs)
             else:

@@ -68,7 +68,6 @@ class TestMatmulBf16MklDNNOp(OpTest):
             ["X", "Y"],
             "Out",
             check_dygraph=False,
-            # max_relative_error=0.015,
             user_defined_grads=[self.dx, self.dy],
             user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
         )
