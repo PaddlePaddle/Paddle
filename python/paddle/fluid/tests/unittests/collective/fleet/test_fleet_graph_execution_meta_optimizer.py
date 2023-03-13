@@ -17,10 +17,6 @@ import unittest
 
 from launch_function_helper import _find_free_port, launch_func, wait
 
-import paddle
-
-paddle.enable_static()
-
 
 class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
     def setUp(self):
@@ -43,6 +39,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "0",
         }
 
         node_b = {
@@ -54,9 +51,13 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "1",
         }
 
         def node_func():
+            import paddle
+
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
 
             fleet.init(is_collective=True)
@@ -85,7 +86,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             )
             optimizer.minimize(avg_cost)
 
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
         proc_a = launch_func(node_func, node_a)
@@ -107,6 +108,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "0",
         }
 
         node_b = {
@@ -118,9 +120,13 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "1",
         }
 
         def node_func():
+            import paddle
+
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
 
             fleet.init(is_collective=True)
@@ -150,7 +156,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 optimizer, strategy=strategy
             )
             optimizer.minimize(avg_cost)
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
             import numpy as np
@@ -183,6 +189,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "0",
         }
 
         node_b = {
@@ -194,9 +201,13 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "1",
         }
 
         def node_func():
+            import paddle
+
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
 
             fleet.init(is_collective=True)
@@ -225,7 +236,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             )
             optimizer.minimize(avg_cost)
 
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
         proc_a = launch_func(node_func, node_a)
@@ -246,6 +257,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "0",
         }
 
         node_b = {
@@ -257,9 +269,13 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "1",
         }
 
         def node_func():
+            import paddle
+
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
 
             fleet.init(is_collective=True)
@@ -289,7 +305,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 optimizer, strategy=strategy
             )
             optimizer.minimize(avg_cost)
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
             import numpy as np

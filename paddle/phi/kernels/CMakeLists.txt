@@ -114,7 +114,15 @@ file(
   "fusion/gpu/*.cu")
 
 if(WITH_CUTLASS)
-  file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
+
+  file(GLOB cutlass_cu "fusion/cutlass/conv2d/generated/*.cu"
+       "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
