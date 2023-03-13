@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -27,13 +27,17 @@ class TestRollOp(OpTest):
         self.python_api = paddle.roll
         self.op_type = "roll"
         self.init_dtype_type()
-        self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
         self.attrs = {'shifts': self.shifts, 'axis': self.axis}
-        self.outputs = {
-            'Out': np.roll(
-                self.inputs['X'], self.attrs['shifts'], self.attrs['axis']
-            )
-        }
+        x = np.random.random(self.x_shape).astype(self.dtype)
+        out = np.roll(
+            self.inputs['X'], self.attrs['shifts'], self.attrs['axis']
+        )
+        if self.dtype == np.uint16:
+            # test for bfloat16
+            x = convert_float_to_uint16(x)
+            out = convert_float_to_uint16(out)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
 
     def init_dtype_type(self):
         self.dtype = np.float64
@@ -67,6 +71,22 @@ class TestRollFP16OP(TestRollOp):
 class TestRollFP16OpCase2(TestRollOp):
     def init_dtype_type(self):
         self.dtype = np.float16
+        self.x_shape = (100, 10, 5)
+        self.shifts = [8, -1]
+        self.axis = [-1, -2]
+
+
+class TestRollBF16OP(TestRollOp):
+    def init_dtype_type(self):
+        self.dtype = np.uint16
+        self.x_shape = (100, 4, 5)
+        self.shifts = [101, -1]
+        self.axis = [0, -2]
+
+
+class TestRollBF16OpCase2(TestRollOp):
+    def init_dtype_type(self):
+        self.dtype = np.uint16
         self.x_shape = (100, 10, 5)
         self.shifts = [8, -1]
         self.axis = [-1, -2]

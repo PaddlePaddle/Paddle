@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/roll_kernel.h"
 
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -69,6 +70,7 @@ PD_REGISTER_KERNEL(roll,
                    ALL_LAYOUT,
                    phi::RollKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    int,
