@@ -17,6 +17,10 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
+class CPUContext;
+}  // namespace phi
+
+namespace phi {
 namespace funcs {
 
 // Strided memory copy from src to dst.
