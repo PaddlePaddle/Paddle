@@ -179,7 +179,7 @@ class TestExpandV2OpBoolean(OpTest):
         self.check_output()
 
 
-#  Situation 56: input x is Integer
+#  Situation 6: input x is Integer
 class TestExpandV2OpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "expand_v2"
@@ -330,6 +330,108 @@ class TestExpandTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+# Situation 7: comp case, shape is a list(without tensor)
+class TestExpandV2CompOpRank1(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "comp"
+        self.init_data()
+        self.python_api = paddle.expand
+        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
+        self.attrs = {'shape': self.shape}
+        output = np.tile(self.inputs['X'], self.expand_times)
+        self.outputs = {'Out': output}
+        self.enable_cinn = True
+
+    def init_data(self):
+        self.ori_shape = [100]
+        self.shape = [100]
+        self.expand_times = [1]
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+
+class TestExpandV2OpCompRank2_DimExpanding(TestExpandV2CompOpRank1):
+    def init_data(self):
+        self.ori_shape = [120]
+        self.shape = [2, 120]
+        self.expand_times = [2, 1]
+
+
+class TestExpandV2CompOpRank2(TestExpandV2CompOpRank1):
+    def init_data(self):
+        self.ori_shape = [1, 140]
+        self.shape = [12, 140]
+        self.expand_times = [12, 1]
+
+
+class TestExpandV2CompOpRank3_Corner(TestExpandV2CompOpRank1):
+    def init_data(self):
+        self.ori_shape = (2, 10, 5)
+        self.shape = (2, 10, 5)
+        self.expand_times = (1, 1, 1)
+
+
+class TestExpandV2CompOpRank4(TestExpandV2CompOpRank1):
+    def init_data(self):
+        self.ori_shape = (2, 4, 5, 7)
+        self.shape = (-1, -1, -1, -1)
+        self.expand_times = (1, 1, 1, 1)
+
+
+# Situation 8: comp case, input x is Integer
+class TestExpandV2CompOpInteger(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand
+        self.inputs = {
+            'X': np.random.randint(10, size=(2, 4, 5)).astype("int32")
+        }
+        self.attrs = {'shape': [2, 4, 5]}
+        output = np.tile(self.inputs['X'], (1, 1, 1))
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+
+#  Situation 9: comp case, input x is Bool
+class TestExpandV2CompOpBoolean(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand
+        self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
+        self.attrs = {'shape': [2, 4, 5]}
+        output = np.tile(self.inputs['X'], (1, 1, 1))
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
+
+#  Situation 10: comp case, input x is Integer
+class TestExpandV2CompOpInt64_t(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand
+        self.inputs = {
+            'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
+        }
+        self.attrs = {'shape': [2, 4, 5]}
+        output = np.tile(self.inputs['X'], (1, 1, 1))
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output(check_prim=True)
 
 
 if __name__ == "__main__":

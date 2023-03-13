@@ -53,13 +53,9 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "abs",
     "adam",
     "adamw",
-    "all_close",
-    "all_raw",
     "any_raw",
     "arg_sort",
     "atan2",
-    "auc",
-    "bincount",
     "clip_by_norm",
     "complex",
     "conv3d_coo",
@@ -75,8 +71,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "group_norm",
     "histogram",
     "instance_norm",
-    "is_empty",
-    "kthvalue",
     "lamb",
     "layer_norm",
     "layer_norm_grad",
@@ -91,13 +85,10 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "rnn",
     "search_sort",
     "select",
-    "send_recv",
-    "send_ue_recv",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
-    "unique_raw",
-    "viterbi_devode"};
+    "unique_raw"};
 
 // These Ops can use InferMeta to infer the output dtype
 static std::set<std::string> OpsWithAvailablePhiInferMeta = {
