@@ -177,11 +177,12 @@ void AdamInferMeta(const MetaTensor& param,
   moment1_out->set_dtype(moment1.dtype());
   moment2_out->set_dims(param_dims);
   moment2_out->set_dtype(moment2.dtype());
-
-  beta1_pow_out->set_dims(beta1_pow_dims);
-  beta1_pow_out->set_dtype(beta1_pow.dtype());
-  beta2_pow_out->set_dims(beta2_pow_dims);
-  beta2_pow_out->set_dtype(beta2_pow.dtype());
+  if (!use_global_beta_pow) {
+    beta1_pow_out->set_dims(beta1_pow_dims);
+    beta1_pow_out->set_dtype(beta1_pow.dtype());
+    beta2_pow_out->set_dims(beta2_pow_dims);
+    beta2_pow_out->set_dtype(beta2_pow.dtype());
+  }
 }
 
 void AdamaxInferMeta(const MetaTensor& param,
