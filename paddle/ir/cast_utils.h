@@ -82,33 +82,33 @@ inline bool isa(const From &Val) {
 /// \brief Derive cast return type by template parameter From and To.
 ///
 template <typename To, typename From>
-struct DeriveRettyWrap {
-  typedef To &return_type;
+struct ReturnTypeDuductionWrap {
+  typedef To &type;
 };
 
 template <typename To, typename From>
-struct DeriveRettyWrap<To, const From> {
-  typedef const To &return_type;
+struct ReturnTypeDuductionWrap<To, const From> {
+  typedef const To &type;
 };
 
 template <typename To, typename From>
-struct DeriveRettyWrap<To, From *> {
-  typedef To *return_type;
+struct ReturnTypeDuductionWrap<To, From *> {
+  typedef To *type;
 };
 
 template <typename To, typename From>
-struct DeriveRettyWrap<To, const From *> {
-  typedef const To *return_type;
+struct ReturnTypeDuductionWrap<To, const From *> {
+  typedef const To *type;
 };
 
 template <typename To, typename From>
-struct DeriveRettyWrap<To, const From *const> {
-  typedef const To *return_type;
+struct ReturnTypeDuductionWrap<To, const From *const> {
+  typedef const To *type;
 };
 
 template <typename To, typename From>
-struct DeriveRetty {
-  typedef typename DeriveRettyWrap<To, From>::return_type return_type;
+struct ReturnTypeDuduction {
+  typedef typename ReturnTypeDuductionWrap<To, From>::type type;
 };
 
 ///
@@ -117,15 +117,15 @@ struct DeriveRetty {
 template <typename To, typename From>
 struct cast_impl {
   // This _is_ a simple type, just cast it.
-  static typename DeriveRetty<To, From>::return_type call(const From &Val) {
-    typename DeriveRetty<To, From>::return_type ret =
-        (typename DeriveRetty<To, From>::return_type) const_cast<From &>(Val);
+  static typename ReturnTypeDuduction<To, From>::type call(const From &Val) {
+    typename ReturnTypeDuduction<To, From>::type ret =
+        (typename ReturnTypeDuduction<To, From>::type) const_cast<From &>(Val);
     return ret;
   }
 };
 
 template <typename To, typename From>
-inline typename DeriveRetty<To, From>::return_type cast(From &Val) {  // NOLINT
+inline typename ReturnTypeDuduction<To, From>::type cast(From &Val) {  // NOLINT
   if (!isa<To>(Val)) {
     throw("cast<To>() argument of incompatible type!");
   }
@@ -133,7 +133,7 @@ inline typename DeriveRetty<To, From>::return_type cast(From &Val) {  // NOLINT
 }
 
 template <typename To, typename From>
-inline typename DeriveRetty<To, From *>::return_type cast(From *Val) {
+inline typename ReturnTypeDuduction<To, From *>::type cast(From *Val) {
   if (!isa<To>(Val)) {
     throw("cast<To>() argument of incompatible type!");
   }
@@ -144,13 +144,13 @@ inline typename DeriveRetty<To, From *>::return_type cast(From *Val) {
 /// \brief dyn_cast From to To.
 ///
 template <typename To, typename From>
-inline std::decay_t<typename DeriveRetty<To, From>::return_type> dyn_cast(
+inline std::decay_t<typename ReturnTypeDuduction<To, From>::type> dyn_cast(
     From &Val) {  // NOLINT
   return isa<To>(Val) ? cast<To>(Val) : nullptr;
 }
 
 template <typename To, typename From>
-inline typename DeriveRetty<To, From *>::return_type dyn_cast(From *Val) {
+inline typename ReturnTypeDuduction<To, From *>::type dyn_cast(From *Val) {
   return isa<To>(Val) ? cast<To>(Val) : nullptr;
 }
 
