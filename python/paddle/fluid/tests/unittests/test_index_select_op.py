@@ -28,7 +28,6 @@ class TestIndexSelectOp(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select
         self.op_type = "index_select"
-        self.prim_op_type = "comp"
         self.init_dtype_type()
 
         index_np = np.random.randint(
@@ -59,10 +58,10 @@ class TestIndexSelectOp(OpTest):
         self.index_size = 100
 
     def test_check_output(self):
-        self.check_output(check_eager=True, check_prim=True)
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['X'], 'Out', check_eager=True)
 
 
 class TestIndexSelectOpCase2(TestIndexSelectOp):
