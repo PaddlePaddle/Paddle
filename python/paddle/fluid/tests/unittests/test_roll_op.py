@@ -28,10 +28,12 @@ class TestRollOp(OpTest):
         self.op_type = "roll"
         self.init_dtype_type()
         self.attrs = {'shifts': self.shifts, 'axis': self.axis}
-        x = np.random.random(self.x_shape).astype(self.dtype)
+        bf16_ut = self.dtype == np.uint16
+        x = np.random.random(self.x_shape).astype(
+            np.float32 if bf16_ut else self.dtype
+        )
         out = np.roll(x, self.attrs['shifts'], self.attrs['axis'])
-        if self.dtype == np.uint16:
-            # test for bfloat16
+        if bf16_ut:
             x = convert_float_to_uint16(x)
             out = convert_float_to_uint16(out)
         self.inputs = {'X': x}
@@ -77,7 +79,7 @@ class TestRollFP16OpCase2(TestRollOp):
 class TestRollBF16OP(TestRollOp):
     def init_dtype_type(self):
         self.dtype = np.uint16
-        self.x_shape = (100, 4, 5)
+        self.x_shape = (10, 4, 5)
         self.shifts = [101, -1]
         self.axis = [0, -2]
 
@@ -85,7 +87,7 @@ class TestRollBF16OP(TestRollOp):
 class TestRollBF16OpCase2(TestRollOp):
     def init_dtype_type(self):
         self.dtype = np.uint16
-        self.x_shape = (100, 10, 5)
+        self.x_shape = (10, 5, 5)
         self.shifts = [8, -1]
         self.axis = [-1, -2]
 
