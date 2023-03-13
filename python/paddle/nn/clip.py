@@ -217,7 +217,7 @@ def _squared_l2_norm(x):
         return _C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'float16'], op_type)
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'float16', 'uint16'], op_type)
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
 
@@ -733,7 +733,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         merge_grad = merge_selected_rows(g)
                         merge_grad = get_tensor_from_selected_rows(merge_grad)
                     sum_square = _squared_l2_norm(merge_grad)
-                    if sum_square.dtype == core.VarDesc.VarType.FP16:
+                    if sum_square.dtype == core.VarDesc.VarType.FP16 or sum_square.dtype == core.VarDesc.VarType.BF16:
                         sum_square_list_fp16.append(sum_square)
                     elif sum_square.dtype == core.VarDesc.VarType.FP32:
                         sum_square_list_fp32.append(sum_square)
