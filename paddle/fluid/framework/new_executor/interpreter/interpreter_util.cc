@@ -1150,8 +1150,8 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
         dev_ctx->SetCommContext(comm_context);
       }
     } else {
-      LOG(WARNING) << "op: " << operator_base->Type()
-                   << ", ring_id: " << ring_id << ", get comm_context failed!";
+      VLOG(3) << "op: " << operator_base->Type() << ", ring_id: " << ring_id
+              << ", get comm_context failed!";
     }
   }
 }
