@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/detail/strided_memcpy.h"
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -53,8 +52,8 @@ inline void StridedMemcpy(const phi::DeviceContext& dev_ctx,
 //
 // NOTE: The src and dst tensor should have the same elements
 // except the specified axis.
-template <typename T>
-inline void StridedNumelCopyWithAxis(const phi::DeviceContext& ctx,
+template <typename T, typename Context>
+inline void StridedNumelCopyWithAxis(const Context& ctx,
                                      int64_t axis,
                                      T* dst,
                                      const phi::DDim& dst_stride_numel,
@@ -110,33 +109,14 @@ inline void StridedNumelCopyWithAxis(const phi::DeviceContext& ctx,
                          src + i * src_after,
                          sizeof(T) * size);
     } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      auto& gpu_place = place;
-      auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(ctx);
-      memory_utils::Copy(gpu_place,
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+      memory_utils::Copy(place,
                          dst + i * dst_after,
-                         gpu_place,
+                         place,
                          src + i * src_after,
                          sizeof(T) * size,
-                         cuda_ctx.stream());
-#elif defined(PADDLE_WITH_ASCEND_CL)
-      auto& npu_place = place;
-      auto& npu_ctx = reinterpret_cast<const platform::NPUDeviceContext&>(ctx);
-      memory_utils::Copy(npu_place,
-                         dst + i * dst_after,
-                         npu_place,
-                         src + i * src_after,
-                         sizeof(T) * size,
-                         npu_ctx.stream());
-#elif defined(PADDLE_WITH_MLU)
-      auto& mlu_place = place;
-      auto& mlu_ctx = reinterpret_cast<const platform::MLUDeviceContext&>(ctx);
-      memory_utils::Copy(mlu_place,
-                         dst + i * dst_after,
-                         mlu_place,
-                         src + i * src_after,
-                         sizeof(T) * size,
-                         mlu_ctx.stream());
+                         ctx.stream());
 #else
       PADDLE_THROW(
           phi::errors::PreconditionNotMet("Paddle is not compiled with GPU."));
@@ -145,9 +125,9 @@ inline void StridedNumelCopyWithAxis(const phi::DeviceContext& ctx,
   }
 }
 
-template <typename T>
+template <typename T, typename Context>
 inline void StridedMemcpyWithAxis0(
-    const phi::DeviceContext& dev_ctx,
+    const Context& dev_ctx,
     const phi::DenseTensor& input,
     const std::vector<const phi::DenseTensor*>& shape_refer,
     std::vector<phi::DenseTensor*>* outputs) {
@@ -159,13 +139,13 @@ inline void StridedMemcpyWithAxis0(
     auto out_stride = stride_numel(shape_refer[i]->dims());
     auto out = outputs->at(i);
     if (out != nullptr && out->initialized() && out->numel() > 0) {
-      StridedNumelCopyWithAxis<T>(dev_ctx,
-                                  axis,
-                                  out->data<T>(),
-                                  out_stride,
-                                  input.data<T>() + input_offset,
-                                  in_stride,
-                                  out_stride[axis]);
+      StridedNumelCopyWithAxis<T, Context>(dev_ctx,
+                                           axis,
+                                           out->data<T>(),
+                                           out_stride,
+                                           input.data<T>() + input_offset,
+                                           in_stride,
+                                           out_stride[axis]);
     }
     input_offset += out_stride[axis];
   }
