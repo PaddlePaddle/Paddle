@@ -272,6 +272,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
 def bernoulli(shape, dtype, p, seed=0):
     from paddle.fluid.data_feeder import convert_dtype
 
+    # Fix uniform doesn't support float16 error
     new_dtype = "float32" if convert_dtype(dtype) == "float16" else dtype
     return cast(
         greater_equal(
