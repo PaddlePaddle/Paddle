@@ -185,7 +185,7 @@ def _get_args_values(op, phi_name):
     for item in args_list:
         arg_type, arg_name = _solve_arg(item)
         op_content = op_map[op.type]
-        # IntArray and Scalar are legacy type. In these case, tensor-relative types are removed in composite op.
+        # IntArray and Scalar are special cases which may cause dynamic shape. In these case, tensor-relative types are removed in composite op.
         if arg_type in ("IntArray", "Scalar"):
             tensor_key = "int_array" if arg_type == "IntArray" else "scalar"
             if op_content.get(tensor_key):
