@@ -23,6 +23,34 @@ void TransposeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
+  // Here we need to match dims to paddle layout
+  // as we are producing non-oneDNN result
+  auto x_dims = x.dims();
+  if ((x_dims.size() >= 3) &&
+      (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+       phi::DataLayout::kNHWC)) {
+    int axis_size = axis.size();
+    std::vector<int> formated_axis = axis;
+    std::vector<int> count(axis_size, 0);
+    for (int i = 0; i < axis_size; i++) {
+      if (axis[i] < 0) {
+        formated_axis[i] = axis[i] + axis_size;
+      }
+    }
+    auto dims = phi::vectorize<int>(x_dims);
+
+    std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
+    x_dims = x_dims.reshape(dims);
+    VLOG(3)
+        << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
+
+    phi::DDim out_dims(x_dims);
+    for (size_t i = 0; i < axis.size(); i++) {
+      out_dims[i] = x_dims[formated_axis[i]];
+    }
+    out->Resize(out_dims);
+  }
+
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType(),
       AllocationType::CPU,

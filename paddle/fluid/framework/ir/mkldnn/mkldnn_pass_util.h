@@ -161,6 +161,7 @@ inline void ConvertToFusedOp(OpDesc* op) {
       {"depthwise_conv2d", "fused_conv2d"},
       {"matmul", "fused_matmul"},
       {"matmul_v2", "fused_matmul"},
+      {"softplus", "fused_softplus"},
       {"transpose2", "fused_transpose"}};
 
   if (op->Type() == "matmul") {
