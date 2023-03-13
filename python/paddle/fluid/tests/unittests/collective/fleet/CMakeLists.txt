@@ -173,8 +173,13 @@ if((WITH_GPU
     OR WITH_ASCEND_CL
    )
    AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_fleet_graph_executor MODULES test_fleet_graph_executor ENVS
+  bash_test_modules(
+    test_fleet_graph_executor
+    START_BASH
+    ../../dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)

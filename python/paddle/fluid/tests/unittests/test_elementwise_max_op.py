@@ -35,6 +35,8 @@ class TestElementwiseOp(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "elementwise_max"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.python_api = paddle.maximum
         self.inputs = {'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
@@ -47,25 +49,50 @@ class TestElementwiseOp(OpTest):
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
-            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
+            if self.attrs['axis'] == -1:
+                self.check_grad(
+                    ['X', 'Y'], 'Out', check_eager=False, check_prim=True
+                )
+            else:
+                self.check_grad(['X', 'Y'], 'Out', check_eager=False)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_eager=True, check_prim=True
+            )
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            max_relative_error=0.005,
-            no_grad_set=set("X"),
-        )
+        if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
+            self.check_grad(
+                ['Y'],
+                'Out',
+                max_relative_error=0.005,
+                no_grad_set=set("X"),
+            )
+        else:
+            self.check_grad(
+                ['Y'],
+                'Out',
+                max_relative_error=0.005,
+                no_grad_set=set("X"),
+                check_prim=True,
+            )
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.005,
-            no_grad_set=set('Y'),
-        )
+        if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
+            self.check_grad(
+                ['X'],
+                'Out',
+                max_relative_error=0.005,
+                no_grad_set=set('Y'),
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+                max_relative_error=0.005,
+                no_grad_set=set('Y'),
+                check_prim=True,
+            )
 
 
 class TestElementwiseFP16Op(TestElementwiseOp):
@@ -136,6 +163,8 @@ class TestElementwiseBF16Op(OpTest):
         self.init_data()
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.dtype = np.uint16
         self.inputs = {
             'X': convert_float_to_uint16(self.x),
@@ -153,6 +182,7 @@ class TestElementwiseBF16Op(OpTest):
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
+            # check_prim=False, bfloat16 is not supported in `less_equal`
             self.check_grad(['X', 'Y'], 'Out', check_eager=False)
         else:
             self.check_grad(['X', 'Y'], 'Out', check_eager=True)
@@ -243,6 +273,7 @@ class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -281,6 +312,7 @@ class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -319,6 +351,7 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (1, 3, 100)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[0, 0, :] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -355,6 +388,7 @@ class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (50, 2)).astype(np.float64)
         y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (50, 2)).astype(
@@ -393,6 +427,7 @@ class TestElementwiseMaxOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
         self.python_api = paddle.maximum
+        self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(np.float64)
         y = x + sgn * np.random.uniform(1, 2, (2, 3, 1, 5)).astype(np.float64)

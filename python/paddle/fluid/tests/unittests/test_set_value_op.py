@@ -18,8 +18,10 @@ import unittest
 from functools import reduce
 
 import numpy as np
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
+import paddle.fluid.core as core
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -1519,6 +1521,32 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
         np.testing.assert_array_equal(a_grad_1, a_grad_2)
         np.testing.assert_array_equal(b_grad_1, b_grad_2)
         paddle.enable_static()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestSetValueBFloat16(OpTest):
+    def setUp(self):
+        self.dtype = np.uint16
+        self.shape = [2, 3, 4]
+        self.__class__.op_type = self.op_type
+        self.data = np.ones(self.shape).astype(self.dtype)
+        x = np.random.rand([6]).astype('float32')
+        self.data[0, 0] = np.random.rand([6]).astype('float32')
+        out = self.data[0, 0]
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == '__main__':
