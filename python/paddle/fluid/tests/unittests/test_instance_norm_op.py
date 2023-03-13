@@ -102,9 +102,10 @@ class TestInstanceNormOp(OpTest):
         scale_shape = [self.c]
         mean_shape = [self.n * self.c]
         np.random.seed()
-        x_np = np.random.random_sample(self.shape).astype(self.dtype)
+        x_np = np.random.random(self.shape).astype(self.dtype)
         scale_np = np.ones(scale_shape).astype(self.dtype)
-        bias_np = np.ones(scale_shape).astype(self.dtype)
+        bias_np = np.zeros(scale_shape).astype(self.dtype)
+        # x_np = np.random.random_sample(self.shape).astype(self.dtype)
         # scale_np = np.random.random_sample(scale_shape).astype(self.dtype)
         # bias_np = np.random.random_sample(scale_shape).astype(self.dtype)
         mean_np, var_np = _cal_mean_variance(x_np, self.epsilon, mean_shape)
