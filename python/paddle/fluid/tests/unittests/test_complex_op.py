@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import static
-from paddle.fluid import dygraph
+from paddle.fluid import core, dygraph
 
 paddle.enable_static()
 
@@ -160,6 +160,102 @@ class TestComplexAPI(unittest.TestCase):
             mp, feed={"x": self.x, "y": self.y}, fetch_list=[out]
         )
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
+class TestComplexFP16Op(OpTest):
+    def init_spec(self):
+        self.x_shape = [10, 10]
+        self.y_shape = [10, 10]
+        self.dtype = np.float16
+
+    def setUp(self):
+        self.op_type = "complex"
+        self.python_api = paddle.complex
+        self.init_spec()
+        self.__class__.op_type = self.op_type
+        x = np.random.randn(*self.x_shape).astype(np.float32)
+        y = np.random.randn(*self.y_shape).astype(np.float32)
+        out_ref = ref_complex(x, y).astype(np.float64)
+        self.out_grad = np.random.randn(*self.x_shape).astype(
+            np.float64
+        ) + 1j * np.random.randn(*self.y_shape).astype(np.float64)
+        self.inputs = {'X': x.astype(self.dtype), 'Y': y.astype(self.dtype)}
+        self.outputs = {'Out': out_ref}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=True, atol=1e-3)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            place,
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[dx, dy],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+            max_relative_error=1e-2,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestComplexBF16(OpTest):
+    def init_spec(self):
+        self.x_shape = [10, 10]
+        self.y_shape = [10, 10]
+        self.dtype = np.uint16
+
+    def setUp(self):
+        self.op_type = "complex"
+        self.python_api = paddle.complex
+        self.init_spec()
+        self.__class__.op_type = self.op_type
+        x = np.random.randn(*self.x_shape).astype(np.float32)
+        y = np.random.randn(*self.y_shape).astype(np.float32)
+        out_ref = ref_complex(x, y).astype(np.float64)
+        self.out_grad = convert_float_to_uint16(
+            np.random.randn(*self.x_shape).astype(np.float64)
+            + 1j * np.random.randn(*self.y_shape).astype(np.float64)
+        )
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out_ref)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_eager=True, atol=1e-3)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            place,
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[dx, dy],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+            max_relative_error=1e-2,
+        )
 
 
 if __name__ == "__main__":
