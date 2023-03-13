@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/complex_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/complex_kernel_impl.h"
 
@@ -26,6 +26,7 @@ PD_REGISTER_KERNEL(conj,
                    ALL_LAYOUT,
                    phi::ConjKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    float,
