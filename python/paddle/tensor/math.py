@@ -5115,3 +5115,66 @@ def frexp(x, name=None):
 
     mantissa = paddle.where((x < 0), mantissa * -1, mantissa)
     return mantissa, exponent
+
+
+def trapezoid(y, x=None, dx=1.0, axis=-1):
+    """
+    Integrate along the given axis using the composite trapezoidal rule.
+
+    Args:
+        y (Tensor): Tensor of values to integrate.
+        x (Tensor, optional): Tensor of points at which to calculate trapezoid approximation. If not provided,
+        x values are assumed to be evenly spaced with dx distance between points.
+        dx (float, optional): Spacing between x values. If not provided, dx is assumed to be 1.
+        axis (int, optional): Axis along which to integrate. Default is -1 (last axis).
+
+    Returns:
+        Tensor: Tensor of trapezoid approximations. If axis is specified, the resulting tensor will have one less
+        dimension than the input tensor.
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([[1, 2, 3], [3, 4, 5]])
+            y = paddle.to_tensor([[2, 4, 8], [3, 5, 9]])
+            print(paddle.trapezoid(y, x))
+            # Tensor(shape=[2], dtype=float32,
+            # place=Place(cpu), stop_gradient=True,
+            # [5. , 9. , 17.])
+
+    """
+    # check if y and x are tensors and floating point types
+    if not paddle.is_tensor(y):
+        raise TypeError("y must be a tensor.")
+    if x is not None and not paddle.is_tensor(x):
+        raise TypeError("x must be a tensor or None.")
+    # check if y and x contain inf or nan values
+    if not paddle.all(paddle.isfinite(y)):
+        raise ValueError("y must not contain inf or nan values.")
+    if x is not None and not paddle.all(paddle.isfinite(x)):
+        raise ValueError("x must not contain inf or nan values.")
+    if dx <= 0:
+        raise ValueError("dx must be positive and finite.")
+    y = paddle.to_tensor(y)
+    if x is None:
+        d = dx
+    else:
+        x = paddle.to_tensor(x)
+        if x.ndim == 1:
+            d = paddle.diff(x)
+            # reshape to correct shape
+            shape = [1] * y.ndim
+            shape[axis] = d.shape[0]
+            d = d.reshape(shape)
+        else:
+            d = paddle.diff(x, axis=axis)
+        # check if dx is positive
+
+    nd = y.ndim
+    slice1 = [slice(None)] * nd
+    slice2 = [slice(None)] * nd
+    slice1[axis] = slice(1, None)
+    slice2[axis] = slice(None, -1)
+    ret = (d * (y[tuple(slice1)] + y[tuple(slice2)]) / 2.0).sum(axis)
+    return ret
