@@ -56,6 +56,40 @@ class TestRollOpCase2(TestRollOp):
         self.axis = [-1, -2]
 
 
+class TestRollFP16OP(TestRollOp):
+    def setUp(self):
+        self.python_api = paddle.roll
+        self.op_type = "roll"
+        self.init_dtype_type()
+        self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
+        self.attrs = {'shifts': self.shifts, 'axis': self.axis}
+        self.outputs = {
+            'Out': np.roll(
+                self.inputs['X'], self.attrs['shifts'], self.attrs['axis']
+            )
+        }
+
+    def init_dtype_type(self):
+        self.dtype = np.float16
+        self.x_shape = (100, 4, 5)
+        self.shifts = [101, -1]
+        self.axis = [0, -2]
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+
+class TestRollFP16OpCase2(TestRollFP16OP):
+    def init_dtype_type(self):
+        self.dtype = np.float16
+        self.x_shape = (100, 10, 5)
+        self.shifts = [8, -1]
+        self.axis = [-1, -2]
+
+
 class TestRollAPI(unittest.TestCase):
     def input_data(self):
         self.data_x = np.array(
