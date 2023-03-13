@@ -45,6 +45,32 @@ inline void StridedMemcpy(const phi::DeviceContext& dev_ctx,
   dst_dim.apply_visitor(func);
 }
 
+template <typename Context>
+inline void CopyWithContext(const Context& ctx,
+                            const Place& dst_place,
+                            void* dst,
+                            const Place& src_place,
+                            const void* src,
+                            size_t num) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
+  memory_utils::Copy(dst_place, dst, src_place, src, num, ctx.stream());
+#else
+  PADDLE_THROW(
+      phi::errors::PreconditionNotMet("Paddle is not compiled with GPU."));
+#endif
+}
+
+template <>
+inline void CopyWithContext<phi::CPUContext>(const phi::CPUContext& ctx,
+                                             const Place& dst_place,
+                                             void* dst,
+                                             const Place& src_place,
+                                             const void* src,
+                                             size_t num) {
+  memory_utils::Copy(dst_place, dst, src_place, src, num);
+}
+
 // Strided numel memory copy from src to dst by the specified axis
 //
 // For example, for a tensor dims [4, 20, 100], the strieded numel is
@@ -101,27 +127,12 @@ inline void StridedNumelCopyWithAxis(const Context& ctx,
   }
 
   for (int64_t i = 0; i < before; ++i) {
-    if (place.GetType() == phi::AllocationType::CPU) {
-      auto& cpu_place = place;
-      memory_utils::Copy(cpu_place,
-                         dst + i * dst_after,
-                         cpu_place,
-                         src + i * src_after,
-                         sizeof(T) * size);
-    } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_MLU)
-      memory_utils::Copy(place,
-                         dst + i * dst_after,
-                         place,
-                         src + i * src_after,
-                         sizeof(T) * size,
-                         ctx.stream());
-#else
-      PADDLE_THROW(
-          phi::errors::PreconditionNotMet("Paddle is not compiled with GPU."));
-#endif
-    }
+    CopyWithContext<Context>(ctx,
+                             place,
+                             dst + i * dst_after,
+                             place,
+                             src + i * src_after,
+                             sizeof(T) * size);
   }
 }
 
