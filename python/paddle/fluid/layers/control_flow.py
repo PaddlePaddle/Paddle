@@ -15,7 +15,6 @@
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import templatedoc
-from paddle.tensor import fill_constant
 from .. import core
 from ..framework import (
     Program,
