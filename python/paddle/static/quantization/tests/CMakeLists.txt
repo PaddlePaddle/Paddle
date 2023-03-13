@@ -401,10 +401,7 @@ if(LINUX AND WITH_MKLDNN)
     ${NLP_LABLES_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
 
   # Quant2 GRU
-  set(QUANT2_GRU_MODEL_ARCHIVE "GRU_quant_acc.tar.gz")
   set(QUANT2_GRU_MODEL_DIR "${QUANT_INSTALL_DIR}/GRU_quant2")
-  download_quant_model(${QUANT2_GRU_MODEL_DIR} ${QUANT2_GRU_MODEL_ARCHIVE}
-                       cf207f8076dcfb8b74d8b6bdddf9090c)
   set(QUANT2_GRU_OPS_TO_QUANTIZE "multi_gru")
 
   # Quant2 LSTM

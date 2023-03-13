@@ -22,7 +22,7 @@ namespace egr {
 
 static inline paddle::experimental::DataType GetPromoteType(
     const std::string& op_name,
-    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& amp_tensors_vector,
     const paddle::experimental::DataType& amp_dtype) {
   auto dst_type = amp_dtype;
@@ -87,7 +87,7 @@ static inline paddle::experimental::DataType GetPromoteType(
 
 inline paddle::experimental::DataType GetDtypeWithPlace(
     const std::string& op_name,
-    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& amp_tensors_vector,
     const paddle::experimental::DataType amp_dtype) {
   if (amp_dtype == paddle::experimental::DataType::FLOAT32) {
@@ -120,7 +120,7 @@ inline paddle::experimental::DataType GetDtypeWithPlace(
 
 inline paddle::experimental::DataType GetAmpDestDtype(
     const std::string& op_name,
-    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& amp_tensors_vector) {
   auto amp_dtype =
       egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype();

@@ -15,23 +15,28 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+
+
+def meshgrid_wrapper(x):
+    return paddle.tensor.meshgrid(x[0], x[1])
 
 
 class TestMeshgridOp(OpTest):
     def setUp(self):
         self.op_type = "meshgrid"
         self.prim_op_type = "comp"
-        self.python_api = paddle.meshgrid
+        self.python_api = meshgrid_wrapper
         self.dtype = self.get_dtype()
         ins, outs = self.init_test_data()
         self.inputs = {'X': [('x%d' % i, ins[i]) for i in range(len(ins))]}
         self.outputs = {
             'Out': [('out%d' % i, outs[i]) for i in range(len(outs))]
         }
+        self.python_out_sig = ['out0', 'out1']
 
     def get_dtype(self):
         return "float64"
@@ -40,8 +45,7 @@ class TestMeshgridOp(OpTest):
         self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], ['out0'], check_prim=True)
-        self.check_grad(['x1'], ['out1'], check_prim=True)
+        self.check_grad(['x0'], ['out0', 'out1'], check_prim=True)
 
     def init_test_data(self):
         self.shape = self.get_x_shape()
@@ -81,8 +85,7 @@ class TestMeshgridOpFP16(OpTest):
         self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], ['out0'], check_prim=True)
-        self.check_grad(['x1'], ['out1'], check_prim=True)
+        self.check_grad(['x0'], ['out0', 'out1'], check_prim=True)
 
     def init_test_data(self):
         self.shape = self.get_x_shape()

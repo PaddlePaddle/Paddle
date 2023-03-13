@@ -35,6 +35,10 @@ PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_and, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_or, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_xor, CPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_not, CPU, ALL_LAYOUT);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, GPU, ALL_LAYOUT);
@@ -42,6 +46,11 @@ PD_DECLARE_KERNEL(tanh_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_and, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_or, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_xor, KPS, ALL_LAYOUT);
+PD_DECLARE_KERNEL(bitwise_not, KPS, ALL_LAYOUT);
+
 #endif
 
 namespace paddle {
@@ -54,7 +63,7 @@ TEST(EagerPrim, TanhBackwardTest) {
   paddle::prim::InitTensorOperants();
   // 2. pre
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
-  paddle::experimental::Tensor tensor0 =
+  paddle::Tensor tensor0 =
       ::egr::egr_utils_api::CreateTensorWithValue(ddim,
                                                   paddle::platform::CPUPlace(),
                                                   phi::DataType::FLOAT32,
@@ -62,7 +71,7 @@ TEST(EagerPrim, TanhBackwardTest) {
                                                   5.0 /*value*/,
                                                   true /*is_leaf*/);
   ::egr::egr_utils_api::RetainGradForTensor(tensor0);
-  paddle::experimental::Tensor tensor1 =
+  paddle::Tensor tensor1 =
       ::egr::egr_utils_api::CreateTensorWithValue(ddim,
                                                   paddle::platform::CPUPlace(),
                                                   phi::DataType::FLOAT32,
@@ -71,17 +80,17 @@ TEST(EagerPrim, TanhBackwardTest) {
                                                   true /*is_leaf*/);
   ::egr::egr_utils_api::RetainGradForTensor(tensor1);
   // 3. Run Forward once
-  paddle::experimental::Tensor out0 = tanh_ad_func(tensor0);
-  std::vector<paddle::experimental::Tensor> outs0 = {out0};
+  paddle::Tensor out0 = tanh_ad_func(tensor0);
+  std::vector<paddle::Tensor> outs0 = {out0};
   // Disable prim
   PrimCommonUtils::SetBwdPrimEnabled(false);
   ASSERT_FALSE(PrimCommonUtils::IsBwdPrimEnabled());
   // 4. Run Backward
   egr::Backward(outs0, {}, false);
 
-  paddle::experimental::Tensor out1 = tanh_ad_func(tensor1);
-  std::vector<paddle::experimental::Tensor> outs1 = {out1};
-  // Disable prim
+  paddle::Tensor out1 = tanh_ad_func(tensor1);
+  std::vector<paddle::Tensor> outs1 = {out1};
+  // Enable prim
   PrimCommonUtils::SetBwdPrimEnabled(true);
   ASSERT_TRUE(PrimCommonUtils::IsBwdPrimEnabled());
   // 4. Run Backward
@@ -102,6 +111,44 @@ TEST(EagerPrim, TanhBackwardTest) {
       std::static_pointer_cast<phi::DenseTensor>(
           ::egr::EagerUtils::unsafe_autograd_meta(tensor0)->Grad().impl())
           ->data<float>()[0]);
+}
+
+TEST(EagerPrim, LogicalOperantsTest) {
+  // 1. Initialized
+  eager_test::InitEnv(paddle::platform::CPUPlace());
+  FLAGS_tensor_operants_mode = "eager";
+  paddle::prim::InitTensorOperants();
+  // 2. pre
+  paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
+  paddle::Tensor tensor0 =
+      ::egr::egr_utils_api::CreateTensorWithValue(ddim,
+                                                  paddle::platform::CPUPlace(),
+                                                  phi::DataType::INT32,
+                                                  phi::DataLayout::NCHW,
+                                                  1 /*value*/,
+                                                  true /*is_leaf*/);
+  ::egr::egr_utils_api::RetainGradForTensor(tensor0);
+  paddle::Tensor tensor1 =
+      ::egr::egr_utils_api::CreateTensorWithValue(ddim,
+                                                  paddle::platform::CPUPlace(),
+                                                  phi::DataType::INT32,
+                                                  phi::DataLayout::NCHW,
+                                                  0 /*value*/,
+                                                  true /*is_leaf*/);
+  ::egr::egr_utils_api::RetainGradForTensor(tensor1);
+  // 3. Run Forward once
+  paddle::Tensor out0 = tensor0 & tensor1;
+  paddle::Tensor out1 = bitwise_and_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  out0 = tensor0 | tensor1;
+  out1 = bitwise_or_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  out0 = tensor0 ^ tensor1;
+  out1 = bitwise_xor_ad_func(tensor0, tensor1);
+  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  out0 = ~tensor0;
+  out1 = bitwise_not_ad_func(tensor0);
+  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
 }
 
 TEST(EagerPrim, TestFlags) {

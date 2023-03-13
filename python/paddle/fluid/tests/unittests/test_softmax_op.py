@@ -73,7 +73,7 @@ class TestSoftmaxOp(OpTest):
             'use_cudnn': self.use_cudnn,
             'use_mkldnn': self.use_mkldnn,
         }
-        self.enable_cinn = False
+        self.enable_cinn = True
 
     def init_kernel_type(self):
         pass

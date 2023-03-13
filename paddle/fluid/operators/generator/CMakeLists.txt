@@ -30,8 +30,14 @@ endif()
 # parse ops
 set(parsed_op_dir
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops)
-set(generated_op_path
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op.cc)
+set(generated_op_path_1
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op1.cc)
+set(generated_op_path_2
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op2.cc)
+set(generated_op_path_3
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op3.cc)
+set(generated_op_path_4
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op4.cc)
 set(generated_static_op_path
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_static_op.cc)
 set(generated_sparse_ops_path
@@ -118,7 +124,7 @@ endif()
 
 # code generation for op, op makers, and argument mapping functions
 message(
-  "create or remove auto-geneated operators: ${generated_op_path}.tmp
+  "create or remove auto-geneated operators: generated_op(1-4).cc.tmp
 create or remove auto-geneated argument mappings: ${generated_argument_mapping_path}.tmp"
 )
 execute_process(
@@ -129,8 +135,9 @@ execute_process(
     ./parsed_ops/backward_ops.parsed.yaml --op_version_yaml_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_version.yaml
     --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml
-    --output_op_path "${generated_op_path}.tmp" --output_arg_map_path
-    "${generated_argument_mapping_path}.tmp"
+    --output_op_path "${generated_op_path_1}.tmp" "${generated_op_path_2}.tmp"
+    "${generated_op_path_3}.tmp" "${generated_op_path_4}.tmp"
+    --output_arg_map_path "${generated_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "operator codegen failed, exiting.")
@@ -165,7 +172,10 @@ if(${_result})
 endif()
 
 set(generated_static_files
-    "${generated_op_path}"
+    "${generated_op_path_1}"
+    "${generated_op_path_2}"
+    "${generated_op_path_3}"
+    "${generated_op_path_4}"
     "${generated_static_op_path}"
     "${generated_sparse_ops_path}"
     "${generated_argument_mapping_path}"
@@ -191,6 +201,16 @@ foreach(generated_static_file ${generated_static_files})
     message("remove ${generated_static_file}")
   endif()
 endforeach()
+
+# Note(zyfncg): The generated file generated_op.cc has been deleted,
+# so we need to clear the generated_op.cc and generated_op.cc.tmp cached in develop environment.
+set(old_generated_op_path
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op.cc)
+if(EXISTS "${old_generated_op_path}" OR EXISTS "${old_generated_op_path}.tmp")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E remove -f "${old_generated_op_path}"
+            "${old_generated_op_path}.tmp")
+endif()
 
 # op extra info file
 set(ops_extra_info_gen_file
