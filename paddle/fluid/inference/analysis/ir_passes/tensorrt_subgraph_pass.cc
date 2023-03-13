@@ -464,6 +464,16 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                      Get<std::string>("model_opt_cache_dir"));
 
   auto static_path = Get<std::string>("static_path");
+  auto predictor_id = Get<int>("predictor_id");
+  if (!static_path.empty() and
+      inference::Singleton<inference::tensorrt::TRTEngineManager>::Global().Has(
+          static_path)) {
+    VLOG(3) << "TensorRT engine " << static_path
+            << " already existed, "
+               "create TensorRT engine with name "
+            << static_path + std::to_string(predictor_id);
+    static_path += std::to_string(predictor_id);
+  }
   op_desc->SetAttr("static_path", static_path);
 
   // TODO(NHZlX)
@@ -472,7 +482,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // serialization is affected by max_batch_size, but calibration is not.
   // So we use separate engine keys in serialization and calibration.
   auto engine_key =
-      static_path != ""
+      !static_path.empty()
           ? static_path
           : GenerateEngineKey(input_names_with_id,
                               output_names_with_id,
@@ -487,7 +497,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
                         std::to_string(max_batch_size),
                         std::to_string(static_cast<int>(precision_mode)),
                         true);
-  auto predictor_id = Get<int>("predictor_id");
 
   // Get "" when there is no cached calibration table data.
   std::string calibration_data = "";

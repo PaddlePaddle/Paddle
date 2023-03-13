@@ -170,6 +170,10 @@ static bool PathExists(const std::string &path) {
   return false;
 }
 
+static inline bool PathRWAccess(const std::string &path) {
+  return access(path.c_str(), R_OK | W_OK) != -1;
+}
+
 static std::string GetDirRoot(const std::string &path) {
   char sep_1 = '/', sep_2 = '\\';
 
@@ -204,13 +208,20 @@ static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
 }
 
 static void CheckModelStaticPathDir(const std::string &static_path) {
-  if (static_path == "") return;
+  if (static_path.empty()) return;
+
   auto static_path_dir = GetDirRoot(static_path);
   PADDLE_ENFORCE_EQ(
       PathExists(static_path_dir),
       true,
       platform::errors::PreconditionNotMet(
           "static_path directory[%s] not exists", static_path_dir));
+  PADDLE_ENFORCE_EQ(
+      PathRWAccess(static_path_dir),
+      true,
+      platform::errors::PreconditionNotMet(
+          "static_path directory[%s] not have read or write permissions",
+          static_path_dir));
 }
 
 static std::string GetTrtCalibPath(const std::string &model_root,
