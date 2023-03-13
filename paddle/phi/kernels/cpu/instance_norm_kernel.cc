@@ -136,6 +136,4 @@ void InstanceNormKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    instance_norm, CPU, ALL_LAYOUT, phi::InstanceNormKernel, float, double) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
-}
+    instance_norm, CPU, ALL_LAYOUT, phi::InstanceNormKernel, float, double) {}
