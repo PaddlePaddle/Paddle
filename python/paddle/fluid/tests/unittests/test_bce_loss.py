@@ -282,8 +282,8 @@ class TestBceLossOpCase2(OpTest):
 
 class TestBceLossOpFloat16(TestBceLossOp):
     def setUp(self):
-        input_np = np.random.uniform(0.1, 0.8, self.shape).astype("float16")
-        label_np = np.random.randint(0, 2, self.shape).astype("float16")
+        input_np = paddle.uniform(min=0.1, max=0.8, shape=[10,10]).astype("float16")
+        label_np = paddle.randint(low=0, high=2, shape=[10,10]).astype("float16")
         output_np = bce_loss(input_np, label_np)
 
         self.inputs = {'X': input_np, 'Label': label_np}
@@ -309,8 +309,6 @@ class TestBceLossOpFloat16(TestBceLossOp):
                     max_relative_error=1e-2,
                 )
 
-    def init_test_case(self):
-        self.shape = [10, 10]
 
 
 if __name__ == "__main__":
