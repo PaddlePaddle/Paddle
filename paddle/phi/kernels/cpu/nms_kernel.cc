@@ -94,4 +94,6 @@ void NMSKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(nms, CPU, ALL_LAYOUT, phi::NMSKernel, float, double) {}
+PD_REGISTER_KERNEL(nms, CPU, ALL_LAYOUT, phi::NMSKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::INT64);
+}

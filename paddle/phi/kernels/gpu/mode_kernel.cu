@@ -30,6 +30,12 @@ void ModeKernel(const Context& dev_ctx,
                 DenseTensor* indices) {
   // get the input dims
   const auto& in_dims = x.dims();
+  for (int i = 0; i < in_dims.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      in_dims[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
   // calcluate the real axis
   if (axis < 0) axis += in_dims.size();
 

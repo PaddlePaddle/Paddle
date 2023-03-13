@@ -166,13 +166,7 @@ cc_test(
 cc_library(
   lod_tensor
   SRCS lod_tensor.cc
-  DEPS ddim
-       mixed_vector
-       place
-       tensor
-       framework_proto
-       version
-       serialization)
+  DEPS ddim mixed_vector place tensor framework_proto version)
 
 cc_test(
   lod_tensor_test
@@ -435,24 +429,28 @@ if(WITH_XPU)
     phi_utils
     SRCS phi_utils.cc
     DEPS lod_tensor
+         dense_tensor
          selected_rows_utils
          place
          phi
          var_type_traits
-         phi_api_utils
          op_info
-         xpu_op_list)
+         xpu_op_list
+         convert_utils
+         phi_api_utils)
 else()
   cc_library(
     phi_utils
     SRCS phi_utils.cc
     DEPS lod_tensor
+         dense_tensor
          selected_rows_utils
          place
          phi
          var_type_traits
-         phi_api_utils
-         op_info)
+         op_info
+         convert_utils
+         phi_api_utils)
 endif()
 
 if(WITH_XPU)
@@ -481,7 +479,8 @@ if(WITH_XPU)
          kernel_factory
          infershape_utils
          op_utils
-         op_compat_infos)
+         op_compat_infos
+         get_kerneltype_forvar_utils)
 else()
   cc_library(
     operator
@@ -507,7 +506,8 @@ else()
          kernel_factory
          infershape_utils
          op_utils
-         op_compat_infos)
+         op_compat_infos
+         get_kerneltype_forvar_utils)
 endif()
 
 cc_test(
@@ -581,25 +581,24 @@ if(WITH_PYTHON)
   py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
   #Generate an empty \
   #__init__.py to make framework_py_proto as a valid python module.
-  add_custom_target(
-    fleet_proto_init ALL
+  add_custom_target(fleet_proto_init)
+  add_custom_command(
+    TARGET fleet_proto_init
     COMMAND ${CMAKE_COMMAND} -E make_directory
             ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
     COMMAND
       ${CMAKE_COMMAND} -E touch
       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
-  add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E
-                                                        touch __init__.py)
+  file(TOUCH ${CMAKE_CURRENT_BINARY_DIR}/__init__.py)
   add_dependencies(
     framework_py_proto
-    framework_py_proto_init
     trainer_py_proto
     distributed_strategy_py_proto
     fleet_proto_init
     pass_desc_py_proto
     ps_py_proto
-    ps_py_proto_init
-    pslib_py_proto)
+    pslib_py_proto
+    ps_py_proto_init)
   if(NOT WIN32)
     add_custom_command(
       TARGET framework_py_proto
@@ -614,7 +613,7 @@ if(WITH_PYTHON)
     if(NOT WITH_ROCM)
       add_custom_target(
         fleet_executor_proto_init ALL
-        DEPENDS fleet_proto_init fleet_executor_desc_py_proto
+        DEPENDS fleet_executor_desc_py_proto
         COMMAND
           cp
           ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
@@ -646,7 +645,7 @@ endif()
 if(WITH_PSCORE)
   add_custom_target(
     index_dataset_proto_init ALL
-    DEPENDS fleet_proto_init index_dataset_py_proto
+    DEPENDS index_dataset_py_proto
     COMMAND
       cp
       ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py
@@ -1064,7 +1063,7 @@ if(WITH_PSCORE)
       heter_pipeline_trainer_test
       SRCS heter_pipeline_trainer_test.cc
       DEPS conditional_block_op
-           scale_op
+           generated_op
            heter_listen_and_serv_op
            executor
            heter_server
@@ -1081,7 +1080,7 @@ if(WITH_PSCORE)
       heter_pipeline_trainer_test
       SRCS heter_pipeline_trainer_test.cc
       DEPS conditional_block_op
-           scale_op
+           generated_op
            heter_listen_and_serv_op
            executor
            heter_server
@@ -1110,7 +1109,7 @@ cc_test(
 cc_library(
   selected_rows_utils
   SRCS selected_rows_utils.cc
-  DEPS selected_rows serialization device_context)
+  DEPS selected_rows device_context)
 cc_test(
   selected_rows_utils_test
   SRCS selected_rows_utils_test.cc
@@ -1150,11 +1149,6 @@ cc_test_old(
   glog)
 
 cc_library(
-  generator
-  SRCS generator.cc
-  DEPS enforce place)
-
-cc_library(
   infershape_utils
   SRCS infershape_utils.cc
   DEPS lod_tensor
@@ -1163,7 +1157,7 @@ cc_library(
        place
        var_type_traits
        phi
-       phi_api_utils
+       phi_utils
        op_info
        shape_inference
        sparse_coo_tensor)
@@ -1204,6 +1198,7 @@ cc_library(
        phi_tensor
        op_meta_info
        phi_api
+       tensor_api
        phi_tensor_operants
        operants_manager)
 

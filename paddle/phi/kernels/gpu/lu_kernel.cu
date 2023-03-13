@@ -15,11 +15,11 @@
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/impl/lu_kernel_impl.h"
 #include "paddle/phi/kernels/lu_kernel.h"
 
@@ -105,7 +105,7 @@ void lu_decomposed_kernel(const Context& dev_ctx,
   int lwork;
   cusolver_bufferSize(cusolverH, m, n, d_A, lda, &lwork);
 
-  auto work_buff = paddle::memory::Alloc(
+  auto work_buff = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       lwork * sizeof(T),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -183,6 +183,9 @@ PD_REGISTER_KERNEL(lu,  // cuda_only
                    ALL_LAYOUT,
                    phi::LUKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}
 
 #endif  // not PADDLE_WITH_HIP

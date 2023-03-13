@@ -33,6 +33,7 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
 
   // For 0D Tensor
   if (rank == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
     phi::funcs::set_constant(dev_ctx, x_grad, 0.0);
     return;
   }

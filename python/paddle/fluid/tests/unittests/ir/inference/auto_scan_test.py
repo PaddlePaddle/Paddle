@@ -653,7 +653,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             os.getenv('TEST_NUM_PERCENT_CASES', default='1.0')
         )
 
-        # Use a seperate random generator for skipping tests
+        # Use a separate random generator for skipping tests
         self.skip_rng = np.random.default_rng(int(time.strftime("%W")))
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:

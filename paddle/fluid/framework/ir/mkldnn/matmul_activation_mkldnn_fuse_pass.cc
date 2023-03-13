@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/mkldnn/matmul_activation_mkldnn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/utils/string/pretty_log.h"
 
@@ -63,13 +64,7 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
 
     OpDesc* matmul_op = matmul->Op();
 
-    matmul_op->SetType("fused_matmul");
-    if (matmul_type == "matmul") {
-      matmul_op->SetAttr("trans_x", matmul_op->GetAttr("transpose_X"));
-      matmul_op->SetAttr("trans_y", matmul_op->GetAttr("transpose_Y"));
-      matmul_op->SetAttr("matmul_alpha", matmul_op->GetAttr("alpha"));
-    }
-
+    ConvertToFusedOp(matmul_op);
     SetActivationAttrs(matmul_op, activation->Op(), act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});
 

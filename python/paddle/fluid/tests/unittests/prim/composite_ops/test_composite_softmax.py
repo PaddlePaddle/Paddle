@@ -68,7 +68,7 @@ def expect_forward(inputs):
 class TestCompositeSoftmax(unittest.TestCase):
     def setUp(self):
         self.dtypes = ["float32", "float64"]
-        self.shapes = [[2, 3, 4], [2, 3]]
+        self.shapes = [[], [2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
     def cal_composite(self, inputs):
@@ -101,6 +101,9 @@ class TestCompositeSoftmax(unittest.TestCase):
         return res
 
     def compare_forward(self):
+        if not attrs.shape and attrs.axis not in [-1, 0]:
+            # op softmax does not support both case
+            return
         np_data = generate_data(attrs.shape)
         tensor_data = paddle.to_tensor(np_data)
 

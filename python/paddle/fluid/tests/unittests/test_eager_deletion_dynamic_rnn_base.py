@@ -23,18 +23,11 @@ from fake_reader import fake_imdb_reader
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import compiler
 
 
-def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
+def train(network, use_cuda, batch_size=32, pass_num=2):
     if use_cuda and not core.is_compiled_with_cuda():
         print('Skip use_cuda=True because Paddle is not compiled with cuda')
-        return
-
-    if use_parallel_executor and os.name == 'nt':
-        print(
-            'Skip use_parallel_executor=True because Paddle comes without parallel support on windows'
-        )
         return
 
     word_dict_size = 5147
@@ -54,9 +47,7 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
-    reader = feeder.decorate_reader(
-        train_reader, multi_devices=use_parallel_executor
-    )
+    reader = feeder.decorate_reader(train_reader, multi_devices=False)
 
     exe = fluid.Executor(place)
     fluid.default_startup_program().random_seed = 1
@@ -64,13 +55,7 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
     exe.run(fluid.default_startup_program())
 
     train_cp = fluid.default_main_program()
-    if use_parallel_executor:
-        train_cp = compiler.CompiledProgram(
-            fluid.default_main_program()
-        ).with_data_parallel(loss_name=cost.name)
-        fetch_list = [cost.name]
-    else:
-        fetch_list = [cost]
+    fetch_list = [cost]
 
     for pass_id in range(pass_num):
         batch_id = 0
@@ -94,12 +79,9 @@ class TestBase(unittest.TestCase):
             return
 
         for use_cuda in [True, False]:
-            for use_parallel_executor in [False, True]:
-                print(
-                    'network: {}, use_cuda: {}, use_parallel_executor: {}'.format(
-                        self.net.__name__, use_cuda, use_parallel_executor
-                    )
-                )
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    with fluid.scope_guard(core.Scope()):
-                        train(self.net, use_cuda, use_parallel_executor)
+            print(
+                'network: {}, use_cuda: {}'.format(self.net.__name__, use_cuda)
+            )
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with fluid.scope_guard(core.Scope()):
+                    train(self.net, use_cuda)

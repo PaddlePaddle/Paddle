@@ -22,6 +22,7 @@ from paddle.tensor import atan  # noqa: F401
 from paddle.tensor import atanh  # noqa: F401
 from paddle.tensor import broadcast_shape  # noqa: F401
 from paddle.tensor import broadcast_to  # noqa: F401
+from paddle.tensor import concat  # noqa: F401
 from paddle.tensor import cos  # noqa: F401
 from paddle.tensor import cosh  # noqa: F401
 from paddle.tensor import cumprod  # noqa: F401
@@ -33,6 +34,7 @@ from paddle.tensor import erfinv  # noqa: F401
 from paddle.tensor import exp  # noqa: F401
 from paddle.tensor import expm1  # noqa: F401
 from paddle.tensor import full  # noqa: F401
+from paddle.tensor import greater_equal  # noqa: F401
 from paddle.tensor import lgamma  # noqa: F401
 from paddle.tensor import log  # noqa: F401
 from paddle.tensor import log1p  # noqa: F401
@@ -55,10 +57,16 @@ from paddle.tensor import subtract  # noqa: F401
 from paddle.tensor import sum  # noqa: F401
 from paddle.tensor import tan  # noqa: F401
 from paddle.tensor import tanh  # noqa: F401
+from paddle.tensor import tile  # noqa: F401
+from paddle.tensor import uniform  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
 from paddle.tensor.creation import assign  # noqa: F401
+from paddle.tensor.creation import zeros_like  # noqa: F401
 from paddle.tensor.manipulation import cast  # noqa: F401
+from paddle.tensor.math import maximum  # noqa: F401
+from paddle.tensor.math import minimum  # noqa: F401
 
+"""
 math_op = [
     'add',
     'subtract',
@@ -83,7 +91,9 @@ math_op = [
     'logcumsumexp',
     'logit',
     'max',
+    'maximum',
     'min',
+    'minimum',
 ]
 
 trigonometric_op = [
@@ -115,12 +125,10 @@ others = [
     'fill_constant',
     'reshape',
     'full',
+    'tile',
+    'concat',
+    'uniform',
+    'greater_equal',
+    'zeros_like',
 ]
-
-__all__ = []
-__all__.extend(math_op)
-__all__.extend(trigonometric_op)
-__all__.extend(sub_prim)
-__all__.extend(others)
-
-__all__.sort()
+"""

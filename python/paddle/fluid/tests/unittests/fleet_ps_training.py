@@ -17,8 +17,8 @@ from utils import gen_data
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.incubate.fleet.base import role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+from paddle.incubate.distributed.fleet import role_maker
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
     fleet,
 )
 

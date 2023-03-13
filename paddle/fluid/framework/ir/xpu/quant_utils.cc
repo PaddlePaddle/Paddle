@@ -16,17 +16,90 @@
 #include <vector>
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/assign_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-template <typename T>
-static void Transpose(const T* in, T* out, int h, int w) {
-  for (int h1 = 0; h1 < w; ++h1) {
-    for (int w1 = 0; w1 < h; ++w1) {
-      out[h1 * h + w1] = in[w1 * w + h1];
-    }
+void Assign(const phi::DenseTensor& in, phi::DenseTensor* out) {
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  out->Resize(in.dims());
+  out->set_type(in.dtype());
+  out->set_layout(in.layout());
+  phi::AssignKernel(*cpu_ctx, in, out);
+}
+
+void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
+  auto in_dims = in->dims();
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      2,
+      platform::errors::InvalidArgument(
+          "In dims rank should be 2, but received in dims size is [%d].",
+          in_dims.size()));
+
+  phi::DenseTensor trans_tensor;
+  phi::DenseTensor* out_ptr = out == nullptr ? &trans_tensor : out;
+  out_ptr->Resize({in_dims[1], in_dims[0]});
+  out_ptr->set_type(in->type());
+  out_ptr->set_layout(in->layout());
+
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  std::vector<int> axis{1, 0};
+  switch (in->dtype()) {
+    case phi::DataType::FLOAT16:
+      phi::TransposeKernel<float16>(*cpu_ctx, *in, axis, out_ptr);
+      break;
+    case phi::DataType::FLOAT32:
+      phi::TransposeKernel<float>(*cpu_ctx, *in, axis, out_ptr);
+      break;
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Only support fp16 and fp32, but received dtype is %s.",
+          phi::DataTypeToString(in->dtype())));
+      break;
+  }
+
+  if (out == nullptr) {
+    Assign(*out_ptr, in);
+  }
+}
+
+void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out) {
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+
+  phi::DenseTensor fp32_tensor;
+  phi::DenseTensor* out_ptr = out == nullptr ? &fp32_tensor : out;
+  out_ptr->Resize(in->dims());
+  out_ptr->set_type(phi::DataType::FLOAT32);
+  out_ptr->set_layout(in->layout());
+
+  switch (in->dtype()) {
+    case phi::DataType::FLOAT16:
+      phi::CastKernel<float16>(*cpu_ctx, *in, phi::DataType::FLOAT32, out_ptr);
+      break;
+    case phi::DataType::FLOAT32:
+      if (out == nullptr) {
+        return;
+      } else {
+        phi::AssignKernel(*cpu_ctx, *in, out_ptr);
+      }
+      break;
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Only support fp16 and fp32, but received dtype is %s.",
+          phi::DataTypeToString(in->dtype())));
+      break;
+  }
+
+  if (out == nullptr) {
+    Assign(*out_ptr, in);
   }
 }
 
@@ -134,47 +207,51 @@ void QuantFP32ToIntX<int16_t>(const float* src_ptr,
 }
 
 template <typename T>
-void QuantWeight(phi::DenseTensor* weight,
-                 phi::DenseTensor* weight_max,
-                 bool transpose,
-                 int max_ptr_size) {
+void PrepareWeight(phi::DenseTensor* weight,
+                   phi::DenseTensor* weight_max,
+                   bool transpose) {
+  // Convert fp16 to fp32
+  phi::DenseTensor weight_fp32;
+  CastToFp32(weight, &weight_fp32);
+
   // Transpose
-  auto* weight_data = weight->data<float>();
-  auto dims = weight->dims();
-  auto size = weight->numel();
-  std::vector<float> transpose_data(weight_data, weight_data + size);
   if (transpose) {
-    PADDLE_ENFORCE_EQ(
-        dims.size(),
-        2,
-        platform::errors::InvalidArgument(
-            "Only support 2D weight, but received weight rank is [%d].",
-            dims.size()));
-    Transpose(weight_data, transpose_data.data(), dims[0], dims[1]);
-    weight->Resize({dims[1], dims[0]});
+    Transpose2D(&weight_fp32);
   }
-  weight_data = transpose_data.data();
+
   // Find max
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  const auto& dev_ctxs = pool.device_contexts();
+  auto place = phi::XPUPlace();  // xpu:0
+  for (auto it = dev_ctxs.begin(); it != dev_ctxs.end(); it++) {
+    if (it->first.GetType() == phi::AllocationType::XPU) {  // maybe xpu:1
+      place = it->first;
+    }
+  }
+  phi::XPUContext* xpu_ctx = static_cast<phi::XPUContext*>(pool.Get(place));
+  int max_ptr_size = xpu_ctx->x_context()->max_ptr_size();
+  int size = weight_fp32.numel();
+  auto* weight_data = weight_fp32.data<float>();
   float max_val = FindMaxAbs(weight_data, size);
   std::vector<float> max_vec(max_ptr_size, max_val);
-  weight_max->set_type(paddle::experimental::CppTypeToDataType<float>::Type());
+  weight_max->set_type(phi::DataType::FLOAT32);
   weight_max->Resize({max_ptr_size});
-  auto* dev_ctx = static_cast<phi::CPUContext*>(
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-  memcpy(dev_ctx->Alloc<float>(weight_max),
+  memcpy(cpu_ctx->Alloc<float>(weight_max),
          max_vec.data(),
          max_ptr_size * sizeof(float));
+
   // Quant
-  std::vector<T> quant_data(size);
-  QuantFP32ToIntX(weight_data, quant_data.data(), max_val, size);
   weight->set_type(paddle::experimental::CppTypeToDataType<T>::Type());
-  memcpy(dev_ctx->Alloc<T>(weight), quant_data.data(), size * sizeof(T));
+  weight->Resize(weight_fp32.dims());
+  QuantFP32ToIntX(weight_data, cpu_ctx->Alloc<T>(weight), max_val, size);
 }
 
-template void QuantWeight<int16_t>(phi::DenseTensor* weight,
-                                   phi::DenseTensor* weight_max,
-                                   bool transpose,
-                                   int max_ptr_size);
+template void PrepareWeight<int16_t>(phi::DenseTensor* weight,
+                                     phi::DenseTensor* weight_max,
+                                     bool transpose);
 
 }  // namespace ir
 }  // namespace framework

@@ -44,6 +44,7 @@ cc_library(
        message_bus.cc
        dist_model_tensor_wrapper.cc
   DEPS proto_desc
+       standalone_executor
        fleet_executor_desc_proto
        interceptor_message_proto
        task_loop_thread_pool

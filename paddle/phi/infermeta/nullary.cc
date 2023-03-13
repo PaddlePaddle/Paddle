@@ -32,7 +32,7 @@ void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
           0,
           phi::errors::InvalidArgument(
               "Each value of attribute 'shape' is expected to be no less "
-              "than 0. But recieved: shape[%u] = %d; shape = [%s].",
+              "than 0. But received: shape[%u] = %d; shape = [%s].",
               i,
               data[i],
               phi::make_ddim(data)));

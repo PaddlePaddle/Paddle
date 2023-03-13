@@ -1099,7 +1099,7 @@ void DropoutNdInferMeta(const MetaTensor& x,
       x_dims.size(),
       phi::errors::InvalidArgument(
           "The length of axis is expected to be less than or equal to the "
-          "dimension size of x. But recieved the length of axis is %d, the "
+          "dimension size of x. But received the length of axis is %d, the "
           "dimension size of x is %d, x's shape is {%s}.",
           axis.size(),
           x_dims.size(),
@@ -1111,7 +1111,7 @@ void DropoutNdInferMeta(const MetaTensor& x,
         phi::errors::InvalidArgument(
             "The %d-th value of axis is expected to be greater ot "
             "equal to 0 and less than the dimensions of x. But "
-            "recieved axis is {%s}, the dimension size of x is %d.",
+            "received axis is {%s}, the dimension size of x is %d.",
             i,
             phi::make_ddim(axis),
             x_dims.size()));

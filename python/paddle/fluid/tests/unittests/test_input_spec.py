@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.jit.dy2static.utils import _compatible_non_tensor_spec
 from paddle.static import InputSpec
@@ -75,10 +76,6 @@ class TestInputSpec(unittest.TestCase):
         with self.assertRaises(TypeError):
             tensor_spec = InputSpec(4, dtype='int8')
 
-        # 3. len(shape) should be greater than 0.
-        with self.assertRaises(ValueError):
-            tensor_spec = InputSpec([], dtype='int8')
-
     def test_batch_and_unbatch(self):
         tensor_spec = InputSpec([10])
         # insert batch_size
@@ -89,15 +86,11 @@ class TestInputSpec(unittest.TestCase):
         unbatch_spec = batch_tensor_spec.unbatch()
         self.assertEqual(unbatch_spec.shape, (10,))
 
-        # 1. `unbatch` requires len(shape) > 1
-        with self.assertRaises(ValueError):
-            unbatch_spec.unbatch()
-
-        # 2. `batch` requires len(batch_size) == 1
+        # 1. `batch` requires len(batch_size) == 1
         with self.assertRaises(ValueError):
             tensor_spec.batch([16, 12])
 
-        # 3. `batch` requires type(batch_size) == int
+        # 2. `batch` requires type(batch_size) == int
         with self.assertRaises(TypeError):
             tensor_spec.batch('16')
 
@@ -329,6 +322,33 @@ class TestCompatibleNonTensorSpec(unittest.TestCase):
                 UnHashableObject(1), UnHashableObject(1)
             )
         )
+
+
+class NegSpecNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.linear = paddle.nn.Linear(10, 5)
+
+    def forward(self, x):
+        return self.linear(x)
+
+
+class TestNegSpecWithPrim(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        core._set_prim_all_enabled(True)
+
+    def tearDown(self):
+        core._set_prim_all_enabled(False)
+
+    def test_run(self):
+        net = NegSpecNet()
+        net = paddle.jit.to_static(
+            net, input_spec=[paddle.static.InputSpec(shape=[-1, 10])]
+        )
+        x = paddle.randn([2, 10])
+        out = net(x)
+        np.testing.assert_equal(out.shape, [2, 5])
 
 
 if __name__ == '__main__':

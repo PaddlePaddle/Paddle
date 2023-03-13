@@ -18,8 +18,12 @@ import numpy as np
 from utils import SUB_TOLERANCE
 
 import paddle
+import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.fluid import core, framework
+from paddle.nn import BatchNorm
+from paddle.tensor import ones  # noqa: F401
+from paddle.tensor import zeros  # noqa: F401
 
 np.random.seed(2023)
 
@@ -256,6 +260,70 @@ class TestCompositeBatchNorm(unittest.TestCase):
                     attrs.set_data_format(s)
                     attrs.set_use_global_stats(t)
                     self.compare_forward()
+
+
+def apply_to_static(net, use_cinn):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=False)
+
+
+class PrimeNet(paddle.nn.Layer):
+    def __init__(self):
+        super(PrimeNet, self).__init__()
+        self.conv = nn.Conv2D(4, 2, (3, 3), bias_attr=False)
+        self.bn = BatchNorm(2, act="relu")
+        self.run_mean = zeros([2])
+        self.run_var = ones([2])
+        self.scale = ones([2])
+        self.bias = ones([2])
+
+    def forward(self, x):
+        y = self.conv(x)
+        out = self.bn(y)
+        res = F.max_pool2d(out, kernel_size=2, stride=2, padding=0)
+        return res
+
+
+class TestPrimForwardAndBackward(unittest.TestCase):
+    """
+    Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
+    """
+
+    def setUp(self):
+        paddle.seed(2022)
+        self.x = paddle.randn([4, 4, 6, 6], dtype="float32")
+        self.x.stop_gradient = False
+
+    def train(self, use_prim):
+        core._set_prim_all_enabled(use_prim)
+        paddle.seed(2022)
+        net = PrimeNet()
+        sgd = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=net.parameters()
+        )
+
+        net = paddle.amp.decorate(models=net, level='O2')
+
+        net = apply_to_static(net, False)
+        with paddle.amp.auto_cast(level='O2'):
+            out = net(self.x)
+            loss = paddle.mean(out)
+            loss.backward()
+            sgd.step()
+            sgd.clear_grad()
+            return loss
+
+    def test_amp(self):
+        if not isinstance(framework._current_expected_place(), core.CPUPlace):
+            expected = self.train(False)
+            actual = self.train(True)
+            np.testing.assert_allclose(
+                expected,
+                actual,
+                rtol=1e-3,
+                atol=1e-3,
+            )
 
 
 if __name__ == '__main__':

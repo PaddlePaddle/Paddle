@@ -114,8 +114,8 @@ class Linear(Layer):
         **bias** (Parameter): the learnable bias of this layer.
 
     Shape:
-        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` .
-        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` .
+        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` . Its data types are float16, float32, float64 ,The default is float32 .
+        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` . The data type is the same as the input .
 
     Examples:
         .. code-block:: python
@@ -1178,11 +1178,10 @@ class ZeroPad2D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            input_shape = (1, 1, 2, 3)
+            input_shape = paddle.to_tensor([1, 1, 2, 3])
             pad = [1, 0, 1, 2]
-            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            data = paddle.arange(paddle.prod(input_shape), dtype="float32").reshape(input_shape) + 1
 
             my_pad = nn.ZeroPad2D(padding=pad)
             result = my_pad(data)

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle.fluid.core as core
 
@@ -80,7 +80,7 @@ class TestNearestInterpOp(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "nearest_interp"
-        self.check_eager = True
+        self.check_dygraph = True
         input_np = np.random.random(self.input_shape).astype("float64")
 
         if self.data_layout == "NCHW":
@@ -109,10 +109,10 @@ class TestNearestInterpOp(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
+            self.check_dygraph = False
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
-            self.check_eager = False
+            self.check_dygraph = False
         self.attrs = {
             'out_h': self.out_h,
             'out_w': self.out_w,
@@ -124,11 +124,11 @@ class TestNearestInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager)
+        self.check_output(check_dygraph=self.check_dygraph)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', in_place=True, check_eager=self.check_eager
+            ['X'], 'Out', in_place=True, check_dygraph=self.check_dygraph
         )
 
     def init_test_case(self):
@@ -243,7 +243,7 @@ class TestNearestInterpOpUint8(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "nearest_interp"
-        self.check_eager = True
+        self.check_dygraph = True
         input_np = np.random.randint(
             low=0, high=256, size=self.input_shape
         ).astype("uint8")
@@ -266,7 +266,7 @@ class TestNearestInterpOpUint8(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
+            self.check_dygraph = False
         self.attrs = {
             'out_h': self.out_h,
             'out_w': self.out_w,
@@ -278,7 +278,7 @@ class TestNearestInterpOpUint8(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CPUPlace(), atol=1, check_eager=self.check_eager
+            place=core.CPUPlace(), atol=1, check_dygraph=self.check_dygraph
         )
 
     def init_test_case(self):
@@ -362,8 +362,8 @@ class TestNearestInterpOp_attr_tensor(OpTest):
             'align_corners': self.align_corners,
         }
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
-        # Skip check_eager while found them in Inputs.
-        self.check_eager = True
+        # Skip check_dygraph while found them in Inputs.
+        self.check_dygraph = True
 
         input_np = np.random.random(self.input_shape).astype("float64")
         self.inputs = {'X': input_np}
@@ -380,7 +380,7 @@ class TestNearestInterpOp_attr_tensor(OpTest):
 
         if self.shape_by_1Dtensor:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
+            self.check_dygraph = False
         elif self.out_size is not None:
             size_tensor = []
             for index, ele in enumerate(self.out_size):
@@ -388,7 +388,7 @@ class TestNearestInterpOp_attr_tensor(OpTest):
                     ("x" + str(index), np.ones((1)).astype('int32') * ele)
                 )
             self.inputs['SizeTensor'] = size_tensor
-            self.check_eager = False
+            self.check_dygraph = False
 
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
@@ -403,11 +403,11 @@ class TestNearestInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager)
+        self.check_output(check_dygraph=self.check_dygraph)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', in_place=True, check_eager=self.check_eager
+            ['X'], 'Out', in_place=True, check_dygraph=self.check_dygraph
         )
 
     def init_test_case(self):

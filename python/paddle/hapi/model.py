@@ -34,9 +34,8 @@ from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.framework import _get_paddle_place, _non_static_mode
-from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.layers import collective
-from paddle.fluid.layers.utils import flatten
+from paddle.framework.io_utils import is_belong_to_optimizer
 from paddle.io import DataLoader, Dataset, DistributedBatchSampler
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.metric import Metric
@@ -184,6 +183,34 @@ def init_communicator(
                 'rank_ids': nranks,
             },
         )
+    elif core.is_compiled_with_xpu():
+        bkcl_id_var = block.create_var(
+            name=fluid.unique_name.generate('bkcl_id'),
+            persistable=True,
+            type=fluid.core.VarDesc.VarType.RAW,
+        )
+
+        block.append_op(
+            type='c_gen_bkcl_id',
+            inputs={},
+            outputs={'Out': bkcl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints,
+            },
+        )
+
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': bkcl_id_var},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': 0,
+            },
+        )
 
 
 def prepare_distributed_context(place=None):
@@ -195,7 +222,7 @@ def prepare_distributed_context(place=None):
         )
 
     place = _get_paddle_place(place)
-    strategy = fluid.dygraph.parallel.ParallelStrategy()
+    strategy = paddle.distributed.parallel.ParallelStrategy()
     strategy.nranks = paddle.distributed.ParallelEnv().nranks
     strategy.local_rank = paddle.distributed.ParallelEnv().local_rank
     strategy.trainer_endpoints = (
@@ -713,6 +740,15 @@ class StaticGraphAdapter:
                     continue
 
                 uninitialized.append(var_py)
+
+            # for RawProgramOptimizer, it will insert OP with no outputs like:
+            #       c_comm_init(inputs={X=['comm_id_0']}
+            # but we cannot prune this op.
+            block = self._startup_prog.global_block()
+            for op in block.ops:
+                if op.type == "c_comm_init":
+                    uninitialized.append(op)
+
             if uninitialized:
                 startup_prog = self._startup_prog._prune(uninitialized)
                 self._executor.run(startup_prog)
@@ -753,7 +789,7 @@ class DynamicGraphAdapter:
 
         if self._nranks > 1:
             dist.init_parallel_env()
-            stradegy = fluid.dygraph.parallel.ParallelStrategy()
+            stradegy = paddle.distributed.parallel.ParallelStrategy()
             stradegy.nranks = paddle.distributed.ParallelEnv().nranks
             stradegy.local_rank = paddle.distributed.ParallelEnv().local_rank
             stradegy.trainer_endpoints = (
@@ -762,9 +798,7 @@ class DynamicGraphAdapter:
             stradegy.current_endpoint = (
                 paddle.distributed.ParallelEnv().current_endpoint
             )
-            self.ddp_model = fluid.dygraph.parallel.DataParallel(
-                self.model.network, stradegy
-            )
+            self.ddp_model = paddle.DataParallel(self.model.network, stradegy)
 
     @property
     def mode(self):
@@ -2267,7 +2301,7 @@ class Model:
             # 4. custumed iterator yield separated inputs and labels:
             #   ([input1, input2, ...], [label1, lable2, ...])
             # To handle all of these, flatten (nested) list to list.
-            data = flatten(data)
+            data = paddle.utils.flatten(data)
             # LoDTensor.shape is callable, where LoDTensor comes from
             # DataLoader in static graph
 

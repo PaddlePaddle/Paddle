@@ -126,11 +126,7 @@ class TestWeightDecay(unittest.TestCase):
         build_strategy.memory_optimize = use_ir_memory_optimize
 
         train_cp = compiler.CompiledProgram(
-            fluid.default_main_program()
-        ).with_data_parallel(
-            loss_name=loss.name,
-            exec_strategy=exec_strategy,
-            build_strategy=build_strategy,
+            fluid.default_main_program(), build_strategy=build_strategy
         )
 
         loss_set = []

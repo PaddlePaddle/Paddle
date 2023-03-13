@@ -26,6 +26,7 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         xnp = np.random.random((5, 20)).astype("float64")
         self.inputs = {'X': xnp, 'Index': np.array([[], []]).astype("int32")}
@@ -37,12 +38,13 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestGatherNdOpWithIndex1(OpTest):
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         xnp = np.random.random((5, 20)).astype("float64")
         self.inputs = {'X': xnp, 'Index': np.array([1]).astype("int32")}
@@ -60,7 +62,9 @@ class TestGatherNdOpWithLowIndex(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1], [2]]).astype("int64")
 
@@ -74,7 +78,7 @@ class TestGatherNdOpWithLowIndex(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestGatherNdOpIndex1(OpTest):
@@ -82,27 +86,39 @@ class TestGatherNdOpIndex1(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
-        xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
-        index = np.array([1, 2]).astype("int32")
+        self.init_input()
 
-        self.inputs = {'X': xnp, 'Index': index}
+        self.inputs = {'X': self.xnp, 'Index': self.index}
 
-        self.outputs = {'Out': xnp[tuple(index.T)]}
+        self.outputs = {'Out': self.xnp[tuple(self.index.T)]}
+        self.enable_cinn = False
+
+    def init_input(self):
+        self.xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
+        self.index = np.array([1, 2]).astype("int32")
 
     def test_check_output(self):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
+
+
+class TestGatherNdOpIndex1FP16(TestGatherNdOpIndex1):
+    def init_input(self):
+        self.xnp = np.random.uniform(0, 100, (10, 10)).astype("float16")
+        self.index = np.array([1, 2]).astype("int32")
 
 
 class TestGatherNdOpWithSameIndexAsX(OpTest):
     # Index has same rank as X's rank
-
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
+        self.enable_cinn = False
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1, 1], [2, 1]]).astype("int64")
 
@@ -113,7 +129,7 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestGatherNdOpWithHighRankSame(OpTest):
@@ -121,6 +137,7 @@ class TestGatherNdOpWithHighRankSame(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         shape = (5, 2, 3, 1, 10)
         xnp = np.random.rand(*shape).astype("float64")
@@ -133,7 +150,7 @@ class TestGatherNdOpWithHighRankSame(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestGatherNdOpWithHighRankDiff(OpTest):
@@ -141,6 +158,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
+        self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
         shape = (2, 3, 4, 1, 10)
         xnp = np.random.rand(*shape).astype("float64")
@@ -154,7 +172,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 # Test Python API
@@ -253,6 +271,39 @@ class TestGatherNdAPI2(unittest.TestCase):
             )
             expected_output = np.array([[3, 4]])
         np.testing.assert_allclose(result, expected_output, rtol=1e-05)
+
+    def test_static_fp16_with_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.array(
+                    [[[1, 2], [3, 4], [5, 6]], [[7, 8], [9, 10], [11, 12]]],
+                    dtype='float16',
+                )
+                index = np.array([[0, 1]], dtype='int32')
+                res_np = np.array([[3, 4]], dtype='float16')
+
+                x = paddle.static.data(
+                    name="x", shape=[2, 3, 2], dtype="float16"
+                )
+                x.desc.set_need_check_feed(False)
+                idx = paddle.static.data(
+                    name="index", shape=[1, 2], dtype="int32"
+                )
+                idx.desc.set_need_check_feed(False)
+
+                y = paddle.gather_nd(x, idx)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x": input, "index": index},
+                    fetch_list=[y],
+                )
+
+                np.testing.assert_allclose(res[0], res_np, rtol=1e-05)
 
     def test_imperative(self):
         paddle.disable_static()

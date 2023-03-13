@@ -69,7 +69,7 @@ class PrimeNet(paddle.nn.Layer):
         ),
     ],
 )
-class TestDivGradComp(unittest.TestCase):
+class TestSubGradComp(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.primal0 = cls.primal0.astype(cls.dtype)

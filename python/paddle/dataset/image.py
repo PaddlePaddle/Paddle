@@ -31,37 +31,15 @@ the image layout as follows.
 """
 
 import os
-
-# FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
-# https://github.com/numpy/numpy/issues/12497
-import subprocess
-import sys
+import tarfile
 
 import numpy as np
 
-interpreter = sys.executable
-# Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
-# will be the C++ execubable on Windows
-if sys.platform == 'win32' and 'python.exe' not in interpreter:
-    interpreter = sys.exec_prefix + os.sep + 'python.exe'
-import_cv2_proc = subprocess.Popen(
-    [interpreter, "-c", "import cv2"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-)
-out, err = import_cv2_proc.communicate()
-retcode = import_cv2_proc.poll()
-if retcode != 0:
+try:
+    import cv2
+except ImportError:
     cv2 = None
-else:
-    try:
-        import cv2
-    except ImportError:
-        cv2 = None
-
-import os
 import pickle
-import tarfile
 
 __all__ = []
 
@@ -89,9 +67,9 @@ def batch_images_from_tar(
     :type data_file: string
     :param dataset_name: 'train','test' or 'valid'
     :type dataset_name: string
-    :param img2label: a dic with image file name as key
+    :param img2label: a dict with image file name as key
                     and image's label as value
-    :type img2label: dic
+    :type img2label: dict
     :param num_per_batch: image number per batch file
     :type num_per_batch: int
     :return: path of list file containing paths of batch file
@@ -116,9 +94,7 @@ def batch_images_from_tar(
             data.append(tf.extractfile(mem).read())
             labels.append(img2label[mem.name])
             if len(data) == num_per_batch:
-                output = {}
-                output['label'] = labels
-                output['data'] = data
+                output = {'label': labels, 'data': data}
                 pickle.dump(
                     output,
                     open('%s/batch_%d' % (out_path, file_id), 'wb'),
@@ -128,14 +104,12 @@ def batch_images_from_tar(
                 data = []
                 labels = []
     if len(data) > 0:
-        output = {}
-        output['label'] = labels
-        output['data'] = data
+        output = {'label': labels, 'data': data}
         pickle.dump(
             output, open('%s/batch_%d' % (out_path, file_id), 'wb'), protocol=2
         )
 
-    with open(meta_file, 'a') as meta:
+    with open(meta_file, mode='a') as meta:
         for file in os.listdir(out_path):
             meta.write(os.path.abspath("%s/%s" % (out_path, file)) + "\n")
     return meta_file
@@ -160,7 +134,6 @@ def load_image_bytes(bytes, is_color=True):
     :type is_color: bool
     """
     assert _check_cv2() is True
-
     flag = 1 if is_color else 0
     file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, flag)
@@ -332,7 +305,7 @@ def simple_transform(
 ):
     """
     Simply data argumentation for training. These operations include
-    resizing, croping and flipping.
+    resizing, cropping and flipping.
 
     Example usage:
 

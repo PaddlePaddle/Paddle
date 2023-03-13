@@ -16,10 +16,16 @@ from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.fluid.framework import Variable, in_dygraph_mode
 
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
+from ...fluid.layers import LayerHelper
+from ...tensor.manipulation import squeeze, unsqueeze
 
 # TODO: define pooling functions
-from ...fluid.layers import LayerHelper, utils
-from ...tensor.manipulation import squeeze, unsqueeze
+from ...utils import (
+    _contain_var,
+    _convert_to_tensor_list,
+    _is_symmetric_padding,
+    convert_to_list,
+)
 
 __all__ = []
 
@@ -135,24 +141,24 @@ def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
             padding = _exclude_padding_in_batch_and_channel(
                 padding, channel_last
             )
-            if utils._is_symmetric_padding(padding, num_dims):
+            if _is_symmetric_padding(padding, num_dims):
                 padding = padding[0::2]
         # for padding like [pad_before, pad_after, pad_before, pad_after, ...]
         elif len(padding) == 2 * num_dims and isinstance(padding[0], int):
             padding_algorithm = "EXPLICIT"
-            padding = utils.convert_to_list(padding, 2 * num_dims, 'padding')
-            if utils._is_symmetric_padding(padding, num_dims):
+            padding = convert_to_list(padding, 2 * num_dims, 'padding')
+            if _is_symmetric_padding(padding, num_dims):
                 padding = padding[0::2]
         # for padding like [pad_d1, pad_d2, ...]
         elif len(padding) == num_dims and isinstance(padding[0], int):
             padding_algorithm = "EXPLICIT"
-            padding = utils.convert_to_list(padding, num_dims, 'padding')
+            padding = convert_to_list(padding, num_dims, 'padding')
         else:
             raise ValueError("Invalid padding: {}".format(padding))
     # for integer padding
     else:
         padding_algorithm = "EXPLICIT"
-        padding = utils.convert_to_list(padding, num_dims, 'padding')
+        padding = convert_to_list(padding, num_dims, 'padding')
     return padding, padding_algorithm
 
 
@@ -187,7 +193,7 @@ def avg_pool1d(
     Args:
         x (Tensor): The input tensor of pooling operator which is a 3-D tensor with
                           shape [N, C, L]. where `N` is batch size, `C` is the number of channels,
-                          `L` is the length of the feature. The data type is float32 or float64.
+                          `L` is the length of the feature. The data type is float16, float32 or float64.
         kernel_size (int|list|tuple): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain an integer.
         stride (int|list|tuple): The pool stride size. If pool stride size is a tuple or list,
@@ -223,15 +229,17 @@ def avg_pool1d(
     """NCL to NCHW"""
     data_format = "NCHW"
     if not in_dynamic_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'avg_pool1d')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'avg_pool1d'
+        )
     _check_input(x, 3)
     x = unsqueeze(x, [2])
-    kernel_size = utils.convert_to_list(kernel_size, 1, 'kernel_size')
+    kernel_size = convert_to_list(kernel_size, 1, 'kernel_size')
     kernel_size = [1] + kernel_size
     if stride is None:
         stride = kernel_size
     else:
-        stride = utils.convert_to_list(stride, 1, 'pool_stride')
+        stride = convert_to_list(stride, 1, 'pool_stride')
         stride = [1] + stride
 
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
@@ -351,11 +359,11 @@ def avg_pool2d(
                             stride=2, padding=0)
             # out.shape [1, 3, 16, 16]
     """
-    kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
+    kernel_size = convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
     else:
-        stride = utils.convert_to_list(stride, 2, 'pool_stride')
+        stride = convert_to_list(stride, 2, 'pool_stride')
 
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
     _check_value_limitation(stride, "stride", min_limit=1e-3)
@@ -480,11 +488,11 @@ def avg_pool3d(
                                             padding=0)
           # out.shape: [1, 3, 16, 16, 16]
     """
-    kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
+    kernel_size = convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
         stride = kernel_size
     else:
-        stride = utils.convert_to_list(stride, 3, 'pool_stride')
+        stride = convert_to_list(stride, 3, 'pool_stride')
 
     channel_last = _channel_last(data_format, 3)
     padding, padding_algorithm = _update_padding_nd(
@@ -511,7 +519,9 @@ def avg_pool3d(
     else:
         op_type = "pool3d"
         helper = LayerHelper(op_type, **locals())
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'max_pool3d')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'avg_pool3d'
+        )
         dtype = helper.input_dtype(input_param_name='x')
         pool_out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Out": pool_out}
@@ -599,11 +609,11 @@ def max_pool1d(
     data_format = "NCHW"
     _check_input(x, 3)
     x = unsqueeze(x, [2])
-    kernel_size = [1] + utils.convert_to_list(kernel_size, 1, 'pool_size')
+    kernel_size = [1] + convert_to_list(kernel_size, 1, 'pool_size')
     if stride is None:
         stride = kernel_size
     else:
-        stride = [1] + utils.convert_to_list(stride, 1, 'pool_stride')
+        stride = [1] + convert_to_list(stride, 1, 'pool_stride')
 
     padding, padding_algorithm = _update_padding_nd(
         padding, 1, ceil_mode=ceil_mode
@@ -689,10 +699,10 @@ def _unpool_output_size(x, kernel_size, stride, padding, output_size):
     has_static_var = False
     if output_size is None:
         return default_size
-    elif utils._contain_var(output_size):
+    elif _contain_var(output_size):
         if not in_dygraph_mode():
             has_static_var = True
-            output_size = utils._convert_to_tensor_list(output_size)
+            output_size = _convert_to_tensor_list(output_size)
         else:
             for i, var in enumerate(output_size):
                 if isinstance(var, Variable):
@@ -795,11 +805,11 @@ def max_unpool1d(
     data_format = "NCHW"
     x = unsqueeze(x, [2])
     indices = unsqueeze(indices, [2])
-    kernel_size = [1] + utils.convert_to_list(kernel_size, 1, 'pool_size')
+    kernel_size = [1] + convert_to_list(kernel_size, 1, 'pool_size')
     if stride is None:
         stride = kernel_size
     else:
-        stride = [1] + utils.convert_to_list(stride, 1, 'pool_stride')
+        stride = [1] + convert_to_list(stride, 1, 'pool_stride')
     padding, padding_algorithm = _update_padding_nd(padding, 1)
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
@@ -936,12 +946,12 @@ def max_unpool2d(
             f'The indices should have [N, C, H, W] format, but received {indices.shape}.'
         )
 
-    kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
+    kernel_size = convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
     else:
-        stride = utils.convert_to_list(stride, 2, 'pool_stride')
-    padding = utils.convert_to_list(padding, 2, 'padding')
+        stride = convert_to_list(stride, 2, 'pool_stride')
+    padding = convert_to_list(padding, 2, 'padding')
 
     if data_format not in ["NCHW"]:
         raise ValueError(
@@ -1079,12 +1089,12 @@ def max_unpool3d(
             f'The indices should have [N, C, D, H, W] format, but received {indices.shape}.'
         )
 
-    kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
+    kernel_size = convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
         stride = kernel_size
     else:
-        stride = utils.convert_to_list(stride, 3, 'pool_stride')
-    padding = utils.convert_to_list(padding, 3, 'padding')
+        stride = convert_to_list(stride, 3, 'pool_stride')
+    padding = convert_to_list(padding, 3, 'padding')
 
     if data_format not in ["NCDHW"]:
         raise ValueError(
@@ -1199,11 +1209,11 @@ def max_pool2d(
           # out.shape [1, 3, 16, 16], max_indices.shape [1, 3, 16, 16],
     """
 
-    kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
+    kernel_size = convert_to_list(kernel_size, 2, 'pool_size')
     if stride is None:
         stride = kernel_size
     else:
-        stride = utils.convert_to_list(stride, 2, 'pool_stride')
+        stride = convert_to_list(stride, 2, 'pool_stride')
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
@@ -1366,11 +1376,11 @@ def max_pool3d(
           # output.shape [1, 3, 16, 16, 16], max_indices.shape [1, 3, 16, 16, 16]
     """
 
-    kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
+    kernel_size = convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
         stride = kernel_size
     else:
-        stride = utils.convert_to_list(stride, 3, 'pool_stride')
+        stride = convert_to_list(stride, 3, 'pool_stride')
 
     channel_last = _channel_last(data_format, 3)
 
@@ -1474,7 +1484,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     """
     pool_type = 'avg'
     _check_input(x, 3)
-    pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
+    pool_size = [1] + convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
@@ -1589,7 +1599,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         in_h, in_w = x.shape[1:3]
 
     if isinstance(output_size, int):
-        output_size = utils.convert_to_list(output_size, 2, 'output_size')
+        output_size = convert_to_list(output_size, 2, 'output_size')
     else:
         output_size = list(output_size)
         if output_size[0] is None:
@@ -1603,8 +1613,8 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
             for item in output_size
         ]
     # output_size support Variable in static graph mode
-    elif utils._contain_var(output_size):
-        output_size = utils._convert_to_tensor_list(output_size)
+    elif _contain_var(output_size):
+        output_size = _convert_to_tensor_list(output_size)
 
     if in_dygraph_mode():
         x = x._use_gpudnn(False)
@@ -1724,7 +1734,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         in_l, in_h, in_w = x.shape[1:4]
 
     if isinstance(output_size, int):
-        output_size = utils.convert_to_list(output_size, 3, 'output_size')
+        output_size = convert_to_list(output_size, 3, 'output_size')
     else:
         output_size = list(output_size)
         if output_size[0] is None:
@@ -1823,7 +1833,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     """
     _check_input(x, 3)
 
-    pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
+    pool_size = [1] + convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
     if in_dygraph_mode():
@@ -1913,7 +1923,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
 
     in_h, in_w = x.shape[2:4]
     if isinstance(output_size, int):
-        output_size = utils.convert_to_list(output_size, 2, 'output_size')
+        output_size = convert_to_list(output_size, 2, 'output_size')
     else:
         output_size = list(output_size)
         if output_size[0] is None:
@@ -2002,7 +2012,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
 
     in_l, in_h, in_w = x.shape[2:5]
     if isinstance(output_size, int):
-        output_size = utils.convert_to_list(output_size, 3, 'output_size')
+        output_size = convert_to_list(output_size, 3, 'output_size')
     else:
         output_size = list(output_size)
         if output_size[0] is None:

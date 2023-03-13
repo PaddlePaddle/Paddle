@@ -219,7 +219,7 @@ class OpDesc {
     return ret_val;
   }
 
-  // it it really needed? or just maintain a ptr from block?
+  // Is it really needed? Or just maintain a ptr from the block?
   proto::OpDesc desc_;
   BlockDesc *block_{nullptr};  // not_own
   // input arg name => input variable names

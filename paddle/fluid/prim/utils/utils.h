@@ -23,6 +23,8 @@ class PrimCommonUtils {
  public:
   static bool IsBwdPrimEnabled();
   static void SetBwdPrimEnabled(bool enabled);
+  static bool IsEagerPrimEnabled();
+  static void SetEagerPrimEnabled(bool enabled);
   static bool IsFwdPrimEnabled();
   static void SetFwdPrimEnabled(bool enabled);
   static void SetAllPrimEnabled(bool enabled);

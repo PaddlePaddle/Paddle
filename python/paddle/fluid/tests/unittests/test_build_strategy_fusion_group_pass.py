@@ -32,7 +32,7 @@ class FusionGroupPaddingRNNTest(PaddingRNNTestBase):
         rnn_model = "static"
         config = RNNConfig("test", rnn_model)
         with fluid.scope_guard(fluid.Scope()):
-            self.train(config, parallel=True, use_program_cache=False)
+            self.train(config, use_program_cache=False)
 
 
 if __name__ == '__main__':

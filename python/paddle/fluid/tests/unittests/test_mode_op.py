@@ -182,5 +182,17 @@ class TestModeOpInStatic(unittest.TestCase):
             np.testing.assert_allclose(paddle_result, expect_value, rtol=1e-05)
 
 
+class TestModeZeroError(unittest.TestCase):
+    def test_errors(self):
+        with paddle.fluid.dygraph.guard():
+
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
+                paddle.mode(x, axis=0)
+
+            self.assertRaises(ValueError, test_0_size)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -111,7 +111,7 @@ void* DenseTensor::mutable_data(const Place& place,
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset) {
     holder_.reset();
-    holder_ = paddle::memory::AllocShared(place, size);
+    holder_ = memory_utils::AllocShared(place, size);
     meta_.offset = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
@@ -140,9 +140,9 @@ void* DenseTensor::mutable_data(const Place& place,
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset ||
       !(place.GetType() == phi::AllocationType::GPU &&
-        paddle::memory::InSameStream(holder_, stream))) {
+        memory_utils::InSameStream(holder_, stream))) {
     holder_.reset();
-    holder_ = paddle::memory::AllocShared(place, size, stream);
+    holder_ = memory_utils::AllocShared(place, size, stream);
     meta_.offset = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +

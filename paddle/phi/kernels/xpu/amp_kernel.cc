@@ -18,11 +18,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -53,11 +53,11 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   const bool* found_inf_data = found_infinite.data<bool>();
   bool cpu_found_inf_data = false;
   if (found_infinite.place().GetType() == phi::AllocationType::XPU) {
-    paddle::memory::Copy(phi::CPUPlace(),
-                         static_cast<void*>(&cpu_found_inf_data),
-                         found_infinite.place(),
-                         static_cast<const void*>(found_inf_data),
-                         sizeof(bool));
+    memory_utils::Copy(phi::CPUPlace(),
+                       static_cast<void*>(&cpu_found_inf_data),
+                       found_infinite.place(),
+                       static_cast<const void*>(found_inf_data),
+                       sizeof(bool));
   } else {
     cpu_found_inf_data = (*found_inf_data);
   }
@@ -93,31 +93,31 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   int cpu_good_in_data;
   MPDType cpu_pre_loss_scaling_data;
   if (in_bad_steps.place().GetType() == phi::AllocationType::XPU) {
-    paddle::memory::Copy(phi::CPUPlace(),
-                         static_cast<void*>(&cpu_bad_in_data),
-                         in_bad_steps.place(),
-                         static_cast<const void*>(bad_in_data),
-                         sizeof(int));
+    memory_utils::Copy(phi::CPUPlace(),
+                       static_cast<void*>(&cpu_bad_in_data),
+                       in_bad_steps.place(),
+                       static_cast<const void*>(bad_in_data),
+                       sizeof(int));
   } else {
     cpu_bad_in_data = (*bad_in_data);
   }
 
   if (in_good_steps.place().GetType() == phi::AllocationType::XPU) {
-    paddle::memory::Copy(phi::CPUPlace(),
-                         static_cast<void*>(&cpu_good_in_data),
-                         in_good_steps.place(),
-                         static_cast<const void*>(good_in_data),
-                         sizeof(int));
+    memory_utils::Copy(phi::CPUPlace(),
+                       static_cast<void*>(&cpu_good_in_data),
+                       in_good_steps.place(),
+                       static_cast<const void*>(good_in_data),
+                       sizeof(int));
   } else {
     cpu_good_in_data = (*good_in_data);
   }
 
   if (prev_loss_scaling.place().GetType() == phi::AllocationType::XPU) {
-    paddle::memory::Copy(phi::CPUPlace(),
-                         static_cast<void*>(&cpu_pre_loss_scaling_data),
-                         prev_loss_scaling.place(),
-                         static_cast<const void*>(pre_loss_scaling_data),
-                         sizeof(MPDType));
+    memory_utils::Copy(phi::CPUPlace(),
+                       static_cast<void*>(&cpu_pre_loss_scaling_data),
+                       prev_loss_scaling.place(),
+                       static_cast<const void*>(pre_loss_scaling_data),
+                       sizeof(MPDType));
   } else {
     cpu_pre_loss_scaling_data = (*pre_loss_scaling_data);
   }
@@ -148,21 +148,21 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
     }
   }
   // copy to device
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       bad_out_data,
-                       phi::CPUPlace(),
-                       &cpu_bad_out_data,
-                       sizeof(int));
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       good_out_data,
-                       phi::CPUPlace(),
-                       &cpu_good_out_data,
-                       sizeof(int));
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       updated_loss_scaling_data,
-                       phi::CPUPlace(),
-                       &cpu_updated_loss_scaling_data,
-                       sizeof(MPDType));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     bad_out_data,
+                     phi::CPUPlace(),
+                     &cpu_bad_out_data,
+                     sizeof(int));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     good_out_data,
+                     phi::CPUPlace(),
+                     &cpu_good_out_data,
+                     sizeof(int));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     updated_loss_scaling_data,
+                     phi::CPUPlace(),
+                     &cpu_updated_loss_scaling_data,
+                     sizeof(MPDType));
 }
 
 template <typename T, typename Context>
@@ -185,11 +185,11 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
   int nums_inf_nans = 0;
   MPDType cpu_scale_data;
   if (scale.place().GetType() == phi::AllocationType::XPU) {
-    paddle::memory::Copy(phi::CPUPlace(),
-                         static_cast<void*>(&cpu_scale_data),
-                         scale.place(),
-                         static_cast<const void*>(scale_data),
-                         sizeof(MPDType));
+    memory_utils::Copy(phi::CPUPlace(),
+                       static_cast<void*>(&cpu_scale_data),
+                       scale.place(),
+                       static_cast<const void*>(scale_data),
+                       sizeof(MPDType));
 
   } else {
     cpu_scale_data = (*scale_data);
@@ -211,11 +211,11 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                                 inf_nan_count.data<int>(),
                                 x->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "count_nan_or_inf");
-      paddle::memory::Copy(phi::CPUPlace(),
-                           &nums_inf_nans,
-                           dev_ctx.GetPlace(),
-                           inf_nan_count.data<int>(),
-                           sizeof(int));
+      memory_utils::Copy(phi::CPUPlace(),
+                         &nums_inf_nans,
+                         dev_ctx.GetPlace(),
+                         inf_nan_count.data<int>(),
+                         sizeof(int));
     }
 
     if (nums_inf_nans > 0) {
@@ -264,11 +264,11 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
     }
   }
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       found_inf_data,
-                       phi::CPUPlace(),
-                       &cpu_found_inf_data,
-                       sizeof(bool));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     found_inf_data,
+                     phi::CPUPlace(),
+                     &cpu_found_inf_data,
+                     sizeof(bool));
 }
 
 }  // namespace phi
@@ -285,4 +285,6 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    ALL_LAYOUT,
                    phi::CheckFiniteAndUnscaleKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::BOOL);
+}

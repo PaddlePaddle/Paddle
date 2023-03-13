@@ -147,7 +147,7 @@ def REGISTER_FN(op_type, *position_argnames):
 
     Args:
         op_type(str): The op name
-        position_argnames(list[str]): Input and ouput names of the op
+        position_argnames(list[str]): Input and output names of the op
 
     Returns:
         wrapper: Inner wrapper function

@@ -297,10 +297,9 @@ def is_bool_tensor(ele):
 
 def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
     from .framework import Variable
-    from .layers import utils
 
-    if utils._contain_var(attr):
-        inputs[tensor_attr_name] = utils._convert_to_tensor_list(
+    if paddle.utils._contain_var(attr):
+        inputs[tensor_attr_name] = paddle.utils._convert_to_tensor_list(
             attr, dtype="int64"
         )
         for i, dim in enumerate(attr):
@@ -389,11 +388,11 @@ def _getitem_impl_(var, item):
             slice_item
         ):
             if (
-                isinstance(slice_item, int)
+                not is_tensor_array
+                and isinstance(slice_item, int)
                 and var.shape[dim] is not None
                 and var.shape[dim] >= 0
                 and slice_item >= var.shape[dim]
-                and not is_tensor_array
             ):
                 # For python, if users write a, b = var, the __getitem__
                 # method will iterate through 0, 1, 2 ... until __getitem__
@@ -423,10 +422,10 @@ def _getitem_impl_(var, item):
             if start is None:
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
-                if var.shape[dim] != -1 and (
+                if (
                     paddle.fluid.framework._non_static_mode()
                     or not is_tensor_array
-                ):
+                ) and var.shape[dim] != -1:
                     end = var.shape[dim] if step > 0 else -1
                 else:
                     end = MAX_INTEGER if step > 0 else -1
@@ -763,16 +762,16 @@ def _setitem_impl_(var, item, value):
         'none_axes': none_axes,
     }
 
-    from .layers import utils
-
-    if utils._contain_var(starts):
-        inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
+    if paddle.utils._contain_var(starts):
+        inputs['StartsTensorList'] = paddle.utils._convert_to_tensor_list(
+            starts
+        )
         del attrs['starts']
-    if utils._contain_var(ends):
-        inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
+    if paddle.utils._contain_var(ends):
+        inputs['EndsTensorList'] = paddle.utils._convert_to_tensor_list(ends)
         del attrs['ends']
-    if utils._contain_var(steps):
-        inputs['StepsTensorList'] = utils._convert_to_tensor_list(steps)
+    if paddle.utils._contain_var(steps):
+        inputs['StepsTensorList'] = paddle.utils._convert_to_tensor_list(steps)
         del attrs['steps']
 
     # 2. Parse value

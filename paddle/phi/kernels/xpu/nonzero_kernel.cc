@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/nonzero_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -42,11 +42,11 @@ void NonZeroKernel(const Context& dev_ctx,
           ret,
           XPUAPIErrorMsg[ret]));
 
-  paddle::memory::Copy(phi::CPUPlace(),
-                       static_cast<void*>(&true_num_cpu),
-                       dev_ctx.GetPlace(),
-                       static_cast<void*>(true_num),
-                       sizeof(int32_t));
+  memory_utils::Copy(phi::CPUPlace(),
+                     static_cast<void*>(&true_num_cpu),
+                     dev_ctx.GetPlace(),
+                     static_cast<void*>(true_num),
+                     sizeof(int32_t));
 
   out->Resize(phi::make_ddim({static_cast<int64_t>(true_num_cpu), rank}));
   auto* out_data = dev_ctx.template Alloc<int64_t>(out);
@@ -69,4 +69,6 @@ void NonZeroKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    nonzero, XPU, ALL_LAYOUT, phi::NonZeroKernel, int, bool, float) {}
+    nonzero, XPU, ALL_LAYOUT, phi::NonZeroKernel, int, bool, float) {
+  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::INT64);
+}
