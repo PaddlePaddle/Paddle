@@ -90,8 +90,7 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
-    "unique_raw",
-    "viterbi_devode"};
+    "unique_raw"};
 
 // These Ops can use InferMeta to infer the output dtype
 static std::set<std::string> OpsWithAvailablePhiInferMeta = {
