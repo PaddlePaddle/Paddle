@@ -89,18 +89,9 @@ class TestLabelSmoothFP16(TestLabelSmoothOp):
     def init_data_type(self):
         self.data_type = "float16"
 
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
-
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ['X'], 'Out', max_relative_error=1e-3
-            )
+        self.check_grad_with_place(place, ['X'], 'Out', max_relative_error=1e-3)
 
 
 class TestLabelSmoothStaticFP16(unittest.TestCase):

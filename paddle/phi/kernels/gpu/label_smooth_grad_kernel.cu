@@ -31,7 +31,6 @@ struct LabelSmoothGradFunctor {
   }
 
   __device__ __forceinline__ T operator()(const T x) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     return static_cast<T>((1 - epsilon) * static_cast<MT>(x));
   }
 };
