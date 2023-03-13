@@ -93,7 +93,7 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
 
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
-            max_batch_size=1,
+            max_batch_size=4,
             workspace_size=102400,
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
@@ -114,7 +114,7 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
 
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
-            max_batch_size=1,
+            max_batch_size=4,
             workspace_size=102400,
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Half,
