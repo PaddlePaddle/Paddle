@@ -1888,65 +1888,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](Executor &self, std::shared_ptr<TrainerBase> trainer) {
              pybind11::gil_scoped_release release;
              self.RunFromDataset(trainer);
-           })
-      .def("run_prepared_ctx",
-           [](Executor &self,
-              ExecutorPrepareContext *ctx,
-              Scope *scope,
-              std::map<std::string, const phi::DenseTensor *> *feed_targets,
-              std::map<std::string, FetchType *> *fetch_targets,
-              bool create_local_scope = true,
-              bool create_vars = true,
-              const std::string &feed_holder_name = "feed",
-              const std::string &fetch_holder_name = "fetch") {
-             pybind11::gil_scoped_release release;
-             self.RunPreparedContext(ctx,
-                                     scope,
-                                     feed_targets,
-                                     fetch_targets,
-                                     create_local_scope,
-                                     create_vars,
-                                     feed_holder_name,
-                                     fetch_holder_name);
-           })
-      .def("run_prepared_ctx",
-           [](Executor &self,
-              ExecutorPrepareContext *ctx,
-              Scope *scope,
-              bool create_local_scope = true,
-              bool create_vars = true,
-              bool keep_kids = false) {
-             pybind11::gil_scoped_release release;
-             self.RunPreparedContext(
-                 ctx, scope, create_local_scope, create_vars, keep_kids);
-           })
-      .def("prepare",
-           [](Executor &self,
-              const ProgramDesc &program,
-              int block_id,
-              const std::vector<std::string> &skip_ref_cnt_vars =
-                  std::vector<std::string>(),
-              bool force_disable_gc = false) {
-             pybind11::gil_scoped_release release;
-             return self.Prepare(
-                 program, block_id, skip_ref_cnt_vars, force_disable_gc);
-           })
-      .def("create_variables", &Executor::CreateVariables)
-      .def("run",
-           [](Executor &self,
-              const ProgramDesc &prog,
-              Scope *scope,
-              int block_id,
-              bool create_local_scope,
-              bool create_vars,
-              const std::vector<std::string> &fetch_vars) {
-             pybind11::gil_scoped_release release;
-             self.Run(prog,
-                      scope,
-                      block_id,
-                      create_local_scope,
-                      create_vars,
-                      fetch_vars);
            });
 
   py::class_<framework::interpreter::CostInfo>(m, "CostInfo")
