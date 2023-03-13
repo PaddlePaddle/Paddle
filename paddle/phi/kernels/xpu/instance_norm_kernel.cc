@@ -62,6 +62,6 @@ void InstanceNormKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     instance_norm, XPU, ALL_LAYOUT, phi::InstanceNormKernel, float) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT);
-  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT);  
+  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  
 }
