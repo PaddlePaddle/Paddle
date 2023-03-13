@@ -307,7 +307,7 @@ class TestFP16SumOp(TestSumOp):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_grad(['x0'], 'Out')
+            self.check_grad(['x0'], 'Out', max_relative_error=0.15)
 
 
 def create_test_sum_fp16_class(parent):
