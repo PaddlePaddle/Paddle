@@ -173,7 +173,7 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
         PADDLE_GET_CONST(int, layer_norm_op->Op()->GetAttr("begin_norm_axis"));
     float eps =
         PADDLE_GET_CONST(float, layer_norm_op->Op()->GetAttr("epsilon"));
-    if (begin_norm_axis < 0) begin_norm_axis += input_shape.size();
+
     std::vector<int32_t> reduce_dim;
     std::vector<int64_t> shape_int64;
     int feature_size = 1;
@@ -186,7 +186,7 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
 
     // small feature size has low performance
     constexpr int FEATURE_SIZE_THRESHOLD = 128;
-    if (abs(feature_size) > FEATURE_SIZE_THRESHOLD) {
+    if (feature_size > FEATURE_SIZE_THRESHOLD) {
       return;
     }
     // since gamma and beta are constant var, dynamic shape should be useless

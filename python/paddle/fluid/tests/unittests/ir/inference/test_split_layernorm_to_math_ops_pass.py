@@ -91,15 +91,57 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
             'elementwise_add',
         ], (1e-2, 1e-2)
 
+        config = self.create_trt_inference_config()
+        config.enable_tensorrt_engine(
+            max_batch_size=1,
+            workspace_size=102400,
+            min_subgraph_size=0,
+            precision_mode=paddle_infer.PrecisionType.Float32,
+            use_static=False,
+            use_calib_mode=False,
+        )
+        yield config, [
+            'reduce_mean',
+            'elementwise_sub',
+            'elementwise_pow',
+            'reduce_mean',
+            'elementwise_add',
+            'sqrt',
+            'elementwise_div',
+            'elementwise_mul',
+            'elementwise_add',
+        ], (1e-5, 1e-5)
+
+        config = self.create_trt_inference_config()
+        config.enable_tensorrt_engine(
+            max_batch_size=1,
+            workspace_size=102400,
+            min_subgraph_size=0,
+            precision_mode=paddle_infer.PrecisionType.Half,
+            use_static=False,
+            use_calib_mode=False,
+        )
+        yield config, [
+            'reduce_mean',
+            'elementwise_sub',
+            'elementwise_pow',
+            'reduce_mean',
+            'elementwise_add',
+            'sqrt',
+            'elementwise_div',
+            'elementwise_mul',
+            'elementwise_add',
+        ], (1e-2, 1e-2)
+
     def sample_program_config(self, draw):
         epsilon = draw(st.floats(min_value=0.0000001, max_value=0.001))
 
-        begin_norm_axis = draw(st.sampled_from([2, 1, -1, -2]))
+        begin_norm_axis = draw(st.sampled_from([2, 1]))
         batch_size = draw(st.integers(min_value=1, max_value=4))
         dim0 = 6
         dim1 = 16
         weight_len = dim1
-        if begin_norm_axis == 1 or begin_norm_axis == -2:
+        if begin_norm_axis == 1:
             weight_len *= dim0
 
         def generate_input(attrs):
