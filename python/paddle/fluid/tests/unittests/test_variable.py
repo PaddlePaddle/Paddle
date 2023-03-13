@@ -597,16 +597,17 @@ class TestVariableSlice(unittest.TestCase):
 
 class TestListIndex(unittest.TestCase):
     # note(chenjianye):
-    # Non-tuple sequence for multidimensional indexing is supported in numpy < 1.24.
-    # For List case, the outermost `[]` will be treated as tuple `()` in version less than 1.24,
+    # Non-tuple sequence for multidimensional indexing is supported in numpy < 1.23.
+    # For List case, the outermost `[]` will be treated as tuple `()` in version less than 1.23,
     # which is used to wrap index elements for multiple axes.
-    # And from 1.24, this will be treat as a whole and only works on one axis.
+    # And from 1.23, this will be treat as a whole and only works on one axis.
     #
-    # e.g. x[[[0],[1]]] = x[([0],[1])] = x[[0],[1]] (in version < 1.24)
-    #      x[[[0],[1]]] = x[array([[0],[1]])] (in version >= 1.24)
+    # e.g. x[[[0],[1]]] == x[([0],[1])] == x[[0],[1]] (in version < 1.23)
+    #      x[[[0],[1]]] == x[array([[0],[1]])] (in version >= 1.23)
     #
+    # Here, we just modify the code to remove the impact of numpy version changes,
+    # changing x[[[0],[1]]] to x[tuple([[0],[1]])] == x[([0],[1])] == x[[0],[1]].
     # Whether the paddle behavior in this case will change is still up for debate.
-    # Here, we just modify the code to remove the impact of numpy version changes.
 
     def setUp(self):
         np.random.seed(2022)
