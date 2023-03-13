@@ -4234,7 +4234,9 @@ void TransposeInferMeta(const MetaTensor& x,
   int x_rank = x_dims.size();
   int axis_size = axis.size();
 
-  PADDLE_ENFORCE_EQ(
+  // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
+  // axis_size
+  PADDLE_ENFORCE_GE(
       x_rank,
       axis_size,
       errors::InvalidArgument("The input tensor's dimension "
