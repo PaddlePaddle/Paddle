@@ -250,11 +250,12 @@ def bce_wrapper(x, label):
 
 class TestBceLossOp(OpTest):
     def setUp(self):
+        self.init_test_dtype()
         self.init_test_case()
         self.op_type = "bce_loss"
         self.python_api = bce_wrapper
-        input_np = np.random.uniform(0.1, 0.8, self.shape).astype("float64")
-        label_np = np.random.randint(0, 2, self.shape).astype("float64")
+        input_np = np.random.uniform(0.1, 0.8, self.shape).astype(self.dtype)
+        label_np = np.random.randint(0, 2, self.shape).astype(self.dtype)
         output_np = bce_loss(input_np, label_np)
 
         self.inputs = {'X': input_np, 'Label': label_np}
@@ -269,6 +270,9 @@ class TestBceLossOp(OpTest):
     def init_test_case(self):
         self.shape = [10, 10]
 
+    def init_test_dtype(self):
+        self.dtype = "float64"
+
 
 class TestBceLossOpCase1(OpTest):
     def init_test_cast(self):
@@ -281,17 +285,6 @@ class TestBceLossOpCase2(OpTest):
 
 
 class TestBceLossOpFP16(TestBceLossOp):
-    def setUp(self):
-        self.init_test_case()
-        self.op_type = "bce_loss"
-        self.python_api = bce_wrapper
-        input_np = np.random.uniform(0.1, 0.8, self.shape).astype("float16")
-        label_np = np.random.randint(0, 2, self.shape).astype("float16")
-        output_np = bce_loss(input_np, label_np)
-
-        self.inputs = {'X': input_np, 'Label': label_np}
-        self.outputs = {'Out': output_np}
-
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -300,10 +293,10 @@ class TestBceLossOpFP16(TestBceLossOp):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ['X'], 'Out', max_relative_error=1
-            )
+        self.check_grad_with_place(place, ['X'], 'Out', max_relative_error=1)
+
+    def init_test_dtype(self):
+        self.dtype = "float16"
 
 
 class TestBceLossOpFP16Case1(TestBceLossOpFP16):
