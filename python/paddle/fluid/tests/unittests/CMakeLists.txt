@@ -1219,10 +1219,13 @@ set(TEST_CINN_OPS
     test_elementwise_mul_op
     test_gather_nd_op
     test_elementwise_pow_op
+    test_elementwise_max_op
     test_transpose_op
     test_reshape_op
     test_dropout_op
-    test_cast_op)
+    test_cast_op
+    test_mean_op
+    test_unsqueeze2_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
