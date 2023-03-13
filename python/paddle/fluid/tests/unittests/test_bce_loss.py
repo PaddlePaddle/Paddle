@@ -256,7 +256,9 @@ class TestBceLossOp(OpTest):
         self.python_api = bce_wrapper
         input_np = np.random.uniform(0.1, 0.8, self.shape).astype(self.dtype)
         label_np = np.random.randint(0, 2, self.shape).astype(self.dtype)
-        output_np = bce_loss(input_np, label_np)
+        output_np = bce_loss(
+            input_np.astype("float64"), label_np.astype("float64")
+        )
 
         self.inputs = {'X': input_np, 'Label': label_np}
         self.outputs = {'Out': output_np}
