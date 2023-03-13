@@ -44,7 +44,7 @@ class TestTrapezoid(unittest.TestCase):
         result = paddle.trapezoid(self.y1, axis=0)
         expected = paddle.to_tensor([2.5, 4.5, 8.5])
 
-        self.assertTrue(paddle.allclose(result,expected))
+        self.assertTrue(paddle.allclose(result, expected))
 
     def test_trapezoid_type_error(self):
         # test type error
