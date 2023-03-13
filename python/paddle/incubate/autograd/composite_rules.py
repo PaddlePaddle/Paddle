@@ -337,3 +337,14 @@ def relu_composite(x):
     """define composite rule of op relu."""
     # relu(x) = max(x, 0)
     return maximum(x, zeros_like(x))
+
+
+@REGISTER_COMPOSITE('where')
+def where_composite(condition, x, y):
+    """define composite rule of op relu."""
+    x_exp = broadcast_to(x, condition.shape)
+    y_exp = broadcast_to(y, condition.shape)
+    condition_int = cast(condition, x.dtype)
+    condition_nint = 1 - condition_int
+    out = (x_exp * condition_int) + (y_exp * condition_nint)
+    return out

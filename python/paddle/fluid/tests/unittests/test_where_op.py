@@ -30,9 +30,10 @@ class TestWhereOp(OpTest):
         self.init_config()
         self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
+        self.prim_op_type = "comp"
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output(check_eager=False, check_prim=True)
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out', check_eager=False)
