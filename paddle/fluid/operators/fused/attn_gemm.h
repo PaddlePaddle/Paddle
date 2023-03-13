@@ -74,7 +74,7 @@ class AttnMatMul {
           transA_,
           transB_,
           paddle::experimental::CppTypeToDataType<T>::Type(),
-          static_cast<size_t>(phi::funcs::kMatmulBias),
+          static_cast<size_t>(phi::funcs::MatmulFusedType::kMatmulBias),
           static_cast<const void*>(bias->data<T>()),
           nullptr);
       phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx_,
