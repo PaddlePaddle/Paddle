@@ -447,16 +447,16 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
 
 
 def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
-    for op_op in op_fluid_list:
-        if 'drop_empty_grad' in op_op:
+    for op_comp_map in op_fluid_list:
+        if 'drop_empty_grad' in op_comp_map:
             bw_names = [
                 bw_name.split('(')[0].strip()
-                for bw_name in op_op['backward'].split(',')
+                for bw_name in op_comp_map['backward'].split(',')
             ]
             for bw_name in bw_names:
                 # static_ops.yaml and ops.yaml use the common op_compat.yaml
                 if bw_name in bw_op_dict:
-                    for out_grad in op_op['drop_empty_grad']:
+                    for out_grad in op_comp_map['drop_empty_grad']:
                         assert (
                             out_grad in bw_op_dict[bw_name]['output_dict']
                         ), f'''
@@ -469,35 +469,36 @@ def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
 def parse_get_expected_kerneltype(
     op_fluid_list: list, fw_op_dict: dict, bw_op_dict: dict
 ):
-    for op_op in op_fluid_list:
-        if 'get_expected_kerneltype' in op_op:
-            if 'fw_invoke' in op_op['get_expected_kerneltype']:
-                fw_name = op_op['op'].split('(')[0].strip()
+    for op_comp_map in op_fluid_list:
+        if 'get_expected_kernel_type' in op_comp_map:
+            fw_name = op_comp_map['op'].split('(')[0].strip()
+            if fw_name in op_comp_map['get_expected_kernel_type']:
                 # static_ops.yaml and ops.yaml use the common op_compat.yaml
                 if fw_name in fw_op_dict:
-                    fw_op_dict[fw_name]["get_expected_kerneltype"] = op_op[
-                        'get_expected_kerneltype'
-                    ]['fw_invoke']
+                    fw_op_dict[fw_name][
+                        "get_expected_kernel_type"
+                    ] = op_comp_map['get_expected_kernel_type'][fw_name]
             bw_names = [
                 bw_name.split('(')[0].strip()
-                for bw_name in op_op['backward'].split(',')
+                for bw_name in op_comp_map['backward'].split(',')
             ]
-            for index, bw_name in enumerate(bw_names):
+            for bw_name in bw_names:
                 # static_ops.yaml and ops.yaml use the common op_compat.yaml
-                if bw_name in bw_op_dict:
-                    bw_invoke_level = 'bw_invoke' + str(index)
-                    if bw_invoke_level in op_op['get_expected_kerneltype']:
-                        bw_op_dict[bw_name]["get_expected_kerneltype"] = op_op[
-                            'get_expected_kerneltype'
-                        ][bw_invoke_level]
+                if (
+                    bw_name in bw_op_dict
+                    and bw_name in op_comp_map['get_expected_kernel_type']
+                ):
+                    bw_op_dict[bw_name][
+                        "get_expected_kernel_type"
+                    ] = op_comp_map['get_expected_kernel_type'][bw_name]
 
 
 def parse_keep_signature(
     op_fluid_list: list, fw_op_dict: dict, bw_op_dict: dict
 ):
-    for op_op in op_fluid_list:
-        if 'keep_signature' in op_op:
-            for op_name in op_op['keep_signature']:
+    for op_comp_map in op_fluid_list:
+        if 'keep_signature' in op_comp_map:
+            for op_name in op_comp_map['keep_signature']:
                 if op_name in fw_op_dict:
                     fw_op_dict[op_name]["keep_signature"] = True
                 elif op_name in bw_op_dict:

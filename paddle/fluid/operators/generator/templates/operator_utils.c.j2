@@ -266,7 +266,7 @@ paddle::small_vector<const char*> outputs {
 {% set kernel = op["kernel"] %}
 phi::KernelKey GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const override {
-{% if "get_expected_kerneltype" not in op %}
+{% if "get_expected_kernel_type" not in op %}
     phi::KernelKey kt;
 {%if kernel["data_type"] is not none %}{# data type ---------------------------------#}
   {% if kernel["data_type"]["candidates"] | length == 1 %}
@@ -311,7 +311,7 @@ phi::KernelKey GetExpectedKernelType(
 {% endif %}
   return kt;
 {% else %}
-  return {{op["get_expected_kerneltype"]}}(ctx, this);
+  return {{op["get_expected_kernel_type"]}}(ctx, this);
 {% endif %}
 }
 {% endmacro -%}
@@ -371,11 +371,11 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
   {% if kernel["data_type"] is not none or kernel["backend"] is not none
       or kernel["force_backend"] is not none
       or "complex_promote" in op or "data_transform" in op 
-      or "get_expected_kerneltype" in op%}
+      or "get_expected_kernel_type" in op%}
  protected:
     {% if kernel["data_type"] is not none or kernel["backend"] is not none
       or kernel["force_backend"] is not none or "complex_promote" in op
-      or "get_expected_kerneltype" in op%}
+      or "get_expected_kernel_type" in op%}
       {% filter indent(2, True)%}
 {{get_expected_kernel(op)}}
       {% endfilter %}
