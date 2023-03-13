@@ -368,5 +368,6 @@ PD_REGISTER_KERNEL(update_loss_scaling,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
 }
