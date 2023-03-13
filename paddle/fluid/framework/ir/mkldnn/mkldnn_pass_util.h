@@ -159,12 +159,13 @@ inline void ConvertToFusedOp(OpDesc* op) {
   const std::map<std::string, std::string> fused_ops = {
       {"conv2d", "fused_conv2d"},
       {"depthwise_conv2d", "fused_conv2d"},
-      {"matmul", "fused_matmul"},
-      {"matmul_v2", "fused_matmul"},
       {"elementwise_add", "fused_elementwise_add"},
       {"elementwise_sub", "fused_elementwise_sub"},
       {"elementwise_mul", "fused_elementwise_mul"},
-      {"elementwise_div", "fused_elementwise_div"}};
+      {"elementwise_div", "fused_elementwise_div"},
+      {"matmul", "fused_matmul"},
+      {"matmul_v2", "fused_matmul"},
+      {"softplus", "fused_softplus"}};
 
   if (op->Type() == "matmul") {
     op->SetAttr("trans_x", op->GetAttr("transpose_X"));
