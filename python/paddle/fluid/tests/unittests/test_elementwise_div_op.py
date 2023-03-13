@@ -402,7 +402,7 @@ def create_test_fp16_class(parent, atol=1e-3, max_relative_error=2e-3):
                 self.check_output(atol=atol)
             else:
                 self.check_output_with_place(self.place, atol=atol)
-                
+
         def if_enable_cinn(self):
             self.enable_cinn = True
 
