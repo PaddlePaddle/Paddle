@@ -195,12 +195,16 @@ class TestDistMPSyncTraning(unittest.TestCase):
         }
         fleet.init(is_collective=True, strategy=strategy)
 
-    def build_model_optimizer(self):
+    def build_model_optimizer_train(self, batchs, fp16=False, mp_sync=False):
+        os.environ["FLAGS_mp_sync"] = "0"
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
         mp_id = hcg.get_model_parallel_rank()
         dp_id = hcg.get_data_parallel_rank()
         rank_id = dist.get_rank()
+        paddle.seed(2023)
+        np.random.seed(2023)
+        random.seed(2023)
         set_random_seed(1024, dp_id, rank_id)
 
         np_fc1 = np.random.random_sample((hidden_size, inner_size))
@@ -218,28 +222,35 @@ class TestDistMPSyncTraning(unittest.TestCase):
         optimizer = paddle.optimizer.AdamW(
             learning_rate=0.1, parameters=model.parameters()
         )
+        if mp_sync:
+            os.environ["FLAGS_mp_sync"] = "1"
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
+        return self.train_batch(batchs, model, optimizer, fp16)
 
-        return model, optimizer
-
-    def train_batch(self, batchs, model, optimizer):
+    def train_batch(self, batchs, model, optimizer, fp16=False):
         losses = []
+        if fp16:
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            scaler = fleet.distributed_scaler(scaler)
         for batch in batchs:
-            output = model(batch)
-            loss = output.mean()
-            losses.append(loss.numpy())
-            loss.backward()  # do backward
-            optimizer.step()  # update parameters
-            optimizer.clear_grad()
+            with paddle.amp.auto_cast(enable=fp16, level='O1'):
+                output = model(batch)
+                loss = output.mean()
+                losses.append(loss.numpy())
+            if fp16:
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
         return losses
 
     def test_mp_sync(self):
-        model, optimizer = self.build_model_optimizer()
-        model_state = model.state_dict()
-        opt_state = optimizer.state_dict()
-
         batchs = []
         for _ in range(5):
             np_data = np.random.randint(
@@ -252,16 +263,22 @@ class TestDistMPSyncTraning(unittest.TestCase):
             )
             batchs.append(paddle.to_tensor(np_data))
 
-        losses = self.train_batch(batchs, model, optimizer)
+        losses = self.build_model_optimizer_train(batchs)
+        losses_sync = self.build_model_optimizer_train(batchs, mp_sync=True)
 
-        os.environ["FLAGS_mp_sync"] = True
-        model_sync, optimizer_sync = self.build_model_optimizer()
-        model_sync.set_state_dict(model_state)
-        optimizer_sync.set_state_dict(opt_state)
-        losses_sync = self.train_batch(batchs, model_sync, optimizer_sync)
+        for i in range(len(losses)):
+            np.testing.assert_allclose(losses[i], losses_sync[i], rtol=1e-6)
 
-        for (loss_a, loss_b) in zip(losses, losses_sync):
-            np.testing.assert_allclose(loss_a, loss_b, rtol=1e-6)
+        # test fp16
+        losses_fp16 = self.build_model_optimizer_train(batchs, fp16=True)
+        losses_sync_fp16 = self.build_model_optimizer_train(
+            batchs, fp16=True, mp_sync=True
+        )
+
+        for i in range(len(losses_fp16)):
+            np.testing.assert_allclose(
+                losses_fp16[i], losses_sync_fp16[i], rtol=1e-6
+            )
 
 
 class TestDistMPTraning(unittest.TestCase):

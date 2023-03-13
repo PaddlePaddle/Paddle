@@ -233,30 +233,29 @@ class HybridParallelOptimizer:
 
     def _filter_fn(self, param):
         p_name = param.name
-        if p_name.startswith("pos_embedding"):
-            return True
-        elif p_name.startswith("layer_norm"):
-            return True
-        elif ".b_" in p_name and (param.is_distributed is False):
-            return True
-        else:
-            return False
+        tar_param = ["embedding", "layer_norm", ".b_"]
+        if param.is_distributed is False:
+            for tar in tar_param:
+                if tar in p_name:
+                    return True
+        return False
 
     def _step(self, parameters_list):
         mp_group = self._hcg.get_model_parallel_group()
         src_rank = self._hcg.get_model_parallel_group_src_rank()
         sync_param = None
-        mp_sync = os.getenv("FLAGS_mp_sync", False)
+        mp_sync = int(os.getenv("FLAGS_mp_sync", 0))
 
         if mp_group.nranks > 1 and mp_sync:
             sync_param = sorted(
-                [p for p in parameters_list if self._filter_fn(p)]
+                [p for p in parameters_list if self._filter_fn(p)],
+                key=lambda p: p.name,
             )
             for p in sync_param:
-                if p._grad_ivar() is None:
+                if p.grad is None:
                     continue
                 paddle.distributed.broadcast(
-                    p._grad_ivar(), src=src_rank, group=mp_group, sync_op=True
+                    p.grad, src=src_rank, group=mp_group, sync_op=True
                 )
 
         self._inner_opt.step()
@@ -270,8 +269,19 @@ class HybridParallelOptimizer:
                 # support opt state of adam and adamw to broadcast now.
                 if isinstance(
                     self._inner_opt,
-                    [paddle.optimizer.Adam, paddle.optimizer.AdamW],
+                    (paddle.optimizer.Adam, paddle.optimizer.AdamW),
                 ):
+                    if (
+                        self._inner_opt._multi_precision
+                        and p.name in self._master_weights
+                    ):
+                        paddle.distributed.broadcast(
+                            self._inner_opt._master_weights[p.name],
+                            src=src_rank,
+                            group=mp_group,
+                            sync_op=True,
+                        )
+
                     moment1 = self._inner_opt._get_accumulator(
                         self._inner_opt._moment1_acc_str, p
                     )
