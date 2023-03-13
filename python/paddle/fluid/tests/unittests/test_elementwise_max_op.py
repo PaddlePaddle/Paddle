@@ -57,6 +57,18 @@ class TestElementwiseOp(OpTest):
         )
 
 
+class TestElementwiseMaxOp_Equal(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        x = np.ones([13, 17]).astype("float64")
+        y = np.ones([13, 17]).astype("float64")
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
 class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
