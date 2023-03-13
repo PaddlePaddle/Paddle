@@ -22,16 +22,21 @@ import paddle.fluid.core as core
 
 
 class TestElementwiseOp(OpTest):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
+    def init_data(self):
         # If x and y have the same value, the max() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
-        x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         sgn = np.random.choice([-1, 1], [13, 17]).astype("float64")
-        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float64")
-        self.inputs = {'X': x, 'Y': y}
+        self.y = self.x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype(
+            "float64"
+        )
+
+    def setUp(self):
+        self.init_data()
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        self.inputs = {'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
@@ -64,74 +69,48 @@ class TestElementwiseOp(OpTest):
 
 
 class TestElementwiseFP16Op(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float16)
+    def init_data(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float16)
         sgn = np.random.choice([-1, 1], [13, 17]).astype(np.float16)
-        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype(np.float16)
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+        self.y = self.x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype(
+            np.float16
+        )
 
 
 class TestElementwiseMaxOp_ZeroDim1(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.uniform(0.1, 1, []).astype("float64")
-        y = np.random.uniform(0.1, 1, []).astype("float64")
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+    def init_data(self):
+        self.x = np.random.uniform(0.1, 1, []).astype("float64")
+        self.y = np.random.uniform(0.1, 1, []).astype("float64")
 
 
 class TestElementwiseMaxFP16Op_ZeroDim1(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.uniform(0.1, 1, []).astype("float16")
-        y = np.random.uniform(0.1, 1, []).astype("float16")
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+    def init_data(self):
+        self.x = np.random.uniform(0.1, 1, []).astype("float16")
+        self.y = np.random.uniform(0.1, 1, []).astype("float16")
 
 
 class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
-        y = np.random.uniform(0.1, 1, []).astype("float64")
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+    def init_data(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        self.y = np.random.uniform(0.1, 1, []).astype("float64")
 
 
 class TestElementwiseMaxFP16Op_ZeroDim2(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
-        y = np.random.uniform(0.1, 1, []).astype("float16")
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+    def init_data(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
+        self.y = np.random.uniform(0.1, 1, []).astype("float16")
 
 
 class TestElementwiseMaxOp_ZeroDim3(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.uniform(0.1, 1, []).astype("float64")
-        y = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+    def init_data(self):
+        self.x = np.random.uniform(0.1, 1, []).astype("float64")
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
 
 
 class TestElementwiseMaxFP16Op_ZeroDim3(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.uniform(0.1, 1, []).astype("float16")
-        y = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+    def init_data(self):
+        self.x = np.random.uniform(0.1, 1, []).astype("float16")
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype("float16")
 
 
 @unittest.skipIf(
@@ -143,21 +122,28 @@ class TestElementwiseMaxFP16Op_ZeroDim3(TestElementwiseOp):
     "run test when gpu is availble and the minimum cudnn version is 8.1.0 and gpu's compute capability is at least 8.0.",
 )
 class TestElementwiseBF16Op(OpTest):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        self.dtype = np.uint16
+    def init_data(self):
         # If x and y have the same value, the max() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
-        x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
         sgn = np.random.choice([-1, 1], [13, 17]).astype(np.float32)
-        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
+        self.y = self.x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype(
+            np.float32
+        )
+
+    def setUp(self):
+        self.init_data()
+        self.op_type = "elementwise_max"
+        self.python_api = paddle.maximum
+        self.dtype = np.uint16
         self.inputs = {
-            'X': convert_float_to_uint16(x),
-            'Y': convert_float_to_uint16(y),
+            'X': convert_float_to_uint16(self.x),
+            'Y': convert_float_to_uint16(self.y),
         }
-        self.outputs = {'Out': convert_float_to_uint16(np.maximum(x, y))}
+        self.outputs = {
+            'Out': convert_float_to_uint16(np.maximum(self.x, self.y))
+        }
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
@@ -179,16 +165,9 @@ class TestElementwiseBF16Op(OpTest):
 
 
 class TestElementwiseMaxBF16Op_ZeroDim1(TestElementwiseBF16Op):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.uniform(0.1, 1, []).astype("float32")
-        y = np.random.uniform(0.1, 1, []).astype("float32")
-        self.inputs = {
-            'X': convert_float_to_uint16(x),
-            'Y': convert_float_to_uint16(y),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(np.maximum(x, y))}
+    def init_data(self):
+        self.x = np.random.uniform(0.1, 1, []).astype("float32")
+        self.y = np.random.uniform(0.1, 1, []).astype("float32")
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
@@ -212,16 +191,9 @@ class TestElementwiseMaxBF16Op_ZeroDim1(TestElementwiseBF16Op):
 
 
 class TestElementwiseMaxBF16Op_scalar(TestElementwiseBF16Op):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.random_integers(-5, 5, [2, 3, 20]).astype("float32")
-        y = np.array([0.5]).astype("float32")
-        self.inputs = {
-            'X': convert_float_to_uint16(x),
-            'Y': convert_float_to_uint16(y),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(np.maximum(x, y))}
+    def init_data(self):
+        self.x = np.random.random_integers(-5, 5, [2, 3, 20]).astype("float32")
+        self.y = np.array([0.5]).astype("float32")
         self.__class__.no_need_check_grad = True
 
 
@@ -229,59 +201,42 @@ class TestElementwiseMaxBF16Op_scalar(TestElementwiseBF16Op):
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestElementwiseMaxOp_scalar(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.random_integers(-5, 5, [2, 3, 20]).astype("float64")
-        y = np.array([0.5]).astype("float64")
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+    def init_data(self):
+        self.x = np.random.random_integers(-5, 5, [2, 3, 20]).astype("float64")
+        self.y = np.array([0.5]).astype("float64")
 
 
 class TestElementwiseMaxFP16Op_scalar(TestElementwiseMaxOp_scalar):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.random_integers(-5, 5, [2, 3, 20]).astype("float16")
-        y = np.array([0.5]).astype("float16")
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+    def init_data(self):
+        self.x = np.random.random_integers(-5, 5, [2, 3, 20]).astype("float16")
+        self.y = np.array([0.5]).astype("float16")
 
 
 class TestElementwiseMaxOp_Vector(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.random((100,)).astype("float64")
+    def init_data(self):
+        self.x = np.random.random((100,)).astype("float64")
         sgn = np.random.choice([-1, 1], (100,)).astype("float64")
-        y = x + sgn * np.random.uniform(0.1, 1, (100,)).astype("float64")
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+        self.y = self.x + sgn * np.random.uniform(0.1, 1, (100,)).astype(
+            "float64"
+        )
 
 
 class TestElementwiseMaxFP16Op_Vector(TestElementwiseOp):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.random((100,)).astype("float16")
+    def init_data(self):
+        self.x = np.random.random((100,)).astype("float16")
         sgn = np.random.choice([-1, 1], (100,)).astype("float16")
-        y = x + sgn * np.random.uniform(0.1, 1, (100,)).astype("float16")
-        self.inputs = {'X': x, 'Y': y}
-        self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+        self.y = self.x + sgn * np.random.uniform(0.1, 1, (100,)).astype(
+            "float16"
+        )
 
 
 class TestElementwiseMaxBF16Op_Vector(TestElementwiseBF16Op):
-    def setUp(self):
-        self.op_type = "elementwise_max"
-        self.python_api = paddle.maximum
-        x = np.random.random((100,)).astype("float32")
+    def init_data(self):
+        self.x = np.random.random((100,)).astype("float32")
         sgn = np.random.choice([-1, 1], (100,)).astype("float32")
-        y = x + sgn * np.random.uniform(0.1, 1, (100,)).astype("float32")
-        self.inputs = {
-            'X': convert_float_to_uint16(x),
-            'Y': convert_float_to_uint16(y),
-        }
-        self.outputs = {'Out': convert_float_to_uint16(np.maximum(x, y))}
+        self.y = self.x + sgn * np.random.uniform(0.1, 1, (100,)).astype(
+            "float32"
+        )
 
 
 class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
