@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/roll_grad_kernel.h"
 
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/roll_kernel_impl.h"
@@ -56,6 +58,8 @@ PD_REGISTER_KERNEL(roll_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::RollGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    int,
