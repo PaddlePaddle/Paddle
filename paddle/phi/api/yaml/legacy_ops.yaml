@@ -1207,14 +1207,6 @@
     func : nms
     data_type : x
 
-- op : nonzero
-  args : (Tensor condition)
-  output : Tensor(out)
-  infer_meta :
-    func : NonZeroInferMeta
-  kernel :
-    func : nonzero
-
 - op : norm
   args : (Tensor x, int axis, float epsilon, bool is_test)
   output : Tensor(out), Tensor(norm)
