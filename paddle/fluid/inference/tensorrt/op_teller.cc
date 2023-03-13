@@ -76,6 +76,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("round");
     int8_teller_set.insert("round");
     teller_set.insert("set_value");
+    teller_set.insert("index_select");
+    int8_teller_set.insert("index_select");
 #endif
   }
 
@@ -651,6 +653,9 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
     if (op_type == "index_select") {
+#if !IS_TRT_VERSION_GE(8200)
+      return false;
+#endif
       auto gather_inputs = desc.Inputs();
       if (!with_dynamic_shape) {
         return false;
@@ -2720,7 +2725,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten",
       "gather",
       "gather_nd",
-      "index_select",
       "group_norm",
       "yolo_box",
       "yolo_box_head",
@@ -2875,7 +2879,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "flatten",
       "gather",
       "gather_nd",
-      "index_select",
       "yolo_box",
       "yolo_box_head",
       "arg_max",

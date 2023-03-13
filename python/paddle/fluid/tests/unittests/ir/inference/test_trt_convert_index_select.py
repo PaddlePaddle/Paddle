@@ -156,14 +156,13 @@ class TrtConvertIndexSelectTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(dynamic_shape):
-            if self.input_num == 3:
-                return 0, 5
-            else:
-                # if dynamic_shape and self.index_type_int32:
-                if dynamic_shape:
-                    return 1, 3
-                else:
+            if dynamic_shape:
+                ver = paddle_infer.get_trt_compile_version()
+                if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200:
                     return 0, 4
+                return 1, 3
+            else:
+                return 0, 4
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))

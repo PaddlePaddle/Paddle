@@ -2471,7 +2471,6 @@ USE_TRT_CONVERTER(mish);
 USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
 USE_TRT_CONVERTER(square);
-USE_TRT_CONVERTER(index_select);
 // unary op
 USE_TRT_CONVERTER(exp);
 USE_TRT_CONVERTER(log);
@@ -2547,6 +2546,7 @@ USE_TRT_CONVERTER(grid_sampler)
 #endif
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(set_value)
+USE_TRT_CONVERTER(index_select);
 #endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
