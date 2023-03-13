@@ -289,7 +289,7 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
         self.dyfunc = call_external_func
 
 
-class NetWithExternalFunc(fluid.dygraph.Layer):
+class NetWithExternalFunc(paddle.nn.Layer):
     @paddle.jit.to_static
     def forward(self, x, label=None):
         if paddle.mean(x) < 0:
