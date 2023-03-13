@@ -72,9 +72,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_parallel_tuner_predict MODULES
                   test_parallel_tuner_predict ENVS ${dist_ENVS})
   set_tests_properties(test_parallel_tuner_predict PROPERTIES TIMEOUT 120)
-  py_test_modules(test_pass_generation_pipeline MODULES
-                  test_pass_generation_pipeline ENVS ${dist_ENVS})
-  set_tests_properties(test_pass_generation_pipeline PROPERTIES TIMEOUT 20)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})

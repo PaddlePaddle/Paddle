@@ -40,13 +40,6 @@ class TestGenerationPipeline(unittest.TestCase):
 
         process = subprocess.Popen(cmd)
         process.wait()
-        if process.returncode != 0:
-            print("*" * 30)
-            print("workerlog.0:")
-            os.system("cat " + tmp_dir.name + "/workerlog.0")
-            print("*" * 30)
-            print("workerlog.1:")
-            os.system("cat " + tmp_dir.name + "/workerlog.1")
         self.assertEqual(process.returncode, 0)
 
         tmp_dir.cleanup()
