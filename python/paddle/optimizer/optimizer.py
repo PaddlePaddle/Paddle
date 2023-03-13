@@ -411,65 +411,69 @@ class Optimizer:
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        # lr var can't be float16 or bfloat16, for pure fp16 or bf16 training, should extra handle the dtype for lr
-        _lr_dtype = (
-            paddle.get_default_dtype() if self._dtype is None else self._dtype
-        )
-        _lr_dtype = (
-            paddle.float32
-            if (
-                (
-                    paddle.get_default_dtype() != "float16"
-                    and _lr_dtype == paddle.float16
-                )
-                or (
-                    paddle.get_default_dtype() != "bfloat16"
-                    and _lr_dtype == paddle.bfloat16
-                )
+        def do_create():
+            # lr var can't be float16 or bfloat16, for pure fp16 or bf16 training, should extra handle the dtype for lr
+            _lr_dtype = (
+                paddle.get_default_dtype() if self._dtype is None else self._dtype
             )
-            else _lr_dtype
-        )
-        if isinstance(self._learning_rate, LRScheduler):
-            lr_var = self._global_learning_rate()
-            # only create global lr_var once
-            if not isinstance(lr_var, framework.Variable):
-                lr_name = unique_name.generate('learning_rate')
-                self._learning_rate._var_name = lr_name
-                lr_var = self.helper.create_global_variable(
-                    name=lr_name,
-                    shape=[1],
-                    persistable=True,
-                    stop_gradient=True,
-                    dtype=_lr_dtype,
+            _lr_dtype = (
+                paddle.float32
+                if (
+                    (
+                        paddle.get_default_dtype() != "float16"
+                        and _lr_dtype == paddle.float16
+                    )
+                    or (
+                        paddle.get_default_dtype() != "bfloat16"
+                        and _lr_dtype == paddle.bfloat16
+                    )
                 )
-                main_prog = framework.default_main_program()
-                main_prog.lr_sheduler = self._learning_rate
-                main_prog.lr_var = lr_var
-
-                self._learning_rate_map[
-                    framework.default_main_program()
-                ] = lr_var
-
-            lr_value = float(self._learning_rate())
-            self.helper.set_variable_initializer(
-                lr_var,
-                initializer=paddle.nn.initializer.Constant(value=lr_value),
+                else _lr_dtype
             )
-        elif isinstance(self._learning_rate, float):
-            # only create global lr_var once
-            lr = self._global_learning_rate()
-            if isinstance(lr, framework.Variable):
-                return
-            else:
-                self._learning_rate_map[
-                    framework.default_main_program()
-                ] = paddle.static.create_global_var(
-                    name=unique_name.generate("learning_rate"),
-                    shape=[1],
-                    value=float(self._learning_rate),
-                    dtype=_lr_dtype,
-                    persistable=True,
+            if isinstance(self._learning_rate, LRScheduler):
+                lr_var = self._global_learning_rate()
+                # only create global lr_var once
+                if not isinstance(lr_var, framework.Variable):
+                    lr_name = unique_name.generate('learning_rate')
+                    self._learning_rate._var_name = lr_name
+                    lr_var = self.helper.create_global_variable(
+                        name=lr_name,
+                        shape=[1],
+                        persistable=True,
+                        stop_gradient=True,
+                        dtype=_lr_dtype,
+                    )
+                    main_prog = framework.default_main_program()
+                    main_prog.lr_sheduler = self._learning_rate
+                    main_prog.lr_var = lr_var
+
+                    self._learning_rate_map[
+                        framework.default_main_program()
+                    ] = lr_var
+
+                lr_value = float(self._learning_rate())
+                self.helper.set_variable_initializer(
+                    lr_var,
+                    initializer=paddle.nn.initializer.Constant(value=lr_value),
                 )
+            elif isinstance(self._learning_rate, float):
+                # only create global lr_var once
+                lr = self._global_learning_rate()
+                if isinstance(lr, framework.Variable):
+                    return
+                else:
+                    self._learning_rate_map[
+                        framework.default_main_program()
+                    ] = paddle.static.create_global_var(
+                        name=unique_name.generate("learning_rate"),
+                        shape=[1],
+                        value=float(self._learning_rate),
+                        dtype=_lr_dtype,
+                        persistable=True,
+                    )
+
+        with paddle.fluid.framework.dygraph_guard_if_declarative(): 
+            do_create()
 
     @framework.dygraph_only
     def set_lr(self, value):
@@ -905,14 +909,15 @@ class Optimizer:
                 )
 
             if isinstance(parameters_and_grads, list):
-                self._create_accumulators(
-                    target_block,
-                    [
-                        p[0]
-                        for p in parameters_and_grads
-                        if not p[0].stop_gradient
-                    ],
-                )
+                with paddle.fluid.framework.dygraph_guard_if_declarative(): 
+                    self._create_accumulators(
+                        target_block,
+                        [
+                            p[0]
+                            for p in parameters_and_grads
+                            if not p[0].stop_gradient
+                        ],
+                    )
             else:
                 params_acc_dict = parameters_and_grads.copy()
                 params_acc_dict['params'] = [
@@ -920,7 +925,8 @@ class Optimizer:
                     for p in params_acc_dict['params']
                     if not p[0].stop_gradient
                 ]
-                self._create_accumulators(target_block, params_acc_dict)
+                with paddle.fluid.framework.dygraph_guard_if_declarative(): 
+                    self._create_accumulators(target_block, params_acc_dict)
 
             if framework._non_static_mode():
                 if isinstance(parameters_and_grads, list):
@@ -1265,7 +1271,7 @@ class Optimizer:
 
         return no_grad_set
 
-    @framework.dygraph_only
+    @framework._non_static_only_
     def clear_grad(self, set_to_zero=True):
         """
         Clear the gradients of all optimized parameters for model.
@@ -1378,8 +1384,22 @@ class Optimizer:
 
         return optimize_ops, params_grads
 
+    def _declarative_step(self):
+        """
+        In declarative mode, we forward `call step` to `call apply_gradients`
+        """
+        params = paddle.static.default_main_program().global_block().all_parameters()
+        assert isinstance(self._parameter_list, list), "Only list of parameters is supported while using optimizer in @paddle.jit.static."
+        selected_params = set([param.name for param in self._parameter_list])
+        parameters = [param for param in params if param.trainable]
+        parameters = list(filter (lambda x: x.name in selected_params and hasattr(x, "grad"), 
+                                  parameters))
+        params_grads = [(param, param.grad) for param in parameters]
+        optimize_ops = self.apply_gradients(params_grads)
+        return
+    
     @imperative_base.no_grad()
-    @framework.dygraph_only
+    @framework._non_static_only_
     def step(self):
         """
         Execute the optimizer and update parameters once.
@@ -1402,6 +1422,9 @@ class Optimizer:
                 adam.step()
                 adam.clear_grad()
         """
+        if paddle.fluid.dygraph.base.in_declarative_mode():
+            self._declarative_step()
+            return
 
         if not isinstance(self._param_groups[0], dict):
             params_grads = []

@@ -7593,6 +7593,15 @@ def _get_var(name, program=None):
 
     return program.global_block().var(name)
 
+@signature_safe_contextmanager
+def dygraph_guard_if_declarative():
+    from .dygraph.base import in_declarative_mode
+    if in_declarative_mode():
+        # Under @paddle.jit.to_static decorator, we switch back dygraph mode temporarily.
+        with paddle.fluid.framework._dygraph_guard(tracer=paddle.fluid.dygraph.Tracer()):
+            yield
+    else: 
+        yield
 
 @signature_safe_contextmanager
 def _dygraph_guard(tracer):

@@ -238,7 +238,8 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _double_grads(self):
-        return self._get_double_grads(self._origin_main_program)
+        # TODO: check the affects.
+        return None
 
     # whole
     @switch_to_static_graph
@@ -296,8 +297,9 @@ class PartialProgramLayer:
         _, forward_end_op_index = self._infer_info('fp32', self._create_program)
         assert forward_end_op_index >= 0
 
+        # TODO: wait for the PR: https://github.com/PaddlePaddle/Paddle/pull/50885
         return self._get_forward_backward_program_form(
-            whole_program, forward_end_op_index
+            whole_program, 9
         )
 
     @switch_to_static_graph
@@ -649,32 +651,6 @@ class PartialProgramLayer:
                     break
 
         self._params = required_params
-
-    def _get_double_grads(self, program):
-        double_grads = []
-        for block in program.blocks:
-            for name in block.vars:
-                if "@GRAD" in name:
-                    var_desc = block.vars[name].desc
-                    var_base = None
-                    if not framework.global_var._in_eager_mode_:
-                        var_base = core.VarBase(
-                            var_desc.dtype(),
-                            var_desc.shape(),
-                            var_desc.name(),
-                            var_desc.type(),
-                            False,
-                        )
-                    else:
-                        var_base = core.eager.Tensor(
-                            var_desc.dtype(),
-                            var_desc.shape(),
-                            var_desc.name(),
-                            var_desc.type(),
-                            False,
-                        )
-                    double_grads.append(var_base)
-        return self._valid_vars(double_grads)
 
     def _cast_fp16_if_pure_fp16(self, in_vars):
         from paddle.amp.auto_cast import _in_pure_fp16_guard
@@ -1085,9 +1061,9 @@ class PartialProgramLayer:
         return vars if vars else None
 
 
-def partial_program_from(concrete_program):
+def partial_program_from(concrete_program, from_method=False):
     inputs = concrete_program.inputs
-    if inputs and isinstance(inputs[0], layers.Layer):
+    if inputs and from_method:
         inputs = inputs[1:]
 
     return PartialProgramLayer(

@@ -1195,7 +1195,7 @@ class ProgramCache:
         if not _in_amp_guard() and not _in_pure_fp16_guard():
             concrete_program._to_prim()
 
-        return concrete_program, partial_program_from(concrete_program)
+        return concrete_program, partial_program_from(concrete_program, cache_key.class_instance is not None)
 
     def __getitem__(self, item):
         if not isinstance(item, CacheKey):

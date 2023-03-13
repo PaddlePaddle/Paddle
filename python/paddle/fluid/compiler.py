@@ -733,7 +733,7 @@ class IpuDynamicPatcher:
 
                 self._caches[item_id] = (
                     concrete_program,
-                    partial_program_from(concrete_program),
+                    partial_program_from(concrete_program, item.class_instance is not None),
                 )
                 # Note: raise warnings if number of traced program is more than `max_tracing_count`
                 current_tracing_count = len(self._caches)
