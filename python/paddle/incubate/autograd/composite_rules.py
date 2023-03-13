@@ -301,7 +301,7 @@ def hard_swish_composite(x):
 
 
 @REGISTER_COMPOSITE('index_select')
-def index_select_composite(x, index, axis=0):
+def index_select_composite(x, index, axis):
     """define composite rule of op index_select."""
     if axis < 0:
         axis = len(x.shape) + axis
