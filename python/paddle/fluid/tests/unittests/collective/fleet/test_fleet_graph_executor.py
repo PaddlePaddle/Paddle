@@ -17,9 +17,50 @@ import unittest
 
 from launch_function_helper import launch_func
 
-import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
+
+def node_func():
+    import paddle
+    import paddle.distributed.fleet as fleet
+    import paddle.distributed.fleet.base.role_maker as role_maker
+
+    paddle.enable_static()
+
+    role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+    fleet.init(role)
+    input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
+    input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
+
+    fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+    fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
+    prediction = paddle.static.nn.fc(x=[fc_2], size=2, activation='softmax')
+    cost = paddle.nn.functional.cross_entropy(
+        input=prediction,
+        label=input_y,
+        reduction='none',
+        use_softmax=False,
+    )
+    avg_cost = paddle.mean(x=cost)
+
+    strategy = paddle.distributed.fleet.DistributedStrategy()
+    strategy.nccl_comm_num = 2
+    strategy.sync_nccl_allreduce = True
+    optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+    optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
+    optimizer.minimize(avg_cost)
+    exe = paddle.fluid.Executor()
+    exe.run(paddle.fluid.default_startup_program())
+
+    import numpy as np
+
+    def gen_data():
+        return {
+            "x": np.random.random(size=(128, 32)).astype('float32'),
+            "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+        }
+
+    for i in range(5):
+        cost_val = exe.run(feed=gen_data(), fetch_list=[avg_cost.name])
+        print("cost of step[{}] = {}".format(i, cost_val))
 
 
 class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
@@ -31,6 +72,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "0",
         }
 
         node_b = {
@@ -40,51 +82,8 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "1",
         }
-
-        def node_func():
-            role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-            fleet.init(role)
-            input_x = paddle.static.data(
-                name="x", shape=[-1, 32], dtype='float32'
-            )
-            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
-
-            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
-            fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
-            prediction = paddle.static.nn.fc(
-                x=[fc_2], size=2, activation='softmax'
-            )
-            cost = paddle.nn.functional.cross_entropy(
-                input=prediction,
-                label=input_y,
-                reduction='none',
-                use_softmax=False,
-            )
-            avg_cost = paddle.mean(x=cost)
-
-            strategy = paddle.distributed.fleet.DistributedStrategy()
-            strategy.nccl_comm_num = 2
-            strategy.sync_nccl_allreduce = True
-            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
-            optimizer = fleet.distributed_optimizer(
-                optimizer, strategy=strategy
-            )
-            optimizer.minimize(avg_cost)
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
-            exe.run(paddle.fluid.default_startup_program())
-
-            import numpy as np
-
-            def gen_data():
-                return {
-                    "x": np.random.random(size=(128, 32)).astype('float32'),
-                    "y": np.random.randint(2, size=(128, 1)).astype('int64'),
-                }
-
-            for i in range(5):
-                cost_val = exe.run(feed=gen_data(), fetch_list=[avg_cost.name])
-                print("cost of step[{}] = {}".format(i, cost_val))
 
         # rank 1
         proc_b = launch_func(node_func, node_b)
