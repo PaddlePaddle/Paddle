@@ -44,11 +44,6 @@ std::vector<Tensor> split(const Tensor& x,
                           const Scalar& axis);
 
 template <typename T>
-std::vector<Tensor> split_with_num(const Tensor& x,
-                                   const int& num,
-                                   const Scalar& axis);
-
-template <typename T>
 Tensor cast(const Tensor& x, DataType dtype);
 
 }  // namespace prim
