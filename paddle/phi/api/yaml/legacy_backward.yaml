@@ -752,6 +752,7 @@
     param: [x, y]
   kernel :
     func : maximum_grad
+  composite : maximum_grad(x, y, out_grad, axis, x_grad, y_grad)
 
 - backward_op : mean_all_grad
   forward : mean_all(Tensor x) -> Tensor(out)
