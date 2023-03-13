@@ -608,7 +608,7 @@ class AMPState:
                                 out_var_name.find("@RENAME") :
                             ]
                         cast_name = fwd_cast_name + "@GRAD" + suffix
-                        cast_var = block._find_var_recursive(cast_name)
+                        cast_var = block.vars.get(cast_name)
                         if cast_var is None or cast_var.dtype != dst_dtype:
                             op.desc._rename_output(out_var_name, cast_name)
                             out_var_dist_attr = (
