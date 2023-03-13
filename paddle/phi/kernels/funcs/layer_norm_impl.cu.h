@@ -504,8 +504,8 @@ __inline__ __device__ void cuLoadAddStridedInputs(const int64_t i1_block,
                                                   const int row_stride,
                                                   U *warp_buf1,
                                                   U *warp_buf2,
-                                                  const T *input,
-                                                  const T *dout,
+                                                  const T *__restrict__ input,
+                                                  const T *__restrict__ dout,
                                                   const int64_t i1_end,
                                                   const int64_t n2,
                                                   const U *__restrict__ mean,
@@ -1237,8 +1237,8 @@ __global__ void LayerNormBackwardSumGradGammaBeta(const U *part_grad_gamma,
                                                   const int part_size,
                                                   const int n1,
                                                   const int n2,
-                                                  ScaleT *grad_gamma
-                                                      ScaleT *grad_beta) {
+                                                  ScaleT *grad_gamma,
+                                                  ScaleT *grad_beta) {
   // sum partial gradients for gamma and beta
   __shared__ U buf[BDIMX * BDIMY];
   int64_t i2 = blockIdx.x * BDIMX + threadIdx.x;
@@ -2111,7 +2111,7 @@ static void LayerNormBackward(
         LayerNormBackwardSumGradGammaBeta<T, U, BDIMX, BDIMY2, ScaleT>
             <<<blocks3, threads3, 0, stream>>>(part_grad_gamma,
                                                part_grad_beta,
-                                               part_size,
+                                               PartSize,
                                                batch_size,
                                                feature_size,
                                                d_scale,
@@ -2123,7 +2123,7 @@ static void LayerNormBackward(
         int vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T *>(addr));
         int real_vec = VecSizeJudgeForeGradInput(feature_size, vec_size);
 
-        if ((feature_size <= 2048) && (real_vec > 1)) {
+        if (feature_size <= 2048) {
           // One thread must work with at least real_vec quantity data, at most
           // 8 data.
           int data_per_warp = BDIMX * real_vec;
@@ -2132,34 +2132,21 @@ static void LayerNormBackward(
           int block_dim_y = std::min(8, 1 << (31 - __builtin_clz(warp_num)));
 
           dim3 threads1(BDIMX, block_dim_y, 1);
-          if (real_vec == 4) {
-            LayerNormBackwardComputeGradInputWithSmallFeatureSize<T,
-                                                                  U,
-                                                                  ScaleT,
-                                                                  4>
-                <<<batch_size, threads1, 0, stream>>>(d_y,
-                                                      x,
-                                                      batch_size,
-                                                      feature_size,
-                                                      mean,
-                                                      var,
-                                                      epsilon,
-                                                      scale,
-                                                      d_x);
-          } else {
-            LayerNormBackwardComputeGradInputWithSmallFeatureSize<T,
-                                                                  U,
-                                                                  ScaleT,
-                                                                  2>
-                <<<batch_size, threads1, 0, stream>>>(d_y,
-                                                      x,
-                                                      batch_size,
-                                                      feature_size,
-                                                      mean,
-                                                      var,
-                                                      epsilon,
-                                                      scale,
-                                                      d_x);
+#define IMPL_BACKWARD_FOR_INPUT(num)                                       \
+  LayerNormBackwardComputeGradInputWithSmallFeatureSize<T, U, ScaleT, num> \
+      <<<batch_size, threads1, 0, stream>>>(                               \
+          d_y, x, batch_size, feature_size, mean, var, epsilon, scale, d_x);
+
+          switch (real_vec) {
+            case 4: {
+              IMPL_BACKWARD_FOR_INPUT(4);
+            } break;
+            case 2: {
+              IMPL_BACKWARD_FOR_INPUT(2);
+            } break;
+            default: {
+              IMPL_BACKWARD_FOR_INPUT(1);
+            }
           }
         } else {
           constexpr int BDIMY3 = 4;
