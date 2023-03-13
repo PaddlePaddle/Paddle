@@ -58,8 +58,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "atan2",
     "clip_by_norm",
     "complex",
-    "conv3d_coo",
-    "distribute_fpn_proposals",
     "eig",
     "eig_grad",
     "eigh",
