@@ -199,7 +199,10 @@ void CustomOpKernelContext::AssignInplaceOutputs() {
 std::vector<Tensor*>* CustomOpKernelContext::AllMutablePlainOutput() {
   return &plain_outputs_;
 }
-
+std::unordered_map<size_t, size_t>
+CustomOpKernelContext::GetInplaceTensorMap() {
+  return inplace_tensor_map_;
+}
 ////////////////////// Op Meta Info //////////////////////
 
 OpMetaInfo& OpMetaInfo::Inputs(std::vector<std::string>&& inputs) {

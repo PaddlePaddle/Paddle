@@ -211,6 +211,8 @@ void GradNodeBase::SetGradInMeta(
 void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
                                   size_t slot_rank) {
   auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in);
+  VLOG(1) << "DEBUG Tensor name begin" << fwd_in.name() << " numeric "
+          << fwd_in_meta->NumericStopGradient();
   PADDLE_ENFORCE_LE(
       (slot_rank + 1),
       bwd_out_meta_.size(),
@@ -237,6 +239,8 @@ void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
       fwd_in_meta->SetGradNode(
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
+    VLOG(1) << "DEBUG Tensor name " << fwd_in.name() << " numeric "
+            << fwd_in_meta->NumericStopGradient();
     VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
             << " to " << fwd_in_meta->GetMutableGradNode()->name()

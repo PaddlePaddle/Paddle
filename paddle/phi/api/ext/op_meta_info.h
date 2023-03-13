@@ -138,6 +138,7 @@ class PADDLE_API CustomOpKernelContext {
       const std::unordered_map<std::string, std::string>& inplace_map);
   void AssignInplaceOutputs();
   std::vector<Tensor*>* AllMutablePlainOutput();
+  std::unordered_map<size_t, size_t> GetInplaceTensorMap();
 
  private:
   // TODO(chenweihang): replaced be SmallVector

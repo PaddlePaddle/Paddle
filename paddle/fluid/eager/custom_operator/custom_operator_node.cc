@@ -246,6 +246,26 @@ RunCustomOpNode::operator()(
   (*paddle::framework::OpMetaInfoHelper::GetKernelFn(
       kernel_map.at(op_type_)[1]))(&ctx);
   ctx.AssignInplaceOutputs();
+  if (!grad_inplace_map.empty()) {
+    std::unordered_map<size_t, size_t> inplace_tensor_map =
+        ctx.GetInplaceTensorMap();
+    for (auto pair : inplace_tensor_map) {
+      PADDLE_ENFORCE_EQ(tmp_ins[pair.first].size(),
+                        outs[pair.second].size(),
+                        paddle::platform::errors::Unavailable(
+                            "Your custom operator inputs incorrect inplace "
+                            "vector size. Input tensor size %d is not equal to "
+                            "inplaced output tensor size %d",
+                            tmp_ins[pair.first].size(),
+                            outs[pair.second].size()));
+      size_t match_size = tmp_ins[pair.first].size();
+      VLOG(1) << "DEBUG inplace pair " << pair.first << " --> " << pair.second;
+      for (size_t i = 0; i < match_size; ++i) {
+        egr::EagerUtils::HandleViewBetweenInputAndOutput(
+            tmp_ins[pair.first][i], &(outs[pair.second][i]));
+      }
+    }
+  }
 
   VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
   std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
@@ -272,24 +292,6 @@ RunCustomOpNode::operator()(
     require_any_grad =
         require_any_grad || egr::EagerUtils::ComputeRequireGrad(
                                 trace_backward, &(ins_auto_grad_metas[i]));
-  }
-
-  // handle inplace case
-  for (size_t i = 0; i < ctx.InputRange().size(); i++) {
-    if (grad_inplace_map.find(grad_inputs_name[i]) != grad_inplace_map.end()) {
-      size_t input_size =
-          ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
-      size_t start_idx = ctx.InputRangeAt(i).first;
-      for (size_t j = 0; j < input_size; j++) {
-        egr::EagerUtils::CheckInplace(ctx.InputAt(start_idx + j),
-                                      ins_auto_grad_metas[i][j],
-                                      require_any_grad);
-        // Bump Inplace Version
-        ctx.MutableInputAt(start_idx + j)->bump_inplace_version();
-        VLOG(3) << "Tensor(" << ctx.InputAt(start_idx + j).name()
-                << ") uses Inplace Strategy.";
-      }
-    }
   }
 
   auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();

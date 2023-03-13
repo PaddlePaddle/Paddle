@@ -594,8 +594,16 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
         egr::EagerUtils::PassStopGradient(false, &(outs_auto_grad_metas[i]));
       }
+      std::unordered_map<size_t, size_t> inplace_tensor_map =
+          ctx.GetInplaceTensorMap();
+      for (auto pair : inplace_tensor_map) {
+        egr::EagerUtils::PassStopGradient(false,
+                                          &(ins_auto_grad_metas[pair.first]));
+      }
       auto grad_node = std::make_shared<egr::RunCustomOpNode>(
           outs_auto_grad_metas.size(), ins_auto_grad_metas.size(), op_type);
+      VLOG(1) << "DEBUG ins_auto_grad_metas.size " << ins_auto_grad_metas.size()
+              << " outs_auto_grad_metas.size " << outs_auto_grad_metas.size();
       auto slot_map =
           egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type);
       // Prepare Grad outputs
@@ -606,8 +614,11 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                               ctx.InputRangeAt(i).second);
 
         if (slot_map[0][0].find(i) != slot_map[0][0].end()) {
+          VLOG(1) << "DEBUG find(i) idx " << slot_map[0][0][i];
           grad_node->SetGradOutMeta(in_tensors, slot_map[0][0][i]);
         } else {
+          VLOG(1) << "DEBUG ins_auto_grad_metas.size() - 1 - no_grad_cnt idx "
+                  << ins_auto_grad_metas.size() - 1 - no_grad_cnt;
           grad_node->SetGradOutMeta(
               in_tensors, ins_auto_grad_metas.size() - 1 - no_grad_cnt);
           no_grad_cnt++;
@@ -654,6 +665,28 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
         attrs[it->second] = res_attrs[it->first];
       }
       grad_node->SetAttrs(attrs);
+    }
+
+    if (VLOG_IS_ON(4)) {
+      const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+
+      std::string input_str = "";
+      std::string output_str = "";
+      const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+      std::string input_x_str = paddle::string::Sprintf(
+          TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(ctx.InputAt(0)));
+      input_str += input_x_str;
+      const char* TENSOR_Y_TEMPLATE = " \n( y , [%s]), ";
+      std::string input_y_str = paddle::string::Sprintf(
+          TENSOR_Y_TEMPLATE, egr::EagerUtils::TensorStr(ctx.InputAt(1)));
+      input_str += input_y_str;
+      const char* TENSOR_OUT_TEMPLATE = " \n( out , [%s]), ";
+      std::string output_out_str = paddle::string::Sprintf(
+          TENSOR_OUT_TEMPLATE,
+          egr::EagerUtils::TensorStr(*ctx.MutableOutputAt(0)));
+      output_str += output_out_str;
+      VLOG(4) << paddle::string::Sprintf(
+          INPUT_PRINT_TEMPLATE, input_str, output_str);
     }
   }
   RETURN_PY_NONE
