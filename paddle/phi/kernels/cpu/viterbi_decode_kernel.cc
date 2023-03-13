@@ -319,5 +319,5 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     viterbi_decode, CPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::INT64);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
