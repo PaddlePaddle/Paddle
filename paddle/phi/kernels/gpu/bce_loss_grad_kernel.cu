@@ -28,15 +28,13 @@ namespace phi {
 
 template <typename T>
 struct BCELossGradFunctor {
-  T one;
-
-  HOSTDEVICE inline BCELossGradFunctor() { one = static_cast<T>(1.0f); }
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  MT one = static_cast<MT>(1.0f);
+  MT eps = static_cast<MT>(1e-12);
 
   HOSTDEVICE inline T operator()(const T x, const T label, const T dout) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     MT x_mt = static_cast<MT>(x);
-    MT eps_mt = static_cast<MT>(1e-12);
-    MT term1 = max((static_cast<MT>(one) - x_mt) * x_mt, eps_mt);
+    MT term1 = max((one - x_mt) * x_mt, eps);
     return static_cast<T>(static_cast<MT>(dout) *
                           (x_mt - static_cast<MT>(label)) / term1);
   }
