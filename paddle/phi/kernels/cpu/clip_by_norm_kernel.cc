@@ -31,4 +31,4 @@ void ClipByNormKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    clip_by_norm, CPU, ALL_LAYOUT, phi::ClipByNormKernel, float) {}
+    clip_by_norm, CPU, ALL_LAYOUT, phi::ClipByNormKernel, float, phi::dtype::float16, phi::dtype::bfloat16) {}

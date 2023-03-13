@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -103,6 +103,36 @@ class TestClipByNormOpFp16Case3(TestClipByNormOpFp16):
         self.shape = (4, 8, 16)
         self.max_norm = 1.0
 
+class TestClipByNormOp(OpTest):
+    def setUp(self):
+        self.max_relative_error = 0.006
+        self.python_api = clip.clip_by_norm
+        self.init_dtype()
+        self.initTestCase()
+        input = np.random.random(self.shape).astype(self.dtype)
+        input[np.abs(input) < self.max_relative_error] = 0.5
+        self.op_type = "clip_by_norm"
+        self.inputs = {
+            'X': convert_float_to_uint16(input),
+        }
+        self.attrs = {}
+        self.attrs['max_norm'] = self.max_norm
+        norm = np.sqrt(np.sum(np.square(input)))
+        if norm > self.max_norm:
+            output = self.max_norm * input / norm
+        else:
+            output = input
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def initTestCase(self):
+        self.shape = (100,)
+        self.max_norm = 1.0
+
+    def init_dtype(self):
+        self.dtype = np.uint16
 
 class TestClipByNormOpWithSelectedRows(unittest.TestCase):
     def check_with_place(self, place):

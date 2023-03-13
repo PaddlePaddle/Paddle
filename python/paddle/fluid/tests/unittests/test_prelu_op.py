@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -428,6 +428,103 @@ create_test_fp16_class(TestModeChannelRank6NHWC)
 create_test_fp16_class(TestModeElementRank3NHWC)
 create_test_fp16_class(TestModeElementRank6NHWC)
 
+class PReluTestBF16(OpTest):
+    def setUp(self):
+        self.init_dtype()
+        self.init_input_shape()
+        self.eager_mode = True
+        self.init_attr()
+        self.op_type = "prelu"
+        self.python_api = prelu_api_wrapper
+
+        x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
+        # Since zero point in prelu is not differentiable, avoid randomize
+        # zero.
+        x_np[np.abs(x_np) < 0.005] = 0.02
+
+        if self.attrs == {
+            'mode': "all",
+            "data_format": "NCHW",
+        } or self.attrs == {'mode': "all", "data_format": "NHWC"}:
+            alpha_np = np.random.uniform(-1, -0.5, (1))
+        elif self.attrs == {'mode': "channel", "data_format": "NCHW"}:
+            alpha_np = np.random.uniform(-1, -0.5, [1, self.x_shape[1], 1, 1])
+        elif self.attrs == {'mode': "channel", "data_format": "NHWC"}:
+            alpha_np = np.random.uniform(-1, -0.5, [1, 1, 1, self.x_shape[-1]])
+        else:
+            alpha_np = np.random.uniform(-1, -0.5, [1] + self.x_shape[1:])
+            # eager check don't support mode = 'all'
+            self.eager_mode = False
+        alpha_np = alpha_np.astype(self.dtype)
+
+        self.inputs = {'X': convert_float_to_uint16(x_np), 'Alpha': convert_float_to_uint16(alpha_np)}
+
+        # NOTE(zhiqu): reshape inputs['Alpha'] from [1, 100, 1, 1] to [1, 100] + [1]*len(x.shape[2:])
+        # since np operands could not be broadcast together with shapes (1,100,2,2,2,3) (1,100,1,1)
+        reshaped_alpha = self.inputs['Alpha']
+        if self.attrs == {'mode': "channel", "data_format": "NCHW"}:
+            reshaped_alpha = np.reshape(
+                self.inputs['Alpha'],
+                [1, self.x_shape[1]] + [1] * len(self.x_shape[2:]),
+            )
+        elif self.attrs == {'mode': "channel", "data_format": "NHWC"}:
+            reshaped_alpha = np.reshape(
+                self.inputs['Alpha'],
+                [1] + [1] * len(self.x_shape[1:-1]) + [self.x_shape[-1]],
+            )
+        out_np = np.maximum(self.inputs['X'], 0.0)
+        out_np = out_np + np.minimum(self.inputs['X'], 0.0) * reshaped_alpha
+        assert out_np is not self.inputs['X']
+        self.outputs = {'Out': convert_float_to_uint16(out_np)}
+
+def create_test_bf16_class(
+    parent, check_grad=True, atol=1e-3, max_relative_error=0.05
+):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestPReluFp16Case(parent):
+        def init_dtype(self):
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_bfloat16_supported(place):
+                    self.check_output_with_place(
+                        place, atol=atol, check_eager=self.eager_mode
+                    )
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place) and check_grad:
+                self.check_grad_with_place(
+                    place,
+                    ['X', 'Alpha'],
+                    'Out',
+                    max_relative_error=max_relative_error,
+                    check_eager=self.eager_mode,
+                )
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Bf16Op")
+    TestPReluFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestPReluFp16Case
+
+
+create_test_bf16_class(TestModeElt)
+create_test_bf16_class(TestModeAllRank3)
+create_test_bf16_class(TestModeAllRank6)
+create_test_bf16_class(TestModeChannelRank3)
+create_test_bf16_class(TestModeChannelRank6)
+create_test_bf16_class(TestModeElementRank3)
+create_test_bf16_class(TestModeElementRank6)
+create_test_bf16_class(TestModeEltNHWC)
+create_test_bf16_class(TestModeAllRank3NHWC)
+create_test_bf16_class(TestModeAllRank6NHWC)
+create_test_bf16_class(TestModeChannelRank3NHWC)
+create_test_bf16_class(TestModeChannelRank6NHWC)
+create_test_bf16_class(TestModeElementRank3NHWC)
+create_test_bf16_class(TestModeElementRank6NHWC)
 
 def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):
     helper = fluid.layer_helper.LayerHelper('prelu', **locals())

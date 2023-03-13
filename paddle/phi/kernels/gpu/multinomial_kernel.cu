@@ -296,6 +296,8 @@ PD_REGISTER_KERNEL(multinomial,  // cuda_only
                    ALL_LAYOUT,
                    phi::MultinomialKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 #endif

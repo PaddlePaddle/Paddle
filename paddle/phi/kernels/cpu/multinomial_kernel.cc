@@ -45,4 +45,4 @@ void MultinomialKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    multinomial, CPU, ALL_LAYOUT, phi::MultinomialKernel, float, double) {}
+    multinomial, CPU, ALL_LAYOUT, phi::MultinomialKernel, float, double, phi::dtype::float16, phi::dtype::bfloat16) {}
