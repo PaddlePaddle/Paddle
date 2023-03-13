@@ -914,7 +914,14 @@ class OpTest(unittest.TestCase):
             """
             return cal_python_api(self.python_api, args, kernel_sig)
 
-    def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+    def _calc_dygraph_output(
+        self,
+        place,
+        parallel=False,
+        no_check_set=None,
+        egr_inps=None,
+        egr_oups=None,
+    ):
         self.__class__.op_type = (
             self.op_type
         )  # for ci check, please not delete it for now
@@ -924,12 +931,20 @@ class OpTest(unittest.TestCase):
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
             # prepare input variable
-            inputs = self.append_input_output_for_dygraph(
-                op_proto, self.inputs, True, False, block
+            inputs = (
+                egr_inps
+                if egr_inps
+                else self.append_input_output_for_dygraph(
+                    op_proto, self.inputs, True, False, block
+                )
             )
             # prepare output variable
-            outputs = self.append_input_output_for_dygraph(
-                op_proto, self.outputs, False, False, block
+            outputs = (
+                egr_oups
+                if egr_oups
+                else self.append_input_output_for_dygraph(
+                    op_proto, self.outputs, False, False, block
+                )
             )
 
             # prepare attributes
@@ -2271,7 +2286,9 @@ class OpTest(unittest.TestCase):
                 )
                 if dygraph_outputs is None:
                     # missing KernelSignature, fall back to eager middle output.
-                    dygraph_outputs = self._calc_dygraph_output(place)
+                    dygraph_outputs = self._calc_dygraph_output(
+                        place, egr_inps=inputs, egr_oups=outputs
+                    )
 
             outputs = dygraph_outputs
 
