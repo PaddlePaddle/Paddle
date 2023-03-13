@@ -2279,9 +2279,28 @@ class OpTest(unittest.TestCase):
                 cast_inputs = self._find_var_in_dygraph(
                     outputs, output_names[0]
                 )
-                cast_outputs = paddle.cast(
-                    cast_inputs, core.VarDesc.VarType.FP32
-                )
+                if isinstance(cast_inputs, paddle.Tensor):
+                    cast_outputs = paddle.cast(
+                        cast_inputs, core.VarDesc.VarType.FP32
+                    )
+                elif isinstance(cast_inputs, list):
+                    cast_outputs = []
+                    for cast_input in cast_inputs:
+                        if isinstance(cast_input, paddle.Tensor):
+                            cast_outputs.append(
+                                paddle.cast(
+                                    cast_input, core.VarDesc.VarType.FP32
+                                )
+                            )
+                        else:
+                            raise TypeError(
+                                "Unsupported test data type %s."
+                                % type(cast_input)
+                            )
+                else:
+                    raise TypeError(
+                        "Unsupported test data type %s." % type(cast_inputs)
+                    )
                 outputs = {output_names[0]: cast_outputs}
 
             outputs_valid = {}
