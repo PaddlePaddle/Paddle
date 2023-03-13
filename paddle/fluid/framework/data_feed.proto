@@ -46,6 +46,7 @@ message GraphConfig {
   optional string infer_node_type = 16;
   optional bool get_degree = 17 [ default = false ];
   optional bool weighted_sample = 18 [ default = false ];
+  optional bool return_weight = 19 [ default = false ];
 }
 
 message DataFeedDesc {
