@@ -57,7 +57,7 @@ REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream,
 REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
 
 #if NCCL_VERSION_CODE >= 21000
-REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<paddle::platform::bfloat16>);
+//REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<paddle::platform::bfloat16>);
 #endif
 
 REGISTER_OP_NPU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);

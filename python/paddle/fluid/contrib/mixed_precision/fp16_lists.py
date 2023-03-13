@@ -184,7 +184,8 @@ elif core.is_compiled_with_mlu():
         'MLU', core.VarDesc.VarType.FP16)
 else:
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'GPU', core.VarDesc.VarType.FP16)
+        #'GPU', core.VarDesc.VarType.FP16)
+        'GPU', core.VarDesc.VarType.BF16)
 
 unsupported_fp16_list = _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
 

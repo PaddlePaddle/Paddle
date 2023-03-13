@@ -4896,6 +4896,8 @@ class PipelineOptimizer(object):
         not that attribute set.
         """
         for idx, op in enumerate(list(block.ops)):
+            print(idx, op)
+            #assert False
             if (op.type == "create_py_reader" or op.type == "read"
                     or op.type == "create_double_buffer_reader"):
                 # Copy read related ops to all section to make them exit

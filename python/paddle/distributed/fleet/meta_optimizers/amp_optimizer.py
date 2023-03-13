@@ -49,11 +49,11 @@ class AMPOptimizer(MetaOptimizerBase):
         custom_white_list = set(config['custom_white_list'])
         custom_black_list = set(config['custom_black_list'])
         custom_black_varnames = set(config['custom_black_varnames'])
-        amp_lists = paddle.static.amp.bf16.AutoMixedPrecisionListsBF16(
-            custom_white_list, custom_black_list)
+        amp_lists = mixed_precision.AutoMixedPrecisionLists(
+            custom_white_list, custom_black_list, custom_black_varnames)
 
-        if 0:
-            self.wrapped_opt = paddle.static.amp.bf16.decorate_bf16(
+        if 1:
+            self.wrapped_opt = mixed_precision.decorate(
             self.inner_opt, amp_lists, config['init_loss_scaling'],
             config['incr_every_n_steps'], config['decr_every_n_nan_or_inf'],
             config['incr_ratio'], config['decr_ratio'],

@@ -353,7 +353,7 @@ class AdamW(Optimizer):
         """
         if self._name is not None:
             name = self._name + "_" + name
-        find_master = self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and (param.dtype == core.VarDesc.VarType.FP16 or param.dtype == core.VarDesc.VarType.BF16)
         target_param = self._master_weights[
             param.name] if find_master else param
         target_name = target_param.name
@@ -366,7 +366,7 @@ class AdamW(Optimizer):
 
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
-        if acc_dtype == core.VarDesc.VarType.FP16:
+        if acc_dtype == core.VarDesc.VarType.FP16 or acc_dtype == core.VarDesc.VarType.BF16:
             acc_dtype = core.VarDesc.VarType.FP32
         self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
@@ -394,11 +394,11 @@ class AdamW(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+            if self._multi_precision and (p.dtype == core.VarDesc.VarType.FP16 or p.dtype == core.VarDesc.VarType.BF16):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
                 continue
-            if p.dtype == core.VarDesc.VarType.FP16 and not self._multi_precision:
+            if (p.dtype == core.VarDesc.VarType.FP16 or p.dtype == core.VarDesc.VarType.BF16) and not self._multi_precision:
                 warnings.warn(
                     "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
                     "Consider using multi_precision=True option of the Adam optimizer."
@@ -425,8 +425,9 @@ class AdamW(Optimizer):
                                               param_and_grad[0])
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
-        find_master = self._multi_precision and param_and_grad[
-            0].dtype == core.VarDesc.VarType.FP16
+        find_master = self._multi_precision and (param_and_grad[
+            0].dtype == core.VarDesc.VarType.FP16 or param_and_grad[
+            0].dtype == core.VarDesc.VarType.BF16)
         master_weight = (self._master_weights[param_and_grad[0].name]
                          if find_master else None)
         lr = self._create_param_lr(param_and_grad)

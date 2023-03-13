@@ -645,6 +645,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 with p.block.program._optimized_guard([p, g]):
                     new_g = _cast_to_mp_type_if_enabled(g)
                     # inplace
+                    # assert False
+                    print("----------------------------------")
+                    print(f"new_g:{new_g}")
                     scale_input = (scale_var.astype('float16') if
                                    new_g.dtype == core.VarDesc.VarType.FP16 and
                                    scale_var.dtype != core.VarDesc.VarType.FP16
@@ -661,6 +664,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
                                     },
                                     outputs={'Out': new_g})
                     if new_g is not g:
+                        print("new_g is not g")
+                        assert False
                         block.append_op(type='cast',
                                         inputs={'X': new_g},
                                         outputs={'Out': g},
@@ -668,10 +673,13 @@ class ClipGradByGlobalNorm(ClipGradBase):
                                             'in_dtype': new_g.dtype,
                                             'out_dtype': g.dtype
                                         })
-
+                print("-------------------no guard")
+                print(p.name, g.name)
+                
                 param_new_grad_name_dict[p.name] = g.name
                 params_and_grads.append((p, g))
 
+        #assert False
         _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
         return params_and_grads
 

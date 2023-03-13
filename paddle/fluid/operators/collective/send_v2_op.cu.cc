@@ -222,7 +222,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(send_v2,
                         ops::SendOpV2CUDAKernel<float>,
                         ops::SendOpV2CUDAKernel<double>,
-#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000
                         ops::SendOpV2CUDAKernel<plat::bfloat16>,
 #endif
                         ops::SendOpV2CUDAKernel<int>,
