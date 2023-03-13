@@ -15,13 +15,13 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-  namespace framework {
-  class Scope;
+namespace framework {
+class Scope;
 
-  namespace proto {
-  class OpDesc;
-  }  // namespace proto
-  }  // namespace framework
+namespace proto {
+class OpDesc;
+}  // namespace proto
+}  // namespace framework
 }  // namespace paddle
 
 namespace paddle {
@@ -62,7 +62,12 @@ class Pad3dOpConverter : public OpConverter {
       paddings =
           PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
     }
-
+    // print padding
+    std::cout << "[debug] paddings: ";
+    for (auto& pad : paddings) {
+      std::cout << pad << " ";
+    }
+    std::cout << std::endl;
     float value{0.F};
     if (op_desc.HasAttr("value")) {
       value = PADDLE_GET_CONST(float, op_desc.GetAttr("value"));
@@ -72,30 +77,69 @@ class Pad3dOpConverter : public OpConverter {
     if (op_desc.HasAttr("mode")) {
       padding_mode = PADDLE_GET_CONST(std::string, op_desc.GetAttr("mode"));
     }
+    std::cout << "[debug] padding_mode: " << padding_mode << std::endl;
 
-    const int inputDim = input->getDimensions().nbDims;
+    if (!engine_->with_dynamic_shape()) {
+      nvinfer1::Dims reshape_dims = input->getDimensions();
+      reshape_dims.nbDims = 5;
+      reshape_dims.d[0] = 1;
+      for (int i = 1; i < input->getDimensions().nbDims; i++) {
+        reshape_dims.d[i] = input->getDimensions().d[i - 1];
+      }
+      auto reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      reshape_layer->setReshapeDimensions(reshape_dims);
+      input = reshape_layer->getOutput(0);
+    }
+
+    const int input_dim = input->getDimensions().nbDims;
     const int pad_size = paddings.size();
-    PADDLE_ENFORCE_EQ(inputDim * 2 - 4,
+    PADDLE_ENFORCE_EQ(input_dim * 2 - 4,
                       pad_size,
                       phi::errors::InvalidArgument(
                           "Expected paddings size is %d, but received %d.",
-                          inputDim * 2 - 4,
+                          input_dim * 2 - 4,
                           pad_size));
-
     // convert paddle pad to tensorrt pad
-    std::vector<int> pre_pad_v(inputDim, 0);
-    std::vector<int> post_pad_v(inputDim, 0);
+    std::vector<int> pre_pad_v(input_dim, 0);
+    std::vector<int> post_pad_v(input_dim, 0);
 
-    for (int i = 0; i < inputDim; i += 2) {
-      pre_pad_v[i + 2] = paddings[pad_size - 2 - i];
-      post_pad_v[i + 2] = paddings[pad_size - 1 - i];
+    for (int i = 0; i < input_dim; i += 2) {
+      if (engine_->with_dynamic_shape()) {
+        pre_pad_v[i + 2] = paddings[pad_size - 2 - i];
+        post_pad_v[i + 2] = paddings[pad_size - 1 - i];
+      } else {
+        pre_pad_v[i + 1] = paddings[pad_size - 2 - i];
+        post_pad_v[i + 1] = paddings[pad_size - 1 - i];
+      }
     }
-
+    std::cout << "[debug] pre_pad_v: ";
+    for (auto& pad : pre_pad_v) {
+      std::cout << pad << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "[debug] post_pad_v: ";
+    for (auto& pad : post_pad_v) {
+      std::cout << pad << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "[debug] break point 1" << std::endl;
     nvinfer1::ITensor* pre_pad = Add1DConstantLayer(pre_pad_v);
     nvinfer1::ITensor* post_pad = Add1DConstantLayer(post_pad_v);
-
-    std::vector<int> zeros_v(inputDim, 0);
+    std::cout << "[debug] break point 2" << std::endl;
+    std::vector<int> zeros_v(input_dim, 0);
+    std::cout << "[debug] break point 3" << std::endl;
     auto const zeros = Add1DConstantLayer(zeros_v);
+    // print dims of zeros and pre_pad
+    std::cout << "[debug] zeros dims: ";
+    for (int i = 0; i < zeros->getDimensions().nbDims; i++) {
+      std::cout << zeros->getDimensions().d[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "[debug] pre_pad dims: ";
+    for (int i = 0; i < pre_pad->getDimensions().nbDims; i++) {
+      std::cout << pre_pad->getDimensions().d[i] << " ";
+    }
+    std::cout << std::endl;
 
     nvinfer1::ITensor* start{};
     nvinfer1::ITensor* size{};
@@ -115,11 +159,19 @@ class Pad3dOpConverter : public OpConverter {
                              nvinfer1::ElementWiseOperation::kSUM)
             ->getOutput(0);
 
-    std::vector<int> input_shape_v(inputDim, 0);
-    for (int i = 0; i < inputDim; i++) {
-      input_shape_v[i] = input->getDimensions().d[i];
+    auto* input_shape = Shape(input);
+    // print input shape
+    std::cout << "[debug] input_shape: ";
+    for (int i = 0; i < input_shape->getDimensions().nbDims; i++) {
+      std::cout << input_shape->getDimensions().d[i] << " ";
     }
-    auto const input_shape = Add1DConstantLayer(input_shape_v);
+    std::cout << std::endl;
+    // print total_padding shape
+    std::cout << "[debug] total_padding: ";
+    for (int i = 0; i < total_padding->getDimensions().nbDims; i++) {
+      std::cout << total_padding->getDimensions().d[i] << " ";
+    }
+    std::cout << std::endl;
 
     size = TRT_ENGINE_ADD_LAYER(engine_,
                                 ElementWise,
@@ -127,11 +179,11 @@ class Pad3dOpConverter : public OpConverter {
                                 *total_padding,
                                 nvinfer1::ElementWiseOperation::kSUM)
                ->getOutput(0);
-
+    std::cout << "[debug] break point1 here" << std::endl;
     // add slice layer
     nvinfer1::Dims stride;
-    stride.nbDims = inputDim;
-    std::fill_n(stride.d, inputDim, 1);
+    stride.nbDims = input_dim;
+    std::fill_n(stride.d, input_dim, 1);
     auto const& dummy = stride;
     auto* slice_layer =
         TRT_ENGINE_ADD_LAYER(engine_,
@@ -143,14 +195,18 @@ class Pad3dOpConverter : public OpConverter {
     slice_layer->setInput(1, *start);
     slice_layer->setInput(2, *size);
     if (padding_mode == "constant") {
+#if IS_TRT_VERSION_GE(8500)
+      slice_layer->setMode(nvinfer1::SampleMode::kFILL);
+#else
       slice_layer->setMode(nvinfer1::SliceMode::kFILL);
+#endif
       if (value != 0.F) {
         nvinfer1::ITensor* fill_value = nullptr;
         switch (input->getType()) {
           case nvinfer1::DataType::kFLOAT:
           case nvinfer1::DataType::kHALF:
           case nvinfer1::DataType::kINT8: {
-            float* value_ptr = const_cast<float*>(&value);
+            auto* value_ptr = const_cast<float*>(&value);
             nvinfer1::Weights value_wt{nvinfer1::DataType::kFLOAT,
                                        static_cast<void*>(value_ptr),
                                        static_cast<int32_t>(1)};
@@ -173,15 +229,45 @@ class Pad3dOpConverter : public OpConverter {
         slice_layer->setInput(4, *fill_value);
       }
     } else if (padding_mode == "reflect") {
+#if IS_TRT_VERSION_GE(8500)
+      slice_layer->setMode(nvinfer1::SampleMode::kREFLECT);
+#else
       slice_layer->setMode(nvinfer1::SliceMode::kREFLECT);
+#endif
     } else if (padding_mode == "replicate") {
+#if IS_TRT_VERSION_GE(8500)
+      slice_layer->setMode(nvinfer1::SampleMode::kCLAMP);
+#else
       slice_layer->setMode(nvinfer1::SliceMode::kCLAMP);
+#endif
     } else {
       PADDLE_THROW("Unsupported mode: %s", padding_mode);
     }
+    // print shape
+    std::cout << "[debug] output shape: "
+              << slice_layer->getOutput(0)->getDimensions().nbDims << "=>";
 
+    for (int i = 0; i < slice_layer->getOutput(0)->getDimensions().nbDims;
+         i++) {
+      std::cout << slice_layer->getOutput(0)->getDimensions().d[i] << " ";
+    }
+    std::cout << std::endl;
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(slice_layer, "pad3d", {output_name}, test_mode);
+    if (engine_->with_dynamic_shape()) {
+      RreplenishLayerAndOutput(slice_layer, "pad3d", {output_name}, test_mode);
+    } else {
+      auto reshape_dims = slice_layer->getOutput(0)->getDimensions();
+      for (int i = 0; i < reshape_dims.nbDims - 1; i++) {
+        reshape_dims.d[i] = reshape_dims.d[i + 1];
+      }
+      reshape_dims.nbDims -= 1;
+      auto reshape_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *slice_layer->getOutput(0));
+      reshape_layer->setReshapeDimensions(reshape_dims);
+      RreplenishLayerAndOutput(
+          reshape_layer, "pad3d", {output_name}, test_mode);
+    }
+
 #else
     VLOG(3) << "pad3d is not supported when TensorRT < 8.2";
 #endif
