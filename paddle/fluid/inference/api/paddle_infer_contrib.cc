@@ -48,16 +48,16 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
                                  void* cb_params) {
   Tensor& dst = *p_dst;
   dst.Reshape(src.shape());
-  PADDLE_ENFORCE(
-      src.place() == PlaceType::kCPU || src.place() == PlaceType::kGPU,
-      paddle::platform::errors::InvalidArgument(
-          "CopyTensor only support PlaceType kCPU/kGPU now."));
-  PADDLE_ENFORCE(
-      dst.place() == PlaceType::kCPU || dst.place() == PlaceType::kGPU,
-      paddle::platform::errors::InvalidArgument(
-          "CopyTensor only support PlaceType kCPU/kGPU now."));
+  PADDLE_ENFORCE(platform::is_cpu_place(src.place()) ||
+                     platform::is_gpu_place(src.place()),
+                 paddle::platform::errors::InvalidArgument(
+                     "CopyTensor only support PlaceType kCPU/kGPU now."));
+  PADDLE_ENFORCE(platform::is_cpu_place(dst.place()) ||
+                     platform::is_gpu_place(dst.place()),
+                 paddle::platform::errors::InvalidArgument(
+                     "CopyTensor only support PlaceType kCPU/kGPU now."));
   // copy to cpu, gpu => cpu or cpu => cpu
-  if (dst.place() == PlaceType::kCPU) {
+  if (platform::is_cpu_place(dst.place())) {
     switch (src.type()) {
       case PaddleDType::INT32:
         src.CopyToCpuImpl(dst.mutable_data<int32_t>(PlaceType::kCPU),
@@ -171,7 +171,7 @@ void TensorUtils::CopyTensorImpl(Tensor* p_dst,
     paddle::platform::CUDAPlace gpu_place(dst.device_);
     auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.Get(gpu_place));
 
-    if (src.place() == PlaceType::kCPU) {
+    if (platform::is_cpu_place(src.place())) {
       paddle::memory::Copy(gpu_place,
                            static_cast<void*>(dst_data),
                            paddle::platform::CPUPlace(),
