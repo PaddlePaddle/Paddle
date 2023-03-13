@@ -308,6 +308,8 @@ void EigGradInferMeta(const MetaTensor& out_w,
 
   if (dx) {
     dx->set_dims(dims);
+    dx->share_lod(out_w);
+    dx->set_dtype(out_w.dtype());
   }
 }
 
