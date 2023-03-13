@@ -29,7 +29,6 @@ class TestIndexSelectOp(OpTest):
         self.python_api = paddle.index_select
         self.op_type = "index_select"
         self.init_dtype_type()
-
         index_np = np.random.randint(
             low=0, high=self.x_shape[self.dim], size=self.index_size
         )
