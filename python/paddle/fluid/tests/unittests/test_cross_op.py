@@ -76,9 +76,6 @@ class TestCrossFP16Op(TestCrossOp):
             z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
-    def test_check_output(self):
-        self.check_output(atol=1e-3, check_eager=True)
-
 
 class TestCrossAPI(unittest.TestCase):
     def input_data(self):
