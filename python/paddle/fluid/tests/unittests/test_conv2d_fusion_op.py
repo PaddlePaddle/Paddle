@@ -85,9 +85,7 @@ def warpper_conv2d_fusion_cutlass(
     return paddle._legacy_C_ops.conv2d_fusion_cutlass(
         Input,
         Filter,
-        "Bias",
         Bias,
-        "ResidualData",
         ResidualData,
         "strides",
         strides,
