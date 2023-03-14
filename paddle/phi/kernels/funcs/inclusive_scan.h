@@ -45,7 +45,7 @@ class CumTypeTrait<phi::dtype::float16> {
   using Type = __half;
 };
 
-#ifdef PADDLE_CUDA_BF16
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
 template <>
 class CumTypeTrait<phi::dtype::bfloat16> {
  public:
