@@ -120,6 +120,14 @@ void AffineGridInferMeta(const MetaTensor& input,
   output->share_lod(input);
 }
 
+void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  auto dim = x.dims();
+  dim[0] = dim[0] * nranks;
+  if (dim[0] < 0) dim[0] = -1;
+  out->set_dtype(x.dtype());
+  out->set_dims(dim);
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -1618,6 +1626,7 @@ void HistogramInferMeta(
 
   out->set_dims({bins});
   out->share_lod(input);
+  out->set_dtype(DataType::INT64);
 }
 
 void IdentityLossInferMeta(const MetaTensor& x,
