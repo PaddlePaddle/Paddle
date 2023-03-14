@@ -27,6 +27,7 @@ from ..fluid.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
+from ..fluid.framework import Variable
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -34,7 +35,6 @@ from ..framework import (
     dygraph_only,
     in_dygraph_mode,
 )
-from ..static import Variable
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 __all__ = []
