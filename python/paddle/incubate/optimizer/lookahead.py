@@ -144,10 +144,6 @@ class LookAhead(Optimizer):
         self._global_step_var = None
         self._k_var = None
 
-    def _set_auxiliary_var(self, key, val):
-        super()._set_auxiliary_var(key, val)
-        self.inner_optimizer._set_auxiliary_var(key, val)
-
     @framework.dygraph_only
     @imperative_base.no_grad
     def step(self):

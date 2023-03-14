@@ -237,7 +237,8 @@ std::unordered_set<std::string> CinnLaunchContext::ExtractInternalVarNames(
   };
 
   VLOG(1) << "Input var list: " << string::join_strings(input_var_names, ", ");
-  VLOG(1) << "Ouput var list: " << string::join_strings(output_var_names, ", ");
+  VLOG(1) << "Output var list: "
+          << string::join_strings(output_var_names, ", ");
   std::for_each(
       input_var_names.begin(), input_var_names.end(), exclude_names_fn);
   std::for_each(

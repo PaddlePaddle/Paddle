@@ -21,7 +21,30 @@ limitations under the License. */
 
 namespace phi {
 
+void EmbeddingWithEltwiseAddXPUInferMeta(
+    const std::vector<const MetaTensor*>& ids,
+    const std::vector<const MetaTensor*>& tables,
+    MetaTensor* out) {
+  PADDLE_ENFORCE_GT(ids.size(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The input ids in EmbeddingWithEltwiseAddXPUInferMeta "
+                        "can't be empty."));
+  PADDLE_ENFORCE_GT(tables.size(),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "The input tables in "
+                        "EmbeddingWithEltwiseAddXPUInferMeta can't be empty."));
+
+  auto id_dims = ids[0]->dims();
+  auto table_dims = tables[0]->dims();
+  out->set_dims(phi::make_ddim({id_dims[0], id_dims[1], table_dims[1]}));
+  out->set_dtype(tables[0]->dtype());
+  out->set_layout(ids[0]->layout());
+}
+
 void FcXPUInferMeta(const MetaTensor& x,
+                    const MetaTensor& x_max,
                     const MetaTensor& w,
                     const MetaTensor& w_max,
                     const MetaTensor& bias,
@@ -31,7 +54,8 @@ void FcXPUInferMeta(const MetaTensor& x,
                     float beta,
                     int act_type,
                     float act_alpha,
-                    MetaTensor* out) {
+                    MetaTensor* out,
+                    MetaTensor* out_max) {
   std::vector<int> out_shape(in_num_col_dims + 1);
   for (int i = 0; i < in_num_col_dims; i++) {
     out_shape[i] = x.dims()[i];
@@ -40,6 +64,9 @@ void FcXPUInferMeta(const MetaTensor& x,
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+  out_max->set_dims(w_max.dims());
+  out_max->set_dtype(x.dtype());
+  out_max->set_layout(x.layout());
 }
 
 void GenerateSequenceXPUInferMeta(const MetaTensor& x,

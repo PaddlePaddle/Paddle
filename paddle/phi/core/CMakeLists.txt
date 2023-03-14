@@ -68,7 +68,7 @@ cc_library(
   SRCS dense_tensor.cc dense_tensor_impl.cc
   DEPS convert_utils tensor_meta tensor_base ddim)
 
-target_link_libraries(dense_tensor malloc)
+target_link_libraries(dense_tensor memory_utils)
 
 cc_library(
   sparse_coo_tensor
@@ -101,6 +101,7 @@ cc_library(
   infermeta_utils
   SRCS infermeta_utils.cc
   DEPS meta_tensor)
+
 cc_library(
   selected_rows
   SRCS selected_rows_impl.cc selected_rows.cc
@@ -109,10 +110,6 @@ cc_library(
   phi_device_context
   SRCS device_context.cc
   DEPS dense_tensor selected_rows)
-cc_library(
-  serialization
-  SRCS serialization.cc
-  DEPS version tensor phi_device_context)
 
 cc_library(
   custom_kernel
@@ -122,7 +119,12 @@ cc_library(
 cc_library(
   mixed_vector
   SRCS mixed_vector.cc
-  DEPS device_context place memory)
+  DEPS phi_backends place memory)
+
+cc_library(
+  generator
+  SRCS generator.cc
+  DEPS enforce place)
 
 # Will remove once we implemented MKLDNN_Tensor
 if(WITH_MKLDNN)
@@ -134,20 +136,20 @@ if(WITH_GPU)
   nv_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS phi_backends dense_tensor selected_rows malloc memcpy device_context)
+    DEPS phi_backends dense_tensor selected_rows memcpy memory_utils)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS phi_backends dense_tensor selected_rows malloc memcpy device_context)
+    DEPS phi_backends dense_tensor selected_rows memcpy memory_utils)
 elseif(WITH_XPU_KP)
   xpu_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS phi_backends dense_tensor selected_rows malloc memcpy device_context)
+    DEPS phi_backends dense_tensor selected_rows memcpy memory_utils)
 else()
   cc_library(
     phi_tensor_utils
     SRCS tensor_utils.cc
-    DEPS dense_tensor selected_rows malloc memcpy device_context phi_backends)
+    DEPS dense_tensor selected_rows memcpy phi_backends memory_utils)
 endif()

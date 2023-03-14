@@ -270,10 +270,9 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        // TODO(liuyuanle): rewrite this pass with new logic
-        // "conv2d_fusion_layout_transfer_pass",  //
-        "auto_mixed_precision_pass",  //
-        "inplace_op_var_pass",        // should be the last pass.
+        "conv2d_fusion_layout_transfer_pass",  //
+        "auto_mixed_precision_pass",           //
+        "inplace_op_var_pass",                 // should be the last pass.
   });
 
   use_gpu_ = true;
@@ -376,7 +375,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "fc_act_mkldnn_fuse_pass",
              "fc_elementwise_add_mkldnn_fuse_pass",   //
              "batch_norm_act_fuse_pass",              //
-             "softplus_activation_mkldnn_fuse_pass",  //
+             "softplus_activation_onednn_fuse_pass",  //
              "shuffle_channel_mkldnn_detect_pass",    //
              "elt_act_mkldnn_fuse_pass",              //
              "layer_norm_onednn_optimization_pass",   //
@@ -468,7 +467,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("fc_elementwise_add_mkldnn_fuse_pass");
     passes_.push_back("matmul_transpose_reshape_mkldnn_fuse_pass");
     passes_.push_back("batch_norm_act_fuse_pass");
-    passes_.push_back("softplus_activation_mkldnn_fuse_pass");
+    passes_.push_back("softplus_activation_onednn_fuse_pass");
     passes_.push_back("compute_propagate_scales_mkldnn_pass");
     passes_.push_back("scale_matmul_fuse_pass");
     passes_.push_back("reshape_transpose_matmul_mkldnn_fuse_pass");
@@ -517,12 +516,15 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
       "delete_dropout_op_pass",
+      "identity_scale_op_clean_pass",
       "generate_sequence_xpu_fuse_pass",
+      "embedding_with_eltwise_add_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
-      // "embedding_with_eltwise_add_xpu_fuse_pass",
       "fc_xpu_fuse_pass",
-      // "link_previous_out_max_xpu_pass",
+      "link_xpu_op_max_pass",
+      "delete_op_device_pass",
+      "delete_isolated_node_pass",
   });
   use_xpu_ = true;
 }

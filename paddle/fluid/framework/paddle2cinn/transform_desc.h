@@ -74,6 +74,10 @@ void TransformProgramDescFromCinn(
     const ::cinn::frontend::paddle::cpp::ProgramDesc& cpp_desc,
     framework::ProgramDesc* pb_desc);
 
+// debug function
+std::string VarDataTypeToString(
+    const ::paddle::framework::proto::VarType::Type& type);
+
 }  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle

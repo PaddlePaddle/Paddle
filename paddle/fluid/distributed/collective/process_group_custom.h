@@ -46,10 +46,11 @@ class ProcessGroupCustom : public ProcessGroupWithoutStream {
                CommType CommType,
                const std::vector<phi::DenseTensor>& inputs);
 
-    bool IsCompleted();
+    bool IsCompleted() override;
     void SynchronizeStreams();
-    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
-    void Synchronize();
+    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout) override;
+    void Synchronize() override;
+    void UpdateWaitChain(const phi::DeviceContext& ctx) override;
     void SetOutputs(std::vector<phi::DenseTensor>& outputs);  // NOLINT
     virtual ~CustomTask();
 
@@ -80,25 +81,6 @@ class ProcessGroupCustom : public ProcessGroupWithoutStream {
 
   std::string GetBackendName() const override { return "XCCL_" + device_type_; }
 
-  std::shared_ptr<ProcessGroup::Task> AllGather(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      int64_t offset,
-      int64_t numel,
-      bool sync_op) override;
-
-  std::shared_ptr<ProcessGroup::Task> AllReduce(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      const AllreduceOptions& opts,
-      bool sync_op) override;
-
-  std::shared_ptr<ProcessGroup::Task> Broadcast(
-      phi::DenseTensor* out_tensor,
-      const phi::DenseTensor& in_tensor,
-      const BroadcastOptions& opts,
-      bool sync_op) override;
-
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
 
@@ -111,15 +93,56 @@ class ProcessGroupCustom : public ProcessGroupWithoutStream {
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      int64_t offset,
+      int64_t numel,
+      bool sync_op,
+      bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      int64_t offset,
+      int64_t numel,
+      bool sync_op) override;
+
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const AllreduceOptions& = AllreduceOptions()) override;
 
+  std::shared_ptr<ProcessGroup::Task> AllReduce(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllReduce(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const AllreduceOptions& opts,
+      bool sync_op) override;
+
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
       const BroadcastOptions& = BroadcastOptions()) override;
+
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      phi::DenseTensor* out_tensor,
+      const phi::DenseTensor& in_tensor,
+      const BroadcastOptions& opts,
+      bool sync_op) override;
 
  protected:
   virtual std::shared_ptr<ProcessGroupCustom::CustomTask> CreateTask(

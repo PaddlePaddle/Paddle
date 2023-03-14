@@ -187,7 +187,7 @@ bool ONNXRuntimePredictor::Init() {
   session_ = std::make_shared<Ort::Session>(
       *env_, onnx_proto, static_cast<size_t>(out_size), session_options);
   InitBinding();
-
+  paddle::framework::InitMemoryMethod();
   delete onnx_proto;
   onnx_proto = nullptr;
   return true;

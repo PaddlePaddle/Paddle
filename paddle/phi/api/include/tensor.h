@@ -31,8 +31,10 @@ using gpuStream_t = hipStream_t;
 
 #include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/common/scalar.h"
 
 namespace phi {
 class DenseTensor;
@@ -44,8 +46,9 @@ class DDim;
 }  // namespace phi
 
 namespace paddle {
-
-namespace experimental {
+// TODO(chenweihang): Remove the experimental namespace for Scalar and IntArray
+using Scalar = experimental::Scalar;
+using IntArray = experimental::IntArray;
 
 class AbstractAutogradMeta {
  public:
@@ -380,21 +383,21 @@ class PADDLE_API Tensor final {
   Tensor slice(int64_t begin_idx, int64_t end_idx) const;
 
   /**
-   * @brief Return the implemention of current Tensor.
+   * @brief Return the implementation of current Tensor.
    *
    * @return std::shared_ptr<phi::TensorBase>
    */
   const std::shared_ptr<phi::TensorBase>& impl() const;
 
   /**
-   * @brief Set the implemention of current Tensor.
+   * @brief Set the implementation of current Tensor.
    *
    * @param impl
    */
   void set_impl(const std::shared_ptr<phi::TensorBase>& impl);
 
   /**
-   * @brief Set the implemention of current Tensor.
+   * @brief Set the implementation of current Tensor.
    *
    * @param impl
    */
@@ -524,6 +527,38 @@ class PADDLE_API Tensor final {
    */
   Tensor& operator=(Tensor&& x) &;
 
+  /**
+   * @brief Tensor operants
+   *
+   * @param other
+   * @return Tensor
+   */
+  Tensor operator+(const Tensor& other) const;
+
+  Tensor operator-(const Tensor& other) const;
+
+  Tensor operator*(const Tensor& other) const;
+
+  Tensor operator/(const Tensor& other) const;
+
+  Tensor operator+(const Scalar& other) const;
+
+  Tensor operator-(const Scalar& other) const;
+
+  Tensor operator*(const Scalar& other) const;
+
+  Tensor operator/(const Scalar& other) const;
+
+  Tensor operator-() const;
+
+  Tensor operator~() const;
+
+  Tensor operator&(const Tensor& other) const;
+
+  Tensor operator|(const Tensor& other) const;
+
+  Tensor operator^(const Tensor& other) const;
+
   /* Part 8: Autograd methods */
 
   /**
@@ -631,15 +666,60 @@ class PADDLE_API Tensor final {
    * in the development of new dygraph. It may be removed in the future.
    */
   std::string name_{""};
+
+ public:
+  // Tensor C++ APIs
+  // Example: Tensor add(const Tensor& other) const;
+  Tensor add(const Tensor& y) const;
+  Tensor divide(const Tensor& y) const;
+  Tensor multiply(const Tensor& y) const;
+  Tensor subtract(const Tensor& y) const;
+  Tensor add(const Scalar& y) const;
+  Tensor divide(const Scalar& y) const;
+  Tensor multiply(const Scalar& y) const;
+  Tensor subtract(const Scalar& y) const;
+  Tensor bitwise_and(const Tensor& y) const;
+  Tensor bitwise_or(const Tensor& y) const;
+  Tensor bitwise_xor(const Tensor& y) const;
+  Tensor bitwise_not() const;
+  Tensor pow(const Tensor& y) const;
+  Tensor pow(const Scalar& y) const;
+
+  Tensor exp() const;
+  Tensor floor() const;
+  Tensor gather_nd(const Tensor& index) const;
+  Tensor log() const;
+  Tensor roll(const IntArray& shifts = {},
+              const std::vector<int64_t>& axis = {}) const;
+  Tensor scatter(const Tensor& index,
+                 const Tensor& updates,
+                 bool overwrite = true) const;
+  Tensor scatter_nd_add(const Tensor& index, const Tensor& updates) const;
+  Tensor abs() const;
+  Tensor assign() const;
+  Tensor elementwise_pow(const Tensor& y) const;
+  Tensor expand(const IntArray& shape) const;
+  Tensor matmul(const Tensor& y,
+                bool transpose_x = false,
+                bool transpose_y = false) const;
+  Tensor max(const IntArray& axis = {}, bool keepdim = false) const;
+  Tensor maximum(const Tensor& y) const;
+  Tensor minimum(const Tensor& y) const;
+  Tensor scale(const Scalar& scale = 1.0,
+               float bias = 0.0,
+               bool bias_after_scale = true) const;
+  Tensor sum(const IntArray& axis = {},
+             DataType dtype = DataType::UNDEFINED,
+             bool keepdim = false) const;
+  Tensor tile(const IntArray& repeat_times = {}) const;
 };
 
-PADDLE_API Tensor operator+(const Tensor& x, const Tensor& y);
+PADDLE_API Tensor operator+(const Scalar& x, const Tensor& y);
 
-PADDLE_API Tensor operator-(const Tensor& x, const Tensor& y);
+PADDLE_API Tensor operator-(const Scalar& x, const Tensor& y);
 
-PADDLE_API Tensor operator*(const Tensor& x, const Tensor& y);
+PADDLE_API Tensor operator*(const Scalar& x, const Tensor& y);
 
-PADDLE_API Tensor operator/(const Tensor& x, const Tensor& y);
+PADDLE_API Tensor operator/(const Scalar& x, const Tensor& y);
 
-}  // namespace experimental
 }  // namespace paddle

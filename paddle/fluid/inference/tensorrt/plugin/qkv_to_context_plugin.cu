@@ -479,6 +479,8 @@ int QkvToContextPluginDynamic::enqueue(
     const half *input1_data = static_cast<const half *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
     if (need_padding) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(tptr, 0, sizeof(half) * input_num, stream));
       TransposePadding(input0_data,
                        tptr,
                        batch,

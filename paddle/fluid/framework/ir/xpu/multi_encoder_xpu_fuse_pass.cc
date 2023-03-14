@@ -23,24 +23,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ir/xpu/multi_encoder_xpu_fuse_pass.h"
 #include <string>
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/xpu/pass_utils.h"
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
-
-namespace phi {
-class DenseTensor;
-}  // namespace phi
-
-namespace paddle {
-namespace framework {
-class Scope;
-}  // namespace framework
-}  // namespace paddle
+#include "paddle/phi/kernels/concat_kernel.h"
 
 namespace paddle {
 namespace framework {
@@ -55,6 +45,7 @@ struct SingleEncoderXPUPattern : public PatternBase {
                           const std::string& matmul_type_1,
                           const std::string& matmul_type_2,
                           bool norm_before,
+                          bool with_q_scale,
                           bool with_mask);
 
   // declare operator node's name
@@ -67,6 +58,7 @@ struct SingleEncoderXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(q_add);
   PATTERN_DECL_NODE(q_reshape);
   PATTERN_DECL_NODE(q_transpose);
+  PATTERN_DECL_NODE(q_scale);
   PATTERN_DECL_NODE(k_matmul);
   PATTERN_DECL_NODE(k_add);
   PATTERN_DECL_NODE(k_reshape);
@@ -102,34 +94,27 @@ struct SingleEncoderXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(q_add_bias);
   PATTERN_DECL_NODE(q_add_out);
   PATTERN_DECL_NODE(q_reshape_out);
-  PATTERN_DECL_NODE(q_reshape_xshape);
   PATTERN_DECL_NODE(q_transpose_out);
-  PATTERN_DECL_NODE(q_transpose_xshape);
+  PATTERN_DECL_NODE(q_scale_out);
   PATTERN_DECL_NODE(k_matmul_w);
   PATTERN_DECL_NODE(k_matmul_out);
   PATTERN_DECL_NODE(k_add_bias);
   PATTERN_DECL_NODE(k_add_out);
   PATTERN_DECL_NODE(k_reshape_out);
-  PATTERN_DECL_NODE(k_reshape_xshape);
   PATTERN_DECL_NODE(k_transpose_out);
-  PATTERN_DECL_NODE(k_transpose_xshape);
   PATTERN_DECL_NODE(v_matmul_w);
   PATTERN_DECL_NODE(v_matmul_out);
   PATTERN_DECL_NODE(v_add_bias);
   PATTERN_DECL_NODE(v_add_out);
   PATTERN_DECL_NODE(v_reshape_out);
-  PATTERN_DECL_NODE(v_reshape_xshape);
   PATTERN_DECL_NODE(v_transpose_out);
-  PATTERN_DECL_NODE(v_transpose_xshape);
   PATTERN_DECL_NODE(qk_matmul_out);
   PATTERN_DECL_NODE(qk_add_mask);
   PATTERN_DECL_NODE(qk_add_out);
   PATTERN_DECL_NODE(qk_softmax_out);
   PATTERN_DECL_NODE(qkv_matmul_0_out);
   PATTERN_DECL_NODE(qkv_transpose_out);
-  PATTERN_DECL_NODE(qkv_transpose_xshape);
   PATTERN_DECL_NODE(qkv_reshape_out);
-  PATTERN_DECL_NODE(qkv_reshape_xshape);
   PATTERN_DECL_NODE(qkv_matmul_1_w);
   PATTERN_DECL_NODE(qkv_matmul_1_out);
   PATTERN_DECL_NODE(qkv_add_0_bias);
@@ -162,7 +147,8 @@ struct SingleEncoderXPUPattern : public PatternBase {
   std::string matmul_type_0_;
   std::string matmul_type_1_;
   std::string matmul_type_2_;
-  bool norm_before_{true};
+  bool norm_before_{false};
+  bool with_q_scale_{false};
   bool with_mask_{true};
 };
 
@@ -174,6 +160,7 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
     const std::string& matmul_type_1,
     const std::string& matmul_type_2,
     bool norm_before,
+    bool with_q_scale,
     bool with_mask)
     : PatternBase(pattern, name_scope, name_scope),
       act_type_(act_type),
@@ -181,30 +168,34 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
       matmul_type_1_(matmul_type_1),
       matmul_type_2_(matmul_type_2),
       norm_before_(norm_before),
+      with_q_scale_(with_q_scale),
       with_mask_(with_mask) {
   // layer_norm 0
   PDNode* ln_0_x = pattern->NewNode(ln_0_x_repr());
+  PDNode* ln_0_bias = nullptr;
+  PDNode* ln_0_scale = nullptr;
+  PDNode* ln_0 = nullptr;
   PDNode* ln_0_out = nullptr;
+  PDNode* ln_0_mean = nullptr;
+  PDNode* ln_0_variance = nullptr;
   if (norm_before_) {
     ln_0_x->assert_is_op_input("layer_norm", "X")->assert_var_not_persistable();
-    auto* ln_0_bias = pattern->NewNode(ln_0_bias_repr())
-                          ->assert_is_op_input("layer_norm", "Bias")
-                          ->assert_is_persistable_var();
-    auto* ln_0_scale = pattern->NewNode(ln_0_scale_repr())
-                           ->assert_is_op_input("layer_norm", "Scale")
-                           ->assert_is_persistable_var();
-    auto* ln_0 = pattern->NewNode(ln_0_repr())->assert_is_op("layer_norm");
+    ln_0_bias = pattern->NewNode(ln_0_bias_repr())
+                    ->assert_is_op_input("layer_norm", "Bias")
+                    ->assert_is_persistable_var();
+    ln_0_scale = pattern->NewNode(ln_0_scale_repr())
+                     ->assert_is_op_input("layer_norm", "Scale")
+                     ->assert_is_persistable_var();
+    ln_0 = pattern->NewNode(ln_0_repr())->assert_is_op("layer_norm");
     ln_0_out = pattern->NewNode(ln_0_out_repr())
                    ->assert_is_op_output("layer_norm", "Y")
                    ->assert_var_not_persistable();
-    auto* ln_0_mean = pattern->NewNode(ln_0_mean_repr())
-                          ->assert_is_op_output("layer_norm", "Mean")
-                          ->assert_var_not_persistable();
-    auto* ln_0_variance = pattern->NewNode(ln_0_variance_repr())
-                              ->assert_is_op_output("layer_norm", "Variance")
-                              ->assert_var_not_persistable();
-    ln_0->LinksFrom({ln_0_x, ln_0_bias, ln_0_scale})
-        .LinksTo({ln_0_out, ln_0_mean, ln_0_variance});
+    ln_0_mean = pattern->NewNode(ln_0_mean_repr())
+                    ->assert_is_op_output("layer_norm", "Mean")
+                    ->assert_var_not_persistable();
+    ln_0_variance = pattern->NewNode(ln_0_variance_repr())
+                        ->assert_is_op_output("layer_norm", "Variance")
+                        ->assert_var_not_persistable();
   }
 
   // q: matmul + add + reshape + transpose
@@ -228,18 +219,22 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
   auto* q_reshape_out = pattern->NewNode(q_reshape_out_repr())
                             ->assert_is_op_output("reshape2", "Out")
                             ->assert_var_not_persistable();
-  auto* q_reshape_xshape = pattern->NewNode(q_reshape_xshape_repr())
-                               ->assert_is_op_output("reshape2", "XShape")
-                               ->assert_var_not_persistable();
   auto* q_transpose =
       pattern->NewNode(q_transpose_repr())->assert_is_op("transpose2");
   auto* q_transpose_out = pattern->NewNode(q_transpose_out_repr())
                               ->assert_is_op_output("transpose2", "Out")
-                              ->assert_is_op_input(matmul_type_1_, "X")
                               ->assert_var_not_persistable();
-  auto* q_transpose_xshape = pattern->NewNode(q_transpose_xshape_repr())
-                                 ->assert_is_op_output("transpose2", "XShape")
-                                 ->assert_var_not_persistable();
+  PDNode* q_scale = nullptr;
+  PDNode* q_scale_out = nullptr;
+  if (with_q_scale_) {
+    q_scale = pattern->NewNode(q_scale_repr())->assert_is_op("scale");
+    q_scale_out = pattern->NewNode(q_scale_out_repr())
+                      ->assert_is_op_output("scale", "Out")
+                      ->assert_is_op_input(matmul_type_1_, "X")
+                      ->assert_var_not_persistable();
+  } else {
+    q_transpose_out->assert_is_op_input(matmul_type_1_, "X");
+  }
 
   // k: matmul + add + reshape + transpose
   auto k_matmul_w = pattern->NewNode(k_matmul_w_repr())
@@ -262,18 +257,12 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
   auto* k_reshape_out = pattern->NewNode(k_reshape_out_repr())
                             ->assert_is_op_output("reshape2", "Out")
                             ->assert_var_not_persistable();
-  auto* k_reshape_xshape = pattern->NewNode(k_reshape_xshape_repr())
-                               ->assert_is_op_output("reshape2", "XShape")
-                               ->assert_var_not_persistable();
   auto* k_transpose =
       pattern->NewNode(k_transpose_repr())->assert_is_op("transpose2");
   auto* k_transpose_out = pattern->NewNode(k_transpose_out_repr())
                               ->assert_is_op_output("transpose2", "Out")
                               ->assert_is_op_input(matmul_type_1_, "Y")
                               ->assert_var_not_persistable();
-  auto* k_transpose_xshape = pattern->NewNode(k_transpose_xshape_repr())
-                                 ->assert_is_op_output("transpose2", "XShape")
-                                 ->assert_var_not_persistable();
 
   // qk: matmul + add + softmax
   auto* qk_matmul =
@@ -281,17 +270,17 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
   auto* qk_matmul_out = pattern->NewNode(qk_matmul_out_repr())
                             ->assert_is_op_output(matmul_type_1_, "Out")
                             ->assert_var_not_persistable();
+  PDNode* qk_add_mask = nullptr;
+  PDNode* qk_add = nullptr;
   PDNode* qk_add_out = nullptr;
   if (with_mask_) {
-    auto qk_add_mask = pattern->NewNode(qk_add_mask_repr())
-                           ->assert_is_op_input("elementwise_add", "Y")
-                           ->assert_var_not_persistable();
-    auto* qk_add =
-        pattern->NewNode(qk_add_repr())->assert_is_op("elementwise_add");
+    qk_add_mask = pattern->NewNode(qk_add_mask_repr())
+                      ->assert_is_op_input("elementwise_add", "Y")
+                      ->assert_var_not_persistable();
+    qk_add = pattern->NewNode(qk_add_repr())->assert_is_op("elementwise_add");
     qk_add_out = pattern->NewNode(qk_add_out_repr())
                      ->assert_is_op_output("elementwise_add", "Out")
                      ->assert_var_not_persistable();
-    qk_add->LinksFrom({qk_matmul_out, qk_add_mask}).LinksTo({qk_add_out});
   }
   auto* qk_softmax =
       pattern->NewNode(qk_softmax_repr())->assert_is_op("softmax");
@@ -321,18 +310,12 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
   auto* v_reshape_out = pattern->NewNode(v_reshape_out_repr())
                             ->assert_is_op_output("reshape2", "Out")
                             ->assert_var_not_persistable();
-  auto* v_reshape_xshape = pattern->NewNode(v_reshape_xshape_repr())
-                               ->assert_is_op_output("reshape2", "XShape")
-                               ->assert_var_not_persistable();
   auto* v_transpose =
       pattern->NewNode(v_transpose_repr())->assert_is_op("transpose2");
   auto* v_transpose_out = pattern->NewNode(v_transpose_out_repr())
                               ->assert_is_op_output("transpose2", "Out")
                               ->assert_is_op_input(matmul_type_2_, "Y")
                               ->assert_var_not_persistable();
-  auto* v_transpose_xshape = pattern->NewNode(v_transpose_xshape_repr())
-                                 ->assert_is_op_output("transpose2", "XShape")
-                                 ->assert_var_not_persistable();
 
   // qkv
   auto* qkv_matmul_0 =
@@ -345,17 +328,11 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
   auto* qkv_transpose_out = pattern->NewNode(qkv_transpose_out_repr())
                                 ->assert_is_op_output("transpose2", "Out")
                                 ->assert_var_not_persistable();
-  auto* qkv_transpose_xshape = pattern->NewNode(qkv_transpose_xshape_repr())
-                                   ->assert_is_op_output("transpose2", "XShape")
-                                   ->assert_var_not_persistable();
   auto* qkv_reshape =
       pattern->NewNode(qkv_reshape_repr())->assert_is_op("reshape2");
   auto* qkv_reshape_out = pattern->NewNode(qkv_reshape_out_repr())
                               ->assert_is_op_output("reshape2", "Out")
                               ->assert_var_not_persistable();
-  auto* qkv_reshape_xshape = pattern->NewNode(qkv_reshape_xshape_repr())
-                                 ->assert_is_op_output("reshape2", "XShape")
-                                 ->assert_var_not_persistable();
   auto qkv_matmul_1_w = pattern->NewNode(qkv_matmul_1_w_repr())
                             ->assert_is_op_input(matmul_type_0_, "Y")
                             ->assert_is_persistable_var();
@@ -435,61 +412,70 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
   auto* qkv_add_4_out = pattern->NewNode(qkv_add_4_out_repr())
                             ->assert_is_op_output("elementwise_add", "Out")
                             ->assert_var_not_persistable();
+  PDNode* ln_2_bias = nullptr;
+  PDNode* ln_2_scale = nullptr;
+  PDNode* ln_2 = nullptr;
   PDNode* ln_2_out = nullptr;
+  PDNode* ln_2_mean = nullptr;
+  PDNode* ln_2_variance = nullptr;
   if (!norm_before_) {
-    auto* ln_2_bias = pattern->NewNode(ln_2_bias_repr())
-                          ->assert_is_op_input("layer_norm", "Bias")
-                          ->assert_is_persistable_var();
-    auto* ln_2_scale = pattern->NewNode(ln_2_scale_repr())
-                           ->assert_is_op_input("layer_norm", "Scale")
-                           ->assert_is_persistable_var();
-    auto* ln_2 = pattern->NewNode(ln_2_repr())->assert_is_op("layer_norm");
+    ln_2_bias = pattern->NewNode(ln_2_bias_repr())
+                    ->assert_is_op_input("layer_norm", "Bias")
+                    ->assert_is_persistable_var();
+    ln_2_scale = pattern->NewNode(ln_2_scale_repr())
+                     ->assert_is_op_input("layer_norm", "Scale")
+                     ->assert_is_persistable_var();
+    ln_2 = pattern->NewNode(ln_2_repr())->assert_is_op("layer_norm");
     ln_2_out = pattern->NewNode(ln_2_out_repr())
                    ->assert_is_op_output("layer_norm", "Y")
                    ->assert_var_not_persistable();
-    auto* ln_2_mean = pattern->NewNode(ln_2_mean_repr())
-                          ->assert_is_op_output("layer_norm", "Mean")
-                          ->assert_var_not_persistable();
-    auto* ln_2_variance = pattern->NewNode(ln_2_variance_repr())
-                              ->assert_is_op_output("layer_norm", "Variance")
-                              ->assert_var_not_persistable();
-    ln_2->LinksFrom({qkv_add_4_out, ln_2_bias, ln_2_scale})
-        .LinksTo({ln_2_out, ln_2_mean, ln_2_variance});
+    ln_2_mean = pattern->NewNode(ln_2_mean_repr())
+                    ->assert_is_op_output("layer_norm", "Mean")
+                    ->assert_var_not_persistable();
+    ln_2_variance = pattern->NewNode(ln_2_variance_repr())
+                        ->assert_is_op_output("layer_norm", "Variance")
+                        ->assert_var_not_persistable();
   }
 
   // link nodes
   PDNode* q_matmul_x = ln_0_x;
-  if (norm_before_) q_matmul_x = ln_0_out;
+  if (norm_before_) {
+    ln_0->LinksFrom({ln_0_x, ln_0_bias, ln_0_scale})
+        .LinksTo({ln_0_out, ln_0_mean, ln_0_variance});
+    q_matmul_x = ln_0_out;
+  }
   q_matmul->LinksFrom({q_matmul_x, q_matmul_w}).LinksTo({q_matmul_out});
   q_add->LinksFrom({q_matmul_out, q_add_bias}).LinksTo({q_add_out});
-  q_reshape->LinksFrom({q_add_out}).LinksTo({q_reshape_out, q_reshape_xshape});
-  q_transpose->LinksFrom({q_reshape_out})
-      .LinksTo({q_transpose_out, q_transpose_xshape});
+  q_reshape->LinksFrom({q_add_out}).LinksTo({q_reshape_out});
+  q_transpose->LinksFrom({q_reshape_out}).LinksTo({q_transpose_out});
+  PDNode* qk_matmul_x = q_transpose_out;
+  if (with_q_scale_) {
+    q_scale->LinksFrom({q_transpose_out}).LinksTo({q_scale_out});
+    qk_matmul_x = q_scale_out;
+  }
 
   k_matmul->LinksFrom({q_matmul_x, k_matmul_w}).LinksTo({k_matmul_out});
   k_add->LinksFrom({k_matmul_out, k_add_bias}).LinksTo({k_add_out});
-  k_reshape->LinksFrom({k_add_out}).LinksTo({k_reshape_out, k_reshape_xshape});
-  k_transpose->LinksFrom({k_reshape_out})
-      .LinksTo({k_transpose_out, k_transpose_xshape});
+  k_reshape->LinksFrom({k_add_out}).LinksTo({k_reshape_out});
+  k_transpose->LinksFrom({k_reshape_out}).LinksTo({k_transpose_out});
 
-  qk_matmul->LinksFrom({q_transpose_out, k_transpose_out})
-      .LinksTo({qk_matmul_out});
+  qk_matmul->LinksFrom({qk_matmul_x, k_transpose_out}).LinksTo({qk_matmul_out});
   PDNode* qk_softmax_x = qk_matmul_out;
-  if (with_mask_) qk_softmax_x = qk_add_out;
+  if (with_mask_) {
+    qk_add->LinksFrom({qk_matmul_out, qk_add_mask}).LinksTo({qk_add_out});
+    qk_softmax_x = qk_add_out;
+  }
   qk_softmax->LinksFrom({qk_softmax_x}).LinksTo({qk_softmax_out});
 
   v_matmul->LinksFrom({q_matmul_x, v_matmul_w}).LinksTo({v_matmul_out});
   v_add->LinksFrom({v_matmul_out, v_add_bias}).LinksTo({v_add_out});
-  v_reshape->LinksFrom({v_add_out}).LinksTo({v_reshape_out, v_reshape_xshape});
-  v_transpose->LinksFrom({v_reshape_out})
-      .LinksTo({v_transpose_out, v_transpose_xshape});
+  v_reshape->LinksFrom({v_add_out}).LinksTo({v_reshape_out});
+  v_transpose->LinksFrom({v_reshape_out}).LinksTo({v_transpose_out});
 
   qkv_matmul_0->LinksFrom({qk_softmax_out, v_transpose_out})
       .LinksTo({qkv_matmul_0_out});
-  qkv_transpose->LinksFrom({qkv_matmul_0_out})
-      .LinksTo({qkv_transpose_out, qkv_transpose_xshape});
-  qkv_reshape->LinksFrom({qkv_transpose_out})
-      .LinksTo({qkv_reshape_out, qkv_reshape_xshape});
+  qkv_transpose->LinksFrom({qkv_matmul_0_out}).LinksTo({qkv_transpose_out});
+  qkv_reshape->LinksFrom({qkv_transpose_out}).LinksTo({qkv_reshape_out});
   qkv_matmul_1->LinksFrom({qkv_reshape_out, qkv_matmul_1_w})
       .LinksTo({qkv_matmul_1_out});
   qkv_add_0->LinksFrom({qkv_matmul_1_out, qkv_add_0_bias})
@@ -511,220 +497,196 @@ SingleEncoderXPUPattern::SingleEncoderXPUPattern(
         .LinksTo({qkv_add_4_out});
   } else {
     qkv_add_4->LinksFrom({qkv_add_3_out, ln_1_out}).LinksTo({qkv_add_4_out});
+    ln_2->LinksFrom({qkv_add_4_out, ln_2_bias, ln_2_scale})
+        .LinksTo({ln_2_out, ln_2_mean, ln_2_variance});
   }
 }
 
 }  // namespace patterns
 
-/*
-step1: fuse single ops to single_encoder_xpu
-step2: fuse mutitl single_encoder_xpu to multi_encoder_xpu
-
-1. step1
-Origin subgraph:
-        ------------ input_variable*
-       |             /      |     \
-       |            /       |      \
-       |      v_matmul  q_matmul  k_matmul
-       |           |        |         |
-       |           |        |         |
-       |        v_add    q_add      add
-       |           |        |         |
-       |           |        |         |
-       |    v_reshape  q_reshape  k_reshape
-       |           |        |         |
-       |           |        |         |
-       |  v_transpose q_transpose k_transpose
-       |          |         |         |
-       |          |         \         /
-       |          |          qk_matmul
-       |          |              |
-       |          |              |
-       |          |           qk_add
-       |          |              |
-       |          |              |
-       |          |         qk_softmax
-       |          |              |
-       |          |              |
-       |          ---------qkv_matmul_0
-       |                         |
-       |                         |
-       |                  qkv_transpose
-       |                         |
-       |                         |
-       |                    qkv_reshape
-       |                         |
-       |                         |
-       |                    qkv_matmul_1
-       |                         |
-       |                         |
-       |                     qkv_add_0
-       |                         |
-       |                         |
-       ----------------------qkv_add_1
-                                |
-                                |
-                            layer_norm_1
-                            /       \
-                            |       |
-                            |  qkv_matmul_2
-                            |       |
-                            |       |
-                            |   qkv_add_2
-                            |       |
-                            |       |
-                            |    qkv_act
-                            |       |
-                            |       |
-                            |  qkv_matmul_3
-                            |       |
-                            |       |
-                            |   qkv_add_3
-                            |       |
-                            \       /
-                            qkv_add_4
-                                |
-                            layer_norm
-
-Fused subgraph:
-                single_encoder_xpu
-
-2. step2
-Origin subgraph:
-                       ...
-                        |
-                single_encoder_xpu
-                        |
-                (single_encoder_xpu)
-                        |
-                (single_encoder_xpu)
-                        |
-                       ...
-Fused subgraph:
-                multi_encoder_xpu
-*/
-class MultiEncoderXPUFusePass : public FusePassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  int ApplySingleEncoderXPUFuse(ir::Graph* graph,
-                                const std::string& act_type,
-                                const std::string& matmul_type_0,
-                                const std::string& matmul_type_1,
-                                const std::string& matmul_type_2,
-                                bool norm_before,
-                                bool with_mask) const;
-
-  bool ApplyMultiEncoderXPUFuse(ir::Graph* graph) const;
-
-  // 1. Transpose q_w, k_w, v_w
-  // 2. Concat q_w, k_w, v_w
-  // 3. Generate qkv_w_max tensor
-  // 4. Quant qkv_w to int16
-  void PrepareQKVWeight(const phi::DenseTensor& q_w,
-                        const phi::DenseTensor& k_w,
-                        const phi::DenseTensor& v_w,
-                        phi::DenseTensor* qkv_w,
-                        phi::DenseTensor* qkv_w_max) const;
-
-  void ConcatQKVBias(const phi::DenseTensor& q_bias,
-                     const phi::DenseTensor& k_bias,
-                     const phi::DenseTensor& v_bias,
-                     phi::DenseTensor* qkv_bias) const;
-
-  const std::string name_scope_{"multi_encoder_xpu_fuse_pass"};
-};
-
 void MultiEncoderXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
-  std::vector<std::string> act_types{"gelu", "relu"};
-  std::vector<std::string> matmul_types_0{"mul", "matmul", "matmul_v2"};
-  std::vector<std::string> matmul_types_1{"matmul", "matmul_v2"};
-  std::vector<std::string> matmul_types_2{"matmul", "matmul_v2"};
-  std::vector<bool> norm_befores{true, false};
-  std::vector<bool> with_masks{true, false};
+
   int single_encoder_fused_counts = 0;
   int multi_encoder_fused_counts = 0;
-  for (auto act_type : act_types) {
-    for (auto matmul_type_0 : matmul_types_0) {
-      for (auto matmul_type_1 : matmul_types_1) {
-        for (auto matmul_type_2 : matmul_types_2) {
-          for (auto norm_before : norm_befores) {
-            for (auto with_mask : with_masks) {
-              single_encoder_fused_counts +=
-                  ApplySingleEncoderXPUFuse(graph,
-                                            act_type,
-                                            matmul_type_0,
-                                            matmul_type_1,
-                                            matmul_type_2,
-                                            norm_before,
-                                            with_mask);
-              while (ApplyMultiEncoderXPUFuse(graph)) {
-                multi_encoder_fused_counts++;
-              }
-            }
-          }
-        }
-      }
+  auto pattern_params = GeneratePatternParams();
+  for (auto pattern_param : pattern_params) {
+    single_encoder_fused_counts +=
+        ApplySingleEncoderXPUFuse(graph,
+                                  pattern_param.act_type,
+                                  pattern_param.matmul_type_0,
+                                  pattern_param.matmul_type_1,
+                                  pattern_param.matmul_type_2,
+                                  pattern_param.norm_before,
+                                  pattern_param.with_q_scale,
+                                  pattern_param.with_mask);
+    while (ApplyMultiEncoderXPUFuse(graph)) {
+      multi_encoder_fused_counts++;
     }
   }
+  int cast_mask_counts = CastMask(graph);
+
   AddStatis(single_encoder_fused_counts);
   AddStatis(multi_encoder_fused_counts);
+  AddStatis(cast_mask_counts);
 }
 
-void MultiEncoderXPUFusePass::PrepareQKVWeight(
-    const phi::DenseTensor& q_w,
-    const phi::DenseTensor& k_w,
-    const phi::DenseTensor& v_w,
-    phi::DenseTensor* qkv_w,
-    phi::DenseTensor* qkv_w_max) const {
-  // Transpose
-  phi::DenseTensor q_w_trans;
-  phi::DenseTensor k_w_trans;
-  phi::DenseTensor v_w_trans;
-  Transpose2D<float>(q_w, &q_w_trans);
-  Transpose2D<float>(k_w, &k_w_trans);
-  Transpose2D<float>(v_w, &v_w_trans);
+void MultiEncoderXPUFusePass::PrepareQKVWeight(Graph* graph,
+                                               Scope* scope,
+                                               BlockDesc* block,
+                                               Node* q_w,
+                                               Node* k_w,
+                                               Node* v_w,
+                                               Node** qkv_w_int16,
+                                               Node** qkv_w_max) const {
+  phi::DenseTensor q_w_fp32_t;
+  phi::DenseTensor k_w_fp32_t;
+  phi::DenseTensor v_w_fp32_t;
+  Assign(scope->Var(q_w->Name())->Get<phi::DenseTensor>(), &q_w_fp32_t);
+  Assign(scope->Var(k_w->Name())->Get<phi::DenseTensor>(), &k_w_fp32_t);
+  Assign(scope->Var(v_w->Name())->Get<phi::DenseTensor>(), &v_w_fp32_t);
 
-  // Concat
-  auto q_w_trans_dims = q_w_trans.dims();
-  auto k_w_trans_dims = k_w_trans.dims();
-  auto v_w_trans_dims = v_w_trans.dims();
-  qkv_w->Resize(DDim({q_w_trans_dims[0] + k_w_trans_dims[0] + v_w_trans_dims[0],
-                      q_w_trans_dims[1]}));
-  qkv_w->set_type(q_w.type());
-  auto* dev_ctx = static_cast<phi::CPUContext*>(
+  CastToFp32(&q_w_fp32_t);
+  CastToFp32(&k_w_fp32_t);
+  CastToFp32(&v_w_fp32_t);
+
+  Transpose2D(&q_w_fp32_t);
+  Transpose2D(&k_w_fp32_t);
+  Transpose2D(&v_w_fp32_t);
+
+  phi::DenseTensor qkv_w_int16_t;
+  phi::DenseTensor qkv_w_max_t;
+  qkv_w_int16_t.Resize(
+      DDim({q_w_fp32_t.dims()[0] + k_w_fp32_t.dims()[0] + v_w_fp32_t.dims()[0],
+            q_w_fp32_t.dims()[1]}));
+  qkv_w_int16_t.set_type(q_w_fp32_t.type());
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-  int size = q_w.numel();
-  auto* qkv_w_data = dev_ctx->Alloc<float>(qkv_w);
-  memcpy(qkv_w_data, q_w_trans.data(), size * sizeof(float));
-  qkv_w_data += size;
-  memcpy(qkv_w_data, k_w_trans.data(), size * sizeof(float));
-  qkv_w_data += size;
-  memcpy(qkv_w_data, v_w_trans.data(), size * sizeof(float));
+  std::vector<const phi::DenseTensor*> in_tensors{
+      &q_w_fp32_t, &k_w_fp32_t, &v_w_fp32_t};
+  phi::ConcatKernel<float>(*cpu_ctx, in_tensors, 0, &qkv_w_int16_t);
 
-  // Quant to int16
-  QuantWeight<int16_t>(qkv_w, qkv_w_max, false);
+  PrepareWeight<int16_t>(&qkv_w_int16_t, &qkv_w_max_t, false);
+  size_t qkv_w_int16_hash = HashTensor<int16_t>(qkv_w_int16_t);
+  size_t qkv_w_max_hash = HashTensor<float>(qkv_w_max_t);
+  std::string qkv_w_int16_name = std::to_string(qkv_w_int16_hash);
+  std::string qkv_w_max_name = std::to_string(qkv_w_max_hash);
+  *qkv_w_int16 = FindNodeWithName(graph, qkv_w_int16_name);
+  if (*qkv_w_int16 == nullptr) {
+    // Create qkv_w_int16 node
+    // Update qkv_w_int16 var_desc in block
+    VarDesc qkv_w_int16_desc(qkv_w_int16_name);
+    qkv_w_int16_desc.SetPersistable(true);
+    qkv_w_int16_desc.SetShape(vectorize(qkv_w_int16_t.dims()));
+    qkv_w_int16_desc.SetDataType(
+        framework::TransToProtoVarType(qkv_w_int16_t.dtype()));
+    *qkv_w_int16 = graph->CreateVarNode(&qkv_w_int16_desc);
+    auto* block_qkv_w_int16_desc = block->Var(qkv_w_int16_name);
+    block_qkv_w_int16_desc->SetPersistable(qkv_w_int16_desc.Persistable());
+    block_qkv_w_int16_desc->SetShape(qkv_w_int16_desc.GetShape());
+    block_qkv_w_int16_desc->SetDataType(qkv_w_int16_desc.GetDataType());
+    // Create qkv_w_max node
+    // Update qkv_w_max var_desc in block
+    VarDesc qkv_w_max_desc(qkv_w_max_name);
+    qkv_w_max_desc.SetPersistable(true);
+    qkv_w_max_desc.SetShape(vectorize(qkv_w_max_t.dims()));
+    qkv_w_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
+    *qkv_w_max = graph->CreateVarNode(&qkv_w_max_desc);
+    auto* block_qkv_w_max_desc = block->Var(qkv_w_max_name);
+    block_qkv_w_max_desc->SetPersistable(qkv_w_max_desc.Persistable());
+    block_qkv_w_max_desc->SetShape(qkv_w_max_desc.GetShape());
+    block_qkv_w_max_desc->SetDataType(qkv_w_max_desc.GetDataType());
+
+    // Find qkv_w_int16/qkv_w_max variable in scope
+    auto* qkv_w_int16_var = scope->FindVar(qkv_w_int16_name);
+    if (qkv_w_int16_var == nullptr) {
+      // Create qkv_w_int16/qkv_w_max variable/tensor
+      Assign(qkv_w_int16_t,
+             scope->Var(qkv_w_int16_name)->GetMutable<phi::DenseTensor>());
+      Assign(qkv_w_max_t,
+             scope->Var(qkv_w_max_name)->GetMutable<phi::DenseTensor>());
+    } else {
+      // Share the same variable
+      PADDLE_ENFORCE_NOT_NULL(
+          scope->FindVar(qkv_w_max_name),
+          platform::errors::Fatal(
+              "qkv_w_max(%s) variable should not be nullptr if qkv_w_int16(%s) "
+              "variable is exist.",
+              qkv_w_max_name,
+              qkv_w_int16_name));
+    }
+  } else {
+    *qkv_w_max = FindNodeWithName(graph, qkv_w_max_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        *qkv_w_max,
+        platform::errors::Fatal(
+            "qkv_w_max(%s) variable should not be nullptr if qkv_w_int16(%s) "
+            "variable is exist.",
+            qkv_w_max_name,
+            qkv_w_int16_name));
+  }
 }
 
-void MultiEncoderXPUFusePass::ConcatQKVBias(const phi::DenseTensor& q_bias,
-                                            const phi::DenseTensor& k_bias,
-                                            const phi::DenseTensor& v_bias,
-                                            phi::DenseTensor* qkv_bias) const {
-  int q_bias_size = q_bias.numel();
-  qkv_bias->Resize(DDim({q_bias_size * 3}));
-  qkv_bias->set_type(q_bias.type());
-  auto* dev_ctx = static_cast<phi::CPUContext*>(
+void MultiEncoderXPUFusePass::PrepareQKVBias(Graph* graph,
+                                             Scope* scope,
+                                             BlockDesc* block,
+                                             Node* q_bias,
+                                             Node* k_bias,
+                                             Node* v_bias,
+                                             Node** qkv_bias) const {
+  auto* q_bias_tensor =
+      scope->Var(q_bias->Name())->GetMutable<phi::DenseTensor>();
+  auto* k_bias_tensor =
+      scope->Var(k_bias->Name())->GetMutable<phi::DenseTensor>();
+  auto* v_bias_tensor =
+      scope->Var(v_bias->Name())->GetMutable<phi::DenseTensor>();
+  phi::DenseTensor q_bias_fp32_tensor;
+  phi::DenseTensor k_bias_fp32_tensor;
+  phi::DenseTensor v_bias_fp32_tensor;
+  CastToFp32(q_bias_tensor, &q_bias_fp32_tensor);
+  CastToFp32(k_bias_tensor, &k_bias_fp32_tensor);
+  CastToFp32(v_bias_tensor, &v_bias_fp32_tensor);
+
+  phi::DenseTensor qkv_bias_tensor;
+  int q_bias_fp32_size = q_bias_fp32_tensor.numel();
+  qkv_bias_tensor.Resize(DDim({q_bias_fp32_size * 3}));
+  qkv_bias_tensor.set_type(phi::DataType::FLOAT32);
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
       platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-  auto* qkv_bias_data = dev_ctx->Alloc<float>(qkv_bias);
-  memcpy(qkv_bias_data, q_bias.data(), q_bias_size * sizeof(float));
-  qkv_bias_data += q_bias_size;
-  memcpy(qkv_bias_data, k_bias.data(), q_bias_size * sizeof(float));
-  qkv_bias_data += q_bias_size;
-  memcpy(qkv_bias_data, v_bias.data(), q_bias_size * sizeof(float));
+  auto* qkv_bias_data = cpu_ctx->Alloc<float>(&qkv_bias_tensor);
+  memcpy(qkv_bias_data,
+         q_bias_fp32_tensor.data(),
+         q_bias_fp32_size * sizeof(float));
+  qkv_bias_data += q_bias_fp32_size;
+  memcpy(qkv_bias_data,
+         k_bias_fp32_tensor.data(),
+         q_bias_fp32_size * sizeof(float));
+  qkv_bias_data += q_bias_fp32_size;
+  memcpy(qkv_bias_data,
+         v_bias_fp32_tensor.data(),
+         q_bias_fp32_size * sizeof(float));
+
+  size_t qkv_bias_hash = HashTensor<float>(qkv_bias_tensor);
+  std::string qkv_bias_name = std::to_string(qkv_bias_hash);
+  *qkv_bias = FindNodeWithName(graph, qkv_bias_name);
+  if (*qkv_bias == nullptr) {
+    // Create qkv_bias node
+    // Update qkv_bias var_desc in block
+    VarDesc qkv_bias_desc(qkv_bias_name);
+    qkv_bias_desc.SetPersistable(true);
+    qkv_bias_desc.SetShape(vectorize(qkv_bias_tensor.dims()));
+    qkv_bias_desc.SetDataType(
+        framework::TransToProtoVarType(qkv_bias_tensor.dtype()));
+    *qkv_bias = graph->CreateVarNode(&qkv_bias_desc);
+    auto* block_qkv_bias_desc = block->Var(qkv_bias_name);
+    block_qkv_bias_desc->SetPersistable(qkv_bias_desc.Persistable());
+    block_qkv_bias_desc->SetShape(qkv_bias_desc.GetShape());
+    block_qkv_bias_desc->SetDataType(qkv_bias_desc.GetDataType());
+    Assign(qkv_bias_tensor,
+           scope->Var(qkv_bias_name)->GetMutable<phi::DenseTensor>());
+  }
 }
 
 int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
@@ -734,6 +696,7 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     const std::string& matmul_type_1,
     const std::string& matmul_type_2,
     bool norm_before,
+    bool with_q_scale,
     bool with_mask) const {
   GraphPatternDetector gpd;
   patterns::SingleEncoderXPUPattern pattern(gpd.mutable_pattern(),
@@ -743,6 +706,7 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
                                             matmul_type_1,
                                             matmul_type_2,
                                             norm_before,
+                                            with_q_scale,
                                             with_mask);
 
   int found_subgraph_count = 0;
@@ -756,6 +720,7 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     GET_IR_NODE(q_add);
     GET_IR_NODE(q_reshape);
     GET_IR_NODE(q_transpose);
+    GET_IR_NODE(q_scale);
     GET_IR_NODE(k_matmul);
     GET_IR_NODE(k_add);
     GET_IR_NODE(k_reshape);
@@ -790,34 +755,27 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     GET_IR_NODE(q_add_bias);
     GET_IR_NODE(q_add_out);
     GET_IR_NODE(q_reshape_out);
-    GET_IR_NODE(q_reshape_xshape);
     GET_IR_NODE(q_transpose_out);
-    GET_IR_NODE(q_transpose_xshape);
+    GET_IR_NODE(q_scale_out);
     GET_IR_NODE(k_matmul_w);
     GET_IR_NODE(k_matmul_out);
     GET_IR_NODE(k_add_bias);
     GET_IR_NODE(k_add_out);
     GET_IR_NODE(k_reshape_out);
-    GET_IR_NODE(k_reshape_xshape);
     GET_IR_NODE(k_transpose_out);
-    GET_IR_NODE(k_transpose_xshape);
     GET_IR_NODE(v_matmul_w);
     GET_IR_NODE(v_matmul_out);
     GET_IR_NODE(v_add_bias);
     GET_IR_NODE(v_add_out);
     GET_IR_NODE(v_reshape_out);
-    GET_IR_NODE(v_reshape_xshape);
     GET_IR_NODE(v_transpose_out);
-    GET_IR_NODE(v_transpose_xshape);
     GET_IR_NODE(qk_matmul_out);
     GET_IR_NODE(qk_add_mask);
     GET_IR_NODE(qk_add_out);
     GET_IR_NODE(qk_softmax_out);
     GET_IR_NODE(qkv_matmul_0_out);
     GET_IR_NODE(qkv_transpose_out);
-    GET_IR_NODE(qkv_transpose_xshape);
     GET_IR_NODE(qkv_reshape_out);
-    GET_IR_NODE(qkv_reshape_xshape);
     GET_IR_NODE(qkv_matmul_1_w);
     GET_IR_NODE(qkv_matmul_1_out);
     GET_IR_NODE(qkv_add_0_bias);
@@ -847,90 +805,71 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
 
     auto* block = q_matmul->Op()->Block();
     auto* scope = param_scope();
+    bool enable_fp16 =
+        scope->FindVar(q_matmul_w->Name())->Get<phi::DenseTensor>().dtype() ==
+        phi::DataType::FLOAT16;
 
-    // Prepare q,k,v weight
-    std::string q_w_name = q_matmul_w->Name();
-    std::string k_w_name = k_matmul_w->Name();
-    std::string v_w_name = v_matmul_w->Name();
-    std::string qkv_w_name = q_w_name + "_" + k_w_name + "_" + v_w_name;
-    VarDesc qkv_w_desc(qkv_w_name);
-    qkv_w_desc.SetPersistable(true);
-    auto* qkv_w = graph->CreateVarNode(&qkv_w_desc);
-    auto* qkv_w_var = block->Var(qkv_w_name);
-    qkv_w_var->SetPersistable(true);
-    std::string qkv_w_max_name = qkv_w_name + "_max";
-    VarDesc qkv_w_max_desc(qkv_w_max_name);
-    qkv_w_max_desc.SetPersistable(true);
-    auto* qkv_w_max = graph->CreateVarNode(&qkv_w_max_desc);
-    auto* qkv_w_max_var = block->Var(qkv_w_max_name);
-    qkv_w_max_var->SetPersistable(true);
-    PrepareQKVWeight(
-        scope->FindVar(q_w_name)->Get<phi::DenseTensor>(),
-        scope->FindVar(k_w_name)->Get<phi::DenseTensor>(),
-        scope->FindVar(v_w_name)->Get<phi::DenseTensor>(),
-        scope->Var(qkv_w_name)->GetMutable<phi::DenseTensor>(),
-        scope->Var(qkv_w_max_name)->GetMutable<phi::DenseTensor>());
+    Node* qkv_w_int16 = nullptr;
+    Node* qkv_w_max = nullptr;
+    PrepareQKVWeight(graph,
+                     scope,
+                     block,
+                     q_matmul_w,
+                     k_matmul_w,
+                     v_matmul_w,
+                     &qkv_w_int16,
+                     &qkv_w_max);
 
-    // Prepare qkv_matmul_1_w, qkv_matmul_2_w, qkv_matmul_3_w
-#define PREPARE_QKV_MATMUL_W(idx_)                                            \
-  std::string qkv_matmul_##idx_##_w_name = qkv_matmul_##idx_##_w->Name();     \
-  std::string qkv_matmul_##idx_##_w_max_name =                                \
-      qkv_matmul_##idx_##_w_name + "_max";                                    \
-  VarDesc qkv_matmul_##idx_##_w_max_desc(qkv_matmul_##idx_##_w_max_name);     \
-  qkv_matmul_##idx_##_w_max_desc.SetPersistable(true);                        \
-  auto qkv_matmul_##idx_##_w_max =                                            \
-      graph->CreateVarNode(&qkv_matmul_##idx_##_w_max_desc);                  \
-  auto qkv_matmul_##idx_##_w_max_var =                                        \
-      block->Var(qkv_matmul_##idx_##_w_max_name);                             \
-  qkv_matmul_##idx_##_w_max_var->SetPersistable(true);                        \
-  auto qkv_matmul_##idx_##_w_max_tensor =                                     \
-      scope->Var(qkv_matmul_##idx_##_w_max_name)                              \
-          ->GetMutable<phi::DenseTensor>();                                   \
-  auto qkv_matmul_##idx_##_w_tensor =                                         \
-      scope->Var(qkv_matmul_##idx_##_w_name)->GetMutable<phi::DenseTensor>(); \
-  QuantWeight<int16_t>(                                                       \
-      qkv_matmul_##idx_##_w_tensor, qkv_matmul_##idx_##_w_max_tensor, true);
+#define PREPARE_QKV_MATMUL_W(idx_)                     \
+  Node* qkv_matmul_##idx_##_w_int16 = nullptr;         \
+  Node* qkv_matmul_##idx_##_w_max = nullptr;           \
+  PrepareWeight<int16_t>(graph,                        \
+                         scope,                        \
+                         block,                        \
+                         qkv_matmul_##idx_##_w,        \
+                         &qkv_matmul_##idx_##_w_int16, \
+                         &qkv_matmul_##idx_##_w_max,   \
+                         true);
     PREPARE_QKV_MATMUL_W(1);
     PREPARE_QKV_MATMUL_W(2);
     PREPARE_QKV_MATMUL_W(3);
 #undef PREPARE_QKV_MATMUL_W
 
-    // Concat q_add_bias, k_add_bias, v_add_bias
-    std::string q_add_bias_name = q_add_bias->Name();
-    std::string k_add_bias_name = k_add_bias->Name();
-    std::string v_add_bias_name = v_add_bias->Name();
-    std::string qkv_add_bias_name =
-        q_add_bias_name + "_" + k_add_bias_name + "_" + v_add_bias_name;
-    VarDesc qkv_add_bias_desc(qkv_add_bias_name);
-    qkv_add_bias_desc.SetPersistable(true);
-    auto* qkv_add_bias = graph->CreateVarNode(&qkv_add_bias_desc);
-    auto* qkv_add_bias_var = block->Var(qkv_add_bias_name);
-    qkv_add_bias_var->SetPersistable(true);
-    ConcatQKVBias(
-        scope->FindVar(q_add_bias_name)->Get<phi::DenseTensor>(),
-        scope->FindVar(k_add_bias_name)->Get<phi::DenseTensor>(),
-        scope->FindVar(v_add_bias_name)->Get<phi::DenseTensor>(),
-        scope->Var(qkv_add_bias_name)->GetMutable<phi::DenseTensor>());
+    Node* qkv_add_bias_fp32 = nullptr;
+    PrepareQKVBias(graph,
+                   scope,
+                   block,
+                   q_add_bias,
+                   k_add_bias,
+                   v_add_bias,
+                   &qkv_add_bias_fp32);
+
+    Node* qkv_add_0_bias_fp32 = nullptr;
+    Node* qkv_add_2_bias_fp32 = nullptr;
+    Node* qkv_add_3_bias_fp32 = nullptr;
+    PrepareBias(graph, scope, block, qkv_add_0_bias, &qkv_add_0_bias_fp32);
+    PrepareBias(graph, scope, block, qkv_add_2_bias, &qkv_add_2_bias_fp32);
+    PrepareBias(graph, scope, block, qkv_add_3_bias, &qkv_add_3_bias_fp32);
 
     // Generate single_encoder_xpu op
     framework::OpDesc op_desc(block);
     op_desc.SetType("single_encoder_xpu");
     op_desc.SetInput("x", {ln_0_x->Name()});
     op_desc.SetInput("fc_weight",
-                     {qkv_w_name,
-                      qkv_matmul_1_w_name,
-                      qkv_matmul_2_w_name,
-                      qkv_matmul_3_w_name});
+                     {qkv_w_int16->Name(),
+                      qkv_matmul_1_w_int16->Name(),
+                      qkv_matmul_2_w_int16->Name(),
+                      qkv_matmul_3_w_int16->Name()});
     op_desc.SetInput("fc_weight_max",
-                     {qkv_w_max_name,
-                      qkv_matmul_1_w_max_name,
-                      qkv_matmul_2_w_max_name,
-                      qkv_matmul_3_w_max_name});
+                     {qkv_w_max->Name(),
+                      qkv_matmul_1_w_max->Name(),
+                      qkv_matmul_2_w_max->Name(),
+                      qkv_matmul_3_w_max->Name()});
     op_desc.SetInput("fc_bias",
-                     {qkv_add_bias_name,
-                      qkv_add_0_bias->Name(),
-                      qkv_add_2_bias->Name(),
-                      qkv_add_3_bias->Name()});
+                     {qkv_add_bias_fp32->Name(),
+                      qkv_add_0_bias_fp32->Name(),
+                      qkv_add_2_bias_fp32->Name(),
+                      qkv_add_3_bias_fp32->Name()});
     if (norm_before) {
       op_desc.SetInput("ln_scale", {ln_0_scale->Name(), ln_1_scale->Name()});
       op_desc.SetInput("ln_bias", {ln_0_bias->Name(), ln_1_bias->Name()});
@@ -954,6 +893,7 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
         static_cast<int>(qkv_matmul_2_w_shape[1] / qkv_matmul_2_w_shape[0]));
     op_desc.SetAttr("act_type", ConvertActivationType(act_type));
     op_desc.SetAttr("relative_type", static_cast<int>(0));
+    op_desc.SetAttr("enable_fp16", enable_fp16);
     if (norm_before) {
       op_desc.SetOutput("out", {qkv_add_4_out->Name()});
     } else {
@@ -961,30 +901,30 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
     }
     auto* single_encoder_xpu = graph->CreateOpNode(&op_desc);
     // Link nodes
-    SAFE_IR_NODE_LINK_TO(ln_0_x, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_w, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_w_max, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_1_w, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_1_w_max, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_2_w, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_2_w_max, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_3_w, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_matmul_3_w_max, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_add_bias, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_add_0_bias, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_add_2_bias, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(qkv_add_3_bias, single_encoder_xpu);
+    IR_NODE_LINK_TO(ln_0_x, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_w_int16, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_w_max, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_1_w_int16, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_1_w_max, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_2_w_int16, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_2_w_max, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_3_w_int16, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_matmul_3_w_max, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_add_bias_fp32, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_add_0_bias_fp32, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_add_2_bias_fp32, single_encoder_xpu);
+    IR_NODE_LINK_TO(qkv_add_3_bias_fp32, single_encoder_xpu);
     SAFE_IR_NODE_LINK_TO(ln_0_scale, single_encoder_xpu);
     SAFE_IR_NODE_LINK_TO(ln_0_bias, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(ln_1_scale, single_encoder_xpu);
-    SAFE_IR_NODE_LINK_TO(ln_1_bias, single_encoder_xpu);
+    IR_NODE_LINK_TO(ln_1_scale, single_encoder_xpu);
+    IR_NODE_LINK_TO(ln_1_bias, single_encoder_xpu);
     SAFE_IR_NODE_LINK_TO(ln_2_scale, single_encoder_xpu);
     SAFE_IR_NODE_LINK_TO(ln_2_bias, single_encoder_xpu);
     SAFE_IR_NODE_LINK_TO(qk_add_mask, single_encoder_xpu);
     if (norm_before) {
-      SAFE_IR_NODE_LINK_TO(single_encoder_xpu, qkv_add_4_out);
+      IR_NODE_LINK_TO(single_encoder_xpu, qkv_add_4_out);
     } else {
-      SAFE_IR_NODE_LINK_TO(single_encoder_xpu, ln_2_out);
+      IR_NODE_LINK_TO(single_encoder_xpu, ln_2_out);
     }
 
     // Delete nodes
@@ -1019,30 +959,22 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
                                                  q_matmul_out,
                                                  q_add_out,
                                                  q_reshape_out,
-                                                 q_reshape_xshape,
                                                  q_transpose_out,
-                                                 q_transpose_xshape,
                                                  k_matmul_w,
                                                  k_matmul_out,
                                                  k_add_out,
                                                  k_reshape_out,
-                                                 k_reshape_xshape,
                                                  k_transpose_out,
-                                                 k_transpose_xshape,
                                                  v_matmul_w,
                                                  v_matmul_out,
                                                  v_add_out,
                                                  v_reshape_out,
-                                                 v_reshape_xshape,
                                                  v_transpose_out,
-                                                 v_transpose_xshape,
                                                  qk_matmul_out,
                                                  qk_softmax_out,
                                                  qkv_matmul_0_out,
                                                  qkv_transpose_out,
-                                                 qkv_transpose_xshape,
                                                  qkv_reshape_out,
-                                                 qkv_reshape_xshape,
                                                  qkv_matmul_1_out,
                                                  qkv_add_0_out,
                                                  qkv_add_1_out,
@@ -1064,6 +996,10 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
       delete_nodes.insert(ln_2);
       delete_nodes.insert(ln_2_mean);
       delete_nodes.insert(ln_2_variance);
+    }
+    if (with_q_scale) {
+      delete_nodes.insert(q_scale);
+      delete_nodes.insert(q_scale_out);
     }
     if (with_mask) {
       delete_nodes.insert(qk_add);
@@ -1191,6 +1127,9 @@ bool MultiEncoderXPUFusePass::ApplyMultiEncoderXPUFuse(ir::Graph* graph) const {
         PADDLE_GET_CONST(int, single_encoders[0]->Op()->GetAttr(attr_name)));
   }
   op_desc.SetAttr("slice_idx", static_cast<int>(-1));
+  op_desc.SetAttr(
+      "enable_fp16",
+      PADDLE_GET_CONST(bool, single_encoders[0]->Op()->GetAttr("enable_fp16")));
   op_desc.SetOutput("out", {out_name});
   op_desc.SetOutput("x_fp16", {x_fp16_name});
   op_desc.SetOutput("out_fp16", {out_fp16_name});
@@ -1216,6 +1155,68 @@ bool MultiEncoderXPUFusePass::ApplyMultiEncoderXPUFuse(ir::Graph* graph) const {
   GraphSafeRemoveNodes(graph, delete_nodes);
 
   return true;
+}
+
+int MultiEncoderXPUFusePass::CastMask(ir::Graph* graph) const {
+  int cast_counts = 0;
+  auto nodes = graph->Nodes();
+  for (auto node : nodes) {
+    if (node->IsVar()) continue;
+    auto op_desc = node->Op();
+    if (node->IsVar() ||  //
+        op_desc->Type() != "multi_encoder_xpu" ||
+        !op_desc->GetAttrIfExists<bool>("enable_fp16") ||
+        op_desc->Inputs().count("mask") == 0)
+      continue;
+
+    auto* block = op_desc->Block();
+    auto* scope = param_scope();
+
+    // Find mask node
+    std::string mask_name = op_desc->Inputs().at("mask")[0];
+    Node* mask = nullptr;
+    for (auto* in_node : node->inputs) {
+      if (in_node->Var()->Name() == mask_name) {
+        mask = in_node;
+        break;
+      }
+    }
+
+    // Create new_mask node/var/tensor
+    std::string new_mask_name = mask_name + "_fp32";
+    VarDesc new_mask_desc(new_mask_name);
+    auto* new_mask = graph->CreateVarNode(&new_mask_desc);
+    block->Var(new_mask_name);
+    scope->Var(new_mask_name)->GetMutable<phi::DenseTensor>();
+
+    // Create cast op
+    framework::OpDesc cast_op_desc(block);
+    cast_op_desc.SetType("cast");
+    cast_op_desc.SetInput("X", {mask_name});
+    cast_op_desc.SetAttr("in_dtype",
+                         static_cast<int>(framework::proto::VarType::FP16));
+    cast_op_desc.SetAttr("out_dtype",
+                         static_cast<int>(framework::proto::VarType::FP32));
+    cast_op_desc.SetOutput("Out", {new_mask_name});
+    auto* cast = graph->CreateOpNode(&cast_op_desc);
+    IR_NODE_LINK_TO(mask, cast);
+    IR_NODE_LINK_TO(cast, new_mask);
+
+    // Update encoder
+    op_desc->SetInput("mask", {new_mask_name});
+    IR_NODE_LINK_TO(new_mask, node);
+    IR_NODE_UNLINK(node, mask);
+
+    cast_counts++;
+  }
+  return cast_counts;
+}
+
+std::vector<PatternParam> MultiEncoderXPUFusePass::GeneratePatternParams()
+    const {
+  return std::vector<PatternParam>{
+      // Params are arranged in alphabetic order
+      {"gelu", "matmul_v2", "matmul", "matmul_v2", false, false, true}};
 }
 
 }  // namespace ir

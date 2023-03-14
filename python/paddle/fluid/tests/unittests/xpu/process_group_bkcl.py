@@ -175,6 +175,34 @@ class TestProcessGroupFp32(unittest.TestCase):
         assert np.array_equal(tensor_y, old_tensor_y)
         sys.stdout.write("rank {}: test reduce sum api ok\n".format(pg.rank()))
 
+        # test reduce_scatter
+        in_shape = list(self.shape)
+        in_shape[0] *= 2
+        x = np.random.random(in_shape).astype(self.dtype)
+        y = np.random.random(in_shape).astype(self.dtype)
+        tensor_x = paddle.to_tensor(x)
+        tensor_y = paddle.to_tensor(y)
+        need_result = tensor_x + tensor_y
+        need_result0 = paddle.slice(need_result, [0], [0], [self.shape[0]])
+        need_result1 = paddle.slice(
+            need_result, [0], [self.shape[0]], [in_shape[0]]
+        )
+        out = np.random.random(self.shape).astype(self.dtype)
+        tensor_out = paddle.to_tensor(out)
+        if pg.rank() == 0:
+            task = dist.reduce_scatter(tensor_out, tensor_x, sync_op=True)
+        else:
+            task = dist.reduce_scatter(tensor_out, tensor_y, sync_op=False)
+            task.wait()
+        paddle.device.xpu.synchronize()
+        if pg.rank() == 0:
+            assert np.array_equal(need_result0, tensor_out)
+        else:
+            assert np.array_equal(need_result1, tensor_out)
+        sys.stdout.write(
+            "rank {}: test reduce_scatter sum api ok\n".format(pg.rank())
+        )
+
         # test send async api
         # rank 0
         x = np.random.random(self.shape).astype(self.dtype)

@@ -19,21 +19,35 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
     OpTestTool,
     convert_float_to_uint16,
 )
-from paddle.fluid.tests.unittests.test_reshape_op import TestReshapeOp
 
 paddle.enable_static()
 
 
-class TestReshape2OneDNNOp(TestReshapeOp):
+class TestReshape2OneDNNOp(OpTest):
     def setUp(self):
-        super().setUp()
+        self.init_data()
+        self.op_type = "reshape2"
+        self.python_api = paddle.tensor.reshape
+        self.python_out_sig = ['Out']
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.attrs = {"shape": self.new_shape}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype("float32"),
+        }
         self.x = self.inputs["X"]
         self.attrs['use_mkldnn'] = True
         self.set_additional_inputs()
         self.set_outputs()
+
+    def init_data(self):
+        self.ori_shape = (2, 60)
+        self.new_shape = (12, 10)
+        self.infered_shape = (12, 10)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -43,6 +57,12 @@ class TestReshape2OneDNNOp(TestReshapeOp):
 
     def set_outputs(self):
         pass
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'])
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
 
 
 class TestReshape2OneDNNOpDimInfer1(TestReshape2OneDNNOp):

@@ -27,7 +27,6 @@ from xpu.get_test_cover_info import (
 )
 
 import paddle
-import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -40,7 +39,6 @@ class XPUTestCumsumOP(XPUOpTestWrapper):
     class TestCumsumOPBase(XPUOpTest):
         def setUp(self):
             self.place = paddle.XPUPlace(0)
-            self.xpu_version = core.get_xpu_device_version(0)
             self.init_dtype()
             self.set_case()
 

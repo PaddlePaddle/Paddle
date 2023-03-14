@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #pragma once
+#include <string>
+
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/phi/common/data_type.h"
 
 // type declaration forward
@@ -26,5 +29,7 @@ namespace paddle::framework::paddle2cinn {
 ::phi::DataType TransToPaddleDataType(const ::cinn::common::Type& type);
 
 ::phi::DataType TransToPaddleDataType(const cinn_type_t& type);
+
+std::string PaddleAttributeToString(const framework::Attribute& attr);
 
 }  // namespace paddle::framework::paddle2cinn

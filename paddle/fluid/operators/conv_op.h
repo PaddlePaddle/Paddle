@@ -29,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// Base convolution operator definations for other conv
+// Base convolution operator definitions for other conv
 // like operators to reuse the implementation.
 inline int ConvOutputSize(
     int input_size, int filter_size, int dilation, int padding, int stride) {

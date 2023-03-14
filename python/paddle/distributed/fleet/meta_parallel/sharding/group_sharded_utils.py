@@ -19,10 +19,10 @@ from types import MethodType
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 from paddle.common_ops_import import dygraph_only
-from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
+from paddle.framework import core
 from paddle.nn import clip
 
 
@@ -270,18 +270,12 @@ def GroupShardedScaler(scaler):
                     param_grads_bfp16,
                     temp_found_inf_bfp16,
                 )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, temp_found_inf_bfp16
-                )
             if len(param_grads_fp16):
                 _legacy_C_ops.check_finite_and_unscale(
                     param_grads_fp16,
                     self._scale,
                     param_grads_fp16,
                     temp_found_inf_fp16,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, temp_found_inf_fp16
                 )
             if len(param_grads_fp32):
                 _legacy_C_ops.check_finite_and_unscale(
@@ -290,17 +284,21 @@ def GroupShardedScaler(scaler):
                     param_grads_fp32,
                     temp_found_inf_fp32,
                 )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, temp_found_inf_fp32
-                )
 
-        self._found_inf = self._found_inf.cast("int32")
+        self._found_inf = (
+            1
+            if temp_found_inf_bfp16
+            or temp_found_inf_fp16
+            or temp_found_inf_fp32
+            else 0
+        )
+        is_found_inf = paddle.to_tensor([self._found_inf], dtype="int32")
 
         paddle.distributed.all_reduce(
-            self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None
+            is_found_inf, op=paddle.distributed.ReduceOp.SUM, group=None
         )
 
-        self._found_inf = self._found_inf.cast("bool")
+        self._found_inf = is_found_inf.numpy()[0]
 
     scaler._unscale = MethodType(unscale_method, scaler)
     return scaler

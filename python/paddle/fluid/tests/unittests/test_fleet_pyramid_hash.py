@@ -16,9 +16,11 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+    fleet,
+)
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
     StrategyFactory,
 )
 
@@ -76,4 +78,5 @@ class TestPyramidHashOpApi(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
