@@ -1200,11 +1200,11 @@ def rank_attention(
     Examples:
         .. code-block:: python
            import paddle.fluid as fluid
-           import numpy as np
            import paddle
+           paddle.enable_static()
 
-           input = paddle.rand(name="input", shape=[4, 2], dtype="float32")
-           rank_offset = paddle.randint(low = 5, name="rank_offset", shape=[4, 7], dtype="int32")
+           input = paddle.static.data(name="input", shape=[None, 2], dtype="float32")
+           rank_offset = paddle.static.data(name="rank_offset", shape=[None, 7], dtype="int32")
            out = fluid.contrib.layers.rank_attention(input=input,
                                                      rank_offset=rank_offset,
                                                      rank_param_shape=[18,3],
@@ -1263,7 +1263,9 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
            import paddle.fluid as fluid
            import paddle
 
-           input = paddle.randn(name="input", shape=[16, 2, 3], dtype="float32")
+           paddle.enable_static()
+
+           input = paddle.static.data(name="input", shape=[16, 2, 3], dtype="float32")
            out = fluid.contrib.layers.batch_fc(input=input,
                                                param_size=[16, 3, 10],
                                                param_attr=
