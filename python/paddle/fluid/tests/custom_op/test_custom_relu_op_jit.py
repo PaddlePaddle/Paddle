@@ -50,10 +50,10 @@ custom_module = load(
     name='custom_relu_module_jit',
     sources=sources,
     extra_include_paths=paddle_includes,  # add for Coverage CI
+    extra_library_paths=paddle_libraries,
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
     extra_cuda_cflags=extra_nvcc_args,  # test for nvcc flags
     verbose=True,
-    extra_library_paths=paddle_libraries,
 )
 
 
