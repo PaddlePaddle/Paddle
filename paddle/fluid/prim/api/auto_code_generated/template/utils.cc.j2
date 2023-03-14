@@ -75,7 +75,7 @@ std::tuple<{{sequence('', '', ', ', names)}}>
 {%- macro static_prim_api_input_optional(input) -%}
   {%- if input.typename=='Tensor[]' -%} {#- render the input of type paddle::optional<std::Vector<Tensor>> -#}
 if ({{input.name}}) {
-  std::vector<std::string> {{input.name}}_names;
+  std::vector<std::string> {{input.name}}_names({{input.name}}.get().size());
   std::transform({{input.name}}.get().begin(), {{input.name}}.get().end(), {{input.name}}_names.begin(), [](const Tensor& t) {
     return std::static_pointer_cast<prim::DescTensor>(t.impl())->Name();
   });
@@ -91,7 +91,7 @@ if ({{input.name}}) {
 
 {%- macro static_prim_api_input_without_optional(input) -%}
   {%- if input.typename is tensor_sequence -%} {#- render the input of type std::Vector<Tensor> -#}
-std::vector<std::string> {{input.name}}_names;
+std::vector<std::string> {{input.name}}_names({{input.name}}.size());;
 std::transform({{input.name}}.begin(), {{input.name}}.end(), {{input.name}}_names.begin(), [](const Tensor& t) {
   return std::static_pointer_cast<prim::DescTensor>(t.impl())->Name();
 });

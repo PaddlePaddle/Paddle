@@ -102,7 +102,8 @@ list(
   elementwiseadd_transpose_op.cc
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
-  expand_v2_op.cc)
+  expand_v2_op.cc
+  temporal_shift_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
