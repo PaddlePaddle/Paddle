@@ -182,156 +182,6 @@ class CompiledProgram:
         self._build_strategy = build_strategy
         self._exec_strategy = None
 
-    def with_data_parallel(
-        self,
-        loss_name=None,
-        build_strategy=None,
-        exec_strategy=None,
-        share_vars_from=None,
-        places=None,
-    ):
-        """
-        This interface is used to transform the input Program or Graph to a multi-graph
-        to run the model in data parallel mode. Users can use the build_strategy and
-        exec_strategy to set some optimizations that can be applied during the construction
-        and computation of the Graph, such as reducing the number of AllReduce operations,
-        specifying the size of the thread pool used in the computation Graph running the model,
-        and so on.
-
-        .. note::
-            If build_strategy is specified when building CompiledProgram and calling
-            with_data_parallel, build_strategy in CompiledProgram will be overwritten, therefore,
-            if it is data parallel training, it is recommended to set build_strategy when calling
-            with_data_parallel interface.
-
-        Args:
-            loss_name (str): This parameter is the name of the loss Tensor of the model.
-                **Note: If it is model training, you must set loss_name, otherwise the
-                result may be problematic**. The default is None.
-            build_strategy(BuildStrategy): This parameter is used to compile the
-                program or graph with the specified options, such as operators' fusion
-                in the computational graph and memory optimization during the execution
-                of the computational graph. For more information about build_strategy,
-                please refer to :code:`fluid.BuildStrategy`. The default is None.
-            exec_strategy(ExecutionStrategy): exec_strategy specifies the options that can
-                be changed when running the current model, such as the thread pool size.
-                For more information about exec_strategy, please refer to :code:`fluid.ExecutionStrategy`.
-                The default is None.
-            share_vars_from(CompiledProgram): If share_vars_from is set, the current
-                CompiledProgram will share the parameter value with the CompiledProgram
-                specified by share_vars_from. This parameter needs to be set when model testing
-                is required during model training, and the data parallel mode is used for
-                training and testing. Since CompiledProgram will only distribute parameter
-                Tensors to other devices when it is first executed, the CompiledProgram
-                specified by share_vars_from must be run before the current CompiledProgram.
-                The default is None.
-            places(list(CUDAPlace)|list(CPUPlace)|list(str)|None): This parameter specifies the device
-                on which the model is running. If you want to run on GPU0 and GPU1, places are
-                [fluid.CUDAPlace(0), fluid.CUDAPlace(1)]; if you want to run with 2 CPUs, places are
-                [fluid.CPUPlace()] * 2. If the parameter is not set, i.e. the parameter is None,
-                the available device will be obtained from the environment variable when the model
-                is executed: If the GPU is used, the currently available device ID is obtained
-                from the environment variable FLAGS_selected_gpus or CUDA_VISIBLE_DEVICES when
-                the model is executed; CPU, when the model is executed, the currently available
-                CPU number is obtained from the environment variable CPU_NUM. For example,
-                export CPU_NUM=4, if the environment variable is not set, the executor will
-                add the variable to the environment variable and set its value to 1.
-                The default is None. If ``places`` is the list of string, the string in the list
-                can be ``cpu``, ``gpu:x``, where ``x`` is the index of the GPUs.
-
-        Returns:
-            CompiledProgram
-
-        Example:
-            .. code-block:: python
-
-                import numpy
-                import os
-                import paddle
-                import paddle.static as static
-
-                paddle.enable_static()
-
-                use_cuda = True
-                place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
-                parallel_places = [paddle.CUDAPlace(0), paddle.CUDAPlace(1)] if use_cuda else [paddle.CPUPlace()] * 2
-
-                # NOTE: If you use CPU to run the program, you need
-                # to specify the CPU_NUM, otherwise, paddle will use
-                # all the number of the logic core as the CPU_NUM,
-                # in that case, the batch size of the input should be
-                # greater than CPU_NUM, if not, the process will be
-                # failed by an exception.
-                if not use_cuda:
-                    os.environ['CPU_NUM'] = str(2)
-
-                exe = static.Executor(place)
-
-                data = static.data(name='X', shape=[None, 1], dtype='float32')
-                hidden = static.nn.fc(x=data, size=10)
-                loss = paddle.mean(hidden)
-
-                test_program = static.default_main_program().clone(for_test=True)
-                paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
-
-                exe.run(static.default_startup_program())
-                compiled_train_prog = static.CompiledProgram(
-                    static.default_main_program()).with_data_parallel(
-                            loss_name=loss.name, places=parallel_places)
-                # NOTE: if not set share_vars_from=compiled_train_prog,
-                # the parameters used in test process are different with
-                # the parameters used by train process
-                compiled_test_prog = static.CompiledProgram(
-                    test_program).with_data_parallel(
-                            share_vars_from=compiled_train_prog,
-                            places=parallel_places)
-
-                train_data = numpy.random.random(size=(10, 1)).astype('float32')
-                loss_data, = exe.run(compiled_train_prog,
-                                feed={"X": train_data},
-                                fetch_list=[loss.name])
-                test_data = numpy.random.random(size=(10, 1)).astype('float32')
-                loss_data, = exe.run(compiled_test_prog,
-                                feed={"X": test_data},
-                                fetch_list=[loss.name])
-        """
-        assert (
-            not self._is_data_parallel
-        ), "Already compiled with parallel, cannot be recompiled."
-        assert (
-            not self._is_inference
-        ), "Cannot compile with both data parallel and inference."
-        self._is_data_parallel = True
-        # FIXME(zcd): Currently, the build_strategy can be set during creating
-        # CompiledProgram or calling with_data_parallel, and it may be confusing,
-        # but in the long run, we should set up build_strategy only when creating
-        # CompiledProgram, and exec_strategy should be deprecated.
-        if build_strategy is not None:
-            self._build_strategy = build_strategy
-        self._exec_strategy = exec_strategy
-        self._loss_name = loss_name
-        self._share_vars_from = share_vars_from
-        if isinstance(places, (list, tuple)):
-            self._places = _get_paddle_place_list(places)
-        else:
-            self._places = _get_paddle_place(places)
-
-        if _has_backward_op(self._graph):
-            assert (
-                self._loss_name is not None
-            ), "The loss name of CompiledProgram is None. The loss name should be set if CompiledProgram contains backward part."
-
-        if self._places is not None:
-            if not isinstance(self._places, (list, tuple)):
-                self._places = [self._places]
-        if self._places is not None and len(self._places) > 1:
-            raise NotImplementedError(
-                "If you need to train with multi-gpus, please use `fleet` instead of `with_data_parallel`."
-                "This will be removed soon in develop version."
-            )
-
-        return self
-
     def _with_inference_optimize(self, config):
         """Add inference optimize
 
@@ -416,12 +266,6 @@ class CompiledProgram:
                 "only contain one thread, so reset the number of threads to 1 here."
             )
             self._exec_strategy.num_threads = 1
-
-        if self._build_strategy.num_trainers > 1:
-            assert self._is_data_parallel, (
-                "If you use multi-trainer to train the model, you should use "
-                "the data parallel model, i.e. calling with_data_parallel function."
-            )
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
@@ -537,16 +381,6 @@ class CompiledProgram:
             else:
                 self._places = [self._place]
 
-            # Todo(liym27):If optimizer is used in control flow,
-            #  training on multi-places is not supported now, will
-            #  be supported later.
-            if len(self._places) > 1 and _has_optimizer_in_control_flow(
-                self._program
-            ):
-                raise NotImplementedError(
-                    "If optimizer is used in control flow, "
-                    "training on multi-places is not supported now."
-                )
             if isinstance(self._place, core.CUDAPlace):
                 use_device = DeviceType.CUDA
             elif isinstance(self._place, core.XPUPlace):

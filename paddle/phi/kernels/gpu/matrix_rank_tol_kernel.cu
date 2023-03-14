@@ -20,7 +20,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -119,12 +118,12 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
                                                           info,
                                                           gesvdj_params));
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
@@ -199,12 +198,12 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
                                                           gesvdj_params));
     // check the error info
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
@@ -255,12 +254,12 @@ void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
                                                          params));
 
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
@@ -310,12 +309,12 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
                                                          info,
                                                          params));
     int error_info;
-    paddle::memory::Copy(phi::CPUPlace(),
-                         &error_info,
-                         dev_ctx.GetPlace(),
-                         info,
-                         sizeof(int),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       &error_info,
+                       dev_ctx.GetPlace(),
+                       info,
+                       sizeof(int),
+                       dev_ctx.stream());
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
@@ -446,6 +445,8 @@ PD_REGISTER_KERNEL(matrix_rank_tol,  // cuda_only
                    ALL_LAYOUT,
                    phi::MatrixRankTolKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}
 
 #endif  // not PADDLE_WITH_HIP

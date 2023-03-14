@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -99,30 +99,30 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
 
     auto x_dims = x->dims();
     auto y_dims = y->dims();
-    jit::matmul_attr_t attr;
+    phi::jit::matmul_attr_t attr;
     attr.m = x_dims[0];
     attr.k = x_dims[1];
     attr.n = y_dims[1];
     int o_numel = attr.m * attr.n;
 
-    auto vsquare_x =
-        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
-            attr.m * attr.k);
-    auto vsquare_y =
-        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
-            attr.k * attr.n);
-    auto vsquare_xy =
-        jit::KernelFuncs<jit::VSquareTuple<T>, platform::CPUPlace>::Cache().At(
-            o_numel);
-    auto vsub =
-        jit::KernelFuncs<jit::VSubTuple<T>, platform::CPUPlace>::Cache().At(
-            o_numel);
-    auto vscal =
-        jit::KernelFuncs<jit::VScalTuple<T>, platform::CPUPlace>::Cache().At(
-            o_numel);
-    auto matmul =
-        jit::KernelFuncs<jit::MatMulTuple<T>, platform::CPUPlace>::Cache().At(
-            attr);
+    auto vsquare_x = phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>,
+                                           platform::CPUPlace>::Cache()
+                         .At(attr.m * attr.k);
+    auto vsquare_y = phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>,
+                                           platform::CPUPlace>::Cache()
+                         .At(attr.k * attr.n);
+    auto vsquare_xy = phi::jit::KernelFuncs<phi::jit::VSquareTuple<T>,
+                                            platform::CPUPlace>::Cache()
+                          .At(o_numel);
+    auto vsub = phi::jit::KernelFuncs<phi::jit::VSubTuple<T>,
+                                      platform::CPUPlace>::Cache()
+                    .At(o_numel);
+    auto vscal = phi::jit::KernelFuncs<phi::jit::VScalTuple<T>,
+                                       platform::CPUPlace>::Cache()
+                     .At(o_numel);
+    auto matmul = phi::jit::KernelFuncs<phi::jit::MatMulTuple<T>,
+                                        platform::CPUPlace>::Cache()
+                      .At(attr);
 
     const T* x_data = x->data<T>();
     const T* y_data = y->data<T>();

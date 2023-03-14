@@ -22,8 +22,8 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.fluid.io import is_belong_to_optimizer, is_parameter
 from paddle.framework import core
+from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
 from .dist_attribute import OperatorDistAttr, TensorDistAttr

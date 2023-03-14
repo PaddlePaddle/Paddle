@@ -207,9 +207,9 @@ void QuantFP32ToIntX<int16_t>(const float* src_ptr,
 }
 
 template <typename T>
-void QuantWeight(phi::DenseTensor* weight,
-                 phi::DenseTensor* weight_max,
-                 bool transpose) {
+void PrepareWeight(phi::DenseTensor* weight,
+                   phi::DenseTensor* weight_max,
+                   bool transpose) {
   // Convert fp16 to fp32
   phi::DenseTensor weight_fp32;
   CastToFp32(weight, &weight_fp32);
@@ -249,9 +249,9 @@ void QuantWeight(phi::DenseTensor* weight,
   QuantFP32ToIntX(weight_data, cpu_ctx->Alloc<T>(weight), max_val, size);
 }
 
-template void QuantWeight<int16_t>(phi::DenseTensor* weight,
-                                   phi::DenseTensor* weight_max,
-                                   bool transpose);
+template void PrepareWeight<int16_t>(phi::DenseTensor* weight,
+                                     phi::DenseTensor* weight_max,
+                                     bool transpose);
 
 }  // namespace ir
 }  // namespace framework

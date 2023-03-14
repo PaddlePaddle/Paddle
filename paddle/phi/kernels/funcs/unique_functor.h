@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #pragma once
+#include <set>
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"

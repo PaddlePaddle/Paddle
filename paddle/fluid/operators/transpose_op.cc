@@ -34,81 +34,6 @@ class TransposeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Transpose");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Transpose");
-    auto x_dims = ctx->GetInputDim("X");
-    std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
-
-    int x_rank = x_dims.size();
-    int axis_size = axis.size();
-
-    // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
-    // axis_size
-    PADDLE_ENFORCE_GE(x_rank,
-                      axis_size,
-                      platform::errors::InvalidArgument(
-                          "The input tensor's dimension "
-                          "should be equal to or greater than the axis's size. "
-                          "But received input tensor's dimension is %d, "
-                          "axis's size is %d",
-                          x_rank,
-                          axis_size));
-
-    std::vector<int> formated_axis = axis;
-    std::vector<int> count(axis_size, 0);
-    for (int i = 0; i < axis_size; i++) {
-      PADDLE_ENFORCE_LT(axis[i],
-                        axis_size,
-                        platform::errors::InvalidArgument(
-                            "The reduce dim index %d should be in the "
-                            "range [ -dimension(X), dimension(X) ) "
-                            "which dimesion = %d. But received dim index = %d.",
-                            i,
-                            axis_size,
-                            axis[i]));
-      PADDLE_ENFORCE_GE(axis[i],
-                        -axis_size,
-                        platform::errors::InvalidArgument(
-                            "The reduce dim index %d should be in the "
-                            "range [ -dimension(X), dimension(X) )  "
-                            "which dimesion = %d. But received dim index = %d.",
-                            i,
-                            axis_size,
-                            axis[i]));
-
-      if (axis[i] < 0) {
-        formated_axis[i] = axis[i] + axis_size;
-      }
-      PADDLE_ENFORCE_EQ(++count[formated_axis[i]],
-                        1,
-                        platform::errors::InvalidArgument(
-                            "Each element of axis should be unique. but "
-                            "axis[%d] is %d appear not only once",
-                            i,
-                            axis[i]));
-    }
-
-    framework::DDim out_dims(x_dims);
-#ifdef PADDLE_WITH_MKLDNN
-    // Here we need to match dims to paddle layout
-    // as we are producing non-oneDNN result
-    if (ctx->IsRunMKLDNNKernel() && (x_dims.size() >= 3) &&
-        (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
-         phi::DataLayout::kNHWC)) {
-      auto dims = phi::vectorize<int>(x_dims);
-      std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
-      x_dims = x_dims.reshape(dims);
-      VLOG(3)
-          << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
-    }
-#endif
-    for (int i = 0; i < axis_size; i++) {
-      out_dims[i] = x_dims[formated_axis[i]];
-    }
-    ctx->SetOutputDim("Out", out_dims);
-  }
-
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -218,7 +143,12 @@ class Transpose2Op : public TransposeOp {
       : TransposeOp(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    TransposeOp::InferShape(ctx);
+    using CompatMetaTensor = framework::CompatMetaTensor;
+    CompatMetaTensor x(ctx->GetInputVarPtrs("X")[0], ctx->IsRuntime());
+    CompatMetaTensor out(ctx->GetOutputVarPtrs("Out")[0], ctx->IsRuntime());
+    std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
+    phi::TransposeInferMeta(x, axis, &out);
+
     if (!ctx->HasOutput("XShape")) return;
     const auto &in_dims = ctx->GetInputDim("X");
     std::vector<int64_t> x_shape_dim(in_dims.size() + 1);
@@ -307,10 +237,9 @@ class Transpose2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
 
  public:
   void Apply() override {
-    paddle::experimental::Tensor xshape =
-        this->GetSingleForwardOutput("XShape");
-    paddle::experimental::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    paddle::experimental::Tensor dx = this->GetSingleInputGrad("X");
+    paddle::Tensor xshape = this->GetSingleForwardOutput("XShape");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
     auto *dx_ptr = this->GetOutputPtr(&dx);
     std::string dx_name = this->GetOutputName(dx);
     std::vector<int> axis =
@@ -362,6 +291,9 @@ class TransposeGradInferVarType : public framework::VarTypeInference {
 
 }  // namespace operators
 }  // namespace paddle
+DECLARE_INFER_SHAPE_FUNCTOR(transpose,
+                            TransposeInferShapeFunctor,
+                            PD_INFER_META(phi::TransposeInferMeta));
 
 DECLARE_INFER_SHAPE_FUNCTOR(transpose_grad,
                             TransposeGradInferShapeFunctor,
@@ -370,13 +302,16 @@ DECLARE_INFER_SHAPE_FUNCTOR(transpose_grad,
 DECLARE_INFER_SHAPE_FUNCTOR(transpose2_grad,
                             Transpose2GradInferShapeFunctor,
                             PD_INFER_META(phi::TransposeGradInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     transpose,
     ops::TransposeOp,
     ops::TransposeOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
+    TransposeInferShapeFunctor);
+
 REGISTER_OPERATOR(transpose_grad,
                   ops::TransposeOpGrad,
                   ops::TransposeGradInferVarType,

@@ -71,22 +71,22 @@ void AdamDenseParamSparseGradKernel(
     if (beta1_pow.dtype() == DataType::FLOAT16) {
       XPUType* beta1_pow_t =
           RAII_GUARD.alloc_l3_or_gm<XPUType>(beta1_pow.numel());
-      paddle::memory::Copy(param.place(),
-                           beta1_pow_t,
-                           beta1_pow.place(),
-                           beta1_pow.data<T>(),
-                           sizeof(T) * beta1_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta1_pow_t,
+                         beta1_pow.place(),
+                         beta1_pow.data<T>(),
+                         sizeof(T) * beta1_pow.numel());
 
       int r = xpu::cast<XPUType, float>(
           dev_ctx.x_context(), beta1_pow_t, beta1_pow_ptr, beta1_pow.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     } else {
       beta1_pow_ptr = RAII_GUARD.alloc_l3_or_gm<float>(beta1_pow.numel());
-      paddle::memory::Copy(param.place(),
-                           beta1_pow_ptr,
-                           beta1_pow.place(),
-                           beta1_pow.data<T>(),
-                           sizeof(T) * beta1_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta1_pow_ptr,
+                         beta1_pow.place(),
+                         beta1_pow.data<T>(),
+                         sizeof(T) * beta1_pow.numel());
     }
 
   } else {
@@ -103,22 +103,22 @@ void AdamDenseParamSparseGradKernel(
     if (beta2_pow.dtype() == DataType::FLOAT16) {
       XPUType* beta2_pow_t =
           RAII_GUARD.alloc_l3_or_gm<XPUType>(beta2_pow.numel());
-      paddle::memory::Copy(param.place(),
-                           beta2_pow_t,
-                           beta2_pow.place(),
-                           beta2_pow.data<T>(),
-                           sizeof(T) * beta2_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta2_pow_t,
+                         beta2_pow.place(),
+                         beta2_pow.data<T>(),
+                         sizeof(T) * beta2_pow.numel());
 
       int r = xpu::cast<XPUType, float>(
           dev_ctx.x_context(), beta2_pow_t, beta2_pow_ptr, beta2_pow.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     } else {
       beta2_pow_ptr = RAII_GUARD.alloc_l3_or_gm<float>(beta2_pow.numel());
-      paddle::memory::Copy(param.place(),
-                           beta2_pow_ptr,
-                           beta2_pow.place(),
-                           beta2_pow.data<T>(),
-                           sizeof(T) * beta2_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta2_pow_ptr,
+                         beta2_pow.place(),
+                         beta2_pow.data<T>(),
+                         sizeof(T) * beta2_pow.numel());
     }
   } else {
     if (beta2_pow.dtype() == DataType::FLOAT16)
@@ -233,11 +233,11 @@ void AdamDenseParamSparseGradKernel(
     rows[i] = static_cast<int>(merge_rows[i]);
   }
   xpu_wait(dev_ctx.x_context()->xpu_stream);
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       xpu_rows,
-                       CPUPlace(),
-                       rows.data(),
-                       row_count * sizeof(int));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     xpu_rows,
+                     CPUPlace(),
+                     rows.data(),
+                     row_count * sizeof(int));
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
   auto ori_rows = param.numel() / row_numel;
 
