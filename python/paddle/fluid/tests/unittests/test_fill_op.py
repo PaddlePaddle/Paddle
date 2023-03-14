@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
@@ -87,6 +87,54 @@ class TestFillOp3(unittest.TestCase):
         for place in places:
             self.check_with_place(place, True)
             self.check_with_place(place, False)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
+class TestFillFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "fill"
+        self.dtype = np.float16
+        val = np.random.random(size=[100, 200]).astype(self.dtype)
+        self.inputs = {}
+        self.attrs = {
+            'value': val.flatten().tolist(),
+            'shape': [100, 200],
+            'dtype': int(core.VarDesc.VarType.FP64),
+            'force_cpu': False,
+        }
+        self.outputs = {'Out': val}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestFillBF16(OpTest):
+    def setUp(self):
+        self.op_type = "fill"
+        self.dtype = np.uint16
+        val = np.random.random(size=[100, 200]).astype(np.float32)
+        self.inputs = {}
+        self.attrs = {
+            'value': val.flatten().tolist(),
+            'shape': [100, 200],
+            'dtype': int(core.VarDesc.VarType.FP64),
+            'force_cpu': False,
+        }
+        self.outputs = {'Out': convert_float_to_uint16(val)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3)
 
 
 if __name__ == '__main__':
