@@ -132,5 +132,6 @@ PD_REGISTER_KERNEL(index_select_grad,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}
