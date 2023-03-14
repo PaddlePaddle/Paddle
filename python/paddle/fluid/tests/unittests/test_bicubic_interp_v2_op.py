@@ -15,8 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import convert_float_to_uint16
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -189,8 +188,7 @@ class TestBicubicInterpOp(OpTest):
         self.init_test_case()
         self.op_type = "bicubic_interp_v2"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
-        # Skip check_eager while found them in Inputs.
-        self.check_eager = True
+        # Skip check_dygraph while found them in Inputs.
         input_np = np.random.random(self.input_shape).astype(self.dtype)
         scale_h = 0
         scale_w = 0
@@ -230,10 +228,8 @@ class TestBicubicInterpOp(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
-            self.check_eager = False
 
         self.attrs = {
             'out_h': self.out_h,
@@ -252,12 +248,10 @@ class TestBicubicInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', in_place=True, check_eager=self.check_eager
-        )
+        self.check_grad(['X'], 'Out', in_place=True)
 
     def init_test_case(self):
         self.interp_method = 'bicubic'
@@ -334,14 +328,13 @@ class TestBicubicInterpCase6(TestBicubicInterpOp):
 
 class TestBicubicInterpOpFP16(TestBicubicInterpOp):
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager, atol=1e-3)
+        self.check_output(atol=1e-3)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             in_place=True,
-            check_eager=self.check_eager,
             max_relative_error=1e-2,
         )
 
@@ -439,8 +432,8 @@ class TestBicubicInterpOpBF16(OpTest):
         self.init_test_case()
         self.op_type = "bicubic_interp_v2"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
-        # Skip check_eager while found them in Inputs.
-        self.check_eager = True
+        # Skip check_dygraph while found them in Inputs.
+        self.check_dygraph = True
         self.dtype = np.uint16
         input_np = np.random.random(self.input_shape).astype("float32")
         scale_h = 0
@@ -481,10 +474,10 @@ class TestBicubicInterpOpBF16(OpTest):
         self.inputs = {'X': convert_float_to_uint16(input_np)}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
+            self.check_dygraph = False
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
-            self.check_eager = False
+            self.check_dygraph = False
 
         self.attrs = {
             'out_h': self.out_h,
@@ -503,14 +496,14 @@ class TestBicubicInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager, atol=1e-2)
+        self.check_output(check_dygraph=self.check_dygraph, atol=1e-2)
 
     def test_check_grad(self):
         self.check_grad(
             ['X'],
             'Out',
             in_place=True,
-            check_eager=self.check_eager,
+            check_dygraph=self.check_dygraph,
             max_relative_error=1e-2,
         )
 

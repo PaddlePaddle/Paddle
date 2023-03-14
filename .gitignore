@@ -96,4 +96,5 @@ paddle/fluid/prim/api/generated/prim_api/*
 paddle/fluid/framework/__init__.py
 paddle/phi/api/profiler/__init__.py
 python/paddle/incubate/fleet/parameter_server/pslib/ps_pb2.py
+paddle/phi/kernels/fusion/cutlass/conv2d/generated/*
 python/paddle/fluid/incubate/fleet/parameter_server/pslib/ps_pb2.py
