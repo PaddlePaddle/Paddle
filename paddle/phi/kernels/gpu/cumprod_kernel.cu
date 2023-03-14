@@ -47,7 +47,7 @@ void CumprodKernel(const Context &dev_ctx,
                             outer_dim,
                             mid_dim,
                             inner_dim,
-                            static_cast<CumType>(1),
+                            static_cast<CumType>(1.0f),
                             funcs::MultiplyFunctor<CumType>(),
                             /*reverse=*/false,
                             dev_ctx);
