@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
+import paddle.fluid.core as core
 
 paddle.enable_static()
 
@@ -171,6 +172,78 @@ class TestDiagonalAPI(unittest.TestCase):
         np.testing.assert_allclose(out4.numpy(), out4_ref, rtol=1e-08)
 
         paddle.enable_static()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
+class TestDiagonalFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "diagonal"
+        self.python_api = paddle.diagonal
+        self.dtype = np.float16
+        self.__class__.op_type = self.op_type
+        self.init_config()
+        self.outputs = {'Out': self.target}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3, check_eager=True)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Input'], 'Out', max_relative_error=1e-2, check_eager=True
+        )
+
+    def init_config(self):
+        self.case = np.random.randn(10, 5, 2).astype(np.float32)
+        self.inputs = {'Input': self.case.astype(self.dtype)}
+        self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestDiagonalBF16(OpTest):
+    def setUp(self):
+        self.op_type = "diagonal"
+        self.python_api = paddle.diagonal
+        self.dtype = np.uint16
+        self.__class__.op_type = self.op_type
+        self.init_config()
+        self.outputs = {'Out': convert_float_to_uint16(self.target)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3, check_eager=True)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Input'], 'Out', max_relative_error=1e-2, check_eager=True
+        )
+
+    def init_config(self):
+        self.case = np.random.randn(10, 5, 2).astype(np.float32)
+        self.inputs = {'Input': convert_float_to_uint16(self.case)}
+        self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
 
 
 if __name__ == '__main__':
