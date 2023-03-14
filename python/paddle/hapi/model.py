@@ -2324,9 +2324,9 @@ class Model:
                 outs = getattr(self, mode + '_batch')(*_inputs)
 
                 if self._metrics and self._loss:
-                    metrics = [[l[0] for l in outs[0]]]
+                    metrics = [[float(l) for l in outs[0]]]
                 elif self._loss:
-                    metrics = [[l[0] for l in outs]]
+                    metrics = [[float(l) for l in outs]]
                 else:
                     metrics = []
 

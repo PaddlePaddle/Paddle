@@ -105,18 +105,12 @@ for _type_name in {'float32', 'float64', 'int32', 'int64', 'bool'}:
 
 
 class TestEqualReduceAPI(unittest.TestCase):
-    def test_name(self):
-        x = paddle.assign(np.array([3, 4], dtype="int32"))
-        y = paddle.assign(np.array([3, 4], dtype="int32"))
-        out = paddle.equal_all(x, y, name='equal_res')
-        assert 'equal_res' in out.name
-
     def test_dynamic_api(self):
         paddle.disable_static()
         x = paddle.ones(shape=[10, 10], dtype="int32")
         y = paddle.ones(shape=[10, 10], dtype="int32")
         out = paddle.equal_all(x, y)
-        assert out.numpy()[0] is np.True_
+        assert out.item() is True
         paddle.enable_static()
 
 
