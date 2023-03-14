@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from eager_op_test import paddle_static_guard
 
 import paddle
 import paddle.fluid as fluid
+from op_test import OpTest, convert_float_to_uint16
 
 
 class TestBmmOp(OpTest):
@@ -94,6 +95,48 @@ class TestBmmAPIError(unittest.TestCase):
         self.assertRaises(ValueError, paddle.bmm, x_data, y_data_wrong1)
         self.assertRaises(ValueError, paddle.bmm, x_data, y_data_wrong2)
         self.assertRaises(ValueError, paddle.bmm, x_data, y_data_wrong3)
+
+class TestBmmFP16Op(OpTest):
+    def setUp(self):
+        self.op_type = "bmm"
+        self.python_api = paddle.tensor.bmm
+        X = np.random.random((10, 3, 4)).astype("float16")
+        Y = np.random.random((10, 4, 5)).astype("float16")
+        self.inputs = {'X': X, 'Y': Y}
+        Out = np.matmul(X, Y)
+        self.outputs = {'Out': Out}
+
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X', 'Y'], 'Out', atol=1e-3)
+
+
+
+
+class TestBmmOp(OpTest):
+    def setUp(self):
+        self.op_type = "bmm"
+        self.python_api = paddle.tensor.bmm
+        X = np.random.random((10, 3, 4)).astype(np.float32)
+        Y = np.random.random((10, 4, 5)).astype(np.float32)
+        self.inputs = {'X': convert_float_to_uint16(X), 'Y': convert_float_to_uint16(Y)}
+        Out = np.matmul(X, Y)
+        self.outputs = {'Out': convert_float_to_uint16(Out)}
+
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', atol=1e-3)
+
+    def test_check_grad_x(self):
+        self.check_grad(['X'], 'Out', no_grad_set=None, atol=1e-3)
+
+    def test_check_grad_y(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=None, atol=1e-3)
+
 
 
 if __name__ == "__main__":

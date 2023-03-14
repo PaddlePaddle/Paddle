@@ -123,6 +123,86 @@ class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
             self.place.append(paddle.CUDAPlace(0))
 
 
+
+class TestTakeAlongAxisFP16Op(OpTest):
+    def setUp(self):
+        self.init_data()
+        self.op_type = "take_along_axis"
+        self.python_api = paddle.tensor.take_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.target = np.take_along_axis(self.xnp, self.index, self.axis)
+        broadcast_shape_list = list(self.x_shape)
+        broadcast_shape_list[self.axis] = 1
+        self.braodcast_shape = tuple(broadcast_shape_list)
+        self.index_broadcast = np.broadcast_to(self.index, self.braodcast_shape)
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index_broadcast,
+        }
+        self.attrs = {'Axis': self.axis}
+        self.outputs = {'Result': self.target}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['Input'], 'Result')
+
+    def init_data(self):
+        self.x_type = "float16"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.index = np.array([[[1]], [[1]], [[2]], [[4]], [[3]]]).astype(
+            self.index_type
+        )
+        self.axis = 2
+        self.axis_type = "int64"
+
+
+class TestTakeAlongAxisBF16Op(OpTest):
+    def setUp(self):
+        self.init_data()
+        self.op_type = "take_along_axis"
+        self.python_api = paddle.tensor.take_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.xnp = self.convert_float_to_uint16(self.xnp)
+        self.target = np.take_along_axis(self.xnp, self.index, self.axis)
+        self.target = self.convert_float_to_uint16(self.target)
+        broadcast_shape_list = list(self.x_shape)
+        broadcast_shape_list[self.axis] = 1
+        self.braodcast_shape = tuple(broadcast_shape_list)
+        self.index_broadcast = np.broadcast_to(self.index, self.braodcast_shape)
+        self.index_broadcast = self.convert_float_to_uint16(self.index_broadcast)
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index_broadcast,
+        }
+        self.attrs = {'Axis': self.axis}
+        self.outputs = {'Result': self.target}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['Input'], 'Result')
+
+    def init_data(self):
+        self.x_type = "float32"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.index = np.array([[[1]], [[1]], [[2]], [[4]], [[3]]]).astype(
+            self.index_type
+        )
+        self.axis = 2
+        self.axis_type = "int64"
+
+    def convert_float_to_uint16(self, data):
+        return np.frombuffer(
+            np.array(data, np.float32).astype(np.uint16).tobytes(),
+            np.uint16,
+        ).reshape(data.shape)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

@@ -20,6 +20,7 @@ from eager_op_test import OpTest
 import paddle
 from paddle import static
 from paddle.fluid import dygraph
+from op_test import OpTest, convert_float_to_uint16
 
 paddle.enable_static()
 
@@ -107,6 +108,85 @@ class TestAngleAPI(unittest.TestCase):
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+
+
+class TestAngleOpFP16Float(OpTest):
+    def setUp(self):
+        self.op_type = "angle"
+        self.python_api = paddle.angle
+        self.dtype = "float16"
+        self.x = np.linspace(-5, 5, 101).astype(self.dtype)
+        out_ref = np.angle(self.x)
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': out_ref}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[
+                angle_grad(self.x, np.ones_like(self.x) / self.x.size)
+            ],
+        )
+
+
+class TestAngleOpFP16Complex(OpTest):
+    def setUp(self):
+        self.op_type = "angle"
+        self.python_api = paddle.angle
+        self.dtype = "float16"
+        real = np.expand_dims(np.linspace(-2, 2, 11), -1).astype("float16")
+        imag = np.linspace(-2, 2, 11).astype("float16")
+        self.x = real + 1j * imag
+        out_ref = np.angle(self.x)
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': out_ref}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[
+                angle_grad(self.x, np.ones_like(self.x) / self.x.size)
+            ],
+        )
+
+class TestAngleOpBP16Float(OpTest):
+    def setUp(self):
+        self.op_type = "angle"
+        self.python_api = paddle.angle
+        self.dtype = "complex128"
+        real = np.expand_dims(np.linspace(-2, 2, 11), -1).astype("float32")
+        imag = np.linspace(-2, 2, 11).astype("float32")
+        x_fp32 = real + 1j * imag
+        self.x = convert_float_to_uint16(x_fp32.view(np.uint16)).view(np.complex64)
+        out_ref_fp32 = np.angle(x_fp32)
+        out_ref = convert_float_to_uint16(out_ref_fp32.view(np.uint16)).view(np.float32)
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': out_ref}
+
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[
+                angle_grad(self.x.astype(np.float32), np.ones_like(self.x) / self.x.size)
+            ],
+            atol=1e-3
+        )
+
+
+
+
 
 
 if __name__ == "__main__":
