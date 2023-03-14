@@ -769,7 +769,7 @@ void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
 }
 
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
-  auto x_dims = x.dims();
+  phi::DDim x_dims = x.dims();
   int rank = x_dims.size();
   PADDLE_ENFORCE_GE(
       rank,
@@ -789,13 +789,13 @@ void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
   for (int i = 0; i < rank - 1; ++i) {
     batch_dims_vec.emplace_back(x_dims[i]);
   }
-
+  const DataType& x_dtype = x.dtype();
+  const DataType& out_dtype =
+      IsComplexType(x_dtype) ? x_dtype : ToComplexType(x_dtype);
   out_w->set_dims(phi::make_ddim(batch_dims_vec));
-  out_w->share_lod(x);
-  out_w->set_dtype(x.dtype());
+  out_w->set_dtype(out_dtype);
   out_v->set_dims(x_dims);
-  out_v->share_lod(x);
-  out_v->set_dtype(x.dtype());
+  out_v->set_dtype(out_dtype);
 }
 
 void EighInferMeta(const MetaTensor& x,
