@@ -1963,22 +1963,22 @@ class GaussianNLLLoss(Layer):
     The targets are treated as samples from Gaussian distributions with
     expectations and variances predicted by the neural network. For a
     ``label`` tensor modelled as having Gaussian distribution with a tensor
-    of expectations ``input`` and a tensor of positive variances ``var`` the loss is:
+    of expectations ``input`` and a tensor of positive ``variance`` the loss is:
 
     .. math::
         \text{loss} = \frac{1}{2}\left(\log\left(\text{max}\left(\text{var},
         \ \text{eps}\right)\right) + \frac{\left(\text{input} - \text{label}\right)^2}
         {\text{max}\left(\text{var}, \ \text{eps}\right)}\right) + \text{const.}
 
-    where :attr:`eps` is used for stability. By default, the constant term of
-    the loss function is omitted unless :attr:`full` is ``True``. If ``var`` is not the same
+    where :attr:`epsilon` is used for stability. By default, the constant term of
+    the loss function is omitted unless :attr:`full` is ``True``. If ``variance`` is not the same
     size as ``input`` (due to a homoscedastic assumption), it must either have a final dimension
     of 1 or have one fewer dimension (with all other sizes being the same) for correct broadcasting.
 
     Args:
         full (bool, optional): include the constant term in the loss
             calculation. Default: ``False``.
-        eps (float, optional): value used to clamp ``var`` (see note below), for
+        epsilon (float, optional): value used to clamp ``variance`` (see note below), for
             stability. Default: 1e-6.
         reduction (str, optional): specifies the reduction to apply to the
             output:``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction
@@ -1992,7 +1992,7 @@ class GaussianNLLLoss(Layer):
           dimensions
         - Label(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input
           but with one dimension equal to 1 (to allow for broadcasting)
-        - Var(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
+        - Variance(Tensor): :math:`(N, *)` or :math:`(*)`, same shape as the input, or same shape as the input but
           with one dimension equal to 1, or same shape as the input but with one fewer
           dimension (to allow for broadcasting)
         - Output: scalar if :attr:`reduction` is ``'mean'`` (default) or
@@ -2009,18 +2009,18 @@ class GaussianNLLLoss(Layer):
 
             input = paddle.randn([5, 2], dtype=paddle.float32)
             label = paddle.randn([5, 2], dtype=paddle.float32)
-            var = paddle.ones([5, 2], dtype=paddle.float32)
+            variance = paddle.ones([5, 2], dtype=paddle.float32)
 
-            gs_nll_loss = nn.GaussianNLLLoss(full=False, eps=1e-6, reduction='none')
-            loss = gs_nll_loss(input, label, var)
+            gs_nll_loss = nn.GaussianNLLLoss(full=False, epsilon=1e-6, reduction='none')
+            loss = gs_nll_loss(input, label, variance)
             print(loss)
 
     Note:
-        The clamping of ``var`` is ignored with respect to autograd, and so the
+        The clamping of ``variance`` is ignored with respect to autograd, and so the
         gradients are unaffected by it.
     """
 
-    def __init__(self, full=False, eps=1e-6, reduction='mean', name=None):
+    def __init__(self, full=False, epsilon=1e-6, reduction='mean', name=None):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "The value of 'reduction' in GaussianNLLLoss should be 'sum', 'mean' or 'none', but "
@@ -2029,17 +2029,17 @@ class GaussianNLLLoss(Layer):
 
         super().__init__()
         self.full = full
-        self.eps = eps
+        self.epsilon = epsilon
         self.reduction = reduction
         self.name = name
 
-    def forward(self, input, label, var):
+    def forward(self, input, label, variance):
         out = F.gaussian_nll_loss(
             input,
             label,
-            var,
+            variance,
             self.full,
-            self.eps,
+            self.epsilon,
             self.reduction,
             self.name,
         )
