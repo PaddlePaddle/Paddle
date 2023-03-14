@@ -202,58 +202,71 @@ class CompositeGradOpMakerBase {
     return inputs_grads;
   }
 
-  std::vector<paddle::optional<paddle::Tensor>> GetOptionalMultiForwardOutput(
+  paddle::optional<std::vector<paddle::Tensor>> GetOptionalMultiForwardOutput(
       const std::string& name) {
-    std::vector<paddle::optional<paddle::Tensor>> outputs_opt;
+    paddle::optional<std::vector<paddle::Tensor>> outputs_opt;
     std::vector<framework::VarDesc*> outputs_descs =
         this->MultiForwardOutput(name);
-    outputs_opt.reserve(outputs_descs.size());
+    if ((outputs_descs.empty())) {
+      return outputs_opt;
+    }
+    std::vector<paddle::Tensor> outputs;
+    outputs.reserve(outputs_descs.size());
     for (const auto& output_desc : outputs_descs) {
       if (output_desc) {
-        outputs_opt.emplace_back(paddle::make_optional<paddle::Tensor>(
+        outputs.emplace_back(paddle::Tensor(
             paddle::Tensor(std::make_shared<DescTensor>(output_desc))));
       } else {
-        outputs_opt.emplace_back(
-            paddle::make_optional<paddle::Tensor>(paddle::Tensor()));
+        outputs.emplace_back(paddle::Tensor(paddle::Tensor()));
       }
     }
+    outputs_opt = paddle::make_optional<std::vector<paddle::Tensor>>(outputs);
     return outputs_opt;
   }
 
-  std::vector<paddle::optional<paddle::Tensor>> GetOptionalMultiForwardInput(
+  paddle::optional<std::vector<paddle::Tensor>> GetOptionalMultiForwardInput(
       const std::string& name) {
-    std::vector<paddle::optional<paddle::Tensor>> inputs_opt;
+    paddle::optional<std::vector<paddle::Tensor>> inputs_opt;
     std::vector<framework::VarDesc*> inputs_descs =
         this->MultiForwardInput(name);
-    inputs_opt.reserve(inputs_descs.size());
+    if ((inputs_descs.empty())) {
+      return inputs_opt;
+    }
+    std::vector<paddle::Tensor> inputs;
+    inputs.reserve(inputs_descs.size());
     for (const auto& input_desc : inputs_descs) {
       if (input_desc) {
-        inputs_opt.emplace_back(paddle::make_optional<paddle::Tensor>(
+        inputs.emplace_back(paddle::Tensor(
             paddle::Tensor(std::make_shared<DescTensor>(input_desc))));
       } else {
-        inputs_opt.emplace_back(
-            paddle::make_optional<paddle::Tensor>(paddle::Tensor()));
+        inputs.emplace_back(paddle::Tensor(paddle::Tensor()));
       }
     }
+    inputs_opt = paddle::make_optional<std::vector<paddle::Tensor>>(inputs);
     return inputs_opt;
   }
 
-  std::vector<paddle::optional<paddle::Tensor>> GetOptionalMultiOutputGrad(
+  paddle::optional<std::vector<paddle::Tensor>> GetOptionalMultiOutputGrad(
       const std::string& name) {
-    std::vector<paddle::optional<paddle::Tensor>> outputs_grads;
+    paddle::optional<std::vector<paddle::Tensor>> outputs_grads_opt;
     std::vector<framework::VarDesc*> outputs_grads_descs =
         this->MultiOutputGrad(name);
+    if ((outputs_grads_descs.empty())) {
+      return outputs_grads_opt;
+    }
+    std::vector<paddle::Tensor> outputs_grads;
     outputs_grads.reserve(outputs_grads_descs.size());
     for (const auto& output_grad_desc : outputs_grads_descs) {
       if (output_grad_desc) {
-        outputs_grads.emplace_back(paddle::make_optional<paddle::Tensor>(
+        outputs_grads.emplace_back(paddle::Tensor(
             paddle::Tensor(std::make_shared<DescTensor>(output_grad_desc))));
       } else {
-        outputs_grads.emplace_back(
-            paddle::make_optional<paddle::Tensor>(paddle::Tensor()));
+        outputs_grads.emplace_back(paddle::Tensor(paddle::Tensor()));
       }
     }
-    return outputs_grads;
+    outputs_grads_opt =
+        paddle::make_optional<std::vector<paddle::Tensor>>(outputs_grads);
+    return outputs_grads_opt;
   }
 
   paddle::Tensor* GetOutputPtr(paddle::Tensor* input) {

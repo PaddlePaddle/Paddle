@@ -120,6 +120,14 @@ void AffineGridInferMeta(const MetaTensor& input,
   output->share_lod(input);
 }
 
+void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  auto dim = x.dims();
+  dim[0] = dim[0] * nranks;
+  if (dim[0] < 0) dim[0] = -1;
+  out->set_dtype(x.dtype());
+  out->set_dims(dim);
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -4238,7 +4246,9 @@ void TransposeInferMeta(const MetaTensor& x,
   int x_rank = x_dims.size();
   int axis_size = axis.size();
 
-  PADDLE_ENFORCE_EQ(
+  // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
+  // axis_size
+  PADDLE_ENFORCE_GE(
       x_rank,
       axis_size,
       errors::InvalidArgument("The input tensor's dimension "
