@@ -66,17 +66,17 @@ TEST(AmplifierInterceptor, Amplifier) {
   MessageBus* msg_bus = GlobalVal<MessageBus>::Create();
   msg_bus->Init(0, {{0, "127.0.0.0:0"}}, "127.0.0.0:0");
 
-  int64_t micro_steps = 3;
+  int64_t micro_steps = 1;
 
   // NOTE: don't delete, otherwise interceptor will use undefined node
   TaskNode* source =
       new TaskNode(0, SOURCE_ID, micro_steps);  // rank, task_id, max_run_times
-  TaskNode* node_a = new TaskNode(0, 0, 0, 1, 0);  // role, rank, task_id
-  TaskNode* node_b = new TaskNode(0, 0, 1, 1, 0);
-  TaskNode* node_c = new TaskNode(0, 0, 2, 1, 0);
-  TaskNode* node_d = new TaskNode(0, 0, 3, 1, 0);
-  TaskNode* node_e = new TaskNode(0, 0, 4, 1, 0);
-  TaskNode* node_f = new TaskNode(0, 0, 5, 1, 0);
+  TaskNode* node_a = new TaskNode(0, 0, 0, 1);  // role, rank, task_id
+  TaskNode* node_b = new TaskNode(0, 0, 1, 1);
+  TaskNode* node_c = new TaskNode(0, 0, 2, 1);
+  TaskNode* node_d = new TaskNode(0, 0, 3, 1);
+  TaskNode* node_e = new TaskNode(0, 0, 4, 1);
+  TaskNode* node_f = new TaskNode(0, 0, 5, 1);
   TaskNode* sink = new TaskNode(0, SINK_ID, micro_steps);
 
   // source->a->b->c->d->e->f->sink

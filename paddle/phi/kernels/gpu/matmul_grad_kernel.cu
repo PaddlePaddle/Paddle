@@ -36,6 +36,7 @@ PD_REGISTER_KERNEL(matmul_double_grad,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -55,6 +56,7 @@ PD_REGISTER_KERNEL(matmul_with_flatten_grad,
                    phi::MatmulWithFlattenGradKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(matmul_with_flatten_double_grad,

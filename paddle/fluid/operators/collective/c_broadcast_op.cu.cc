@@ -112,5 +112,7 @@ REGISTER_OP_CUDA_KERNEL(c_broadcast,
                         ops::CBroadcastOpCUDAKernel<plat::bfloat16>,
 #endif
                         ops::CBroadcastOpCUDAKernel<int>,
+                        ops::CBroadcastOpCUDAKernel<uint8_t>,
+                        ops::CBroadcastOpCUDAKernel<int8_t>,
                         ops::CBroadcastOpCUDAKernel<int64_t>,
                         ops::CBroadcastOpCUDAKernel<plat::float16>);
