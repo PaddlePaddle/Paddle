@@ -564,14 +564,13 @@ nvinfer1::DimsExprs Conv2dFusionInferMeta(
     output.d[out_idx++] = filter_dims.d[0];
   }
   for (size_t i = 0; i < in_data_dims.size(); ++i) {
-    output.d[out_idx++] =
-        ConvOutputSize(in_data_dims[i],
-                       filter_data_dims[i],
-                       expr_builder.constant(dilations[i]),
-                       expr_builder.constant(paddings[2 * i]),
-                       expr_builder.constant(paddings[2 * i + 1]),
-                       expr_builder.constant(strides[i]),
-                       expr_builder);
+    output.d[out_idx++] = ConvOutputSize(in_data_dims[i],
+                                         filter_data_dims[i],
+                                         dilations_exprs[i],
+                                         paddings_exprs[2 * i],
+                                         paddings_exprs[2 * i + 1],
+                                         expr_builder.constant(strides[i]),
+                                         expr_builder);
   }
   if (channel_last) {
     output.d[out_idx++] = filter_dims.d[0];
@@ -589,6 +588,7 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_fusion, Conv2dFusionInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d, Conv2dFusionInferMeta);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
