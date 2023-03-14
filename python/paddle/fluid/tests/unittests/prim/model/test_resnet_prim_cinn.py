@@ -150,7 +150,7 @@ class TestResnet(unittest.TestCase):
     @unittest.skipIf(
         not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
     )
-    def _test_cinn(self):
+    def test_cinn(self):
         dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
         # TODO(0x45f): The following is only temporary thresholds, and the final thresholds needs to be discussed
         np.testing.assert_allclose(self.dy2st[0:2], dy2st_cinn[0:2], rtol=1e-3)
@@ -159,7 +159,7 @@ class TestResnet(unittest.TestCase):
     @unittest.skipIf(
         not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
     )
-    def _test_prim_cinn(self):
+    def test_prim_cinn(self):
         core._set_prim_forward_blacklist("flatten_contiguous_range")
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
