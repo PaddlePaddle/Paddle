@@ -1546,7 +1546,19 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x2.grad.numpy(), 0)
 
     def test_lerp(self):
-        # 0D + 0D
+        # 0D + 0D, weight is float scalar
+        x = paddle.rand([])
+        y = paddle.rand([])
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = paddle.lerp(x, y, 0.5)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(y.grad.shape, [])
+
+        # 0D + 0D, weigh is 0D
         x0 = paddle.rand([])
         y0 = paddle.rand([])
         w0 = paddle.rand([])
@@ -2896,11 +2908,15 @@ class TestSundryAPIStatic(unittest.TestCase):
             [(), (), (), ()],
             [(), (64, 64), (), (64, 64)],
             [(64, 64), (), (), (64, 64)],
+            [(64, 64), (), 0.5, (64, 64)],
         ]
         for shape in shapes:
             x = paddle.rand(shape[0])
             y = paddle.rand(shape[1])
-            w = paddle.rand(shape[2])
+            if isinstance(shape[2], float):
+                w = shape[2]
+            else:
+                w = paddle.rand(shape[2])
 
             x.stop_gradient = False
             y.stop_gradient = False

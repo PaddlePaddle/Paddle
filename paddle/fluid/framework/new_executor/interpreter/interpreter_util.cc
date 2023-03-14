@@ -57,17 +57,14 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "arg_sort",
     "atan2",
     "clip_by_norm",
-    "complex",
     "eig",
     "eig_grad",
     "eigh",
     "ftt_c2r",
     "ftt_r2c",
-    "fused_matmul",
     "generate_proposals",
     "graph_sample_neighbors",
     "group_norm",
-    "histogram",
     "instance_norm",
     "lamb",
     "layer_norm",
@@ -75,14 +72,12 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "less_equal",
     "less_than",
     "merged_adam",
-    "mode",
     "momentum",
     "multiclass_nms3",
     "multinomial",
     "nanmedian",
     "rnn",
     "search_sort",
-    "select",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
@@ -1152,8 +1147,8 @@ void SetDeviceCommContext(framework::OperatorBase* operator_base,
         dev_ctx->SetCommContext(comm_context);
       }
     } else {
-      LOG(WARNING) << "op: " << operator_base->Type()
-                   << ", ring_id: " << ring_id << ", get comm_context failed!";
+      VLOG(3) << "op: " << operator_base->Type() << ", ring_id: " << ring_id
+              << ", get comm_context failed!";
     }
   }
 }
