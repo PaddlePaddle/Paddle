@@ -29,15 +29,15 @@ class TestMaxPoolingPadZeroXPUFusePass(PassAutoScanTest):
             st.lists(
                 st.integers(min_value=1, max_value=4), min_size=4, max_size=4
             )
-        ) 
+        )
 
-        pooling_type = draw(st.sampled_from(["max", "avg"])) 
+        pooling_type = draw(st.sampled_from(["max", "avg"]))
 
         strides = draw(
             st.lists(
                 st.integers(min_value=1, max_value=4), min_size=2, max_size=2
             )
-        ) 
+        )
 
         paddings = draw(
             st.lists(
@@ -54,14 +54,13 @@ class TestMaxPoolingPadZeroXPUFusePass(PassAutoScanTest):
             "pool2d",
             inputs={"X": ["relu_out"]},
             outputs={"Out": ["pool2d_out"]},
-            ksize=[1,1],
+            ksize=[1, 1],
             strides=strides,
             paddings=paddings,
             pooling_type=pooling_type,
         )
         ops = [relu_op, pool2d_op]
 
-        
         program_config = ProgramConfig(
             ops=ops,
             weights={},

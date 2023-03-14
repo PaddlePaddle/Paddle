@@ -38,8 +38,8 @@ namespace patterns {
 
 struct MaxPoolingPadZeroXPUPattern : public PatternBase {
   MaxPoolingPadZeroXPUPattern(PDPattern* pattern,
-               const std::string& name_scope,
-               const std::string& act_type);
+                              const std::string& name_scope,
+                              const std::string& act_type);
 
   // declare operator node's name
   PATTERN_DECL_NODE(pre_op);
@@ -51,24 +51,22 @@ struct MaxPoolingPadZeroXPUPattern : public PatternBase {
   std::string act_type_;
 };
 
-MaxPoolingPadZeroXPUPattern::MaxPoolingPadZeroXPUPattern(PDPattern* pattern,
-                           const std::string& name_scope,
-                           const std::string& act_type)
-    : PatternBase(pattern, name_scope, name_scope),
-      act_type_(act_type) {
-  auto *pre_op = pattern->NewNode(pre_op_repr())
-                        ->assert_is_op(act_type_);
-  auto *pre_op_out = pattern->NewNode(pre_out_repr())
-                            ->assert_is_op_output(act_type_, "Out")
-                            ->assert_is_op_input("pool2d", "X");
-  auto *max_pool = pattern->NewNode(pool2d_repr())
-                          ->assert_op_attr<std::string>("pooling_type", "max");
+MaxPoolingPadZeroXPUPattern::MaxPoolingPadZeroXPUPattern(
+    PDPattern* pattern,
+    const std::string& name_scope,
+    const std::string& act_type)
+    : PatternBase(pattern, name_scope, name_scope), act_type_(act_type) {
+  auto* pre_op = pattern->NewNode(pre_op_repr())->assert_is_op(act_type_);
+  auto* pre_op_out = pattern->NewNode(pre_out_repr())
+                         ->assert_is_op_output(act_type_, "Out")
+                         ->assert_is_op_input("pool2d", "X");
+  auto* max_pool = pattern->NewNode(pool2d_repr())
+                       ->assert_op_attr<std::string>("pooling_type", "max");
   pre_op->LinksTo({pre_op_out});
   max_pool->LinksFrom({pre_op_out});
-}  
+}
 
 }  // namespace patterns
-
 
 /* Detect Max Pooling which can pad zero instead of pad -inf    */
 /* For example:                                                 */
@@ -82,8 +80,7 @@ class MaxPoolingXPUFusePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  int ApplyImpl(ir::Graph* graph,
-                const std::string& act_type) const;
+  int ApplyImpl(ir::Graph* graph, const std::string& act_type) const;
 
   const std::string name_scope_{"max_pooling_pad_zero_xpu_fuse_pass"};
 };
@@ -94,23 +91,24 @@ void MaxPoolingXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   Init(name_scope_, graph);
 
   int found_subgraph_count = 0;
-    for (auto act_type : {
-            "relu",
-            "sigmoid",
-            "hard_sigmoid",
-            "relu6",
-            "",
-        }) {
+  for (auto act_type : {
+           "relu",
+           "sigmoid",
+           "hard_sigmoid",
+           "relu6",
+           "",
+       }) {
     found_subgraph_count += ApplyImpl(graph, act_type);
-    }
-    
+  }
+
   AddStatis(found_subgraph_count);
 }
 
 int MaxPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
-                             const std::string& act_type) const {
+                                     const std::string& act_type) const {
   GraphPatternDetector gpd;
-  patterns::MaxPoolingPadZeroXPUPattern pattern(gpd.mutable_pattern(), name_scope_, act_type); 
+  patterns::MaxPoolingPadZeroXPUPattern pattern(
+      gpd.mutable_pattern(), name_scope_, act_type);
   int found_subgraph_count = 0;
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -119,11 +117,11 @@ int MaxPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(pool2d);
     GET_IR_NODE(pre_out);
     // pool2d->Op()->SetAttr("pad_zero", true);
-    // another way 
+    // another way
     auto* block = pool2d->Op()->Block();
     // set pad_zero to true
     framework::OpDesc max_pool_op_desc(block);
-    //max_pool_op_desc.SetAttr("pad_zero", true);
+    // max_pool_op_desc.SetAttr("pad_zero", true);
     auto* max_pool = graph->CreateOpNode(&max_pool_op_desc);
     IR_NODE_LINK_TO(pre_out, max_pool);
     // delete original pool2d node
@@ -140,4 +138,5 @@ int MaxPoolingXPUFusePass::ApplyImpl(ir::Graph* graph,
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(max_pooling_pad_zero_xpu_fuse_pass, paddle::framework::ir::MaxPoolingXPUFusePass);
+REGISTER_PASS(max_pooling_pad_zero_xpu_fuse_pass,
+              paddle::framework::ir::MaxPoolingXPUFusePass);
