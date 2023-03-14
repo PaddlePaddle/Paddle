@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/poisson_kernel.h"
@@ -64,5 +65,11 @@ void PoissonKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    poisson, GPU, ALL_LAYOUT, phi::PoissonKernel, float, double) {}
+PD_REGISTER_KERNEL(poisson,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::PoissonKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
