@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid.core as core
@@ -43,18 +43,22 @@ class TestElementwiseOp(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output()
+            self.check_output(check_eager=False)
         else:
-            self.check_output()
+            self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
             if self.attrs['axis'] == -1:
-                self.check_grad(['X', 'Y'], 'Out', check_prim=True)
+                self.check_grad(
+                    ['X', 'Y'], 'Out', check_eager=False, check_prim=True
+                )
             else:
-                self.check_grad(['X', 'Y'], 'Out')
+                self.check_grad(['X', 'Y'], 'Out', check_eager=False)
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_prim=True)
+            self.check_grad(
+                ['X', 'Y'], 'Out', check_eager=True, check_prim=True
+            )
 
     def test_check_grad_ingore_x(self):
         if hasattr(self, 'attrs') and self.attrs['axis'] != -1:
@@ -172,16 +176,16 @@ class TestElementwiseBF16Op(OpTest):
 
     def test_check_output(self):
         if hasattr(self, 'attrs'):
-            self.check_output()
+            self.check_output(check_eager=False)
         else:
-            self.check_output()
+            self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         if hasattr(self, 'attrs'):
             # check_prim=False, bfloat16 is not supported in `less_equal`
-            self.check_grad(['X', 'Y'], 'Out')
+            self.check_grad(['X', 'Y'], 'Out', check_eager=False)
         else:
-            self.check_grad(['X', 'Y'], 'Out')
+            self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(['Y'], 'Out', no_grad_set=set("X"))

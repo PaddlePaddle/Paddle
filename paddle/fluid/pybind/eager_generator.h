@@ -27,6 +27,7 @@
 // functions. While, for very few OPs, the dispensable inputs are used, we
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_ins_map = {
+    {"fc", {"Input", "W", "Bias"}},
     {"layer_norm", {"X", "Scale", "Bias"}},
     {"conv2d_fusion_cutlass", {"Input", "Filter", "Bias", "ResidualData"}},
     {"conv2d_fusion", {"Input", "Filter", "Bias", "ResidualData"}},
