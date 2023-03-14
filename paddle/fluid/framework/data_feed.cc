@@ -2731,6 +2731,7 @@ int SlotRecordInMemoryDataFeed::Next() {
 #ifdef _LINUX
   this->CheckStart();
   if (!gpu_graph_mode_) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
     while (true) {
       if (last_pack_ != nullptr) {
         free_pack_queue_.Push(last_pack_);
@@ -2750,6 +2751,25 @@ int SlotRecordInMemoryDataFeed::Next() {
       }
       std::this_thread::sleep_for(std::chrono::microseconds(200));
     }
+#else
+    VLOG(3) << "enable heter next: " << offset_index_
+            << " batch_offsets: " << batch_offsets_.size();
+    if (offset_index_ >= batch_offsets_.size()) {
+      VLOG(3) << "offset_index: " << offset_index_
+              << " batch_offsets: " << batch_offsets_.size();
+      return 0;
+    }
+    auto& batch = batch_offsets_[offset_index_++];
+    this->batch_size_ = batch.second;
+    VLOG(3) << "batch_size_=" << this->batch_size_
+            << ", thread_id=" << thread_id_;
+    if (this->batch_size_ != 0) {
+      PutToFeedVec(&records_[batch.first], this->batch_size_);
+    } else {
+      VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
+              << thread_id_;
+    }
+#endif
   } else {
     VLOG(3) << "datafeed in gpu graph mode";
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
