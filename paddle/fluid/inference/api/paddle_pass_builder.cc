@@ -375,7 +375,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "fc_act_mkldnn_fuse_pass",
              "fc_elementwise_add_mkldnn_fuse_pass",   //
              "batch_norm_act_fuse_pass",              //
-             "softplus_activation_mkldnn_fuse_pass",  //
+             "softplus_activation_onednn_fuse_pass",  //
              "shuffle_channel_mkldnn_detect_pass",    //
              "elt_act_mkldnn_fuse_pass",              //
              "layer_norm_onednn_optimization_pass",   //
@@ -467,7 +467,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("fc_elementwise_add_mkldnn_fuse_pass");
     passes_.push_back("matmul_transpose_reshape_mkldnn_fuse_pass");
     passes_.push_back("batch_norm_act_fuse_pass");
-    passes_.push_back("softplus_activation_mkldnn_fuse_pass");
+    passes_.push_back("softplus_activation_onednn_fuse_pass");
     passes_.push_back("compute_propagate_scales_mkldnn_pass");
     passes_.push_back("scale_matmul_fuse_pass");
     passes_.push_back("reshape_transpose_matmul_mkldnn_fuse_pass");

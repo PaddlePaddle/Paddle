@@ -65,6 +65,18 @@ class TestCrossOpCase1(TestCrossOp):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
 
+class TestCrossFP16Op(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (2048, 3)
+        self.dtype = np.float16
+
+    def init_output(self):
+        z_list = []
+        for i in range(2048):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
 class TestCrossAPI(unittest.TestCase):
     def input_data(self):
         self.data_x = np.array(
