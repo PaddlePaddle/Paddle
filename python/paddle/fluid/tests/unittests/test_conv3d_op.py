@@ -283,15 +283,24 @@ def conv3d_wrapper(
     weight,
     stride=1,
     padding=0,
-    padding_algorithm=None,
+    padding_algorithm="EXPLICIT",
     groups=1,
     dilation=1,
     data_format="NCDHW",
 ):
     if data_format == "AnyLayout":
         data_format = "NCDHW"
-    return paddle.nn.functional.conv3d(
-        x, weight, None, stride, padding, dilation, groups, data_format
+    if padding_algorithm is None:
+        padding_algorithm = "EXPLICIT"
+    return paddle._C_ops.conv3d(
+        x,
+        weight,
+        stride,
+        padding,
+        padding_algorithm,
+        groups,
+        dilation,
+        data_format,
     )
 
 

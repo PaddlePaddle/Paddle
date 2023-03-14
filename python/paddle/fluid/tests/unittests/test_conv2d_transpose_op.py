@@ -142,25 +142,27 @@ def conv2dtranspose_wrapper(
     weight,
     stride=1,
     padding=0,
-    output_padding=0,
-    output_size=None,
-    padding_algorithm=None,
+    output_padding=[],
+    output_size=[],
+    padding_algorithm="EXPLICIT",
     groups=1,
     dilation=1,
     data_format="NCDHW",
 ):
     if data_format == "AnyLayout":
         data_format = "NCDHW"
-    return paddle.nn.functional.conv2d_transpose(
+    if padding_algorithm is None:
+        padding_algorithm = "EXPLICIT"
+    return paddle._C_ops.conv2d_transpose(
         x,
         weight,
-        None,
         stride,
         padding,
         output_padding,
-        dilation,
-        groups,
         output_size,
+        padding_algorithm,
+        groups,
+        dilation,
         data_format,
     )
 
