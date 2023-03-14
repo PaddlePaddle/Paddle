@@ -198,6 +198,23 @@ void CropGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void FlashAttnGradInferMeta(const MetaTensor& q,
+                            const MetaTensor& k,
+                            const MetaTensor& v,
+                            MetaTensor* dq,
+                            MetaTensor* dk,
+                            MetaTensor* dv) {
+  if (dq) {
+    dq->share_meta(q);
+  }
+  if (dk && k) {
+    dk->share_meta(k);
+  }
+  if (dv && v) {
+    dv->share_meta(v);
+  }
+}
+
 void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
                                           const MetaTensor& softmax,
                                           const MetaTensor& loss_grad,
@@ -658,7 +675,9 @@ void MultiplexGradInferMeta(const MetaTensor& ids,
       errors::InvalidArgument("Output(X@Grad) should not be null."));
   auto dout_dim = out_grad.dims();
   for (auto in_grad : ins_grad) {
-    in_grad->set_dims(dout_dim);
+    if (in_grad != nullptr) {
+      in_grad->set_dims(dout_dim);
+    }
   }
 }
 

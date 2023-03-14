@@ -22,6 +22,9 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/string_tensor_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 namespace paddle {
 namespace experimental {
@@ -54,6 +57,11 @@ bool HasAllocation(const phi::TensorBase& t) {
 
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
   if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (t.place().GetType() == AllocationType::CUSTOM) {
+      phi::DeviceManager::SetDevice(t.place());
+    }
+#endif
     phi::Backend backend_key = phi::TransToPhiBackend(t.place());
     BackendSet backend_set(backend_key);
     if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
@@ -104,7 +112,7 @@ DataType ParseDataType(const std::vector<Tensor>& tensors) {
   auto n = tensors.size();
   for (size_t i = 1; i < n; ++i) {
     if (tensors[i].type() != dtype) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The data_type of input tensor in list isn't consistent, "
           "the first tensor is %s, but %dth tensor is %s.",
           dtype,

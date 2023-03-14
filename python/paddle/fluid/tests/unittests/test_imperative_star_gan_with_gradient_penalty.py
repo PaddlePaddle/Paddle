@@ -314,7 +314,7 @@ class Generator(fluid.dygraph.Layer):
         label_trg_e = paddle.reshape(label_trg, [-1, label_trg.shape[1], 1, 1])
         label_trg_e = paddle.expand(label_trg_e, [-1, -1, shape[2], shape[3]])
 
-        input1 = fluid.layers.concat([input, label_trg_e], 1)
+        input1 = paddle.concat([input, label_trg_e], 1)
 
         conv0 = self._conv0(input1)
         res_block = self._res_block(conv0)

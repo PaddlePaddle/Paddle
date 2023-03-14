@@ -103,7 +103,7 @@ class TestIdentityLossOpError(unittest.TestCase):
             self.assertRaises(Exception, test_string)
 
             def test_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
+                x2 = paddle.static.data(name='x2', shape=[-1, 1], dtype='int32')
                 paddle.incubate.identity_loss(x=x2, reduction=1)
 
             self.assertRaises(TypeError, test_dtype)

@@ -50,7 +50,7 @@ class TensorRTSubgraphPassElementwiseBroadcastTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
-        return paddle.tensor.math._add_with_axis(x=data1, y=data2, axis=0)
+        return paddle.tensor.math.add(x=data1, y=data2)
 
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
@@ -67,21 +67,21 @@ class TensorRTSubgraphPassElementwiseBroadcastTest1(
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
     def append_eltwise(self, data1, data2):
-        return paddle.tensor.math._subtract_with_axis(x=data1, y=data2, axis=0)
+        return paddle.tensor.math.subtract(x=data1, y=data2)
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest2(
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
     def append_eltwise(self, data1, data2):
-        return paddle.tensor.math._multiply_with_axis(x=data1, y=data2, axis=0)
+        return paddle.tensor.math.multiply(x=data1, y=data2)
 
 
 class TensorRTSubgraphPassElementwiseBroadcastTest3(
     TensorRTSubgraphPassElementwiseBroadcastTest
 ):
     def append_eltwise(self, data1, data2):
-        return paddle.tensor.math._divide_with_axis(x=data1, y=data2, axis=0)
+        return paddle.tensor.math.divide(x=data1, y=data2)
 
 
 if __name__ == "__main__":

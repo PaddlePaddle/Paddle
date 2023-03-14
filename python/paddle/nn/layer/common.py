@@ -96,9 +96,9 @@ class Linear(Layer):
         in_features (int): The number of input units.
         out_features (int): The number of output units.
         weight_attr (ParamAttr, optional): The attribute for the learnable
-            weight of this layer. The default value is None and the weight will be
-            initialized to zero. For detailed information, please refer to
-            paddle.ParamAttr.
+            weight of this layer. The default value is None. If the Initializer of the
+            param_attr is not set, the parameter is initialized with Xavier.
+            For detailed information, please refer to paddle.ParamAttr.
         bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
             of this layer. If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
@@ -114,8 +114,8 @@ class Linear(Layer):
         **bias** (Parameter): the learnable bias of this layer.
 
     Shape:
-        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` .
-        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` .
+        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` . Its data types are float16, float32, float64 ,The default is float32 .
+        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` . The data type is the same as the input .
 
     Examples:
         .. code-block:: python
@@ -1178,11 +1178,10 @@ class ZeroPad2D(Layer):
 
             import paddle
             import paddle.nn as nn
-            import numpy as np
 
-            input_shape = (1, 1, 2, 3)
+            input_shape = paddle.to_tensor([1, 1, 2, 3])
             pad = [1, 0, 1, 2]
-            data = paddle.arange(np.prod(input_shape), dtype="float32").reshape(input_shape) + 1
+            data = paddle.arange(paddle.prod(input_shape), dtype="float32").reshape(input_shape) + 1
 
             my_pad = nn.ZeroPad2D(padding=pad)
             result = my_pad(data)

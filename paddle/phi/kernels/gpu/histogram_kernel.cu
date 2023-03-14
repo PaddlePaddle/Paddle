@@ -110,10 +110,8 @@ void HistogramKernel(const Context& dev_ctx,
     input_max_scala.device(*place) = input_x.maximum();
 
     DenseTensor input_min_cpu, input_max_cpu;
-    paddle::framework::TensorCopySync(
-        input_min_t, phi::CPUPlace(), &input_min_cpu);
-    paddle::framework::TensorCopySync(
-        input_max_t, phi::CPUPlace(), &input_max_cpu);
+    phi::Copy(dev_ctx, input_min_t, phi::CPUPlace(), true, &input_min_cpu);
+    phi::Copy(dev_ctx, input_max_t, phi::CPUPlace(), true, &input_max_cpu);
 
     output_min = input_min_cpu.data<T>()[0];
     output_max = input_max_cpu.data<T>()[0];

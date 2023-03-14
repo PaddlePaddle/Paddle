@@ -25,20 +25,19 @@ from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
 # TODO: define math functions
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
 )
-from ..static import Variable
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn, templatedoc
 from .manipulation import cast
@@ -121,8 +120,8 @@ def _get_reduce_axis_with_tensor(axis, x):
             reduce_all = False
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)
-        if utils._contain_var(axis):
-            axis = utils._convert_to_tensor_list(axis)
+        if paddle.utils._contain_var(axis):
+            axis = paddle.utils._convert_to_tensor_list(axis)
     return reduce_all, axis
 
 
@@ -135,7 +134,7 @@ def log(x, name=None):
         Out = \ln(x)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
         name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
@@ -156,7 +155,9 @@ def log(x, name=None):
     if in_dygraph_mode():
         return _C_ops.log(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "log"
+        )
         inputs = {'X': [x]}
         helper = LayerHelper('log', **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -213,6 +214,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
+        if act is None:
+            return _C_ops.scale(x, scale, float(bias), bias_after_scale)
         out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out, act)
     else:
@@ -478,28 +481,6 @@ OP_NAMEMAPPING = {
 }
 
 
-@dygraph_only
-def _elementwise_op_in_dygraph(
-    x, y, axis=-1, act=None, use_mkldnn=False, op_name=None
-):
-    def is_inplace(op_name):
-        return op_name[-1] == "_"
-
-    if op_name not in OP_NAMEMAPPING.keys() or axis != -1:
-        op = getattr(_legacy_C_ops, op_name)
-        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
-    else:
-        if in_dygraph_mode():
-            op = getattr(
-                _C_ops,
-                OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name,
-            )
-            out = op(x, y)
-    return dygraph_utils._append_activation_in_dygraph(
-        out, act, use_mkldnn=use_mkldnn
-    )
-
-
 def _elementwise_op(helper):
     op_type = helper.layer_type
     original_op_type = helper.kwargs.get('original_op_type', op_type)
@@ -510,16 +491,36 @@ def _elementwise_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(original_op_type)
     assert y is not None, 'y cannot be None in {}'.format(original_op_type)
+    bf16_and_complex_supported_ops = [
+        "elementwise_add",
+        "elementwise_sub",
+        "elementwise_mul",
+        "elementwise_div",
+    ]
+    if original_op_type in bf16_and_complex_supported_ops:
+        data_type = [
+            'uint16',
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'complex64',
+            'complex128',
+        ]
+    else:
+        data_type = ['float16', 'float32', 'float64', 'int32', 'int64', 'bool']
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        data_type,
         original_op_type,
     )
     check_variable_and_dtype(
         y,
         'y',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        data_type,
         original_op_type,
     )
 
@@ -611,8 +612,6 @@ def add_(x, y, name=None):
     Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_add`.
     """
-    op_type = 'elementwise_add_'
-    axis = -1
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -622,11 +621,7 @@ def add_(x, y, name=None):
             )
         )
 
-    if in_dygraph_mode():
-        return _C_ops.add_(x, y)
-    else:
-        out = _elementwise_op_in_dygraph(x, y, axis=axis, op_name=op_type)
-        return out
+    return _C_ops.add_(x, y)
 
 
 def subtract(x, y, name=None):
@@ -685,13 +680,10 @@ def subtract(x, y, name=None):
             # Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             #        [ 4.  ,  inf., -inf.])
     """
-    op_type = 'elementwise_sub'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.subtract(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
 @inplace_apis_in_dygraph_only
@@ -700,8 +692,6 @@ def subtract_(x, y, name=None):
     Inplace version of ``subtract`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_subtract`.
     """
-    axis = -1
-    act = None
 
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -711,13 +701,7 @@ def subtract_(x, y, name=None):
             )
         )
 
-    if in_dygraph_mode():
-        return _C_ops.subtract_(x, y)
-    else:
-        out = _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_sub_'
-        )
-        return out
+    return _C_ops.subtract_(x, y)
 
 
 def divide(x, y, name=None):
@@ -752,13 +736,10 @@ def divide(x, y, name=None):
             print(z)  # [2., 0.6, 2.]
 
     """
-    op_type = 'elementwise_div'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.divide(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
 def floor_divide(x, y, name=None):
@@ -767,6 +748,9 @@ def floor_divide(x, y, name=None):
 
     .. math::
         out = trunc(x / y)
+
+    - :math:`x`: Multidimensional Tensor.
+    - :math:`y`: Multidimensional Tensor.
 
     Note:
         ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
@@ -795,12 +779,10 @@ def floor_divide(x, y, name=None):
             print(z)  # [2, 0, 2, 2]
 
     """
-    op_type = 'elementwise_floordiv'
-    axis = -1
     if in_dygraph_mode():
         return _C_ops.floor_divide(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 
 
 def remainder(x, y, name=None):
@@ -836,13 +818,10 @@ def remainder(x, y, name=None):
             print(z)  # [0, 3, 2, 1]
 
     """
-    op_type = 'elementwise_mod'
-    axis = -1
-
     if in_dygraph_mode():
         return _C_ops.remainder(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
 @inplace_apis_in_dygraph_only
@@ -851,9 +830,6 @@ def remainder_(x, y, name=None):
     Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_tensor_remainder`.
     """
-    op_type = 'elementwise_mod_'
-    axis = -1
-
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
         raise ValueError(
@@ -861,8 +837,7 @@ def remainder_(x, y, name=None):
                 out_shape, x.shape
             )
         )
-
-    return _elementwise_op_in_dygraph(x, y, axis=axis, op_name=op_type)
+    return _C_ops.remainder_(x, y)
 
 
 mod = remainder  # noqa: F841
@@ -906,10 +881,6 @@ def multiply(x, y, name=None):
             print(res) # [[[2, 4, 6], [2, 4, 6]]]
 
     """
-    op_type = 'elementwise_mul'
-    act = None
-    axis = -1
-
     if in_dygraph_mode():
         return _C_ops.multiply(x, y)
     else:
@@ -919,7 +890,7 @@ def multiply(x, y, name=None):
                 % (x.dtype, y.dtype)
             )
 
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
 @dygraph_only
@@ -953,7 +924,6 @@ def _add_with_axis(x, y, axis=-1, name=None):
         return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "add")
     else:
         op_type = 'elementwise_add'
-        act = None
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -965,7 +935,6 @@ def _subtract_with_axis(x, y, axis=-1, name=None):
         )
     else:
         op_type = 'elementwise_sub'
-        act = None
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -977,7 +946,6 @@ def _multiply_with_axis(x, y, axis=-1, name=None):
         )
     else:
         op_type = 'elementwise_mul'
-        act = None
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -987,7 +955,6 @@ def _divide_with_axis(x, y, axis=-1, name=None):
         return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "divide")
     else:
         op_type = 'elementwise_div'
-        act = None
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -1047,13 +1014,10 @@ def maximum(x, y, name=None):
             # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [5.  , 3.  , inf.])
     """
-    op_type = 'elementwise_max'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.maximum(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
 def minimum(x, y, name=None):
@@ -1112,13 +1076,10 @@ def minimum(x, y, name=None):
             # Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             #        [ 1.  , -inf.,  5.  ])
     """
-    op_type = 'elementwise_min'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.minimum(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
 def fmax(x, y, name=None):
@@ -1179,13 +1140,10 @@ def fmax(x, y, name=None):
             # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [5.  , 3.  , inf.])
     """
-    op_type = 'elementwise_fmax'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.fmax(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_fmax', **locals()))
 
 
 def fmin(x, y, name=None):
@@ -1246,13 +1204,10 @@ def fmin(x, y, name=None):
             # Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             #        [ 1.  , -inf.,  5.  ])
     """
-    op_type = 'elementwise_fmin'
-    axis = -1
-    act = None
     if in_dygraph_mode():
         return _C_ops.fmin(x, y)
     else:
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_fmin', **locals()))
 
 
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
@@ -1334,6 +1289,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             'x',
             [
                 'bool',
+                'uint16',
                 'float16',
                 'float32',
                 'float64',
@@ -1417,7 +1373,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is float16, float32, float64, int32 or int64.
         axis (int|list|tuple, optional): The dimensions along which the nansum is performed. If
             :attr:`None`, nansum all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
@@ -1460,7 +1416,7 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             out6 = paddle.nansum(y, axis=[0, 1]) # [9, 18]
     """
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'nansum'
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'nansum'
     )
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
 
@@ -2009,7 +1965,6 @@ def renorm(x, p, axis, max_norm):
 
     """
     input_shape = x.shape
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
     if not axis < len(input_shape):
         raise ValueError(
             "the axis:{} should be less then the shape's size {}:{}".format(
@@ -2028,6 +1983,7 @@ def renorm(x, p, axis, max_norm):
         out = _C_ops.renorm(x, p, axis, max_norm)
         return out
     else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'renorm')
         inputs = {'X': x}
         attrs = {'p': p, 'axis': axis, 'max_norm': max_norm}
 
@@ -2175,7 +2131,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
        logsumexp(x) = \log\sum exp(x)
 
     Args:
-        x (Tensor): The input Tensor with data type float32 or float64, which
+        x (Tensor): The input Tensor with data type float16, float32 or float64, which
             have no more than 4 dimensions.
         axis (int|list|tuple, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
@@ -2214,7 +2170,9 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'logsumexp')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'logsumexp'
+        )
 
         helper = LayerHelper('logsumexp', **locals())
         attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all': reduce_all}
@@ -2360,8 +2318,8 @@ def max(x, axis=None, keepdim=False, name=None):
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max'
         )
-        if not isinstance(axis, Variable) and utils._contain_var(axis):
-            axis = utils._convert_to_tensor_list(axis)
+        if not isinstance(axis, Variable) and paddle.utils._contain_var(axis):
+            axis = paddle.utils._convert_to_tensor_list(axis)
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
@@ -2696,7 +2654,7 @@ def log1p(x, name=None):
         Out = \ln(x+1)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2715,7 +2673,9 @@ def log1p(x, name=None):
     if in_dygraph_mode():
         return _C_ops.log1p(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "log1p"
+        )
         inputs = {'X': [x]}
         helper = LayerHelper('log1p', **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -2838,11 +2798,11 @@ def clip(x, min=None, max=None, name=None):
         Out = MIN(MAX(x, min), max)
 
     Args:
-        x (Tensor): An N-D Tensor with data type float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor with data type float16, float32, float64, int32 or int64.
         min (float|int|Tensor, optional): The lower bound with type ``float`` , ``int`` or a ``Tensor``
-            with shape [1] and type ``int32``, ``float32``, ``float64``.
+            with shape [1] and type ``int32``, ``float16``, ``float32``, ``float64``.
         max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``Tensor``
-            with shape [1] and type ``int32``, ``float32``, ``float64``.
+            with shape [1] and type ``int32``, ``float16``, ``float32``, ``float64``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2871,6 +2831,9 @@ def clip(x, min=None, max=None, name=None):
     elif x_dtype == 'paddle.int64':
         min_ = np.iinfo(np.int64).min
         max_ = np.iinfo(np.int64).max - 2**39
+    elif x_dtype == 'paddle.float16':
+        min_ = float(np.finfo(np.float16).min)
+        max_ = float(np.finfo(np.float16).max)
     else:
         min_ = float(np.finfo(np.float32).min)
         max_ = float(np.finfo(np.float32).max)
@@ -2890,7 +2853,7 @@ def clip(x, min=None, max=None, name=None):
                 check_dtype(
                     min.dtype,
                     'min',
-                    ['float32', 'float64', 'int32'],
+                    ['float16', 'float32', 'float64', 'int32'],
                     'clip',
                     '(When the type of min in clip is Variable.)',
                 )
@@ -2900,13 +2863,13 @@ def clip(x, min=None, max=None, name=None):
                 check_dtype(
                     max.dtype,
                     'max',
-                    ['float32', 'float64', 'int32'],
+                    ['float16', 'float32', 'float64', 'int32'],
                     'clip',
                     '(When the type of max in clip is Variable.)',
                 )
 
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'clip'
+            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'clip'
         )
 
         inputs = {'X': x}
@@ -3158,11 +3121,26 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         return out
 
 
-@templatedoc(op_type="kron")
 def kron(x, y, name=None):
-    """
-
-    ${comment}
+    r"""
+    Compute the Kronecker product of two tensors, a
+    composite tensor made of blocks of the second tensor scaled by the
+    first.
+    Assume that the rank of the two tensors, $X$ and $Y$
+    are the same, if necessary prepending the smallest with ones. If the
+    shape of $X$ is [$r_0$, $r_1$, ..., $r_N$] and the shape of $Y$ is
+    [$s_0$, $s_1$, ..., $s_N$], then the shape of the output tensor is
+    [$r_{0}s_{0}$, $r_{1}s_{1}$, ..., $r_{N}s_{N}$]. The elements are
+    products of elements from $X$ and $Y$.
+    The equation is:
+    $$
+    output[k_{0}, k_{1}, ..., k_{N}] = X[i_{0}, i_{1}, ..., i_{N}] *
+    Y[j_{0}, j_{1}, ..., j_{N}]
+    $$
+    where
+    $$
+    k_{t} = i_{t} * s_{t} + j_{t}, t = 0, 1, ..., N
+    $$
 
     Args:
         x (Tensor): the fist operand of kron op, data type: float16, float32, float64, int32 or int64.
@@ -3258,6 +3236,12 @@ def cumsum(x, axis=None, dtype=None, name=None):
             axis = -1
         return _C_ops.cumsum(x, axis, flatten, False, False)
     else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'cumsum',
+        )
         check_type(x, 'x', (Variable), 'cumsum')
         locals_var = locals().copy()
         kwargs = dict()
@@ -3914,7 +3898,7 @@ def conj(x, name=None):
 
     Args:
         x (Tensor): The input Tensor which hold the complex numbers.
-            Optional data types are: complex64, complex128, float32, float64, int32 or int64.
+            Optional data types are:float16, complex64, complex128, float32, float64, int32 or int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3942,7 +3926,15 @@ def conj(x, name=None):
         check_variable_and_dtype(
             x,
             "x",
-            ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'complex64',
+                'complex128',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'conj',
         )
 
@@ -4209,7 +4201,6 @@ def lerp(x, y, weight, name=None):
 
     """
     if in_dygraph_mode():
-        check_type(weight, 'weight', (float, paddle.Tensor, Variable), 'lerp')
         if isinstance(weight, float):
             weight = paddle.to_tensor(weight, dtype=x.dtype)
 
@@ -4747,10 +4738,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
                 outputs={"Out": out},
             )
         else:
-            out = paddle.tensor.math._subtract_with_axis(
-                input_back, input_front, axis=axis
-            )
-
+            out = paddle.tensor.math.subtract(input_back, input_front)
         return out
 
 
@@ -4853,14 +4841,10 @@ def heaviside(x, y, name=None):
             #    [[0.        , 0.20000000, 1.        ],
             #     [0.        , 1.        , 0.30000001]]
     """
-    op_type = 'elementwise_heaviside'
-    axis = -1
-    act = None
     if in_dygraph_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type
-        )
+        return _C_ops.heaviside(x, y)
     else:
+        op_type = 'elementwise_heaviside'
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
@@ -4888,9 +4872,6 @@ def frac(x, name=None):
             #        [[ 0.22000003, -0.02999997],
             #         [-0.54999995,  0.66000003]])
     """
-    op_type = 'elementwise_sub'
-    axis = -1
-    act = None
     if x.dtype not in [
         paddle.int32,
         paddle.int64,
@@ -4917,7 +4898,7 @@ def frac(x, name=None):
         helper.append_op(
             type="trunc", inputs=inputs, attrs=attrs, outputs={"Out": y}
         )
-        return _elementwise_op(LayerHelper(op_type, **locals()))
+        return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
 def sgn(x, name=None):

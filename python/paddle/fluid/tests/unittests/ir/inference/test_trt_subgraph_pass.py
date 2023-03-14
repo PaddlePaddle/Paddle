@@ -61,7 +61,7 @@ class TensorRTSubgraphPassConcatTest(InferencePassTest):
             data2 = fluid.data(
                 name="data2", shape=[-1, 3, 64, 64], dtype="float32"
             )
-            concat_out = fluid.layers.concat([data1, data2], axis=2)
+            concat_out = paddle.concat([data1, data2], axis=2)
             out = nn.batch_norm(concat_out, is_test=True)
         self.feeds = {
             "data1": np.random.random([1, 3, 64, 64]).astype("float32"),
@@ -180,11 +180,11 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
             )
             param_attr = fluid.ParamAttr(
                 name='instance_norm_w',
-                initializer=fluid.initializer.Constant(value=1.0),
+                initializer=paddle.nn.initializer.Constant(value=1.0),
             )
             bias_attr = fluid.ParamAttr(
                 name='instance_norm_b',
-                initializer=fluid.initializer.Constant(value=0.0),
+                initializer=paddle.nn.initializer.Constant(value=0.0),
             )
             out = paddle.static.nn.instance_norm(
                 input=data, param_attr=param_attr, bias_attr=bias_attr

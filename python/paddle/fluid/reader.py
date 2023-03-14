@@ -1643,7 +1643,7 @@ class PyReader(DataLoaderBase):
 
     Args:
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
-            The variables should be created by :code:`fluid.layers.data()`.
+            The variables should be created by :code:`paddle.static.data()`.
         capacity (int): capacity of the queue maintained in PyReader.
             The unit is batch number. Set larger capacity if your reader
             is fast.

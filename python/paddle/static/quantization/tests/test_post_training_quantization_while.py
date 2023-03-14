@@ -188,7 +188,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
     ):
 
         origin_model_path = self.download_model(data_url, data_md5, model_name)
-        # origin_model_path = os.path.join(origin_model_path, model_name)
 
         print(
             "Start FP32 inference for {0} on {1} images ...".format(

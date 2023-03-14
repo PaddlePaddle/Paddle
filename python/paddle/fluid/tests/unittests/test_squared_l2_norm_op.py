@@ -30,6 +30,46 @@ def test_squared_l2_norm(x):
         return _legacy_C_ops.squared_l2_norm(x)
 
 
+class TestSquaredL2NormF16Op(unittest.TestCase):
+    def init_test_case(self):
+        X = np.random.uniform(-0.1, 0.1, (8, 5, 10)).astype('float32')
+        return X
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np)
+
+        x.stop_gradient = False
+        y = test_squared_l2_norm(x)
+        x_g = paddle.grad(y, [x])
+
+        paddle.enable_static()
+        return y, x_g
+
+    def test_main(self):
+        x_np = self.init_test_case()
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float32')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float16')
+
+        def assert_equal(x, y):
+            np.testing.assert_allclose(x, y, rtol=1e-05, atol=0.0)
+
+        assert_equal(y_np_1, y_np_2)
+        assert_equal(x_g_np_1, x_g_np_2)
+
+
+class TestSquaredL2NormF16Op1(TestSquaredL2NormF16Op):
+    def init_test_case(self):
+        X = np.random.uniform(-2.0, 2.0, (30, 10)).astype('float32')
+        return X
+
+
+class TestSquaredL2NormF16Op2(TestSquaredL2NormF16Op):
+    def init_test_case(self):
+        X = np.random.uniform(-5.0, 5.0, (20, 10, 20)).astype('float32')
+        return X
+
+
 class TestL2LossOp(OpTest):
     """Test squared_l2_norm"""
 

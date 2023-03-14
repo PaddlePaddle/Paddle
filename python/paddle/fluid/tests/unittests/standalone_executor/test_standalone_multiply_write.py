@@ -35,8 +35,8 @@ class TestMultiplyWrite(TestCompatibility):
             inp1 = paddle.full((1,), 2)
             inp2 = paddle.full((1,), 3)
 
-            paddle.fluid.layers.assign(inp1, out)
-            paddle.fluid.layers.assign(inp2, out)
+            paddle.assign(inp1, out)
+            paddle.assign(inp2, out)
         return main_program, startup_program, out
 
     def setUp(self):

@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/assign_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/optional.h"
@@ -25,7 +24,7 @@ template <typename Context>
 void AssignKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) {
-  paddle::framework::TensorCopy(x, x.place(), out);
+  phi::Copy(dev_ctx, x, x.place(), false, out);
 }
 
 template <typename Context>
@@ -65,15 +64,14 @@ typename std::enable_if<std::is_same<T, bool>::value>::type CopyVectorToTensor(
   for (const auto& val : values) {
     assign_values.emplace_back(val.to<int>());
   }
-  paddle::framework::TensorFromVector(assign_values, dev_ctx, out);
+  phi::TensorFromVector(assign_values, dev_ctx, out);
 
   // use the array to replace to vector
   bool* array_ptr = new T[assign_values.size()];
   for (unsigned int i = 0; i < assign_values.size(); i++) {
     array_ptr[i] = static_cast<T>(assign_values[i]);
   }
-  paddle::framework::TensorFromArray(
-      array_ptr, assign_values.size(), dev_ctx, out);
+  phi::TensorFromArray(array_ptr, assign_values.size(), dev_ctx, out);
   delete[] array_ptr;
 }
 
@@ -87,7 +85,7 @@ typename std::enable_if<!std::is_same<T, bool>::value>::type CopyVectorToTensor(
   for (const auto& val : values) {
     assign_values.emplace_back(val.to<T>());
   }
-  paddle::framework::TensorFromVector(assign_values, dev_ctx, out);
+  phi::TensorFromVector(assign_values, dev_ctx, out);
 }
 
 template <typename T, typename Context>
@@ -181,5 +179,7 @@ PD_REGISTER_KERNEL(assign_value,
                    bool,
                    int,
                    float,
-                   int64_t) {}
+                   double,
+                   int64_t,
+                   phi::dtype::float16) {}
 #endif

@@ -530,7 +530,7 @@ class ParallelTuner:
                 del self._concerned_dist_ops[op_id]
 
         print(
-            "Number of the concered dist ops",
+            "Number of the concerned dist ops",
             len(self._concerned_dist_ops),
             flush=True,
         )
@@ -631,7 +631,7 @@ class ParallelTuner:
                 direction = directions[i].random(self._seed)
                 size = sizes[i].random(self._seed)
                 if direction:
-                    # Substract 1 from size to avoid the overlapping of new starts
+                    # Subtract 1 from size to avoid the overlapping of new starts
                     new_start = start - (size - 1)
                 else:
                     new_start = start + size
@@ -788,7 +788,7 @@ class ParallelTuner:
                 dist_op.dist_attr.impl_idx = 0
 
     def _check_fused_softmax_mask_upper_triangle(self, dist_op):
-        """The last_but_one dim shoule be equal to last dim."""
+        """The last_but_one dim should be equal to last dim."""
         input_name = dist_op.serial_op.input_arg_names[0]
         input_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
             input_name
@@ -867,7 +867,7 @@ class ParallelTuner:
             assert (
                 dist_op.dist_attr.impl_idx == op_id_to_dist_attr[op_id].impl_idx
             )
-            dist_op.dist_attr.process_mesh = process_mesh
+            dist_op.dist_attr.process_mesh = ProcessMesh(process_mesh)
         self._amend_dist_attr()
 
         self._completer._complete_tensor_dist_attr_by_op()
@@ -996,7 +996,7 @@ class ParallelTuner:
             self._dist_context.serial_main_program
         )
 
-        # Backup the intital parallel strategy
+        # Backup the initial parallel strategy
         self._init_parallel_strategy[0] = copy.deepcopy(
             self._dist_context._dist_tensors_for_program
         )
@@ -1041,7 +1041,6 @@ class ParallelTuner:
         # This store statement must follow the above backup statement
         self._store_init_parallel_strategy()
         init_time = self._estimate_trial()  # estimate_trial when init
-        # print_program_with_dist_attr(self._dist_context.serial_main_program, self._dist_context)
         # We have to restore the distributed context, because the estimation of one trail need to
         # generate the backward and update parts. Since we will do the tuning process,
         # here we only need to reset all distributed information to the default one.

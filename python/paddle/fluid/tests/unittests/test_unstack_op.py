@@ -84,5 +84,29 @@ class TestStackOp6(TestUnStackOpBase):
         self.axis = 2
 
 
+class TestUnstackZeroInputOp(unittest.TestCase):
+    def unstack_zero_input_static(self):
+
+        paddle.enable_static()
+
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
+        paddle.unstack(x, axis=1)
+
+    def unstack_zero_input_dynamic(self):
+
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
+        paddle.unstack(x, axis=1)
+
+    def test_type_error(self):
+        paddle.disable_static()
+
+        self.assertRaises(ValueError, self.unstack_zero_input_dynamic)
+        self.assertRaises(ValueError, self.unstack_zero_input_static)
+
+        paddle.disable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

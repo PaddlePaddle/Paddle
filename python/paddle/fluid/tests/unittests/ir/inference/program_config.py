@@ -27,7 +27,6 @@ from paddle.fluid.framework import (
     Operator,
     convert_np_dtype_to_dtype_,
 )
-from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.static.quantization import (
     QuantizationFreezePass,
     QuantizationTransformPass,
@@ -282,7 +281,6 @@ def create_fake_model(program_config):
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
         var_desc.set_shape(tensor_config.shape)
-        print(f"name: {name}; shape: {tensor_config.shape}")
         var_desc.set_need_check_feed(True)
         if tensor_config.lod is not None:
             var_desc.set_lod_level(len(tensor_config.lod))
@@ -306,7 +304,7 @@ def create_fake_model(program_config):
             shape=tensor_config.shape,
             type=core.VarDesc.VarType.LOD_TENSOR,
             name=name,
-            initializer=NumpyArrayInitializer(tensor_config.data),
+            initializer=paddle.nn.initializer.Assign(tensor_config.data),
         )
     in_vars = []
     for name in sorted(save_var_map.keys()):
@@ -450,6 +448,10 @@ def create_quant_model(
         "pad2d",
         "reshape",
         "layer_norm",
+        "fusion_gru",
+        "multi_gru",
+        "quantize",
+        "dequantize",
     ]
     op_real_in_out_name = {
         "conv2d": [["Input", "Filter"], ["Output"]],
@@ -499,6 +501,10 @@ def create_quant_model(
         "pad2d": [["X"], ["Out"]],
         "flatten": [["X"], ["Out"]],
         "flatten2": [["X"], ["Out"]],
+        "fusion_gru": [["X", "WeightX", "WeightH"], ["Hidden", "XX"]],
+        "multi_gru": [["X", "WeightX", "WeightH"], ["Hidden"]],
+        "quantize": [["Input"], ["Output"]],
+        "dequantize": [["Input"], ["Output"]],
     }
 
     def _get_op_output_var_names(op):

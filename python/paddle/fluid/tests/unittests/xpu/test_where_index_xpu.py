@@ -101,7 +101,7 @@ for stype in support_types:
 class TestWhereOpError(unittest.TestCase):
     def test_api(self):
         with program_guard(Program(), Program()):
-            cond = fluid.layers.data(name='cond', shape=[4], dtype='bool')
+            cond = paddle.static.data(name='cond', shape=[-1, 4], dtype='bool')
             result = paddle.nonzero(cond)
 
             exe = fluid.Executor(paddle.XPUPlace(0))

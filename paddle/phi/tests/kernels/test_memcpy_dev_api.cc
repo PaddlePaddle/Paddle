@@ -17,7 +17,7 @@
 #include <memory>
 
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -39,7 +39,9 @@ TEST(DEV_API, memcpy_d2h) {
                          phi::DenseTensorMeta(phi::DataType::FLOAT32,
                                               phi::make_ddim({3, 2, 2, 3}),
                                               phi::DataLayout::NCHW));
-  auto* x_cpu_data = x_cpu.mutable_data<float>(paddle::platform::CPUPlace());
+  auto& pool = phi::DeviceContextPool::Instance();
+  auto* cpu_ctx = pool.GetByPlace(phi::CPUPlace());
+  auto* x_cpu_data = cpu_ctx->template Alloc<float>(&x_cpu);
 
   for (int i = 0; i < x_cpu.numel(); i++) {
     x_cpu_data[i] = i;
@@ -50,9 +52,7 @@ TEST(DEV_API, memcpy_d2h) {
   phi::DenseTensor x;
 
   // 2. test API
-  auto& pool = phi::DeviceContextPool::Instance();
-  auto place = phi::GPUPlace();
-  auto* dev_ctx = static_cast<const phi::GPUContext*>(pool.GetByPlace(place));
+  auto* dev_ctx = pool.GetByPlace(phi::GPUPlace());
 
   phi::MemcpyH2DKernel<phi::GPUContext>(*dev_ctx, x_cpu, 1, &x);
   phi::DenseTensor out;

@@ -65,22 +65,34 @@ class TestCrossOpCase1(TestCrossOp):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
 
+class TestCrossFP16Op(TestCrossOp):
+    def initTestCase(self):
+        self.shape = (2048, 3)
+        self.dtype = np.float16
+
+    def init_output(self):
+        z_list = []
+        for i in range(2048):
+            z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
+        self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
 class TestCrossAPI(unittest.TestCase):
     def input_data(self):
         self.data_x = np.array(
             [[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0]]
-        )
+        ).astype('float32')
         self.data_y = np.array(
             [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
-        )
+        ).astype('float32')
 
     def test_cross_api(self):
         self.input_data()
 
         # case 1:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 3])
-            y = fluid.layers.data(name='y', shape=[-1, 3])
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(
@@ -95,8 +107,8 @@ class TestCrossAPI(unittest.TestCase):
 
         # case 2:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 3])
-            y = fluid.layers.data(name='y', shape=[-1, 3])
+            x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
+            y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y)
             exe = fluid.Executor(fluid.CPUPlace())
             (res,) = exe.run(

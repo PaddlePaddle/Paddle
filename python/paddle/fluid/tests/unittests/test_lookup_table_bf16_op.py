@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle import enable_static
@@ -216,7 +217,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
     """
 
     def set_initializer(self):
-        self.initializer = fluid.initializer.Constant(value=self.value)
+        self.initializer = paddle.nn.initializer.Constant(value=self.value)
 
     def setUp(self):
         self.ids_shape = [4, 1]
@@ -233,7 +234,9 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         self.set_initializer()
 
         with fluid.program_guard(self.prog, self.startup_prog):
-            x = fluid.layers.data(name='x', shape=self.ids_shape, dtype='int64')
+            x = paddle.static.data(
+                name='x', shape=self.ids_shape, dtype='int64'
+            )
             self.emb = fluid.layers.embedding(
                 input=x,
                 size=self.w_shape,

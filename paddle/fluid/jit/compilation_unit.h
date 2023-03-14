@@ -36,6 +36,8 @@ class CompilationUnit {
 
   const jit::EngineMap &EngineMap() const;
 
+  std::shared_ptr<CompilationUnit> Clone(void *stream = nullptr);
+
  private:
   jit::EngineMap engine_map_;
 };

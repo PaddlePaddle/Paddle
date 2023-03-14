@@ -14,12 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
+#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -44,13 +45,43 @@ class AttnMatMul {
         input_size_(input_size),
         compute_bias_(compute_bias) {}
 
-  ~AttnMatMul() {}
-
   void ComputeForward(const phi::DenseTensor* weight,
                       const phi::DenseTensor* input,
                       const phi::DenseTensor* bias,
                       phi::DenseTensor* output,
-                      phi::DenseTensor* bias_out) {
+                      phi::DenseTensor* bias_out,
+                      bool fused = false) {
+    VLOG(6) << "input.shape={" << input->dims() << "}, weight.shape={"
+            << weight->dims() << "}, output.shape={" << output->dims()
+            << "}, batch_size=" << bsz_seq_ << ", output_size=" << output_size_
+            << ", input_size=" << input_size_ << ", transA=" << transA_
+            << ", transB=" << transB_ << ", compute_bias=" << compute_bias_
+            << ", fused=" << fused;
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+    if (compute_bias_ && fused) {
+      PADDLE_ENFORCE_EQ(
+          !output || output == bias_out,
+          true,
+          phi::errors::InvalidArgument(
+              "The output (= input * weight) is expected to be nullptr or the "
+              "same as bias_out when fused is true."));
+      ComputeFusedGemmEpilogueForward<T>(dev_ctx_,
+                                         input,
+                                         weight,
+                                         bias,
+                                         bsz_seq_,      // M
+                                         output_size_,  // N
+                                         input_size_,   // K
+                                         transA_,
+                                         transB_,
+                                         "none",
+                                         bias_out,
+                                         nullptr);
+      return;
+    }
+#endif
+
     // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
     // here: (transa, transb): nt, input * weight.
     CBLAS_TRANSPOSE transA = transA_ ? CblasTrans : CblasNoTrans;
@@ -85,7 +116,29 @@ class AttnMatMul {
                        phi::DenseTensor* d_input,
                        phi::DenseTensor* d_weight,
                        phi::DenseTensor* d_bias,
-                       bool use_addto = false) {
+                       bool use_addto = false,
+                       bool fused = false) {
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+    if (compute_bias_ && fused) {
+      ComputeFusedGemmEpilogueBackward<T>(dev_ctx_,
+                                          d_output,
+                                          input,
+                                          weight,
+                                          nullptr,
+                                          bsz_seq_,      // M
+                                          output_size_,  // N
+                                          input_size_,   // K
+                                          transA_,
+                                          transB_,
+                                          "none",
+                                          d_input,
+                                          d_weight,
+                                          d_bias,
+                                          use_addto);
+      return;
+    }
+#endif
+
     T alpha = static_cast<T>(1.0);
     T beta_dA = use_addto ? static_cast<T>(1.0) : static_cast<T>(0.0);
     T beta_dB = static_cast<T>(0.0);

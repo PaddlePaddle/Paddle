@@ -22,9 +22,7 @@ import inspect
 import numpy as np
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers import utils
 from ... import unique_name
-from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import (
     check_variable_and_dtype,
     check_type,
@@ -98,10 +96,12 @@ def fused_embedding_seq_pool(
         .. code-block:: python
             import numpy as np
             import paddle.fluid as fluid
+            import paddle
+            paddle.enable_static()
 
             dict_size = 20
-            data_t = fluid.layers.data(
-                name='word', shape=[1], dtype='int64', lod_level=1)
+            data_t = paddle.static.data(
+                name='word', shape=[-1, 1], dtype='int64', lod_level=1)
             padding_idx = np.random.randint(1, 10)
             out = fluid.contrib.fused_embedding_seq_pool(
                 input=data_t,
@@ -305,11 +305,13 @@ def multiclass_nms2(
 
 
             import paddle.fluid as fluid
-            boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
+            import paddle
+            paddle.enable_static()
+            boxes = paddle.static.data(name='bboxes', shape=[-1, 81, 4],
                                       dtype='float32', lod_level=1)
-            scores = fluid.layers.data(name='scores', shape=[81],
+            scores = paddle.static.data(name='scores', shape=[-1, 81],
                                       dtype='float32', lod_level=1)
-            out, index = fluid.layers.multiclass_nms2(bboxes=boxes,
+            out, index = fluid.contrib.layers.multiclass_nms2(bboxes=boxes,
                                               scores=scores,
                                               background_label=0,
                                               score_threshold=0.5,
@@ -501,7 +503,9 @@ def shuffle_batch(x, seed=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[-1, 4])
+            import paddle
+            paddle.enable_static()
+            x = paddle.static.data(name="x", shape=[-1, 4])
             out = fluid.contrib.layers.shuffle_batch(x)
     """
     helper = LayerHelper('shuffle_batch', **locals())
@@ -787,6 +791,9 @@ def sparse_embedding(
         'paddle.static.nn.sparse_embedding',
     )
 
+    if input.size == 0:
+        raise ValueError("input size should not be 0")
+
     w = helper.create_parameter(
         attr=helper.param_attr,
         shape=size,
@@ -887,8 +894,10 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
 
     Examples:
         .. code-block:: python
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         tree_info = [[0,0,0,1,2],
                      [0,1,0,3,4],[0,1,0,5,6],
@@ -899,7 +908,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         child_nums = 2
         child, leaf_mask  = fluid.contrib.layers.tdm_child(x, node_nums, child_nums,
                                 param_attr=fluid.ParamAttr(
-                                    initializer=fluid.initializer.NumpyArrayInitializer(
+                                    initializer=paddle.nn.initializer.Assign(
                                                                             tree_info_np)))
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -916,7 +925,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         attr=helper.param_attr,
         shape=[node_nums, 3 + child_nums],
         dtype=dtype,
-        default_initializer=Constant(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
     tree_info.stop_gradient = True
 
@@ -994,8 +1003,10 @@ def tdm_sampler(
 
     Examples:
         .. code-block:: python
+        import paddle
         import paddle.fluid as fluid
         import numpy as np
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
         layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
@@ -1013,10 +1024,10 @@ def tdm_sampler(
             layer_node_num_list,
             leaf_node_num,
             tree_travel_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     travel_array)),
             tree_layer_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.NumpyArrayInitializer(
+                initializer=paddle.nn.initializer.Assign(
                     layer_array)),
             output_positive=True,
             output_list=True,
@@ -1080,7 +1091,7 @@ def tdm_sampler(
         attr=tree_travel_attr,
         shape=travel_shape,
         dtype=tree_dtype,
-        default_initializer=Constant(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
 
     layer_shape = [node_nums, 1]
@@ -1088,7 +1099,7 @@ def tdm_sampler(
         attr=tree_layer_attr,
         shape=layer_shape,
         dtype=tree_dtype,
-        default_initializer=Constant(0),
+        default_initializer=paddle.nn.initializer.Constant(0),
     )
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1313,7 +1324,7 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
     Examples:
         .. code-block:: python
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
           emb, emb_ex = fluid.contrib.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
     """
     helper = LayerHelper('pull_box_extended_sparse', **locals())
@@ -1438,15 +1449,14 @@ def correlation(
         .. code-block:: python
 
             import paddle.fluid as fluid
-
-            x1 = fluid.layers.data(name='x1',
-                               shape=x_shape,
-                               dtype=x_type,
-                               append_batch_size=False)
-            x2 = fluid.layers.data(name='x2',
-                                shape=x_shape,
-                                dtype=x_type,
-                                append_batch_size=False)
+            import paddle
+            paddle.enable_static()
+            x1 = paddle.static.data(name='x1',
+                               shape=[2,3,4,5],
+                               dtype="float32")
+            x2 = paddle.static.data(name='x2',
+                                shape=[2,3,4,5],
+                                dtype="float32")
 
 
             out = fluid.contrib.correlation(
@@ -1555,8 +1565,8 @@ def fused_bn_add_act(
             # required: gpu
             def build_program(main_program, startup_program):
                 with fluid.program_guard(main_program, startup_program):
-                    x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
-                    y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                    x = paddle.static.data(name='x', shape=[-1, 1, 28, 28], dtype='float32')
+                    y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
                     conv1_1 = paddle.static.nn.conv2d(
                         input=x,
                         filter_size=3,
@@ -1587,7 +1597,7 @@ def fused_bn_add_act(
                     )
                     loss = paddle.mean(loss)
                     sgd = fluid.optimizer.SGD(learning_rate=0.001)
-                    sgd = fluid.contrib.mixed_precision.decorate(
+                    sgd = paddle.static.amp.decorate(
                         sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
                     sgd.minimize(loss)
 
@@ -1632,7 +1642,7 @@ def fused_bn_add_act(
         attr=helper.param_attr,
         shape=param_shape,
         dtype=bn_param_dtype,
-        default_initializer=Constant(1.0),
+        default_initializer=paddle.nn.initializer.Constant(1.0),
     )
     bias = helper.create_parameter(
         attr=helper.bias_attr,
@@ -1642,7 +1652,9 @@ def fused_bn_add_act(
     )
     mean = helper.create_parameter(
         attr=ParamAttr(
-            name=moving_mean_name, initializer=Constant(0.0), trainable=False
+            name=moving_mean_name,
+            initializer=paddle.nn.initializer.Constant(0.0),
+            trainable=False,
         ),
         shape=param_shape,
         dtype=bn_param_dtype,
@@ -1651,7 +1663,7 @@ def fused_bn_add_act(
     variance = helper.create_parameter(
         attr=ParamAttr(
             name=moving_variance_name,
-            initializer=Constant(1.0),
+            initializer=paddle.nn.initializer.Constant(1.0),
             trainable=False,
         ),
         shape=param_shape,
@@ -1715,13 +1727,16 @@ def pow2_decay_with_linear_warmup(
     helper = LayerHelper("pow2_decay_with_linear_warmup", **locals())
     lr = helper.create_global_variable(persistable=True, dtype=dtype, shape=[1])
     helper.set_variable_initializer(
-        lr, Constant(value=float(base_lr) / warmup_steps)
+        lr,
+        paddle.nn.initializer.Constant(value=float(base_lr) / warmup_steps),
     )
 
     step = helper.create_global_variable(
         persistable=True, dtype='int64', shape=[1]
     )
-    helper.set_variable_initializer(step, Constant(value=0))
+    helper.set_variable_initializer(
+        step, paddle.nn.initializer.Constant(value=0)
+    )
     assert (
         warmup_steps <= total_steps
     ), "warmup_steps cannot be larger than total_steps"

@@ -16,8 +16,8 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import Variable
 from paddle.fluid.framework import _current_expected_place, in_dygraph_mode
-from paddle.static import Variable
 
 from ..fluid.data_feeder import (
     check_dtype,
@@ -25,7 +25,6 @@ from ..fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
 )
-from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -336,7 +335,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        shape = utils.convert_shape_to_list(shape)
+        shape = paddle.utils.convert_shape_to_list(shape)
         place = _current_expected_place()
         return _C_ops.gaussian(
             shape, float(mean), float(std), seed, dtype, place
@@ -353,7 +352,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
             'dtype': dtype,
             'use_mkldnn': False,
         }
-        utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type=op_type_for_check
         )
 
@@ -644,7 +643,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        shape = utils.convert_shape_to_list(shape)
+        shape = paddle.utils.convert_shape_to_list(shape)
         return _C_ops.uniform(
             shape,
             dtype,
@@ -661,7 +660,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
         inputs = dict()
         attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
-        utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='uniform/rand'
         )
 
@@ -789,12 +788,12 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
         high = low
         low = 0
     if dtype is None:
-        dtype = 'int64'
-    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = core.VarDesc.VarType.INT64
+    elif not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        shape = utils.convert_shape_to_list(shape)
+        shape = paddle.utils.convert_shape_to_list(shape)
         place = _current_expected_place()
         return _C_ops.randint(low, high, shape, dtype, place)
     else:
@@ -808,7 +807,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
 
         inputs = dict()
         attrs = {'low': low, 'high': high, 'seed': 0, 'dtype': dtype}
-        utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='randint'
         )
 
@@ -967,7 +966,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
         )
 
     if in_dygraph_mode():
-        shape = utils.convert_shape_to_list(shape)
+        shape = paddle.utils.convert_shape_to_list(shape)
         out = _legacy_C_ops.randint(
             'shape',
             shape,

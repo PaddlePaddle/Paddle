@@ -29,10 +29,7 @@ __all__ = []
 
 
 def is_fused_matmul_bias_supported():
-    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
-        return hasattr(core.ops, 'fused_gemm_epilogue')
-    else:
-        return False
+    return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
 
 
 class VocabParallelEmbedding(Layer):

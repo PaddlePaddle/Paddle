@@ -18,6 +18,7 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
+import paddle.static as static
 from paddle.fluid import core
 
 
@@ -34,24 +35,24 @@ class TestSaveLoadAPIError(unittest.TestCase):
         graph = core.Graph(core.ProgramDesc())
         compiled_program = fluid.CompiledProgram(graph)
         with self.assertRaises(TypeError):
-            fluid.io._get_valid_program(compiled_program)
+            paddle.static.io._get_valid_program(compiled_program)
 
         # case 2: main_program type error
         with self.assertRaises(TypeError):
-            fluid.io._get_valid_program("program")
+            paddle.static.io._get_valid_program("program")
 
     def test_load_vars_error(self):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         # case 1: main_program type error when vars None
         with self.assertRaises(TypeError):
-            fluid.io.load_vars(
+            static.io.load_vars(
                 executor=exe, dirname=self.save_dir, main_program="program"
             )
 
         # case 2: main_program type error when vars not None
         with self.assertRaises(TypeError):
-            fluid.io.load_vars(
+            static.io.load_vars(
                 executor=exe,
                 dirname=self.save_dir,
                 main_program="program",
@@ -76,7 +77,7 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             ValueError, "not involved in the target_vars calculation"
         ):
             fluid.io.save_inference_model(

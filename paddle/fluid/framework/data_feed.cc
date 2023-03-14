@@ -2112,15 +2112,24 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.SetConfig(data_feed_desc);
 #endif
+  if (gpu_graph_mode_) {
+    train_mode_ = true;
+  } else {
+    train_mode_ = data_feed_desc.graph_config().gpu_graph_training();
+  }
 }
 
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::InitGraphResource() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.AllocResource(thread_id_, feed_vec_);
+#endif
 }
 
 void SlotRecordInMemoryDataFeed::InitGraphTrainResource() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.AllocTrainResource(thread_id_);
+#endif
 }
 #endif
 
@@ -2495,6 +2504,14 @@ void SlotRecordInMemoryDataFeed::AssignFeedVar(const Scope& scope) {
 
 void SlotRecordInMemoryDataFeed::PutToFeedVec(const SlotRecord* ins_vec,
                                               int num) {
+  // set ins id
+  if (parse_ins_id_) {
+    ins_id_vec_.clear();
+    ins_id_vec_.resize(num);
+    for (int i = 0; i < num; ++i) {
+      ins_id_vec_[i] = ins_vec[i]->ins_id_;
+    }
+  }
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   paddle::platform::SetDeviceId(place_.GetDeviceId());
   pack_->pack_instance(ins_vec, num);
@@ -2708,6 +2725,16 @@ void SlotRecordInMemoryDataFeed::DoWalkandSage() {
 }
 #endif
 
+void SlotRecordInMemoryDataFeed::DumpWalkPath(std::string dump_path,
+                                              size_t dump_rate) {
+  VLOG(3) << "INTO SlotRecordInMemoryDataFeed::DumpWalkPath";
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  std::string path =
+      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
+  gpu_graph_data_generator_.DumpWalkPath(path, dump_rate);
+#endif
+}
+
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
   int offset_cols_size = (ins_num + 1);
@@ -2796,7 +2823,7 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num) {
       LoD& lod = (*feed->mutable_lod());
       lod.resize(1);
       lod[0].resize(offset_cols_size);
-      paddle::framework::MixVector<size_t> mixv_lod(&lod[0]);
+      phi::MixVector<size_t> mixv_lod(&lod[0]);
       memcpy(mixv_lod.MutableData(platform::CPUPlace()),
              off_start_ptr,
              offset_cols_size * sizeof(size_t));

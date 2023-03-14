@@ -77,8 +77,8 @@ def train(
 ):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
-    img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    img = paddle.static.data(name='img', shape=[-1, 1, 28, 28], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     if nn_type == 'mlp':
         net_conf = mlp
@@ -178,7 +178,7 @@ def train(
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
         training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
-        t = fluid.DistributeTranspiler()
+        t = paddle.distributed.transpiler.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)

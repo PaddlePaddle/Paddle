@@ -17,7 +17,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe_kernel_impl.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/moe_kernel_impl.h"
 
 // Ignore CUTLASS warnings about type punning
 #pragma GCC diagnostic push
@@ -32,13 +32,15 @@
 #include "cutlass/gemm/kernel/default_gemm_grouped.h"
 #include "cutlass/numeric_conversion.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/kernels/fusion/cutlass/default_moe_fc_traits.h"
-#include "paddle/phi/kernels/fusion/cutlass/linear_combination_ft_gelu.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe_cutlass_kernel.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/default_moe_fc_traits.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/linear_combination_ft_gelu.h"
+#include "paddle/phi/kernels/fusion/cutlass/moe/moe_cutlass_kernel.h"
 #pragma GCC diagnostic pop
+
 namespace phi {
 
 namespace {
+
 inline int getSMVersion() {
   const int device = phi::backends::gpu::GetCurrentDeviceId();
   const phi::gpuDeviceProp prop =
@@ -160,30 +162,17 @@ void InitExpertChoiceRouteKernelLauncher(
           <<<grid, block, 0, stream>>>(reinterpret_cast<half*>(buffer), \
                                        (const half*)attr_mask,          \
                                        batch_size,                      \
-                                       head_num,                        \
-                                       seq_len_1,                       \
-                                       seq_len_2,                       \
-                                       (const half)scalar);             \
+                                       seq_len);                        \
     } else {                                                            \
       softmax_kernel_v4_half2<__half, ITEMS_PER_THREAD>                 \
           <<<grid, block, 0, stream>>>(reinterpret_cast<half*>(buffer), \
                                        (const half*)attr_mask,          \
                                        batch_size,                      \
-                                       head_num,                        \
-                                       seq_len_1,                       \
-                                       seq_len_2,                       \
-                                       (const half)scalar);             \
+                                       seq_len);                        \
     }                                                                   \
   } else {                                                              \
-    softmax_kernel_v4<ITEMS_PER_THREAD, T>                              \
-        <<<grid, block, 0, stream>>>(buffer,                            \
-                                     buffer_src,                        \
-                                     attr_mask,                         \
-                                     batch_size,                        \
-                                     head_num,                          \
-                                     seq_len_1,                         \
-                                     seq_len_2,                         \
-                                     scalar);                           \
+    softmax_kernel_v4<ITEMS_PER_THREAD, T><<<grid, block, 0, stream>>>( \
+        buffer, buffer_src, attr_mask, batch_size, seq_len);            \
   }
 
 template <typename T>
@@ -191,19 +180,16 @@ void invokeMaskedSoftMax(T* buffer,
                          const T* buffer_src,
                          const T* attr_mask,
                          const int batch_size,
-                         const int seq_len_1,
-                         const int seq_len_2,
-                         const int head_num,
-                         const T scalar,
+                         const int seq_len,
                          cudaStream_t stream) {
-  // NOTE: attention scores shape (batch_size, head_num, seq_len_1, seq_len_2)
-  dim3 grid(seq_len_1, batch_size, head_num);
-  if (batch_size * head_num > 360) {
-    grid.x = ceil(static_cast<float>(seq_len_1) / 32.0f);
+  // NOTE: attention scores shape (batch_size, seq_len)
+  dim3 grid(1, batch_size, 1);
+  if (batch_size > 360) {
+    grid.x = ceil(static_cast<float>(1) / 32.0f);
   }
 
-  bool is_half2 = sizeof(T) == 2 && sizeof(T) == 2 && seq_len_2 % 2 == 0;
-  dim3 block((seq_len_2 / (is_half2 ? 2 : 1) + 31) / 32 * 32);
+  bool is_half2 = sizeof(T) == 2 && sizeof(T) == 2 && seq_len % 2 == 0;
+  dim3 block((seq_len / (is_half2 ? 2 : 1) + 31) / 32 * 32);
 
   if (block.x > 2048 && block.x <= 4096) {
     SOFTMAX_KERNEL(4)
@@ -333,7 +319,7 @@ void InitMoeRoutingKernelLauncher(
           ec_route);
     }
   } else {
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently only support `ec_route = True`. "));
   }
 }
@@ -415,7 +401,7 @@ void GenericMoeGemmKernelLauncher(const T* A,
   int occupancy = GemmGrouped::maximum_active_blocks();
   const int threadblock_count = multi_processor_count * occupancy;
   if (occupancy == 0) {
-    PADDLE_THROW(paddle::platform::errors::Fatal(
+    PADDLE_THROW(phi::errors::Fatal(
         "[MoE Runner] GPU lacks the shared memory resources to run GroupedGEMM "
         "kernel"));
   }
@@ -439,21 +425,21 @@ void GenericMoeGemmKernelLauncher(const T* A,
   if (can_implement != cutlass::Status::kSuccess) {
     std::string err_msg = "MoEFC kernel will fail for params. Error: " +
                           std::string(cutlassGetStatusString(can_implement));
-    PADDLE_THROW(paddle::platform::errors::Fatal("[MoE Runner] " + err_msg));
+    PADDLE_THROW(phi::errors::Fatal("[MoE Runner] " + err_msg));
   }
   auto init_status = gemm.initialize(args);
   if (init_status != cutlass::Status::kSuccess) {
     std::string err_msg =
         "Failed to initialize cutlass variable batched gemm. Error: " +
         std::string(cutlassGetStatusString(init_status));
-    PADDLE_THROW(paddle::platform::errors::Fatal("[MoE Runner] " + err_msg));
+    PADDLE_THROW(phi::errors::Fatal("[MoE Runner] " + err_msg));
   }
   auto run_status = gemm.run(stream);
   if (run_status != cutlass::Status::kSuccess) {
     std::string err_msg =
         "Failed to run cutlass variable batched gemm. Error: " +
         std::string(cutlassGetStatusString(run_status));
-    PADDLE_THROW(paddle::platform::errors::Fatal("[MoE Runner] " + err_msg));
+    PADDLE_THROW(phi::errors::Fatal("[MoE Runner] " + err_msg));
   }
 }
 
@@ -766,26 +752,19 @@ void MoeKernel(const Context& ctx,
       k,
       batch_size,
       ctx.stream());
-  T scalar = (T)1.0f;
   if (IS_FP16) {
     invokeMaskedSoftMax<__half>(reinterpret_cast<__half*>(gating_output),
                                 reinterpret_cast<const __half*>(gating_output),
                                 reinterpret_cast<const __half*>(attr_mask),
                                 /*batch_size=*/num_rows,
-                                /*seq_len_1=*/1,
-                                /*seq_len_2=*/num_experts,
-                                /*head_num=*/1,
-                                *reinterpret_cast<const __half*>(&scalar),
+                                /*seq_len=*/num_experts,
                                 ctx.stream());
   } else {
     invokeMaskedSoftMax<float>(reinterpret_cast<float*>(gating_output),
                                reinterpret_cast<const float*>(gating_output),
                                reinterpret_cast<const float*>(attr_mask),
                                /*batch_size=*/num_rows,
-                               /*seq_len_1=*/1,
-                               /*seq_len_2=*/num_experts,
-                               /*head_num=*/1,
-                               *reinterpret_cast<const float*>(&scalar),
+                               /*seq_len=*/num_experts,
                                ctx.stream());
   }
   InvokeTransposeAxis01(

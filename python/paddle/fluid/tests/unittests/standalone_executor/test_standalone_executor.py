@@ -235,9 +235,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         exe.run(startup_program)
 
         if use_compiled:
-            main_program = paddle.static.CompiledProgram(
-                main_program
-            ).with_data_parallel(fetch_vars[0].name, places=[self.place])
+            main_program = paddle.static.CompiledProgram(main_program)
 
         if use_str:  # test for fetch name
             fetch_vars = [x.name for x in fetch_vars]

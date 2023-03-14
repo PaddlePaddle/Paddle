@@ -20,7 +20,7 @@ import numpy as np
 import paddle.fluid.core as core
 
 sys.path.append("..")
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 class TestMulOp(OpTest):
@@ -38,19 +38,28 @@ class TestMulOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X")
+            ['Y'],
+            'Out',
+            max_relative_error=0.5,
+            no_grad_set=set("X"),
+            check_dygraph=False,
         )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y')
+            ['X'],
+            'Out',
+            max_relative_error=0.5,
+            no_grad_set=set('Y'),
+            check_dygraph=False,
         )
 
 
@@ -78,19 +87,27 @@ class TestMulOp2(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set('X')
+            ['Y'],
+            'Out',
+            max_relative_error=0.5,
+            no_grad_set=set('X'),
+            check_dygraph=False,
         )
 
     def test_check_grad_ignore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y')
+            ['X'],
+            'Out',
+            max_relative_error=0.5,
+            no_grad_set=set('Y'),
+            check_dygraph=False,
         )
 
 
@@ -104,13 +121,17 @@ class TestFP16MulOp1(TestMulOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=1e-1)
+            self.check_output_with_place(place, atol=1e-1, check_dygraph=False)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_grad_with_place(
-                place, ['X', 'Y'], 'Out', max_relative_error=0.5
+                place,
+                ['X', 'Y'],
+                'Out',
+                max_relative_error=0.5,
+                check_dygraph=False,
             )
 
     def test_check_grad_ingore_x(self):
@@ -122,6 +143,7 @@ class TestFP16MulOp1(TestMulOp):
                 'Out',
                 max_relative_error=0.5,
                 no_grad_set=set("X"),
+                check_dygraph=False,
             )
 
     def test_check_grad_ingore_y(self):
@@ -133,6 +155,7 @@ class TestFP16MulOp1(TestMulOp):
                 'Out',
                 max_relative_error=0.5,
                 no_grad_set=set('Y'),
+                check_dygraph=False,
             )
 
 
@@ -146,13 +169,17 @@ class TestFP16MulOp2(TestMulOp2):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=2e-1)
+            self.check_output_with_place(place, atol=2e-1, check_dygraph=False)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_grad_with_place(
-                place, ['X', 'Y'], 'Out', max_relative_error=0.9
+                place,
+                ['X', 'Y'],
+                'Out',
+                max_relative_error=0.9,
+                check_dygraph=False,
             )
 
     def test_check_grad_ingore_x(self):
@@ -164,6 +191,7 @@ class TestFP16MulOp2(TestMulOp2):
                 'Out',
                 max_relative_error=0.5,
                 no_grad_set=set("X"),
+                check_dygraph=False,
             )
 
     def test_check_grad_ingore_y(self):
@@ -175,6 +203,7 @@ class TestFP16MulOp2(TestMulOp2):
                 'Out',
                 max_relative_error=0.9,
                 no_grad_set=set('Y'),
+                check_dygraph=False,
             )
 
 

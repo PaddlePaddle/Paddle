@@ -349,8 +349,8 @@ class TestDropoutOpError(unittest.TestCase):
             def test_dtype():
                 # the input dtype of dropout must be float16 or float32 or float64
                 # float16 only can be set on GPU place
-                x2 = fluid.layers.data(
-                    name='x2', shape=[3, 4, 5, 6], dtype="int32"
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
                 )
                 paddle.nn.functional.dropout(x2, p=0.5)
 
@@ -769,6 +769,29 @@ class TestDropout2DCAPI(unittest.TestCase):
                     result.numpy(), result_np, rtol=1e-05
                 )
 
+    def test_static_fp16_with_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = paddle.static.data(
+                    name="input", shape=[2, 3, 4, 5], dtype="float16"
+                )
+
+                m = paddle.nn.Dropout2D(p=0.5)
+                res1 = m(input)
+
+                in_np = np.random.random([2, 3, 4, 5]).astype("float16")
+                res_np = in_np
+
+                exe = paddle.static.Executor(place)
+                fetches = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"input": in_np},
+                    fetch_list=[res1],
+                )
+
 
 class TestDropout3DFAPI(unittest.TestCase):
     def setUp(self):
@@ -979,6 +1002,30 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
                 np.testing.assert_allclose(
                     result.numpy(), result_np, rtol=1e-05
                 )
+
+    def test_static_fp16_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([2, 3]).astype("float16")
+
+                x = paddle.static.data(name="x", shape=[2, 3], dtype="float16")
+
+                m = paddle.nn.AlphaDropout(p=0.0)
+                y = m(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
+                np.testing.assert_allclose(res[0], input, rtol=1e-05)
 
 
 class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):

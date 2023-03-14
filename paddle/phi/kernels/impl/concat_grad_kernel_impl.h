@@ -13,10 +13,10 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/kernels/concat_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace phi {
 
@@ -57,7 +57,7 @@ void ConcatGradKernel(const Context& dev_ctx,
   if (axis == 0 && outs.size() < 10) {
     std::vector<const DenseTensor*> ref_shape;
     ref_shape.insert(ref_shape.begin(), x.begin(), x.end());
-    paddle::operators::StridedMemcpyWithAxis0<T>(
+    phi::funcs::StridedMemcpyWithAxis0<T>(
         dev_ctx, out_grad, ref_shape, &outputs);
   } else {
     phi::funcs::SplitFunctor<Context, T> split_functor;

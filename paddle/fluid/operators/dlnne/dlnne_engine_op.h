@@ -277,7 +277,7 @@ class DlnneEngineOp : public framework::OperatorBase {
 
       std::string rlym_file_name =
           subgraph_root_path_ + "/" + engine_key_ + ".rlym";
-      // quantize don't support set quantized ouput model path now,
+      // quantize don't support set quantized output model path now,
       // the quantized model file is in current dir
       std::string quantized_rlym_file_name = engine_key_ + ".quantized.rlym";
 

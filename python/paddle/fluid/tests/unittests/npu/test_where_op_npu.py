@@ -133,8 +133,8 @@ class TestNPUWhereAPI(unittest.TestCase):
         train_prog = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
-            x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[4, 2], dtype='float32')
+            x = paddle.static.data(name='x', shape=[-1, 4, 1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 4, 2], dtype='float32')
             x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype("float32")
             y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype(
                 "float32"

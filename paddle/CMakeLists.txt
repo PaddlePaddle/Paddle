@@ -13,6 +13,8 @@ add_subdirectory(phi)
 add_subdirectory(infrt)
 add_subdirectory(fluid)
 
+add_subdirectory(ir)
+
 # NOTE(zhiqiu): The changes of cc tests
 # Before, (1) the source file of cc tests are distributed in different sub-directories,
 # (2) the tests are added and configured by calling `cc_test()` in each `CMakeLists.txt`,
@@ -31,7 +33,7 @@ add_subdirectory(fluid)
 
 # Next, (to be discusssed)
 # (1) move all source files to same folder,
-# (2) naturally, and and configure tests in only one `CMakeLists.txt`,
+# (2) naturally, and configure tests in only one `CMakeLists.txt`,
 # (3) cc tests support linking pre-built dynamic libraries. For example, use the dynamic
 # library in the installed paddle by `pip`.
 

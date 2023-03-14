@@ -353,6 +353,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             init = layers.zeros(shape=[10], dtype='float32')
             mem_array = paddle.tensor.array_write(x=init, i=i)
             data_array = paddle.tensor.array_write(x=d0, i=i)
+            mem_array.stop_gradient = False
             i = paddle.increment(i)
             paddle.tensor.array_write(d1, i, array=data_array)
             i = paddle.increment(i)
@@ -608,7 +609,7 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            x = fluid.layers.data(name='x', shape=[5], dtype='int32')
+            x = paddle.static.data(name='x', shape=[-1, 5], dtype='int32')
             z = fluid.layers.fill_constant([1], 'int32', 0)
             x_shape = paddle.shape(x)
             i = fluid.layers.fill_constant([1], 'int32', 0)

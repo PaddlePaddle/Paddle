@@ -22,6 +22,8 @@ namespace phi {
 
 template <typename T, typename Context>
 void BroadcastTensorsGradKernel(const Context& ctx,
+                                const std::vector<const DenseTensor*>&
+                                    inputs,  // just for aligning to infershape
                                 const std::vector<const DenseTensor*>& dout,
                                 std::vector<DenseTensor*> dx);
 

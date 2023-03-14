@@ -22,7 +22,6 @@ import utils
 from utils import matmul, mul, nested, o2, reduce, reduce_dim
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.incubate.autograd.utils import as_tensors
 
@@ -553,8 +552,6 @@ class TestHessianNoBatch(unittest.TestCase):
         )
 
     def func_create_graph_true(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-
         def func(x):
             return paddle.sum(F.sigmoid(x))
 
@@ -568,7 +565,6 @@ class TestHessianNoBatch(unittest.TestCase):
         np.testing.assert_allclose(
             hessian[:].numpy(), numerical_hessian, self.rtol, self.atol
         )
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_out_not_single(self):
         def func(x):

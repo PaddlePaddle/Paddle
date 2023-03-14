@@ -440,7 +440,7 @@ class TestPyLayer(unittest.TestCase):
         data.stop_gradient = False
         layer = Layer()
         z = layer(data)
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             RuntimeError,
             "received tensor_version:{} != wrapper_version_snapshot:{}".format(
                 1, 0

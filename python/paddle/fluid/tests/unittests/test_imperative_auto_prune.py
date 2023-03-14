@@ -88,8 +88,8 @@ class AutoPruneLayer2(fluid.Layer):
     def forward(self, x, label):
         feature = self.linear(x)
         label = self.linear2(label)
-        label = fluid.layers.cast(label, dtype="float32")
-        label = fluid.layers.cast(label, dtype='int64')
+        label = paddle.cast(label, dtype="float32")
+        label = paddle.cast(label, dtype='int64')
         # Note that the label is not persistable in paddle.nn.functional.cross_entropy.
         loss = paddle.nn.functional.cross_entropy(
             input=feature, label=label, reduction='none', use_softmax=False
@@ -193,7 +193,6 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     # TODO(jiabin): Support this when we support better split tensor
     def test_auto_prune3(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with fluid.dygraph.guard():
             case3 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
@@ -201,13 +200,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case3(v1, v2, 1)
+            part2.retain_grads()
             loss.backward()
             self.assertIsNotNone(case3.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 0).all())
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_auto_prune4(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with fluid.dygraph.guard():
             case4 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
@@ -215,13 +213,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case4(v1, v2, 1)
+            part2.retain_grads()
             part2.backward()
             self.assertIsNotNone(case4.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 1).all())
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_auto_prune5(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         with fluid.dygraph.guard():
             case4 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
@@ -229,10 +226,10 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss, part1, part2 = case4(v1, v2, 2)
+            part2.retain_grads()
             part1.backward()
             self.assertIsNotNone(case4.linear.weight._grad_ivar())
             self.assertTrue((part2.gradient() == 0).all())
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_auto_prune6(self):
         with fluid.dygraph.guard():
@@ -247,7 +244,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out1 = linear(a)
             out2 = linear2(b)
             out1.stop_gradient = True
-            out = fluid.layers.concat(input=[out1, out2, c], axis=1)
+            out = paddle.concat([out1, out2, c], axis=1)
             out.backward()
             self.assertIsNone(linear.weight.gradient())
             self.assertIsNone(out1.gradient())
@@ -265,7 +262,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out1 = linear(a)
             out2 = linear2(b)
             out1.stop_gradient = True
-            out = fluid.layers.concat(input=[out1, out2, c], axis=1)
+            out = paddle.concat([out1, out2, c], axis=1)
             out.backward()
             self.assertIsNone(linear.weight.gradient())
             self.assertIsNone(out1.gradient())
@@ -341,7 +338,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out1 = linear(a)
             out2 = linear2(b)
             out1.stop_gradient = True
-            out = fluid.layers.concat(input=[out1, out2, c], axis=1)
+            out = paddle.concat([out1, out2, c], axis=1)
             # TODO(jiabin): In Eager Mode we don't actually need sort_sum_gradient, this test should be removed when we don't support fluid anymore.
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             out.backward()
@@ -416,8 +413,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             linear = paddle.nn.Linear(1, 1)
             label = fluid.dygraph.to_variable(value1).astype("float32")
             label = linear(label)
-            label = fluid.layers.cast(label, dtype="float32")
-            label = fluid.layers.cast(label, dtype='int64')
+            label = paddle.cast(label, dtype="float32")
+            label = paddle.cast(label, dtype='int64')
             out = paddle.nn.functional.one_hot(label, 100)
             loss = paddle.mean(out)
             loss.backward()

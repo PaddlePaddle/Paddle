@@ -14,12 +14,12 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
@@ -114,20 +114,17 @@ template struct SetConstant<phi::GPUContext, bool>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<float>>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<double>>;
 
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float16>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            bfloat16>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, double>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, uint8_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int16_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int64_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, bool>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::complex<float>>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::complex<double>>;
+template struct SetConstant<phi::GPUPinnedContext, float16>;
+template struct SetConstant<phi::GPUPinnedContext, bfloat16>;
+template struct SetConstant<phi::GPUPinnedContext, float>;
+template struct SetConstant<phi::GPUPinnedContext, double>;
+template struct SetConstant<phi::GPUPinnedContext, uint8_t>;
+template struct SetConstant<phi::GPUPinnedContext, int>;
+template struct SetConstant<phi::GPUPinnedContext, int16_t>;
+template struct SetConstant<phi::GPUPinnedContext, int64_t>;
+template struct SetConstant<phi::GPUPinnedContext, bool>;
+template struct SetConstant<phi::GPUPinnedContext, phi::dtype::complex<float>>;
+template struct SetConstant<phi::GPUPinnedContext, phi::dtype::complex<double>>;
 
 #define DEFINE_GPU_TRANS(RANK)                                     \
   template struct Transpose<phi::GPUContext, bool, RANK>;          \
@@ -188,11 +185,11 @@ void TransposeNormal<DeviceContext, T>::operator()(
   auto* out_ptr = out->data<T>();
 
   // copy in_stride, out_stride, axis to gpu device
-  const paddle::platform::CUDAPlace& cuda_place = context.GetPlace();
-  paddle::platform::CPUPlace cpu_place = paddle::platform::CPUPlace();
+  const phi::GPUPlace& cuda_place = context.GetPlace();
+  phi::CPUPlace cpu_place = phi::CPUPlace();
   size_t size = 3 * rank * sizeof(int64_t);
-  auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);
-  auto cuda_buf_holder = paddle::memory::Alloc(cuda_place, size);
+  auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
+  auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
   REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
   REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
   for (int i = 0; i < rank; ++i) {
@@ -200,7 +197,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
     cpu_buf[rank + i] = out_stride[i];
     cpu_buf[2 * rank + i] = axis[i];
   }
-  paddle::memory::Copy(
+  memory_utils::Copy(
       cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
   REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
   REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
@@ -232,10 +229,10 @@ struct TransposeNormal<phi::GPUContext, T> {
 
     // copy in_stride, out_stride, axis to gpu device
     const phi::GPUPlace& cuda_place = context.GetPlace();
-    phi::CPUPlace cpu_place = paddle::platform::CPUPlace();
+    phi::CPUPlace cpu_place = phi::CPUPlace();
     size_t size = 3 * rank * sizeof(int64_t);
-    auto cpu_buf_holder = paddle::memory::Alloc(cpu_place, size);
-    auto cuda_buf_holder = paddle::memory::Alloc(cuda_place, size);
+    auto cpu_buf_holder = phi::memory_utils::Alloc(cpu_place, size);
+    auto cuda_buf_holder = phi::memory_utils::Alloc(cuda_place, size);
     REINTERPRET(int64_t, cpu_buf, cpu_buf_holder->ptr());
     REINTERPRET(int64_t, cuda_buf, cuda_buf_holder->ptr());
     for (int i = 0; i < rank; ++i) {
@@ -243,7 +240,7 @@ struct TransposeNormal<phi::GPUContext, T> {
       cpu_buf[rank + i] = out_stride[i];
       cpu_buf[2 * rank + i] = axis[i];
     }
-    paddle::memory::Copy(
+    memory_utils::Copy(
         cuda_place, cuda_buf, cpu_place, cpu_buf, size, context.stream());
     REINTERPRET(const int64_t, in_stride_ptr, cuda_buf);
     REINTERPRET(const int64_t, out_stride_ptr, cuda_buf + rank);
@@ -287,7 +284,7 @@ DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<float>);
 DEFINE_GPU_TRANS_NORMAL(phi::dtype::complex<double>);
 
 struct TensorSetConstantGPU {
-  TensorSetConstantGPU(const paddle::platform::DeviceContext& context,
+  TensorSetConstantGPU(const phi::DeviceContext& context,
                        phi::DenseTensor* tensor,
                        float value)
       : context_(context), tensor_(tensor), value_(value) {}
@@ -300,16 +297,15 @@ struct TensorSetConstantGPU {
             static_cast<T>(value_));
   }
 
-  const paddle::platform::DeviceContext& context_;
+  const phi::DeviceContext& context_;
   phi::DenseTensor* tensor_;
   float value_;
 };
 
 template <>
-void set_constant_with_place<paddle::platform::CUDAPlace>(
-    const paddle::platform::DeviceContext& context,
-    phi::DenseTensor* tensor,
-    float value) {
+void set_constant_with_place<phi::GPUPlace>(const phi::DeviceContext& context,
+                                            phi::DenseTensor* tensor,
+                                            float value) {
   phi::VisitDataType(tensor->dtype(),
                      TensorSetConstantGPU(context, tensor, value));
 }

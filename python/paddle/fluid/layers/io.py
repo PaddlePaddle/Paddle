@@ -41,108 +41,7 @@ from ..framework import (
     _set_expected_place,
 )
 
-__all__ = [
-    'data',
-]
-
-
-@static_only
-def data(
-    name,
-    shape,
-    append_batch_size=True,
-    dtype='float32',
-    lod_level=0,
-    type=core.VarDesc.VarType.LOD_TENSOR,
-    stop_gradient=True,
-):
-    """
-    **Data Layer**
-
-    This operator creates the global variable. The global variables can be
-    accessed by all the following operators in the graph.
-
-    Note:
-        :code:`paddle.fluid.layers.data` is deprecated as it will be removed in
-        a later version. Please use :code:`paddle.fluid.data` .
-
-        This :code:`paddle.fluid.layers.data` set shape and dtype at compile
-        time but does NOT check the shape or the dtype of fed data, the
-        :code:`paddle.fluid.data` checks the shape and the dtype of data fed
-        by Executor or ParallelExecutor during run time.
-
-        To feed variable size inputs, users can feed variable size inputs
-        directly to this :code:`paddle.fluid.layers.data` and PaddlePaddle will
-        fit the size accordingly. Or set -1 on the variable dimension when using
-        :code:`paddle.fluid.data` .
-
-        The default :code:`stop_gradient` attribute of the Variable created by
-        this API is true, which means the gradient won't be passed backward
-        through the data Varaible. Set :code:`var.stop_gradient = False` If
-        user would like to pass backward gradient.
-
-    Args:
-       name(str): The name/alias of the variable, see :ref:`api_guide_Name`
-            for more details.
-       shape(list|tuple): Tuple declaring the shape. If :code:`append_batch_size` is
-            True and there is no -1 inside :code:`shape`, it should be
-            considered as the shape of the each sample. Otherwise, it should
-            be considered as the shape of the batched data.
-       append_batch_size(bool):
-          1. If true, it prepends -1 to the shape.
-            For example if shape=[1], the resulting shape is [-1, 1]. This will
-            be useful to set different batch size at run time.
-          2. If shape contains -1, such as shape=[1, -1].
-            append_batch_size will be enforced to be be False (ineffective)
-            because PaddlePaddle cannot set more than 1 unknown number on the
-            shape.
-       dtype(np.dtype|VarType|str): The type of the data. Supported dtype: bool,
-            float16, float32, float64, int8, int16, int32, int64, uint8.
-       type(VarType): The output type. Supported dtype: VarType.LOD_TENSOR,
-            VarType.SELECTED_ROWS, VarType.NCCL_ID. Default: VarType.LOD_TENSOR.
-       lod_level(int): The LoD Level. 0 means the input data is not a sequence.
-            Default: 0.
-       stop_gradient(bool): A boolean that mentions whether gradient should flow.
-            Default: True.
-
-    Returns:
-        The global variable that gives access to the data.
-
-    Return Type:
-        Variable
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          data = fluid.layers.data(name='x', shape=[784], dtype='float32')
-    """
-    helper = LayerHelper('data', **locals())
-
-    check_type(name, 'name', (bytes, str), 'data')
-    check_type(shape, 'shape', (list, tuple), 'data')
-
-    shape = list(shape)
-    for i in range(len(shape)):
-        if shape[i] is None:
-            shape[i] = -1
-            append_batch_size = False
-        elif shape[i] < 0:
-            append_batch_size = False
-
-    if append_batch_size:
-        shape = [-1] + shape  # append batch size as -1
-
-    data_var = helper.create_global_variable(
-        name=name,
-        shape=shape,
-        dtype=dtype,
-        type=type,
-        stop_gradient=stop_gradient,
-        lod_level=lod_level,
-        is_data=True,
-    )
-    return data_var
+__all__ = []
 
 
 class BlockGuardServ(BlockGuard):
@@ -189,12 +88,11 @@ class ListenAndServ:
                 serv = layers.ListenAndServ(
                     "127.0.0.1:6170", ["X"], optimizer_mode=False)
                 with serv.do():
-                    x = layers.data(
+                    x = paddle.static.data(
                         shape=[32, 32],
                         dtype='float32',
-                        name="X",
-                        append_batch_size=False)
-                    fluid.initializer.Constant(value=1.0)(x, main.global_block())
+                        name="X")
+                    paddle.nn.initializer.Constant(value=1.0)(x, main.global_block())
                     paddle.scale(x=x, scale=10.0, out=out_var)
 
             exe = fluid.Executor(place)

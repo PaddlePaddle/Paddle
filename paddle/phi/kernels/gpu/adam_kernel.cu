@@ -18,7 +18,6 @@
 
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
@@ -162,7 +161,7 @@ void AdamDenseKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   // skip_update=true, just copy input to output, and TensorCopy will call

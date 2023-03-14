@@ -23,7 +23,6 @@ import paddle.distributed as dist
 class TestCollectiveBatchIsendIrecv(unittest.TestCase):
     def setUp(self):
         dist.init_parallel_env()
-        paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
     def test_collective_batch_isend_irecv(self):
         rank = dist.get_rank()

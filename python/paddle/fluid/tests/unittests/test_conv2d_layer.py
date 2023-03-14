@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid.dygraph as dg
-import paddle.fluid.initializer as I
 import paddle.nn.functional as F
 from paddle import fluid, nn
 
@@ -54,7 +53,7 @@ class Conv2DTestCase(unittest.TestCase):
 
         self.padding = padding
         if padding_mode in {'reflect', 'replicate', 'circular'}:
-            _paired_padding = fluid.layers.utils.convert_to_list(
+            _paired_padding = paddle.utils.convert_to_list(
                 padding, 2, 'padding'
             )
             self._reversed_padding_repeated_twice = _reverse_repeat_list(
@@ -110,11 +109,11 @@ class Conv2DTestCase(unittest.TestCase):
                     else (-1, self.num_channels, -1, -1)
                 )
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
-                weight_attr = I.NumpyArrayInitializer(self.weight)
+                weight_attr = paddle.nn.initializer.Assign(self.weight)
                 if self.bias is None:
                     bias_attr = False
                 else:
-                    bias_attr = I.NumpyArrayInitializer(self.bias)
+                    bias_attr = paddle.nn.initializer.Assign(self.bias)
                 if self.padding_mode != 'zeros':
                     x_var = F.pad(
                         x_var,

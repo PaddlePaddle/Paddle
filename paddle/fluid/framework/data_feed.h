@@ -914,7 +914,9 @@ class GraphDataGenerator {
   int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
                      std::shared_ptr<phi::Allocation> d_feature);
   void FillOneStep(uint64_t* start_ids,
+                   int etype_id,
                    uint64_t* walk,
+                   uint8_t* walk_ntype,
                    int len,
                    NeighborSampleResult& sample_res,  // NOLINT
                    int cur_degree,
@@ -938,6 +940,7 @@ class GraphDataGenerator {
   void ResetPathNum() { total_row_ = 0; }
   void ResetEpochFinish() { epoch_finish_ = false; }
   void ClearSampleState();
+  void DumpWalkPath(std::string dump_path, size_t dump_rate);
   void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
     // type_to_index_[type] = h_device_keys_.size();
     // h_device_keys_.push_back(device_keys);
@@ -966,6 +969,7 @@ class GraphDataGenerator {
       int len,
       int* uniq_len,
       std::shared_ptr<phi::Allocation>& inverse);  // NOLINT
+  std::shared_ptr<phi::Allocation> GetNodeDegree(uint64_t* node_ids, int len);
   int InsertTable(const uint64_t* d_keys,
                   uint64_t len,
                   std::shared_ptr<phi::Allocation> d_uniq_node_num);
@@ -988,6 +992,7 @@ class GraphDataGenerator {
   int* index_tensor_ptr_;
   int64_t* show_tensor_ptr_;
   int64_t* clk_tensor_ptr_;
+  int* degree_tensor_ptr_;
 
   cudaStream_t train_stream_;
   cudaStream_t sample_stream_;
@@ -999,6 +1004,8 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_train_metapath_keys_;
 
   std::shared_ptr<phi::Allocation> d_walk_;
+  std::shared_ptr<phi::Allocation> d_walk_ntype_;
+  std::shared_ptr<phi::Allocation> d_excluded_train_pair_;
   std::shared_ptr<phi::Allocation> d_feature_list_;
   std::shared_ptr<phi::Allocation> d_feature_;
   std::shared_ptr<phi::Allocation> d_len_per_row_;
@@ -1033,11 +1040,13 @@ class GraphDataGenerator {
   // sage mode batch data
   std::vector<std::shared_ptr<phi::Allocation>> inverse_vec_;
   std::vector<std::shared_ptr<phi::Allocation>> final_sage_nodes_vec_;
+  std::vector<std::shared_ptr<phi::Allocation>> node_degree_vec_;
   std::vector<int> uniq_instance_vec_;
   std::vector<int> total_instance_vec_;
   std::vector<std::vector<std::shared_ptr<phi::Allocation>>> graph_edges_vec_;
   std::vector<std::vector<std::vector<int>>> edges_split_num_vec_;
 
+  int excluded_train_pair_len_;
   int64_t reindex_table_size_;
   int sage_batch_count_;
   int sage_batch_num_;
@@ -1067,6 +1076,9 @@ class GraphDataGenerator {
   int total_row_;
   size_t infer_node_start_;
   size_t infer_node_end_;
+  std::set<int> infer_node_type_index_set_;
+  std::string infer_node_type_;
+  bool get_degree_;
 };
 
 class DataFeed {
@@ -1199,6 +1211,11 @@ class DataFeed {
     place_ = place;
   }
   virtual const paddle::platform::Place& GetPlace() const { return place_; }
+
+  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(DumpWalkPath) is not implemented."));
+  }
 
  protected:
   // The following three functions are used to check if it is executed in this
@@ -1809,6 +1826,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   virtual void InitGraphTrainResource(void);
   virtual void DoWalkandSage();
 #endif
+  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
 
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;

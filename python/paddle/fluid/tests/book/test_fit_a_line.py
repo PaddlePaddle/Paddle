@@ -49,8 +49,10 @@ def convert_float_to_uint16(in_list):
 
 
 def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
-    x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-    y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+    x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+    x.desc.set_need_check_feed(False)
+    y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
+    y.desc.set_need_check_feed(False)
 
     if use_bf16:
         if not pure_bf16:
@@ -142,7 +144,7 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
         training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
-        t = fluid.DistributeTranspiler()
+        t = paddle.distributed.transpiler.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)

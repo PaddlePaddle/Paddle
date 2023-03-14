@@ -391,7 +391,7 @@ class TestFillConstantOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # for ci coverage
-            x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
+            x1 = paddle.static.data(name='x1', shape=[-1, 1], dtype="int16")
             self.assertRaises(
                 TypeError,
                 fluid.layers.fill_constant,
@@ -411,7 +411,7 @@ class TestFillConstantOpError(unittest.TestCase):
 
             # The argument dtype of fill_constant_op must be one of bool, float16,
             # float32, float64, uint8, int16, int32 or int64
-            x2 = fluid.layers.data(name='x2', shape=[1], dtype="int32")
+            x2 = paddle.static.data(name='x2', shape=[-1, 1], dtype="int32")
 
             self.assertRaises(
                 TypeError,

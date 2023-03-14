@@ -25,7 +25,6 @@ import paddle.vision.models as models
 from paddle import Model, fluid, to_tensor
 from paddle.hapi.model import prepare_distributed_context
 from paddle.io import Dataset, DistributedBatchSampler
-from paddle.jit.dy2static.program_translator import ProgramTranslator
 from paddle.metric import Accuracy
 from paddle.nn import Conv2D, Linear, ReLU, Sequential
 from paddle.nn.layer.loss import CrossEntropyLoss
@@ -826,8 +825,8 @@ class TestModelFunction(unittest.TestCase):
 
         for dynamic in [True, False]:
             paddle.disable_static() if dynamic else None
-            prog_translator = ProgramTranslator()
-            prog_translator.enable(False) if not dynamic else None
+            paddle.jit.enable_to_static(False) if not dynamic else None
+
             net = LeNet()
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             model = Model(net, inputs)

@@ -14,20 +14,15 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#endif
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
-#endif
-
 #include <string>
 
 #include "paddle/fluid/distributed/collective/types.h"
 
 #ifdef PADDLE_WITH_RCCL
+#include <hip/hip_runtime.h>
 #include "paddle/phi/backends/dynload/rccl.h"
 #else
+#include <cuda_runtime.h>
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif
 

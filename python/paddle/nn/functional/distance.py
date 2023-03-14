@@ -35,10 +35,10 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     Parameters:
         x (Tensor): Tensor, shape is :math:`[N, D]` or :math:`[D]`, where :math:`N`
             is batch size, :math:`D` is the dimension of vector. Available dtype is
-            float32, float64.
+            float16, float32, float64.
         y (Tensor): Tensor, shape is :math:`[N, D]` or :math:`[D]`, where :math:`N`
             is batch size, :math:`D` is the dimension of vector. Available dtype is
-            float32, float64.
+            float16, float32, float64.
         p (float, optional): The order of norm. Default: :math:`2.0`.
         epsilon (float, optional): Add small value to avoid division by zero.
             Default: :math:`1e-6`.
@@ -68,9 +68,6 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     #              [4.99999860, 4.99999860])
 
     """
-    check_type(p, 'porder', (float, int), 'PairwiseDistance')
-    check_type(epsilon, 'epsilon', (float), 'PairwiseDistance')
-    check_type(keepdim, 'keepdim', (bool), 'PairwiseDistance')
     if in_dygraph_mode():
         sub = _C_ops.subtract(x, y)
         # p_norm op has not uesd epsilon, so change it to the following.
@@ -82,11 +79,15 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
         return _C_ops.p_norm(sub, p, -1, 0.0, keepdim, False)
 
     else:
+        check_type(p, 'porder', (float, int), 'PairwiseDistance')
+        check_type(epsilon, 'epsilon', (float), 'PairwiseDistance')
+        check_type(keepdim, 'keepdim', (bool), 'PairwiseDistance')
+
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64'], 'PairwiseDistance'
+            x, 'x', ['float16', 'float32', 'float64'], 'PairwiseDistance'
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64'], 'PairwiseDistance'
+            y, 'y', ['float16', 'float32', 'float64'], 'PairwiseDistance'
         )
         sub = paddle.subtract(x, y)
         if epsilon != 0.0:

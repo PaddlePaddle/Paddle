@@ -26,7 +26,7 @@ from paddle.distributed.auto_parallel.dist_context import (
     DistributedContext,
     set_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.process_mesh_v2 import ProcessMesh
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.utils import (
     _copy_dist_attr_from_cpp,
     _copy_dist_attr_from_cpp_for_graph,
@@ -42,7 +42,7 @@ batch_size = 4
 epoch_num = 10
 hidden_size = 1024
 sequence_len = 512
-_g_process_mesh = auto.ProcessMesh(mesh=[[0, 1], [2, 3]], dim_names=['x', 'y'])
+_g_process_mesh = ProcessMesh(mesh=[[0, 1], [2, 3]], dim_names=['x', 'y'])
 
 
 class MLPLayer(nn.Layer):
@@ -201,22 +201,26 @@ class TestDistAttr(unittest.TestCase):
         with static.program_guard(train_program, start_program):
             input = static.data(name="input", shape=[2, 3], dtype='float32')
         dist_attr = TensorDistAttr(input.desc)
-        self.assertEqual(dist_attr.process_mesh.empty(), True)
+        self.assertEqual(dist_attr.process_mesh, None)
         self.assertEqual(dist_attr.dims_mapping, [-1, -1])
         self.assertEqual(dist_attr.batch_dim, 0)
         self.assertEqual(dist_attr.dynamic_dims, [0, 0])
+
+        dist_attr.process_mesh = None
+        self.assertEqual(dist_attr.process_mesh, None)
 
         dist_attr.process_mesh = ProcessMesh([[0, 1, 2], [3, 4, 5]])
         dist_attr.dims_mapping = [0, -1]
         dist_attr.batch_dim = 1
         dist_attr.dynamic_dims = [1, 1]
+        self.assertEqual(dist_attr.dims_mapping, [0, -1])
         self.assertEqual(
             dist_attr.process_mesh, ProcessMesh([[0, 1, 2], [3, 4, 5]])
         )
         self.assertEqual(dist_attr.dims_mapping, [0, -1])
         self.assertEqual(dist_attr.batch_dim, 1)
         self.assertEqual(dist_attr.dynamic_dims, [1, 1])
-        self.assertTrue(dist_attr.verify())
+        self.assertTrue(dist_attr.verify(input.desc))
         self.assertTrue(str(dist_attr), str(dist_attr))
 
     def test_tensor_dist_attr(self):
@@ -236,7 +240,7 @@ class TestDistAttr(unittest.TestCase):
         self.assertEqual(input.dist_attr.dims_mapping, [0, -1])
         self.assertEqual(input.dist_attr.batch_dim, 1)
         self.assertEqual(input.dist_attr.dynamic_dims, [1, 1])
-        self.assertTrue(input.dist_attr.verify())
+        self.assertTrue(input.dist_attr.verify(input.desc))
 
         input1.dist_attr = dist_attr
         self.assertEqual(
@@ -245,7 +249,7 @@ class TestDistAttr(unittest.TestCase):
         self.assertEqual(input1.dist_attr.dims_mapping, [0, -1])
         self.assertEqual(input1.dist_attr.batch_dim, 1)
         self.assertEqual(input1.dist_attr.dynamic_dims, [1, 1])
-        self.assertTrue(input1.dist_attr.verify())
+        self.assertTrue(input1.dist_attr.verify(input.desc))
 
     def test_operator_dist_attr_ctor(self):
         train_program = static.Program()
@@ -293,7 +297,7 @@ class TestDistAttr(unittest.TestCase):
         self.assertEqual(
             op_dist_attr.get_output_dist_attr(output.name).dims_mapping, [0, 1]
         )
-        self.assertTrue(op_dist_attr.verify())
+        self.assertTrue(op_dist_attr.verify(op.desc))
         self.assertTrue(str(op_dist_attr), str(op_dist_attr))
 
         op_dist_attr = OperatorDistAttr(op.desc)
@@ -314,7 +318,7 @@ class TestDistAttr(unittest.TestCase):
         self.assertEqual(input_dist_attr.dims_mapping, [-1, 0])
         self.assertEqual(input1_dist_attr.dims_mapping, [0, -1])
         self.assertEqual(output_dist_attr.dims_mapping, [-1, -1])
-        self.assertTrue(op_dist_attr.verify())
+        self.assertTrue(op_dist_attr.verify(op.desc))
         self.assertTrue(str(op_dist_attr), str(op_dist_attr))
 
     def test_operator_dist_attr(self):
@@ -364,7 +368,7 @@ class TestDistAttr(unittest.TestCase):
         self.assertEqual(
             op.dist_attr.get_output_dist_attr(output.name).dims_mapping, [0, 1]
         )
-        self.assertTrue(op.desc.dist_attr.verify())
+        self.assertTrue(op.desc.dist_attr.verify(op.desc))
         self.assertTrue(str(op_dist_attr), str(op_dist_attr))
 
         op.dist_attr = OperatorDistAttr(op.desc)

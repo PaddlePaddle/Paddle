@@ -269,10 +269,10 @@ __global__ void SoftmaxKernelWithEltadd(T *qk_buf_,
                   ? static_cast<float>(qk_buf_[threadIdx.x + qk_offset] +
                                        bias_qk_[threadIdx.x + qk_offset])
                   : -1e20f;
-  float max_val = phi::funcs::blockReduceMax<float>(tmp, mask);
+  float max_val = phi::funcs::BlockReduceMax<float>(tmp, mask);
 
   float qk_tmp = threadIdx.x < seq_len ? __expf(tmp - max_val) : 0.0f;
-  float sum_val = phi::funcs::blockReduceSum<float>(qk_tmp, mask);
+  float sum_val = phi::funcs::BlockReduceSum<float>(qk_tmp, mask);
 
   if (threadIdx.x < seq_len)
     qk_buf_[threadIdx.x + qk_offset] = (T)(qk_tmp / sum_val);
@@ -295,10 +295,10 @@ __global__ void SoftmaxKernelWithEltadd<half>(half *qk_buf_,
                   ? static_cast<float>(qk_buf_[threadIdx.x + qk_offset] +
                                        bias_qk_[threadIdx.x + qk_offset])
                   : -1e20f;
-  float max_val = phi::funcs::blockReduceMax<float>(tmp, mask);
+  float max_val = phi::funcs::BlockReduceMax<float>(tmp, mask);
 
   float qk_tmp = threadIdx.x < seq_len ? __expf(tmp - max_val) : 0.0f;
-  float sum_val = phi::funcs::blockReduceSum<float>(qk_tmp, mask);
+  float sum_val = phi::funcs::BlockReduceSum<float>(qk_tmp, mask);
 
   if (threadIdx.x < seq_len)
     qk_buf_[threadIdx.x + qk_offset] = (half)(qk_tmp / sum_val);
@@ -321,12 +321,12 @@ __global__ void SoftmaxKernelWithEltadd2(T *qk_buf_,
                    ? phi::funcs::ToFloat2<T>(qk_buf_[idx + qk_offset] +
                                              bias_qk_[idx + qk_offset])
                    : make_float2(-1e20f, -1e20f);
-  float max_val = phi::funcs::blockReduceMax<float>(max(tmp.x, tmp.y), mask);
+  float max_val = phi::funcs::BlockReduceMax<float>(max(tmp.x, tmp.y), mask);
   float2 qk_tmp = idx < seq_len ? make_float2(__expf(tmp.x - max_val),
                                               __expf(tmp.y - max_val))
                                 : make_float2(0.f, 0.f);
   float sum_val =
-      phi::funcs::blockReduceSum<float>(qk_tmp.x + qk_tmp.y, mask) + 1e-6f;
+      phi::funcs::BlockReduceSum<float>(qk_tmp.x + qk_tmp.y, mask) + 1e-6f;
 
   if (idx < seq_len) {
     qk_buf_[idx + qk_offset] =
@@ -353,12 +353,12 @@ __global__ void SoftmaxKernelWithEltadd2<half2>(half2 *qk_buf_,
                    ? phi::funcs::ToFloat2<half2>(qk_buf_[idx + qk_offset] +
                                                  bias_qk_[idx + qk_offset])
                    : make_float2(-1e20f, -1e20f);
-  float max_val = phi::funcs::blockReduceMax<float>(max(tmp.x, tmp.y), mask);
+  float max_val = phi::funcs::BlockReduceMax<float>(max(tmp.x, tmp.y), mask);
   float2 qk_tmp = idx < seq_len ? make_float2(__expf(tmp.x - max_val),
                                               __expf(tmp.y - max_val))
                                 : make_float2(0.f, 0.f);
   float sum_val =
-      phi::funcs::blockReduceSum<float>(qk_tmp.x + qk_tmp.y, mask) + 1e-6f;
+      phi::funcs::BlockReduceSum<float>(qk_tmp.x + qk_tmp.y, mask) + 1e-6f;
 
   if (idx < seq_len) {
     qk_buf_[idx + qk_offset] =
@@ -386,14 +386,14 @@ __global__ void SoftmaxKernelWithEltaddForLarge(T *qk_buf,
                            bias_qk[threadIdx.x + i + qk_offset]
                      : stride_max;
   }
-  T max_val = phi::funcs::blockReduceMax<T>(stride_max, mask);
+  T max_val = phi::funcs::BlockReduceMax<T>(stride_max, mask);
 
   T stride_sum = 0.f;
   for (int i = 0; threadIdx.x + i < seq_len; i += blockDim.x) {
     stride_sum += __expf(qk_buf[threadIdx.x + i + qk_offset] +
                          bias_qk[threadIdx.x + i + qk_offset] - max_val);
   }
-  T sum_val = phi::funcs::blockReduceSum<T>(stride_sum, mask);
+  T sum_val = phi::funcs::BlockReduceSum<T>(stride_sum, mask);
 
   for (int i = 0; threadIdx.x + i < seq_len; i += blockDim.x) {
     qk_buf[threadIdx.x + i + qk_offset] =
@@ -422,7 +422,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge(half *qk_buf,
                                    bias_qk[threadIdx.x + i + qk_offset]);
     stride_max = tmp > stride_max ? tmp : stride_max;
   }
-  float max_val = phi::funcs::blockReduceMax<float>(stride_max, mask);
+  float max_val = phi::funcs::BlockReduceMax<float>(stride_max, mask);
 
   float stride_sum = 0.f;
   for (int i = 0; threadIdx.x + i < seq_len; i += blockDim.x) {
@@ -430,7 +430,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge(half *qk_buf,
                                    bias_qk[threadIdx.x + i + qk_offset]);
     stride_sum += __expf(tmp - max_val);
   }
-  float sum_val = phi::funcs::blockReduceSum<float>(stride_sum, mask);
+  float sum_val = phi::funcs::BlockReduceSum<float>(stride_sum, mask);
 
   for (int i = 0; threadIdx.x + i < seq_len; i += blockDim.x) {
     float tmp =
@@ -461,7 +461,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(T *qk_buf_,
     stride_max.y = max(stride_max.y, cur.y);
   }
   float max_val =
-      phi::funcs::blockReduceMax<float>(max(stride_max.x, stride_max.y), mask);
+      phi::funcs::BlockReduceMax<float>(max(stride_max.x, stride_max.y), mask);
 
   float2 stride_sum = make_float2(0.f, 0.f);
   for (int i = 0; threadIdx.x + i < seq_len; i += blockDim.x) {
@@ -472,7 +472,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(T *qk_buf_,
   }
 
   float sum_val =
-      phi::funcs::blockReduceSum<float>(stride_sum.x + stride_sum.y, mask) +
+      phi::funcs::BlockReduceSum<float>(stride_sum.x + stride_sum.y, mask) +
       1e-6f;
 
   for (int i = 0; threadIdx.x + i < seq_len; i += blockDim.x) {
@@ -507,7 +507,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(half2 *qk_buf_,
     stride_max.y = max(stride_max.y, cur.y);
   }
   float max_val =
-      phi::funcs::blockReduceMax<float>(max(stride_max.x, stride_max.y), mask);
+      phi::funcs::BlockReduceMax<float>(max(stride_max.x, stride_max.y), mask);
 
   float2 stride_sum = make_float2(0.f, 0.f);
   for (int i = 0; threadIdx.x + i < seq_len; i += blockDim.x) {
@@ -519,7 +519,7 @@ __global__ void SoftmaxKernelWithEltaddForLarge2(half2 *qk_buf_,
   }
 
   float sum_val =
-      phi::funcs::blockReduceSum<float>(stride_sum.x + stride_sum.y, mask) +
+      phi::funcs::BlockReduceSum<float>(stride_sum.x + stride_sum.y, mask) +
       1e-6f;
 
   for (int i = 0; threadIdx.x + i < seq_len; i += blockDim.x) {
@@ -571,83 +571,6 @@ inline __device__ T hsub2(T a, T b) {
 template <typename T>
 inline __device__ T hadd2(T a, T b) {
   return __hadd2(a, b);
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T warpReduceSumV2(T *val) {
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-#pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1)
-      val[i] += __shfl_xor_sync(FINAL_MASK, val[i], mask, 32);
-  }
-  return (T)(0.0f);
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T blockReduceSumV2(T *val) {
-  static __shared__ T shared[NUM][33];
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-
-  warpReduceSumV2<T, NUM>(val);
-
-  if (lane == 0) {
-#pragma unroll
-    for (int i = 0; i < NUM; i++) {
-      shared[i][wid] = val[i];
-    }
-  }
-
-  __syncthreads();
-
-  bool is_mask = threadIdx.x < (blockDim.x / 32.f);
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-    val[i] = is_mask ? shared[i][lane] : (T)(0.0f);
-  }
-  warpReduceSumV2<T, NUM>(val);
-  return (T)0.0f;
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T warpReduceMaxV2(T *val) {
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-#pragma unroll
-    for (int mask = 16; mask > 0; mask >>= 1)
-      val[i] = max(val[i], __shfl_xor_sync(FINAL_MASK, val[i], mask, 32));
-  }
-  return (T)(0.0f);
-}
-
-template <typename T, int NUM>
-__inline__ __device__ T blockReduceMaxV2(T *val) {
-  static __shared__ T shared[32][NUM];
-  int lane = threadIdx.x & 0x1f;  // in-warp idx
-  int wid = threadIdx.x >> 5;     // warp idx
-
-  warpReduceMaxV2<T, NUM>(val);  // get maxx in each warp
-
-  if (lane == 0) {
-#pragma unroll
-    for (int i = 0; i < NUM; i++) {
-      shared[wid][i] = val[i];
-    }
-  }
-
-  __syncthreads();
-
-  // Modify from blockDim.x << 5 to blockDim.x / 32. to prevent
-  // blockDim.x is not divided by 32
-  bool is_mask = threadIdx.x < (blockDim.x / 32.f);
-#pragma unroll
-  for (int i = 0; i < NUM; i++) {
-    val[i] = is_mask ? shared[lane][i] : (T)-1e20f;
-  }
-  warpReduceMaxV2<T, NUM>(val);
-
-  return (T)0.0f;
 }
 
 template <typename T, int ITEMS_PER_THREAD, int NUM>
@@ -715,9 +638,9 @@ __global__ void softmax_kernel_with_mask(T *qk_buf_,
     }
 
     if (blockDim.x <= 32) {
-      warpReduceMaxV2<float, NUM>(local_max);
+      phi::funcs::WarpReduceMaxV2<float, NUM>(local_max);
     } else {
-      blockReduceMaxV2<float, NUM>(local_max);
+      phi::funcs::BlockReduceMaxV2<float, NUM>(local_max);
     }
 
     if (threadIdx.x == 0) {
@@ -750,9 +673,9 @@ __global__ void softmax_kernel_with_mask(T *qk_buf_,
     }
 
     if (blockDim.x <= 32) {
-      warpReduceSumV2<float, NUM>(local_sum);
+      phi::funcs::WarpReduceSumV2<float, NUM>(local_sum);
     } else {
-      blockReduceSumV2<float, NUM>(local_sum);
+      phi::funcs::BlockReduceSumV2<float, NUM>(local_sum);
     }
 
     if (threadIdx.x == 0) {

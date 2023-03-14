@@ -146,10 +146,9 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
 
             with program_guard(main_program, startup_program):
                 input = np.random.random([2, 2, 25]).astype("float32")
-                x = fluid.layers.data(
+                x = paddle.static.data(
                     name="x",
                     shape=[2, 2, 25],
-                    append_batch_size=False,
                     dtype="float32",
                 )
 
@@ -191,13 +190,13 @@ class TestFCOpError(unittest.TestCase):
 
             def test_type():
                 # dtype must be float32 or float64
-                x2 = fluid.layers.data(name='x2', shape=[4], dtype='int32')
+                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype='int32')
                 paddle.static.nn.fc(x=x2, size=1)
 
             self.assertRaises(TypeError, test_type)
 
             # The input dtype of fc can be float16 in GPU, test for warning
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype='float16')
+            x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype='float16')
             paddle.static.nn.fc(x=x3, size=1)
 
 

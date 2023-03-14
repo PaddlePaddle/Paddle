@@ -18,7 +18,7 @@ from paddle.utils import unique_name
 from ...fluid import framework
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.dygraph import no_grad
-from ...fluid.initializer import Initializer
+from .initializer import Initializer
 
 __all__ = []
 
@@ -85,11 +85,6 @@ class Orthogonal(Initializer):
         block = self._check_block(block)
         assert isinstance(var, framework.Parameter)
         assert isinstance(block, framework.Block)
-        # 'qr' op only support float32/float64 now
-        check_variable_and_dtype(
-            var, "Out", ["float32", "float64"], "Orthogonal"
-        )
-
         self._seed = block.program.random_seed
 
         shape = var.shape
@@ -128,6 +123,11 @@ class Orthogonal(Initializer):
                 tmp._share_underline_tensor_to(var)
 
                 return None
+
+        # 'qr' op only support float32/float64 now
+        check_variable_and_dtype(
+            var, "Out", ["float32", "float64"], "Orthogonal"
+        )
 
         normal_var = block.create_var(
             name=unique_name.generate('.'.join(['gaussian_random', 'tmp'])),

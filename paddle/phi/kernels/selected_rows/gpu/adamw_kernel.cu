@@ -18,7 +18,6 @@
 
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
@@ -146,7 +145,7 @@ void AdamwDenseParamSparseGradKernel(
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
 
@@ -222,7 +221,7 @@ void AdamwDenseParamSparseGradKernel(
   auto& grad_tensor = grad_merge.value();
   const T* grad_data = grad_tensor.template data<T>();
   auto* grad_merge_rows = &grad_merge.rows();
-  paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 

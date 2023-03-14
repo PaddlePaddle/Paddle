@@ -18,9 +18,10 @@ import unittest
 from functools import reduce
 
 import numpy as np
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -899,7 +900,7 @@ class TestSetValueValueShape5(TestSetValueApi):
 # 4. Test error
 class TestError(TestSetValueBase):
     def _value_type_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             TypeError,
             "Only support to assign an integer, float, numpy.ndarray or paddle.Tensor",
         ):
@@ -908,7 +909,7 @@ class TestError(TestSetValueBase):
             x[0] = value
 
     def _dtype_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             TypeError,
             "When assign a numpy.ndarray, integer or float to a paddle.Tensor, ",
         ):
@@ -916,17 +917,17 @@ class TestError(TestSetValueBase):
             y[0] = 1
 
     def _step_error(self):
-        with self.assertRaisesRegexp(ValueError, "step can not be 0"):
+        with self.assertRaisesRegex(ValueError, "step can not be 0"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[0:1:0] = self.value
 
     def _ellipsis_error(self):
-        with self.assertRaisesRegexp(
+        with self.assertRaisesRegex(
             IndexError, "An index can only have a single ellipsis"
         ):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             x[..., ...] = self.value
-        with self.assertRaisesRegexp(ValueError, "the start or end is None"):
+        with self.assertRaisesRegex(ValueError, "the start or end is None"):
             x = paddle.ones(shape=self.shape, dtype=self.dtype)
             one = paddle.ones([1])
             x[::one] = self.value
@@ -997,6 +998,8 @@ class TestBackward(unittest.TestCase):
         with paddle.static.program_guard(main_program, startup_program):
             x = paddle.static.data(name="x", shape=[4, 4], dtype='float32')
             y = paddle.static.data(name="y", shape=[4, 4], dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
 
             label = paddle.static.data(
                 name="label", shape=[4, 1], dtype='int64'
@@ -1028,7 +1031,6 @@ class TestBackward(unittest.TestCase):
         paddle.disable_static()
 
     def func_test_dynamic(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         model = Model()
         x = paddle.ones([1, 12, 3, 3]).astype("float32")
         y = paddle.ones([1, 12, 3, 3]).astype("float32")
@@ -1037,7 +1039,6 @@ class TestBackward(unittest.TestCase):
 
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
         self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestGradientTruncated(unittest.TestCase):
@@ -1520,6 +1521,32 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
         np.testing.assert_array_equal(a_grad_1, a_grad_2)
         np.testing.assert_array_equal(b_grad_1, b_grad_2)
         paddle.enable_static()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestSetValueBFloat16(OpTest):
+    def setUp(self):
+        self.dtype = np.uint16
+        self.shape = [2, 3, 4]
+        self.__class__.op_type = self.op_type
+        self.data = np.ones(self.shape).astype(self.dtype)
+        x = np.random.rand([6]).astype('float32')
+        self.data[0, 0] = np.random.rand([6]).astype('float32')
+        out = self.data[0, 0]
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == '__main__':

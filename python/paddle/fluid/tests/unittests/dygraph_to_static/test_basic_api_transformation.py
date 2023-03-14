@@ -118,10 +118,10 @@ def dyfunc_BilinearTensorProduct(layer1, layer2):
         4,
         1000,
         weight_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.99)
+            initializer=paddle.nn.initializer.Constant(value=0.99)
         ),
         bias_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.5)
+            initializer=paddle.nn.initializer.Constant(value=0.5)
         ),
     )
 
@@ -138,10 +138,10 @@ def dyfunc_Conv2D(input):
         out_channels=2,
         kernel_size=3,
         weight_attr=paddle.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.99)
+            initializer=paddle.nn.initializer.Constant(value=0.99)
         ),
         bias_attr=paddle.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.5)
+            initializer=paddle.nn.initializer.Constant(value=0.5)
         ),
     )
     res = conv2d(input)
@@ -170,10 +170,10 @@ def dyfunc_Conv2DTranspose(input):
         12,
         12,
         weight_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.99)
+            initializer=paddle.nn.initializer.Constant(value=0.99)
         ),
         bias_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.5)
+            initializer=paddle.nn.initializer.Constant(value=0.5)
         ),
     )
     ret = conv2dTranspose(input)
@@ -222,7 +222,7 @@ def dyfunc_Pool2D(input):
 def dyfunc_Prelu(input):
     prelu0 = paddle.nn.PReLU(
         weight_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(1.0)
+            initializer=paddle.nn.initializer.Constant(1.0)
         ),
     )
     res = prelu0(input)
@@ -252,7 +252,7 @@ class TestDygraphBasicApi(unittest.TestCase):
         main_program = fluid.Program()
         main_program.random_seed = SEED
         with fluid.program_guard(main_program, startup_program):
-            data = fluid.layers.assign(self.input)
+            data = paddle.assign(self.input)
             static_out = dygraph_to_static_func(self.dygraph_func)(data)
 
         exe = fluid.Executor(fluid.CPUPlace())

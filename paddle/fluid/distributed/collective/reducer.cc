@@ -803,7 +803,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
         "parameters participate in the backward calculation "
         "again at a later time (e.g. after the forward function, "
         "the loss calculation uses the unused "
-        "paramters of the forward and trigger backward), "
+        "parameters of the forward and trigger backward), "
         "its gradient will be wrong.";
 
     PADDLE_ENFORCE_EQ(has_marked_unused_vars_,
@@ -868,7 +868,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
             "parameters without generating gradients during training. "
             "For example, if is_sparese=True is used in Embedding, "
             "the current step of this parameter cannot generate gradient "
-            "because of stop_gradient/detatch, where error will occur.",
+            "because of stop_gradient/detach, where error will occur.",
             var_index,
             tensors_[var_index].name()));
 
@@ -996,7 +996,7 @@ void EagerReducer::ProcessUnusedDenseVars() {
 
       // NOTE(haohongxiang): Calling SetFakeEmpty here is to make sure that
       // gradient accumulation can continue normally after clear_gradients()
-      // especiall in cases including complex control flow.
+      // especially in cases including complex control flow.
       std::static_pointer_cast<egr::GradNodeAccumulation>(
           GetGradNodeFromTensor(&tensors_[var_index]))
           ->SetFakeEmpty(false);
@@ -1113,7 +1113,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
   const auto &rank_ = process_group_->GetRank();
   const auto &size_ = process_group_->GetSize();
 
-  framework::Vector<int64_t> rows_num_vector(size_);
+  phi::Vector<int64_t> rows_num_vector(size_);
   rows_num_vector[rank_] = static_cast<int64_t>(src_rows.size());
 
   Tensor rows_num_tensor = paddle::experimental::empty(
@@ -1183,7 +1183,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     }
     process_group_->AllGather(in, out)->Synchronize();
 
-    framework::Vector<int64_t> dst_rows_vector(rows_num, 0);
+    phi::Vector<int64_t> dst_rows_vector(rows_num, 0);
     auto *dst_rows_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(dst_rows_tensor.impl())
             .get();
@@ -1262,7 +1262,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
     Tensor dst_rows_tensor =
         paddle::experimental::concat(rows_tensors, phi::Scalar(0));
-    framework::Vector<int64_t> dst_rows_vector(rows_num, 0);
+    phi::Vector<int64_t> dst_rows_vector(rows_num, 0);
     auto *dst_rows_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(dst_rows_tensor.impl())
             .get();

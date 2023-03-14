@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
+#include "paddle/fluid/framework/op_kernel_type.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -61,6 +62,18 @@ void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
       platform::errors::PreconditionNotMet(
           "TransDataLayout only support DataLayout transform on same place."));
 
+  TransDataLayout(kernel_type_for_var.layout(),
+                  expected_kernel_type.layout(),
+                  place,
+                  in,
+                  out);
+}
+
+void TransDataLayout(DataLayout from_layout,
+                     DataLayout to_layout,
+                     phi::Place place,
+                     const phi::DenseTensor& in,
+                     phi::DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
       arity(in.dims()),
       4,
@@ -73,8 +86,7 @@ void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
   auto src_dim = in.dims();
   std::vector<int64_t> dst_dim;
 
-  auto axis =
-      GetAxis(kernel_type_for_var.layout(), expected_kernel_type.layout());
+  auto axis = GetAxis(from_layout, to_layout);
   dst_dim.resize(axis.size());
   for (size_t i = 0; i < axis.size(); i++) {
     dst_dim[i] = src_dim[axis[i]];
@@ -83,10 +95,11 @@ void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
   out->Resize(phi::make_ddim(dst_dim));
   out->mutable_data(place, in.dtype());
 
-  framework::VisitDataType(framework::TransToProtoVarType(in.dtype()),
-                           CastDataLayout(pool.Get(place), axis, in, out));
+  framework::VisitDataType(
+      static_cast<proto::VarType::Type>(phi::TransToProtoVarType(in.dtype())),
+      CastDataLayout(pool.Get(place), axis, in, out));
 
-  out->set_layout(expected_kernel_type.layout());
+  out->set_layout(to_layout);
 }
 
 }  // namespace framework

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -135,8 +135,6 @@ class TestBicubicInterpOp(OpTest):
         self.init_test_case()
         self.op_type = "bicubic_interp"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
-        # Skip check_eager while found them in Inputs.
-        self.check_eager = True
         input_np = np.random.random(self.input_shape).astype("float64")
 
         if self.data_layout == "NCHW":
@@ -165,10 +163,8 @@ class TestBicubicInterpOp(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_eager = False
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
-            self.check_eager = False
 
         self.attrs = {
             'out_h': self.out_h,
@@ -181,12 +177,10 @@ class TestBicubicInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.check_eager)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', in_place=True, check_eager=self.check_eager
-        )
+        self.check_grad(['X'], 'Out', in_place=True)
 
     def init_test_case(self):
         self.interp_method = 'bicubic'
@@ -390,6 +384,12 @@ class TestBicubicOpError(unittest.TestCase):
                     x, size=[12, 12], mode='BICUBIC', align_corners=False
                 )
 
+            def test_size_shape():
+                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+                out = interpolate(
+                    x, size=[12], mode='BICUBIC', align_corners=False
+                )
+
             def test_align_corcers():
                 x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
                 interpolate(x, size=[12, 12], mode='BICUBIC', align_corners=3)
@@ -481,6 +481,7 @@ class TestBicubicOpError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_mode_type)
             self.assertRaises(ValueError, test_input_shape)
+            self.assertRaises(ValueError, test_size_shape)
             self.assertRaises(TypeError, test_align_corcers)
             self.assertRaises(ValueError, test_attr_data_format)
             self.assertRaises(TypeError, test_actual_shape)

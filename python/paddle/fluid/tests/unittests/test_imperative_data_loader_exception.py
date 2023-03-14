@@ -37,7 +37,7 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
 
     def test_not_capacity(self):
         with fluid.dygraph.guard():
-            with self.assertRaisesRegexp(
+            with self.assertRaisesRegex(
                 ValueError, "Please give value to capacity."
             ):
                 fluid.io.DataLoader.from_generator()

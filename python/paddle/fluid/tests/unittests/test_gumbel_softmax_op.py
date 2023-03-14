@@ -13,10 +13,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 
 paddle.enable_static()
 
@@ -36,6 +37,7 @@ class TestGumbelSoftmaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "gumbel_softmax"
+        self.python_api = F.gumbel_softmax
         self.init_attrs()
         np.random.seed(0)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -53,6 +55,7 @@ class TestGumbelSoftmaxOp(OpTest):
 class TestGumbelSoftmax_ZeroDim(OpTest):
     def setUp(self):
         self.op_type = "gumbel_softmax"
+        self.python_api = F.gumbel_softmax
         self.dtype = "float64"
         x = np.random.uniform(0.1, 1, []).astype(self.dtype)
         out = np.array(1.0).astype(self.dtype)
@@ -123,6 +126,7 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
 
     def setUp(self):
         self.op_type = "gumbel_softmax"
+        self.python_api = F.gumbel_softmax
         self.init_attrs()
         single_x = np.array([0.2, 0.3, 0.5])
         batch_x = np.ones(self.shape) * single_x

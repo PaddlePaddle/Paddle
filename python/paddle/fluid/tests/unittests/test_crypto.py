@@ -21,7 +21,7 @@ class CipherUtilsTestCase(unittest.TestCase):
     def test_gen_key(self):
         key1 = CipherUtils.gen_key(256)
         key2 = CipherUtils.gen_key_to_file(256, "paddle_aes_test.keyfile")
-        self.assertNotEquals(key1, key2)
+        self.assertNotEqual(key1, key2)
         key3 = CipherUtils.read_key_from_file("paddle_aes_test.keyfile")
         self.assertEqual(key2, key3)
         self.assertEqual(len(key1), 32)

@@ -20,7 +20,7 @@ sys.path.append("..")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.contrib.mixed_precision.amp_nn as amp_nn
+import paddle.static.amp.amp_nn as amp_nn
 
 paddle.enable_static()
 SEED = 2021

@@ -29,7 +29,8 @@ class Any {
   Any() : content_(NULL) {}
 
   template <typename ValueType>
-  Any(const ValueType &value) : content_(new Holder<ValueType>(value)) {}
+  explicit Any(const ValueType &value)
+      : content_(new Holder<ValueType>(value)) {}
 
   Any(const Any &other)
       : content_(other.content_ ? other.content_->clone() : NULL) {}
@@ -38,7 +39,9 @@ class Any {
 
   template <typename ValueType>
   ValueType *any_cast() {
-    return content_ ? &static_cast<Holder<ValueType> *>(content_)->held_ : NULL;
+    return content_
+               ? &static_cast<Holder<ValueType> *>(content_)->held_  // NOLINT
+               : NULL;
   }
 
  private:

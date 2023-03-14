@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/mode.h"
 
 namespace phi {
@@ -60,6 +61,12 @@ void ModeGradKernel(const Context& dev_ctx,
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   const T* out_grad_data = out_grad.data<T>();
   const int64_t* indices_data = indices.data<int64_t>();
+
+  // For 0D Tensor
+  if (in_dims.size() == 0) {
+    phi::funcs::set_constant(dev_ctx, x_grad, 1.0);
+    return;
+  }
 
   int pre, n, post;
   funcs::GetDims(in_dims, axis, &pre, &n, &post);

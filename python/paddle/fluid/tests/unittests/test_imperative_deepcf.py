@@ -105,9 +105,7 @@ class MLP(fluid.Layer):
     def forward(self, users, items):
         users = self._user_latent(users)
         items = self._item_latent(items)
-        match_vec = fluid.layers.concat(
-            [users, items], axis=len(users.shape) - 1
-        )
+        match_vec = paddle.concat([users, items], axis=len(users.shape) - 1)
         for l in self._match_layers:
             match_vec = l(match_vec)
         return match_vec
@@ -123,7 +121,7 @@ class DeepCF(fluid.Layer):
             shape=matrix.shape,
             dtype=matrix.dtype,
             is_bias=False,
-            default_initializer=fluid.initializer.NumpyArrayInitializer(matrix),
+            default_initializer=paddle.nn.initializer.Assign(matrix),
         )
         self._rating_matrix.stop_gradient = True
 
@@ -144,7 +142,7 @@ class DeepCF(fluid.Layer):
 
         mlp_predictive = self._mlp(users_emb, items_emb)
         dmf_predictive = self._dmf(users_emb, items_emb)
-        predictive = fluid.layers.concat(
+        predictive = paddle.concat(
             [mlp_predictive, dmf_predictive], axis=len(mlp_predictive.shape) - 1
         )
         prediction = self._match_fc(predictive)
@@ -264,9 +262,9 @@ class TestDygraphDeepCF(unittest.TestCase):
 
         scope = fluid.core.Scope()
         with new_program_scope(main=main, startup=startup, scope=scope):
-            users = fluid.layers.data('users', [1], dtype='int32')
-            items = fluid.layers.data('items', [1], dtype='int32')
-            labels = fluid.layers.data('labels', [1], dtype='float32')
+            users = paddle.static.data('users', [-1, 1], dtype='int32')
+            items = paddle.static.data('items', [-1, 1], dtype='int32')
+            labels = paddle.static.data('labels', [-1, 1], dtype='float32')
 
             deepcf = DeepCF(num_users, num_items, matrix)
             prediction = deepcf(users, items)

@@ -30,6 +30,7 @@ namespace cub = hipcub;
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
@@ -396,12 +397,19 @@ void ArgsortKernel(const Context &dev_ctx,
                    DenseTensor *output,
                    DenseTensor *indices) {
   auto in_dims = input.dims();
+  auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
 
   const T *in_data = input.data<T>();
   auto size = input.numel();
   T *out_data = dev_ctx.template Alloc<T>(output);
   int64_t *ids_data = dev_ctx.template Alloc<int64_t>(indices);
+
+  if (rank == 0) {
+    phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+    return;
+  }
 
   // Use thrust for parallel acceleration when the input size is equal to the
   // length of the ‘axis’ dimension.

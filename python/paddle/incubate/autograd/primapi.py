@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import typing
 
-from paddle.fluid import backward, framework
+import paddle
+from paddle.fluid import backward, core, framework
+from paddle.fluid.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
 
@@ -211,3 +214,30 @@ def grad(outputs, inputs, grad_outputs=None):
     ad.erase_dots(xs_dot)
 
     return xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
+
+
+@framework.static_only
+def to_prim(blocks):
+    """Search nonbasic ops which have be registered composite rules and replace them with primitive ops."""
+    if not core._is_fwd_prim_enabled():
+        return
+    if isinstance(blocks, paddle.fluid.framework.Block):
+        logging.info("Atomize composite op to primitive ops begin.")
+        main_program = blocks.program
+    elif isinstance(blocks, typing.Sequence):
+        for item in blocks:
+            if not isinstance(item, paddle.fluid.framework.Block):
+                raise TypeError(
+                    f"Expect block or sequence of blocks, but sequence contains {type(item)}."
+                )
+        main_program = blocks[0].program
+    else:
+        raise TypeError(
+            f"Expect block or sequence of blocks, but got {type(blocks)}."
+        )
+    with framework.program_guard(main_program):
+        print("Lowering composite forward ops begin...")
+        primx._lower_composite(blocks, prim_config["forward_blacklist"])
+        replace_ops = prim_config["composite_ops_record"]
+        print(f"Lowering composite forward ops finish: {replace_ops}")
+    return

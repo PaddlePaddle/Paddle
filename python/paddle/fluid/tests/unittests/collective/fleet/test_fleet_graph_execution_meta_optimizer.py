@@ -17,10 +17,6 @@ import unittest
 
 from launch_function_helper import _find_free_port, launch_func, wait
 
-import paddle
-
-paddle.enable_static()
-
 
 class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
     def setUp(self):
@@ -43,6 +39,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "0",
         }
 
         node_b = {
@@ -54,18 +51,20 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "1",
         }
 
         def node_func():
+            import paddle
+
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
 
             fleet.init(is_collective=True)
-            input_x = paddle.fluid.layers.data(
-                name="x", shape=[32], dtype='float32'
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
             )
-            input_y = paddle.fluid.layers.data(
-                name="y", shape=[1], dtype='int64'
-            )
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
             fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
             fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
@@ -87,7 +86,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             )
             optimizer.minimize(avg_cost)
 
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
         proc_a = launch_func(node_func, node_a)
@@ -109,6 +108,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "0",
         }
 
         node_b = {
@@ -120,18 +120,20 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "1",
         }
 
         def node_func():
+            import paddle
+
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
 
             fleet.init(is_collective=True)
-            input_x = paddle.fluid.layers.data(
-                name="x", shape=[32], dtype='float32'
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
             )
-            input_y = paddle.fluid.layers.data(
-                name="y", shape=[1], dtype='int64'
-            )
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
             fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
             fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
@@ -154,7 +156,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 optimizer, strategy=strategy
             )
             optimizer.minimize(avg_cost)
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
             import numpy as np
@@ -187,6 +189,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "0",
         }
 
         node_b = {
@@ -198,18 +201,20 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "1",
         }
 
         def node_func():
+            import paddle
+
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
 
             fleet.init(is_collective=True)
-            input_x = paddle.fluid.layers.data(
-                name="x", shape=[32], dtype='float32'
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
             )
-            input_y = paddle.fluid.layers.data(
-                name="y", shape=[1], dtype='int64'
-            )
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
             fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
             fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
@@ -231,7 +236,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             )
             optimizer.minimize(avg_cost)
 
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
         proc_a = launch_func(node_func, node_a)
@@ -252,6 +257,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "0",
         }
 
         node_b = {
@@ -263,18 +269,20 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             ),
             "http_proxy": "",
             "https_proxy": "",
+            "FLAGS_selected_gpus": "1",
         }
 
         def node_func():
+            import paddle
+
+            paddle.enable_static()
             import paddle.distributed.fleet as fleet
 
             fleet.init(is_collective=True)
-            input_x = paddle.fluid.layers.data(
-                name="x", shape=[32], dtype='float32'
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
             )
-            input_y = paddle.fluid.layers.data(
-                name="y", shape=[1], dtype='int64'
-            )
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
             fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
             fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
@@ -297,7 +305,7 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
                 optimizer, strategy=strategy
             )
             optimizer.minimize(avg_cost)
-            exe = paddle.fluid.Executor(place=paddle.fluid.CPUPlace())
+            exe = paddle.fluid.Executor()
             exe.run(paddle.fluid.default_startup_program())
 
             import numpy as np

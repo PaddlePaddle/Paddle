@@ -15,11 +15,11 @@
 #pragma once
 #include "paddle/phi/kernels/split_kernel.h"
 
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -37,8 +37,7 @@ void SplitKernel(const Context& dev_ctx,
   int axis = axis_scalar.to<int>();
   // Sometimes direct copies will be faster, this maybe need deeply analysis.
   if (axis == 0 && outs.size() < 10) {
-    paddle::operators::StridedMemcpyWithAxis0<T>(
-        dev_ctx, x, shape_refer, &outs);
+    phi::funcs::StridedMemcpyWithAxis0<T>(dev_ctx, x, shape_refer, &outs);
   } else {
     phi::funcs::SplitFunctor<Context, T> functor;
     functor(dev_ctx, x, shape_refer, axis, &outs);

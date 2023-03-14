@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -33,6 +33,10 @@ def create_kernel_case(op_type, numpy_op_type):
         def setUp(self):
             np.random.seed(123)
             self.initTestCase()
+            if op_type == 'arg_min':
+                self.python_api = paddle.tensor.argmin
+            else:
+                self.python_api = paddle.tensor.argmax
             self.dims = (4, 5, 6)
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
@@ -72,6 +76,10 @@ def create_kernel_case(op_type, numpy_op_type):
     class ArgMinMaxKernelCase4(ArgMinMaxKernelBaseCase):
         def setUp(self):
             self.initTestCase()
+            if op_type == 'arg_min':
+                self.python_api = paddle.tensor.argmin
+            else:
+                self.python_api = paddle.tensor.argmax
             self.dims = (4, 5, 6)
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
@@ -85,6 +93,10 @@ def create_kernel_case(op_type, numpy_op_type):
     class ArgMinMaxKernelCase5(ArgMinMaxKernelBaseCase):
         def setUp(self):
             self.initTestCase()
+            if op_type == 'arg_min':
+                self.python_api = paddle.tensor.argmin
+            else:
+                self.python_api = paddle.tensor.argmax
             self.dims = 4
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
@@ -98,6 +110,10 @@ def create_kernel_case(op_type, numpy_op_type):
     class ArgMinMaxKernelCase6(ArgMinMaxKernelBaseCase):
         def setUp(self):
             self.initTestCase()
+            if op_type == 'arg_min':
+                self.python_api = paddle.tensor.argmin
+            else:
+                self.python_api = paddle.tensor.argmax
             self.dims = 4
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
@@ -348,6 +364,32 @@ class TestArgMinMaxOpError(unittest.TestCase):
                 output = paddle.argmin(x=data, dtype=None)
 
             self.assertRaises(ValueError, test_argmin_dtype_type)
+
+
+class TestArgMaxOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        x_np = np.random.random((10, 16)).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+            out = paddle.argmax(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_np}, fetch_list=[out])
+
+
+class TestArgMinOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        x_np = np.random.random((10, 16)).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[10, 16], name='x', dtype='float16')
+            out = paddle.argmin(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
 if __name__ == '__main__':

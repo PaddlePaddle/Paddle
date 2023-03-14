@@ -14,6 +14,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 
+#include <set>
+
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -56,6 +58,28 @@ void InitGpuProperties(Place place,
       backends::gpu::GetGPUMaxThreadsPerBlock(place.GetDeviceId());
   *driver_version = backends::gpu::GetGPUDriverVersion(place.GetDeviceId());
   *runtime_version = backends::gpu::GetGPURuntimeVersion(place.GetDeviceId());
+
+  const gpuDeviceProp& prop =
+      backends::gpu::GetDeviceProperties(place.GetDeviceId());
+
+#ifdef PADDLE_WITH_CUDA
+  static const std::set<int> compiled_archs{CUDA_REAL_ARCHS};
+  // Make sure compiled cuda arch is as same as runtime cuda arch.
+  if (compiled_archs.find(*compute_capability) == compiled_archs.cend() &&
+      compiled_archs.find(prop.major * 10) == compiled_archs.cend()) {
+    static std::atomic<bool> once_flag(false);
+    if (!once_flag.exchange(true)) {
+      std::string compile_arch_str = "";
+      for (const int32_t& arch : compiled_archs) {
+        compile_arch_str += std::to_string(arch) + " ";
+      }
+      LOG(WARNING) << "Paddle with runtime capability " << *compute_capability
+                   << " is not compatible with Paddle installation with arch: "
+                   << compile_arch_str
+                   << ". Please check compiled version of Paddle. ";
+    }
+  }
+#endif
 
   // TODO(wilber): glog may be replaced in the future?
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: "

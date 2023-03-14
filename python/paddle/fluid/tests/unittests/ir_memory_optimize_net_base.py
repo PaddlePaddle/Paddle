@@ -60,11 +60,11 @@ class BuildIrMemOptBase(unittest.TestCase):
         fluid.default_startup_program().random_seed = 100
         fluid.default_main_program().random_seed = 100
 
-        data = fluid.layers.data(
-            name="words", shape=[1], dtype="int64", lod_level=1
+        data = paddle.static.data(
+            name="words", shape=[-1, 1], dtype="int64", lod_level=1
         )
 
-        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+        label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
 
         cost = network(data, label, len(self.word_dict))
         optimizer = fluid.optimizer.Adam(learning_rate=0.001)
@@ -80,9 +80,8 @@ class BuildIrMemOptBase(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
-        train_cp = compiler.CompiledProgram(fluid.default_main_program())
-        train_cp = train_cp.with_data_parallel(
-            loss_name=cost.name, build_strategy=build_strategy
+        train_cp = compiler.CompiledProgram(
+            fluid.default_main_program(), build_strategy=build_strategy
         )
         fetch_list = [cost.name]
 
@@ -140,12 +139,12 @@ class TestIrMemOptBase(BuildIrMemOptBase):
                     self.network
                 )
 
-                self.assertAlmostEquals(
+                self.assertAlmostEqual(
                     np.mean(baseline_last_loss),
                     np.mean(cur_last_loss),
                     delta=1e-6,
                 )
-                self.assertAlmostEquals(
+                self.assertAlmostEqual(
                     np.mean(baseline_first_loss),
                     np.mean(cur_first_loss),
                     delta=1e-6,

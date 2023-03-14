@@ -96,6 +96,9 @@ class CinnLaunchContext {
     return skip_eager_vars_;
   }
 
+  // Redirect the name of a Paddle variable to the orignal if it was inplaced
+  std::string RedirectVarName(const std::string& var_name);
+
   // Return internal variable names list
   const std::unordered_set<std::string>& GetInternalVarNames() const {
     return internal_var_names_;
@@ -151,23 +154,26 @@ class CinnLaunchContext {
   std::unordered_map<std::string, std::string> cinn2paddle_varmap_;
   // a list of internal variable names in Paddle
   std::unordered_set<std::string> internal_var_names_;
+  // In CINN, there are two variables(in/out) mapped to the one inplaced
+  // variable of Paddle. To resovle this conflict, we add a output counterpart
+  // in Paddle with the name suffixed by @InplaceOut.
+  // This set stores which Paddle variable names are inplaced.
+  std::unordered_set<std::string> inplace_var_names_;
   // the names of the cinn arguments used in compiled executable program
   std::unordered_set<std::string> cinn_argument_names_;
-  // TODO(CtfGo): remove this list after fixing batch_norm bug
-  // due to duplicate association in the same variable.
-  std::vector<std::string> initialized_beforehand_vars_;
   // the variable scope compiled from cinn
   const std::shared_ptr<CinnScope> cinn_scope_;
 
   std::unique_ptr<framework::ProgramDesc> runtime_program_desc_;
   std::unique_ptr<framework::InterpreterCore> interpreter_core_;
+  // the name list of skip_gc_vars in runtime for InterpreterCore execution
   std::set<std::string> skip_gc_vars_;
 
   // the ir::Graph object converted from the program compiled by CINN
   std::unique_ptr<framework::ir::Graph> runtime_graph_;
   // a ParallelExecutor to execute the runtime graph
   std::unique_ptr<framework::ParallelExecutor> parallel_executor_;
-  // the name list of skip_eager_vars in runtime
+  // the name list of skip_eager_vars in runtime for ParallelExecutor execution
   std::vector<std::string> skip_eager_vars_;
 
   // because a cinn_pod_value_t does not own a cinn_buffer_t object,
@@ -177,6 +183,9 @@ class CinnLaunchContext {
   // this map saves all execution arguments with their cinn names as key,
   // and it is passed to the Execute interface of a cinn runtime program.
   std::map<std::string, cinn_pod_value_t> name2argument_;
+  // this map saves all execution arguments with paddle variables as key,
+  // this map conbine name2argument_ and paddle2cinn_varmap_
+  std::map<std::string, cinn_pod_value_t> paddle2argument_;
 };
 
 }  // namespace operators::details

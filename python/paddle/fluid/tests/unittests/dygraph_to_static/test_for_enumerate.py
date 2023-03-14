@@ -20,10 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.jit import ProgramTranslator
 from paddle.static import InputSpec
-
-program_translator = ProgramTranslator()
 
 
 # 0. for in range var.numpy()[0]
@@ -344,6 +341,18 @@ def for_zip(x, y):
     return x + y
 
 
+@paddle.jit.to_static
+def tensor_array_slice_in_enumerate():
+    feats = {}
+    feats['key'] = []
+    feats_idx = paddle.arange(0, 10)
+    for i, idx in enumerate(feats_idx):
+        if i > 1:
+            feat_n2 = feats['key'][-2]
+        feats['key'].append(idx)
+    return feat_n2
+
+
 class TestTransformBase(unittest.TestCase):
     def setUp(self):
         self.place = (
@@ -363,7 +372,7 @@ class TestTransformBase(unittest.TestCase):
         )
 
     def _run(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         with fluid.dygraph.guard():
             return self.dygraph_func(self.input)
 
@@ -380,6 +389,7 @@ class TestTransform(TestTransformBase):
         if not isinstance(dy_outs, (tuple, list)):
             dy_outs = (dy_outs,)
 
+        self.dygraph_func.eval()
         st_outs = self.get_static_output()
         if not isinstance(st_outs, (tuple, list)):
             st_outs = (st_outs,)
@@ -390,7 +400,7 @@ class TestTransform(TestTransformBase):
 
 class TestTransformForOriginalList(TestTransform):
     def _run(self, to_static):
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
         with fluid.dygraph.guard():
             return self.dygraph_func()
 
@@ -533,6 +543,14 @@ class TestForOriginalList(TestTransformForOriginalList):
 class TestForOriginalTuple(TestTransformForOriginalList):
     def set_test_func(self):
         self.dygraph_func = for_original_tuple
+
+    def test_transformed_result_compare(self):
+        self.transformed_result_compare()
+
+
+class TestSliceTensorArrayInEnumerate(TestTransformForOriginalList):
+    def set_test_func(self):
+        self.dygraph_func = tensor_array_slice_in_enumerate
 
     def test_transformed_result_compare(self):
         self.transformed_result_compare()

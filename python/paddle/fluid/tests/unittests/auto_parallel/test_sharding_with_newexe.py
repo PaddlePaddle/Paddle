@@ -18,7 +18,6 @@ import sys
 import tempfile
 import unittest
 
-os.environ["FLAGS_CONVERT_GRAPH_TO_PROGRAM"] = str(1)
 os.environ["FLAGS_add_dependency_for_communication_op"] = 'false'
 
 

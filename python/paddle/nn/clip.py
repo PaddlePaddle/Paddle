@@ -19,7 +19,7 @@ import paddle
 import paddle.autograd as imperative_base
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import Variable, check_type, default_main_program
-from paddle.fluid import core, framework, layers, unique_name
+from paddle.fluid import core, framework, unique_name
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.framework import LayerHelper, _non_static_mode, in_dygraph_mode
 from paddle.tensor.layer_function_generator import templatedoc
@@ -207,11 +207,8 @@ def _squared_l2_norm(x):
     """
 
     x = _cast_to_mp_type_if_enabled(x)
-    if (
-        core.is_compiled_with_xpu()
-        or x.dtype == core.VarDesc.VarType.FP16
-        or x.dtype == core.VarDesc.VarType.BF16
-    ):
+
+    if core.is_compiled_with_xpu():
         square = paddle.square(x)
         sum_square = paddle.sum(square)
         return sum_square
@@ -220,7 +217,7 @@ def _squared_l2_norm(x):
         return _C_ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'float16'], op_type)
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
 
@@ -374,7 +371,7 @@ class ClipGradByValue(ClipGradBase):
     Args:
         max (float): The maximum value to clip by.
         min (float, optional): The minimum value to clip by. if not set by user, it will be set to ``-max``
-            automatically. In this case, ``max`` must be greater than 0.
+            automatically. In this case, ``max`` must be greater than :math:`0`.
 
     Examples:
         .. code-block:: python
@@ -757,7 +754,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
                 global_norm_var = []
                 if len(sum_square_list_fp16) > 0:
-                    global_norm_var_fp16 = layers.sums(sum_square_list_fp16)
+                    global_norm_var_fp16 = paddle.add_n(sum_square_list_fp16)
                     if (
                         sum_square_list_fp32
                         or sum_square_list
@@ -769,7 +766,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else:
                         global_norm_var.append(global_norm_var_fp16)
                 if len(sum_square_list_fp32) > 0:
-                    global_norm_var_fp32 = layers.sums(sum_square_list_fp32)
+                    global_norm_var_fp32 = paddle.add_n(sum_square_list_fp32)
                     if sum_dtype == 'float32':
                         global_norm_var.append(global_norm_var_fp32)
                     else:
@@ -778,11 +775,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         )
                 if len(sum_square_list) > 0:
                     # fp64
-                    global_norm_var_other_dtype = layers.sums(sum_square_list)
+                    global_norm_var_other_dtype = paddle.add_n(sum_square_list)
                     global_norm_var.append(global_norm_var_other_dtype)
 
                 global_norm_var = (
-                    layers.sums(global_norm_var)
+                    paddle.add_n(global_norm_var)
                     if len(global_norm_var) > 1
                     else global_norm_var[0]
                 )
@@ -866,7 +863,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
     def _create_operators(self, param, grad):
         group_scale_name = self.group_name + "_scale"
         if group_scale_name not in self.context:
-            group_norm_var = layers.sums(input=self.context[self.group_name])
+            group_norm_var = paddle.add_n(self.context[self.group_name])
             group_norm_var = paddle.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = paddle.divide(

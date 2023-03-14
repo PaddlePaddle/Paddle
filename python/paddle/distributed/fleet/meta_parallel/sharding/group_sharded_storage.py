@@ -25,7 +25,7 @@
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.framework import core
 
 from .group_sharded_utils import Type, cvt_to_device, device_guard
 

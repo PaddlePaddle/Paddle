@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import numpy as np
 
 import paddle
@@ -24,6 +25,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.nn import Linear
 
 epoch = 10
@@ -40,6 +42,9 @@ class MLP(fluid.Layer):
 
         self._linear1 = Linear(linear_size, linear_size)
         self._linear2 = Linear(linear_size, linear_size)
+        # test for trainable & untrainable offload
+        self._linear2.weight.stop_gradient = False
+        self._linear2.bias.stop_gradient = False
         self._linear3 = Linear(linear_size, 10)
 
     def forward(self, inputs):
@@ -49,14 +54,18 @@ class MLP(fluid.Layer):
         return y
 
 
-def reader_decorator(linear_size=1000):
-    def __reader__():
-        for _ in range(100):
-            img = np.random.rand(linear_size).astype('float32')
-            label = np.ones(1).astype('int64')
-            yield img, label
+class RandomDataset(paddle.io.Dataset):
+    def __init__(self, num_samples=2000, linear_size=1000):
+        self.num_samples = num_samples
+        self.linear_size = linear_size
 
-    return __reader__
+    def __getitem__(self, idx):
+        img = np.random.rand(self.linear_size).astype('float32')
+        label = np.ones(1).astype('int64')
+        return img, label
+
+    def __len__(self):
+        return self.num_samples
 
 
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
@@ -77,6 +86,7 @@ def optimizer_setting(model, use_pure_fp16, opt_group=False):
 def train_mlp(
     model,
     use_pure_fp16=False,
+    use_bfp16=False,
     accumulate_grad=False,
     offload=False,
     batch_size=100,
@@ -87,7 +97,10 @@ def train_mlp(
 
     if use_pure_fp16:
         model = paddle.amp.decorate(
-            models=model, level='O2', save_dtype='float32'
+            models=model,
+            level='O2',
+            save_dtype='float32',
+            dtype='bfloat16' if use_bfp16 else 'float16',
         )
         scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
         scaler = GroupShardedScaler(scaler)
@@ -100,18 +113,15 @@ def train_mlp(
         segment_size=2**15,
     )
 
-    train_reader = paddle.batch(
-        reader_decorator(), batch_size=batch_size, drop_last=True
+    paddle.seed(2023)
+    np.random.seed(2023)
+    train_loader = paddle.io.DataLoader(
+        RandomDataset(),
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=True,
+        num_workers=0,
     )
-
-    train_loader = paddle.io.DataLoader.from_generator(
-        capacity=32,
-        use_double_buffer=True,
-        iterable=True,
-        return_list=True,
-        use_multiprocess=True,
-    )
-    train_loader.set_sample_list_generator(train_reader)
 
     for eop in range(epoch):
         model.train()
@@ -119,7 +129,11 @@ def train_mlp(
             img, label = data
             label.stop_gradient = True
             img.stop_gradient = True
-            with paddle.amp.auto_cast(True, level='O2'):
+            with paddle.amp.auto_cast(
+                use_pure_fp16,
+                level='O2',
+                dtype='bfloat16' if use_bfp16 else 'float16',
+            ):
                 out = model(img)
                 loss = paddle.nn.functional.cross_entropy(
                     input=out, label=label
@@ -157,7 +171,9 @@ def train_mlp(
 
 def test_stage3_offload():
     paddle.distributed.init_parallel_env()
-    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6 = (
+    mlp, mlp1, mlp2, mlp3, mlp4, mlp5, mlp6, mlp7, mlp8 = (
+        MLP(),
+        MLP(),
         MLP(),
         MLP(),
         MLP(),
@@ -173,6 +189,8 @@ def test_stage3_offload():
     mlp4.set_state_dict(state_dict)
     mlp5.set_state_dict(state_dict)
     mlp6.set_state_dict(state_dict)
+    mlp7.set_state_dict(state_dict)
+    mlp8.set_state_dict(state_dict)
 
     # fp32 offload
     stage3_params = train_mlp(mlp1, use_pure_fp16=False)
@@ -195,6 +213,27 @@ def test_stage3_offload():
             rtol=1e-2,
             atol=1e-2,
         )
+
+    # bfp16 offload
+    # NOTE: this is a hack to get int format nccl version, like 2134
+    # if current platform is not linux, version number will be 0
+    nccl_version_str = get_nccl_version_str()
+    nccl_version = (
+        int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
+    )
+
+    if nccl_version >= 2100:
+        stage3_params = train_mlp(mlp7, use_pure_fp16=True, use_bfp16=True)
+        stage3_params_offload = train_mlp(
+            mlp8, use_pure_fp16=True, offload=True, use_bfp16=True
+        )
+        for i in range(len(stage3_params)):
+            np.testing.assert_allclose(
+                stage3_params[i].numpy(),
+                stage3_params_offload[i].numpy(),
+                rtol=1e-2,
+                atol=1e-2,
+            )
 
     # fp32 accumulate grad offload
     stage3_params = train_mlp(

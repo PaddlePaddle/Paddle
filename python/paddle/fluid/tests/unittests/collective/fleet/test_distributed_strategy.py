@@ -17,16 +17,16 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
-    fleet,
-)
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
-    StrategyFactory,
-)
-from paddle.fluid.transpiler.distribute_transpiler import (
+import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,
+)
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+    fleet,
+)
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+    StrategyFactory,
 )
 
 
@@ -270,8 +270,8 @@ class TestHalfAsyncStrategy(unittest.TestCase):
 
 class TestDebugInfo(unittest.TestCase):
     def test_debug_info(self):
-        x = fluid.layers.data(name='x', shape=[1], dtype='float32')
-        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        x = paddle.static.data(name='x', shape=[-1, 1], dtype='float32')
+        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
         y_predict = paddle.static.nn.fc(x, size=1, activation=None)
         cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)

@@ -21,12 +21,12 @@ from google.protobuf import text_format
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
-from paddle.fluid.incubate.fleet.parameter_server.pslib.node import (
+import paddle.incubate.distributed.fleet.parameter_server.pslib.ps_pb2 as pslib
+from paddle.fluid.trainer_factory import TrainerFactory
+from paddle.incubate.distributed.fleet.parameter_server.pslib.node import (
     DownpourServer,
     DownpourWorker,
 )
-from paddle.fluid.trainer_factory import TrainerFactory
 
 cache_path = os.path.expanduser('~/.cache/paddle/dataset')
 
@@ -52,12 +52,12 @@ class TestListenAndServOp(unittest.TestCase):
                     cache_path
                 )
                 os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
             y_predict = paddle.static.nn.fc(x=x_emb, size=1)
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -116,12 +116,12 @@ class TestListenAndServOp(unittest.TestCase):
                     cache_path
                 )
                 os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
             y_predict = paddle.static.nn.fc(x=x_emb, size=1)
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )
@@ -178,12 +178,12 @@ class TestListenAndServOp(unittest.TestCase):
                     cache_path
                 )
                 os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
+            x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
             y_predict = paddle.static.nn.fc(x=x_emb, size=1)
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
             cost = paddle.nn.functional.square_error_cost(
                 input=y_predict, label=y
             )

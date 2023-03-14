@@ -104,8 +104,10 @@ def train(net_type, use_cuda, save_dirname, is_local):
     classdim = 10
     data_shape = [3, 32, 32]
 
-    images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    images = paddle.static.data(
+        name='pixel', shape=[-1] + data_shape, dtype='float32'
+    )
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
     if net_type == "vgg":
         print("train vgg net")
@@ -200,7 +202,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
         training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
-        t = fluid.DistributeTranspiler()
+        t = paddle.distributed.transpiler.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)

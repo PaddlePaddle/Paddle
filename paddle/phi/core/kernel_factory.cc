@@ -16,15 +16,19 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
-#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/phi/backends/custom/custom_device_op_list.h"
 #endif
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/utils/string/string_helper.h"
 
+DECLARE_int32(low_precision_op_list);
 DECLARE_bool(enable_api_kernel_fallback);
-
+DECLARE_bool(run_kp_kernel);
 namespace phi {
 
 const static Kernel empty_kernel;  // NOLINT
@@ -61,6 +65,21 @@ bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
   return false;
 }
 
+bool KernelFactory::HasStructuredKernel(const std::string& op_type) const {
+  auto phi_kernel_name = phi::OpUtilsMap::Instance().GetBaseKernelName(op_type);
+  auto kernel_iter = kernels_.find(phi_kernel_name);
+  if (deprecated_op_names.find(op_type) == deprecated_op_names.end() &&
+      kernel_iter != kernels_.end()) {
+    return std::any_of(kernel_iter->second.begin(),
+                       kernel_iter->second.end(),
+                       [](phi::KernelKeyMap::const_reference kernel_pair) {
+                         return kernel_pair.second.GetKernelRegisteredType() ==
+                                KernelRegisteredType::STRUCTURE;
+                       });
+  }
+  return false;
+}
+
 const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
                                           const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
@@ -74,6 +93,14 @@ const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
         kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
     kernel_iter = iter->second.find(any_layout_kernel_key);
   }
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+    kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                     phi::DataLayout::ALL_LAYOUT,
+                                     kernel_key.dtype()});
+  }
+#endif
 
   if (kernel_iter == iter->second.end()) {
     return empty_kernel;
@@ -106,9 +133,40 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
   return true;
 }
 
+void KernelFactory::AddToLowPrecisionKernelList(
+    const std::string& name,
+    const paddle::experimental::DataType& kernel_key_type) {
+  if (FLAGS_low_precision_op_list >= 1) {
+    auto op_name = phi::TransToFluidOpName(name);
+    if (op_name.find("_grad") != std::string::npos) {
+      return;  // only record forward api
+    }
+
+    if (low_precision_kernels_.find(op_name) == low_precision_kernels_.end()) {
+      auto count = OpCount();
+      low_precision_kernels_[op_name] = count;
+    }
+    if (kernel_key_type == phi::DataType::FLOAT16) {
+      low_precision_kernels_[op_name].fp16_called_ += 1;
+    } else if (kernel_key_type == phi::DataType::BFLOAT16) {
+      low_precision_kernels_[op_name].bf16_called_ += 1;
+    } else if (kernel_key_type == phi::DataType::FLOAT32) {
+      low_precision_kernels_[op_name].fp32_called_ += 1;
+    } else {
+      low_precision_kernels_[op_name].other_called_ += 1;
+    }
+  }
+}
+
+std::map<const std::string, OpCount>
+KernelFactory::GetLowPrecisionKernelList() {
+  return low_precision_kernels_;
+}
+
 KernelResult KernelFactory::SelectKernelOrThrowError(
     const std::string& kernel_name, const KernelKey& const_kernel_key) const {
   auto iter = kernels_.find(kernel_name);
+
   PADDLE_ENFORCE_NE(
       iter,
       kernels_.end(),
@@ -139,11 +197,47 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_name,
           KernelSelectionErrorMessage(kernel_name, kernel_key)));
 
-#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_XPU_KP)
+  auto fluid_op_name = TransToFluidOpName(kernel_name);
+  bool has_kp_kernel = false;
+  VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+  bool is_xpu_kp_supported = phi::backends::xpu::is_xpu_kp_support_op(
+      fluid_op_name, kernel_key.dtype());
+  // Check in xpu_kp
+  if (is_xpu_kp_supported && FLAGS_run_kp_kernel) {
+    auto kernel_key_kp =
+        KernelKey(Backend::KPS, kernel_key.layout(), kernel_key.dtype());
+    auto kernel_iter_kp = iter->second.find(kernel_key_kp);
+    has_kp_kernel = (kernel_iter_kp != iter->second.end());
+    if (has_kp_kernel) {
+      kernel_key = kernel_key_kp;
+      kernel_iter = kernel_iter_kp;
+    }
+  }
+  // check in xpu
+  bool xpu_unsupport =
+      !phi::backends::xpu::is_xpu_support_op(fluid_op_name, kernel_key.dtype());
+  VLOG(6) << "Current KernelKey is " << kernel_key;
+  // Fall back to CPU, when FLAGS_enable_api_kernel_fallback is true and op
+  // was unregistered in xpu and kp
+  if (FLAGS_enable_api_kernel_fallback &&
+      (kernel_iter == iter->second.end() || (xpu_unsupport && !has_kp_kernel))
+#elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
       !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
                                              kernel_key.dtype())
+#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+    kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                     phi::DataLayout::ALL_LAYOUT,
+                                     kernel_key.dtype()});
+  }
+  if (FLAGS_enable_api_kernel_fallback &&
+      (kernel_iter == iter->second.end() ||
+       phi::backends::custom_device::is_in_custom_black_list(
+           TransToFluidOpName(kernel_name)))
 #else
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif

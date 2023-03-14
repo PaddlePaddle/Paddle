@@ -22,7 +22,6 @@ import numpy as np
 
 import paddle
 from ..layer_helper import LayerHelper
-from ..initializer import Normal, Constant
 from ..framework import (
     Variable,
     OpProtoHolder,
@@ -42,8 +41,7 @@ from .layer_function_generator import (
     templatedoc,
     _generate_doc_string_,
 )
-from .tensor import concat, assign, fill_constant, zeros
-from . import utils
+from .tensor import fill_constant, zeros
 from .. import unique_name
 from .. import core
 from ...utils import deprecated
@@ -100,28 +98,6 @@ def _get_reduce_dim(dim, input):
         reduce_all = False
 
     return reduce_all, dim
-
-
-@dygraph_only
-def _elementwise_op_in_dygraph(
-    x, y, axis=-1, act=None, use_mkldnn=False, op_name=None
-):
-    def is_inplace(op_name):
-        return op_name[-1] == "_"
-
-    if op_name not in OP_NAMEMAPPING.keys() or axis != -1:
-        op = getattr(_legacy_C_ops, op_name)
-        out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
-    else:
-        if in_dygraph_mode():
-            op = getattr(
-                _C_ops,
-                OP_NAMEMAPPING[op_name] if not is_inplace(op_name) else op_name,
-            )
-            out = op(x, y)
-    return dygraph_utils._append_activation_in_dygraph(
-        out, act, use_mkldnn=use_mkldnn
-    )
 
 
 @deprecated(since="2.0.0", update_to="paddle.nn.functional.embedding")
@@ -233,14 +209,14 @@ def embedding(
           data = fluid.data(name='x', shape=[None, 1], dtype='int64')
 
           # example 1
-          emb_1 = fluid.embedding(input=data, size=[128, 64])
+          emb_1 = paddle.static.nn.embedding(input=data, size=[128, 64])
 
           # example 2: load custom or pre-trained word vectors
           weight_data = np.random.random(size=(128, 100))  # word vectors with numpy format
           w_param_attrs = fluid.ParamAttr(
               name="emb_weight",
               learning_rate=0.5,
-              initializer=fluid.initializer.NumpyArrayInitializer(weight_data),
+              initializer=paddle.nn.initializer.Assign(weight_data),
               trainable=True)
           emb_2 = fluid.layers.embedding(input=data, size=(128, 100), param_attr=w_param_attrs, dtype='float32')
     """
@@ -329,7 +305,7 @@ def _pull_sparse(
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
           emb = fluid.layers.nn._pull_sparse(
               input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
     """
@@ -403,7 +379,7 @@ def _pull_sparse_v2(
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
           emb = fluid.layers.nn._pull_sparse_v2(
               input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
     """
@@ -464,9 +440,9 @@ def _pull_gpups_sparse(
 
           import paddle.fluid as fluid
           slots = []
-          data_1 = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data_1 = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
           slots.append(data_1)
-          data_2 = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data_2 = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
           slots.append(data_2)
           embs = fluid.layers.pull_gpups_sparse(input=slots, size=[11, 35])
     """
@@ -526,7 +502,7 @@ def _pull_box_sparse(
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          data = paddle.static.data(name='sequence', shape=[-1,1], dtype='int64', lod_level=1)
           emb = fluid.layers.pull_box_sparse(input=data, size=[11])
     """
     helper = LayerHelper('pull_box_sparse', **locals())
@@ -597,18 +573,18 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
             x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            fluid.layers.reduce_sum(x)  # [3.5]
-            fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
-            fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
-            fluid.layers.reduce_sum(x, dim=1, keep_dim=True)  # [[1.9], [1.6]]
+            fluid.layers.nn.reduce_sum(x)  # [3.5]
+            fluid.layers.nn.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
+            fluid.layers.nn.reduce_sum(x, dim=-1)  # [1.9, 1.6]
+            fluid.layers.nn.reduce_sum(x, dim=1, keep_dim=True)  # [[1.9], [1.6]]
 
             # y is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
             y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_sum(y, dim=[1, 2]) # [10, 26]
-            fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
+            fluid.layers.nn.reduce_sum(y, dim=[1, 2]) # [10, 26]
+            fluid.layers.nn.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
     reduce_all, dim = _get_reduce_dim(dim, input)
@@ -673,7 +649,10 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     )
     if is_new_var:
         helper.set_variable_initializer(
-            counter, initializer=Constant(value=begin - 1, force_cpu=True)
+            counter,
+            initializer=paddle.nn.initializer.ConstantInitializer(
+                value=begin - 1, force_cpu=True
+            ),
         )
         helper.main_program.global_block()._prepend_op(
             type='increment',
@@ -711,7 +690,7 @@ def unsqueeze(input, axes, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[5, 10])
+            x = paddle.static.data(name='x', shape=[-1, 5, 10], dtype="float32")
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """
@@ -755,8 +734,10 @@ def unsqueeze(input, axes, name=None):
             axes.stop_gradient = True
             inputs["AxesTensor"] = axes
         elif isinstance(axes, (list, tuple)):
-            if utils._contain_var(axes):
-                inputs["AxesTensorList"] = utils._convert_to_tensor_list(axes)
+            if paddle.utils._contain_var(axes):
+                inputs["AxesTensorList"] = paddle.utils._convert_to_tensor_list(
+                    axes
+                )
             else:
                 attrs["axes"] = axes
 

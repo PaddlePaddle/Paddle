@@ -15,6 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
+
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
@@ -53,7 +58,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/fluid/pybind/slice_utils.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -346,14 +350,11 @@ Py_ssize_t GetSliceIndexFromPyObject(PyObject *obj) {
             .Get<phi::DenseTensor>());
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "We should only get paddle::experimental::Tensor or VarBase in this "
+        "We should only get paddle::Tensor or VarBase in this "
         "method, when you reach this means we got another type index."));
   }
 }
 
-bool PyCheckTensor(PyObject *obj) {
-  return py::isinstance<imperative::VarBase>(obj);
-}
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
 // NOTE(zjl): py::handle is a very light wrapper of PyObject *.
@@ -498,15 +499,6 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
-  BindOpFunctions1(&m);
-  BindOpFunctions2(&m);
-  BindOpFunctions3(&m);
-  BindOpFunctions4(&m);
-  BindOpFunctions5(&m);
-  BindOpFunctions6(&m);
-  BindOpFunctions7(&m);
-  BindOpFunctions8(&m);
-
 #ifndef _WIN32
   // Dygraph DataLoader signal handler
   m.def("_set_process_pids", [](int64_t key, py::object &obj) {
@@ -637,6 +629,11 @@ void BindImperative(py::module *m_ptr) {
 
   m.def("_cleanup_mmap_fds",
         []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
+
+  m.def("_set_max_memory_map_allocation_pool_size", [](int32_t size) {
+    memory::allocation::MemoryMapAllocationPool::Instance().SetMaxPoolSize(
+        size);
+  });
 #endif
 
   m.def("start_imperative_gperf_profiler",
@@ -882,7 +879,7 @@ void BindImperative(py::module *m_ptr) {
                         self->Name()));
               }
 
-              if (PyCheckTensor(value_obj.ptr())) {
+              if (py::isinstance<imperative::VarBase>(value_obj.ptr())) {
                 auto value_tensor =
                     value_obj.cast<std::shared_ptr<imperative::VarBase>>();
                 ins.insert({"ValueTensor", {value_tensor}});

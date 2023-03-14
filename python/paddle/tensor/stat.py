@@ -18,9 +18,9 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import in_dygraph_mode
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, core
-from ..static import Variable
 from .math import _get_reduce_axis_with_tensor
 from .search import where
 
@@ -119,7 +119,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     Computes the variance of ``x`` along ``axis`` .
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float16, float32, float64.
         axis (int|list|tuple, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int).
 
             - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
@@ -145,10 +145,12 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
             # [1.         4.33333333]
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'var')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'var'
+        )
 
     u = mean(x, axis, True, name)
-    out = paddle.sum((x - u) ** 2, axis, keepdim=keepdim, name=name)
+    out = paddle.sum(paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name)
 
     dtype = x.dtype
     n = paddle.cast(paddle.numel(x), paddle.int64) / paddle.cast(
@@ -158,6 +160,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     if unbiased:
         one_const = paddle.ones([], x.dtype)
         n = where(n > one_const, n - 1.0, one_const)
+    n.stop_gradient = True
     out /= n
     return out
 
@@ -167,7 +170,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
     Computes the standard-deviation of ``x`` along ``axis`` .
 
     Args:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float16, float32, float64.
         axis (int|list|tuple, optional): The axis along which to perform
             standard-deviation calculations. ``axis`` should be int, list(int)
             or tuple(int). If ``axis`` is a list/tuple of dimension(s),
@@ -210,8 +213,9 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
 
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'std')
-
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'std'
+        )
     out = var(**locals())
     return paddle.sqrt(out)
 
@@ -404,6 +408,13 @@ def median(x, axis=None, keepdim=False, name=None):
     """
     if not isinstance(x, Variable):
         raise TypeError("In median, the input x should be a Tensor.")
+
+    if x.size == 0:
+        raise ValueError("In median, the size of input x should not be 0.")
+
+    if len(x.shape) == 0:
+        return x.clone()
+
     is_flatten = axis is None
     dims = len(x.shape)
     if is_flatten:
@@ -496,8 +507,6 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
         out_shape = [1] * dims
     else:
         if isinstance(axis, list):
-            if len(axis) <= 0:
-                raise ValueError("axis should not be empty")
             axis_src, axis_dst = [], []
             for axis_single in axis:
                 if not isinstance(axis_single, int) or not (
@@ -510,10 +519,15 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
                     axis_single = axis_single + dims
                 axis_src.append(axis_single)
                 out_shape[axis_single] = 1
+
             axis_dst = list(range(-len(axis), 0))
             x = paddle.moveaxis(x, axis_src, axis_dst)
-            x = paddle.flatten(x, axis_dst[0], axis_dst[-1])
-            axis = axis_dst[0]
+            if len(axis_dst) == 0:
+                x = paddle.flatten(x)
+                axis = 0
+            else:
+                x = paddle.flatten(x, axis_dst[0], axis_dst[-1])
+                axis = axis_dst[0]
         else:
             if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
                 raise ValueError(

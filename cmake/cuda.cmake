@@ -18,7 +18,7 @@ elseif(NEW_RELEASE_PYPI)
   add_definitions(-DNEW_RELEASE_PYPI)
   set(paddle_known_gpu_archs "35 50 52 60 61 70 75 80 86")
   set(paddle_known_gpu_archs10 "")
-  set(paddle_known_gpu_archs11 "60 61 70 75 80")
+  set(paddle_known_gpu_archs11 "61 70 75 80")
 elseif(NEW_RELEASE_JIT)
   message("Using New Release Strategy - JIT Packge")
   add_definitions(-DNEW_RELEASE_JIT)
@@ -27,7 +27,7 @@ elseif(NEW_RELEASE_JIT)
   set(paddle_known_gpu_archs11 "35 50 60 70 75 80")
 else()
   set(paddle_known_gpu_archs "35 50 52 60 61 70 75 80")
-  set(paddle_known_gpu_archs10 "35 50 52 60 61 70 75")
+  set(paddle_known_gpu_archs10 "50 52 60 61 70 75")
   set(paddle_known_gpu_archs11 "52 60 61 70 75 80")
 endif()
 
@@ -207,6 +207,7 @@ function(select_nvcc_arch_flags out_variable)
 
   set(nvcc_flags "")
   set(nvcc_archs_readable "")
+  set(nvcc_archs_bin_list "")
 
   # Tell NVCC to add binaries for the specified GPUs
   foreach(arch ${cuda_arch_bin})
@@ -215,10 +216,12 @@ function(select_nvcc_arch_flags out_variable)
       string(APPEND nvcc_flags
              " -gencode arch=compute_${CMAKE_MATCH_2},code=sm_${CMAKE_MATCH_1}")
       string(APPEND nvcc_archs_readable " sm_${CMAKE_MATCH_1}")
+      string(APPEND nvcc_archs_bin_list " ${CMAKE_MATCH_1}")
     else()
       # User didn't explicitly specify PTX for the concrete BIN, we assume PTX=BIN
       string(APPEND nvcc_flags " -gencode arch=compute_${arch},code=sm_${arch}")
       string(APPEND nvcc_archs_readable " sm_${arch}")
+      string(APPEND nvcc_archs_bin_list " ${arch}")
     endif()
   endforeach()
 
@@ -230,11 +233,16 @@ function(select_nvcc_arch_flags out_variable)
   endforeach()
 
   string(REPLACE ";" " " nvcc_archs_readable "${nvcc_archs_readable}")
+  string(REGEX MATCHALL "[0-9()]+" nvcc_archs_bin_list "${nvcc_archs_bin_list}")
+  string(JOIN "," nvcc_real_archs ${nvcc_archs_bin_list})
   set(${out_variable}
       ${nvcc_flags}
       PARENT_SCOPE)
   set(${out_variable}_readable
       ${nvcc_archs_readable}
+      PARENT_SCOPE)
+  set(${out_variable}_real_archs
+      ${nvcc_real_archs}
       PARENT_SCOPE)
 endfunction()
 

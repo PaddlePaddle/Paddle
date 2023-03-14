@@ -14,7 +14,7 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import framework, layers
+from paddle.fluid import framework
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.framework import Program, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
@@ -546,14 +546,14 @@ class ModelAverage(Optimizer):
             self._get_accumulator('old_num_accumulates', param)
         )
         # backup param value to grad
-        layers.assign(input=param, output=grad)
+        paddle.assign(param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
         tmp = paddle.add_n([num_accumulates, old_num_accumulates])
         sum = paddle.add_n([sum_1, sum_2, sum_3])
-        tmp = layers.cast(
+        tmp = paddle.cast(
             x=tmp, dtype='float32' if self._dtype is None else self._dtype
         )
-        sum = layers.cast(
+        sum = paddle.cast(
             x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
         paddle.tensor.ops._elementwise_div(x=sum, y=tmp, out=param)
@@ -561,4 +561,4 @@ class ModelAverage(Optimizer):
     def _add_average_restore_op(self, block, param):
         param = block._clone_variable(param)
         grad = block._clone_variable(self._get_accumulator('restore', param))
-        layers.assign(input=grad, output=param)
+        paddle.assign(grad, output=param)

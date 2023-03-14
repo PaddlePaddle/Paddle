@@ -177,12 +177,12 @@ ProcessGroupGloo::GlooTask::GlooTask(
     : ProcessGroup::Task(rank, inputs, comm_type) {}
 
 ProcessGroupGloo::ProcessGroupGloo(
-    const std::shared_ptr<distributed::Store>& store,
+    const std::shared_ptr<phi::distributed::Store>& store,
     int rank,
     int world_size,
     int gid,
     const std::shared_ptr<GlooOptions> options)
-    : ProcessGroup(rank, world_size, gid),
+    : ProcessGroupWithoutStream(rank, world_size, gid),
       _tag(0),
       _store(new GlooStore(store)) {
   _context = std::make_shared<gloo::rendezvous::Context>(rank, world_size);
@@ -403,15 +403,6 @@ class AllgatherGlooTask : public ProcessGroupGloo::GlooTask {
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
-    bool sync_op) {
-  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
-  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
-  return AllGather(in_wrapper, out_wrapper, true);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
-    phi::DenseTensor* out_tensor,
-    const phi::DenseTensor& in_tensor,
     int64_t /*offset*/,
     int64_t /*offset*/,
     bool sync_op) {
@@ -610,10 +601,11 @@ ProcessGroupGloo::createDefaultDevice() {
       0,
       platform::errors::Fatal("Get hostname error for createDefaultDevice."));
   ::addrinfo* result;
-  result = tcputils::get_addr_info(hostname.data(), "", 0, AF_UNSPEC);
+  result = phi::distributed::tcputils::get_addr_info(
+      hostname.data(), "", 0, AF_UNSPEC);
   ::addrinfo* cur;
   for (cur = result; cur != nullptr; cur = cur->ai_next) {
-    SocketType socket =
+    phi::distributed::SocketType socket =
         ::socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
     if (socket == -1) {
       continue;
@@ -637,7 +629,10 @@ ProcessGroupGloo::createDefaultDevice() {
 }
 
 std::shared_ptr<ProcessGroupGloo> ProcessGroupGloo::CreateProcessGroupGloo(
-    const std::shared_ptr<Store>& store, int rank, int size, int gid) {
+    const std::shared_ptr<phi::distributed::Store>& store,
+    int rank,
+    int size,
+    int gid) {
   std::string GLOO_SOCKET_IFNAME_ENV = "GLOO_SOCKET_IFNAME";
   auto opts = GlooOptions::create();
   char* ifname = getenv(GLOO_SOCKET_IFNAME_ENV.c_str());

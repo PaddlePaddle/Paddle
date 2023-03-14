@@ -23,6 +23,16 @@ namespace operators {
 class FusedConvOpMaker : public Conv2DOpMaker {
  protected:
   void Apply() override {
+    AddInput("Bias",
+             "(Tensor) Bias to be added to each output of filter application."
+             "The format of output tensor is X (one-dimensional) of size equal"
+             "to the number of output channels. Only used with MKL-DNN.")
+        .AsDispensable();
+    AddInput("ResidualData",
+             "(Tensor) Tensor with residual data "
+             "to which convolution output will be added."
+             "Used with fuse_residual_connection fusion.")
+        .AsDispensable();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")

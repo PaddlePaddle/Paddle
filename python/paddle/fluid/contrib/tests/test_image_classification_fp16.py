@@ -110,10 +110,10 @@ def train(net_type, use_cuda, save_dirname, is_local):
     train_program.random_seed = 123
     startup_prog.random_seed = 456
     with fluid.program_guard(train_program, startup_prog):
-        images = fluid.layers.data(
-            name='pixel', shape=data_shape, dtype='float32'
+        images = paddle.static.data(
+            name='pixel', shape=[-1] + data_shape, dtype='float32'
         )
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         if net_type == "vgg":
             print("train vgg net")
@@ -136,7 +136,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
         optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+        amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
             custom_black_varnames={"loss", "conv2d_0.w_0"}
         )
         mp_optimizer = decorate(
@@ -235,7 +235,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
         training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
-        t = fluid.DistributeTranspiler()
+        t = paddle.distributed.transpiler.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)
@@ -313,102 +313,66 @@ class TestImageClassification(unittest.TestCase):
         # infer(use_cuda, save_dirname)
 
     def test_amp_lists(self):
-        white_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.white_list
-        )
-        black_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.black_list
-        )
-        gray_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.gray_list
-        )
+        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists()
+        amp_lists = paddle.static.amp.AutoMixedPrecisionLists()
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_1(self):
-        white_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.white_list
-        )
-        black_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.black_list
-        )
-        gray_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.gray_list
-        )
+        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 1. w={'exp}, b=None
         white_list.add('exp')
         black_list.remove('exp')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
-            {'exp'}
-        )
+        amp_lists = paddle.static.amp.AutoMixedPrecisionLists({'exp'})
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_2(self):
-        white_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.white_list
-        )
-        black_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.black_list
-        )
-        gray_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.gray_list
-        )
+        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 2. w={'tanh'}, b=None
         white_list.add('tanh')
         gray_list.remove('tanh')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
-            {'tanh'}
-        )
+        amp_lists = paddle.static.amp.AutoMixedPrecisionLists({'tanh'})
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_3(self):
-        white_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.white_list
-        )
-        black_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.black_list
-        )
-        gray_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.gray_list
-        )
+        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 3. w={'lstm'}, b=None
         white_list.add('lstm')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
-            {'lstm'}
-        )
+        amp_lists = paddle.static.amp.AutoMixedPrecisionLists({'lstm'})
         self.assertEqual(amp_lists.white_list, white_list)
         self.assertEqual(amp_lists.black_list, black_list)
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_4(self):
-        white_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.white_list
-        )
-        black_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.black_list
-        )
-        gray_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.gray_list
-        )
+        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 4. w=None, b={'conv2d'}
         white_list.remove('conv2d')
         black_list.add('conv2d')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+        amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
             custom_black_list={'conv2d'}
         )
         self.assertEqual(amp_lists.white_list, white_list)
@@ -416,21 +380,15 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_5(self):
-        white_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.white_list
-        )
-        black_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.black_list
-        )
-        gray_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.gray_list
-        )
+        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 5. w=None, b={'tanh'}
         black_list.add('tanh')
         gray_list.remove('tanh')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+        amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
             custom_black_list={'tanh'}
         )
         self.assertEqual(amp_lists.white_list, white_list)
@@ -438,20 +396,14 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_6(self):
-        white_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.white_list
-        )
-        black_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.black_list
-        )
-        gray_list = copy.copy(
-            fluid.contrib.mixed_precision.fp16_lists.gray_list
-        )
+        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
+        gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
         # 6. w=None, b={'lstm'}
         black_list.add('lstm')
 
-        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+        amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
             custom_black_list={'lstm'}
         )
         self.assertEqual(amp_lists.white_list, white_list)
@@ -463,7 +415,7 @@ class TestImageClassification(unittest.TestCase):
         # raise ValueError
         self.assertRaises(
             ValueError,
-            fluid.contrib.mixed_precision.AutoMixedPrecisionLists,
+            paddle.static.amp.AutoMixedPrecisionLists,
             {'lstm'},
             {'lstm'},
         )
@@ -492,11 +444,11 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
             with paddle.fluid.unique_name.guard():
-                image = fluid.layers.data(
-                    name='image', shape=[3, 224, 224], dtype='float32'
+                image = paddle.static.data(
+                    name='image', shape=[-1, 3, 224, 224], dtype='float32'
                 )
-                label = fluid.layers.data(
-                    name='label', shape=[1], dtype='int64'
+                label = paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
                 )
                 py_reader = fluid.io.DataLoader.from_generator(
                     feed_list=[image, label],
@@ -515,10 +467,8 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 avg_cost = paddle.mean(cost)
 
                 optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
-                amp_lists = (
-                    fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
-                        custom_black_varnames={"loss", "conv2d_0.w_0"}
-                    )
+                amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+                    custom_black_varnames={"loss", "conv2d_0.w_0"}
                 )
                 mp_optimizer = decorate(
                     optimizer=optimizer,

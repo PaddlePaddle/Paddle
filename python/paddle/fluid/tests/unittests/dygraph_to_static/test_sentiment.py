@@ -20,12 +20,10 @@ from test_lac import DynamicGRU
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator
 from paddle.jit.api import to_static
 from paddle.nn import Embedding, Linear
 
 SEED = 2020
-program_translator = ProgramTranslator()
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -250,8 +248,8 @@ class BiGRU(fluid.dygraph.Layer):
         gru_backward = self._gru_backward(fc_1)
         gru_forward_tanh = paddle.tanh(gru_forward)
         gru_backward_tanh = paddle.tanh(gru_backward)
-        encoded_vector = fluid.layers.concat(
-            input=[gru_forward_tanh, gru_backward_tanh], axis=2
+        encoded_vector = paddle.concat(
+            [gru_forward_tanh, gru_backward_tanh], axis=2
         )
         encoded_vector = paddle.max(encoded_vector, axis=1)
         fc_2 = self._fc2(encoded_vector)
@@ -304,7 +302,7 @@ class Args:
 
 
 def train(args, to_static):
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
     place = (
         fluid.CUDAPlace(0)
         if fluid.is_compiled_with_cuda()

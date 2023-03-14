@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include <array>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_types.h"
@@ -57,6 +58,8 @@ int GetCurrentDeviceId();
 
 //! Get the maximum GridDim size for GPU buddy allocator.
 std::array<int, 3> GetGpuMaxGridDimSize(int);
+
+std::pair<int, int> GetGpuStreamPriorityRange();
 
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedDevices();

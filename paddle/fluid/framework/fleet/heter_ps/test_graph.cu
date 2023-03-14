@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
-using namespace paddle::framework;
+using paddle::framework;
 TEST(TEST_FLEET, graph_comm) {
   int gpu_count = 3;
   std::vector<int> dev_ids;
@@ -100,9 +100,10 @@ TEST(TEST_FLEET, graph_comm) {
 
   int64_t cpu_key[3] = {7, 0, 6};
   void *key;
-  cudaMalloc((void **)&key, 3 * sizeof(int64_t));
+  cudaMalloc(reinterpret_cast<void **>(&key), 3 * sizeof(int64_t));
   cudaMemcpy(key, cpu_key, 3 * sizeof(int64_t), cudaMemcpyHostToDevice);
-  auto neighbor_sample_res = g.graph_neighbor_sample(0, (int64_t *)key, 3, 3);
+  auto neighbor_sample_res =
+      g.graph_neighbor_sample(0, reinterpret_cast<int64_t *>(key), 3, 3);
   res = new int64_t[7];
   cudaMemcpy(res, neighbor_sample_res->val, 56, cudaMemcpyDeviceToHost);
   int *actual_sample_size = new int[3];

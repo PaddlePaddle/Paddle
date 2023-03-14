@@ -174,7 +174,7 @@ int32_t CtrDoubleAccessor::Create(float** values, size_t num) {
     value[CtrDoubleFeatureValue::UnseenDaysIndex()] = 0;
     value[CtrDoubleFeatureValue::DeltaScoreIndex()] = 0;
     *reinterpret_cast<double*>(value + CtrDoubleFeatureValue::ShowIndex()) = 0;
-    *(double*)(value + CtrDoubleFeatureValue::ClickIndex()) = 0;
+    *reinterpret_cast<double*>(value + CtrDoubleFeatureValue::ClickIndex()) = 0;
     value[CtrDoubleFeatureValue::SlotIndex()] = -1;
     bool zero_init = _config.ctr_accessor_param().zero_init();
     _embed_sgd_rule->InitValue(value + CtrDoubleFeatureValue::EmbedWIndex(),
@@ -188,8 +188,10 @@ int32_t CtrDoubleAccessor::Create(float** values, size_t num) {
   return 0;
 }
 bool CtrDoubleAccessor::NeedExtendMF(float* value) {
-  auto show = ((double*)(value + CtrDoubleFeatureValue::ShowIndex()))[0];
-  auto click = ((double*)(value + CtrDoubleFeatureValue::ClickIndex()))[0];
+  auto show = (reinterpret_cast<double*>(
+      value + CtrDoubleFeatureValue::ShowIndex()))[0];
+  auto click = (reinterpret_cast<double*>(
+      value + CtrDoubleFeatureValue::ClickIndex()))[0];
   // float score = (show - click) * _config.ctr_accessor_param().nonclk_coeff()
   auto score = (show - click) * _config.ctr_accessor_param().nonclk_coeff() +
                click * _config.ctr_accessor_param().click_coeff();
@@ -204,10 +206,11 @@ int32_t CtrDoubleAccessor::Select(float** select_values,
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* select_value = select_values[value_item];
     float* value = const_cast<float*>(values[value_item]);
-    select_value[CtrDoublePullValue::ShowIndex()] =
-        (float)*(double*)(value + CtrDoubleFeatureValue::ShowIndex());
+    select_value[CtrDoublePullValue::ShowIndex()] = static_cast<float>(
+        *reinterpret_cast<double*>(value + CtrDoubleFeatureValue::ShowIndex()));
     select_value[CtrDoublePullValue::ClickIndex()] =
-        (float)*(double*)(value + CtrDoubleFeatureValue::ClickIndex());
+        static_cast<float>(*reinterpret_cast<double*>(
+            value + CtrDoubleFeatureValue::ClickIndex()));
     select_value[CtrDoublePullValue::EmbedWIndex()] =
         value[CtrDoubleFeatureValue::EmbedWIndex()];
     memcpy(select_value + CtrDoublePullValue::EmbedxWIndex(),
@@ -254,15 +257,17 @@ int32_t CtrDoubleAccessor::Update(float** update_values,
     float push_show = push_value[CtrDoublePushValue::ShowIndex()];
     float push_click = push_value[CtrDoublePushValue::ClickIndex()];
     float slot = push_value[CtrDoublePushValue::SlotIndex()];
-    *(double*)(update_value + CtrDoubleFeatureValue::ShowIndex()) +=
-        (double)push_show;
-    *(double*)(update_value + CtrDoubleFeatureValue::ClickIndex()) +=
-        (double)push_click;
+    *reinterpret_cast<double*>(update_value +
+                               CtrDoubleFeatureValue::ShowIndex()) +=
+        static_cast<double>(push_show);
+    *reinterpret_cast<double*>(update_value +
+                               CtrDoubleFeatureValue::ClickIndex()) +=
+        static_cast<double>(push_click);
     update_value[CtrDoubleFeatureValue::SlotIndex()] = slot;
     update_value[CtrDoubleFeatureValue::DeltaScoreIndex()] +=
         (push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
         push_click * _config.ctr_accessor_param().click_coeff();
-    //(push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
+    // (push_show - push_click) * _config.ctr_accessor_param().nonclk_coeff() +
     // push_click * _config.ctr_accessor_param().click_coeff();
     update_value[CtrDoubleFeatureValue::UnseenDaysIndex()] = 0;
     if (!_show_scale) {
@@ -315,9 +320,11 @@ std::string CtrDoubleAccessor::ParseToString(const float* v, int param_size) {
   thread_local std::ostringstream os;
   os.clear();
   os.str("");
-  os << v[0] << " " << v[1] << " " << (float)((double*)(v + 2))[0] << " "
-     << (float)((double*)(v + 4))[0] << " " << v[6] << " " << v[7] << " "
-     << v[8];
+  os << v[0] << " " << v[1] << " "
+     << static_cast<const float>((reinterpret_cast<const double*>(v + 2))[0])
+     << " "
+     << static_cast<const float>((reinterpret_cast<const double*>(v + 4))[0])
+     << " " << v[6] << " " << v[7] << " " << v[8];
   auto show = CtrDoubleFeatureValue::Show(const_cast<float*>(v));
   auto click = CtrDoubleFeatureValue::Click(const_cast<float*>(v));
   auto score = ShowClickScore(show, click);
@@ -331,7 +338,7 @@ std::string CtrDoubleAccessor::ParseToString(const float* v, int param_size) {
 }
 int CtrDoubleAccessor::ParseFromString(const std::string& str, float* value) {
   int embedx_dim = _config.embedx_dim();
-  float data_buff[_accessor_info.dim + 2];
+  float data_buff[_accessor_info.dim + 2];  // NOLINT
   float* data_buff_ptr = data_buff;
   _embedx_sgd_rule->InitValue(
       data_buff_ptr + CtrDoubleFeatureValue::EmbedxWIndex(),
@@ -350,8 +357,10 @@ int CtrDoubleAccessor::ParseFromString(const std::string& str, float* value) {
     // copy unseen_days..delta_score
     memcpy(value, data_buff_ptr, show_index * sizeof(float));
     // copy show & click
-    *(double*)(value + show_index) = (double)data_buff_ptr[2];
-    *(double*)(value + click_index) = (double)data_buff_ptr[3];
+    *reinterpret_cast<double*>(value + show_index) =
+        static_cast<double>(data_buff_ptr[2]);
+    *reinterpret_cast<double*>(value + click_index) =
+        static_cast<double>(data_buff_ptr[3]);
     // copy others
     value[CtrDoubleFeatureValue::EmbedWIndex()] = data_buff_ptr[4];
     value[CtrDoubleFeatureValue::EmbedG2SumIndex()] = data_buff_ptr[5];
@@ -362,8 +371,10 @@ int CtrDoubleAccessor::ParseFromString(const std::string& str, float* value) {
     // copy unseen_days..delta_score
     memcpy(value, data_buff_ptr, show_index * sizeof(float));
     // copy show & click
-    *(double*)(value + show_index) = (double)data_buff_ptr[2];
-    *(double*)(value + click_index) = (double)data_buff_ptr[3];
+    *reinterpret_cast<double*>(value + show_index) =
+        static_cast<double>(data_buff_ptr[2]);
+    *reinterpret_cast<double*>(value + click_index) =
+        static_cast<double>(data_buff_ptr[3]);
     // copy embed_w..embedx_w
     memcpy(value + embed_w_index,
            data_buff_ptr + 4,

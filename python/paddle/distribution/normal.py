@@ -132,8 +132,8 @@ class Normal(distribution.Distribution):
             # pylint: disable=unbalanced-tuple-unpacking
             self.loc, self.scale = self._to_tensor(loc, scale)
             if self.dtype != convert_dtype(self.loc.dtype):
-                self.loc = tensor.cast(self.loc, dtype=self.dtype)
-                self.scale = tensor.cast(self.scale, dtype=self.dtype)
+                self.loc = paddle.cast(self.loc, dtype=self.dtype)
+                self.scale = paddle.cast(self.scale, dtype=self.dtype)
         super().__init__(self.loc.shape)
 
     @property

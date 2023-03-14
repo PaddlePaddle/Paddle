@@ -127,7 +127,7 @@ class StringsAPI(ForwardAPI):
         }
         input_names = self.inputs['names']
         input_infos = self.inputs['input_info']
-        kernel_args_type_list = ['const platform::DeviceContext&']
+        kernel_args_type_list = ['const phi::DeviceContext&']
 
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
@@ -210,6 +210,9 @@ class StringsAPI(ForwardAPI):
   VLOG(6) << "{self.api} api strings kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
       "{self.kernel['func'][0]}", {{kernel_backend, kernel_layout, kernel_data_type}});
+  if (FLAGS_low_precision_op_list) {{
+    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
+  }}
   const auto& kernel = kernel_result.kernel;
   VLOG(6) << "{self.api} api strings kernel: " << kernel;
 
@@ -334,6 +337,8 @@ def source_include(header_file_path):
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+DECLARE_int32(low_precision_op_list);
 """
 
 

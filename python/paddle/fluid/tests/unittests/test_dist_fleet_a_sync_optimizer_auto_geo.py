@@ -46,8 +46,8 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
 
-        input_x = paddle.fluid.layers.data(name="x", shape=[1], dtype='int64')
-        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+        input_x = paddle.static.data(name="x", shape=[-1, 1], dtype='int64')
+        input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
         emb = paddle.fluid.layers.embedding(
             input=input_x, size=[100, 10], is_sparse=True

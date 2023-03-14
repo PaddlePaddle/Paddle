@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/mode.h"
 
 namespace phi {
@@ -29,6 +30,12 @@ void ModeKernel(const Context& dev_ctx,
                 DenseTensor* indices) {
   // get the input dims
   const auto& in_dims = x.dims();
+  for (int i = 0; i < in_dims.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      in_dims[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
   // calcluate the real axis
   if (axis < 0) axis += in_dims.size();
 
@@ -37,6 +44,13 @@ void ModeKernel(const Context& dev_ctx,
   const T* input_data = x.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);
+
+  // For 0D Tensor
+  if (in_dims.size() == 0) {
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+    return;
+  }
 
   if (axis == in_dims.size() - 1) {
     const int64_t& input_height =
@@ -116,4 +130,6 @@ void ModeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    mode, GPU, ALL_LAYOUT, phi::ModeKernel, float, double, int32_t, int64_t) {}
+    mode, GPU, ALL_LAYOUT, phi::ModeKernel, float, double, int32_t, int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

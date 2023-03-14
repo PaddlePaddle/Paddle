@@ -73,9 +73,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             # "ModelParallelOptimizer",
             # "PipelineOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self._main_program = None
         self._startup_program = None
         self._segments = []
@@ -1143,6 +1141,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 "c_sync_comm_stream",
                 "c_calc_comm_stream",
                 "c_gen_nccl_id",
+                "c_gen_bkcl_id",
                 "c_comm_init",
                 'send_v2',
                 'recv_v2',

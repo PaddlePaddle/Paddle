@@ -81,6 +81,8 @@ def compute_reference(
     qkv_bias,
     out_linear_weight,
     out_linear_bias,
+    num_head,
+    transpose_qkv_wb,
 ):
     batch_size = query.shape[0]
     seq_len = query.shape[1]
@@ -93,19 +95,26 @@ def compute_reference(
     if pre_layer_norm:
         ln_out = layer_norm(query, True, has_bias, ln_scale, ln_bias)
 
-    num_head = qkv_weight.shape[1]
-    head_dim = qkv_weight.shape[2]
-    # embed_dim, 3, num_heads, self.head_dim
-    qkv_weight = qkv_weight.transpose((3, 0, 1, 2))
-    qkv_weight = qkv_weight.reshape(
-        qkv_weight.shape[0],
-        qkv_weight.shape[1] * qkv_weight.shape[2] * qkv_weight.shape[3],
-    )
-
-    if qkv_bias is not None:
-        qkv_bias = qkv_bias.reshape(
-            qkv_bias.shape[0] * qkv_bias.shape[1] * qkv_bias.shape[2]
+    head_dim = embed_dim // num_head
+    if not transpose_qkv_wb:
+        # embed_dim, 3, num_heads, self.head_dim
+        qkv_weight = qkv_weight.transpose((3, 0, 1, 2))
+        qkv_weight = qkv_weight.reshape(
+            qkv_weight.shape[0],
+            qkv_weight.shape[1] * qkv_weight.shape[2] * qkv_weight.shape[3],
         )
+
+        if qkv_bias is not None:
+            qkv_bias = qkv_bias.reshape(
+                qkv_bias.shape[0] * qkv_bias.shape[1] * qkv_bias.shape[2]
+            )
+    else:
+        assert len(qkv_weight.shape) == 2
+        assert qkv_weight.shape[0] * 3 == qkv_weight.shape[1]
+        if qkv_bias is not None:
+            assert len(qkv_bias.shape) == 1
+            assert qkv_bias.shape[0] == qkv_weight.shape[1]
+
     if pre_layer_norm:
         ln_out = ln_out.reshape(batch_size * seq_len, embed_dim)
         qkv = fc(ln_out, qkv_weight)
@@ -189,6 +198,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
         self.setPreLn()
         self.setAttnMask()
         self.setBiasAttr()
+        self.setTransposeWAndB()
         self.config()
         self.generate_input_data()
 
@@ -208,6 +218,9 @@ class TestFusedAttentionAPI(unittest.TestCase):
 
     def setBiasAttr(self):
         self.bias_attr = None
+
+    def setTransposeWAndB(self):
+        self.transpose_qkv_wb = False
 
     def setPreLn(self):
         self.pre_layer_norm = False
@@ -284,6 +297,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
             self.bias_attr,
             self.weight_attr,
             self.bias_attr,
+            transpose_qkv_wb=self.transpose_qkv_wb,
         )
         if self.bias_attr is not False:
             qkv_bias = np.random.random(fused_attn.qkv_bias.shape).astype(
@@ -323,6 +337,8 @@ class TestFusedAttentionAPI(unittest.TestCase):
             fused_attn_qkv_bias,
             fused_attn.linear_weight.numpy(),
             fused_attn_linear_bias,
+            num_head=self.num_heads,
+            transpose_qkv_wb=self.transpose_qkv_wb,
         )
         np.testing.assert_allclose(
             ref_out, out.numpy(), rtol=self.rtol, atol=self.atol
@@ -346,6 +362,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
             self.bias_attr,
             self.weight_attr,
             self.bias_attr,
+            transpose_qkv_wb=self.transpose_qkv_wb,
         )
 
         x = paddle.static.data(
@@ -562,6 +579,8 @@ class TestFusedAttentionAPI(unittest.TestCase):
             qkv_bias,
             linear_weight,
             linear_bias,
+            num_head=self.num_heads,
+            transpose_qkv_wb=self.transpose_qkv_wb,
         )
         np.testing.assert_allclose(ref_out, out, rtol=self.rtol, atol=self.atol)
 
@@ -579,6 +598,19 @@ class TestFusedAttentionAPINoneAttnMask(TestFusedAttentionAPI):
 
 
 class TestFusedAttentionAPIBiasIsNone(TestFusedAttentionAPI):
+    def setBiasAttr(self):
+        self.bias_attr = False
+
+
+class TestFusedAttentionAPITransposeWAndB(TestFusedAttentionAPI):
+    def setTransposeWAndB(self):
+        self.transpose_qkv_wb = True
+
+
+class TestFusedAttentionAPITransposeWAndBWithoutBias(TestFusedAttentionAPI):
+    def setTransposeWAndB(self):
+        self.transpose_qkv_wb = True
+
     def setBiasAttr(self):
         self.bias_attr = False
 

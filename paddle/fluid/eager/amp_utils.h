@@ -22,7 +22,7 @@ namespace egr {
 
 static inline paddle::experimental::DataType GetPromoteType(
     const std::string& op_name,
-    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& amp_tensors_vector,
     const paddle::experimental::DataType& amp_dtype) {
   auto dst_type = amp_dtype;
@@ -85,9 +85,42 @@ static inline paddle::experimental::DataType GetPromoteType(
   return dst_type;
 }
 
+inline paddle::experimental::DataType GetDtypeWithPlace(
+    const std::string& op_name,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
+                               kSlotSmallVectorSize>& amp_tensors_vector,
+    const paddle::experimental::DataType amp_dtype) {
+  if (amp_dtype == paddle::experimental::DataType::FLOAT32) {
+    return amp_dtype;
+  }
+  bool is_right_place = false;
+  for (const auto& tensors : amp_tensors_vector) {
+    for (const auto& tensor : tensors) {
+      auto place = tensor.place();
+      is_right_place = (paddle::platform::is_gpu_place(place) ||
+                        paddle::platform::is_cuda_pinned_place(place) ||
+                        paddle::platform::is_xpu_place(place) ||
+                        paddle::platform::is_mlu_place(place) ||
+                        paddle::platform::is_npu_place(place) ||
+                        paddle::platform::is_npu_pinned_place(place) ||
+                        paddle::platform::is_custom_place(place));
+      if (is_right_place) {
+        break;
+      }
+    }
+  }
+
+  if (!is_right_place) {
+    VLOG(6) << "Change " << op_name << "'s AMP type from " << amp_dtype
+            << " to FP32";
+    return paddle::experimental::DataType::FLOAT32;
+  }
+  return amp_dtype;
+}
+
 inline paddle::experimental::DataType GetAmpDestDtype(
     const std::string& op_name,
-    const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& amp_tensors_vector) {
   auto amp_dtype =
       egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype();
@@ -95,20 +128,21 @@ inline paddle::experimental::DataType GetAmpDestDtype(
   VLOG(6) << "AMP GetAmpDestDtype:"
           << " op(" << op_name << ") amp_dtype(" << amp_dtype << ") amp_level("
           << static_cast<int>(amp_level) << ").";
+  auto return_amp_type = paddle::experimental::DataType::FLOAT16;
+
   if (amp_dtype == "float16") {
     if (amp_level == paddle::imperative::AmpLevel::O1) {
       if (paddle::imperative::AmpOperators::Instance()
               .GetMutableAllowOps()
               ->count(op_name)) {
-        paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
-        return paddle::experimental::DataType::FLOAT16;
+        return_amp_type = paddle::experimental::DataType::FLOAT16;
       } else if (paddle::imperative::AmpOperators::Instance()
                      .GetMutableBlockOps()
                      ->count(op_name) ||
                  paddle::imperative::AmpOperators::Instance()
                      .GetMutableUnsupportedFp16Ops()
                      ->count(op_name)) {
-        return paddle::experimental::DataType::FLOAT32;
+        return_amp_type = paddle::experimental::DataType::FLOAT32;
       } else {
         auto dst_type = GetPromoteType(op_name,
                                        amp_tensors_vector,
@@ -118,10 +152,8 @@ inline paddle::experimental::DataType GetAmpDestDtype(
                 .GetMutableUnsupportedFp16Ops()
                 ->count(op_name)) {
           dst_type = paddle::experimental::DataType::FLOAT32;
-        } else {
-          paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
         }
-        return dst_type;
+        return_amp_type = dst_type;
       }
     } else if (amp_level == paddle::imperative::AmpLevel::O2) {
       auto dst_type = paddle::experimental::DataType::FLOAT16;
@@ -132,22 +164,19 @@ inline paddle::experimental::DataType GetAmpDestDtype(
               .GetMutableBlockOps()
               ->count(op_name)) {
         dst_type = paddle::experimental::DataType::FLOAT32;
-      } else {
-        paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
       }
-      return dst_type;
+      return_amp_type = dst_type;
     }
   } else if (amp_dtype == "bfloat16") {
     if (amp_level == paddle::imperative::AmpLevel::O1) {
       if (paddle::imperative::AmpOperators::Instance()
               .GetMutableAllowOps()
               ->count(op_name)) {
-        paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
-        return paddle::experimental::DataType::BFLOAT16;
+        return_amp_type = paddle::experimental::DataType::BFLOAT16;
       } else if (paddle::imperative::AmpOperators::Instance()
                      .GetMutableBlockOps()
                      ->count(op_name)) {
-        return paddle::experimental::DataType::FLOAT32;
+        return_amp_type = paddle::experimental::DataType::FLOAT32;
       } else {
         auto dst_type =
             GetPromoteType(op_name,
@@ -158,10 +187,8 @@ inline paddle::experimental::DataType GetAmpDestDtype(
                 .GetMutableUnsupportedBf16Ops()
                 ->count(op_name)) {
           dst_type = paddle::experimental::DataType::FLOAT32;
-        } else {
-          paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
         }
-        return dst_type;
+        return_amp_type = dst_type;
       }
     } else if (amp_level == paddle::imperative::AmpLevel::O2) {
       auto dst_type = paddle::experimental::DataType::BFLOAT16;
@@ -172,13 +199,13 @@ inline paddle::experimental::DataType GetAmpDestDtype(
               .GetMutableBlockOps()
               ->count(op_name)) {
         dst_type = paddle::experimental::DataType::FLOAT32;
-      } else {
-        paddle::imperative::AmpOperators::Instance().AddToAmpOpList(op_name);
       }
-      return dst_type;
+      return_amp_type = dst_type;
     }
+  } else {
+    return_amp_type = paddle::experimental::DataType::FLOAT32;
   }
-  return paddle::experimental::DataType::FLOAT32;
+  return GetDtypeWithPlace(op_name, amp_tensors_vector, return_amp_type);
 }
 
 }  // namespace egr

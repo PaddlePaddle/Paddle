@@ -37,13 +37,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/api/all.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/utils/any.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
+
+#include "gflags/gflags.h"
+#include "paddle/phi/api/include/operants_manager.h"
+#include "paddle/phi/api/include/tensor_operants.h"
+
+DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace framework {
@@ -142,7 +147,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                         true,
                         platform::errors::NotFound(
                             "Input vector<tensor> (%s) is empty.", in_name));
-      std::vector<paddle::experimental::Tensor> custom_vec_in;
+      std::vector<paddle::Tensor> custom_vec_in;
       for (size_t i = 0; i < vec_x.size(); ++i) {
         auto* x = vec_x[i];
         PADDLE_ENFORCE_NOT_NULL(
@@ -158,7 +163,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               "is not initialized.",
                               i,
                               in_name));
-        paddle::experimental::Tensor custom_t;
+        paddle::Tensor custom_t;
         custom_t.set_impl(std::make_shared<phi::DenseTensor>(*x));
         custom_vec_in.emplace_back(custom_t);
       }
@@ -172,7 +177,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                         true,
                         platform::errors::InvalidArgument(
                             "Input tensor (%s) is not initialized.", in_name));
-      paddle::experimental::Tensor custom_in;
+      paddle::Tensor custom_in;
       custom_in.set_impl(std::make_shared<phi::DenseTensor>(*x));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (custom_in.is_gpu_pinned()) {
@@ -239,7 +244,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                         true,
                         platform::errors::NotFound(
                             "Output vector<tensor> (%s) is empty.", out_name));
-      std::vector<paddle::experimental::Tensor> custom_vec_out;
+      std::vector<paddle::Tensor> custom_vec_out;
       for (size_t j = 0; j < vec_out.size(); ++j) {
         auto* out = vec_out[j];
         PADDLE_ENFORCE_NOT_NULL(
@@ -249,7 +254,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                 j,
                 out_name));
         true_out_ptrs.emplace_back(out);
-        paddle::experimental::Tensor custom_t;
+        paddle::Tensor custom_t;
         // here only can copy the output tensor into context
         custom_t.set_impl(std::make_shared<phi::DenseTensor>(*out));
         custom_vec_out.emplace_back(custom_t);
@@ -261,7 +266,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                               platform::errors::NotFound(
                                   "Output tensor (%s) is nullptr.", out_name));
       true_out_ptrs.emplace_back(out);
-      paddle::experimental::Tensor custom_out;
+      paddle::Tensor custom_out;
       // here only can copy the output tensor into context
       custom_out.set_impl(std::make_shared<phi::DenseTensor>(*out));
       kernel_ctx.EmplaceBackOutput(std::move(custom_out));
@@ -270,6 +275,14 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
 
   try {
     VLOG(3) << "Custom Operator: Run ComputeFunc.";
+
+    FLAGS_tensor_operants_mode = "phi";
+    if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
+      paddle::OperantsManager::Instance().phi_operants.reset(
+          new paddle::operants::PhiTensorOperants());
+      VLOG(4) << "Initialize phi tensor operants successfully";
+    }
+
     func(&kernel_ctx);
 
     // sync output tensor data into original output

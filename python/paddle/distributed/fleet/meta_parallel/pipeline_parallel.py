@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+import paddle.framework as framework
 
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 from ..utils.hybrid_parallel_util import (
@@ -208,7 +206,7 @@ class PipelineParallel(MetaParallelBase):
         ), 'optimizer should be HybridParallelOptimizer subclass.'
 
         assert (
-            fluid.framework._dygraph_tracer()._has_grad
+            framework._dygraph_tracer()._has_grad
         ), 'Please enable the generation of gradients.'
 
         if self.is_pipeline_first_stage(
@@ -308,7 +306,7 @@ class PipelineParallel(MetaParallelBase):
                 labels = self._load_micro_batch(self.micro_batch_id)
                 output_tensor = self._layers._loss_fn(output_tensor, labels)
                 assert isinstance(
-                    output_tensor, (paddle.Tensor, core.eager.Tensor)
+                    output_tensor, (paddle.Tensor, framework.core.eager.Tensor)
                 ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
                 with paddle.amp.auto_cast(enable=False):

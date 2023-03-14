@@ -37,7 +37,9 @@ class TestProfiler(unittest.TestCase):
         startup_program = fluid.Program()
         main_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            image = fluid.layers.data(name='x', shape=[784], dtype='float32')
+            image = paddle.static.data(
+                name='x', shape=[-1, 784], dtype='float32'
+            )
             hidden1 = paddle.static.nn.fc(x=image, size=64, activation='relu')
             i = layers.zeros(shape=[1], dtype='int64')
             counter = fluid.layers.zeros(
@@ -62,7 +64,7 @@ class TestProfiler(unittest.TestCase):
             predict = paddle.static.nn.fc(
                 x=hidden2, size=10, activation='softmax'
             )
-            label = fluid.layers.data(name='y', shape=[1], dtype='int64')
+            label = paddle.static.data(name='y', shape=[-1, 1], dtype='int64')
             cost = paddle.nn.functional.cross_entropy(
                 input=predict, label=label, reduction='none', use_softmax=False
             )
@@ -78,13 +80,7 @@ class TestProfiler(unittest.TestCase):
         if compile_program:
             # TODO(luotao): profiler tool may have bug with multi-thread parallel executor.
             # https://github.com/PaddlePaddle/Paddle/pull/25200#issuecomment-650483092
-            exec_strategy = fluid.ExecutionStrategy()
-            exec_strategy.num_threads = 1
-            train_program = fluid.compiler.CompiledProgram(
-                main_program
-            ).with_data_parallel(
-                loss_name=avg_cost.name, exec_strategy=exec_strategy
-            )
+            train_program = fluid.compiler.CompiledProgram(main_program)
         else:
             train_program = main_program
         return train_program, startup_program, avg_cost, batch_size, batch_acc
@@ -355,6 +351,32 @@ class TestFLOPSAPI(unittest.TestCase):
                 {},
             )
             == 144
+        )
+        self.assertTrue(
+            flops(
+                'pool',
+                {'X': [[12, 12]]},
+                {},
+            )
+            == 12 * 12
+        )
+        self.assertTrue(
+            flops(
+                'conv2d',
+                {
+                    'Bias': [],
+                    'Filter': [[3, 3, 2, 2]],
+                    'Input': [[8, 3, 4, 4]],
+                    'ResidualData': [],
+                },
+                {
+                    'dilations': [1, 1],
+                    'groups': 1,
+                    'paddings': [1, 1],
+                    'strides': [1, 1],
+                },
+            )
+            == 14400
         )
 
 

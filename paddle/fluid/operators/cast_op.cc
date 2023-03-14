@@ -12,16 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/cast_op.h"
-
 #include <memory>
 
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
+
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 #ifdef PADDLE_WITH_MLU
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #endif
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -63,18 +68,28 @@ class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class CastCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+ public:
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+  void Apply() override {
+    paddle::Tensor out_grad = paddle::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleOutputGrad("Out")));
+    paddle::Tensor x_grad = paddle::Tensor(
+        std::make_shared<prim::DescTensor>(this->SingleInputGrad("X")));
+    auto dx_ptr = this->GetOutputPtr(&x_grad);
+    std::string dx_name = this->GetOutputName(x_grad);
+    auto dtype = phi::TransToPhiDataType((this->Attr<int>("in_dtype")));
+    prim::cast_grad<prim::DescTensor>(out_grad, dtype, dx_ptr);
+    this->RecoverOutputName(x_grad, dx_name);
+  }
+};
+
 class CastOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "cast");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "cast");
-    context->SetOutputDim("Out", context->GetInputDim("X"));
-    context->ShareLoD("X", "Out");
-  }
-
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     // CastOp kernel's device type is decided by input tensor place
@@ -129,12 +144,18 @@ class CastOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 using CPU = phi::CPUContext;
 
+DECLARE_INFER_SHAPE_FUNCTOR(cast,
+                            CastInferShapeFunctor,
+                            PD_INFER_META(phi::CastInferMeta));
+
 // cast use phi kernel, so no need to REGISTER_OP_CPU_KERNEL here.
 REGISTER_OPERATOR(cast,
                   ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CastOpProtoMaker);
+                  ops::CastCompositeGradOpMaker,
+                  ops::CastOpProtoMaker,
+                  CastInferShapeFunctor);
 
 // [ why register transfer_dtype_op alias with cast_op? ]
 // In case of InterpreterCore, if we reuse cast_op, we cannot distinguish
@@ -143,19 +164,5 @@ REGISTER_OPERATOR(transfer_dtype,
                   ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CastOpProtoMaker);
-REGISTER_OP_CPU_KERNEL(
-    transfer_dtype,
-    ops::CastOpKernel<CPU, float>,
-    ops::CastOpKernel<CPU, double>,
-    ops::CastOpKernel<CPU, int>,
-    ops::CastOpKernel<CPU, int64_t>,
-    ops::CastOpKernel<CPU, int>,
-    ops::CastOpKernel<CPU, int16_t>,
-    ops::CastOpKernel<CPU, bool>,
-    ops::CastOpKernel<CPU, uint8_t>,
-    ops::CastOpKernel<CPU, int8_t>,
-    ops::CastOpKernel<CPU, paddle::platform::float16>,
-    ops::CastOpKernel<CPU, paddle::platform::bfloat16>,
-    ops::CastOpKernel<CPU, paddle::platform::complex<float>>,
-    ops::CastOpKernel<CPU, paddle::platform::complex<double>>);
+                  ops::CastOpProtoMaker,
+                  CastInferShapeFunctor);

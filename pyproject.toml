@@ -13,7 +13,6 @@ extend_skip_glob = [
     # see .flake8 for more details
     "python/paddle/fluid/[!t]**",
     "python/paddle/fluid/tra**",
-    "*_pb2.py",
     "python/paddle/utils/gast/**",
     "python/paddle/fluid/tests/unittests/npu/**",
     "python/paddle/fluid/tests/unittests/mlu/**",

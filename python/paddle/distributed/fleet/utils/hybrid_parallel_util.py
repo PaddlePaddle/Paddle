@@ -14,15 +14,15 @@
 
 import paddle
 from paddle import framework
-
-# (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
-from paddle.framework import (
+from paddle.distributed.parallel import (
     _split_tensors,
     build_groups,
     in_dygraph_mode,
     sync_params_buffers,
 )
+
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.fluid import core
 
 from .log_util import logger
 
@@ -159,7 +159,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
                     v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
         else:
-            logger.error("it doesn't support data type {}".format(type(v)))
+            logger.warning("it doesn't support data type {}".format(type(v)))
 
     for k, v in kwargs.items():
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
@@ -171,7 +171,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
             kwargs[k] = v
         else:
-            logger.error("it doesn't support data type {}".format(type(v)))
+            logger.warning("it doesn't support data type {}".format(type(v)))
     return inputs, kwargs
 
 

@@ -19,6 +19,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#if defined(PADDLE_WITH_CUDA)
+#include <cuda_runtime.h>
+#endif
+
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -37,7 +41,7 @@ TEST(PD_Config, gpu_interface) {
   PD_ConfigSetModel(config, prog_file.c_str(), param_file.c_str());
   PD_ConfigSetOptimCacheDir(config, opt_cache_dir.c_str());
 
-  PD_ConfigEnableUseGpu(config, 100, 0);
+  PD_ConfigEnableUseGpu(config, 100, 0, 0);
   bool use_gpu = PD_ConfigUseGpu(config);
   EXPECT_TRUE(use_gpu);
   int init_size = PD_ConfigMemoryPoolInitSizeMb(config);
@@ -84,6 +88,14 @@ TEST(PD_Config, gpu_interface) {
   bool thread_local_thread = PD_ConfigThreadLocalStreamEnabled(config);
   EXPECT_TRUE(thread_local_thread);
 
+#if defined(PADDLE_WITH_CUDA)
+  {
+    cudaStream_t external_stream;
+    cudaStreamCreate(&external_stream);
+    PD_ConfigSetExecStream(config, external_stream);
+  }
+#endif
+
   PD_ConfigDisableGpu(config);
   PD_ConfigDestroy(config);
 }
@@ -104,7 +116,7 @@ TEST(PD_Config, use_gpu) {
   const char* model_dir_ = PD_ConfigGetModelDir(config);
   LOG(INFO) << model_dir_;
 
-  PD_ConfigEnableUseGpu(config, 100, 0);
+  PD_ConfigEnableUseGpu(config, 100, 0, 0);
   bool use_gpu = PD_ConfigUseGpu(config);
   EXPECT_TRUE(use_gpu);
   int device_id = PD_ConfigGpuDeviceId(config);
@@ -142,7 +154,7 @@ TEST(PD_Config, use_gpu) {
 TEST(PD_Config, trt_int8) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   PD_Config* config = PD_ConfigCreate();
-  PD_ConfigEnableUseGpu(config, 100, 0);
+  PD_ConfigEnableUseGpu(config, 100, 0, 0);
   PD_ConfigEnableTensorRtEngine(
       config, 1 << 20, 1, 3, PD_PRECISION_INT8, FALSE, TRUE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);
@@ -153,7 +165,7 @@ TEST(PD_Config, trt_int8) {
 TEST(PD_Config, trt_fp16) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   PD_Config* config = PD_ConfigCreate();
-  PD_ConfigEnableUseGpu(config, 100, 0);
+  PD_ConfigEnableUseGpu(config, 100, 0, 0);
   PD_ConfigEnableTensorRtEngine(
       config, 1 << 20, 1, 3, PD_PRECISION_HALF, FALSE, FALSE);
   bool trt_enable = PD_ConfigTensorRtEngineEnabled(config);

@@ -44,7 +44,7 @@ class Stream {
   using Callback = std::function<void()>;
 
   Stream() = default;
-  // For compatiable
+  // For compatible
   Stream(const Place& place, stream_t stream);
   ~Stream();
   const stream_t& raw_stream() const;

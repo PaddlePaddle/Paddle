@@ -291,6 +291,8 @@ PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(sqrt_double_grad,
                                           SqrtDoubleGradKernel)
 PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(rsqrt_double_grad,
                                           RsqrtDoubleGradKernel)
+PD_REGISTER_ACTIVATION_DOUBLE_GRAD_KERNEL(softplus_double_grad,
+                                          SoftplusDoubleGradKernel)
 
 PD_REGISTER_KERNEL(tanh_triple_grad,
                    CPU,

@@ -215,11 +215,7 @@ class TestASPStaticOptimize(unittest.TestCase):
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with fluid.program_guard(self.main_program, self.startup_program):
-                self.optimizer = (
-                    fluid.contrib.mixed_precision.decorator.decorate(
-                        self.optimizer
-                    )
-                )
+                self.optimizer = paddle.static.amp.decorate(self.optimizer)
                 self.optimizer = paddle.incubate.asp.decorate(self.optimizer)
                 self.optimizer.minimize(self.loss, self.startup_program)
 

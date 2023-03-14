@@ -106,18 +106,23 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
 
     auto *x_data = x->data<Tx>();
     auto x_numel = x->numel();
+
     if (maxlen < 0) {
+      if (x_numel == 0) {
+        maxlen = 0;
+      } else {
 #if defined(__NVCC__) || defined(__HIPCC__)
-      VLOG(10)
-          << "SequenceMaskOp on GPU may be slow when maxlen is not provided.";
-      maxlen = static_cast<int>(
-          thrust::reduce(thrust::device_pointer_cast(x_data),
-                         thrust::device_pointer_cast(x_data) + x_numel,
-                         static_cast<Tx>(0),
-                         thrust::maximum<Tx>()));
+        VLOG(10)
+            << "SequenceMaskOp on GPU may be slow when maxlen is not provided.";
+        maxlen = static_cast<int>(
+            thrust::reduce(thrust::device_pointer_cast(x_data),
+                           thrust::device_pointer_cast(x_data) + x_numel,
+                           static_cast<Tx>(0),
+                           thrust::maximum<Tx>()));
 #else
-      maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
+        maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
 #endif
+      }
       auto y_dim = phi::vectorize<int>(x->dims());
       y_dim.push_back(maxlen);
       y->Resize(phi::make_ddim(y_dim));

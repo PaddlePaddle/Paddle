@@ -166,6 +166,7 @@ class TestDygraphTripleGrad(TestCase):
     @dygraph_guard
     def func_example_with_gradient_and_create_graph(self):
         x = random_var(self.shape)
+        x.retain_grads()
         x_np = x.numpy()
         x.stop_gradient = False
 
@@ -222,10 +223,8 @@ class TestDygraphTripleGrad(TestCase):
         np.testing.assert_allclose(dddx_grad_actual, dddx_expected, rtol=1e-05)
 
     def test_all_cases(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.func_exception()
         self.func_example_with_gradient_and_create_graph()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 class TestDygraphTripleGradBradcastCase(TestCase):
@@ -259,6 +258,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
     @dygraph_guard
     def func_example_with_gradient_and_create_graph(self):
         x = random_var(self.x_shape)
+        x.retain_grads()
         x_np = x.numpy()
         x.stop_gradient = False
 
@@ -316,9 +316,7 @@ class TestDygraphTripleGradBradcastCase(TestCase):
         np.testing.assert_allclose(dddx_grad_actual, dddx_expected, rtol=1e-05)
 
     def test_all_cases(self):
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         self.func_example_with_gradient_and_create_graph()
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
 
 # d_ddout is none, dtype is float32

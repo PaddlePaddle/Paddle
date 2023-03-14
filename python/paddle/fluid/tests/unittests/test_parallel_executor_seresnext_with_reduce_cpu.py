@@ -49,9 +49,9 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
         )
 
         for loss in zip(all_reduce_first_loss, reduce_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-5)
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=loss[0] * delta2)
+            self.assertAlmostEqual(loss[0], loss[1], delta=loss[0] * delta2)
 
         if not use_device:
             return
@@ -87,19 +87,19 @@ class TestResnetWithReduceBase(TestParallelExecutorBase):
         )
 
         for loss in zip(all_reduce_first_loss, all_reduce_first_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-5)
         for loss in zip(all_reduce_last_loss, all_reduce_last_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=loss[0] * delta2)
+            self.assertAlmostEqual(loss[0], loss[1], delta=loss[0] * delta2)
 
         for loss in zip(reduce_first_loss, reduce_first_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-5)
         for loss in zip(reduce_last_loss, reduce_last_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=loss[0] * delta2)
+            self.assertAlmostEqual(loss[0], loss[1], delta=loss[0] * delta2)
 
         for loss in zip(all_reduce_first_loss_seq, reduce_first_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-5)
+            self.assertAlmostEqual(loss[0], loss[1], delta=1e-5)
         for loss in zip(all_reduce_last_loss_seq, reduce_last_loss_seq):
-            self.assertAlmostEquals(loss[0], loss[1], delta=loss[0] * delta2)
+            self.assertAlmostEqual(loss[0], loss[1], delta=loss[0] * delta2)
 
 
 class TestResnetWithReduceCPU(TestResnetWithReduceBase):

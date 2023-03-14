@@ -28,6 +28,7 @@ namespace cub = hipcub;
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
@@ -141,10 +142,17 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        bool descending,
                        DenseTensor* in_grad) {
   dev_ctx.template Alloc<T>(in_grad);
+  phi::funcs::set_constant(dev_ctx, in_grad, 0.0);
   if (out_grad.numel() == 0) return;
   auto in_dims = in_grad->dims();
+  auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   int64_t size = in_grad->numel();
+
+  if (rank == 0) {
+    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, in_grad);
+    return;
+  }
 
   // Parallel acceleration when the input size is equal to the length of the
   // ‘axis’ dimension.

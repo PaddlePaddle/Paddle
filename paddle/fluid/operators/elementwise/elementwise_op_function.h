@@ -24,11 +24,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
 

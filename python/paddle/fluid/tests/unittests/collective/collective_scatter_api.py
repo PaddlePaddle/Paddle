@@ -27,11 +27,10 @@ class TestCollectiveScatterAPI(TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(
+            tindata = paddle.static.data(
                 name="tindata",
                 shape=[10, 1000],
                 dtype='float32',
-                append_batch_size=False,
             )
             toutdata = layers.fill_constant(
                 shape=[5, 1000], dtype='float32', value=1.0

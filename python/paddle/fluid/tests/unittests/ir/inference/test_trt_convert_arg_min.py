@@ -59,6 +59,7 @@ class TrtConvertArgMinTest(TrtLayerAutoScanTest):
                                     "flatten": flatten,
                                     "dtype": dtype,
                                 },
+                                "outputs_dtype": {"arg_min_out": np.int32},
                             }
                         ]
                         ops = self.generate_op_config(ops_config)

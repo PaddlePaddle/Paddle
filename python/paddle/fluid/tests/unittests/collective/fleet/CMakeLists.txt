@@ -173,8 +173,13 @@ if((WITH_GPU
     OR WITH_ASCEND_CL
    )
    AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_fleet_graph_executor MODULES test_fleet_graph_executor ENVS
+  bash_test_modules(
+    test_fleet_graph_executor
+    START_BASH
+    ../../dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)
@@ -907,4 +912,16 @@ if((WITH_GPU) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_dygraph_save_for_auto_infer
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
+endif()
+if(WITH_GPU)
+  bash_test_modules(
+    test_fused_attention_pass_with_mp
+    START_BASH
+    test_fused_attention_pass_with_mp.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21400;http_proxy=;https_proxy=")
+  set_tests_properties(test_fused_attention_pass_with_mp PROPERTIES TIMEOUT
+                                                                    "120")
 endif()

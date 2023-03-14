@@ -23,11 +23,6 @@ if __name__ == "__main__":
     empty_files = [os.path.join(pybind_dir, "eager_legacy_op_function.cc")]
     empty_files.append(os.path.join(pybind_dir, "eager_op_function.cc"))
 
-    for i in range(split_count):
-        empty_files.append(
-            os.path.join(pybind_dir, "op_function" + str(i + 1) + ".cc")
-        )
-
     for path in empty_files:
         if not os.path.exists(path):
             open(path, 'a').close()

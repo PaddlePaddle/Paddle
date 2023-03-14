@@ -16,9 +16,7 @@ import warnings
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-import paddle.fluid.layer_helper as layer_helper
+import paddle.framework as framework
 
 
 class Group:
@@ -239,7 +237,7 @@ def _sync_calc_stream(tensor):
         return paddle._legacy_C_ops.c_sync_calc_stream(tensor, tensor)
     else:
         op_type = 'c_sync_calc_stream'
-        helper = layer_helper.LayerHelper(op_type, **locals())
+        helper = framework.LayerHelper(op_type, **locals())
         helper.append_op(
             type=op_type,
             inputs={'X': [tensor]},
@@ -254,7 +252,7 @@ def _sync_comm_stream(tensor, ring_id=0):
         )
     else:
         op_type = 'c_sync_comm_stream'
-        helper = layer_helper.LayerHelper(op_type, **locals())
+        helper = framework.LayerHelper(op_type, **locals())
         helper.append_op(
             type=op_type,
             inputs={'X': [tensor]},
@@ -325,7 +323,7 @@ def barrier(group=None):
     if framework.in_dygraph_mode():
         group = _get_global_group() if group is None else group
         place = framework._current_expected_place()
-        if isinstance(place, core.CPUPlace):
+        if isinstance(place, framework.CPUPlace):
             task = group.process_group.barrier()
         else:
             device_id = place.get_device_id()
@@ -344,7 +342,7 @@ def barrier(group=None):
         op_type = 'barrier'
         if not isinstance(ring_id, int):
             raise ValueError("The type of 'group' for barrier must be int.")
-        helper = layer_helper.LayerHelper(op_type, **locals())
+        helper = framework.LayerHelper(op_type, **locals())
         helper.append_op(
             type=op_type,
             inputs={'X': [barrier_tensor]},

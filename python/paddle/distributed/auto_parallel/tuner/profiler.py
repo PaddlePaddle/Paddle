@@ -28,7 +28,8 @@ from paddle.distributed.auto_parallel.process_group import (
     new_process_group,
 )
 from paddle.distributed.collective import _get_global_env
-from paddle.fluid.framework import Operator, Program, _current_expected_place
+from paddle.framework import Program, _current_expected_place
+from paddle.static import Operator
 
 paddle.enable_static()
 
@@ -72,7 +73,7 @@ def parse_args():
         "--ctx_filename",
         type=str,
         required=True,
-        help="the filename to the profile context file saved by optimizaiton tuner",
+        help="the filename to the profile context file saved by optimization tuner",
     )
 
     args = parser.parse_args()

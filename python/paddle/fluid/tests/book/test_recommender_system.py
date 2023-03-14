@@ -40,7 +40,7 @@ def get_usr_combined_features():
 
     USR_DICT_SIZE = paddle.dataset.movielens.max_user_id() + 1
 
-    uid = layers.data(name='user_id', shape=[1], dtype='int64')
+    uid = paddle.static.data(name='user_id', shape=[-1, 1], dtype='int64')
 
     usr_emb = layers.embedding(
         input=uid,
@@ -54,7 +54,9 @@ def get_usr_combined_features():
 
     USR_GENDER_DICT_SIZE = 2
 
-    usr_gender_id = layers.data(name='gender_id', shape=[1], dtype='int64')
+    usr_gender_id = paddle.static.data(
+        name='gender_id', shape=[-1, 1], dtype='int64'
+    )
 
     usr_gender_emb = layers.embedding(
         input=usr_gender_id,
@@ -66,7 +68,7 @@ def get_usr_combined_features():
     usr_gender_fc = paddle.static.nn.fc(x=usr_gender_emb, size=16)
 
     USR_AGE_DICT_SIZE = len(paddle.dataset.movielens.age_table)
-    usr_age_id = layers.data(name='age_id', shape=[1], dtype="int64")
+    usr_age_id = paddle.static.data(name='age_id', shape=[-1, 1], dtype="int64")
 
     usr_age_emb = layers.embedding(
         input=usr_age_id,
@@ -78,7 +80,7 @@ def get_usr_combined_features():
     usr_age_fc = paddle.static.nn.fc(x=usr_age_emb, size=16)
 
     USR_JOB_DICT_SIZE = paddle.dataset.movielens.max_job_id() + 1
-    usr_job_id = layers.data(name='job_id', shape=[1], dtype="int64")
+    usr_job_id = paddle.static.data(name='job_id', shape=[-1, 1], dtype="int64")
 
     usr_job_emb = layers.embedding(
         input=usr_job_id,
@@ -89,8 +91,8 @@ def get_usr_combined_features():
 
     usr_job_fc = paddle.static.nn.fc(x=usr_job_emb, size=16)
 
-    concat_embed = layers.concat(
-        input=[usr_fc, usr_gender_fc, usr_age_fc, usr_job_fc], axis=1
+    concat_embed = paddle.concat(
+        [usr_fc, usr_gender_fc, usr_age_fc, usr_job_fc], axis=1
     )
 
     usr_combined_features = paddle.static.nn.fc(
@@ -104,7 +106,7 @@ def get_mov_combined_features():
 
     MOV_DICT_SIZE = paddle.dataset.movielens.max_movie_id() + 1
 
-    mov_id = layers.data(name='movie_id', shape=[1], dtype='int64')
+    mov_id = paddle.static.data(name='movie_id', shape=[-1, 1], dtype='int64')
 
     mov_emb = layers.embedding(
         input=mov_id,
@@ -118,22 +120,22 @@ def get_mov_combined_features():
 
     CATEGORY_DICT_SIZE = len(paddle.dataset.movielens.movie_categories())
 
-    category_id = layers.data(
-        name='category_id', shape=[1], dtype='int64', lod_level=1
+    category_id = paddle.static.data(
+        name='category_id', shape=[-1, 1], dtype='int64', lod_level=1
     )
 
     mov_categories_emb = layers.embedding(
         input=category_id, size=[CATEGORY_DICT_SIZE, 32], is_sparse=IS_SPARSE
     )
 
-    mov_categories_hidden = layers.sequence_pool(
+    mov_categories_hidden = paddle.static.nn.sequence_lod.sequence_pool(
         input=mov_categories_emb, pool_type="sum"
     )
 
     MOV_TITLE_DICT_SIZE = len(paddle.dataset.movielens.get_movie_title_dict())
 
-    mov_title_id = layers.data(
-        name='movie_title', shape=[1], dtype='int64', lod_level=1
+    mov_title_id = paddle.static.data(
+        name='movie_title', shape=[-1, 1], dtype='int64', lod_level=1
     )
 
     mov_title_emb = layers.embedding(
@@ -148,8 +150,8 @@ def get_mov_combined_features():
         pool_type="sum",
     )
 
-    concat_embed = layers.concat(
-        input=[mov_fc, mov_categories_hidden, mov_title_conv], axis=1
+    concat_embed = paddle.concat(
+        [mov_fc, mov_categories_hidden, mov_title_conv], axis=1
     )
 
     # FIXME(dzh) : need tanh operator
@@ -170,7 +172,7 @@ def model():
     )
     scale_infer = paddle.scale(x=inference, scale=5.0)
 
-    label = layers.data(name='score', shape=[1], dtype='float32')
+    label = paddle.static.data(name='score', shape=[-1, 1], dtype='float32')
     square_cost = paddle.nn.functional.square_error_cost(
         input=scale_infer, label=label
     )
@@ -277,7 +279,7 @@ def train(use_cuda, save_dirname, is_local=True):
         current_endpoint = os.getenv("POD_IP") + ":" + port
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
         training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
-        t = fluid.DistributeTranspiler()
+        t = paddle.distributed.transpiler.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
             pserver_prog = t.get_pserver_program(current_endpoint)

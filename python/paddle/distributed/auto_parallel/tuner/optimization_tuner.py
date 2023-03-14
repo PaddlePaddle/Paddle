@@ -41,8 +41,8 @@ from paddle.distributed.auto_parallel.utils import (
     set_grad_var_shape,
 )
 from paddle.distributed.passes import PassContext, new_pass
-from paddle.fluid import program_guard, unique_name
-from paddle.fluid.backward import append_backward
+from paddle.static import append_backward, program_guard
+from paddle.utils import unique_name
 
 from ..utils import get_logger
 from .algorithms import new_algorithm
@@ -611,7 +611,7 @@ The best trial is: [{}], whose configuration is following:
 
     def tune(self):
         """
-        Performs the search for best hyperparameter configuations
+        Performs the search for best hyperparameter configurations
         for the selected optimization pass(es).
         """
 

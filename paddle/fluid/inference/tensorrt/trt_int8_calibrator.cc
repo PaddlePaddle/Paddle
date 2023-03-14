@@ -32,7 +32,7 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     : batch_size_(batch_size), engine_name_(engine_name) {
   int i = 0;
   VLOG(4) << "Init a new calibrator: " << engine_name_;
-  for (const auto it : buffers) {
+  for (const auto& it : buffers) {
     phi::DenseTensor temp_tensor;
     std::string input_name = it.first;
     int data_size = it.second;
