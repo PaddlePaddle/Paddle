@@ -18,6 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
+import paddle.fluid.core as core
 
 
 def output_hist(out):
@@ -96,6 +97,28 @@ class TestRandomValue(unittest.TestCase):
         np.testing.assert_array_equal(y[16, 500, 500:510], expect)
 
         paddle.enable_static()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
+class TestBernoulliFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "bernoulli"
+        self.python_api = paddle.bernoulli
+        self.dtype = np.float16
+        self.__class__.op_type = self.op_type
+        x = np.random.uniform(size=(1000, 784)).astype(np.float32)
+        out = np.zeros((1000, 784)).astype(np.float32)
+        self.inputs = {"X": x.astype(self.dtype)}
+        self.attrs = {}
+        self.outputs = {"Out": out}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3, check_eager=False)
 
 
 if __name__ == "__main__":
