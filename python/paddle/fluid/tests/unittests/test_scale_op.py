@@ -174,7 +174,6 @@ class TestScaleBF16Op(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            numeric_grad_delta=0.8,
             check_eager=True,
         )
 

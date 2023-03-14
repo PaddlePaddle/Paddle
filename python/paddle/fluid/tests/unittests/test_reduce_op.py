@@ -115,7 +115,7 @@ class TestSumOp_bf16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True, atol=0.1)
+        self.check_output_with_place(place, check_eager=True, atol=0.02)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
