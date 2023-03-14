@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
 
@@ -404,6 +405,102 @@ class TestAddMMAPI(unittest.TestCase):
         )
 
         paddle.enable_static()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
+class TestAddMMFP16OP(OpTest):
+    # test basic
+    def setUp(self):
+        self.op_type = "addmm"
+        self.python_api = paddle.addmm
+        self.dtype = np.float16
+        self.__class__.op_type = self.op_type
+        input = np.random.random((100, 1)).astype(np.float32)
+        x = np.random.random((100, 10)).astype(np.float32)
+        y = np.random.random((10, 20)).astype(np.float32)
+        out = input + np.dot(x, y)
+        self.inputs = {
+            'Input': input.astype(self.dtype),
+            'X': x.astype(self.dtype),
+            'Y': y.astype(self.dtype),
+        }
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad_normal(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Input', 'X', 'Y'], 'Out', max_relative_error=1e-2
+        )
+
+    def test_check_grad_x(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', max_relative_error=1e-2)
+
+    def test_check_grad_y(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Y'], 'Out', max_relative_error=1e-2)
+
+    def test_check_grad_input(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Input'], 'Out', max_relative_error=1e-2
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
+class TestAddMMBF16(OpTest):
+    # test basic
+    def setUp(self):
+        self.op_type = "addmm"
+        self.python_api = paddle.addmm
+        self.dtype = np.uint16
+        self.__class__.op_type = self.op_type
+        input = np.random.random((100, 1)).astype(np.float32)
+        x = np.random.random((100, 10)).astype(np.float32)
+        y = np.random.random((10, 20)).astype(np.float32)
+        out = input + np.dot(x, y)
+        self.inputs = {
+            'Input': convert_float_to_uint16(input),
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad_normal(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Input', 'X', 'Y'], 'Out', max_relative_error=1e-2
+        )
+
+    def test_check_grad_x(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', max_relative_error=1e-2)
+
+    def test_check_grad_y(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Y'], 'Out', max_relative_error=1e-2)
+
+    def test_check_grad_input(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Input'], 'Out', max_relative_error=1e-2
+        )
 
 
 if __name__ == "__main__":
