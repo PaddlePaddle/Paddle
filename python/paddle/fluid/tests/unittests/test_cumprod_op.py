@@ -16,7 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -129,6 +129,52 @@ class TestCumprod(OpTest):
                     )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestCumprodFP16Op(OpTest):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = np.random.random(self.shape).astype(np.float32) + 0.5
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        self.out = np.cumprod(self.x, axis=dim).astype('float64')
+        self.inputs = {'X': self.x.astype(self.dtype)}
+        self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestCumprodBF16Op(OpTest):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = np.random.random(self.shape).astype(np.float32) + 0.5
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        self.out = np.cumprod(self.x, axis=dim)
+        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.attrs = {'dim': dim}
+
+
 # test float32 case.
 class TestCumprod_float32(TestCumprod):
     def init_dtype(self):
@@ -184,6 +230,7 @@ class TestCumprodAPI(unittest.TestCase):
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
+
             out = paddle.cumprod(x, 1)
             out_ref = np.cumprod(self.x, 1)
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
