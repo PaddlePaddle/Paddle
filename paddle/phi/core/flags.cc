@@ -104,6 +104,17 @@ PADDLE_DEFINE_EXPORTED_int32(
     0,
     "Setting the check and print level when FLAGS_check_nan_inf is set.");
 
+
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_divide_grad_use_xy,
+    false,
+    "Setting the check and print level when FLAGS_check_nan_inf is set.");
+
+PADDLE_DEFINE_EXPORTED_bool(
+    enable_divide_forward_promot,
+    false,
+    "Setting the check and print level when FLAGS_check_nan_inf is set.");
+
 /**
  * Operator related FLAG
  * Name: FLAGS_check_nan_inf

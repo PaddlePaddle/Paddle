@@ -23,6 +23,8 @@
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
 
+DECLARE_bool(enable_divide_grad_use_xy);
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -36,16 +38,34 @@ void DivideGradKernel(const Context& dev_ctx,
                       DenseTensor* dy) {
   const auto place = dev_ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
-    std::vector<const DenseTensor*> ins = {&dout, &out, &y};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx,
-        place,
-        axis,
-        ins,
-        dout,
-        dx,
-        dy,
-        funcs::DivGradXYFunctor<T, T>());
+    if ( FLAGS_enable_divide_grad_use_xy )
+    {
+      VLOG(3) << "use new cal";
+      std::vector<const DenseTensor*> ins = {&dout, &x, &y};
+      using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+      GetGradXAndYOut<ElementwiseType::kTernary, T>(
+          dev_ctx,
+          place,
+          axis,
+          ins,
+          dout,
+          dx,
+          dy,
+          funcs::DivGradXYNewFunctor<T, T, AccT>());
+    }else
+    {
+      VLOG(3) << "use old cal div grad";
+      std::vector<const DenseTensor*> ins = {&dout, &out, &y};
+      GetGradXAndYOut<ElementwiseType::kTernary, T>(
+          dev_ctx,
+          place,
+          axis,
+          ins,
+          dout,
+          dx,
+          dy,
+          funcs::DivGradXYFunctor<T, T>());
+    }
   } else if (dx != nullptr && dy == nullptr) {
     std::vector<const DenseTensor*> ins = {&dout, &y};
     GetGradXOrYOut<ElementwiseType::kBinary, T>(

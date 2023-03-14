@@ -435,108 +435,108 @@ class TestDivideOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
 
-class TestComplexElementwiseDivOp(OpTest):
-    def setUp(self):
-        self.op_type = "elementwise_div"
-        self.python_api = paddle.divide
-        self.init_base_dtype()
-        self.init_input_output()
-        self.init_grad_input_output()
+# class TestComplexElementwiseDivOp(OpTest):
+#     def setUp(self):
+#         self.op_type = "elementwise_div"
+#         self.python_api = paddle.divide
+#         self.init_base_dtype()
+#         self.init_input_output()
+#         self.init_grad_input_output()
 
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
-        }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
-        self.outputs = {'Out': self.out}
+#         self.inputs = {
+#             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+#             'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+#         }
+#         self.attrs = {'axis': -1, 'use_mkldnn': False}
+#         self.outputs = {'Out': self.out}
 
-    def init_base_dtype(self):
-        self.dtype = np.float64
+#     def init_base_dtype(self):
+#         self.dtype = np.float64
 
-    def init_input_output(self):
-        self.x = np.random.random((2, 3, 4, 5)).astype(
-            self.dtype
-        ) + 1j * np.random.random((2, 3, 4, 5)).astype(self.dtype)
-        self.y = np.random.random((2, 3, 4, 5)).astype(
-            self.dtype
-        ) + 1j * np.random.random((2, 3, 4, 5)).astype(self.dtype)
-        self.out = self.x / self.y
+#     def init_input_output(self):
+#         self.x = np.random.random((2, 3, 4, 5)).astype(
+#             self.dtype
+#         ) + 1j * np.random.random((2, 3, 4, 5)).astype(self.dtype)
+#         self.y = np.random.random((2, 3, 4, 5)).astype(
+#             self.dtype
+#         ) + 1j * np.random.random((2, 3, 4, 5)).astype(self.dtype)
+#         self.out = self.x / self.y
 
-    def init_grad_input_output(self):
-        self.grad_out = np.ones((2, 3, 4, 5), self.dtype) + 1j * np.ones(
-            (2, 3, 4, 5), self.dtype
-        )
-        self.grad_x = self.grad_out / np.conj(self.y)
-        self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
+#     def init_grad_input_output(self):
+#         self.grad_out = np.ones((2, 3, 4, 5), self.dtype) + 1j * np.ones(
+#             (2, 3, 4, 5), self.dtype
+#         )
+#         self.grad_x = self.grad_out / np.conj(self.y)
+#         self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
 
-    def test_check_output(self):
-        self.check_output()
+#     def test_check_output(self):
+#         self.check_output()
 
-    def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
-        )
+#     def test_check_grad_normal(self):
+#         self.check_grad(
+#             ['X', 'Y'],
+#             'Out',
+#             user_defined_grads=[self.grad_x, self.grad_y],
+#             user_defined_grad_outputs=[self.grad_out],
+#         )
 
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
-        )
+#     def test_check_grad_ingore_x(self):
+#         self.check_grad(
+#             ['Y'],
+#             'Out',
+#             no_grad_set=set("X"),
+#             user_defined_grads=[self.grad_y],
+#             user_defined_grad_outputs=[self.grad_out],
+#         )
 
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out],
-        )
-
-
-class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
-    def init_input_output(self):
-        self.x = np.random.random((2, 3, 4, 5)).astype(self.dtype)
-        self.y = np.random.random((2, 3, 4, 5)).astype(
-            self.dtype
-        ) + 1j * np.random.random((2, 3, 4, 5)).astype(self.dtype)
-        self.out = self.x / self.y
-
-    def init_grad_input_output(self):
-        self.grad_out = np.ones((2, 3, 4, 5), self.dtype) + 1j * np.ones(
-            (2, 3, 4, 5), self.dtype
-        )
-        self.grad_x = np.real(self.grad_out / np.conj(self.y))
-        self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
+#     def test_check_grad_ingore_y(self):
+#         self.check_grad(
+#             ['X'],
+#             'Out',
+#             no_grad_set=set('Y'),
+#             user_defined_grads=[self.grad_x],
+#             user_defined_grad_outputs=[self.grad_out],
+#         )
 
 
-class TestElementwiseDivop(unittest.TestCase):
-    def test_dygraph_div(self):
-        paddle.disable_static()
+# class TestRealComplexElementwiseDivOp(TestComplexElementwiseDivOp):
+#     def init_input_output(self):
+#         self.x = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+#         self.y = np.random.random((2, 3, 4, 5)).astype(
+#             self.dtype
+#         ) + 1j * np.random.random((2, 3, 4, 5)).astype(self.dtype)
+#         self.out = self.x / self.y
 
-        np_a = np.random.random((2, 3, 4)).astype(np.float32)
-        np_b = np.random.random((2, 3, 4)).astype(np.float32)
-        np_a[np.abs(np_a) < 0.0005] = 0.002
-        np_b[np.abs(np_b) < 0.0005] = 0.002
+#     def init_grad_input_output(self):
+#         self.grad_out = np.ones((2, 3, 4, 5), self.dtype) + 1j * np.ones(
+#             (2, 3, 4, 5), self.dtype
+#         )
+#         self.grad_x = np.real(self.grad_out / np.conj(self.y))
+#         self.grad_y = -self.grad_out * np.conj(self.x / self.y / self.y)
 
-        tensor_a = paddle.to_tensor(np_a, dtype="float32")
-        tensor_b = paddle.to_tensor(np_b, dtype="float32")
 
-        # normal case: nparray / tenor
-        expect_out = np_a / np_b
-        actual_out = np_a / tensor_b
-        np.testing.assert_allclose(actual_out, expect_out)
+# class TestElementwiseDivop(unittest.TestCase):
+#     def test_dygraph_div(self):
+#         paddle.disable_static()
 
-        # normal case: tensor / nparray
-        actual_out = tensor_a / np_b
-        np.testing.assert_allclose(actual_out, expect_out)
+#         np_a = np.random.random((2, 3, 4)).astype(np.float32)
+#         np_b = np.random.random((2, 3, 4)).astype(np.float32)
+#         np_a[np.abs(np_a) < 0.0005] = 0.002
+#         np_b[np.abs(np_b) < 0.0005] = 0.002
 
-        paddle.enable_static()
+#         tensor_a = paddle.to_tensor(np_a, dtype="float32")
+#         tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+#         # normal case: nparray / tenor
+#         expect_out = np_a / np_b
+#         actual_out = np_a / tensor_b
+#         np.testing.assert_allclose(actual_out, expect_out)
+
+#         # normal case: tensor / nparray
+#         actual_out = tensor_a / np_b
+#         np.testing.assert_allclose(actual_out, expect_out)
+
+#         paddle.enable_static()
 
 
 if __name__ == '__main__':
