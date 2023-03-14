@@ -4840,13 +4840,19 @@ class PipelineOptimizer(object):
             assert device, "Please put you program within device_guard scope."
             for i in range(offset):
                 block.ops[idx + i]._set_attr(self._op_device_key, device)
+
+        elif self._is_optimize_op(op) and self._is_gradient_clip_op(op) and op.type == "cast":
+            # For fp16-->fp32 cast added by AMP in grad clip phase
+            grad_name = op.desc.input('X')
+            assert len(grad_name) == 1
+            param_name = self._strip_grad_suffix(grad_name[0])
+            prev_op = self._find_prev_op(idx, op.desc.input("X")[0])
+            op._set_attr(self._op_device_key, prev_op.attr(self._op_device_key))
         elif self._is_optimize_op(op) and op.type == "cast":
             # For fp16-->fp32 cast added by AMP
             grad_name = op.output('Out')
             assert len(grad_name) == 1
             param_name = self._strip_grad_suffix(grad_name[0])
-            print(f"grad_name={grad_name[0]}, param_name={param_name}")
-            print(self._param_device_map)
             device = self._param_device_map[param_name]
             op._set_attr(self._op_device_key, device)
         elif self._is_gradient_clip_op(op) or self._is_regularization_op(op):
@@ -4896,8 +4902,6 @@ class PipelineOptimizer(object):
         not that attribute set.
         """
         for idx, op in enumerate(list(block.ops)):
-            print(idx, op)
-            #assert False
             if (op.type == "create_py_reader" or op.type == "read"
                     or op.type == "create_double_buffer_reader"):
                 # Copy read related ops to all section to make them exit
@@ -4908,7 +4912,6 @@ class PipelineOptimizer(object):
                 op._set_attr(self._op_device_key, f"{self._device}:all")
                 continue
             # op_device attribute has been set
-            print(f"op type{op.type}, {self._get_op_device_attr(op)}")
             if self._get_op_device_attr(op): continue
             self._add_op_device_attr_for_op(op, idx, block)
 

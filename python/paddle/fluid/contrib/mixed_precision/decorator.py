@@ -229,8 +229,6 @@ class OptimizerWithMixedPrecision(object):
                             inputs={'X': [name]},
                             outputs={'Out': [tmp]})
 
-            print(f"tmp={tmp}, name={name}")
-            print("---------------------end _add_cast_ops_to_startup_program")
             block.append_op(type='cast',
                             inputs={'X': [tmp]},
                             outputs={'Out': [name]},

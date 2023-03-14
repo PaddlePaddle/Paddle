@@ -24,6 +24,7 @@ from .fp16_lists import AutoMixedPrecisionLists
 import collections
 import logging
 import numpy as np
+import struct
 
 __all__ = ["fp16_guard", "cast_model_to_fp16", "cast_parameters_to_fp16"]
 
@@ -38,6 +39,12 @@ _valid_types = [
 
 _fp16_guard_pattern = "__use_fp16__"
 
+def convert_float_to_uint16(in_list):
+    in_list = np.asarray(in_list)
+    out = np.vectorize(
+        lambda x: struct.unpack('<I', struct.pack('<f', x))[0] >> 16,
+        otypes=[np.uint16])(in_list.flat)
+    return np.reshape(out, in_list.shape)
 
 def _rename_arg(op, old_name, new_name):
     """
@@ -545,9 +552,11 @@ def cast_parameters_to_fp16(place, program, scope=None, to_fp16_var_names=None):
     for param in all_parameters:
         if param.name in fp16_var_names:
             _logger.debug("---- cast {} to fp16 dtype ----".format(param.name))
-            param_t = var_scope.find_var(param.name).get_tensor()
-            data = np.array(param_t)
-            param_t.set(np.float16(data), place)
+            if var_scope.find_var(param.name):
+                param_t = var_scope.find_var(param.name).get_tensor()
+                data = np.array(param_t)
+                #param_t.set(np.float16(data), place)
+                param_t.set(convert_float_to_uint16(data), place)
 
 
 def rewrite_program(main_prog, amp_lists):
