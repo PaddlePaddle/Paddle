@@ -90,4 +90,4 @@ class ErineSparseMask(SparseMask):
         mask = np.repeat(
             mask[None, :, :], [batch_size * self.num_heads], axis=0
         )
-        return mask
+        return paddle.to_tensor(mask)

@@ -216,7 +216,6 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
                                                 int dynload_flags) {
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
   // and /usr/local/lib path
-  std::cout << dso_path << std::endl;
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
   VLOG(3) << "Try to find library: " << dso_path
           << " from default system path.";
@@ -429,7 +428,6 @@ void* GetCusparseDsoHandle() {
   return GetDsoHandleFromSearchPath(
       FLAGS_cuda_dir, win_cusparse_lib, true, {cuda_lib_path});
 #else
-  std::cout << FLAGS_cuda_dir << std::endl;
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusparse.so");
 #endif
 }

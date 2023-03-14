@@ -34,6 +34,7 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
                                      const T* attn_mask,
                                      T* out_values,
                                      int M,
+                                     const int attn_mask_m,
                                      int total_row_num,
                                      int num_heads,
                                      int batch_nnz) {
@@ -52,17 +53,17 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     bool mask = false;
     int col_idx = static_cast<int>(x_cols[row_first + idx]);
-    T val = x_values[row_first + idx];
+    T val = x_values[row_first + idx] * 24;
     if (kp_mask != nullptr &&
         kp_mask[(cur_batch / num_heads) * M + col_idx] == 0) {
       mask = true;
     }
-    // if (attn_mask != nullptr && attn_mask[cur_row * M + col_idx] == 0) {
-    // if (attn_mask != nullptr && attn_mask[(cur_batch / num_heads) * M +
-    // col_idx] == 0) {
     if (attn_mask != nullptr) {
-      // mask = true;
-      val += attn_mask[(cur_batch / num_heads) * M + col_idx];
+      if (attn_mask_m == M) {
+        val += attn_mask[cur_row * M + col_idx];
+      } else {
+        val += attn_mask[(cur_batch / num_heads) * M + col_idx];
+      }
     }
 
     if (!mask) {
@@ -170,14 +171,16 @@ void FusedAttentionCsrKernel(
   }
 
   const auto attn_mask_ptr = attn_mask.get_ptr();
+  int attn_mask_m = 0;
   if (attn_mask_ptr) {
     PADDLE_ENFORCE_EQ(attn_mask_ptr->dims().size(),
                       2,
                       phi::errors::InvalidArgument(
                           "shape of 'attn_mask' must be [seq_len, seq_len]"));
-    PADDLE_ENFORCE_EQ(attn_mask_ptr->dims()[0],
-                      // M,
-                      q_dim[0],
+    attn_mask_m = attn_mask_ptr->dims()[0];
+    bool valid_mask_shape = attn_mask_m == q_dim[0] || attn_mask_m == M;
+    PADDLE_ENFORCE_EQ(valid_mask_shape,
+                      true,
                       phi::errors::InvalidArgument(
                           "shape of 'attn_mask' must be [seq_len, seq_len]"));
     PADDLE_ENFORCE_EQ(attn_mask_ptr->dims()[1],
@@ -192,7 +195,7 @@ void FusedAttentionCsrKernel(
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SDDMM(false,
                     true,
-                    static_cast<T>(1 / std::sqrt(N)),
+                    static_cast<T>(1 / (24 * std::sqrt(N))),
                     query,
                     key,
                     static_cast<T>(0),
@@ -212,6 +215,7 @@ void FusedAttentionCsrKernel(
       attn_mask_ptr ? attn_mask_ptr->data<T>() : nullptr,
       softmax->mutable_values()->data<T>(),
       M,
+      attn_mask_m,
       total_row_num,
       q_dim[1],
       batch_nnz);
