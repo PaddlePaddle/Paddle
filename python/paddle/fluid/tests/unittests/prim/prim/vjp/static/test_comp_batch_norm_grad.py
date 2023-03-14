@@ -15,13 +15,30 @@
 import unittest
 
 import numpy as np
-from utils import SUB_TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
 
 np.random.seed(2023)
+
+SUB_TOLERANCE = {
+    "float16": {
+        "forward": {"rtol": 1e-2, "atol": 1e-2},
+        "backward": {"rtol": 1e-2, "atol": 1e-2},
+        "prim_backward": {"rtol": 1e-2, "atol": 1e-2},
+    },
+    "float32": {
+        "forward": {"rtol": 1e-5, "atol": 1e-5},
+        "backward": {"rtol": 1e-5, "atol": 1e-5},
+        "prim_backward": {"rtol": 1e-5, "atol": 1e-5},
+    },
+    "float64": {
+        "forward": {"rtol": 1e-13, "atol": 1e-13},
+        "backward": {"rtol": 1e-13, "atol": 1e-13},
+        "prim_backward": {"rtol": 1e-13, "atol": 1e-13},
+    },
+}
 
 
 class Arg:
@@ -251,8 +268,8 @@ class TestCompositeBatchNorm(unittest.TestCase):
             atol=attrs.get_atol("backward"),
         )
 
-    def test_forward_prim_ad(self):
-        core._set_prim_all_enabled(True)
+    def test_backward_prim_static_vjp(self):
+        core._set_prim_backward_enabled(True)
         for i in self.training:
             for j in self.dtypes:
                 for m in self.momentum:
@@ -266,7 +283,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
                 attrs.set_shape(n)
                 attrs.set_use_global_stats(t)
                 self.compare_backward()
-        core._set_prim_all_enabled(False)
+        core._set_prim_backward_enabled(False)
 
 
 if __name__ == '__main__':
