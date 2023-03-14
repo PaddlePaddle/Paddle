@@ -40,9 +40,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
             "DGCOptimizer",
             "LocalSGDOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self.global_ring_id = 0
 
     def _set_basic_info(
@@ -65,6 +63,12 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
+            return False
+        if self.user_defined_strategy.tensor_parallel:
+            return False
+        if self.user_defined_strategy.sharding:
+            return False
+        if self.user_defined_strategy.amp:
             return False
 
         if self.without_graph_optimization:
