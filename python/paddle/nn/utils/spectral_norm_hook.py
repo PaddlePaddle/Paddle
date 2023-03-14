@@ -71,7 +71,8 @@ class SpectralNorm:
                             ),
                             axis=0,
                             epsilon=self.eps,
-                        ), v
+                        ),
+                        v,
                     )
 
                     paddle.assign(
@@ -79,7 +80,8 @@ class SpectralNorm:
                             paddle.matmul(weight_mat, v),
                             axis=0,
                             epsilon=self.eps,
-                        ), u
+                        ),
+                        u,
                     )
                 if self.n_power_iterations > 0:
                     u = u.clone()
