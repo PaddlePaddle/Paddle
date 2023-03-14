@@ -202,6 +202,50 @@ class TestPutAlongAxisAPICase3(TestPutAlongAxisAPI):
         pass
 
 
+
+from paddle.utils.cpp_extension import convert_float_to_uint16
+
+class TestPutAlongAxisFP16Op(OpTest):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "assign"
+        self.dtype = 'float16'
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type).astype(np.float16)
+        # numpy put_along_axis is an inplace opearion.
+        self.xnp_result = copy.deepcopy(self.xnp).astype(np.float16)
+        np.put_along_axis(self.xnp_result, self.index, self.value, self.axis)
+        self.target = self.xnp_result
+        broadcast_shape_list = list(self.x_shape)
+        broadcast_shape_list[self.axis] = 1
+        self.braodcast_shape = tuple(broadcast_shape_list)
+        self.index_broadcast = np.broadcast_to(self.index, self.braodcast_shape).astype(np.int16)
+        self.value_broadcast = np.broadcast_to(self.value, self.braodcast_shape).astype(np.float16)
+        self.inputs = {
+            'Input': convert_float_to_uint16(self.xnp),
+            'Index': self.index_broadcast,
+            'Value': convert_float_to_uint16(self.value_broadcast),
+        }
+        self.attrs = {'Axis': np.int16(self.axis), 'Reduce': self.reduce_op}
+        self.outputs = {'Result': convert_float_to_uint16(self.target)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["Input", "Value"], "Result")
+
+    def init_data(self):
+        self.x_type = "float16"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float16"
+        self.value = np.array([99]).astype(self.value_type)
+        self.index_type = "int16"
+        self.index = np.array([[[0]]]).astype(self.index_type)
+        self.axis = np.int16(1)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

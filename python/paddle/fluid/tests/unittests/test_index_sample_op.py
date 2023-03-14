@@ -19,6 +19,7 @@ from op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
+from op_test import OpTest, convert_float_to_uint16
 
 
 class TestIndexSampleOp(OpTest):
@@ -168,6 +169,50 @@ class TestIndexSampleDynamic(unittest.TestCase):
                 [[1.0, 2.0, 3.0], [6.0, 7.0, 8.0], [9.0, 9.0, 9.0]]
             )
             assert out_z1.numpy().all() == except_output.all()
+
+
+class TestIndexSampleFP16Op(OpTest):
+    def setUp(self):
+        self.op_type = "index_sample"
+        self.python_api = paddle.index_sample
+        self.config()
+        xnp = np.random.random(self.x_shape).astype(np.bfloat16)
+        indexnp = np.random.randint(
+            low=0, high=self.x_shape[1], size=self.index_shape
+        ).astype(np.int32)
+        self.inputs = {'X': xnp, 'Index': indexnp}
+        index_array = []
+        for i in range(self.index_shape[0]):
+            for j in indexnp[i]:
+                index_array.append(xnp[i, j])
+        index_array = np.array(index_array).astype(np.bfloat16)
+        out = np.reshape(index_array, self.index_shape)
+        self.outputs = {'Out': self.convert_bfloat16_to_uint16(out)}
+
+    def test_check_output(self):
+        self.check_output(atol=1e-3, check_dygraph=False)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', atol=1e-3, check_dygraph=False)
+
+    def config(self):
+        """
+        For multi-dimension input
+        """
+        self.x_shape = (10, 20)
+        self.index_shape = (10, 10)
+
+    def convert_bfloat16_to_uint16(bf16_array):
+        # Convert bfloat16 to float32
+        f32_array = bf16_array.astype(np.float32)
+        # Convert float32 to uint16 by bit-casting
+        return f32_array.view(np.uint16)
+
+    def convert_uint16_to_bfloat16(uint16_array):
+        # Convert uint16 to float32 by bit-casting
+        f32_array = uint16_array.view(np.float32)
+        # Convert float32 to bfloat16
+        return f32_array.astype(np.bfloat16)
 
 
 if __name__ == "__main__":

@@ -21,6 +21,12 @@
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/bfloat16.h"
+
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -82,4 +88,5 @@ PD_REGISTER_KERNEL(put_along_axis,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

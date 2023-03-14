@@ -1035,6 +1035,76 @@ class TestHardtanhAPI(unittest.TestCase):
                 F.hardtanh(x_fp16)
 
 
+class TestHardtanhOp(OpTest):
+    def setUp(self):
+        self.op_type = "hardtanh"
+        self.init_input_output()
+        self.attrs = {'min': self.min, 'max': self.max}
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': self.out}
+
+    def init_input_output(self):
+        self.x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
+        self.min = -1
+        self.max = 1
+        self.out = np.clip(self.x, self.min, self.max)
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestHardtanhFp16Op(OpTest):
+    def setUp(self):
+        self.op_type = "hardtanh"
+        self.init_input_output()
+        self.attrs = {'min': self.min, 'max': self.max}
+        self.inputs = {'X': self.x.astype(np.float16)}
+        self.outputs = {'Out': self.out.astype(np.float16)}
+
+    def init_input_output(self):
+        self.x = np.random.uniform(-1, 1, [10, 10]).astype(np.float16)
+        self.min = -1
+        self.max = 1
+        self.out = np.clip(self.x, self.min, self.max)
+
+    def test_check_output(self):
+        rtol = 1e-3 if self.dtype == np.float16 else 1e-4
+        self.check_output(rtol=rtol)
+
+    def test_check_grad_normal(self):
+        rtol = 1e-3 if self.dtype == np.float16 else 1e-4
+        self.check_grad(['X'], 'Out', rtol=rtol)
+
+
+class TestHardtanhBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "hardtanh"
+        self.init_input_output()
+        self.attrs = {'min': self.min, 'max': self.max}
+        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+
+    def init_input_output(self):
+        self.x = np.random.uniform(-1, 1, [10, 10]).astype(np.float32)
+        self.min = -1
+        self.max = 1
+        self.out = np.clip(self.x, self.min, self.max)
+
+    def test_check_output(self):
+        self.check_output(atol=0.0,rtol=0.8)
+
+    def test_check_grad_normal(self):
+        self.decr_ratio=0.8
+        self.check_grad(['X'], 'Out', atol=0.0,rtol=0.8)
+
+
+
+
+
+
 def ref_softshrink(x, threshold=0.5):
     out = np.copy(x)
     out = (out < -threshold) * (out + threshold) + (out > threshold) * (

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_uint16_to_float
 
 import paddle
 from paddle.fluid import Program
@@ -375,6 +375,111 @@ class TestIndexAddAPICase5(TestIndexAddAPI):
 #                 out = paddle.index_add(x, index, axis, add_value)
 
 #             self.assertRaises(ValueError, test_add_value_broadcast)
+
+
+class TestIndexAddFP16Op(OpTest):
+    def setUp(self):
+        self.python_api = raw_index_add
+        self.op_type = "index_add"
+        self.init_dtype_type()
+        index_np = np.random.randint(
+            low=0, high=self.x_shape[self.axis], size=self.index_size
+        )
+        x_np = np.random.random(self.x_shape).astype(self.x_type)
+        add_value_np = np.random.random(self.add_value_shape).astype(
+            self.x_type
+        )
+
+        self.inputs = {'X': x_np.astype(self.dtype), 'Index': index_np, 'AddValue': add_value_np.astype(self.dtype)}
+        self.attrs = {'axis': self.axis}
+        out = compute_index_add_ref(
+            self.axis,
+            self.x_shape,
+            x_np,
+            self.add_value_shape,
+            add_value_np,
+            self.index_size,
+            index_np,
+        ).astype(self.dtype)
+        self.outputs = {'Out': out}
+
+    def init_dtype_type(self):
+        self.dtype = np.float16
+        self.axis = 0
+        self.x_type = np.float16
+        self.index_type = np.int64
+        self.x_shape = (101, 3)
+        self.index_size = 3
+        self.add_value_shape = (3, 3)
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=False, atol=1e-2)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'AddValue'], 'Out', check_dygraph=False)
+
+
+
+class TestIndexAddBP16Op(OpTest):
+    def setUp(self):
+        self.python_api = raw_index_add
+        self.op_type = "index_add"
+        self.init_dtype_type()
+        index_np = np.random.randint(
+            low=0, high=self.x_shape[self.axis], size=self.index_size
+        )
+        x_np = np.random.random(self.x_shape).astype(self.x_type)
+        add_value_np = np.random.random(self.add_value_shape).astype(
+            self.x_type
+        )
+
+        if self.x_type == 'float32' or self.x_type == 'float64':
+            x_np = convert_float_to_uint16(x_np)
+            add_value_np = convert_float_to_uint16(add_value_np)
+
+        self.inputs = {'X': x_np, 'Index': index_np, 'AddValue': add_value_np}
+        self.attrs = {'axis': self.axis}
+        out = compute_index_add_ref(
+            self.axis,
+            self.x_shape,
+            x_np,
+            self.add_value_shape,
+            add_value_np,
+            self.index_size,
+            index_np,
+        )
+
+        if self.x_type == 'float32' or self.x_type == 'float64':
+            out = convert_uint16_to_float(out)
+
+        self.outputs = {'Out': out}
+
+    def init_dtype_type(self):
+        self.axis = 0
+        self.x_type = np.float32
+        self.index_type = np.int64
+        self.x_shape = (101, 3)
+        self.index_size = 3
+        self.add_value_shape = (3, 3)
+
+    def test_check_output(self):
+        if self.x_type == 'float32' or self.x_type == 'float64':
+            rtol, atol = 1e-3, 1e-3
+        else:
+            rtol, atol = 0, 0
+        self.check_output(check_eager=True, rtol=rtol, atol=atol)
+
+    def test_check_grad_normal(self):
+        if self.x_type == 'float32' or self.x_type == 'float64':
+            rtol, atol = 1e-3, 1e-3
+        else:
+            rtol, atol = 0, 0
+        self.check_grad(['X', 'AddValue'], 'Out', check_eager=True, rtol=rtol, atol=atol)
+
+
+
+
+
 
 if __name__ == '__main__':
     unittest.main()
