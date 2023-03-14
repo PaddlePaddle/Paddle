@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -321,6 +321,67 @@ class TestRandomValue(unittest.TestCase):
         ]
         np.testing.assert_array_equal(x[20000:20010], expect)
         paddle.enable_static()
+
+
+class TestRandpermFP16OP(OpTest):
+
+    def setUp(self):
+        self.op_type = "randperm"
+        self.python_api = paddle.randperm
+        self.n = 200
+        self.dtype = "float16"
+
+        self.inputs = {}
+        self.outputs = {"Out": np.zeros((self.n)).astype(self.dtype)}
+        self.init_attrs()
+        self.attrs = {
+            "n": self.n,
+            "dtype": convert_dtype(self.dtype),
+        }
+
+    def init_attrs(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        out_np = np.array(outs[0]).astype(np.float16)
+        self.assertTrue(
+            check_randperm_out(self.n, out_np), msg=error_msg(out_np)
+        )
+
+
+class TestRandpermOp(OpTest):
+    """Test randperm op."""
+
+    def setUp(self):
+        self.op_type = "randperm"
+        self.python_api = paddle.randperm
+        self.n = 200
+        self.dtype = "int64"
+
+        self.inputs = {}
+        x = np.random.random((self.n,)).astype(np.float32)
+        self.inputs['X'] = convert_float_to_uint16(x)
+        self.outputs = {"Out": np.zeros((self.n)).astype(np.uint16)}
+        self.init_attrs()
+        self.attrs = {
+            "n": self.n,
+            "dtype": convert_dtype(self.dtype),
+        }
+
+    def init_attrs(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        out_np = np.array(outs[0])
+        self.assertTrue(
+            check_randperm_out(self.n, out_np), msg=error_msg(out_np)
+        )
 
 
 if __name__ == "__main__":

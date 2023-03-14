@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -152,6 +152,38 @@ class TestSignTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestSignFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "sign"
+        self.python_api = paddle.sign
+        self.inputs = {
+            'X': np.random.uniform(-10, 10, (10, 10)).astype("float16")
+        }
+        self.outputs = {'Out': np.sign(self.inputs['X'].astype("float16"))}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSignBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = "sign"
+        self.python_api = paddle.sign
+        self.inputs = {
+            'X': convert_float_to_uint16(np.random.uniform(-10, 10, (10, 10)).astype("float64"))
+        }
+        self.outputs = {'Out': convert_float_to_uint16(np.sign(self.inputs['X']))}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 if __name__ == "__main__":
