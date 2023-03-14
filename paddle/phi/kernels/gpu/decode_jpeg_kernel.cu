@@ -137,7 +137,7 @@ void DecodeJpegKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(decode_jpeg,  // cuda_only
+PD_REGISTER_KERNEL(decode_jpeg,  // cuda_only_exclude_jetson
                    GPU,
                    ALL_LAYOUT,
                    phi::DecodeJpegKernel,
