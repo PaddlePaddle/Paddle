@@ -287,6 +287,7 @@ class HogwildWorker : public CPUWorkerBase {
   void CreateThreadScope(const ProgramDesc& program);
   // check batch num
   bool CheckBatchNum(int flag);
+  bool GetPassEnd(int flag);
 
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;

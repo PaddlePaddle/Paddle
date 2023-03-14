@@ -1176,6 +1176,18 @@ bool DatasetImpl<T>::GetEpochFinish() {
 }
 
 template <typename T>
+void DatasetImpl<T>::ClearSampleState() {
+#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+  for (size_t i = 0; i < readers_.size(); i++) {
+    readers_[i]->ClearSampleState();
+    readers_[i]->ResetPathNum();
+    readers_[i]->ResetEpochFinish();
+  }
+#endif
+}
+
+
+template <typename T>
 int64_t DatasetImpl<T>::GetPvDataSize() {
   if (enable_pv_merge_) {
     return input_pv_channel_->Size();

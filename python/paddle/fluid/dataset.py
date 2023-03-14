@@ -970,6 +970,9 @@ class InMemoryDataset(DatasetBase):
     def get_epoch_finish(self):
         return self.dataset.get_epoch_finish()
 
+    def clear_sample_state(self):
+        self.dataset.clear_sample_state()
+
     @deprecated(
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.get_memory_data_size",

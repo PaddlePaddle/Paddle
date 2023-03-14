@@ -131,7 +131,7 @@ void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
 
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
   float *stat_ptr = sync_stat_.mutable_data<float>(place_, sizeof(float) * 3);
-  float flags[] = {0.0, 1.0, 0.0};
+  float flags[] = {0.0, 1.0, 1.0};
   auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(stat_ptr,  // output
                                              &flags,
@@ -174,6 +174,40 @@ bool HogwildWorker::CheckBatchNum(int flag) {
 #endif
   return (ret > 0.0);
 }
+
+bool HogwildWorker::GetPassEnd(int flag) {
+  float ret = 0.0;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+  if (flag > 1) {
+    flag = 1;
+  } else if (flag < 0) {
+    flag = 0;
+  }
+//  g_barrier.wait();
+  float *stat_ptr = sync_stat_.data<float>();
+  auto comm =
+       platform::NCCLCommContext::Instance().Get(0, place_.GetDeviceId());
+//  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
+//  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+  auto stream = comm->stream();
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&stat_ptr[flag],
+                                                              &stat_ptr[2],
+                                                              1,
+                                                              ncclFloat32,
+                                                              ncclProd,
+                                                              comm->comm(),
+                                                              stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
+                                             &stat_ptr[2],
+                                             sizeof(float),
+                                             cudaMemcpyDeviceToHost,
+                                             stream));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
+// g_barrier.wait();
+#endif
+  return (ret > 0.0);
+}
+
 void HogwildWorker::TrainFilesWithProfiler() {
   platform::SetNumThreads(1);
 #if defined(PADDLE_WITH_HETERPS) && \
@@ -219,7 +253,12 @@ void HogwildWorker::TrainFilesWithProfiler() {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (train_mode && (FLAGS_gpugraph_force_device_batch_num_equal || is_multi_node)) {
-      if (!CheckBatchNum(cur_batch)) {
+      int pass_end = device_reader_->get_pass_end();
+      bool res = GetPassEnd(pass_end);
+      VLOG(2) << "reader pass end: " << pass_end << ", hogwild worker pass end: " << res;
+      if (res) {
+        device_reader_->reset_pass_end();
+        VLOG(1) << "get all pass end, train pass will exit";
         break;
       }
     } else {
@@ -354,7 +393,12 @@ void HogwildWorker::TrainFiles() {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (train_mode && (FLAGS_gpugraph_force_device_batch_num_equal || is_multi_node)) {
-      if (!CheckBatchNum(cur_batch)) {
+      int pass_end = device_reader_->get_pass_end();
+      bool res = GetPassEnd(pass_end);
+      VLOG(2) << "reader pass end: " << pass_end << ", hogwild worker pass end: " << res;
+      if (res) {
+        device_reader_->reset_pass_end();
+        VLOG(1) << "get all pass end, train pass will exit";
         break;
       }
     } else {
