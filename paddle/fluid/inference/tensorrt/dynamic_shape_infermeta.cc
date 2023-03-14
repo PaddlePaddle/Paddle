@@ -387,6 +387,198 @@ nvinfer1::DimsExprs GridSamplerInferMeta(
   return output;
 }
 
+inline const void UpdatePaddingAndDilation(
+    std::vector<const nvinfer1::IDimensionExpr*>* paddings,
+    std::vector<const nvinfer1::IDimensionExpr*>* dilation,
+    const std::string padding_algorithm,
+    const std::vector<const nvinfer1::IDimensionExpr*>& data_dims,
+    const std::vector<const nvinfer1::IDimensionExpr*>& strides,
+    const std::vector<const nvinfer1::IDimensionExpr*>& ksize,
+    nvinfer1::IExprBuilder& expr_builder  // NOLINT
+) {
+  if (paddings->size() == data_dims.size()) {
+    for (size_t i = 0; i < data_dims.size(); ++i) {
+      const nvinfer1::IDimensionExpr* copy_pad = *(paddings->begin() + 2 * i);
+      paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
+    }
+  }
+
+  // when padding_algorithm is "VALID" or "SAME"
+  if (padding_algorithm == "SAME") {
+    for (size_t i = 0; i < data_dims.size(); ++i) {
+      const nvinfer1::IDimensionExpr* out_size = expr_builder.operation(
+          nvinfer1::DimensionOperation::kFLOOR_DIV,
+          *expr_builder.operation(
+              nvinfer1::DimensionOperation::kSUB,
+              *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
+                                      *data_dims[i],
+                                      *strides[i]),
+              *expr_builder.constant(1)),
+          *strides[i]);
+      const nvinfer1::IDimensionExpr* pad_sum = expr_builder.operation(
+          nvinfer1::DimensionOperation::kMAX,
+          *expr_builder.operation(
+              nvinfer1::DimensionOperation::kSUM,
+              *expr_builder.operation(
+                  nvinfer1::DimensionOperation::kPROD,
+                  *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                          *out_size,
+                                          *expr_builder.constant(1)),
+                  *strides[i]),
+              *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                      *ksize[i],
+                                      *data_dims[i])),
+          *expr_builder.constant(0));
+      const nvinfer1::IDimensionExpr* pad_0 =
+          expr_builder.operation(nvinfer1::DimensionOperation::kFLOOR_DIV,
+                                 *pad_sum,
+                                 *expr_builder.constant(2));
+      const nvinfer1::IDimensionExpr* pad_1 = expr_builder.operation(
+          nvinfer1::DimensionOperation::kSUB, *pad_sum, *pad_0);
+
+      *(paddings->begin() + i * 2) = pad_0;
+      *(paddings->begin() + i * 2 + 1) = pad_1;
+
+      // dilation
+      *(dilation->begin() + i) = expr_builder.constant(1);
+    }
+
+  } else if (padding_algorithm == "VALID") {
+    for (auto it = paddings->begin(); it != paddings->end(); it++) {
+      *it = expr_builder.constant(0);
+    }
+  }
+}
+
+inline const nvinfer1::IDimensionExpr* ConvOutputSize(
+    const nvinfer1::IDimensionExpr* input_size,
+    const nvinfer1::IDimensionExpr* filter_size,
+    const nvinfer1::IDimensionExpr* dilation,
+    const nvinfer1::IDimensionExpr* padding_1,
+    const nvinfer1::IDimensionExpr* padding_2,
+    const nvinfer1::IDimensionExpr* stride,
+    nvinfer1::IExprBuilder& expr_builder  // NOLINT
+) {
+  const nvinfer1::IDimensionExpr* dkernel = expr_builder.operation(
+      nvinfer1::DimensionOperation::kSUM,
+      *expr_builder.operation(
+          nvinfer1::DimensionOperation::kPROD,
+          *dilation,
+          *expr_builder.operation(nvinfer1::DimensionOperation::kSUB,
+                                  *filter_size,
+                                  *expr_builder.constant(1))),
+      *expr_builder.constant(1));
+  const nvinfer1::IDimensionExpr* output_size = expr_builder.operation(
+      nvinfer1::DimensionOperation::kSUM,
+      *expr_builder.operation(
+          nvinfer1::DimensionOperation::kFLOOR_DIV,
+          *expr_builder.operation(
+              nvinfer1::DimensionOperation::kSUM,
+              *expr_builder.operation(
+                  nvinfer1::DimensionOperation::kSUB, *input_size, *dkernel),
+              *expr_builder.operation(
+                  nvinfer1::DimensionOperation::kSUM, *padding_1, *padding_2)),
+          *stride),
+      *expr_builder.constant(1));
+  return output_size;
+}
+
+nvinfer1::DimsExprs Conv2dFusionInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  const std::vector<int> dilations =
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
+  const std::vector<int> strides =
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+  std::vector<int> paddings =
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+
+  std::string padding_algorithm = "EXPLICIT";
+  if (op_desc.HasAttr("padding_algorithm"))
+    padding_algorithm =
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
+  if (padding_algorithm == "VALID") {
+    for (size_t i = 0; i < paddings.size(); i++) {
+      paddings[i] = 0;
+    }
+  }
+
+  // TODO(zhangjun): nhwc support
+  bool channel_last = false;
+  // conv_fusion: input, filter, bias
+  const nvinfer1::DimsExprs input_dims = inputs[0];
+  const nvinfer1::DimsExprs filter_dims = inputs[1];
+  std::vector<const nvinfer1::IDimensionExpr*> in_data_dims;  // d, h, w
+  if (channel_last) {
+    for (int i = 1; i < input_dims.nbDims - 1; ++i) {
+      in_data_dims.emplace_back(input_dims.d[i]);
+    }
+  } else {
+    for (int i = 2; i < input_dims.nbDims; ++i) {
+      in_data_dims.emplace_back(input_dims.d[i]);
+    }
+  }
+
+  std::vector<const nvinfer1::IDimensionExpr*>
+      filter_data_dims;  // filter_h, filter_w
+  if (channel_last) {
+    for (int i = 1; i < filter_dims.nbDims - 1; ++i) {
+      filter_data_dims.emplace_back(filter_dims.d[i]);
+    }
+  } else {
+    for (int i = 2; i < filter_dims.nbDims; ++i) {
+      filter_data_dims.emplace_back(filter_dims.d[i]);
+    }
+  }
+
+  std::vector<const nvinfer1::IDimensionExpr*> paddings_exprs;
+  for (size_t i = 0; i < paddings.size(); ++i) {
+    paddings_exprs.emplace_back(expr_builder.constant(paddings[i]));
+  }
+
+  std::vector<const nvinfer1::IDimensionExpr*> dilations_exprs;
+  for (size_t i = 0; i < dilations.size(); ++i) {
+    dilations_exprs.emplace_back(expr_builder.constant(dilations[i]));
+  }
+
+  std::vector<const nvinfer1::IDimensionExpr*> strides_exprs;
+  for (size_t i = 0; i < strides.size(); ++i) {
+    strides_exprs.emplace_back(expr_builder.constant(strides[i]));
+  }
+
+  UpdatePaddingAndDilation(&paddings_exprs,
+                           &dilations_exprs,
+                           padding_algorithm,
+                           in_data_dims,
+                           strides_exprs,
+                           filter_data_dims,
+                           expr_builder);
+  nvinfer1::DimsExprs output;
+  output.nbDims = 2 + in_data_dims.size();
+  int out_idx = 0;
+  output.d[out_idx++] = input_dims.d[0];
+  if (!channel_last) {
+    output.d[out_idx++] = filter_dims.d[0];
+  }
+  for (size_t i = 0; i < in_data_dims.size(); ++i) {
+    output.d[out_idx++] =
+        ConvOutputSize(in_data_dims[i],
+                       filter_data_dims[i],
+                       expr_builder.constant(dilations[i]),
+                       expr_builder.constant(paddings[2 * i]),
+                       expr_builder.constant(paddings[2 * i + 1]),
+                       expr_builder.constant(strides[i]),
+                       expr_builder);
+  }
+  if (channel_last) {
+    output.d[out_idx++] = filter_dims.d[0];
+  }
+  return output;
+}
+
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
@@ -396,6 +588,7 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(inverse, UnchangedInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_fusion, Conv2dFusionInferMeta);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
