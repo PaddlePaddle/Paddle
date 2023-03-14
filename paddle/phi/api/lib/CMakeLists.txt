@@ -323,7 +323,8 @@ cc_library(
        api_gen_utils
        phi_data_transform
        api_custom_impl
-       phi_profiler)
+       phi_profiler
+       from_blob)
 cc_library(
   phi_bw_function_api
   SRCS ${bw_api_source_file}
@@ -390,6 +391,10 @@ cc_library(
   api_int_array
   SRCS int_array.cc
   DEPS tensor_copy)
+cc_library(
+  from_blob
+  SRCS from_blob.cc
+  DEPS phi_tensor_raw)
 
 cc_library(
   phi_tensor_operants

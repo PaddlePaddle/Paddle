@@ -20,6 +20,7 @@ from utils import SUB_TOLERANCE
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core, framework
+from paddle.incubate.autograd import primapi
 from paddle.nn import LayerNorm
 
 
@@ -99,7 +100,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             # Ensure that layer_norm in original block
             self.assertTrue('layer_norm' in fwd_ops)
 
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that layer_norm is splitted into small ops
@@ -138,7 +139,7 @@ class TestCompositelayer_norm(unittest.TestCase):
             # Ensure that layer_norm in original block
             self.assertTrue('layer_norm' in fwd_ops)
 
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that layer_norm is splitted into small ops

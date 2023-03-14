@@ -20,6 +20,7 @@ from utils import TOLERANCE
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core, framework
+from paddle.incubate.autograd import primapi
 
 
 def generate_data(shape, dtype="float32"):
@@ -87,7 +88,7 @@ class TestCompositeSoftmax(unittest.TestCase):
             # Ensure that softmax in original block
             self.assertTrue('softmax' in fwd_ops)
 
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that softmax is splitted into small ops
