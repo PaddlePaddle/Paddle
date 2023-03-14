@@ -52,6 +52,9 @@ class EmitGatherGemmScatterInstance(EmitGemmInstance):
 """
         self.gemm_template = """
 // Gemm operator ${operation_name}
+template<cutlass::gemm::GemmUniversalMode Mode_ =
+             cutlass::gemm::GemmUniversalMode::kGemm,
+         int SplitKSlices_ = 1>
 struct ${operation_name} {
   using Gemm =
     cutlass::gemm::device::GemmUniversal<
@@ -79,6 +82,8 @@ struct ${operation_name} {
       ${gather_b}, // gather b
       ${scatter_d} // scatter d
     >;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
 """
 
@@ -302,8 +307,8 @@ class GatherGemmScatterOperation(GemmOperation):
             B,
             C,
             element_epilogue,
-            epilogue_functor=EpilogueFunctor.LinearCombination,
-            swizzling_functor=SwizzlingFunctor.Identity8,
+            epilogue_functor,
+            swizzling_functor,
         )
         self.ShortLayoutTypeNames = {
             LayoutType.ColumnMajor: 't',

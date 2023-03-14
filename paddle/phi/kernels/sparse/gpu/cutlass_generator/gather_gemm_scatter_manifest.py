@@ -80,14 +80,30 @@ namespace sparse {
             self.source_files.append(configuration_emitter.configuration_path)
 
         self.configurations.append(configuration_name)
-        self.kernels_lists[
-            operations[0].short_math_name() + operations[0].layout_name()
-        ] += (
-            """
+
+        if operations[0].layout_name() == 'tn':
+            split_k_slices_list = ['8', '16', '32']
+            for split_k_slices in split_k_slices_list:
+                self.kernels_lists[
+                    operations[0].short_math_name()
+                    + operations[0].layout_name()
+                ] += (
+                    """
 launchKernel<"""
-            + configuration_name
-            + "::Gemm>,"
-        )
+                    + configuration_name
+                    + "<cutlass::gemm::GemmUniversalMode::kGemmSplitKParallel,"
+                    + split_k_slices
+                    + ">>,"
+                )
+        else:
+            self.kernels_lists[
+                operations[0].short_math_name() + operations[0].layout_name()
+            ] += (
+                """
+launchKernel<"""
+                + configuration_name
+                + "<>>,"
+            )
 
         self.top_level_file.write(
             '#include "'

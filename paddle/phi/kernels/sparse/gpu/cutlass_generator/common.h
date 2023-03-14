@@ -47,7 +47,7 @@ namespace sparse {
     }                                                          \
   }
 #define DEFINE_LAUNCH_KERNEL(dtype, cutlass_type)                          \
-  template <typename Gemm>                                                 \
+  template <typename Config>                                               \
   void launchKernel(dtype const alpha,                                     \
                     dtype const beta,                                      \
                     const GPUContext& dev_ctx,                             \
@@ -62,11 +62,11 @@ namespace sparse {
                     const int32_t* b_indices,                              \
                     const int32_t* c_d_indices) {                          \
     cutlass::gemm::GemmCoord problem_size_real({m, n, k});                 \
-    int split_k_slices = 1;                                                \
+    using Gemm = typename Config::Gemm;                                    \
     typename Gemm::Arguments arguments{                                    \
-        cutlass::gemm::GemmUniversalMode::kGemm,                           \
+        Config::Mode,                                                      \
         problem_size_real,                                                 \
-        split_k_slices,                                                    \
+        Config::SplitKSlices,                                              \
         {static_cast<const cutlass_type>(static_cast<const float>(alpha)), \
          static_cast<const cutlass_type>(static_cast<const float>(beta))}, \
         reinterpret_cast<const cutlass_type* const>(a),                    \
