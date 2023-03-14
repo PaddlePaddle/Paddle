@@ -34,23 +34,14 @@ class Pad3dOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
 
-    std::vector<int> paddings;
+    nvinfer1::ITensor* paddings;
     if (op_desc.HasInput("Paddings")) {
-      // convert nvinfer1::ITensor to std::vector<int>
-      auto* paddings_v = scope.FindVar(op_desc.Input("Paddings")[0]);
-      auto* padding_t = paddings_v->GetMutable<phi::DenseTensor>();
-      phi::DenseTensor paddings_tensor;
-      paddings_tensor.Resize(padding_t->dims());
-      platform::CPUPlace cpu_place;
-      paddle::framework::TensorCopySync(
-          (*padding_t), cpu_place, &paddings_tensor);
-      auto* paddings_data =
-          paddings_tensor.mutable_data<int>(platform::CPUPlace());
-      paddings = std::vector<int>(paddings_data,
-                                  paddings_data + paddings_tensor.numel());
+      paddings = engine_->GetITensor(op_desc.Input("Paddings")[0]);
+
     } else {
-      paddings =
+      std::vector<int> paddings_v =
           PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+      paddings = Add1DConstantLayer(paddings_v);
     }
 
     float value{0.F};
@@ -64,7 +55,7 @@ class Pad3dOpConverter : public OpConverter {
     }
 
     const int input_dim = input->getDimensions().nbDims;
-    const int pad_size = paddings.size();
+    const int pad_size = paddings->getDimensions().d[0];
     PADDLE_ENFORCE_EQ(input_dim * 2 - 4,
                       pad_size,
                       phi::errors::InvalidArgument(
@@ -72,16 +63,29 @@ class Pad3dOpConverter : public OpConverter {
                           input_dim * 2 - 4,
                           pad_size));
     // convert paddle pad to tensorrt pad
-    std::vector<int> pre_pad_v(input_dim, 0);
-    std::vector<int> post_pad_v(input_dim, 0);
-
-    for (int i = 0; i < input_dim - 2; i++) {
-      pre_pad_v[i + 2] = paddings[pad_size - 2 - i * 2];
-      post_pad_v[i + 2] = paddings[pad_size - 1 - i * 2];
+    std::vector<int> shuffle_index{4, 2, 0, 5, 3, 1};
+    std::vector<nvinfer1::ITensor*> shuffle_inputs;
+    for (int i = 0; i < pad_size; i++) {
+      shuffle_inputs.push_back(GetEleTensorOfShape(paddings, shuffle_index[i]));
     }
+    paddings = Concat(shuffle_inputs);
+    auto* pre_zeros = Add1DConstantLayer(std::vector<int>(2, 0));
+    auto start_slice1 = nvinfer1::Dims{1, { 0 }};
+    auto start_slice2 = nvinfer1::Dims{1, { 3 }};
+    auto size_slice = nvinfer1::Dims{1, { 3 }};
+    auto stride_slice = nvinfer1::Dims{1, { 1 }};
 
-    nvinfer1::ITensor* pre_pad = Add1DConstantLayer(pre_pad_v);
-    nvinfer1::ITensor* post_pad = Add1DConstantLayer(post_pad_v);
+    auto* pre_pad =
+        TRT_ENGINE_ADD_LAYER(
+            engine_, Slice, *paddings, start_slice1, size_slice, stride_slice)
+            ->getOutput(0);
+    pre_pad = Concat(std::vector<nvinfer1::ITensor*>{pre_zeros, pre_pad});
+    auto* post_pad =
+        TRT_ENGINE_ADD_LAYER(
+            engine_, Slice, *paddings, start_slice2, size_slice, stride_slice)
+            ->getOutput(0);
+    post_pad = Concat(std::vector<nvinfer1::ITensor*>{pre_zeros, post_pad});
+
     std::vector<int> zeros_v(input_dim, 0);
     auto const zeros = Add1DConstantLayer(zeros_v);
 
