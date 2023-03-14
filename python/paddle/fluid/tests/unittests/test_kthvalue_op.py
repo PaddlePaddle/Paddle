@@ -208,29 +208,37 @@ class TestModeOpInStatic(unittest.TestCase):
             np.testing.assert_allclose(paddle_result, expect_value, rtol=1e-05)
 
 
-class TestKthvalueOpBP16(unittest.TestCase):
-    def testkthvaluebp16(OpTest):
-        def setUp(self):
-            self.op_type = 'kthvalue'
-            self.dtype = np.uint16
-            x = np.random.rand((2, 3, 2)).astype(np.float32)
-            out = paddle.kthvalue(x, k=2, axis=1)
-            self.inputs = {'X': convert_float_to_uint16(x)}
-            self.outputs = {'Out': convert_float_to_uint16(out)}
+class TestKthvalueOpBP16(OpTest):
+    def init_args(self):
+        self.k = 5
+        self.axis = -1
 
-        def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
-                self.check_output_with_place(place)
+    def setUp(self):
+        self.op_type = 'kthvalue'
+        self.dtype = np.uint16
+        x = np.random.rand((2, 3, 2)).astype(np.float32)
+        self.init_args()
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {'k': self.k, 'axis': self.axis}
+        out, indices = cal_kthvalue(x, k=self.k, axis=self.axis)
+        self.outputs = {
+            'Out': convert_float_to_uint16(out),
+            'Indices': convert_float_to_uint16(indices),
+        }
 
-        def test_check_grad(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
-                self.check_grad_with_place(
-                    place,
-                    ['X'],
-                    ['Out'],
-                )
+    def test_check_output(self):
+        paddle.enable_static()
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, check_eager=True)
+
+    def test_check_grad(self):
+        paddle.enable_static()
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, set(['X']), 'Out', check_eager=True
+            )
 
 
 if __name__ == '__main__':

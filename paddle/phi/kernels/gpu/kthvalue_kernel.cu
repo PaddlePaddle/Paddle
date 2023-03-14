@@ -85,7 +85,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                                                segment_offsets_t,
                                                segment_offsets_t + 1,
                                                0,
-                                               sizeof(MT) * 8,
+                                               sizeof(T) * 8,
                                                cu_stream);
 #ifdef __HIPCC__
   if (err != hipSuccess) {
@@ -148,7 +148,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
 
   funcs::EigenSlice<std::decay_t<decltype(dev)>, int64_t, 2>::Eval(
       dev, e_indices, e_tmp_indices, slice_indices, slice_sizes);
-  funcs::EigenSlice<std::decay_t<decltype(dev)>, MT, 2>::Eval(
+  funcs::EigenSlice<std::decay_t<decltype(dev)>, T, 2>::Eval(
       dev, e_values, e_tmp_values, slice_indices, slice_sizes);
   return true;
 }
@@ -226,7 +226,7 @@ void KthvalueKernel(const Context& dev_ctx,
     trans_input.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_input);
     int ndims = trans.size();
-    funcs::TransCompute<phi::GPUContext, MT>(
+    funcs::TransCompute<phi::GPUContext, T>(
         ndims, dev_ctx, x, &trans_input, trans);
     DenseTensor trans_ind, trans_out;
     trans_ind.Resize(trans_out_dims);
@@ -248,7 +248,7 @@ void KthvalueKernel(const Context& dev_ctx,
         phi::errors::External("KthvalueOP: Error when use cub sorting"));
     funcs::TransCompute<phi::GPUContext, int64_t>(
         ndims, dev_ctx, trans_ind, indices, trans);
-    funcs::TransCompute<phi::GPUContext, MT>(
+    funcs::TransCompute<phi::GPUContext, T>(
         ndims, dev_ctx, trans_out, output, trans);
     if (!keepdim) {
       output->Resize(out_dims);
