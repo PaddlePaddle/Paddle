@@ -173,6 +173,6 @@ REGISTER_PASS_CAPABILITY(matmul_elementwise_add_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("fused_matmul", 0)
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .LE("elementwise_add", 1));

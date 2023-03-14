@@ -931,3 +931,13 @@ REGISTER_OP_CUDA_KERNEL(matmul_grad_grad,
                         ops::MatMulDoubleGradKernel<phi::GPUContext, float>,
                         ops::MatMulDoubleGradKernel<phi::GPUContext, double>);
 #endif
+
+REGISTER_OP_VERSION(matmul).AddCheckpoint(
+    R"ROC(Register matmul for adding the attribute of
+       fused_reshape_Y)ROC",
+    paddle::framework::compatible::OpVersionDesc().NewAttr(
+        "fused_reshape_Y",
+        "In order to support the function of fused the input Y "
+        " and input X into the input X when "
+        "using the operator of matmul, and get raw shape of input Y.",
+        std::vector<int>{}));

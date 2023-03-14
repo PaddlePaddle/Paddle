@@ -1,4 +1,4 @@
-/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -498,7 +498,7 @@ REGISTER_PASS(squared_mat_sub_fuse_pass,
 REGISTER_PASS_CAPABILITY(squared_mat_sub_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("square", 0)
             .LE("elementwise_mul", 1)

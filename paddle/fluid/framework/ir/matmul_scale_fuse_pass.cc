@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -246,7 +246,7 @@ REGISTER_PASS(matmul_scale_fuse_pass,
 REGISTER_PASS_CAPABILITY(matmul_scale_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("scale", 0));
 
 REGISTER_PASS(matmul_v2_scale_fuse_pass,

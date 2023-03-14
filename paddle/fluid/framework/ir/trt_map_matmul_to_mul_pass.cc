@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -871,7 +871,7 @@ REGISTER_PASS(trt_map_matmul_to_mul_pass,
 REGISTER_PASS_CAPABILITY(trt_map_matmul_to_mul_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("mul", 0));
 
 REGISTER_PASS(trt_map_matmul_v2_to_mul_pass,
@@ -888,14 +888,14 @@ REGISTER_PASS_CAPABILITY(trt_map_matmul_v2_to_matmul_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .EQ("matmul_v2", 0)
-            .EQ("matmul", 0));
+            .LE("matmul", 1));
 
 REGISTER_PASS(trt_squeeze2_matmul_fuse_pass,
               paddle::framework::ir::TrtSqueeze2MatmulFusePass);
 REGISTER_PASS_CAPABILITY(trt_squeeze2_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("squeeze2", 0)
             .EQ("mul", 0));
 
@@ -904,7 +904,7 @@ REGISTER_PASS(trt_reshape2_matmul_fuse_pass,
 REGISTER_PASS_CAPABILITY(trt_reshape2_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("reshape2", 0)
             .EQ("mul", 0));
 
@@ -913,6 +913,6 @@ REGISTER_PASS(trt_flatten2_matmul_fuse_pass,
 REGISTER_PASS_CAPABILITY(trt_flatten2_matmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("flatten2", 0)
             .EQ("mul", 0));

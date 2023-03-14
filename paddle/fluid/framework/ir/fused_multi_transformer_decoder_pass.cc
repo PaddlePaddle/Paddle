@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -3346,7 +3346,7 @@ REGISTER_PASS_CAPABILITY(fused_multi_transformer_decoder_pass)
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("softmax", 0));
 REGISTER_PASS_CAPABILITY(fused_multi_transformer_decoder_fuse_qkv_pass)
@@ -3356,7 +3356,7 @@ REGISTER_PASS_CAPABILITY(fused_multi_transformer_decoder_fuse_qkv_pass)
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("softmax", 0));
 REGISTER_PASS_CAPABILITY(
@@ -3367,6 +3367,6 @@ REGISTER_PASS_CAPABILITY(
             .EQ("reshape2", 0)
             .EQ("transpose2", 0)
             .EQ("scale", 0)
-            .EQ("matmul", 0)
+            .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("softmax", 0));
