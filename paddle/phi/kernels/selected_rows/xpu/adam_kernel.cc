@@ -337,4 +337,6 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
 }

@@ -308,4 +308,11 @@ PD_REGISTER_KERNEL(adamw,
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+  // Skip beta1_pow, beta2_pow, skip_update data transform
+  kernel->OutputAt(3)
+      .SetBackend(phi::Backend::UNDEFINED)
+      .SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(4)
+      .SetBackend(phi::Backend::UNDEFINED)
+      .SetDataType(phi::DataType::UNDEFINED);
 }
