@@ -860,6 +860,16 @@ void cumsum_grad(const Tensor& x,
 }
 
 template <typename T>
+void split_grad(const std::vector<Tensor>& out_grad,
+                const Scalar& axis,
+                Tensor* x_grad) {
+  if (x_grad) {
+    auto grad = concat<T>(out_grad, axis);
+    set_output<T>(grad, x_grad);
+  }
+}
+
+template <typename T>
 void topk_grad(const Tensor& x,
                const Tensor& indices,
                const Tensor& out_grad,
@@ -944,5 +954,33 @@ void maximum_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void dropout_grad(const Tensor& mask,
+                  const Tensor& out_grad,
+                  const Scalar& p,
+                  bool is_test,
+                  const std::string& mode,
+                  Tensor* x_grad) {
+  if (!x_grad) return;
+  if (is_test) {
+    if (mode == "upscale_in_train") {
+      by_pass<T>(out_grad, x_grad);
+    } else {
+      set_output<T>(out_grad * (1.0 - p.to<float>()), x_grad);
+    }
+  } else {
+    if (mode == "upscale_in_train") {
+      if (p.to<float>() == 1.0f) {
+        set_output<T>(out_grad * 0.0, x_grad);
+      } else {
+        set_output<T>(
+            out_grad * cast<T>(mask, out_grad.dtype()) / (1.0 - p.to<float>()),
+            x_grad);
+      }
+    } else {
+      set_output<T>(out_grad * cast<T>(mask, out_grad.dtype()), x_grad);
+    }
+  }
+}
 }  // namespace prim
 }  // namespace paddle
