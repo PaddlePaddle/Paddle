@@ -326,6 +326,18 @@ class TestPrimForwardAndBackward(unittest.TestCase):
                 atol=1e-3,
             )
 
+    def test_amp_bn_vjp(self):
+        core._set_prim_forward_blacklist("batch_norm")
+        if not isinstance(framework._current_expected_place(), core.CPUPlace):
+            expected = self.train(False)
+            actual = self.train(True)
+            np.testing.assert_allclose(
+                expected,
+                actual,
+                rtol=1e-3,
+                atol=1e-3,
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

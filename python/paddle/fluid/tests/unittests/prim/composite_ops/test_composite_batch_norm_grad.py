@@ -20,13 +20,13 @@ from utils import SUB_TOLERANCE
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
-from paddle.incubate.autograd import primapi
 
 np.random.seed(2023)
 
 
 class Arg:
     dout = None
+    mode = "all"
 
 
 def generate_data(shape, dtype="float32"):
@@ -142,6 +142,61 @@ def expect_grad(
     return gradients
 
 
+def cal_composite(inputs, running_mean, running_variance, weight, bias):
+    paddle.enable_static()
+
+    startup_program = paddle.static.Program()
+    main_program = paddle.static.Program()
+    with paddle.static.program_guard(main_program, startup_program):
+        x1 = paddle.static.data(
+            'x1', shape=inputs.shape, dtype=str(inputs.dtype)
+        )
+        x1.stop_gradient = False
+        x2 = paddle.static.data(
+            'x2', shape=running_mean.shape, dtype=str(running_mean.dtype)
+        )
+        x3 = paddle.static.data(
+            'x3',
+            shape=running_variance.shape,
+            dtype=str(running_variance.dtype),
+        )
+        x4 = paddle.static.data(
+            'x4', shape=weight.shape, dtype=str(weight.dtype)
+        )
+        x5 = paddle.static.data('x5', shape=bias.shape, dtype=str(bias.dtype))
+        y = fn(
+            x1,
+            x2,
+            x3,
+            x4,
+            x5,
+            attrs.training,
+            attrs.momentum,
+            attrs.epsilon,
+            attrs.data_format,
+            attrs.use_global_stats,
+        )
+        blocks = main_program.blocks
+        paddle.incubate.autograd.to_prim(blocks)
+        z = paddle.static.gradients([y], [x1])
+
+    exe = paddle.static.Executor()
+    exe.run(startup_program)
+    res = exe.run(
+        main_program,
+        feed={
+            'x1': inputs,
+            'x2': running_mean,
+            'x3': running_variance,
+            'x4': weight,
+            'x5': bias,
+        },
+        fetch_list=[z],
+    )
+    paddle.disable_static()
+    return res
+
+
 class TestCompositeBatchNorm(unittest.TestCase):
     def setUp(self):
         self.dtypes = ["float32"]
@@ -151,66 +206,6 @@ class TestCompositeBatchNorm(unittest.TestCase):
         self.epsilon = [1e-05, 2e-05]
         self.data_formats = ["NCHW"]
         self.use_global_stats = [None, True, False]
-
-    def cal_composite(
-        self, inputs, running_mean, running_variance, weight, bias
-    ):
-        paddle.enable_static()
-        core._set_prim_all_enabled(True)
-        startup_program = paddle.static.Program()
-        main_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program, startup_program):
-            x1 = paddle.static.data(
-                'x1', shape=inputs.shape, dtype=str(inputs.dtype)
-            )
-            x1.stop_gradient = False
-            x2 = paddle.static.data(
-                'x2', shape=running_mean.shape, dtype=str(running_mean.dtype)
-            )
-            x3 = paddle.static.data(
-                'x3',
-                shape=running_variance.shape,
-                dtype=str(running_variance.dtype),
-            )
-            x4 = paddle.static.data(
-                'x4', shape=weight.shape, dtype=str(weight.dtype)
-            )
-            x5 = paddle.static.data(
-                'x5', shape=bias.shape, dtype=str(bias.dtype)
-            )
-            y = fn(
-                x1,
-                x2,
-                x3,
-                x4,
-                x5,
-                attrs.training,
-                attrs.momentum,
-                attrs.epsilon,
-                attrs.data_format,
-                attrs.use_global_stats,
-            )
-            blocks = main_program.blocks
-            primapi.to_prim(blocks)
-
-            z = paddle.static.gradients([y], [x1])
-
-        exe = paddle.static.Executor()
-        exe.run(startup_program)
-        res = exe.run(
-            main_program,
-            feed={
-                'x1': inputs,
-                'x2': running_mean,
-                'x3': running_variance,
-                'x4': weight,
-                'x5': bias,
-            },
-            fetch_list=[z],
-        )
-        paddle.disable_static()
-        core._set_prim_all_enabled(False)
-        return res
 
     def compare_backward(self):
         if attrs.training is True and attrs.use_global_stats is False:
@@ -243,10 +238,12 @@ class TestCompositeBatchNorm(unittest.TestCase):
         np_weight = np.ones(C, dtype=attrs.dtype) * 2
         np_bias = np.ones(C, dtype=attrs.dtype)
 
-        actual = self.cal_composite(
+        actual = cal_composite(
             np_data, np_running_mean, np_running_variance, np_weight, np_bias
         )[0]
+
         assert expect.dtype == actual.dtype
+
         np.testing.assert_allclose(
             expect,
             actual,
@@ -254,7 +251,8 @@ class TestCompositeBatchNorm(unittest.TestCase):
             atol=attrs.get_atol("backward"),
         )
 
-    def test_backward(self):
+    def test_fowward_prim_ad(self):
+        core._set_prim_all_enabled(True)
         for i in self.training:
             for j in self.dtypes:
                 for m in self.momentum:
@@ -268,6 +266,41 @@ class TestCompositeBatchNorm(unittest.TestCase):
                 attrs.set_shape(n)
                 attrs.set_use_global_stats(t)
                 self.compare_backward()
+        core._set_prim_all_enabled(False)
+
+    def test_backward_prim_static_vjp(self):
+        core._set_prim_backward_enabled(True)
+        for i in self.training:
+            for j in self.dtypes:
+                for m in self.momentum:
+                    attrs.set_training(i)
+                    attrs.set_dtype(j)
+                    attrs.set_momentum(m)
+                    self.compare_backward()
+
+        for n in self.shapes:
+            for t in self.use_global_stats:
+                attrs.set_shape(n)
+                attrs.set_use_global_stats(t)
+                self.compare_backward()
+        core._set_prim_backward_enabled(False)
+
+    def test_backward_prim_dygraph_vjp(self):
+        core.set_prim_eager_enabled(True)
+        for i in self.training:
+            for j in self.dtypes:
+                for m in self.momentum:
+                    attrs.set_training(i)
+                    attrs.set_dtype(j)
+                    attrs.set_momentum(m)
+                    self.compare_backward()
+
+        for n in self.shapes:
+            for t in self.use_global_stats:
+                attrs.set_shape(n)
+                attrs.set_use_global_stats(t)
+                self.compare_backward()
+        core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':
