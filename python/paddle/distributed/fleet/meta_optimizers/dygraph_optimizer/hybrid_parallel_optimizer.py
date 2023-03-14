@@ -157,7 +157,7 @@ class HybridParallelClipGrad:
         if global_norm_var_fp32 <= self.clip_norm:
             return
 
-        scale = max_global_norm / global_norm_var_fp32
+        scale = self.clip_norm / global_norm_var_fp32
         for p, g in params_grads:
             if g is None:
                 continue
