@@ -4,6 +4,7 @@ set(INTERPRETER_SRCS data_transfer.cc dependency_builder.cc execution_config.cc
 set(INTERPRETER_DEPS
     device_context
     op_registry
+    phi_tensor_utils
     scope
     framework_proto
     data_feed_proto

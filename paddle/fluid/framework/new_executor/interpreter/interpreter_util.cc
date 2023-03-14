@@ -60,8 +60,6 @@ static std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
 // These Op needs set output dtype when register phi kernel, but they didn't
 static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "abs",
-    "adam",
-    "adamw",
     "argsort",
     "atan2",
     "auc",
@@ -103,7 +101,7 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
 
 // These Ops can use InferMeta to infer the output dtype
 static std::set<std::string> OpsWithAvailablePhiInferMeta = {
-    "abs", "adam", "adamw", "layer_norm_grad", "merged_adam"};
+    "abs", "layer_norm_grad", "merged_adam"};
 
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
@@ -895,7 +893,15 @@ void BuildOpFuncList(const platform::Place& place,
             auto* original_tensor =
                 GetMutableLoDTensorOrSelectedRowsValueFromVar(
                     local_scope->FindVar(var_scope->GetNameById(p.second)));
-            original_tensor->ShareDataWith(*transformed_tensor);
+            if (static_build) {
+              phi::Copy(*dev_ctx,
+                        *original_tensor,
+                        transformed_tensor->place(),
+                        /*blocking=*/true,
+                        original_tensor);
+            } else {
+              original_tensor->ShareDataWith(*transformed_tensor);
+            }
             VLOG(4) << "Transfer inplace variable back form "
                     << var_scope->GetNameById(p.first) << " to "
                     << var_scope->GetNameById(p.second);
@@ -1014,10 +1020,15 @@ void BuildVariableScope(const framework::BlockDesc& block,
   }
 }
 
-bool IsExtendedTensor(const phi::TensorBase& tensor) {
+inline bool IsExtendedTensor(const phi::TensorBase& tensor) {
   return framework::RawTensor::classof(&tensor) ||
          framework::Strings::classof(&tensor) ||
          framework::Vocab::classof(&tensor);
+}
+
+inline bool TensorShouldBeFakeInitialized(const phi::TensorBase* tensor) {
+  return tensor && !IsExtendedTensor(*tensor) &&
+         (!tensor->initialized() || !tensor->numel());
 }
 
 phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
@@ -1106,7 +1117,7 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
     for (size_t i = 0; i < outputs.size(); ++i) {
       phi::TensorBase* out_tensor =
           GetTensorFormVar(scope->FindVar(outputs[i]));
-      if (out_tensor && !IsExtendedTensor(*out_tensor)) {
+      if (TensorShouldBeFakeInitialized(out_tensor)) {
         phi::DataType dtype = phi::TransToPhiDataType(var_types[i]);
 
         VLOG(4) << outputs[i] << " fake alloc with type " << dtype
@@ -1118,6 +1129,17 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
     PADDLE_THROW(
         phi::errors::Unimplemented("Can not static build for op: %s", op_type));
   }
+}
+
+phi::DataType InferMPDType(const RuntimeContext& runtime_ctx,
+                           const std::string parameter_name) {
+  phi::TensorBase* in_tensor =
+      GetTensorFormVar(runtime_ctx.inputs.find(parameter_name)->second.at(0));
+  phi::DataType in_dtype = in_tensor->dtype();
+  return (in_dtype == phi::DataType::BFLOAT16 ||
+          in_dtype == phi::DataType::FLOAT16)
+             ? phi::DataType::FLOAT32
+             : in_dtype;
 }
 
 void FakeInitializeOutputsForFunctionKernel(
@@ -1165,13 +1187,19 @@ void FakeInitializeOutputsForFunctionKernel(
     auto& outs_vector = it->second;
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       phi::TensorBase* out_tensor = GetTensorFormVar(outs_vector[offset]);
-      if (out_tensor && !IsExtendedTensor(*out_tensor)) {
+      if (TensorShouldBeFakeInitialized(out_tensor)) {
+        // special case for adam and adamw
+        if (op_type == "adam" || op_type == "adamw") {
+          if (op.Attr<bool>("use_global_beta_pow") &&
+              (parameter_name == "Beta1PowOut" ||
+               parameter_name == "Beta2PowOut")) {
+            VLOG(2) << "Skip fake alloc for: " << parameter_name;
+            continue;
+          }
+        }
+
         phi::TensorArgDef& tensor_arg_def = output_defs[i];
         phi::DataType dtype = tensor_arg_def.dtype;
-        phi::Place place = tensor_arg_def.backend == phi::Backend::CUSTOM
-                               ? dev_ctx.GetPlace()
-                               : phi::TransToPhiPlace(tensor_arg_def.backend);
-
         if (dtype == DataType::UNDEFINED ||
             OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(
                 std::string(op_type))) {
@@ -1187,13 +1215,9 @@ void FakeInitializeOutputsForFunctionKernel(
               dtype = phi::TransToPhiDataType(out_dtype);
             }
           } else if (op_type == "layer_norm") {
-            phi::TensorBase* in_tensor =
-                GetTensorFormVar(runtime_ctx.inputs.find("X")->second.at(0));
-            phi::DataType in_dtype = in_tensor->dtype();
-            dtype = (in_dtype == phi::DataType::BFLOAT16 ||
-                     in_dtype == phi::DataType::FLOAT16)
-                        ? phi::DataType::FLOAT32
-                        : in_dtype;
+            dtype = InferMPDType(runtime_ctx, "X");
+          } else if (op_type == "adam" || op_type == "adamw") {
+            dtype = InferMPDType(runtime_ctx, "Param");
           } else {
             VLOG(4) << "Get dtype result from InferMeta";
             RuntimeInferShapeContext infer_shape_ctx(op, runtime_ctx);
@@ -1203,6 +1227,32 @@ void FakeInitializeOutputsForFunctionKernel(
             dtype = out_tensor->dtype();  // dtype from InferMeta
           }
         }
+
+        phi::Backend backend = tensor_arg_def.backend;
+
+        if (backend == phi::Backend::UNDEFINED) {
+          if (op_type == "adam" || op_type == "adamw") {
+            phi::TensorBase* beta1_pow = GetTensorFormVar(
+                runtime_ctx.inputs.find("Beta1Pow")->second.at(0));
+            phi::TensorBase* beta2_pow = GetTensorFormVar(
+                runtime_ctx.inputs.find("Beta2Pow")->second.at(0));
+            if (beta1_pow->place() == CPUPlace() &&
+                beta2_pow->place() == CPUPlace()) {
+              backend = phi::TransToPhiBackend(CPUPlace());
+            } else {
+              backend = phi::TransToPhiBackend(GPUPlace());
+            }
+          } else {
+            PADDLE_THROW(phi::errors::Unimplemented(
+                "Unsupported UNDEFINED backend for op: %s, parameter: %s",
+                op_type,
+                parameter_name));
+          }
+        }
+
+        phi::Place place = backend == phi::Backend::CUSTOM
+                               ? dev_ctx.GetPlace()
+                               : phi::TransToPhiPlace(backend);
 
         VLOG(4) << parameter_name << " fake alloc with type " << dtype
                 << " on place " << place << " " << out_tensor;
@@ -1228,7 +1278,7 @@ void FakeInitializeOutputsForStructureKernel(
     auto multi_output_var = execution_context->MultiOutputVar(parameter_name);
     for (Variable* var : multi_output_var) {
       phi::TensorBase* out_tensor = GetTensorFormVar(var);
-      if (out_tensor && !IsExtendedTensor(*out_tensor)) {
+      if (TensorShouldBeFakeInitialized(out_tensor)) {
         phi::DataType dtype =
             phi::TransToPhiDataType(op_kernel_type.data_type_);
         phi::Place place = execution_context->GetPlace();
