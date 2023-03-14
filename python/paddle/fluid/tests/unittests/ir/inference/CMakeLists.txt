@@ -234,6 +234,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
       set_tests_properties(test_map_matmul_v2_to_mul_pass PROPERTIES TIMEOUT
                                                                      360)
       set_tests_properties(test_map_matmul_to_mul_pass PROPERTIES TIMEOUT 360)
+      set_tests_properties(test_layernorm_shift_partition_pass
+                           PROPERTIES TIMEOUT 360)
     else()
       set_tests_properties(test_matmul_scale_fuse_pass PROPERTIES TIMEOUT 60)
       set_tests_properties(test_matmul_v2_scale_fuse_pass PROPERTIES TIMEOUT 60)
