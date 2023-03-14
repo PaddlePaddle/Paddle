@@ -24,9 +24,8 @@ namespace egr {
 namespace egr_utils_api {
 
 int64_t RegisterGradientHookForTensor(
-    const paddle::experimental::Tensor& tensor,
-    const std::function<paddle::experimental::Tensor(
-        const paddle::experimental::Tensor&)>& hook) {
+    const paddle::Tensor& tensor,
+    const std::function<paddle::Tensor(const paddle::Tensor&)>& hook) {
   // Find grad_node and out_rank from AutogradMeta
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
   auto rank_info = EagerUtils::unsafe_autograd_meta(tensor)->OutRankInfo();
@@ -37,7 +36,7 @@ int64_t RegisterGradientHookForTensor(
       std::move(std::make_shared<CppTensorHook>(hook)));
 }
 
-void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
+void RegisterReduceHookForTensor(const paddle::Tensor& tensor,
                                  const std::function<void()>& hook) {
   if (IsLeafTensor(tensor)) {
     VLOG(6) << "Register ReduceHook for leaf tensor";
@@ -57,7 +56,7 @@ void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
   }
 }
 
-void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
+void RetainGradForTensor(const paddle::Tensor& tensor) {
   if (IsLeafTensor(tensor)) {
     // Leaf tensor's grad will always be retained
     // Refer to implementation of AccumulationNode for more details
@@ -70,11 +69,10 @@ void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
       meta->SetRetainGrads(true);
     }
 
-    std::weak_ptr<paddle::experimental::Tensor> weak_grad_tensor =
-        meta->WeakGrad();
+    std::weak_ptr<paddle::Tensor> weak_grad_tensor = meta->WeakGrad();
 
     // Define Hook
-    auto hook = [weak_grad_tensor](const paddle::experimental::Tensor& t) {
+    auto hook = [weak_grad_tensor](const paddle::Tensor& t) {
       if (!weak_grad_tensor.expired()) {
         auto grad_tensor = weak_grad_tensor.lock();
         if (t.defined()) {
@@ -84,12 +82,12 @@ void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
           grad_tensor->set_autograd_meta(t.mutable_autograd_meta());
           return *grad_tensor.get();
         } else {
-          VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
-          return paddle::experimental::Tensor();
+          VLOG(7) << "Retain NULL paddle::Tensor in Grad Hook";
+          return paddle::Tensor();
         }
       } else {
-        VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
-        return paddle::experimental::Tensor();
+        VLOG(7) << "Retain NULL paddle::Tensor in Grad Hook";
+        return paddle::Tensor();
       }
     };
 

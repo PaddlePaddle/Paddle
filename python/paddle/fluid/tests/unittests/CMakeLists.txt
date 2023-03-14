@@ -886,12 +886,8 @@ add_subdirectory(standalone_executor)
 
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-  test_data_norm_op
-  test_dataloader_keep_order
-  test_dataloader_unkeep_order
-  test_parallel_ssa_graph_inference_feed_partial_data
-  test_buffer_shared_memory_reuse_pass
-  PROPERTIES LABELS "RUN_TYPE=DIST")
+  test_data_norm_op test_dataloader_keep_order test_dataloader_unkeep_order
+  test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
   test_sync_batch_norm_op
   test_inplace_abn_op
@@ -1018,8 +1014,6 @@ set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data
-                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
@@ -1207,10 +1201,23 @@ set(TEST_CINN_OPS
     test_expand_v2_op
     test_reduce_op
     test_slice_op
+    test_stack_op
     test_activation_op
     test_full_like_op
     test_fill_any_like_op
-    test_top_k_v2_op)
+    test_concat_op
+    test_top_k_v2_op
+    test_elementwise_add_op
+    test_elementwise_sub_op
+    test_elementwise_div_op
+    test_elementwise_mul_op
+    test_gather_nd_op
+    test_elementwise_pow_op
+    test_elementwise_max_op
+    test_transpose_op
+    test_reshape_op
+    test_mean_op
+    test_unsqueeze2_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)

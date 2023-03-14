@@ -45,8 +45,8 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     if (n->IsOp()) {
       auto* op = n->Op();
       if (op->Type() == "dequantize_linear") {
-        Node *weight_var_node, *dequantized_weight_var_node, *scale_var_node,
-            *calcu_op_node, *while_op_node;
+        Node *weight_var_node, *calcu_op_node, *while_op_node;
+        Node *dequantized_weight_var_node = nullptr, *scale_var_node = nullptr;
         // 1. Judge whether for dequant weight and find
         // weight_var_node/scale_var_node
         for (auto* input_node : n->inputs) {

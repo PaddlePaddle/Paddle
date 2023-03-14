@@ -328,7 +328,7 @@ class MultiGRUHandler {
     return out_mem;
   }
 
-  // TODO(grygielski) H0 is for now persistable
+  // H0 is for now persistable
   std::shared_ptr<dnnl::memory> AcquireH0Memory(int layer, Direction dir) {
     auto key = memory_key_;
     key.append("@h0").append(dir2str(dir)).append(std::to_string(layer));

@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 
@@ -48,11 +48,11 @@ void RmspropDenseKernel(const Context& dev_ctx,
                               " But received learning rate dim [%s] ",
                               learning_rate.dims().size()));
   T learning_rate_cpu = 0.0f;
-  paddle::memory::Copy(CPUPlace(),
-                       static_cast<void*>(&learning_rate_cpu),
-                       dev_ctx.GetPlace(),
-                       static_cast<const void*>(learning_rate.data()),
-                       sizeof(T));
+  memory_utils::Copy(CPUPlace(),
+                     static_cast<void*>(&learning_rate_cpu),
+                     dev_ctx.GetPlace(),
+                     static_cast<const void*>(learning_rate.data()),
+                     sizeof(T));
 
   // alloc output
   dev_ctx.template Alloc<T>(param_out);

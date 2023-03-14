@@ -32,7 +32,6 @@ from ..fluid.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
@@ -121,8 +120,8 @@ def _get_reduce_axis_with_tensor(axis, x):
             reduce_all = False
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)
-        if utils._contain_var(axis):
-            axis = utils._convert_to_tensor_list(axis)
+        if paddle.utils._contain_var(axis):
+            axis = paddle.utils._convert_to_tensor_list(axis)
     return reduce_all, axis
 
 
@@ -135,7 +134,7 @@ def log(x, name=None):
         Out = \ln(x)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
         name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
 
@@ -156,7 +155,9 @@ def log(x, name=None):
     if in_dygraph_mode():
         return _C_ops.log(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "log"
+        )
         inputs = {'X': [x]}
         helper = LayerHelper('log', **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -490,16 +491,36 @@ def _elementwise_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(original_op_type)
     assert y is not None, 'y cannot be None in {}'.format(original_op_type)
+    bf16_and_complex_supported_ops = [
+        "elementwise_add",
+        "elementwise_sub",
+        "elementwise_mul",
+        "elementwise_div",
+    ]
+    if original_op_type in bf16_and_complex_supported_ops:
+        data_type = [
+            'uint16',
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'complex64',
+            'complex128',
+        ]
+    else:
+        data_type = ['float16', 'float32', 'float64', 'int32', 'int64', 'bool']
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        data_type,
         original_op_type,
     )
     check_variable_and_dtype(
         y,
         'y',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        data_type,
         original_op_type,
     )
 
@@ -727,6 +748,9 @@ def floor_divide(x, y, name=None):
 
     .. math::
         out = trunc(x / y)
+
+    - :math:`x`: Multidimensional Tensor.
+    - :math:`y`: Multidimensional Tensor.
 
     Note:
         ``paddle.floor_divide`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
@@ -2107,7 +2131,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
        logsumexp(x) = \log\sum exp(x)
 
     Args:
-        x (Tensor): The input Tensor with data type float32 or float64, which
+        x (Tensor): The input Tensor with data type float16, float32 or float64, which
             have no more than 4 dimensions.
         axis (int|list|tuple, optional): The axis along which to perform
             logsumexp calculations. ``axis`` should be int, list(int) or
@@ -2146,7 +2170,9 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     if in_dygraph_mode():
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'logsumexp')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'logsumexp'
+        )
 
         helper = LayerHelper('logsumexp', **locals())
         attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all': reduce_all}
@@ -2292,8 +2318,8 @@ def max(x, axis=None, keepdim=False, name=None):
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max'
         )
-        if not isinstance(axis, Variable) and utils._contain_var(axis):
-            axis = utils._convert_to_tensor_list(axis)
+        if not isinstance(axis, Variable) and paddle.utils._contain_var(axis):
+            axis = paddle.utils._convert_to_tensor_list(axis)
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
@@ -2628,7 +2654,7 @@ def log1p(x, name=None):
         Out = \ln(x+1)
 
     Args:
-        x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
+        x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2647,7 +2673,9 @@ def log1p(x, name=None):
     if in_dygraph_mode():
         return _C_ops.log1p(x)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], "log1p"
+        )
         inputs = {'X': [x]}
         helper = LayerHelper('log1p', **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -4172,15 +4200,12 @@ def lerp(x, y, weight, name=None):
             # out: [5.5, 6., 6.5, 7.]
 
     """
-    if in_dygraph_mode():
-        if isinstance(weight, float):
-            weight = paddle.to_tensor(weight, dtype=x.dtype)
+    if isinstance(weight, float):
+        weight = paddle.full(shape=[], fill_value=weight, dtype=x.dtype)
 
+    if in_dygraph_mode():
         return _C_ops.lerp(x, y, weight)
     else:
-        if isinstance(weight, float):
-            weight = paddle.full(shape=[1], fill_value=weight, dtype=x.dtype)
-
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
         check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
         check_variable_and_dtype(
@@ -4449,19 +4474,15 @@ def gcd(x, y, name=None):
     y = paddle.broadcast_to(y, shape)
     x = paddle.abs(x)
     y = paddle.abs(y)
-    # TODO(zhouwei25): Support 0D for not_equal tensor with scalar
-    zero = paddle.full([], 0)
 
     def _gcd_cond_fn(x, y):
-        # return paddle.any(y != 0)
-        return paddle.any(y != zero)
+        return paddle.any(y != 0)
 
     def _gcd_body_fn(x, y):
         # paddle.mod will raise an error when any element of y is 0. To avoid
         # that, we change those zeros to ones. Their values don't matter because
         # they won't be used.
-        # y_not_equal_0 = y != 0
-        y_not_equal_0 = y != zero
+        y_not_equal_0 = y != 0
         y_safe = paddle.where(y_not_equal_0, y, paddle.ones(y.shape, y.dtype))
         x, y = (
             paddle.where(y_not_equal_0, y, x),

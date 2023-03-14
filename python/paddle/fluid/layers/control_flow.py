@@ -25,12 +25,11 @@ from ..framework import (
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
-from .utils import (
+from ...utils import (
     assert_same_structure,
     map_structure,
     hold_mutable_vars,
     copy_mutable_vars,
-    padding_to_same_structure,
     is_sequence,
     pack_sequence_as,
     flatten,
@@ -1151,7 +1150,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         )
 
     if in_dygraph_mode():
-        now_cond = pre_cond.numpy()[0]
+        now_cond = pre_cond.numpy().item()
         while now_cond:
             output_vars = body(*loop_vars)
             if not isinstance(output_vars, (list, tuple)):
@@ -1161,7 +1160,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars"
                 )
-            now_cond = cond(*output_vars).numpy()[0]
+            now_cond = cond(*output_vars).numpy().item()
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
     else:

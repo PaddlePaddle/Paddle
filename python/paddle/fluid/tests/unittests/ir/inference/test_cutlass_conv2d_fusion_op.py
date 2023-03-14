@@ -27,7 +27,7 @@ import paddle.inference as paddle_infer
 class TestCutlassConv2dFusionOp1(CutlassAutoScanTest):
     def sample_program_configs(self, *args, **kwargs):
         def generate_input1(input_shape):
-            return np.random.random(input_shape).astype(np.float32)
+            return (np.random.random(input_shape) - 0.5).astype(np.float32)
 
         def generate_weight(weight_shape):
             return np.random.random(weight_shape).astype(np.float32)
@@ -105,7 +105,9 @@ class TestCutlassConv2dFusionOp1(CutlassAutoScanTest):
                     "op_type": act,
                     "op_inputs": {"X": ["output_data0"]},
                     "op_outputs": {"Out": ["output_data1"]},
-                    "op_attrs": {},
+                    "op_attrs": {
+                        "alpha": 2.0,
+                    },
                 },
             ]
 
