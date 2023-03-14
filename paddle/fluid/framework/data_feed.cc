@@ -2820,6 +2820,8 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
                         d_slot_offsets,
                         slot_total_num * sizeof(size_t),
                         cudaMemcpyDeviceToHost));
+  auto* dev_ctx = static_cast<phi::GPUContext*>(
+      platform::DeviceContextPool::Instance().Get(this->place_));
   for (int j = 0; j < use_slot_size_; ++j) {
     if (scpoe_feed_vec_.size() > 0) {
       if (scpoe_feed_vec_.begin()->second[j] == nullptr) {
@@ -2846,9 +2848,11 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
         h_tensor_ptrs[j] = float_tensor.data<float>() + float_offset;
         float_offset += total_instance;
       } else {
-        h_tensor_ptrs[j] =
-            pack->float_tensor_vec()[float_zero_slot_index].mutable_data<float>(
-                {total_instance, 1}, this->place_);
+        phi::DenseTensor& f_tensor =
+            pack->float_tensor_vec()[float_zero_slot_index];
+        f_tensor.Resize({total_instance, 1});
+        dev_ctx->Alloc<float>(&f_tensor);
+        h_tensor_ptrs[j] = f_tensor.data<float>();
         float_zero_slot_index++;
       }
     } else if (info.type[0] == 'u') {  // uint64
@@ -2856,9 +2860,11 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
         h_tensor_ptrs[j] = uint64_tensor.data<int64_t>() + uint64_offset;
         uint64_offset += total_instance;
       } else {
-        h_tensor_ptrs[j] =
-            pack->uint64_tensor_vec()[uint64_zero_slot_index]
-                .mutable_data<int64_t>({total_instance, 1}, this->place_);
+        phi::DenseTensor& i_tensor =
+            pack->uint64_tensor_vec()[uint64_zero_slot_index];
+        i_tensor.Resize({total_instance, 1});
+        dev_ctx->Alloc<int64_t>(&i_tensor);
+        h_tensor_ptrs[j] = i_tensor.data<int64_t>();
         uint64_zero_slot_index++;
       }
     }
