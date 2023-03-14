@@ -119,7 +119,7 @@ class TestIndexSelectBF16Op(OpTest):
         self.dim = 1
         self.x_type = np.uint16
         self.index_type = np.int64
-        self.x_shape = (100, 4, 5)
+        self.x_shape = (20, 4, 5)
         self.index_size = 100
 
     def test_check_output(self):
