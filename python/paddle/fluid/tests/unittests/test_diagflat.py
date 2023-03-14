@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
 from paddle.static import Program, program_guard
 
 
 class TestDiagFlatError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -37,7 +36,6 @@ class TestDiagFlatError(unittest.TestCase):
 
 
 class TestDiagFlatAPI(unittest.TestCase):
-
     def setUp(self):
         self.input_np = np.random.random(size=(10, 10)).astype(np.float64)
         self.expected0 = np.diagflat(self.input_np)
@@ -79,11 +77,10 @@ class TestDiagFlatAPI(unittest.TestCase):
         place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
-        res0, res3 = exe.run(feed={
-            "input": self.input_np,
-            'input2': self.input_np2
-        },
-                             fetch_list=[result0, result3])
+        res0, res3 = exe.run(
+            feed={"input": self.input_np, 'input2': self.input_np2},
+            fetch_list=[result0, result3],
+        )
 
         np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
         np.testing.assert_allclose(res3, self.expected3, rtol=1e-05)
@@ -106,6 +103,29 @@ class TestDiagFlatAPI(unittest.TestCase):
 
         with paddle.static.program_guard(Program()):
             self.run_static(use_gpu=True)
+
+    def test_fp16_with_gpu(self, use_gpu=False):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([10, 10]).astype("float16")
+                x = paddle.static.data(
+                    name="x", shape=[10, 10], dtype="float16"
+                )
+
+                y = paddle.diagflat(x)
+                expected = np.diagflat(input)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
 
 
 if __name__ == "__main__":

@@ -501,6 +501,7 @@ struct MinGradXYFunctor {
 template <typename T, typename Enable = void>
 struct RemainderFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
     T res = a % b;
 
     // Accoding to #PR26732: in dividen % divsor
@@ -570,7 +571,7 @@ struct FloorDivideFunctor {
 #ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
 #endif
-    return static_cast<T>(std::trunc(a / b));
+    return static_cast<T>(a / b);
   }
 };
 
@@ -580,7 +581,7 @@ struct InverseFloorDivideFunctor {
 #ifndef PADDLE_WITH_XPU_KP
     PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
 #endif
-    return static_cast<T>(std::trunc(b / a));
+    return static_cast<T>(b / a);
   }
 };
 
@@ -606,6 +607,28 @@ struct ElementwisePowFunctor {
   }
 };
 
+template <typename T>
+struct ElementwiseInversePowFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+// TODO(wujionghao): A potential speed improvement is supporting different
+// types in C++.
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+    // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
+    // it will return a float number like 2.99... , which floor to 2
+    // when cast to int by default and it is wrong.
+    // Use llrint to cast it to the nearest integer, which is 3.
+    if (std::is_integral<T>::value) {
+      return std::llrint(
+          std::pow(static_cast<double>(b), static_cast<double>(a)));
+    }
+#endif
+#ifdef PADDLE_WITH_XPU_KP
+    return pow(b, a);
+#endif
+    return std::pow(b, a);
+  }
+};
+
 template <>
 struct ElementwisePowFunctor<dtype::float16> {
   inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
@@ -616,5 +639,14 @@ struct ElementwisePowFunctor<dtype::float16> {
   }
 };
 
+template <>
+struct ElementwiseInversePowFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float f_a = static_cast<float>(a);
+    float f_b = static_cast<float>(b);
+    return static_cast<dtype::float16>(std::pow(f_b, f_a));
+  }
+};
 }  // namespace funcs
 }  // namespace phi

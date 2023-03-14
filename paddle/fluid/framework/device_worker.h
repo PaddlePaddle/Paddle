@@ -30,8 +30,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #endif
-
-#include <map>
+#include "paddle/fluid/framework/barrier.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/heter_util.h"
@@ -60,19 +59,19 @@ class Scope;
 namespace paddle {
 namespace framework {
 
-std::string PrintLodTensor(Tensor* tensor,
+std::string PrintLodTensor(phi::DenseTensor* tensor,
                            int64_t start,
                            int64_t end,
                            char separator = ',',
                            bool need_leading_separator = false);
-void PrintLodTensor(Tensor* tensor,
+void PrintLodTensor(phi::DenseTensor* tensor,
                     int64_t start,
                     int64_t end,
-                    std::string& output_str,
+                    std::string& output_str,  // NOLINT
                     char separator = ',',
                     bool need_leading_separator = false);
-std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
-bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
+std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor, int index);
+bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
@@ -213,6 +212,9 @@ class DeviceWorker {
   virtual void SetDeviceContext(platform::DeviceContext* dev_ctx) {
     dev_ctx_ = dev_ctx;
   }
+
+  virtual void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
+
   virtual Scope* GetThreadScope() { return thread_scope_; }
   DataFeed* device_reader_ = nullptr;
 
@@ -243,6 +245,7 @@ class DeviceWorker {
   ChannelWriter<std::string> writer_;
   const size_t tensor_iterator_thread_num = 16;
   platform::DeviceContext* dev_ctx_ = nullptr;
+  int thread_num_;
 };
 
 class CPUWorkerBase : public DeviceWorker {
@@ -275,11 +278,15 @@ class HogwildWorker : public CPUWorkerBase {
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
   template <typename T>
-  void SetZero(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim);
+  void SetZero(phi::DenseTensor* tensor,
+               phi::DenseTensor* root_tensor,
+               int tensor_dim);
 
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
   void CreateThreadScope(const ProgramDesc& program);
+  // check batch num
+  bool CheckBatchNum(int flag);
 
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
@@ -288,6 +295,8 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
+  static std::atomic<bool> quit_flag_;
+  phi::DenseTensor sync_stat_;
 };
 
 class DownpourWorker : public HogwildWorker {
@@ -721,7 +730,7 @@ class HeterSectionWorker : public DeviceWorker {
   const platform::Place& place() const { return place_; }
 
   void SetDeviceIndex(int tid) override { thread_id_ = tid; }
-  void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
+  // void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
   void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
   void SetPipelineStage(int stage) { pipeline_stage_ = stage; }
@@ -764,7 +773,7 @@ class HeterSectionWorker : public DeviceWorker {
  protected:
   int trainer_id_;
   int trainers_;
-  int thread_num_;
+  // int thread_num_;
   int thread_id_;
   int num_microbatches_;
   int num_pipeline_stages_;

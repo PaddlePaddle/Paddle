@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
@@ -23,9 +23,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
-#include "paddle/fluid/platform/function_traits.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/function_traits.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 #define HOSTDEVICE __host__ __device__
@@ -220,12 +220,12 @@ class TransformFunctor {
   }
 
   inline void Run() const {
-    paddle::platform::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
     trans(ctx_, x_, x_ + nx_, y_, z_, func_);
   }
 
   inline void RunRowWise(int n, int pre) const {
-    paddle::platform::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
             x_,
@@ -244,7 +244,7 @@ class TransformFunctor {
   }
 
   inline void RunMidWise(int n, int pre, int post) const {
-    paddle::platform::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
     if (is_xsize_larger_) {
       trans(ctx_,
             x_,
@@ -326,12 +326,13 @@ void CommonElementwiseBroadcastForward(const CPUContext &dev_ctx,
       phi::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis,
-                    max_dim,
-                    phi::errors::InvalidArgument(
-                        "Axis should be less than %d, but received axis is %d.",
-                        max_dim,
-                        axis));
+  PADDLE_ENFORCE_LE(
+      axis,
+      max_dim,
+      phi::errors::InvalidArgument(
+          "Axis should be less than or equal to %d, but received axis is %d.",
+          max_dim,
+          axis));
   std::vector<int> x_dims_array(max_dim);
   std::vector<int> y_dims_array(max_dim);
   std::vector<int> out_dims_array(max_dim);
@@ -394,12 +395,13 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
       errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis,
-                    max_dim,
-                    errors::InvalidArgument(
-                        "Axis should be less than %d, but received axis is %d.",
-                        max_dim,
-                        axis));
+  PADDLE_ENFORCE_LE(
+      axis,
+      max_dim,
+      errors::InvalidArgument(
+          "Axis should be less than or equal to %d, but received axis is %d.",
+          max_dim,
+          axis));
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
@@ -472,7 +474,7 @@ static inline void GetDoubleGradSafeTensor(const DeviceContext &dev_ctx,
   } else {
     auto meta = phi::DenseTensorMeta(x.dtype(), x.dims(), x.layout());
     *ddx_safe = phi::Empty(dev_ctx, std::move(meta));
-    ddx_safe->mutable_data(dev_ctx.GetPlace());
+    dev_ctx.template Alloc<T>(ddx_safe);
     SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, ddx_safe, static_cast<T>(0));
   }
@@ -561,17 +563,19 @@ int GetVectorizedSizeForTensors(const std::vector<const DenseTensor *> &ins,
 #ifdef PADDLE_WITH_XPU_KP
   int vec_size = 256;
 #else
-  using Traits = paddle::platform::FunctionTraits<Functor>;
+  using Traits = phi::funcs::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
   const int Arity = Traits::arity;
   int vec_size = 4;
+  uint64_t addr = static_cast<uint64_t>(0);
   ArgsT arg;
   // The Arg VecSize=1 is to match the Unroller template.
   Unroller<VecSizeGetter, 1, Arity>::step(ins, arg, &vec_size);
   for (auto iter = outs.begin(); iter != outs.end(); ++iter) {
-    vec_size =
-        std::min<int>(vec_size, phi::GetVectorizedSize((*iter)->data<OutT>()));
+    addr = (addr | reinterpret_cast<uint64_t>((*iter)->data<OutT>()));
   }
+  vec_size = std::min(
+      vec_size, phi::GetVectorizedSize<OutT>(reinterpret_cast<OutT *>(addr)));
 #endif
   return vec_size;
 }
@@ -734,7 +738,7 @@ __device__ void VectorizedElementwiseKernelImpl(
     int num,
     int read_lens,
     Functor func) {
-  using Traits = paddle::platform::FunctionTraits<Functor>;
+  using Traits = phi::funcs::FunctionTraits<Functor>;
   using ArgsT = typename Traits::ArgsTuple;
   ArgsT args[VecSize];
   ConditionalT<OutT, NumOuts> result[VecSize];
@@ -760,8 +764,10 @@ __global__ void VectorizedElementwiseKernel(
     kps::IndexType main_offset,
     int read_lens,
     Functor func) {
-  kps::IndexType data_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
-  kps::IndexType stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
+  kps::IndexType data_offset =
+      static_cast<kps::IndexType>(BLOCK_ID_X) * BLOCK_NUM_X * read_lens;
+  kps::IndexType stride =
+      static_cast<kps::IndexType>(BLOCK_NUM_X) * GRID_NUM_X * read_lens;
   for (; data_offset < main_offset; data_offset += stride) {
     VectorizedElementwiseKernelImpl<OutT,
                                     Functor,
@@ -827,7 +833,7 @@ void ElementwiseKernel(const KPDevice &ctx,
                        const std::vector<const DenseTensor *> &ins,
                        std::vector<DenseTensor *> *outs,
                        Functor func) {
-  using Traits = paddle::platform::FunctionTraits<Functor>;
+  using Traits = phi::funcs::FunctionTraits<Functor>;
   const int kArity = Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(),
                     kArity,

@@ -15,8 +15,6 @@ add_subdirectory(backends)
 add_subdirectory(kernels)
 # phi infermeta
 add_subdirectory(infermeta)
-# phi operator definitions
-add_subdirectory(ops)
 # phi tools
 add_subdirectory(tools)
 # phi tests
@@ -36,21 +34,17 @@ set(PHI_DEPS
     arg_map_context
     infermeta
     lod_utils
-    op_compat_infos
     sparse_csr_tensor
     sparse_coo_tensor
     string_tensor
     api_scalar
-    api_int_array)
+    api_int_array
+    extended_tensor)
 
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(PHI_DEPS ${PHI_DEPS} ${phi_kernels})
 
-if(APPLE AND WITH_ARM)
-  cc_library(phi DEPS ${PHI_DEPS})
-else()
-  create_dummy_static_lib(phi LIBS ${PHI_DEPS} LIMIT 100)
-endif()
+cc_library(phi DEPS ${PHI_DEPS})
 
 set(phi_extension_header_file
     ${CMAKE_CURRENT_SOURCE_DIR}/extension.h
@@ -61,7 +55,7 @@ file(
 )
 
 # generate inner headers include dir for users
-generate_unify_header(backends)
+generate_unify_header(backends EXCLUDES context_pool_utils.h)
 generate_unify_header(core EXCLUDES cuda_stream.h)
 generate_unify_header(infermeta)
 generate_unify_header(kernels SKIP_SUFFIX grad_kernel)

@@ -76,8 +76,8 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
             x_dims));
   }
 
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
     auto mom = ctx->Inputs("MomentumTensor");
@@ -158,15 +158,20 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
                           bias_dim[0]));
   }
   ctx->SetOutputDim("Y", x_dims);
+  ctx->ShareLoD("X", "Y");
   VLOG(4) << x_dims;
   ctx->SetOutputDim("MeanOut", {C});
   ctx->SetOutputDim("VarianceOut", {C});
-  ctx->SetOutputDim("SavedMean", {C});
-  ctx->SetOutputDim("SavedVariance", {C});
-  ctx->ShareLoD("X", "Y");
+  if (!test_mode) {
+    ctx->SetOutputDim("SavedMean", {C});
+    ctx->SetOutputDim("SavedVariance", {C});
+  }
+  if (ctx->HasOutput("ReserveSpace")) {
+    ctx->SetOutputDim("ReserveSpace", {-1});
+  }
 }
 
-framework::OpKernelType BatchNormOp::GetExpectedKernelType(
+phi::KernelKey BatchNormOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
@@ -178,59 +183,51 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
   }
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
+      framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
       platform::errors::InvalidArgument("Scale input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
+      framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
       platform::errors::InvalidArgument("Bias input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Mean")->dtype()),
+      framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("Mean")->dtype()),
       platform::errors::InvalidArgument("Mean input should be of float type"));
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Variance")->dtype()),
-      platform::errors::InvalidArgument(
-          "Variance input should be of float type"));
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Variance")->dtype()),
+                    platform::errors::InvalidArgument(
+                        "Variance input should be of float type"));
 
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-#ifdef PADDLE_WITH_MKLDNN
-  if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    return framework::OpKernelType(input_data_type,
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN);
-  }
-#endif
-
-  return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
-framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
+phi::KernelKey BatchNormOp::GetKernelTypeForVar(
     const std::string &var_name,
-    const Tensor &tensor,
-    const framework::OpKernelType &expected_kernel_type) const {
+    const phi::DenseTensor &tensor,
+    const phi::KernelKey &expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "X") &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = framework::StringToDataLayout(data_layout);
+    auto dl = phi::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(), dl);
+    if (dl != phi::DataLayout::kAnyLayout) {
+      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
     }
   }
 #endif
-  return framework::OpKernelType(
-      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
 }
 
 void BatchNormOpMaker::Make() {
@@ -267,7 +264,7 @@ void BatchNormOpMaker::Make() {
            "The global variance (for training) "
            "or estimated Variance (for testing)");
   AddInput("MomentumTensor",
-           "(Tensor<float32>, optional) If provided, batch_norm will "
+           "(phi::DenseTensor<float32>, optional) If provided, batch_norm will "
            "use this as momentum, this has a higher priority than "
            "attr(momentum), the shape of this tensor MUST BE [1].")
       .AsDispensable();
@@ -352,13 +349,13 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
         true,
         platform::errors::InvalidArgument(
             "Using global stats during training is not supported "
-            "in gradient op kernel of batch_norm_mkldnn_op now."));
+            "in oneDNN version of batch_norm_gradient kernel now."));
   }
 
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNormGrad");
   const auto x_dims = ctx->GetInputDim("X");
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   const int C =
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
@@ -375,63 +372,51 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   }
 }
 
-framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
+phi::KernelKey BatchNormGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
     PADDLE_THROW(
         platform::errors::InvalidArgument("can't find gradient variable of Y"));
   }
-  const Tensor *t = nullptr;
-  if (var->IsType<Tensor>()) {
-    t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  const phi::DenseTensor *t = nullptr;
+  if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
 
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-    return framework::OpKernelType(data_type,
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN);
-  }
-#endif
-
-  return framework::OpKernelType(data_type, ctx.GetPlace());
+  return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
-framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(
+phi::KernelKey BatchNormGradOp::GetKernelTypeForVar(
     const std::string &var_name,
-    const Tensor &tensor,
-    const framework::OpKernelType &expected_kernel_type) const {
+    const phi::DenseTensor &tensor,
+    const phi::KernelKey &expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = framework::StringToDataLayout(data_layout);
+    auto dl = phi::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(), dl);
+    if (dl != phi::DataLayout::kAnyLayout) {
+      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
     }
   }
 #endif
-  return framework::OpKernelType(
-      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
 }
 
 template <typename T>
@@ -510,8 +495,8 @@ void BatchNormDoubleGradOp::InferShape(
   OP_INOUT_CHECK(ctx->HasOutput("DX"), "Output", "DX", "BatchNormDoubleGrad");
 
   const auto x_dims = ctx->GetInputDim("X");
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
   const int C =
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
@@ -528,25 +513,25 @@ void BatchNormDoubleGradOp::InferShape(
   }
 }
 
-framework::OpKernelType BatchNormDoubleGradOp::GetExpectedKernelType(
+phi::KernelKey BatchNormDoubleGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar("DY");
   if (var == nullptr) {
     PADDLE_THROW(
         platform::errors::NotFound("cannot find gradient variable of Y"));
   }
-  const Tensor *t = nullptr;
-  if (var->IsType<Tensor>()) {
-    t = &var->Get<Tensor>();
-  } else if (var->IsType<LoDTensor>()) {
-    t = &var->Get<LoDTensor>();
+  const phi::DenseTensor *t = nullptr;
+  if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
+  } else if (var->IsType<phi::DenseTensor>()) {
+    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 DECLARE_INPLACE_OP_INFERER(BatchNormDoubleGradOpInplaceInferer, {"DY", "DDY"});
@@ -566,6 +551,7 @@ REGISTER_OPERATOR(batch_norm,
                   ops::BatchNormOpInferVarType,
                   ops::BatchNormGradMaker<paddle::framework::OpDesc>,
                   ops::BatchNormGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(batch_norm_grad,
                   ops::BatchNormGradOp,
                   ops::BatchNormDoubleGradMaker<paddle::framework::OpDesc>,

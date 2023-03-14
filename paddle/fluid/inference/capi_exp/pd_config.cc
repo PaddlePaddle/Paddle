@@ -55,8 +55,9 @@ __pd_give PD_Config* PD_ConfigCreate() {
 }
 
 void PD_ConfigDestroy(__pd_take PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  delete reinterpret_cast<Config*>(config);
+  if (pd_config != NULL) {
+    delete reinterpret_cast<Config*>(pd_config);
+  }
 }
 
 void PD_ConfigSetModel(__pd_keep PD_Config* pd_config,
@@ -116,9 +117,12 @@ PD_Bool PD_ConfigUseFcPadding(__pd_keep PD_Config* pd_config) {
 
 void PD_ConfigEnableUseGpu(__pd_keep PD_Config* pd_config,
                            uint64_t memory_pool_init_size_mb,
-                           int32_t device_id) {
+                           int32_t device_id,
+                           PD_PrecisionType precision_mode) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableUseGpu(memory_pool_init_size_mb, device_id);
+  config->EnableUseGpu(memory_pool_init_size_mb,
+                       device_id,
+                       ConvertToCxxPrecisionType(precision_mode));
 }
 void PD_ConfigDisableGpu(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -155,14 +159,16 @@ void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
                         PD_Bool autotune,
                         const char* autotune_file,
                         const char* precision,
-                        PD_Bool adaptive_seqlen) {
+                        PD_Bool adaptive_seqlen,
+                        PD_Bool enable_multi_stream) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableXpu(l3_workspace_size,
                     locked,
                     autotune,
                     autotune_file,
                     precision,
-                    adaptive_seqlen);
+                    adaptive_seqlen,
+                    enable_multi_stream);
 }
 
 void PD_ConfigEnableNpu(__pd_keep PD_Config* pd_config, int32_t device_id) {
@@ -425,6 +431,14 @@ void PD_ConfigSetBfloat16Op(__pd_keep PD_Config* pd_config,
   }
   config->SetBfloat16Op(std::move(op_names));
 }
+void PD_ConfigEnableMkldnnInt8(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  config->EnableMkldnnInt8();
+}
+PD_Bool PD_ConfigMkldnnInt8Enabled(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->mkldnn_int8_enabled();
+}
 PD_Bool PD_ConfigThreadLocalStreamEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->thread_local_stream_enabled();
@@ -481,6 +495,10 @@ PD_Bool PD_ConfigIsValid(__pd_keep PD_Config* pd_config) {
 void PD_ConfigEnableGpuMultiStream(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableGpuMultiStream();
+}
+void PD_ConfigSetExecStream(__pd_keep PD_Config* pd_config, void* stream) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->SetExecStream(stream);
 }
 void PD_ConfigPartiallyRelease(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;

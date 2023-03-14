@@ -15,11 +15,11 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
@@ -35,7 +35,7 @@ inline void UniformRealDistribution(T *data,
   VLOG(4) << "[CPU] UniformRandomKernel<T>";
   std::uniform_real_distribution<T> dist(static_cast<T>(min),
                                          static_cast<T>(max));
-  auto engine = paddle::framework::GetCPURandomEngine(seed);
+  auto engine = phi::GetCPURandomEngine(seed);
 
   for (int64_t i = 0; i < size; ++i) {
     data[i] = dist(*engine);
@@ -50,7 +50,7 @@ inline void UniformRealDistribution(paddle::platform::bfloat16 *data,
                                     const unsigned int seed) {
   VLOG(4) << "[CPU] UniformRandomKernel<bfloat16>";
   std::uniform_real_distribution<float> dist(min, max);
-  auto engine = paddle::framework::GetCPURandomEngine(seed);
+  auto engine = phi::GetCPURandomEngine(seed);
 
   for (int64_t i = 0; i < size; ++i) {
     data[i] = static_cast<paddle::platform::bfloat16>(dist(*engine));
@@ -65,14 +65,14 @@ template <typename T>
 class CPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    framework::Tensor *tensor = nullptr;
+    phi::DenseTensor *tensor = nullptr;
     auto out_var = ctx.OutputVar("Out");
     std::vector<int64_t> new_shape;
     auto list_new_shape_tensor =
-        ctx.MultiInput<framework::Tensor>("ShapeTensorList");
+        ctx.MultiInput<phi::DenseTensor>("ShapeTensorList");
     if (list_new_shape_tensor.size() > 0 || ctx.HasInput("ShapeTensor")) {
       if (ctx.HasInput("ShapeTensor")) {
-        auto *shape_tensor = ctx.Input<framework::Tensor>("ShapeTensor");
+        auto *shape_tensor = ctx.Input<phi::DenseTensor>("ShapeTensor");
         new_shape = GetNewDataFromShapeTensor(shape_tensor);
       } else if (list_new_shape_tensor.size() > 0) {
         new_shape = GetNewDataFromShapeTensorList(list_new_shape_tensor);
@@ -86,8 +86,8 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       if (!new_shape.empty()) shape = new_shape;
       tensor->Resize(phi::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
-    } else if (out_var->IsType<framework::LoDTensor>()) {
-      tensor = out_var->GetMutable<framework::LoDTensor>();
+    } else if (out_var->IsType<phi::DenseTensor>()) {
+      tensor = out_var->GetMutable<phi::DenseTensor>();
       if (!new_shape.empty()) tensor->Resize(phi::make_ddim(new_shape));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -136,22 +136,24 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "ShapeTensorList" || var_name == "ShapeTensor") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 

@@ -4,17 +4,20 @@ if(WITH_GPU)
   nv_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
+         tensor_api)
 elseif(WITH_ROCM)
   hip_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
+         tensor_api)
 else()
   cc_library(
     phi_tensor_raw
     SRCS tensor.cc
-    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool)
+    DEPS tensor_base dense_tensor phi_api_utils phi_enforce context_pool
+         tensor_api)
 endif()
 
 set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
@@ -94,135 +97,32 @@ set(wrapped_infermeta_header_file
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
-# op extra info file
-set(ops_extra_info_gen_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/ops_extra_info_gen.py)
-set(op_compat_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
-set(ops_extra_info_file
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.cc)
+# tensor and tensor operants file
+set(tensor_api_yaml_path
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/tensor_operants.yaml)
+set(tensor_gen_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/tensor_operants_gen.py)
+set(operants_base_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_base.h)
+set(tensor_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/tensor_api.cc)
+set(phi_tensor_operants_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/tensor_operants.h)
+set(phi_tensor_operants_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/tensor_operants.cc)
+set(operants_manager_header_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/operants_manager.h)
+set(operants_manager_source_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/operants_manager.cc)
+set(operants_base_file_tmp ${operants_base_file}.tmp)
+set(tensor_api_source_file_tmp ${tensor_api_source_file}.tmp)
+set(phi_tensor_operants_header_file_tmp ${phi_tensor_operants_header_file}.tmp)
+set(phi_tensor_operants_source_file_tmp ${phi_tensor_operants_source_file}.tmp)
+set(operants_manager_header_file_tmp ${operants_manager_header_file}.tmp)
+set(operants_manager_source_file_tmp ${operants_manager_source_file}.tmp)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
-
-# install extra dependencies
-if(${PYTHON_VERSION_STRING} VERSION_LESS "3.6.2")
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml
-                          typing-extensions>=4.1.1 jinja2==2.11.3)
-else()
-  execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml jinja2
-                          typing-extensions)
-endif()
-
-# parse apis
-set(parsed_api_dir ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/parsed_apis)
-set(generated_op_path
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op.cc)
-set(generated_argument_mapping_path
-    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_sig.cc)
-message(
-  "parse api yamls:
-- ${api_yaml_file}
-- ${legacy_api_yaml_file}
-- ${bw_api_yaml_file}
-- ${legacy_bw_api_yaml_file}")
-execute_process(
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
-  COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_api_dir}
-  COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./ops.yaml
-          --output_path ./parsed_apis/api.parsed.yaml
-  COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
-          ./legacy_ops.yaml --output_path ./parsed_apis/legacy_api.parsed.yaml
-  COMMAND
-    ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./backward.yaml
-    --output_path ./parsed_apis/backward_api.parsed.yaml --backward
-  COMMAND
-    ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
-    ./legacy_backward.yaml --output_path
-    ./parsed_apis/legacy_backward_api.parsed.yaml --backward RESULTS_VARIABLE
-    _results)
-foreach(_result in ${_results})
-  if(${_result})
-    message(FATAL_ERROR "api yaml parsing failed, exiting.")
-  endif()
-endforeach()
-
-# validation of api yamls
-message("validate api yaml:
-- ${parsed_api_dir}/api.parsed.yaml
-- ${parsed_api_dir}/backward_api.parsed.yaml")
-execute_process(
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
-  COMMAND
-    ${PYTHON_EXECUTABLE} generator/cross_validate.py --forward_yaml_paths
-    ./parsed_apis/api.parsed.yaml ./parsed_apis/legacy_api.parsed.yaml
-    --backward_yaml_paths ./parsed_apis/backward_api.parsed.yaml
-    ./parsed_apis/legacy_backward_api.parsed.yaml
-  RESULT_VARIABLE _result)
-if(${_result})
-  message(FATAL_ERROR "api validation failed, exiting.")
-endif()
-
-# code generation for op, op makers, and argument mapping functions
-message(
-  "create or remove auto-geneated operators: ${generated_op_path}.tmp
-create or remove auto-geneated argument mappings: ${generated_argument_mapping_path}.tmp"
-)
-execute_process(
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
-  COMMAND
-    ${PYTHON_EXECUTABLE} generator/generate_op.py --api_yaml_path
-    ./parsed_apis/api.parsed.yaml --backward_api_yaml_path
-    ./parsed_apis/backward_api.parsed.yaml --api_version_yaml_path
-    op_version.yaml --op_compat_yaml_path op_compat.yaml --output_op_path
-    "${generated_op_path}.tmp" --output_arg_map_path
-    "${generated_argument_mapping_path}.tmp"
-  RESULT_VARIABLE _result)
-if(${_result})
-  message(FATAL_ERROR "operator codegen failed, exiting.")
-endif()
-
-if(EXISTS "${generated_op_path}.tmp" AND EXISTS "${generated_op_path}")
-  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                          "${generated_op_path}.tmp" "${generated_op_path}")
-  message("copy if different ${generated_op_path}.tmp ${generated_op_path}")
-elseif(EXISTS "${generated_op_path}.tmp")
-  execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_op_path}.tmp"
-                          "${generated_op_path}")
-  message("copy ${generated_op_path}.tmp ${generated_op_path}")
-else()
-  execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f "${generated_op_path}")
-  message("remove ${generated_op_path}")
-endif()
-
-if(EXISTS "${generated_argument_mapping_path}.tmp"
-   AND EXISTS "${generated_argument_mapping_path}")
-  execute_process(
-    COMMAND
-      ${CMAKE_COMMAND} -E copy_if_different
-      "${generated_argument_mapping_path}.tmp"
-      "${generated_argument_mapping_path}")
-  message(
-    "copy if different ${generated_argument_mapping_path}.tmp ${generated_argument_mapping_path}"
-  )
-elseif(EXISTS "${generated_argument_mapping_path}.tmp")
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} -E copy "${generated_argument_mapping_path}.tmp"
-            "${generated_argument_mapping_path}")
-  message(
-    "copy ${generated_argument_mapping_path}.tmp ${generated_argument_mapping_path}"
-  )
-else()
-  execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f
-                          "${generated_argument_mapping_path}")
-  message("remove ${generated_argument_mapping_path}")
-endif()
-
-# generate ops extra info
-execute_process(
-  COMMAND ${PYTHON_EXECUTABLE} ${ops_extra_info_gen_file} --op_compat_yaml_path
-          ${op_compat_yaml_file} --ops_extra_info_path ${ops_extra_info_file})
-message("generate ${ops_extra_info_file}")
 
 # generate forward api
 add_custom_command(
@@ -231,8 +131,7 @@ add_custom_command(
   COMMAND
     ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${api_yaml_file}
     ${legacy_api_yaml_file} --api_header_path ${api_header_file_tmp}
-    --api_header_path ${api_header_file_tmp} --api_source_path
-    ${api_source_file_tmp}
+    --api_source_path ${api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_header_file_tmp}
           ${api_header_file}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${api_source_file_tmp}
@@ -339,6 +238,46 @@ add_custom_command(
           ${api_gen_base}
   VERBATIM)
 
+# generate tensor and tensor operants file
+message("create or copy auto-geneated tensor files")
+execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml)
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator
+  COMMAND
+    ${PYTHON_EXECUTABLE} ${tensor_gen_file} --api_yaml_path ${api_yaml_file}
+    ${legacy_api_yaml_file} --operants_base_path ${operants_base_file_tmp}
+    --tensor_api_source_path ${tensor_api_source_file_tmp}
+    --phi_tensor_operants_header_path ${phi_tensor_operants_header_file_tmp}
+    --phi_tensor_operants_source_path ${phi_tensor_operants_source_file_tmp}
+    --operants_manager_header_path ${operants_manager_header_file_tmp}
+    --operants_manager_source_path ${operants_manager_source_file_tmp}
+    --tensor_api_yaml_path ${tensor_api_yaml_path}
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "tensor codegen failed, exiting.")
+endif()
+
+set(generated_tensor_files
+    "${operants_base_file}" "${tensor_api_source_file}"
+    "${phi_tensor_operants_header_file}" "${phi_tensor_operants_source_file}"
+    "${operants_manager_header_file}" "${operants_manager_source_file}")
+
+foreach(generated_tensor_file ${generated_tensor_files})
+  if(EXISTS "${generated_tensor_file}.tmp" AND EXISTS
+                                               "${generated_tensor_file}")
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+              "${generated_tensor_file}.tmp" "${generated_tensor_file}")
+    message(
+      "copy if different ${generated_tensor_file}.tmp ${generated_tensor_file}")
+  elseif(EXISTS "${generated_tensor_file}.tmp")
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E copy "${generated_tensor_file}.tmp"
+              "${generated_tensor_file}")
+    message("copy ${generated_tensor_file}.tmp ${generated_tensor_file}")
+  endif()
+endforeach()
+
 cc_library(
   op_meta_info
   SRCS op_meta_info.cc
@@ -350,7 +289,7 @@ cc_library(
 cc_library(
   context_pool
   SRCS context_pool.cc
-  DEPS phi_backends phi_enforce place init)
+  DEPS phi_backends phi_enforce place init phi_device_context)
 
 cc_library(
   kernel_dispatch
@@ -368,13 +307,24 @@ cc_library(
 cc_library(
   api_custom_impl
   SRCS api_custom_impl.cc
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta
-       phi_data_transform)
+  DEPS phi_tensor_raw
+       phi
+       kernel_dispatch
+       api_gen_utils
+       backward_infermeta
+       phi_data_transform
+       phi_profiler)
 cc_library(
   phi_function_api
   SRCS ${api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform
-       api_custom_impl)
+  DEPS phi_tensor_raw
+       phi
+       kernel_dispatch
+       api_gen_utils
+       phi_data_transform
+       api_custom_impl
+       phi_profiler
+       from_blob)
 cc_library(
   phi_bw_function_api
   SRCS ${bw_api_source_file}
@@ -387,16 +337,22 @@ cc_library(
        phi_data_transform
        phi_function_api
        api_custom_impl
-       global_utils)
+       global_utils
+       phi_profiler)
 cc_library(
   sparse_api
   SRCS ${sparse_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_profiler)
 cc_library(
   sparse_bw_api
   SRCS ${sparse_bw_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api
-       sparse_backward_infermeta)
+  DEPS phi_tensor_raw
+       phi
+       kernel_dispatch
+       api_gen_utils
+       sparse_api
+       sparse_backward_infermeta
+       phi_profiler)
 cc_library(
   phi_dygraph_api
   SRCS ${dygraph_api_source_file}
@@ -406,11 +362,12 @@ cc_library(
        api_gen_utils
        phi_data_transform
        phi_function_api
-       sparse_api)
+       sparse_api
+       phi_profiler)
 cc_library(
   strings_api
   SRCS ${strings_api_source_file}
-  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_profiler)
 cc_library(
   phi_tensor
   SRCS tensor_method.cc
@@ -434,3 +391,20 @@ cc_library(
   api_int_array
   SRCS int_array.cc
   DEPS tensor_copy)
+cc_library(
+  from_blob
+  SRCS from_blob.cc
+  DEPS phi_tensor_raw)
+
+cc_library(
+  phi_tensor_operants
+  SRCS ${phi_tensor_operants_source_file}
+  DEPS phi_function_api)
+cc_library(
+  operants_manager
+  SRCS ${operants_manager_source_file}
+  DEPS phi_enforce)
+cc_library(
+  tensor_api
+  SRCS ${tensor_api_source_file}
+  DEPS operants_manager)

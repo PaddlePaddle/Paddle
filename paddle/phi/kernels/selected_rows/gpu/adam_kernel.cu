@@ -14,8 +14,6 @@
 
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
@@ -23,6 +21,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace phi {
 namespace sr {
@@ -129,7 +128,7 @@ void AdamDenseParamSparseGradKernel(
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   // skip_update=true, just copy input to output, and TensorCopy will call
@@ -191,7 +190,7 @@ void AdamDenseParamSparseGradKernel(
   } else {
     // merge duplicated rows if any.
     // The rows of grad_merge have been sorted inside MergeAdd functor
-    paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+    phi::funcs::scatter::MergeAdd<Context, T> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
   }
@@ -199,7 +198,7 @@ void AdamDenseParamSparseGradKernel(
   auto& grad_tensor = grad_merge.value();
   const T* grad_data = grad_tensor.template data<T>();
   auto* grad_merge_rows = &grad_merge.rows();
-  paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 

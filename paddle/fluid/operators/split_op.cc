@@ -17,12 +17,12 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
-using framework::LoDTensor;
-using framework::Tensor;
+
 using framework::Variable;
 
 class SplitOp : public framework::OperatorWithKernel {
@@ -62,7 +62,7 @@ class SplitOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
       Variable *var =
           PADDLE_GET_CONST(Variable *, ctx->GetInputVarPtrs("AxisTensor")[0]);
-      axis_final = std::move(experimental::MakePhiScalarFromVar(*var));
+      axis_final = std::move(framework::MakePhiScalarFromVar(*var));
     } else if (!ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
       axis_final = std::move(phi::Scalar(-1));
       axis_final.SetFromTensor(true);
@@ -77,11 +77,11 @@ class SplitOp : public framework::OperatorWithKernel {
       const paddle::small_vector<framework::InferShapeVarPtr,
                                  phi::kInputSmallVectorSize>
           &sections_varptr_list = ctx->GetInputVarPtrs("SectionsTensorList");
-      std::vector<LoDTensor> sections_from_tensor;
+      std::vector<phi::DenseTensor> sections_from_tensor;
       sections_from_tensor.reserve(sections_tensor_list_size);
       for (const auto &section_varptr : sections_varptr_list) {
         Variable *var = PADDLE_GET_CONST(Variable *, section_varptr);
-        sections_from_tensor.emplace_back(var->Get<LoDTensor>());
+        sections_from_tensor.emplace_back(var->Get<phi::DenseTensor>());
       }
       sections_final = std::move(phi::IntArray(sections_from_tensor));
     } else if (!ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
@@ -109,7 +109,7 @@ class SplitOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -120,26 +120,28 @@ class SplitOp : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
-      const auto x_md = ctx.Input<Tensor>("X")->mem_desc();
-      if (x_md.data.format_desc.blocking.inner_nblks == 0)
-        return framework::OpKernelType(input_data_type,
-                                       ctx.GetPlace(),
-                                       framework::DataLayout::kMKLDNN,
-                                       framework::LibraryType::kMKLDNN);
+      const auto x_md = ctx.Input<phi::DenseTensor>("X")->mem_desc();
+      if (x_md.data.format_desc.blocking.inner_nblks == 0) {
+        return phi::KernelKey(phi::Backend::ONEDNN,
+                              phi::DataLayout::ONEDNN,
+                              phi::TransToPhiDataType(input_data_type));
+      }
     }
 #endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "AxisTensor" || var_name == "SectionsTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -198,7 +200,7 @@ Example:
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
+        .InEnum({"float32", "bfloat16", "int8", "uint8"});
   }
 };
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,32 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
-from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
+from functools import partial
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
+import numpy as np
+from auto_scan_test import PassAutoScanTest
+from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
 class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        if program_config.inputs["input_data1"].shape[
-                -4] != 1 and program_config.inputs["input_data2"].shape[-4] != 1:
-            if program_config.inputs["input_data1"].shape[
-                    -4] != program_config.inputs["input_data2"].shape[-4]:
+        if (
+            program_config.inputs["input_data1"].shape[-4] != 1
+            and program_config.inputs["input_data2"].shape[-4] != 1
+        ):
+            if (
+                program_config.inputs["input_data1"].shape[-4]
+                != program_config.inputs["input_data2"].shape[-4]
+            ):
                 return False
 
-        if program_config.inputs["input_data1"].shape[
-                -3] != 1 and program_config.inputs["input_data2"].shape[-3] != 1:
-            if program_config.inputs["input_data1"].shape[
-                    -3] != program_config.inputs["input_data2"].shape[-3]:
+        if (
+            program_config.inputs["input_data1"].shape[-3] != 1
+            and program_config.inputs["input_data2"].shape[-3] != 1
+        ):
+            if (
+                program_config.inputs["input_data1"].shape[-3]
+                != program_config.inputs["input_data2"].shape[-3]
+            ):
                 return False
 
         attrs = [
@@ -80,38 +83,32 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
             else:
                 return np.random.random(shape_y).astype(np.float32)
 
-        matmul_op = OpConfig(type="matmul_v2",
-                             inputs={
-                                 "X": ["input_data1"],
-                                 "Y": ["input_data2"]
-                             },
-                             outputs={"Out": ["matmul_output"]},
-                             attrs={
-                                 "trans_x": transpose_X,
-                                 "trans_y": transpose_Y,
-                                 "fused_reshape_X": [],
-                                 "fused_reshape_Y": [],
-                                 "fused_transpose_X": [],
-                                 "fused_transpose_Y": [],
-                                 "fused_reshape_Out": [],
-                                 "fused_transpose_Out": []
-                             })
+        matmul_op = OpConfig(
+            type="matmul_v2",
+            inputs={"X": ["input_data1"], "Y": ["input_data2"]},
+            outputs={"Out": ["matmul_output"]},
+            attrs={
+                "trans_x": transpose_X,
+                "trans_y": transpose_Y,
+            },
+        )
 
-        transpose2_op = OpConfig(type="transpose2",
-                                 inputs={"X": ["matmul_output"]},
-                                 outputs={
-                                     "Out": ["transpose2_output"],
-                                     "XShape": ["transpose2_xshape"]
-                                 },
-                                 attrs={'axis': axis})
+        transpose2_op = OpConfig(
+            type="transpose2",
+            inputs={"X": ["matmul_output"]},
+            outputs={
+                "Out": ["transpose2_output"],
+                "XShape": ["transpose2_xshape"],
+            },
+            attrs={'axis': axis},
+        )
 
-        reshape2_op = OpConfig(type="reshape2",
-                               inputs={"X": ["transpose2_output"]},
-                               outputs={
-                                   "Out": ["reshape2_output"],
-                                   "XShape": ["reshape2_xshape"]
-                               },
-                               attrs={'shape': shape})
+        reshape2_op = OpConfig(
+            type="reshape2",
+            inputs={"X": ["transpose2_output"]},
+            outputs={"Out": ["reshape2_output"], "XShape": ["reshape2_xshape"]},
+            attrs={'shape': shape},
+        )
 
         model_net = [matmul_op, transpose2_op, reshape2_op]
 
@@ -119,31 +116,26 @@ class TestMatmulv2TransposeReshapeMkldnnFusePass(PassAutoScanTest):
             ops=model_net,
             weights={},
             inputs={
-                "input_data1":
-                TensorConfig(data_gen=partial(generate_input, "x")),
-                "input_data2":
-                TensorConfig(data_gen=partial(generate_input, "y"))
+                "input_data1": TensorConfig(
+                    data_gen=partial(generate_input, "x")
+                ),
+                "input_data2": TensorConfig(
+                    data_gen=partial(generate_input, "y")
+                ),
             },
-            outputs=["reshape2_output"])
+            outputs=["reshape2_output"],
+        )
 
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        # gpu_cpu_map_matmul_v2_to_matmul_pass will affect the type of final fused op
-        fused_op = "matmul_v2"
-        input1_dim1 = program_config.inputs["input_data1"].shape[0]
-        input2_dim1 = program_config.inputs["input_data2"].shape[0]
-        input1_dim2 = program_config.inputs["input_data1"].shape[1]
-        input2_dim2 = program_config.inputs["input_data2"].shape[1]
-        if input1_dim1 == input2_dim1 and input1_dim2 == input2_dim2:
-            fused_op = "matmul"
-
         config = self.create_inference_config(use_mkldnn=True)
-        yield config, [fused_op], (1e-5, 1e-5)
+        yield config, ['fused_matmul'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(
-            quant=False, passes=["matmul_transpose_reshape_mkldnn_fuse_pass"])
+            quant=False, passes=["matmul_transpose_reshape_mkldnn_fuse_pass"]
+        )
 
 
 if __name__ == "__main__":

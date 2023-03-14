@@ -12,19 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/slice_op.h"
-
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 class SliceOp : public framework::OperatorWithKernel {
  public:
@@ -135,11 +135,11 @@ class SliceOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto *in_var = ctx.InputVar("Input");
-    if (in_var->IsType<framework::LoDTensor>()) {
-      auto &in_tensor = in_var->Get<framework::LoDTensor>();
+    if (in_var->IsType<phi::DenseTensor>()) {
+      auto &in_tensor = in_var->Get<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(
           in_tensor.IsInitialized(),
           true,
@@ -147,51 +147,54 @@ class SliceOp : public framework::OperatorWithKernel {
               "The tensor Input (Input) of Slice op is not initialized."));
       // NOTE: cuda pinned tensor need to copy its data to target place
       if (platform::is_cuda_pinned_place(in_tensor.place())) {
-        return framework::OpKernelType(
-            framework::TransToProtoVarType(in_tensor.dtype()),
-            ctx.device_context());
+        return phi::KernelKey(framework::TransToProtoVarType(in_tensor.dtype()),
+                              ctx.GetPlace());
       }
 
 #ifdef PADDLE_WITH_MKLDNN
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-
-      if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      auto vec_dims = phi::vectorize(in_tensor.dims());
+      bool all_zero_dims = std::all_of(
+          vec_dims.cbegin(), vec_dims.cend(), [](int64_t i) { return i == 0; });
+      if (!all_zero_dims && this->CanMKLDNNBeUsed(ctx, input_data_type)) {
         // OneDNN uses blocking format, which cannot be always supported with
         // reorders, because if blocked dimension is not divisible by 8 or
         // 16(depending on which blocking format is used) submemory cannot be
         // created, so in that scenario a fallback is needed
-        auto tmp_md = dnnl::memory::desc(
-            phi::vectorize(ctx.Input<Tensor>("Input")->dims()),
-            dnnl::memory::data_type::f32,
-            ctx.Input<Tensor>("Input")->format());
-        if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
-          return framework::OpKernelType(input_data_type,
-                                         ctx.GetPlace(),
-                                         framework::DataLayout::kMKLDNN,
-                                         framework::LibraryType::kMKLDNN);
+        if (ctx.Input<phi::DenseTensor>("Input")
+                ->mem_desc()
+                .data.format_desc.blocking.inner_nblks == 0) {
+          return phi::KernelKey(phi::Backend::ONEDNN,
+                                phi::DataLayout::ONEDNN,
+                                phi::TransToPhiDataType(input_data_type));
+        }
       }
 #endif
 
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(in_tensor.dtype()), in_tensor.place());
+      return phi::KernelKey(framework::TransToProtoVarType(in_tensor.dtype()),
+                            in_tensor.place());
     }
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -204,9 +207,9 @@ class SliceOpVarTypeInference : public framework::VarTypeInference {
     auto not_decrease =
         paddle::get<std::vector<int>>(decrease_axis).size() == 0;
     if (not_decrease) {
-      // The default type of out is LoDTensor.
+      // The default type of out is phi::DenseTensor.
       // However, if no axis is decreased and the type of input is not
-      // LoDTensor, the type of out should be the same as input.
+      // phi::DenseTensor, the type of out should be the same as input.
       // For example, input is a LoDTensorArray and no axis is decreased, the
       // output should be a LoDTensorArray.
       ctx->SetOutputType(out_name, ctx->GetInputType(x_name));
@@ -325,7 +328,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
@@ -336,33 +339,34 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
-      auto tmp_md = dnnl::memory::desc(
-          phi::vectorize(
-              ctx.Input<Tensor>(framework::GradVarName("Out"))->dims()),
-          dnnl::memory::data_type::f32,
-          ctx.Input<Tensor>(framework::GradVarName("Out"))->format());
-      if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
-        return framework::OpKernelType(input_data_type,
-                                       ctx.GetPlace(),
-                                       framework::DataLayout::kMKLDNN,
-                                       framework::LibraryType::kMKLDNN);
+      if (ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"))
+              ->mem_desc()
+              .data.format_desc.blocking.inner_nblks == 0) {
+        return phi::KernelKey(phi::Backend::ONEDNN,
+                              phi::DataLayout::ONEDNN,
+                              phi::TransToPhiDataType(input_data_type));
+      }
     }
 #endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -373,8 +377,8 @@ class SliceOpGradVarTypeInference : public framework::VarTypeInference {
     auto d_out = framework::GradVarName("Out");
     auto out = framework::GradVarName("Input");
     // The types of grad_input and input should always be the same.
-    // The default type of out is LoDTensor, but the type of input can be
-    // LoDTensor or LoDTensorArray,
+    // The default type of out is phi::DenseTensor, but the type of input can be
+    // phi::DenseTensor or phi::DenseTensorArray,
     // so set the type of both to be the same.
     ctx->SetOutputType(out, ctx->GetInputType(x));
     ctx->SetOutputDataType(out, ctx->GetInputDataType(d_out));
@@ -408,6 +412,40 @@ class SliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class SliceCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor input = this->GetSingleForwardInput("Input");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor input_grad = this->GetSingleInputGrad("Input");
+
+    auto dx_ptr = this->GetOutputPtr(&input_grad);
+    std::string dx_name = this->GetOutputName(input_grad);
+    auto axes = this->Attr<std::vector<int>>("axes");
+    auto starts = this->Attr<std::vector<int>>("starts");
+    auto ends = this->Attr<std::vector<int>>("ends");
+    auto infer_flags = this->Attr<std::vector<int>>("infer_flags");
+    auto decrease_axis = this->Attr<std::vector<int>>("decrease_axis");
+    VLOG(6) << "Runing slice_grad composite func";
+    std::vector<int64_t> new_axes =
+        std::vector<int64_t>(axes.begin(), axes.end());
+    std::vector<int64_t> new_infer_flags =
+        std::vector<int64_t>(infer_flags.begin(), infer_flags.end());
+    std::vector<int64_t> new_decrease_axis =
+        std::vector<int64_t>(decrease_axis.begin(), decrease_axis.end());
+    prim::slice_grad<prim::DescTensor>(input,
+                                       out_grad,
+                                       new_axes,
+                                       paddle::experimental::IntArray(starts),
+                                       paddle::experimental::IntArray(ends),
+                                       new_infer_flags,
+                                       new_decrease_axis,
+                                       dx_ptr);
+    this->RecoverOutputName(input_grad, dx_name);
+  }
+};
 template <typename T>
 class SliceDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -446,6 +484,7 @@ REGISTER_OPERATOR(slice,
                   ops::SliceOpMaker,
                   ops::SliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::SliceOpGradMaker<paddle::imperative::OpBase>,
+                  ops::SliceCompositeGradOpMaker,
                   ops::SliceOpVarTypeInference);
 REGISTER_OPERATOR(slice_grad,
                   ops::SliceOpGrad,
@@ -453,49 +492,3 @@ REGISTER_OPERATOR(slice_grad,
                   ops::SliceDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::SliceOpGradNoNeedBufferVarsInferer,
                   ops::SliceOpGradVarTypeInference);
-
-REGISTER_OP_CPU_KERNEL(
-    slice,
-    ops::SliceKernel<phi::CPUContext, bool>,
-    ops::SliceKernel<phi::CPUContext, int>,
-    ops::SliceKernel<phi::CPUContext, int64_t>,
-    ops::SliceKernel<phi::CPUContext, float>,
-    ops::SliceKernel<phi::CPUContext, double>,
-    ops::SliceKernel<phi::CPUContext, paddle::platform::complex<float>>,
-    ops::SliceKernel<phi::CPUContext, paddle::platform::complex<double>>,
-    ops::SliceKernel<phi::CPUContext, paddle::platform::bfloat16>);
-
-REGISTER_OP_CPU_KERNEL(
-    slice_grad,
-    ops::SliceGradKernel<phi::CPUContext, bool>,
-    ops::SliceGradKernel<phi::CPUContext, int>,
-    ops::SliceGradKernel<phi::CPUContext, int64_t>,
-    ops::SliceGradKernel<phi::CPUContext, float>,
-    ops::SliceGradKernel<phi::CPUContext, double>,
-    ops::SliceGradKernel<phi::CPUContext, paddle::platform::complex<float>>,
-    ops::SliceGradKernel<phi::CPUContext, paddle::platform::complex<double>>,
-    ops::SliceGradKernel<phi::CPUContext, paddle::platform::bfloat16>);
-
-REGISTER_OP_CUDA_KERNEL(
-    slice,
-    ops::SliceKernel<phi::GPUContext, bool>,
-    ops::SliceKernel<phi::GPUContext, float>,
-    ops::SliceKernel<phi::GPUContext, double>,
-    ops::SliceKernel<phi::GPUContext, int>,
-    ops::SliceKernel<phi::GPUContext, int64_t>,
-    ops::SliceKernel<phi::GPUContext, paddle::platform::float16>,
-    ops::SliceKernel<phi::GPUContext, paddle::platform::bfloat16>,
-    ops::SliceKernel<phi::GPUContext, paddle::platform::complex<float>>,
-    ops::SliceKernel<phi::GPUContext, paddle::platform::complex<double>>);
-
-REGISTER_OP_CUDA_KERNEL(
-    slice_grad,
-    ops::SliceGradKernel<phi::GPUContext, bool>,
-    ops::SliceGradKernel<phi::GPUContext, float>,
-    ops::SliceGradKernel<phi::GPUContext, double>,
-    ops::SliceGradKernel<phi::GPUContext, int>,
-    ops::SliceGradKernel<phi::GPUContext, int64_t>,
-    ops::SliceGradKernel<phi::GPUContext, paddle::platform::float16>,
-    ops::SliceGradKernel<phi::GPUContext, paddle::platform::bfloat16>,
-    ops::SliceGradKernel<phi::GPUContext, paddle::platform::complex<float>>,
-    ops::SliceGradKernel<phi::GPUContext, paddle::platform::complex<double>>);

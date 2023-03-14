@@ -12,6 +12,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include <string>
 #include <vector>
@@ -32,18 +36,18 @@ limitations under the License. */
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/string_tensor.h"
 namespace paddle {
 namespace pybind {
 
 namespace py = ::pybind11;
 
-PyTypeObject* p_tensor_type;
-PyTypeObject* p_string_tensor_type;  // For StringTensor
+extern PyTypeObject* p_tensor_type;
+extern PyTypeObject* p_string_tensor_type;  // For StringTensor
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 
@@ -51,7 +55,7 @@ PyObject* TensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
-    new (&(v->tensor)) paddle::experimental::Tensor();
+    new (&(v->tensor)) paddle::Tensor();
   }
   return obj;
 }
@@ -185,7 +189,7 @@ void InitStringTensorWithNumpyValue(TensorObject* self, const py::object& obj) {
 }
 
 void InitTensorWithTensor(TensorObject* self,
-                          const paddle::experimental::Tensor& src,
+                          const paddle::Tensor& src,
                           const paddle::platform::Place& place,
                           const std::string& name) {
   self->tensor.set_name(name);
@@ -206,7 +210,7 @@ void InitTensorWithTensor(TensorObject* self,
 }
 
 void InitTensorWithFrameworkTensor(TensorObject* self,
-                                   const framework::Tensor& src,
+                                   const phi::DenseTensor& src,
                                    const paddle::platform::Place& place,
                                    const std::string& name) {
   self->tensor.set_name(name);
@@ -214,8 +218,7 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
     self->tensor.set_impl(std::make_shared<phi::DenseTensor>(src));
     VLOG(4) << "Same place, do ShareDataWith";
   } else {
-    auto temp =
-        paddle::experimental::Tensor(std::make_shared<phi::DenseTensor>(src));
+    auto temp = paddle::Tensor(std::make_shared<phi::DenseTensor>(src));
     self->tensor.set_impl(temp.copy_to(place, true).impl());
     VLOG(4) << "Different place, do TensorCopy";
   }
@@ -223,7 +226,7 @@ void InitTensorWithFrameworkTensor(TensorObject* self,
 }
 
 void InitStringTensorWithStringTensor(TensorObject* self,
-                                      const paddle::experimental::Tensor& src,
+                                      const paddle::Tensor& src,
                                       const paddle::platform::Place& place,
                                       const std::string& name) {
   self->tensor.set_name(name);
@@ -382,7 +385,7 @@ void AutoInitTensorByPyArray(TensorObject* py_tensor_ptr,
   InitTensorWithNumpyValue(py_tensor_ptr, numpy_value, place, zero_copy);
 }
 
-// initialize Tensor by Tensor or framework::Tensor (mix args and
+// initialize Tensor by Tensor or phi::DenseTensor (mix args and
 // kwargs) automatically.
 void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
                             std::unordered_map<std::string, PyObject*> kws_map,
@@ -408,7 +411,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
   act_name = ParseName(kws_map, kw_order_map, args, flag_kwargs, args_num);
 
   if (init_by_egr_tensor) {
-    paddle::experimental::Tensor src_tensor;
+    paddle::Tensor src_tensor;
     if (kw_order_map["value"] <= args_num) {
       src_tensor =
           CastPyArg2Tensor(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
@@ -428,7 +431,7 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
     InitTensorWithTensor(py_tensor_ptr, src_tensor, place, act_name);
   } else {
     // init by framework tensor
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     if (kw_order_map["value"] <= args_num) {
       src_tensor = CastPyArg2FrameworkTensor(
           PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
@@ -438,8 +441,8 @@ void AutoInitTensorByTensor(TensorObject* py_tensor_ptr,
         src_tensor = CastPyArg2FrameworkTensor(kws_map["value"], 0);
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "The first expected arguments is {value: framework::Tensor}, "
-            "but could not parse the first argument {value: framework::Tensor} "
+            "The first expected arguments is {value: phi::DenseTensor}, "
+            "but could not parse the first argument {value: phi::DenseTensor} "
             "successfully. "
             "Please check your input first and make sure you are on the right "
             "way."));
@@ -505,7 +508,7 @@ void AutoInitStringTensorByStringTensor(
                        flag_kwargs,
                        args_num,
                        "generated_string_tensor");
-  paddle::experimental::Tensor src_tensor;
+  paddle::Tensor src_tensor;
   if (kw_order_map["value"] <= args_num) {
     src_tensor =
         CastPyArg2Tensor(PyTuple_GET_ITEM(args, kw_order_map["value"] - 1),
@@ -687,7 +690,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "Could not parse the first keyword argument successfully, "
               "the first keyword argument is value, but it should be PyArray "
-              "or Tensor or framework::Tensor. "
+              "or Tensor or phi::DenseTensor. "
               "Please check your input first and make sure you are on the "
               "right way."));
         }
@@ -753,7 +756,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "We not only support construct Tensor from numpy value "
-            "or tensor(Tensor or framework::Tensor) "
+            "or tensor(Tensor or phi::DenseTensor) "
             "with python kwargs by this initializer, "
             "but also even support dtype to init a empty Tensor. "
             "Please check your input first and make sure you call the existed "
@@ -789,10 +792,10 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "We support construct Tensor from numpy value "
-          "or tensor(Tensor or framework::Tensor) "
+          "or tensor(Tensor or phi::DenseTensor) "
           "with python args and kwargs by this initializer, "
           "but the first argument should be PyArray or Tensor or "
-          "framework::Tensor. "
+          "phi::DenseTensor. "
           "Please check your input first and make sure you call the existed "
           "constructor."));
     }
@@ -1113,6 +1116,20 @@ int StringTensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   return 1;
 }
 
+void AddPyMethodDefs(std::vector<PyMethodDef>* vector, PyMethodDef* methods) {
+  if (!vector->empty()) {
+    // remove nullptr terminator
+    vector->pop_back();
+  }
+  while (true) {
+    vector->push_back(*methods);
+    if (!methods->ml_name) {
+      break;
+    }
+    methods++;
+  }
+}
+
 static void TensorDealloc(TensorObject* self) {
   if (self->weakrefs != NULL)
     PyObject_ClearWeakRefs(reinterpret_cast<PyObject*>(self));
@@ -1124,6 +1141,7 @@ extern struct PyGetSetDef variable_properties[];
 extern struct PyGetSetDef string_tensor_variable_properties[];
 
 extern PyMethodDef variable_methods[];
+extern PyMethodDef math_op_patch_methods[];
 extern PyMethodDef string_tensor_variable_methods[];
 
 PyNumberMethods number_methods;
@@ -1132,6 +1150,10 @@ PyMappingMethods mapping_methods;
 
 void BindEager(pybind11::module* module) {
   auto m = module->def_submodule("eager");
+
+  static std::vector<PyMethodDef> methods;
+  AddPyMethodDefs(&methods, variable_methods);
+  AddPyMethodDefs(&methods, math_op_patch_methods);
 
   auto heap_type = reinterpret_cast<PyHeapTypeObject*>(
       PyType_Type.tp_alloc(&PyType_Type, 0));
@@ -1144,7 +1166,7 @@ void BindEager(pybind11::module* module) {
   type->tp_as_number = &number_methods;
   type->tp_as_sequence = &sequence_methods;
   type->tp_as_mapping = &mapping_methods;
-  type->tp_methods = variable_methods;
+  type->tp_methods = methods.data();
   type->tp_getset = variable_properties;
   type->tp_init = TensorInit;
   type->tp_new = TensorNew;

@@ -43,7 +43,7 @@ bool IsPersistable(const framework::VarDesc *var) {
 }
 
 bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
-                                 framework::LoDTensor *input_tensor,
+                                 phi::DenseTensor *input_tensor,
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
   framework::DDim dims = phi::make_ddim(input_data.shape);
@@ -433,10 +433,15 @@ bool DistModel::PrepareFleetExe() {
   executor_desc_ = FleetExecutorDesc();
   executor_desc_.set_cur_rank(config_.local_rank);
   std::unordered_map<int64_t, int64_t> id_to_rank;
+
   for (int i = 0; i < config_.nranks; ++i) {
     RankInfo *rank_info = executor_desc_.add_cluster_info();
     rank_info->set_rank(i);
-    rank_info->set_ip_port(config_.trainer_endpoints[i]);
+    if (config_.nranks == 1) {
+      rank_info->set_ip_port("");
+    } else {
+      rank_info->set_ip_port(config_.trainer_endpoints[i]);
+    }
     id_to_rank.insert({i, i});
   }
   fleet_exe.reset(new FleetExecutor(executor_desc_));
@@ -515,7 +520,7 @@ bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
   feed_tensors_.resize(feeds_.size());
   for (size_t i = 0; i < input_data.size(); ++i) {
     // feed each data separately
-    framework::LoDTensor *input_tensor = &(feed_tensors_[i]);
+    phi::DenseTensor *input_tensor = &(feed_tensors_[i]);
     if (!LoadDataFromDistModelTensor(input_data[i], input_tensor, place_)) {
       LOG(ERROR) << "Fail to load data from tensor " << input_data[i].name;
       return false;
@@ -556,7 +561,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto &fetch = PADDLE_GET(framework::LoDTensor, fetch_var);
+    auto &fetch = PADDLE_GET(phi::DenseTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(output_data->at(i));
     output->name = idx_to_fetches_[idx];
@@ -587,7 +592,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
 }
 
 template <typename T>
-bool DistModel::FetchResult(const framework::LoDTensor &fetch,
+bool DistModel::FetchResult(const phi::DenseTensor &fetch,
                             DistModelTensor *output_data) {
   auto shape = phi::vectorize(fetch.dims());
   output_data->shape.assign(shape.begin(), shape.end());

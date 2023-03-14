@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -34,11 +34,11 @@ class TestBase(IPUOpTest):
         data2 = np.random.uniform(size=[1, 3, 10, 10])
         self.feed_fp32 = {
             'x': data1.astype(np.float32),
-            'y': data2.astype(np.float32)
+            'y': data2.astype(np.float32),
         }
         self.feed_fp16 = {
             'x': data1.astype(np.float16),
-            'y': data2.astype(np.float16)
+            'y': data2.astype(np.float16),
         }
 
     def set_feed_attr(self):
@@ -50,13 +50,13 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-        y = paddle.static.data(name=self.feed_list[1],
-                               shape=self.feed_shape[1],
-                               dtype='float32')
-        out = paddle.fluid.layers.concat([x, y], **self.attrs)
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
+        out = paddle.concat([x, y], **self.attrs)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -71,7 +71,6 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {"axis": 1}
 

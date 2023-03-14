@@ -1,22 +1,15 @@
+# Exclude all third-party libraries and auto-generated files globally
 exclude: |
     (?x)^(
-        patches/.+
+        patches/.+|
+        paddle/fluid/framework/fleet/heter_ps/cudf/.+|
+        paddle/fluid/distributed/ps/thirdparty/round_robin.h|
+        python/paddle/utils/gast/.+|
+        python/paddle/fluid/tests/unittests/npu/.+|
+        python/paddle/fluid/tests/unittests/mlu/.+
     )$
 repos:
--   repo: https://github.com/Lucas-C/pre-commit-hooks.git
-    rev: v1.1.14
-    hooks:
-    -   id: remove-crlf
--   repo: https://github.com/google/yapf
-    rev: v0.32.0
-    hooks:
-    -   id: yapf
-        files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
-        exclude: |
-            (?x)^(
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py|
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_origin_info.py
-            )$
+# Common hooks
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.1.0
     hooks:
@@ -26,9 +19,74 @@ repos:
     -   id: detect-private-key
     -   id: end-of-file-fixer
     -   id: sort-simple-yaml
-        files: (op|backward|op_[a-z_]+)\.yaml$
+        files: (ops|backward|op_[a-z_]+)\.yaml$
     -   id: trailing-whitespace
         files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
+-   repo: https://github.com/Lucas-C/pre-commit-hooks.git
+    rev: v1.1.14
+    hooks:
+    -   id: remove-crlf
+    -   id: remove-tabs
+        name: Tabs remover (C++)
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
+        args: [--whitespaces-count, '2']
+    -   id: remove-tabs
+        name: Tabs remover (Python)
+        files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
+        args: [--whitespaces-count, '4']
+        # Exclude the fluid directory but keep the fluid/tests directory.
+        # And exclude some unit test files that require tabs.
+        exclude: |
+            (?x)^(
+                python/paddle/fluid/(?!tests).+|
+                python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py|
+                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py
+            )$
+-   repo: local
+    hooks:
+    -   id: copyright_checker
+        name: copyright_checker
+        entry: python ./tools/codestyle/copyright.hook
+        language: system
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|sh)$
+        exclude: |
+            (?x)^(
+                paddle/utils/.*
+            )$
+# For Python files
+-   repo: https://github.com/psf/black.git
+    rev: 22.8.0
+    hooks:
+    -   id: black
+        files: (.*\.(py|pyi|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
+-   repo: https://github.com/pycqa/isort
+    rev: 5.11.5
+    hooks:
+    -   id: isort
+-   repo: https://github.com/PyCQA/flake8
+    rev: 5.0.4
+    hooks:
+    -   id: flake8
+        args: ["--config=.flake8"]
+-   repo: https://github.com/PyCQA/autoflake
+    rev: v1.7.7
+    hooks:
+    -   id: autoflake
+        args:
+            - --in-place
+            - --remove-all-unused-imports
+            - --ignore-pass-after-docstring
+            - --ignore-init-module-imports
+            - --exclude=python/paddle/fluid/[!t]**,python/paddle/fluid/tra**
+-   repo: local
+    hooks:
+    -   id: pylint-doc-string
+        name: pylint
+        description: Check python docstring style using docstring_checker.
+        entry: bash ./tools/codestyle/pylint_pre_commit.hook
+        language: system
+        files: \.(py)$
+# For C++ files
 -   repo: local
     hooks:
     -   id: clang-format
@@ -37,10 +95,6 @@ repos:
         entry: bash ./tools/codestyle/clang_format.hook -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
-        exclude: |
-            (?x)^(
-                paddle/fluid/distributed/ps/thirdparty/round_robin.h
-            )$
 -   repo: local
     hooks:
     -   id: cpplint-cpp-source
@@ -53,25 +107,7 @@ repos:
             - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
             - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
             - --quiet
--   repo: local
-    hooks:
-    -   id: pylint-doc-string
-        name: pylint
-        description: Check python docstring style using docstring_checker.
-        entry: bash ./tools/codestyle/pylint_pre_commit.hook
-        language: system
-        files: \.(py)$
--   repo: local
-    hooks:
-    -   id: copyright_checker
-        name: copyright_checker
-        entry: python ./tools/codestyle/copyright.hook
-        language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|sh)$
-        exclude: |
-            (?x)^(
-                paddle/utils/.*
-            )$
+# For CMake files
 -   repo: local
     hooks:
     -   id: auto-generate-cmakelists
@@ -89,7 +125,6 @@ repos:
             (?x)^(
                 paddle/fluid/operators/CMakeLists.txt
             )$
-
 -   repo: https://github.com/cmake-lint/cmake-lint
     rev: 1.4.2
     hooks:

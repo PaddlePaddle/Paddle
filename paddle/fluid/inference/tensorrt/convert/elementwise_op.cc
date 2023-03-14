@@ -32,7 +32,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     if (Y_v) {
       // Y is weight
-      auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+      auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
       std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
       auto y_weight = engine_->GetTrtWeight(op_desc.Input("Y").front(), *Y_t);
 
@@ -74,8 +74,12 @@ class ElementwiseTensorOpConverter : public OpConverter {
     nvinfer1::Dims dims_y = Y->getDimensions();
     auto output_name = op_desc.Output("Out")[0];
 
+    int axis = -1;
     // axis here is relative to explicit batch
-    int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
+    if (op_type_ != "logical_or" && op_type_ != "logical_xor" &&
+        op_type_ != "logical_and") {
+      axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
+    }
     int real_x_rank = dims_x.nbDims;
     int real_y_rank = dims_y.nbDims;
     if (!engine_->with_dynamic_shape()) {
@@ -139,17 +143,59 @@ class ElementwiseTensorOpConverter : public OpConverter {
       X = tmp;
     }
 
-    auto op_pair = ops.find(op_type_);
-    PADDLE_ENFORCE_NE(op_pair,
-                      ops.end(),
-                      platform::errors::InvalidArgument(
-                          "Elementwise op's type(%s) is not supported. Please "
-                          "check if the op_type is correct.",
-                          op_type_));
+    if (op_type_ == "less_equal") {
+      auto* less_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               ElementWise,
+                               *X,
+                               *reshape_y_tensor,
+                               nvinfer1::ElementWiseOperation::kLESS);
+      auto* equal_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               ElementWise,
+                               *X,
+                               *reshape_y_tensor,
+                               nvinfer1::ElementWiseOperation::kEQUAL);
+      auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                         ElementWise,
+                                         *(less_layer->getOutput(0)),
+                                         *(equal_layer->getOutput(0)),
+                                         nvinfer1::ElementWiseOperation::kOR);
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, ElementWise, *X, *reshape_y_tensor, op_pair->second);
-    RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+    } else if (op_type_ == "mod") {
+      auto* div_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               ElementWise,
+                               *X,
+                               *reshape_y_tensor,
+                               nvinfer1::ElementWiseOperation::kFLOOR_DIV);
+      auto* mul_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               ElementWise,
+                               *(div_layer->getOutput(0)),
+                               *reshape_y_tensor,
+                               nvinfer1::ElementWiseOperation::kPROD);
+      auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                         ElementWise,
+                                         *X,
+                                         *(mul_layer->getOutput(0)),
+                                         nvinfer1::ElementWiseOperation::kSUB);
+      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+    } else {
+      auto op_pair = ops.find(op_type_);
+      PADDLE_ENFORCE_NE(
+          op_pair,
+          ops.end(),
+          platform::errors::InvalidArgument(
+              "Elementwise op's type(%s) is not supported. Please "
+              "check if the op_type is correct.",
+              op_type_));
+
+      auto* layer = TRT_ENGINE_ADD_LAYER(
+          engine_, ElementWise, *X, *reshape_y_tensor, op_pair->second);
+      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+    }
   }
 
  protected:
@@ -167,6 +213,12 @@ const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
         {"min", nvinfer1::ElementWiseOperation::kMIN},
         {"pow", nvinfer1::ElementWiseOperation::kPOW},
         {"max", nvinfer1::ElementWiseOperation::kMAX},
+        {"floordiv", nvinfer1::ElementWiseOperation::kFLOOR_DIV},
+        {"less_than", nvinfer1::ElementWiseOperation::kLESS},
+        {"greater_than", nvinfer1::ElementWiseOperation::kGREATER},
+        {"logical_or", nvinfer1::ElementWiseOperation::kOR},
+        {"logical_xor", nvinfer1::ElementWiseOperation::kXOR},
+        {"logical_and", nvinfer1::ElementWiseOperation::kAND},
 };
 
 class ElementwiseTensorAddOpConverter : public ElementwiseTensorOpConverter {
@@ -203,7 +255,45 @@ class ElementwiseTensorPowOpConverter : public ElementwiseTensorOpConverter {
  public:
   ElementwiseTensorPowOpConverter() { op_type_ = "pow"; }
 };
-
+class ElementwiseTensorFloorDivOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorFloorDivOpConverter() { op_type_ = "floordiv"; }
+};
+class ElementwiseTensorLessThanOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorLessThanOpConverter() { op_type_ = "less_than"; }
+};
+class ElementwiseTensorGreaterThanOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorGreaterThanOpConverter() { op_type_ = "greater_than"; }
+};
+class ElementwiseTensorLogicalOrOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorLogicalOrOpConverter() { op_type_ = "logical_or"; }
+};
+class ElementwiseTensorLogicalXorOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorLogicalXorOpConverter() { op_type_ = "logical_xor"; }
+};
+class ElementwiseTensorLogicalAndOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorLogicalAndOpConverter() { op_type_ = "logical_and"; }
+};
+class ElementwiseTensorLessEqualOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorLessEqualOpConverter() { op_type_ = "less_equal"; }
+};
+class ElementwiseTensorModOpConverter : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorModOpConverter() { op_type_ = "mod"; }
+};
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -216,8 +306,16 @@ REGISTER_TRT_OP_CONVERTER(elementwise_sub_weight,
                           ElementwiseTensorSubOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_div_weight,
                           ElementwiseTensorDivOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_max_weight,
+                          ElementwiseTensorMaxOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_min_weight,
+                          ElementwiseTensorMinOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_pow_weight,
                           ElementwiseTensorPowOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_weight,
+                          ElementwiseTensorFloorDivOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_mod_weight,
+                          ElementwiseTensorModOpConverter);
 
 REGISTER_TRT_OP_CONVERTER(elementwise_add_tensor,
                           ElementwiseTensorAddOpConverter);
@@ -233,3 +331,14 @@ REGISTER_TRT_OP_CONVERTER(elementwise_min_tensor,
                           ElementwiseTensorMinOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_pow_tensor,
                           ElementwiseTensorPowOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_tensor,
+                          ElementwiseTensorFloorDivOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_mod_tensor,
+                          ElementwiseTensorModOpConverter);
+REGISTER_TRT_OP_CONVERTER(less_than, ElementwiseTensorLessThanOpConverter);
+REGISTER_TRT_OP_CONVERTER(greater_than,
+                          ElementwiseTensorGreaterThanOpConverter);
+REGISTER_TRT_OP_CONVERTER(logical_or, ElementwiseTensorLogicalOrOpConverter);
+REGISTER_TRT_OP_CONVERTER(logical_xor, ElementwiseTensorLogicalXorOpConverter);
+REGISTER_TRT_OP_CONVERTER(logical_and, ElementwiseTensorLogicalAndOpConverter);
+REGISTER_TRT_OP_CONVERTER(less_equal, ElementwiseTensorLessEqualOpConverter);

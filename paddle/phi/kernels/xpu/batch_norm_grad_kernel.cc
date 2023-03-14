@@ -86,7 +86,6 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          bool is_test,
                          bool use_global_stats,
                          bool trainable_statistics,
-                         bool fuse_with_relu,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
@@ -98,8 +97,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
                         "But recevived 'data_layout' is [%s].",
                         data_layout));
 
-  const auto data_layout_val =
-      paddle::framework::StringToDataLayout(data_layout);
+  const auto data_layout_val = phi::StringToDataLayout(data_layout);
 
   use_global_stats = is_test || use_global_stats;
 
@@ -130,6 +128,9 @@ void BatchNormGradKernel(const Context &dev_ctx,
   C = (C == 0) ? 1 : C;
   H = (H == 0) ? 1 : H;
   W = (W == 0) ? 1 : W;
+  D = (D == 0) ? 1 : D;
+
+  W = W * D;
 
   const auto *x_data = x.data<T>();
   const auto *d_y_data = y_grad.data<T>();

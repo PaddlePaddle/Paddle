@@ -85,8 +85,8 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           "CTCAlign operator CUDA kernel must use CUDAPlace "
                           "rather than CPUPlace."));
-    auto* input = ctx.Input<LoDTensor>("Input");
-    auto* output = ctx.Output<LoDTensor>("Output");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
     const int blank = ctx.Attr<int>("blank");
     const int merge_repeated =
         static_cast<int>(ctx.Attr<bool>("merge_repeated"));
@@ -99,9 +99,9 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       auto input_dims = input->dims();
       T* output_data = output->mutable_data<T>({input_dims[0], input_dims[1]},
                                                ctx.GetPlace());
-      auto* input_length = ctx.Input<LoDTensor>("InputLength");
+      auto* input_length = ctx.Input<phi::DenseTensor>("InputLength");
       const T* input_length_data = input_length->data<T>();
-      auto* output_length = ctx.Output<LoDTensor>("OutputLength");
+      auto* output_length = ctx.Output<phi::DenseTensor>("OutputLength");
       T* output_length_data =
           output_length->mutable_data<T>({input_dims[0], 1}, ctx.GetPlace());
       PaddingMergeAndDelCudaKernel<T>
@@ -129,7 +129,7 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       // merge elements and delete blank
       T* output_data = output->mutable_data<T>({num_tokens, 1}, ctx.GetPlace());
 
-      paddle::framework::MixVector<size_t> mixv_input_lod(&input_lod[level]);
+      phi::MixVector<size_t> mixv_input_lod(&input_lod[level]);
       MergeAndDelCudaKernel<T>
           <<<1, 1, 0, stream>>>(num_tokens,
                                 tokens,

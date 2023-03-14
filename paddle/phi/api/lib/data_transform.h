@@ -56,11 +56,24 @@ class TransformFlag {
   // the complex is always transferd, except stop_transform_ is true.
   bool trans_data_type_ = false;
 
-  // trans_backend_ and trans_layout_ are true defalutly,
+  // trans_backend_ and trans_layout_ are true defaultly,
   // and they can only be setted by global flag.
   bool trans_backend_ = true;
   bool trans_layout_ = true;
 };
+
+static inline phi::TensorArgDef GetKernelInputArgDef(
+    const phi::TensorArgDef& input_def, phi::Backend kernel_backend) {
+  phi::TensorArgDef input_actual_def = input_def;
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  // When the backend of input tensor arg_def is CUSTOM, we need to set it to
+  // the actual backend by expected_kernel_key.
+  if (input_actual_def.backend == phi::Backend::CUSTOM) {
+    input_actual_def.SetBackend(kernel_backend);
+  }
+#endif
+  return input_actual_def;
+}
 
 std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
@@ -79,6 +92,17 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
 
 paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     const paddle::optional<std::vector<Tensor>>& inputs,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag);
+
+// Only support transfering place for SelectedRows
+std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag);
+
+paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
+    const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 

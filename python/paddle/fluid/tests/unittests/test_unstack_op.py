@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from op_test import OpTest
-import numpy as np
 import unittest
+
+import numpy as np
+from op_test import OpTest
+
 import paddle
 
 
 class TestUnStackOpBase(OpTest):
-
     def initDefaultParameters(self):
         self.input_dim = (5, 6, 7)
         self.axis = 0
@@ -64,27 +65,47 @@ class TestUnStackOpBase(OpTest):
 
 
 class TestStackOp3(TestUnStackOpBase):
-
     def initParameters(self):
         self.axis = -1
 
 
 class TestStackOp4(TestUnStackOpBase):
-
     def initParameters(self):
         self.axis = -3
 
 
 class TestStackOp5(TestUnStackOpBase):
-
     def initParameters(self):
         self.axis = 1
 
 
 class TestStackOp6(TestUnStackOpBase):
-
     def initParameters(self):
         self.axis = 2
+
+
+class TestUnstackZeroInputOp(unittest.TestCase):
+    def unstack_zero_input_static(self):
+
+        paddle.enable_static()
+
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
+        paddle.unstack(x, axis=1)
+
+    def unstack_zero_input_dynamic(self):
+
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
+        paddle.unstack(x, axis=1)
+
+    def test_type_error(self):
+        paddle.disable_static()
+
+        self.assertRaises(ValueError, self.unstack_zero_input_dynamic)
+        self.assertRaises(ValueError, self.unstack_zero_input_static)
+
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -95,6 +96,12 @@ struct VisitDataArgMinMaxFunctor {
       if (axis < 0) new_axis = axis + x_dims.size();
     }
 
+    // For 0D Tensor
+    if (x.dims().size() == 0) {
+      phi::funcs::set_constant(dev_ctx, out, 0);
+      return;
+    }
+
 #define CALL_ARG_MINMAX_FUNCTOR(rank)                                         \
   ArgMinMaxFunctor<Context, T, Tout, rank, EnumArgMinMaxValue> functor##rank; \
   functor##rank(dev_ctx, x, out, x_dims, new_axis, new_keepdims)
@@ -141,15 +148,14 @@ void ArgMinMaxKernel(const Context& dev_ctx,
                      int dtype,
                      DenseTensor* out) {
   if (dtype < 0) {
-    paddle::framework::VisitDataTypeTiny(
-        static_cast<paddle::framework::proto::VarType::Type>(
-            paddle::framework::proto::VarType::INT64),
+    phi::VisitDataTypeTiny(
+        phi::DataType::INT64,
         VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
             dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
     return;
   }
-  paddle::framework::VisitDataTypeTiny(
-      static_cast<paddle::framework::proto::VarType::Type>(dtype),
+  phi::VisitDataTypeTiny(
+      phi::TransToPhiDataType(dtype),
       VisitDataArgMinMaxFunctor<Context, T, EnumArgMinMaxValue>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
@@ -180,7 +186,7 @@ void ArgMaxKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(arg_min,
+PD_REGISTER_KERNEL(argmin,
                    CPU,
                    ALL_LAYOUT,
                    phi::ArgMinKernel,
@@ -189,9 +195,11 @@ PD_REGISTER_KERNEL(arg_min,
                    int32_t,
                    int64_t,
                    int16_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
 
-PD_REGISTER_KERNEL(arg_max,
+PD_REGISTER_KERNEL(argmax,
                    CPU,
                    ALL_LAYOUT,
                    phi::ArgMaxKernel,
@@ -200,4 +208,6 @@ PD_REGISTER_KERNEL(arg_max,
                    int32_t,
                    int64_t,
                    int16_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

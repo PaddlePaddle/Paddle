@@ -46,7 +46,42 @@ void TrilTriuGradKernel(const Context& ctx,
   }
 }
 
+template <typename T, typename Context>
+void TrilGradKernel(const Context& ctx,
+                    const DenseTensor& out_grad,
+                    int diagonal,
+                    DenseTensor* x_grad) {
+  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, true, x_grad);
+}
+
+template <typename T, typename Context>
+void TriuGradKernel(const Context& ctx,
+                    const DenseTensor& out_grad,
+                    int diagonal,
+                    DenseTensor* x_grad) {
+  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, false, x_grad);
+}
+
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    tril_triu_grad, XPU, ALL_LAYOUT, phi::TrilTriuGradKernel, int, float) {}
+PD_REGISTER_KERNEL(tril_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TrilGradKernel,
+                   int,
+                   float,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(triu_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TriuGradKernel,
+                   int,
+                   float,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(tril_triu_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TrilTriuGradKernel,
+                   int,
+                   float,
+                   phi::dtype::float16) {}

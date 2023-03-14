@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.optimizer import Optimizer
-from paddle.fluid import core, framework, layers
-from paddle.fluid.framework import Program, Variable
-from paddle.fluid.layer_helper import LayerHelper
 import paddle
-import numpy as np
-from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid import framework
+from paddle.fluid.dygraph import base as imperative_base
+from paddle.fluid.framework import Program, in_dygraph_mode
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.optimizer import Optimizer
 
 __all__ = []
 
@@ -61,7 +59,7 @@ class ModelAverage(Optimizer):
         average_window_rate (float): The calculate ratio of the window length relative to ``Parameter`` update times.
         parameters (list, optional): List of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         min_average_window (int, optional): the minimum size of average window length. The default value is 10000.
         max_average_window (int, optional): The maximum size of average window length. The default value is 10000.
         name (str, optional): Normally there is no need for user to set this property.
@@ -99,7 +97,7 @@ class ModelAverage(Optimizer):
 
         class LinearNet(nn.Layer):
             def __init__(self):
-                super(LinearNet, self).__init__()
+                super().__init__()
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
                 self.bias = self._linear.bias
 
@@ -163,17 +161,21 @@ class ModelAverage(Optimizer):
 
     """
 
-    def __init__(self,
-                 average_window_rate,
-                 parameters=None,
-                 min_average_window=10000,
-                 max_average_window=10000,
-                 name=None):
-        super(ModelAverage, self).__init__(learning_rate=0.0,
-                                           parameters=parameters,
-                                           weight_decay=None,
-                                           grad_clip=None,
-                                           name=name)
+    def __init__(
+        self,
+        average_window_rate,
+        parameters=None,
+        min_average_window=10000,
+        max_average_window=10000,
+        name=None,
+    ):
+        super().__init__(
+            learning_rate=0.0,
+            parameters=parameters,
+            weight_decay=None,
+            grad_clip=None,
+            name=name,
+        )
 
         self.helper = LayerHelper(self.__class__.__name__)
         self.average_window = average_window_rate
@@ -183,7 +185,8 @@ class ModelAverage(Optimizer):
 
         if not framework._non_static_mode():
             global_block = framework.default_main_program().global_block()
-            all_parameters = parameters if parameters else global_block.all_parameters(
+            all_parameters = (
+                parameters if parameters else global_block.all_parameters()
             )
 
             self._create_accumulators(global_block, all_parameters)
@@ -208,18 +211,15 @@ class ModelAverage(Optimizer):
             self._add_accumulator('sum_2', param)
             self._add_accumulator('sum_3', param)
             self._add_accumulator('restore', param)
-            self._add_accumulator('num_accumulates',
-                                  param,
-                                  dtype='int64',
-                                  shape=[1])
-            self._add_accumulator('old_num_accumulates',
-                                  param,
-                                  dtype='int64',
-                                  shape=[1])
-            self._add_accumulator('num_updates',
-                                  param,
-                                  dtype='int64',
-                                  shape=[1])
+            self._add_accumulator(
+                'num_accumulates', param, dtype='int64', shape=[1]
+            )
+            self._add_accumulator(
+                'old_num_accumulates', param, dtype='int64', shape=[1]
+            )
+            self._add_accumulator(
+                'num_updates', param, dtype='int64', shape=[1]
+            )
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -227,26 +227,50 @@ class ModelAverage(Optimizer):
         sum_1 = self._get_accumulator('sum_1', param_and_grad[0])
         sum_2 = self._get_accumulator('sum_2', param_and_grad[0])
         sum_3 = self._get_accumulator('sum_3', param_and_grad[0])
-        num_accumulates = self._get_accumulator('num_accumulates',
-                                                param_and_grad[0])
-        old_num_accumulates = self._get_accumulator('old_num_accumulates',
-                                                    param_and_grad[0])
+        num_accumulates = self._get_accumulator(
+            'num_accumulates', param_and_grad[0]
+        )
+        old_num_accumulates = self._get_accumulator(
+            'old_num_accumulates', param_and_grad[0]
+        )
         num_updates = self._get_accumulator('num_updates', param_and_grad[0])
 
         if in_dygraph_mode():
             _, _, _, _, _, _ = _C_ops.average_accumulates_(
-                param_and_grad[0], sum_1, sum_2, sum_3, num_accumulates,
-                old_num_accumulates, num_updates, self.average_window,
-                self.max_average_window, self.min_average_window)
+                param_and_grad[0],
+                sum_1,
+                sum_2,
+                sum_3,
+                num_accumulates,
+                old_num_accumulates,
+                num_updates,
+                self.average_window,
+                self.max_average_window,
+                self.min_average_window,
+            )
             return None
         elif framework._non_static_mode():
             _, _, _, _, _, _ = _legacy_C_ops.average_accumulates(
-                param_and_grad[0], sum_1, sum_2, sum_3, num_accumulates,
-                old_num_accumulates, num_updates, sum_1, sum_2, sum_3,
-                num_accumulates, old_num_accumulates, num_updates,
-                'average_window', self.average_window, 'min_average_window',
-                self.min_average_window, 'max_average_window',
-                self.max_average_window)
+                param_and_grad[0],
+                sum_1,
+                sum_2,
+                sum_3,
+                num_accumulates,
+                old_num_accumulates,
+                num_updates,
+                sum_1,
+                sum_2,
+                sum_3,
+                num_accumulates,
+                old_num_accumulates,
+                num_updates,
+                'average_window',
+                self.average_window,
+                'min_average_window',
+                self.min_average_window,
+                'max_average_window',
+                self.max_average_window,
+            )
             return None
 
         block = framework.default_main_program().global_block()
@@ -263,7 +287,7 @@ class ModelAverage(Optimizer):
             "in_sum_3": sum_3,
             "in_num_accumulates": num_accumulates,
             "in_old_num_accumulates": old_num_accumulates,
-            "in_num_updates": num_updates
+            "in_num_updates": num_updates,
         }
 
         outputs = {
@@ -275,20 +299,20 @@ class ModelAverage(Optimizer):
             "out_num_updates": num_updates,
         }
 
-        average_accumulates_op = block.append_op(type=self.type,
-                                                 inputs=inputs,
-                                                 outputs=outputs,
-                                                 attrs=attrs,
-                                                 stop_gradient=True)
+        average_accumulates_op = block.append_op(
+            type=self.type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
+            stop_gradient=True,
+        )
 
         return average_accumulates_op
 
     @imperative_base.no_grad
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameters=None,
-                 no_grad_set=None):
+    def minimize(
+        self, loss, startup_program=None, parameters=None, no_grad_set=None
+    ):
         """
         Add operations to minimize ``loss`` by updating ``parameters``.
 
@@ -316,8 +340,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)
@@ -352,8 +375,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)
@@ -399,8 +421,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)
@@ -424,10 +445,12 @@ class ModelAverage(Optimizer):
         """
         if framework._non_static_mode():
             for param in self._parameter_list:
-                num_accumulates = self._get_accumulator('num_accumulates',
-                                                        param)
+                num_accumulates = self._get_accumulator(
+                    'num_accumulates', param
+                )
                 old_num_accumulates = self._get_accumulator(
-                    'old_num_accumulates', param)
+                    'old_num_accumulates', param
+                )
                 sum_1 = self._get_accumulator('sum_1', param)
                 sum_2 = self._get_accumulator('sum_2', param)
                 sum_3 = self._get_accumulator('sum_3', param)
@@ -437,8 +460,9 @@ class ModelAverage(Optimizer):
                 total_param = sum_1 + sum_2 + sum_3
                 total_accumulates = num_accumulates + old_num_accumulates
                 total_param = paddle.cast(total_param, dtype='float32')
-                total_accumulates = paddle.cast(total_accumulates,
-                                                dtype='float32')
+                total_accumulates = paddle.cast(
+                    total_accumulates, dtype='float32'
+                )
                 average_param = total_param / total_accumulates
                 paddle.assign(average_param, param)
             try:
@@ -449,7 +473,8 @@ class ModelAverage(Optimizer):
             return
         if executor is None:
             raise RuntimeError(
-                "Executor should not be None in static graph mode.")
+                "Executor should not be None in static graph mode."
+            )
         executor.run(self.apply_program)
         try:
             yield
@@ -470,8 +495,7 @@ class ModelAverage(Optimizer):
             .. code-block:: python
 
                 import paddle
-                import numpy as np
-                inp = paddle.to_tensor(np.random.random([1, 10]).astype('float32'))
+                inp = paddle.rand([1, 10], dtype="float32")
                 linear = paddle.nn.Linear(10, 1)
                 out = linear(inp)
                 loss = paddle.mean(out)
@@ -505,7 +529,8 @@ class ModelAverage(Optimizer):
             return
         if executor is None:
             raise RuntimeError(
-                "Executor should not be None in static graph mode.")
+                "Executor should not be None in static graph mode."
+            )
         executor.run(self.restore_program)
 
     def _add_average_apply_op(self, block, param):
@@ -515,21 +540,25 @@ class ModelAverage(Optimizer):
         sum_2 = block._clone_variable(self._get_accumulator('sum_2', param))
         sum_3 = block._clone_variable(self._get_accumulator('sum_3', param))
         num_accumulates = block._clone_variable(
-            self._get_accumulator('num_accumulates', param))
+            self._get_accumulator('num_accumulates', param)
+        )
         old_num_accumulates = block._clone_variable(
-            self._get_accumulator('old_num_accumulates', param))
+            self._get_accumulator('old_num_accumulates', param)
+        )
         # backup param value to grad
-        layers.assign(input=param, output=grad)
+        paddle.assign(param, output=grad)
         # param = (sum_1 + sum_2 + sum_3) / (num_accumulates + old_num_accumulates)
-        tmp = layers.sum(x=[num_accumulates, old_num_accumulates])
-        sum = layers.sum(x=[sum_1, sum_2, sum_3])
-        tmp = layers.cast(
-            x=tmp, dtype='float32' if self._dtype is None else self._dtype)
-        sum = layers.cast(
-            x=sum, dtype='float32' if self._dtype is None else self._dtype)
-        layers.ops._elementwise_div(x=sum, y=tmp, out=param)
+        tmp = paddle.add_n([num_accumulates, old_num_accumulates])
+        sum = paddle.add_n([sum_1, sum_2, sum_3])
+        tmp = paddle.cast(
+            x=tmp, dtype='float32' if self._dtype is None else self._dtype
+        )
+        sum = paddle.cast(
+            x=sum, dtype='float32' if self._dtype is None else self._dtype
+        )
+        paddle.tensor.ops._elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param):
         param = block._clone_variable(param)
         grad = block._clone_variable(self._get_accumulator('restore', param))
-        layers.assign(input=grad, output=param)
+        paddle.assign(grad, output=param)

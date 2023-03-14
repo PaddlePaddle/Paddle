@@ -18,9 +18,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/phi_utils.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
@@ -28,8 +28,8 @@ template <typename DeviceContext, typename T>
 class SppKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
+    const phi::DenseTensor* in_x = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     int pyramid_height = context.template Attr<int>("pyramid_height");
     std::string pooling_type =
         context.template Attr<std::string>("pooling_type");
@@ -48,7 +48,7 @@ class SppKernel : public framework::OpKernel<T> {
       std::vector<int> strides({kernel_size_h, kernel_size_w});
       std::vector<int> paddings({padding_h, padding_w});
       // pooling output shape
-      framework::Tensor out_level;
+      phi::DenseTensor out_level;
       std::vector<int64_t> output_shape_vec(
           {in_x->dims()[0], in_x->dims()[1], bins, bins});
       framework::DDim output_shape(phi::make_ddim(output_shape_vec));
@@ -96,12 +96,13 @@ class SppKernel : public framework::OpKernel<T> {
       out_level.Resize(output_flatten_shape);
       // concat
       auto out_level_stride = phi::stride(out_level.dims());
-      StridedMemcpy<T>(context.template device_context<DeviceContext>(),
-                       out_level.data<T>(),
-                       out_level_stride,
-                       out_level.dims(),
-                       out_stride,
-                       out->data<T>() + output_offset);
+      phi::funcs::StridedMemcpy<T>(
+          context.template device_context<DeviceContext>(),
+          out_level.data<T>(),
+          out_level_stride,
+          out_level.dims(),
+          out_stride,
+          out->data<T>() + output_offset);
       output_offset += out_level.dims()[1] * out_level_stride[1];
     }
   }
@@ -110,12 +111,12 @@ template <typename DeviceContext, typename T>
 class SppGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const framework::Tensor* in_x = context.Input<framework::Tensor>("X");
-    const framework::Tensor* out = context.Input<framework::Tensor>("Out");
-    const framework::Tensor* out_grad =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    framework::Tensor* in_x_grad =
-        context.Output<framework::Tensor>(framework::GradVarName("X"));
+    const phi::DenseTensor* in_x = context.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* out = context.Input<phi::DenseTensor>("Out");
+    const phi::DenseTensor* out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    phi::DenseTensor* in_x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     int pyramid_height = context.template Attr<int>("pyramid_height");
     std::string pooling_type =
         context.template Attr<std::string>("pooling_type");
@@ -140,8 +141,8 @@ class SppGradKernel : public framework::OpKernel<T> {
       std::vector<int> strides({kernel_size_h, kernel_size_w});
       std::vector<int> paddings({padding_h, padding_w});
       // split out and outgrad  ...  to flatten
-      framework::Tensor out_level;
-      framework::Tensor outgrad_level;
+      phi::DenseTensor out_level;
+      phi::DenseTensor outgrad_level;
       int out_flatten_w = in_x->dims()[1] * bins * bins;
       std::vector<int64_t> out_flatten_shape_vec(
           {in_x->dims()[0], out_flatten_w});
@@ -150,19 +151,21 @@ class SppGradKernel : public framework::OpKernel<T> {
       outgrad_level.mutable_data<T>(out_flatten_shape, context.GetPlace());
       auto flatten_stride = phi::stride(out_level.dims());
       // memcpy
-      StridedMemcpy<T>(context.template device_context<DeviceContext>(),
-                       out->data<T>() + out_offset,
-                       out_stride,
-                       out_level.dims(),
-                       flatten_stride,
-                       out_level.data<T>());
+      phi::funcs::StridedMemcpy<T>(
+          context.template device_context<DeviceContext>(),
+          out->data<T>() + out_offset,
+          out_stride,
+          out_level.dims(),
+          flatten_stride,
+          out_level.data<T>());
 
-      StridedMemcpy<T>(context.template device_context<DeviceContext>(),
-                       out_grad->data<T>() + out_offset,
-                       out_stride,
-                       outgrad_level.dims(),
-                       flatten_stride,
-                       outgrad_level.data<T>());
+      phi::funcs::StridedMemcpy<T>(
+          context.template device_context<DeviceContext>(),
+          out_grad->data<T>() + out_offset,
+          out_stride,
+          outgrad_level.dims(),
+          flatten_stride,
+          outgrad_level.data<T>());
       out_offset += out_level.dims()[1] * out_stride[1];
       // flatten backward to nchw
 

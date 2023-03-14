@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.device import cuda
-import paddle
 import ctypes
-
 import unittest
+
 import numpy as np
+
+import paddle
+from paddle.device import cuda
 
 
 class TestCurrentStream(unittest.TestCase):
-
     def test_current_stream(self):
         if paddle.is_compiled_with_cuda():
             s = cuda.current_stream()
@@ -39,7 +39,6 @@ class TestCurrentStream(unittest.TestCase):
 
 
 class TestSynchronize(unittest.TestCase):
-
     def test_synchronize(self):
         if paddle.is_compiled_with_cuda():
             self.assertIsNone(cuda.synchronize())
@@ -50,7 +49,6 @@ class TestSynchronize(unittest.TestCase):
 
 
 class TestCUDAStream(unittest.TestCase):
-
     def test_cuda_stream(self):
         if paddle.is_compiled_with_cuda():
             s = paddle.device.cuda.Stream()
@@ -88,7 +86,6 @@ class TestCUDAStream(unittest.TestCase):
 
 
 class TestCUDAEvent(unittest.TestCase):
-
     def test_cuda_event(self):
         if paddle.is_compiled_with_cuda():
             e = paddle.device.cuda.Event(True, False, False)
@@ -158,14 +155,15 @@ class TestStreamGuard(unittest.TestCase):
 
     def test_set_current_stream_raise_error(self):
         if paddle.is_compiled_with_cuda():
-            self.assertRaises(TypeError, paddle.device.cuda._set_current_stream,
-                              np.zeros(5))
-            self.assertRaises(TypeError, paddle.device.cuda._set_current_stream,
-                              None)
+            self.assertRaises(
+                TypeError, paddle.device.cuda._set_current_stream, np.zeros(5)
+            )
+            self.assertRaises(
+                TypeError, paddle.device.cuda._set_current_stream, None
+            )
 
 
 class TestRawStream(unittest.TestCase):
-
     def test_cuda_stream(self):
         if paddle.is_compiled_with_cuda():
             cuda_stream = paddle.device.cuda.current_stream().cuda_stream

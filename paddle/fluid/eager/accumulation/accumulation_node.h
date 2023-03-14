@@ -37,16 +37,16 @@ class GradNodeAccumulation : public GradNodeBase {
   }
 
   // Functor: perform backward computations
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override;
 
   void ClearTensorWrappers() override { VLOG(5) << "Do nothing here now"; }
 
-  std::string name() { return "GradNodeAccumulation"; }
+  std::string name() override { return "GradNodeAccumulation"; }
 
   /**
    * Register ReduceHook
@@ -69,11 +69,9 @@ class GradNodeAccumulation : public GradNodeBase {
  private:
   // TODO(Jiabin): remove this when we make our clear gradient really cleared;
   bool is_fake_empty_ = {false};
-  std::weak_ptr<paddle::experimental::Tensor> weak_grad_;
+  std::weak_ptr<paddle::Tensor> weak_grad_;
   std::vector<std::shared_ptr<VoidHook>> reduce_hooks_;
-  std::function<paddle::experimental::Tensor(
-      const paddle::experimental::Tensor&)>
-      retain_grad_hook_;
+  std::function<paddle::Tensor(const paddle::Tensor&)> retain_grad_hook_;
 };
 
 }  // namespace egr

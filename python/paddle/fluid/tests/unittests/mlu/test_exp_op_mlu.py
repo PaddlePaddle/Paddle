@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -28,7 +26,6 @@ SEED = 2021
 
 
 class TestExp(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.op_type = "exp"
@@ -57,7 +54,6 @@ class TestExp(OpTest):
 
 
 class TestExpFp16(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.op_type = "exp"
@@ -84,7 +80,6 @@ class TestExpFp16(OpTest):
 
 
 class TestExpNeg(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.op_type = "exp"

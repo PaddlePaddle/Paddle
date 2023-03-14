@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/histogram_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -25,7 +25,7 @@
 namespace phi {
 
 using IndexType = int64_t;
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -61,13 +61,13 @@ __global__ void KernelHistogram(const T* input,
     if (input_value >= min_value && input_value <= max_value) {
       const IndexType output_index =
           GetBin<T, IndexType>(input_value, min_value, max_value, nbins);
-      paddle::platform::CudaAtomicAdd(&buf_hist[output_index], 1);
+      phi::CudaAtomicAdd(&buf_hist[output_index], 1);
     }
   }
   __syncthreads();
 
   for (int i = threadIdx.x; i < nbins; i += blockDim.x) {
-    paddle::platform::CudaAtomicAdd(&output[i], buf_hist[i]);
+    phi::CudaAtomicAdd(&output[i], buf_hist[i]);
   }
 }
 
@@ -85,7 +85,7 @@ void HistogramKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
   const int input_numel = input.numel();
 
-  int64_t* out_data = output->mutable_data<int64_t>(dev_ctx.GetPlace());
+  int64_t* out_data = dev_ctx.template Alloc<int64_t>(output);
   phi::funcs::SetConstant<Context, int64_t>()(
       dev_ctx, output, static_cast<int64_t>(0));
 
@@ -98,8 +98,10 @@ void HistogramKernel(const Context& dev_ctx,
     auto input_x = phi::EigenVector<T>::Flatten(input);
 
     DenseTensor input_min_t, input_max_t;
-    auto* input_min_data = input_min_t.mutable_data<T>({1}, dev_ctx.GetPlace());
-    auto* input_max_data = input_max_t.mutable_data<T>({1}, dev_ctx.GetPlace());
+    input_min_t.Resize({1});
+    input_max_t.Resize({1});
+    auto* input_min_data = dev_ctx.template Alloc<T>(&input_min_t);
+    auto* input_max_data = dev_ctx.template Alloc<T>(&input_max_t);
     auto input_min_scala = phi::EigenScalar<T>::From(input_min_t);
     auto input_max_scala = phi::EigenScalar<T>::From(input_max_t);
 
@@ -108,10 +110,8 @@ void HistogramKernel(const Context& dev_ctx,
     input_max_scala.device(*place) = input_x.maximum();
 
     DenseTensor input_min_cpu, input_max_cpu;
-    paddle::framework::TensorCopySync(
-        input_min_t, phi::CPUPlace(), &input_min_cpu);
-    paddle::framework::TensorCopySync(
-        input_max_t, phi::CPUPlace(), &input_max_cpu);
+    phi::Copy(dev_ctx, input_min_t, phi::CPUPlace(), true, &input_min_cpu);
+    phi::Copy(dev_ctx, input_max_t, phi::CPUPlace(), true, &input_max_cpu);
 
     output_min = input_min_cpu.data<T>()[0];
     output_max = input_max_cpu.data<T>()[0];

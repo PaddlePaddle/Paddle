@@ -41,16 +41,16 @@ class AssignOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
  protected:
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   tensor.layout());
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const framework::Variable *var = ctx.InputVar("X");
     if (var->IsType<framework::LoDTensorArray>()) {
@@ -58,14 +58,13 @@ class AssignOp : public framework::OperatorWithKernel {
       // NOTE(liym27): Support an empty tensor array as Input.
       // And set the kernel type is float.
       if (t_arr.size() == 0) {
-        return framework::OpKernelType(framework::proto::VarType::FP32,
-                                       ctx.device_context());
+        return phi::KernelKey(framework::proto::VarType::FP32,
+                              ctx.device_context().GetPlace());
       }
     }
 
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -79,16 +78,19 @@ class AssignInferVarType : public framework::VarTypeInference {
 class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(LoDTensor, SelectedRows or LoDTensorArray) The input variable "
-             "could be LoDTensor, SelectedRows or LoDTensorArray.")
+    AddInput(
+        "X",
+        "(phi::DenseTensor, SelectedRows or phi::DenseTensorArray) The input "
+        "variable "
+        "could be phi::DenseTensor, SelectedRows or phi::DenseTensorArray.")
         .AsDispensable();
     AddOutput("Out",
-              "(LoDTensor, SelectedRows or LoDTensorArray) The type of output "
+              "(phi::DenseTensor, SelectedRows or phi::DenseTensorArray) The "
+              "type of output "
               "is the same as input X.");
     AddComment(R"DOC(Assign Operator
 
-Out = X,  when type in [LoDTensor/SelectedRows/LoDTensorArray]
+Out = X,  when type in [phi::DenseTensor/SelectedRows/phi::DenseTensorArray]
 raise error if the type is not listed above.
 )DOC");
   }

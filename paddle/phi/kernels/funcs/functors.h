@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/math.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
 namespace funcs {
@@ -38,7 +38,7 @@ struct AddGradFunctor {
 
 template <typename T>
 struct ScaleFunctor {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   explicit ScaleFunctor(const MT coeff) : coeff_(coeff) {}
 
   inline HOSTDEVICE T operator()(T ele) {
@@ -89,8 +89,7 @@ struct TanhFunctor {
     // y = 2 / (1 + e^-2x) - 1
     T t0 = static_cast<T>(2) * x;
     T t1 = (t0 < kMin) ? kMin : ((t0 > kMax) ? kMax : t0);
-    return static_cast<T>(2) /
-               (static_cast<T>(1) + paddle::operators::real_exp(-t1)) -
+    return static_cast<T>(2) / (static_cast<T>(1) + phi::funcs::real_exp(-t1)) -
            static_cast<T>(1);
   }
 };
@@ -111,8 +110,7 @@ struct SigmoidFunctor {
   inline HOSTDEVICE T operator()(T x) {
     // y = 1 / (1 + e^-x)
     T tmp = (x < kMin) ? kMin : ((x > kMax) ? kMax : x);
-    return static_cast<T>(1) /
-           (static_cast<T>(1) + paddle::operators::real_exp(-tmp));
+    return static_cast<T>(1) / (static_cast<T>(1) + phi::funcs::real_exp(-tmp));
   }
 };
 
@@ -127,7 +125,7 @@ struct SigmoidGradFunctor {
 
 template <typename T>
 struct GeluFunctor {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T operator()(T x) {
     // this function is tanh approximation of gelu
     // actual gelu is:
@@ -143,7 +141,7 @@ struct GeluFunctor {
 
 template <typename T>
 struct GeluGradFunctor {
-  using MT = typename paddle::operators::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   inline HOSTDEVICE T UseX(T x) {
     MT mx = static_cast<MT>(x);
     MT tanh_out =

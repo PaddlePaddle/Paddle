@@ -17,45 +17,42 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandFunctor {
-  void operator()(
-      const DeviceContext& ctx,
-      const LoDTensor& x,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* out);
+  void operator()(const DeviceContext& ctx,
+                  const phi::DenseTensor& x,
+                  const phi::Vector<size_t>& x_lod,   /*expand source lod*/
+                  const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
+                  phi::DenseTensor* out);
 };
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandGradFunctor {
-  void operator()(
-      const DeviceContext& ctx,
-      const LoDTensor& dout,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* dx);
+  void operator()(const DeviceContext& ctx,
+                  const phi::DenseTensor& dout,
+                  const phi::Vector<size_t>& x_lod,   /*expand source lod*/
+                  const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
+                  phi::DenseTensor* dx);
 };
 
 template <typename T>
 struct SequenceExpandFunctor<phi::CPUContext, T> {
-  void operator()(
-      const phi::CPUContext& context,
-      const LoDTensor& x,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* out) {
+  void operator()(const phi::CPUContext& context,
+                  const phi::DenseTensor& x,
+                  const phi::Vector<size_t>& x_lod,   /*expand source lod*/
+                  const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
+                  phi::DenseTensor* out) {
     int out_offset = 0;
     int x_item_length = x.numel() / x.dims()[0];
     auto out_data = out->data<T>();
@@ -88,9 +85,9 @@ template <typename DeviceContext, typename T>
 class SequenceExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<LoDTensor>("X");
-    auto* y = context.Input<LoDTensor>("Y");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* y = context.Input<phi::DenseTensor>("Y");
+    auto* out = context.Output<phi::DenseTensor>("Out");
 
     int ref_level = context.Attr<int>("ref_level");
     auto& x_lod = x->lod();
@@ -100,7 +97,7 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
         y_lod.empty(),
         false,
         platform::errors::InvalidArgument(
-            "Input(Y) Tensor of SequenceExpandOp does not contain "
+            "Input(Y) phi::DenseTensor of SequenceExpandOp does not contain "
             "LoD information."));
 
     if (ref_level == -1) ref_level = y_lod.size() - 1;
@@ -113,7 +110,7 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     }
 
     // x lod level is at most 1.
-    framework::Vector<size_t> out_lod;
+    phi::Vector<size_t> out_lod;
     if (x_lod.size() == 1) {
       out_lod.push_back(0);
       int out_offset = 0;
@@ -131,7 +128,7 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
       auto& ref_lod = *out->mutable_lod();
       ref_lod[0] = out_lod;
     }
-    framework::Vector<size_t> ref_x_lod;
+    phi::Vector<size_t> ref_x_lod;
     if (x->lod().size() == 1) {
       ref_x_lod = x->lod()[0];
     } else {
@@ -162,12 +159,11 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
  * */
 template <typename T>
 struct SequenceExpandGradFunctor<phi::CPUContext, T> {
-  void operator()(
-      const phi::CPUContext& context,
-      const LoDTensor& dout,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* dx) {
+  void operator()(const phi::CPUContext& context,
+                  const phi::DenseTensor& dout,
+                  const phi::Vector<size_t>& x_lod,   /*expand source lod*/
+                  const phi::Vector<size_t>& ref_lod, /*expand referenced lod*/
+                  phi::DenseTensor* dx) {
     int dout_offset = 0;
     for (size_t i = 1; i < ref_lod.size(); ++i) {
       int repeat_num = ref_lod[i] - ref_lod[i - 1];
@@ -193,10 +189,11 @@ template <typename DeviceContext, typename T>
 class SequenceExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* g_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* x = context.Input<LoDTensor>("X");
-    auto* y = context.Input<LoDTensor>("Y");
-    auto* g_x = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* g_out =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* y = context.Input<phi::DenseTensor>("Y");
+    auto* g_x = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     int ref_level = context.Attr<int>("ref_level");
 
     g_x->mutable_data<T>(context.GetPlace());
@@ -214,8 +211,8 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
       return;
     }
 
-    framework::Vector<size_t> ref_x_lod;
-    framework::Vector<size_t> ref_lod = y_lod[ref_level];
+    phi::Vector<size_t> ref_x_lod;
+    phi::Vector<size_t> ref_lod = y_lod[ref_level];
     if (x->lod().size() == 1) {
       ref_x_lod = x->lod()[0];
     } else {

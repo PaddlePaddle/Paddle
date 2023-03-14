@@ -12,23 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from threading import Thread
-import subprocess
+import itertools
+import logging
 import multiprocessing
-import six
+import random
 import sys
 import warnings
-import logging
+from itertools import zip_longest
+from queue import Queue
+from threading import Thread
 
-from six.moves.queue import Queue
-from six.moves import zip_longest
-from six.moves import map
-from six.moves import zip
-import itertools
-import random
-import zlib
-
-import paddle.compat as cpt
 from paddle.fluid.reader import QUEUE_GET_TIMEOUT
 
 __all__ = []
@@ -264,9 +257,6 @@ def compose(*readers, **kwargs):
     Returns:
         the new data reader (Reader).
 
-    Raises:
-        ComposeNotAligned: outputs of readers are not aligned. This will not raise if check_alignment is set to False.
-
     Examples:
         .. code-block:: python
 
@@ -284,7 +274,7 @@ def compose(*readers, **kwargs):
         if isinstance(x, tuple):
             return x
         else:
-            return (x, )
+            return (x,)
 
     def reader():
         rs = []
@@ -299,7 +289,8 @@ def compose(*readers, **kwargs):
                     if o is None:
                         # None will be not be present if compose is aligned
                         raise ComposeNotAligned(
-                            "outputs of readers are not aligned.")
+                            "outputs of readers are not aligned."
+                        )
                 yield sum(list(map(make_tuple, outputs)), ())
 
     return reader
@@ -337,7 +328,7 @@ def buffered(reader, size):
                 print(i)
     """
 
-    class EndSignal():
+    class EndSignal:
         pass
 
     end = EndSignal()
@@ -350,10 +341,13 @@ def buffered(reader, size):
     def data_reader():
         r = reader()
         q = Queue(maxsize=size)
-        t = Thread(target=read_worker, args=(
-            r,
-            q,
-        ))
+        t = Thread(
+            target=read_worker,
+            args=(
+                r,
+                q,
+            ),
+        )
         t.daemon = True
         t.start()
         e = q.get()
@@ -405,7 +399,7 @@ def firstn(reader, n):
     return firstn_reader
 
 
-class XmapEndSignal():
+class XmapEndSignal:
     pass
 
 
@@ -477,8 +471,11 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
         t.start()
         # start several handle_workers
         target = order_handle_worker if order else handle_worker
-        args = (in_queue, out_queue, mapper,
-                out_order) if order else (in_queue, out_queue, mapper)
+        args = (
+            (in_queue, out_queue, mapper, out_order)
+            if order
+            else (in_queue, out_queue, mapper)
+        )
         workers = []
         for i in range(process_num):
             worker = Thread(target=target, args=args)
@@ -586,7 +583,8 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
 
     if sys.platform == 'win32':
         raise NotImplementedError(
-            "The multiprocess_reader method is not supported on windows.")
+            "The multiprocess_reader method is not supported on windows."
+        )
 
     # ujson is ultra fast json encoder and decoder written in pure C with bindings for Python 3.6+.
     try:
@@ -594,11 +592,13 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     except Exception as e:
         warnings.warn(
             "The `ujson` module is not found, use the `json` module, `ujson` encodes and decodes faster, "
-            "you can install `ujson` through `pip install ujson`.")
+            "you can install `ujson` through `pip install ujson`."
+        )
         import json
 
-    assert isinstance(readers, (list, tuple)) and len(readers) > 0, (
-        "`readers` must be list or tuple.")
+    assert (
+        isinstance(readers, (list, tuple)) and len(readers) > 0
+    ), "`readers` must be list or tuple."
 
     def _read_into_queue(reader, queue):
         try:
@@ -607,15 +607,16 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
                     raise ValueError("sample has None")
                 queue.put(sample)
             queue.put(None)
-        except:
+        except Exception as e:
             queue.put("")
-            six.reraise(*sys.exc_info())
+            raise e
 
     def queue_reader():
         queue = fork_context.Queue(queue_size)
         for reader in readers:
-            p = fork_context.Process(target=_read_into_queue,
-                                     args=(reader, queue))
+            p = fork_context.Process(
+                target=_read_into_queue, args=(reader, queue)
+            )
             p.start()
 
         reader_num = len(readers)
@@ -623,11 +624,11 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
         while finish_num < reader_num:
             try:
                 sample = queue.get(timeout=QUEUE_GET_TIMEOUT)
-            except:
+            except Exception as e:
                 logging.error(
                     "multiprocess_reader failed to get data from the multiprocessing.Queue."
                 )
-                six.reraise(*sys.exc_info())
+                raise e
 
             if sample is None:
                 finish_num += 1
@@ -646,18 +647,19 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
                 conn.send(json.dumps(sample))
             conn.send(json.dumps(None))
             conn.close()
-        except:
+        except Exception as e:
             conn.send(json.dumps(""))
             conn.close()
-            six.reraise(*sys.exc_info())
+            raise e
 
     def pipe_reader():
         conns = []
         for reader in readers:
             parent_conn, child_conn = fork_context.Pipe()
             conns.append(parent_conn)
-            p = fork_context.Process(target=_read_into_pipe,
-                                     args=(reader, child_conn))
+            p = fork_context.Process(
+                target=_read_into_pipe, args=(reader, child_conn)
+            )
             p.start()
 
         reader_num = len(readers)

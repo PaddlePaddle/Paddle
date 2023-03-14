@@ -17,103 +17,92 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 namespace funcs {
 
+template <typename T>
+void BatchTranspose(T* output, const T* input, int batch, int m, int n);
+
 template <typename DeviceContext, typename T>
 struct TransposeNormal {
   // for dims >= 7 situation
   void operator()(const DeviceContext& context,
-                  const paddle::framework::Tensor& in,
-                  paddle::framework::Tensor* out,
+                  const phi::DenseTensor& in,
+                  phi::DenseTensor* out,
                   const std::vector<int>& axis);
 };
 
 template <typename DeviceContext, typename T, int Rank>
 struct Transpose {
   void operator()(const DeviceContext& context,
-                  const paddle::framework::Tensor& in,
-                  paddle::framework::Tensor* out,
+                  const phi::DenseTensor& in,
+                  phi::DenseTensor* out,
                   const std::vector<int>& axis);
 };
 
 template <typename DeviceContext, typename T>
 struct SetConstant {
   void operator()(const DeviceContext& context,
-                  paddle::framework::Tensor* tensor,
+                  phi::DenseTensor* tensor,
                   T num);
 };
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
-struct SetConstant<XPUContext, T> {
-  void operator()(const XPUContext& context,
-                  paddle::framework::Tensor* tensor,
-                  T num);
-};
-
-template <typename T>
-struct SetConstant<paddle::platform::XPUDeviceContext, T> {
-  void operator()(const paddle::platform::XPUDeviceContext& context,
-                  paddle::framework::Tensor* tensor,
+struct SetConstant<phi::XPUContext, T> {
+  void operator()(const phi::XPUContext& context,
+                  phi::DenseTensor* tensor,
                   T num);
 };
 #endif
 
 template <typename Place>
-void set_constant_with_place(const paddle::platform::DeviceContext& context,
-                             paddle::framework::Tensor* tensor,
+void set_constant_with_place(const phi::DeviceContext& context,
+                             phi::DenseTensor* tensor,
                              float value);
 
-void set_constant(const paddle::platform::DeviceContext& context,
-                  paddle::framework::Tensor* tensor,
+void set_constant(const phi::DeviceContext& context,
+                  phi::DenseTensor* tensor,
                   float value);
 
 template <typename DeviceContext, typename T>
 struct RowwiseAdd {
   void operator()(const DeviceContext& context,
-                  const paddle::framework::Tensor& input,
-                  const paddle::framework::Tensor& vec,
-                  paddle::framework::Tensor* output);
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& vec,
+                  phi::DenseTensor* output);
 };
 
 template <typename DeviceContext, typename T>
 struct ColwiseSum {
   void operator()(const DeviceContext& context,
-                  const paddle::framework::Tensor& input,
-                  paddle::framework::Tensor* vec);
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* vec);
 };
 
 template <typename DeviceContext, typename T>
 struct RowwiseSum {
   void operator()(const DeviceContext& context,
-                  const paddle::framework::Tensor& input,
-                  paddle::framework::Tensor* vec);
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* vec);
 };
 
 template <typename DeviceContext, typename T>
 struct RowwiseMean {
   void operator()(const DeviceContext& context,
-                  const paddle::framework::Tensor& input,
-                  paddle::framework::Tensor* vec);
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* vec);
 };
 
 #ifdef PADDLE_WITH_XPU
 template <typename U>
 struct TensorSetConstantXPU {
-  TensorSetConstantXPU(paddle::framework::Tensor* tensor,
-                       U value,
-                       paddle::platform::Place place)
+  TensorSetConstantXPU(phi::DenseTensor* tensor, U value, phi::Place place)
       : tensor_(tensor), value_(value), place_(place) {}
   template <typename T>
   void apply() const {
@@ -121,15 +110,15 @@ struct TensorSetConstantXPU {
     int numel = tensor_->numel();
     std::unique_ptr<T[]> data_cpu(new T[numel]);
     std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
-    paddle::memory::Copy(place_,
-                         begin,
-                         phi::CPUPlace(),
-                         static_cast<void*>(data_cpu.get()),
-                         numel * sizeof(T));
+    memory_utils::Copy(place_,
+                       begin,
+                       phi::CPUPlace(),
+                       static_cast<void*>(data_cpu.get()),
+                       numel * sizeof(T));
   }
-  paddle::framework::Tensor* tensor_;
+  phi::DenseTensor* tensor_;
   U value_;
-  paddle::platform::Place place_;
+  phi::Place place_;
 };
 #endif
 

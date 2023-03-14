@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 
 
 class TestGraphKhopSampler(unittest.TestCase):
-
     def setUp(self):
         num_nodes = 20
         edges = np.random.randint(num_nodes, size=(100, 2))
@@ -42,21 +43,26 @@ class TestGraphKhopSampler(unittest.TestCase):
         self.row = sorted_edges[:, 0].astype("int64")
         self.colptr = colptr.astype("int64")
         self.sorted_eid = sorted_eid.astype("int64")
-        self.nodes = np.unique(np.random.randint(num_nodes,
-                                                 size=5)).astype("int64")
+        self.nodes = np.unique(np.random.randint(num_nodes, size=5)).astype(
+            "int64"
+        )
         self.sample_sizes = [5, 5]
         self.dst_src_dict = dst_src_dict
 
-    def func_sample_result(self):
+    def test_sample_result(self):
         paddle.disable_static()
         row = paddle.to_tensor(self.row)
         colptr = paddle.to_tensor(self.colptr)
         nodes = paddle.to_tensor(self.nodes)
 
-        edge_src, edge_dst, sample_index, reindex_nodes = \
-            paddle.incubate.graph_khop_sampler(row, colptr,
-                                                   nodes, self.sample_sizes,
-                                                   return_eids=False)
+        (
+            edge_src,
+            edge_dst,
+            sample_index,
+            reindex_nodes,
+        ) = paddle.incubate.graph_khop_sampler(
+            row, colptr, nodes, self.sample_sizes, return_eids=False
+        )
         # Reindex edge_src and edge_dst to original index.
         edge_src = edge_src.reshape([-1])
         edge_dst = edge_dst.reshape([-1])
@@ -72,41 +78,52 @@ class TestGraphKhopSampler(unittest.TestCase):
                 continue
             # Ensure no repetitive sample neighbors.
             self.assertTrue(
-                edge_src_n.shape[0] == paddle.unique(edge_src_n).shape[0])
+                edge_src_n.shape[0] == paddle.unique(edge_src_n).shape[0]
+            )
             # Ensure the correct sample size.
-            self.assertTrue(edge_src_n.shape[0] == self.sample_sizes[0]
-                            or edge_src_n.shape[0] == len(self.dst_src_dict[n]))
+            self.assertTrue(
+                edge_src_n.shape[0] == self.sample_sizes[0]
+                or edge_src_n.shape[0] == len(self.dst_src_dict[n])
+            )
             in_neighbors = np.isin(edge_src_n.numpy(), self.dst_src_dict[n])
             # Ensure the correct sample neighbors.
             self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
-    def test_sample_result(self):
-        with fluid.framework._test_eager_guard():
-            self.func_sample_result()
-        self.func_sample_result()
-
-    def func_uva_sample_result(self):
+    def test_uva_sample_result(self):
         paddle.disable_static()
         if paddle.fluid.core.is_compiled_with_cuda():
             row = None
             if fluid.framework.in_dygraph_mode():
                 row = paddle.fluid.core.eager.to_uva_tensor(
-                    self.row.astype(self.row.dtype), 0)
+                    self.row.astype(self.row.dtype), 0
+                )
                 sorted_eid = paddle.fluid.core.eager.to_uva_tensor(
-                    self.sorted_eid.astype(self.sorted_eid.dtype), 0)
+                    self.sorted_eid.astype(self.sorted_eid.dtype), 0
+                )
             else:
                 row = paddle.fluid.core.to_uva_tensor(
-                    self.row.astype(self.row.dtype))
+                    self.row.astype(self.row.dtype)
+                )
                 sorted_eid = paddle.fluid.core.to_uva_tensor(
-                    self.sorted_eid.astype(self.sorted_eid.dtype))
+                    self.sorted_eid.astype(self.sorted_eid.dtype)
+                )
             colptr = paddle.to_tensor(self.colptr)
             nodes = paddle.to_tensor(self.nodes)
 
-            edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
-                paddle.incubate.graph_khop_sampler(row, colptr,
-                                                       nodes, self.sample_sizes,
-                                                       sorted_eids=sorted_eid,
-                                                       return_eids=True)
+            (
+                edge_src,
+                edge_dst,
+                sample_index,
+                reindex_nodes,
+                edge_eids,
+            ) = paddle.incubate.graph_khop_sampler(
+                row,
+                colptr,
+                nodes,
+                self.sample_sizes,
+                sorted_eids=sorted_eid,
+                return_eids=True,
+            )
             edge_src = edge_src.reshape([-1])
             edge_dst = edge_dst.reshape([-1])
             sample_index = sample_index.reshape([-1])
@@ -120,46 +137,52 @@ class TestGraphKhopSampler(unittest.TestCase):
                 if edge_src_n.shape[0] == 0:
                     continue
                 self.assertTrue(
-                    edge_src_n.shape[0] == paddle.unique(edge_src_n).shape[0])
+                    edge_src_n.shape[0] == paddle.unique(edge_src_n).shape[0]
+                )
                 self.assertTrue(
                     edge_src_n.shape[0] == self.sample_sizes[0]
-                    or edge_src_n.shape[0] == len(self.dst_src_dict[n]))
+                    or edge_src_n.shape[0] == len(self.dst_src_dict[n])
+                )
                 in_neighbors = np.isin(edge_src_n.numpy(), self.dst_src_dict[n])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
-
-    def test_uva_sample_result(self):
-        with fluid.framework._test_eager_guard():
-            self.func_uva_sample_result()
-        self.func_uva_sample_result()
 
     def test_sample_result_static_with_eids(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            row = paddle.static.data(name="row",
-                                     shape=self.row.shape,
-                                     dtype=self.row.dtype)
-            sorted_eids = paddle.static.data(name="eids",
-                                             shape=self.sorted_eid.shape,
-                                             dtype=self.sorted_eid.dtype)
-            colptr = paddle.static.data(name="colptr",
-                                        shape=self.colptr.shape,
-                                        dtype=self.colptr.dtype)
-            nodes = paddle.static.data(name="nodes",
-                                       shape=self.nodes.shape,
-                                       dtype=self.nodes.dtype)
+            row = paddle.static.data(
+                name="row", shape=self.row.shape, dtype=self.row.dtype
+            )
+            sorted_eids = paddle.static.data(
+                name="eids",
+                shape=self.sorted_eid.shape,
+                dtype=self.sorted_eid.dtype,
+            )
+            colptr = paddle.static.data(
+                name="colptr", shape=self.colptr.shape, dtype=self.colptr.dtype
+            )
+            nodes = paddle.static.data(
+                name="nodes", shape=self.nodes.shape, dtype=self.nodes.dtype
+            )
 
-            edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
-                paddle.incubate.graph_khop_sampler(row, colptr,
-                                                       nodes, self.sample_sizes,
-                                                       sorted_eids, True)
+            (
+                edge_src,
+                edge_dst,
+                sample_index,
+                reindex_nodes,
+                edge_eids,
+            ) = paddle.incubate.graph_khop_sampler(
+                row, colptr, nodes, self.sample_sizes, sorted_eids, True
+            )
             exe = paddle.static.Executor(paddle.CPUPlace())
-            ret = exe.run(feed={
-                'row': self.row,
-                'eids': self.sorted_eid,
-                'colptr': self.colptr,
-                'nodes': self.nodes
-            },
-                          fetch_list=[edge_src, edge_dst, sample_index])
+            ret = exe.run(
+                feed={
+                    'row': self.row,
+                    'eids': self.sorted_eid,
+                    'colptr': self.colptr,
+                    'nodes': self.nodes,
+                },
+                fetch_list=[edge_src, edge_dst, sample_index],
+            )
 
             edge_src, edge_dst, sample_index = ret
             edge_src = edge_src.reshape([-1])
@@ -175,35 +198,44 @@ class TestGraphKhopSampler(unittest.TestCase):
                 if edge_src_n.shape[0] == 0:
                     continue
                 self.assertTrue(
-                    edge_src_n.shape[0] == np.unique(edge_src_n).shape[0])
+                    edge_src_n.shape[0] == np.unique(edge_src_n).shape[0]
+                )
                 self.assertTrue(
                     edge_src_n.shape[0] == self.sample_sizes[0]
-                    or edge_src_n.shape[0] == len(self.dst_src_dict[n]))
+                    or edge_src_n.shape[0] == len(self.dst_src_dict[n])
+                )
                 in_neighbors = np.isin(edge_src_n, self.dst_src_dict[n])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
     def test_sample_result_static_without_eids(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            row = paddle.static.data(name="row",
-                                     shape=self.row.shape,
-                                     dtype=self.row.dtype)
-            colptr = paddle.static.data(name="colptr",
-                                        shape=self.colptr.shape,
-                                        dtype=self.colptr.dtype)
-            nodes = paddle.static.data(name="nodes",
-                                       shape=self.nodes.shape,
-                                       dtype=self.nodes.dtype)
-            edge_src, edge_dst, sample_index, reindex_nodes = \
-                paddle.incubate.graph_khop_sampler(row, colptr,
-                                                       nodes, self.sample_sizes)
+            row = paddle.static.data(
+                name="row", shape=self.row.shape, dtype=self.row.dtype
+            )
+            colptr = paddle.static.data(
+                name="colptr", shape=self.colptr.shape, dtype=self.colptr.dtype
+            )
+            nodes = paddle.static.data(
+                name="nodes", shape=self.nodes.shape, dtype=self.nodes.dtype
+            )
+            (
+                edge_src,
+                edge_dst,
+                sample_index,
+                reindex_nodes,
+            ) = paddle.incubate.graph_khop_sampler(
+                row, colptr, nodes, self.sample_sizes
+            )
             exe = paddle.static.Executor(paddle.CPUPlace())
-            ret = exe.run(feed={
-                'row': self.row,
-                'colptr': self.colptr,
-                'nodes': self.nodes
-            },
-                          fetch_list=[edge_src, edge_dst, sample_index])
+            ret = exe.run(
+                feed={
+                    'row': self.row,
+                    'colptr': self.colptr,
+                    'nodes': self.nodes,
+                },
+                fetch_list=[edge_src, edge_dst, sample_index],
+            )
             edge_src, edge_dst, sample_index = ret
             edge_src = edge_src.reshape([-1])
             edge_dst = edge_dst.reshape([-1])
@@ -218,10 +250,12 @@ class TestGraphKhopSampler(unittest.TestCase):
                 if edge_src_n.shape[0] == 0:
                     continue
                 self.assertTrue(
-                    edge_src_n.shape[0] == np.unique(edge_src_n).shape[0])
+                    edge_src_n.shape[0] == np.unique(edge_src_n).shape[0]
+                )
                 self.assertTrue(
                     edge_src_n.shape[0] == self.sample_sizes[0]
-                    or edge_src_n.shape[0] == len(self.dst_src_dict[n]))
+                    or edge_src_n.shape[0] == len(self.dst_src_dict[n])
+                )
                 in_neighbors = np.isin(edge_src_n, self.dst_src_dict[n])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 

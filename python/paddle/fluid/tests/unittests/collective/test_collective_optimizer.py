@@ -24,15 +24,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
+import paddle
 import paddle.fluid as fluid
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, DistributedStrategy
+from paddle.incubate.distributed.fleet.collective import (
+    CollectiveOptimizer,
+    DistributedStrategy,
+)
 
 
 class CollectiveOptimizerTest(unittest.TestCase):
-
     def test_ds_as_None(self):
         optimizer = fluid.optimizer.AdamOptimizer()
         dist_optimizer = CollectiveOptimizer(optimizer, strategy=None)
@@ -42,8 +44,9 @@ class CollectiveOptimizerTest(unittest.TestCase):
         dist_strategy = DistributedStrategy()
         dist_strategy.forward_recompute = True
         dist_strategy.recompute_checkpoints = "NoneListTest"
-        self.assertRaises(ValueError, CollectiveOptimizer, optimizer,
-                          dist_strategy)
+        self.assertRaises(
+            ValueError, CollectiveOptimizer, optimizer, dist_strategy
+        )
         dist_strategy.recompute_checkpoints = []
         dist_optimizer = CollectiveOptimizer(optimizer, dist_strategy)
         self.assertRaises(ValueError, dist_optimizer.minimize, None)
@@ -59,8 +62,9 @@ class CollectiveOptimizerTest(unittest.TestCase):
 
     def test_amp_strategy(self):
         optimizer = fluid.optimizer.AdamOptimizer()
-        optimizer = fluid.contrib.mixed_precision.decorate(
-            optimizer, init_loss_scaling=1.0, use_dynamic_loss_scaling=True)
+        optimizer = paddle.static.amp.decorate(
+            optimizer, init_loss_scaling=1.0, use_dynamic_loss_scaling=True
+        )
         dist_strategy = DistributedStrategy()
         dist_strategy.use_amp = True
         dist_optimizer = CollectiveOptimizer(optimizer, strategy=dist_strategy)
@@ -68,4 +72,5 @@ class CollectiveOptimizerTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

@@ -14,12 +14,12 @@
 
 #include "paddle/phi/kernels/argsort_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
-
-const int XPU_SORT_MAX_SIZE = 16384;
 
 template <typename T, typename TID>
 static inline void xpu_argsort(xpu::Context* ctx,
@@ -31,12 +31,7 @@ static inline void xpu_argsort(xpu::Context* ctx,
                                bool descending) {
   int ret =
       xpu::sort(ctx, input_data, output_data, indices_data, m, n, descending);
-  PADDLE_ENFORCE_EQ(
-      ret,
-      XPU_SUCCESS,
-      errors::External("XPU sort kernel return wrong value[%d %s].",
-                       ret,
-                       XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sort");
 }
 
 template <typename T>
@@ -46,23 +41,13 @@ static inline void xpu_transpose(xpu::Context* ctx,
                                  const std::vector<int>& xshape,
                                  const std::vector<int>& permute) {
   int ret = xpu::transpose(ctx, x, y, xshape, permute);
-  PADDLE_ENFORCE_EQ(
-      ret,
-      XPU_SUCCESS,
-      errors::External("XPU transpose kernel return wrong value[%d %s]",
-                       ret,
-                       XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "transpose");
 }
 
 template <typename TX, typename TY>
 static inline void xpu_cast(xpu::Context* ctx, const TX* x, TY* y, int len) {
-  int ret = xpu::cast_v2(ctx, x, y, len);
-  PADDLE_ENFORCE_EQ(
-      ret,
-      XPU_SUCCESS,
-      errors::External("XPU cast kernel return wrong value[%d %s]",
-                       ret,
-                       XPUAPIErrorMsg[ret]));
+  int ret = xpu::cast(ctx, x, y, len);
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
 }
 
 template <typename T,
@@ -187,59 +172,80 @@ void ArgsortKernel(const Context& dev_ctx,
                    DenseTensor* output,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
+  auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   int n = in_dims[axis];
-
-  PADDLE_ENFORCE_LT(
-      n,
-      XPU_SORT_MAX_SIZE,
-      errors::InvalidArgument(
-          "The axis dimension of Input should less than %d, but got %d.",
-          XPU_SORT_MAX_SIZE,
-          in_dims[axis]));
 
   auto input_data = input.data<T>();
   auto output_data = dev_ctx.template Alloc<T>(output);
   auto indices_data = dev_ctx.template Alloc<int64_t>(indices);
 
+  if (rank == 0) {
+    phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+    return;
+  }
+
   int len_before = phi::product(phi::slice_ddim(in_dims, 0, axis));
   int len_after =
       phi::product(phi::slice_ddim(in_dims, axis + 1, in_dims.size()));
-  bool int64_need_cast =
-      (std::is_same<T, int64_t>::value && n > (XPU_SORT_MAX_SIZE / 2)) ? true
-                                                                       : false;
-  bool index_need_cast = (n > (XPU_SORT_MAX_SIZE / 2)) ? true : false;
   std::vector<int> permute_vec{0, 2, 1};
   std::vector<int> data_shape{len_before, n, len_after};
 
-  if (int64_need_cast) {
-    XPUArgsort<T, true, true>()(dev_ctx.x_context(),
-                                input_data,
-                                output_data,
-                                indices_data,
-                                data_shape,
-                                permute_vec,
-                                descending);
-  } else if (index_need_cast) {
-    XPUArgsort<T, false, true>()(dev_ctx.x_context(),
-                                 input_data,
-                                 output_data,
-                                 indices_data,
-                                 data_shape,
-                                 permute_vec,
-                                 descending);
+  bool int64_need_cast = false;
+  bool index_need_cast = false;
+  if (std::is_same<T, int64_t>::value) {
+    if ((n > 10240) && (n <= 16384)) {
+      int64_need_cast = true;
+    }
+    if ((n > 8192) && (n <= 10240)) {
+      index_need_cast = true;
+    }
   } else {
-    XPUArgsort<T, false, false>()(dev_ctx.x_context(),
-                                  input_data,
-                                  output_data,
-                                  indices_data,
-                                  data_shape,
-                                  permute_vec,
-                                  descending);
+    if ((n > 10240) && (n <= 16384)) {
+      index_need_cast = true;
+    }
+  }
+
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
+  if (int64_need_cast) {
+    XPUArgsort<XPUType, true, true>()(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(input_data),
+        reinterpret_cast<XPUType*>(output_data),
+        indices_data,
+        data_shape,
+        permute_vec,
+        descending);
+  } else if (index_need_cast) {
+    XPUArgsort<XPUType, false, true>()(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(input_data),
+        reinterpret_cast<XPUType*>(output_data),
+        indices_data,
+        data_shape,
+        permute_vec,
+        descending);
+  } else {
+    XPUArgsort<XPUType, false, false>()(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(input_data),
+        reinterpret_cast<XPUType*>(output_data),
+        indices_data,
+        data_shape,
+        permute_vec,
+        descending);
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    argsort, XPU, ALL_LAYOUT, phi::ArgsortKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(argsort,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ArgsortKernel,
+                   float,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}

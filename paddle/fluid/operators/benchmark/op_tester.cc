@@ -270,7 +270,7 @@ framework::VarDesc *OpTester::Var(const std::string &name) {
 }
 
 template <typename T>
-void OpTester::SetupTensor(framework::LoDTensor *tensor,
+void OpTester::SetupTensor(phi::DenseTensor *tensor,
                            const std::vector<int64_t> &shape,
                            T lower,
                            T upper,
@@ -282,7 +282,7 @@ void OpTester::SetupTensor(framework::LoDTensor *tensor,
 
   T *ptr = tensor->mutable_data<T>(phi::make_ddim(shape), place_);
 
-  framework::LoDTensor cpu_tensor;
+  phi::DenseTensor cpu_tensor;
   T *cpu_ptr = nullptr;
 
   if (!platform::is_cpu_place(place_)) {
@@ -349,7 +349,7 @@ void OpTester::CreateVariables(framework::Scope *scope) {
     std::vector<int64_t> shape = var_desc->GetShape();
 
     auto *var = scope->Var(var_name);
-    auto *tensor = var->GetMutable<framework::LoDTensor>();
+    auto *tensor = var->GetMutable<phi::DenseTensor>();
     const auto &data_type = var_desc->GetDataType();
     if (data_type == framework::proto::VarType::INT32) {
       SetupTensor<int>(

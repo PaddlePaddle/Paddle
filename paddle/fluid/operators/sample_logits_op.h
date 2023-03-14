@@ -21,13 +21,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/sample_prob.h"
-#include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -48,9 +47,9 @@ struct TolerableValue {
 // UNDERSTAND: something like take_along_axis in numpy.
 template <typename T>
 static void CPUTakeAlongD1(const platform::DeviceContext& ctx,
-                           const framework::Tensor& array,
-                           const framework::Tensor& index,
-                           framework::Tensor* value) {
+                           const phi::DenseTensor& array,
+                           const phi::DenseTensor& index,
+                           phi::DenseTensor* value) {
   PADDLE_ENFORCE_EQ(
       platform::is_cpu_place(ctx.GetPlace()),
       true,
@@ -119,9 +118,9 @@ static void CPUTakeAlongD1(const platform::DeviceContext& ctx,
 // indices, scatter is done in += way.
 template <typename T>
 static void CPUPutAlongD1(const platform::DeviceContext& ctx,
-                          framework::Tensor* array,
-                          const framework::Tensor& index,
-                          const framework::Tensor& value) {
+                          phi::DenseTensor* array,
+                          const phi::DenseTensor& index,
+                          const phi::DenseTensor& value) {
   PADDLE_ENFORCE_EQ(
       platform::is_cpu_place(ctx.GetPlace()),
       true,
@@ -188,8 +187,8 @@ static void CPUPutAlongD1(const platform::DeviceContext& ctx,
 // logits by a float max, here 1e20
 template <typename T>
 static void compute_remove_accidental_hits(const platform::DeviceContext& ctx,
-                                           framework::Tensor* sampled_logits,
-                                           const framework::Tensor& samples,
+                                           phi::DenseTensor* sampled_logits,
+                                           const phi::DenseTensor& samples,
                                            const int num_true) {
   const auto batch_size = sampled_logits->dims()[0];
   const auto num_sampled_classes = sampled_logits->dims()[1];
@@ -212,7 +211,6 @@ static void compute_remove_accidental_hits(const platform::DeviceContext& ctx,
 template <typename T>
 class SampleLogitsKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = framework::Tensor;
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(context.GetPlace()),
@@ -220,14 +218,17 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("this kernel only runs on cpu."));
     VLOG(3) << "Enter SampleLogitsKernel";
     // get necessary inputs
-    const Tensor* logits = context.Input<Tensor>("Logits");
-    const Tensor* labels = context.Input<Tensor>("Labels");
+    const phi::DenseTensor* logits = context.Input<phi::DenseTensor>("Logits");
+    const phi::DenseTensor* labels = context.Input<phi::DenseTensor>("Labels");
 
     // get necessary outputs
-    Tensor* samples = context.Output<Tensor>("Samples");
-    Tensor* probabilities = context.Output<Tensor>("Probabilities");
-    Tensor* sampled_logits = context.Output<Tensor>("SampledLogits");
-    Tensor* sampled_labels = context.Output<Tensor>("SampledLabels");
+    phi::DenseTensor* samples = context.Output<phi::DenseTensor>("Samples");
+    phi::DenseTensor* probabilities =
+        context.Output<phi::DenseTensor>("Probabilities");
+    phi::DenseTensor* sampled_logits =
+        context.Output<phi::DenseTensor>("SampledLogits");
+    phi::DenseTensor* sampled_labels =
+        context.Output<phi::DenseTensor>("SampledLabels");
 
     // shapes
     const auto batch_size = logits->dims()[0];
@@ -257,20 +258,21 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
     }
 
     if (use_customized_samples) {
-      const Tensor* customized_samples =
-          context.Input<Tensor>("CustomizedSamples");
-      const Tensor* customized_probabilities =
-          context.Input<Tensor>("CustomizedProbabilities");
-      PADDLE_ENFORCE_EQ(customized_samples,
-                        samples,
-                        platform::errors::InvalidArgument(
-                            "CustomizedSamples must be the same Tensor with "
-                            "Samples when use_customized_samples = True"));
+      const phi::DenseTensor* customized_samples =
+          context.Input<phi::DenseTensor>("CustomizedSamples");
+      const phi::DenseTensor* customized_probabilities =
+          context.Input<phi::DenseTensor>("CustomizedProbabilities");
+      PADDLE_ENFORCE_EQ(
+          customized_samples,
+          samples,
+          platform::errors::InvalidArgument(
+              "CustomizedSamples must be the same phi::DenseTensor with "
+              "Samples when use_customized_samples = True"));
       PADDLE_ENFORCE_EQ(
           customized_probabilities,
           probabilities,
           platform::errors::InvalidArgument(
-              "CustomizedProbabilities must be the same Tensor with "
+              "CustomizedProbabilities must be the same phi::DenseTensor with "
               "Probabilities when use_customized_samples = True"));
     } else {
       samples->mutable_data<int64_t>(context.GetPlace());
@@ -305,12 +307,14 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
 template <typename T>
 class SampleLogitsGradKernel : public framework::OpKernel<T> {
  public:
-  using Tensor = framework::Tensor;
   void Compute(const framework::ExecutionContext& context) const override {
-    auto logits_grad = context.Output<Tensor>(framework::GradVarName("Logits"));
-    const Tensor* samples = context.Input<Tensor>("Samples");
-    const Tensor* sampled_logits_grad =
-        context.Input<Tensor>(framework::GradVarName("SampledLogits"));
+    auto logits_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
+    const phi::DenseTensor* samples =
+        context.Input<phi::DenseTensor>("Samples");
+    const phi::DenseTensor* sampled_logits_grad =
+        context.Input<phi::DenseTensor>(
+            framework::GradVarName("SampledLogits"));
     logits_grad->mutable_data<T>(context.GetPlace());
 
     auto& dev_ctx = context.template device_context<phi::CPUContext>();

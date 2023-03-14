@@ -28,7 +28,7 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
     auto str_value = ctx.Attr<std::string>("str_value");
     auto float_value = ctx.Attr<float>("value");
 
-    auto *out_var = ctx.Output<framework::Tensor>("Out");
+    auto *out_var = ctx.Output<phi::DenseTensor>("Out");
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

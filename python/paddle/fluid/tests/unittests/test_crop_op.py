@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
 
+import paddle
+import paddle.fluid as fluid
+
 
 def crop(data, offsets, crop_shape):
-
     def indexOf(shape, index):
         result = []
         for dim in reversed(shape):
@@ -34,15 +35,17 @@ def crop(data, offsets, crop_shape):
         selected = True
         if len(index) == len(offsets):
             for j, offset in enumerate(offsets):
-                selected = selected and index[j] >= offset and index[
-                    j] < crop_shape[j] + offset
+                selected = (
+                    selected
+                    and index[j] >= offset
+                    and index[j] < crop_shape[j] + offset
+                )
             if selected:
                 result.append(value)
     return np.array(result).reshape(crop_shape)
 
 
 class TestCropOp(OpTest):
-
     def setUp(self):
         self.op_type = "crop"
         self.crop_by_input = False
@@ -52,7 +55,7 @@ class TestCropOp(OpTest):
         if self.crop_by_input:
             self.inputs = {
                 'X': np.random.random(self.x_shape).astype("float64"),
-                'Y': np.random.random(self.crop_shape).astype("float64")
+                'Y': np.random.random(self.crop_shape).astype("float64"),
             }
         else:
             self.attrs['shape'] = self.crop_shape
@@ -63,6 +66,11 @@ class TestCropOp(OpTest):
             self.inputs['Offsets'] = np.array(self.offsets).astype('int32')
         else:
             self.attrs['offsets'] = self.offsets
+        if self.offsets is None:
+            self.offsets = [0] * len(self.crop_shape)
+        if self.crop_shape is None:
+            self.crop_shape = self.x_shape
+
         self.outputs = {
             'Out': crop(self.inputs['X'], self.offsets, self.crop_shape)
         }
@@ -80,7 +88,6 @@ class TestCropOp(OpTest):
 
 
 class TestCase1(TestCropOp):
-
     def initTestCase(self):
         self.x_shape = (16, 8, 32)
         self.crop_shape = [2, 2, 3]
@@ -88,7 +95,6 @@ class TestCase1(TestCropOp):
 
 
 class TestCase2(TestCropOp):
-
     def initTestCase(self):
         self.x_shape = (15, 8)
         self.crop_shape = [15, 8]
@@ -96,7 +102,6 @@ class TestCase2(TestCropOp):
 
 
 class TestCase3(TestCropOp):
-
     def initTestCase(self):
         self.x_shape = (4, 8, 16)
         self.crop_shape = [2, 2, 3]
@@ -105,7 +110,6 @@ class TestCase3(TestCropOp):
 
 
 class TestCase4(TestCropOp):
-
     def initTestCase(self):
         self.x_shape = (10, 10)
         self.crop_shape = [10, 10]
@@ -114,7 +118,6 @@ class TestCase4(TestCropOp):
 
 
 class TestCase5(TestCropOp):
-
     def initTestCase(self):
         self.x_shape = (3, 4, 10)
         self.crop_shape = [2, 2, 3]
@@ -123,7 +126,6 @@ class TestCase5(TestCropOp):
 
 
 class TestCase6(TestCropOp):
-
     def initTestCase(self):
         self.x_shape = (10, 9, 14)
         self.crop_shape = [3, 3, 5]
@@ -132,7 +134,28 @@ class TestCase6(TestCropOp):
         self.offset_by_input = True
 
 
+class TestCropNoneOffset(unittest.TestCase):
+    def test_crop_none_offset(self):
+        x = fluid.data(name="input1", shape=[3, 6, 6], dtype="float32")
+        crop_shape = [2, 2, 2]
+        crop = paddle.crop(x, crop_shape, None)
+        self.assertEqual(crop.shape, (2, 2, 2))
+
+
+class TestCropNoneShape(unittest.TestCase):
+    def test_crop_none_shape(self):
+        x = fluid.data(name="input1", shape=[3, 6, 6], dtype="float32")
+        crop = paddle.crop(x)
+        self.assertEqual(crop.shape, (3, 6, 6))
+
+
+class TestCropError(unittest.TestCase):
+    def test_neg_offset_error(self):
+        with self.assertRaises(ValueError):
+            x = fluid.data(name='input2', shape=[1], dtype="float32")
+            out = paddle.crop(x, offsets=[-1])
+
+
 if __name__ == '__main__':
-    import paddle
     paddle.enable_static()
     unittest.main()

@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace framework {
@@ -224,6 +225,11 @@ inline std::ostream& operator<<(std::ostream& out,
 extern inline bool IsComplexType(const proto::VarType::Type& type) {
   return (type == proto::VarType::COMPLEX64 ||
           type == proto::VarType::COMPLEX128);
+}
+
+extern inline bool IsComplexType(const phi::DataType& type) {
+  return (type == phi::DataType::COMPLEX64 ||
+          type == phi::DataType::COMPLEX128);
 }
 
 extern proto::VarType::Type PromoteTypesIfComplexExists(

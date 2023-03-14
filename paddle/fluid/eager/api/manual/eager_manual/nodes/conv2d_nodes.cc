@@ -28,10 +28,9 @@
 #include "paddle/phi/api/include/sparse_api.h"
 DECLARE_bool(check_nan_inf);
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     egr::kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 Conv2dGradNodeFinal::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    paddle::small_vector<std::vector<paddle::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
@@ -46,18 +45,14 @@ Conv2dGradNodeFinal::operator()(
   auto& grad_out = hooked_grads[0][0];
   auto& strides = this->strides_;
   auto& paddings = this->paddings_;
-  auto& paddding_algorithm = this->paddding_algorithm_;
+  auto& padding_algorithm = this->padding_algorithm_;
   auto& groups = this->groups_;
   auto& dilations = this->dilations_;
   auto& data_format = this->data_format_;
-  auto& use_addto = this->use_addto_;
-  auto& workspace_size_MB = this->workspace_size_MB_;
-  auto& exhaustive_search = this->exhaustive_search_;
   // Prepare Grad function call
 
   const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(2);
   for (int i = 0; i < 2; ++i) {
     out_metas[i].size() == 0 ? returns[i].resize(1)
@@ -87,13 +82,10 @@ Conv2dGradNodeFinal::operator()(
                                     grad_out,
                                     strides,
                                     paddings,
-                                    paddding_algorithm,
-                                    groups,
+                                    padding_algorithm,
                                     dilations,
+                                    groups,
                                     data_format,
-                                    use_addto,
-                                    workspace_size_MB,
-                                    exhaustive_search,
                                     api_output_0,
                                     api_output_1);
   // Check NaN and Inf id needed
@@ -134,13 +126,10 @@ Conv2dGradNodeFinal::operator()(
     // SetAttributes if needed
     grad_node->SetAttributestrides(strides);
     grad_node->SetAttributepaddings(paddings);
-    grad_node->SetAttributepaddding_algorithm(paddding_algorithm);
+    grad_node->SetAttributepadding_algorithm(padding_algorithm);
     grad_node->SetAttributegroups(groups);
     grad_node->SetAttributedilations(dilations);
     grad_node->SetAttributedata_format(data_format);
-    grad_node->SetAttributeuse_addto(use_addto);
-    grad_node->SetAttributeworkspace_size_MB(workspace_size_MB);
-    grad_node->SetAttributeexhaustive_search(exhaustive_search);
     // Set TensorWrappers for Forward Inputs if needed
     grad_node->SetTensorWrapperinput(input);
     grad_node->SetTensorWrapperfilter(filter);
@@ -168,8 +157,6 @@ Conv2dGradNodeFinal::operator()(
     }
     grad_node->SetGradInMeta(grad_input, 0);
     grad_node->SetGradInMeta(grad_filter, 1);
-    egr::EagerUtils::CheckAndRetainGrad(grad_input);
-    egr::EagerUtils::CheckAndRetainGrad(grad_filter);
     // Set TensorWrappers for Forward Outputs if needed
   }
 
@@ -178,10 +165,9 @@ Conv2dGradNodeFinal::operator()(
   return returns;
 }
 
-paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                     egr::kSlotSmallVectorSize>
+paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 Conv2dDoubleGradNodeFinal::operator()(
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+    paddle::small_vector<std::vector<paddle::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
@@ -201,32 +187,28 @@ Conv2dDoubleGradNodeFinal::operator()(
   auto grad_out = egr::EagerUtils::RecoverTensorWrapper(&this->grad_out_);
   auto& grad_input_grad = hooked_grads[0][0];
 
-  paddle::optional<paddle::experimental::Tensor> grad_input_grad_optional;
+  paddle::optional<paddle::Tensor> grad_input_grad_optional;
   if (grad_input_grad.initialized())
     grad_input_grad_optional =
-        paddle::make_optional<paddle::experimental::Tensor>(grad_input_grad);
+        paddle::make_optional<paddle::Tensor>(grad_input_grad);
 
   auto& grad_filter_grad = hooked_grads[1][0];
 
-  paddle::optional<paddle::experimental::Tensor> grad_filter_grad_optional;
+  paddle::optional<paddle::Tensor> grad_filter_grad_optional;
   if (grad_filter_grad.initialized())
     grad_filter_grad_optional =
-        paddle::make_optional<paddle::experimental::Tensor>(grad_filter_grad);
+        paddle::make_optional<paddle::Tensor>(grad_filter_grad);
 
   auto& strides = this->strides_;
   auto& paddings = this->paddings_;
-  auto& paddding_algorithm = this->paddding_algorithm_;
+  auto& padding_algorithm = this->padding_algorithm_;
   auto& groups = this->groups_;
   auto& dilations = this->dilations_;
   auto& data_format = this->data_format_;
-  auto& use_addto = this->use_addto_;
-  auto& workspace_size_MB = this->workspace_size_MB_;
-  auto& exhaustive_search = this->exhaustive_search_;
   // Prepare Grad function call
 
   const auto& out_metas = OutputMeta();
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(3);
   for (int i = 0; i < 3; ++i) {
     out_metas[i].size() == 0 ? returns[i].resize(1)
@@ -261,13 +243,10 @@ Conv2dDoubleGradNodeFinal::operator()(
                                          grad_filter_grad_optional,
                                          strides,
                                          paddings,
-                                         paddding_algorithm,
-                                         groups,
+                                         padding_algorithm,
                                          dilations,
+                                         groups,
                                          data_format,
-                                         use_addto,
-                                         workspace_size_MB,
-                                         exhaustive_search,
                                          api_output_0,
                                          api_output_1,
                                          api_output_2);

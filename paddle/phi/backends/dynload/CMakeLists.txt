@@ -62,6 +62,10 @@ if(WITH_ROCM)
     phi_dynload_warpctc
     SRCS warpctc.cc
     DEPS phi_dynamic_loader warpctc)
+  cc_library(
+    phi_dynload_warprnnt
+    SRCS warprnnt.cc
+    DEPS phi_dynamic_loader warprnnt)
 elseif(WITH_ASCEND_CL)
   cc_library(
     phi_dynload_warpctc
@@ -76,12 +80,23 @@ else()
     phi_dynload_warpctc
     SRCS warpctc.cc
     DEPS phi_dynamic_loader warpctc)
+  cc_library(
+    phi_dynload_warprnnt
+    SRCS warprnnt.cc
+    DEPS phi_dynamic_loader warprnnt)
 endif()
 if(WITH_MKLML)
   cc_library(
     phi_dynload_mklml
     SRCS mklml.cc
     DEPS phi_dynamic_loader mklml)
+endif()
+
+if(WITH_FLASHATTN)
+  cc_library(
+    phi_dynload_flashattn
+    SRCS flashattn.cc
+    DEPS phi_dynamic_loader flashattn)
 endif()
 
 cc_library(
@@ -98,4 +113,11 @@ if(MKL_FOUND AND WITH_ONEMKL)
     SRCS mklrt.cc
     DEPS phi_dynamic_loader)
   target_include_directories(phi_dynload_mklrt PRIVATE ${MKL_INCLUDE})
+endif()
+
+if(WITH_CUDNN_FRONTEND)
+  nv_test(
+    cudnn_frontend_test
+    SRCS cudnn_frontend_test.cc
+    DEPS phi_dynload_cuda cudnn-frontend)
 endif()

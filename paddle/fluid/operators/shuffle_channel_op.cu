@@ -11,12 +11,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/shuffle_channel_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
@@ -48,8 +47,8 @@ template <typename DeviceContext, typename T>
 class ShuffleChannelOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::Tensor>("X");
-    auto* output = ctx.Output<framework::Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     int group = ctx.Attr<int>("group");
 
     auto input_dims = input->dims();
@@ -88,9 +87,9 @@ class ShuffleChannelGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* output_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* input_grad =
-        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     int group = ctx.Attr<int>("group");
 

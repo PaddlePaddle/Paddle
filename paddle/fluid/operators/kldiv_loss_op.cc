@@ -19,17 +19,15 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class KLDivLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -73,7 +71,7 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
 
          While :attr:`reduction` is :attr:`none`, output loss is in
          the same shape as Input(X), loss in each point is calculated
-         seperately and no reduction is applied.
+         separately and no reduction is applied.
 
          While :attr:`reduction` is :attr:`mean`, output loss is in
          shape of [1] and loss value is the mean value of all losses.
@@ -106,11 +104,11 @@ class KLDivLossOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Loss")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Loss")),
+                          ctx.GetPlace());
   }
 };
 

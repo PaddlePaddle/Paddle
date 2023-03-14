@@ -8,6 +8,7 @@ import sys
 import fnmatch
 import errno
 import platform
+import glob
 
 from contextlib import contextmanager
 from setuptools import Command
@@ -74,6 +75,18 @@ def get_cudnn_version():
     else:
         return 'False'
 
+def get_xpu_version():
+    if '@WITH_XPU@' == 'ON':
+        return '@XPU_BASE_DATE@'
+    else:
+        return 'False'
+
+def get_xpu_xccl_version():
+    if '@WITH_XPU_BKCL@' == 'ON':
+        return '@XPU_XCCL_BASE_VERSION@'
+    else:
+        return 'False'
+
 def is_taged():
     try:
         cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
@@ -90,22 +103,24 @@ def is_taged():
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
-full_version    = '%(major)d.%(minor)d.%(patch)s'
-major           = '%(major)d'
-minor           = '%(minor)d'
-patch           = '%(patch)s'
-rc              = '%(rc)d'
-cuda_version    = '%(cuda)s'
-cudnn_version   = '%(cudnn)s'
-istaged         = %(istaged)s
-commit          = '%(commit)s'
-with_mkl        = '%(with_mkl)s'
+full_version     = '%(major)d.%(minor)d.%(patch)s'
+major            = '%(major)d'
+minor            = '%(minor)d'
+patch            = '%(patch)s'
+rc               = '%(rc)d'
+cuda_version     = '%(cuda)s'
+cudnn_version    = '%(cudnn)s'
+xpu_version      = '%(xpu)s'
+xpu_xccl_version = '%(xpu_xccl)s'
+istaged          = %(istaged)s
+commit           = '%(commit)s'
+with_mkl         = '%(with_mkl)s'
 
-__all__ = ['cuda', 'cudnn', 'show']
+__all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
-    
+
     Returns:
         If paddle package is not tagged, the commit-id of paddle will be output.
         Otherwise, the following information will be output.
@@ -117,13 +132,17 @@ def show():
         minor: the minor version of paddle
 
         patch: the patch level version of paddle
-        
+
         rc: whether it's rc version
 
         cuda: the cuda version of package. It will return `False` if CPU version paddle package is installed
 
         cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
-    
+
+        xpu: the xpu version of package. It will return `False` if non-XPU version paddle package is installed
+
+        xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
+
     Examples:
         .. code-block:: python
 
@@ -138,12 +157,16 @@ def show():
             # rc: 0
             # cuda: '10.2'
             # cudnn: '7.6.5'
+            # xpu: '20230114'
+            # xpu_xccl: '1.0.7'
 
             # Case 2: paddle is not tagged
             paddle.version.show()
             # commit: cfa357e984bfd2ffa16820e354020529df434f7d
             # cuda: '10.2'
             # cudnn: '7.6.5'
+            # xpu: '20230114'
+            # xpu_xccl: '1.0.7'
     """
     if istaged:
         print('full_version:', full_version)
@@ -155,6 +178,8 @@ def show():
         print('commit:', commit)
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
+    print('xpu:', xpu_version)
+    print('xpu_xccl:', xpu_xccl_version)
 
 def mkl():
     return with_mkl
@@ -164,7 +189,7 @@ def cuda():
 
     Returns:
         string: Return the version information of cuda. If paddle package is CPU version, it will return False.
-    
+
     Examples:
         .. code-block:: python
 
@@ -181,7 +206,7 @@ def cudnn():
 
     Returns:
         string: Return the version information of cudnn. If paddle package is CPU version, it will return False.
-    
+
     Examples:
         .. code-block:: python
 
@@ -192,6 +217,40 @@ def cudnn():
 
     """
     return cudnn_version
+
+def xpu():
+    """Get xpu version of paddle package.
+
+    Returns:
+        string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.xpu()
+            # '20230114'
+
+    """
+    return xpu_version
+
+def xpu_xccl():
+    """Get xpu xccl version of paddle package.
+
+    Returns:
+        string: Return the version information of xpu xccl. If paddle package is non-XPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.xpu_xccl()
+            # '1.0.7'
+
+    """
+    return xpu_xccl_version
 '''
     commit = git_commit()
 
@@ -212,6 +271,8 @@ def cudnn():
             'version': '${PADDLE_VERSION}',
             'cuda': get_cuda_version(),
             'cudnn': get_cudnn_version(),
+            'xpu': get_xpu_version(),
+            'xpu_xccl': get_xpu_xccl_version(),
             'commit': commit,
             'istaged': is_taged(),
             'with_mkl': '@WITH_MKL@'})
@@ -232,12 +293,12 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 
 write_cuda_env_config_py(filename='@PADDLE_BINARY_DIR@/python/paddle/cuda_env.py')
 
-def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
-    cnt = '''from __future__ import print_function
+def write_distributed_training_mode_py(filename='paddle/incubate/distributed/fleet/parameter_server/version.py'):
+    cnt = '''
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 
-from paddle.fluid.incubate.fleet.base.mode import Mode
+from paddle.incubate.distributed.fleet.base import Mode
 
 BUILD_MODE=Mode.%(mode)s
 
@@ -259,7 +320,7 @@ def is_transpiler():
             'mode': 'PSLIB' if '${WITH_PSLIB}' == 'ON' else 'TRANSPILER'
         })
 
-write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/fluid/incubate/fleet/parameter_server/version.py')
+write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/incubate/distributed/fleet/parameter_server/version.py')
 
 
 packages=['paddle',
@@ -283,10 +344,10 @@ packages=['paddle',
           'paddle.incubate.tensor',
           'paddle.incubate.multiprocessing',
           'paddle.incubate.nn',
-          'paddle.incubate.sparse',
           'paddle.incubate.asp',
           'paddle.incubate.passes',
           'paddle.distribution',
+          'paddle.distributed.utils',
           'paddle.distributed.sharding',
           'paddle.distributed.fleet',
           'paddle.distributed.launch',
@@ -303,6 +364,7 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_optimizers.ascend',
           'paddle.distributed.fleet.meta_optimizers.dygraph_optimizer',
           'paddle.distributed.fleet.runtime',
+          'paddle.distributed.rpc',
           'paddle.distributed.fleet.dataset',
           'paddle.distributed.fleet.data_generator',
           'paddle.distributed.fleet.metrics',
@@ -321,6 +383,8 @@ packages=['paddle',
           'paddle.distributed.passes',
           'paddle.distributed.models',
           'paddle.distributed.models.moe',
+          'paddle.distributed.transpiler',
+          'paddle.distributed.transpiler.details',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
@@ -328,39 +392,17 @@ packages=['paddle',
           'paddle.inference.contrib',
           'paddle.inference.contrib.utils',
           'paddle.fluid',
-          'paddle.fluid.inference',
           'paddle.fluid.dygraph',
-          'paddle.fluid.dygraph.dygraph_to_static',
-          'paddle.fluid.dygraph.amp',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
-          'paddle.fluid.distributed',
           'paddle.fluid.layers',
           'paddle.fluid.dataloader',
           'paddle.fluid.contrib',
-          'paddle.fluid.contrib.decoder',
-          'paddle.fluid.contrib.quantize',
-          'paddle.fluid.contrib.slim',
-          'paddle.fluid.contrib.slim.quantization',
-          'paddle.fluid.contrib.slim.quantization.imperative',
           'paddle.fluid.contrib.extend_optimizer',
-          'paddle.fluid.contrib.mixed_precision',
-          'paddle.fluid.contrib.mixed_precision.bf16',
           'paddle.fluid.contrib.layers',
-          'paddle.fluid.contrib.sparsity',
-          'paddle.fluid.transpiler',
-          'paddle.fluid.transpiler.details',
           'paddle.fluid.incubate',
-          'paddle.fluid.incubate.data_generator',
-          'paddle.fluid.incubate.fleet',
+          'paddle.incubate.distributed.fleet',
           'paddle.fluid.incubate.checkpoint',
-          'paddle.fluid.incubate.fleet.base',
-          'paddle.fluid.incubate.fleet.parameter_server',
-          'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
-          'paddle.fluid.incubate.fleet.parameter_server.pslib',
-          'paddle.fluid.incubate.fleet.parameter_server.ir',
-          'paddle.fluid.incubate.fleet.collective',
-          'paddle.fluid.incubate.fleet.utils',
           'paddle.amp',
           'paddle.cost_model',
           'paddle.hapi',
@@ -369,9 +411,10 @@ packages=['paddle',
           'paddle.vision.transforms',
           'paddle.vision.datasets',
           'paddle.audio',
-	  'paddle.audio.functional',
-	  'paddle.audio.features',
-	  'paddle.audio.utils',
+	      'paddle.audio.functional',
+	      'paddle.audio.features',
+	      'paddle.audio.datasets',
+	      'paddle.audio.backends',
           'paddle.text',
           'paddle.text.datasets',
           'paddle.incubate',
@@ -381,14 +424,23 @@ packages=['paddle',
           'paddle.incubate.optimizer.functional',
           'paddle.incubate.autograd',
           'paddle.incubate.distributed',
+          'paddle.incubate.distributed.utils',
+          'paddle.incubate.distributed.utils.io',
           'paddle.incubate.distributed.fleet',
           'paddle.incubate.distributed.models',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
-          'paddle.incubate.sparse',
-          'paddle.incubate.sparse.nn',
-          'paddle.incubate.sparse.nn.layer',
-          'paddle.incubate.sparse.nn.functional',
+          'paddle.incubate.distributed.fleet.parameter_server',
+          'paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler',
+          'paddle.incubate.distributed.fleet.parameter_server.pslib',
+          'paddle.incubate.distributed.fleet.parameter_server.ir',
+          'paddle.quantization',
+          'paddle.quantization.quanters',
+          'paddle.quantization.observers',
+          'paddle.sparse',
+          'paddle.sparse.nn',
+          'paddle.sparse.nn.layer',
+          'paddle.sparse.nn.functional',
           'paddle.incubate.xpu',
           'paddle.io',
           'paddle.optimizer',
@@ -396,18 +448,23 @@ packages=['paddle',
           'paddle.nn.functional',
           'paddle.nn.layer',
           'paddle.nn.quant',
+          'paddle.nn.quant.qat',
           'paddle.nn.initializer',
           'paddle.nn.utils',
           'paddle.metric',
           'paddle.static',
           'paddle.static.nn',
           'paddle.static.amp',
-          'paddle.static.sparsity',
+          'paddle.static.amp.bf16',
+          'paddle.static.quantization',
+          'paddle.quantization',
+          'paddle.quantization.imperative',
           'paddle.tensor',
           'paddle.onnx',
           'paddle.autograd',
           'paddle.device',
           'paddle.device.cuda',
+          'paddle.device.xpu',
           'paddle.version',
           'paddle.profiler',
           'paddle.geometric',
@@ -418,22 +475,9 @@ packages=['paddle',
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
-# Note(wangzhongpu):
-# When compiling paddle under python36, the dependencies belonging to python2.7 will be imported, resulting in errors when installing paddle
-if sys.version_info >= (3,6) and sys.version_info < (3,7):
-    setup_requires_tmp = []
-    for setup_requires_i in setup_requires:
-        if "<\"3.6\"" in setup_requires_i or "<\"3.5\"" in setup_requires_i or "<=\"3.5\"" in setup_requires_i:
-            continue
-        setup_requires_tmp+=[setup_requires_i]
-    setup_requires = setup_requires_tmp
-if sys.version_info >= (3,5) and sys.version_info < (3,6):
-    setup_requires_tmp = []
-    for setup_requires_i in setup_requires:
-        if "<\"3.5\"" in setup_requires_i:
-            continue
-        setup_requires_tmp+=[setup_requires_i]
-    setup_requires = setup_requires_tmp
+if sys.version_info < (3,7):
+    raise RuntimeError("Paddle only support Python version>=3.7 now")
+
 if sys.version_info >= (3,7):
     setup_requires_tmp = []
     for setup_requires_i in setup_requires:
@@ -468,11 +512,15 @@ package_dir={
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
-package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
+package_data['paddle.libs']=[
+    ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
+    ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_name,
+]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
+shutil.copy('${WARPRNNT_LIBRARIES}', libs_path)
 
 package_data['paddle.libs']+=[
-    os.path.basename('${LAPACK_LIB}'), 
+    os.path.basename('${LAPACK_LIB}'),
     os.path.basename('${BLAS_LIB}'),
     os.path.basename('${GFORTRAN_LIB}'),
     os.path.basename('${GNU_RT_LIB_1}')]
@@ -480,9 +528,26 @@ shutil.copy('${BLAS_LIB}', libs_path)
 shutil.copy('${LAPACK_LIB}', libs_path)
 shutil.copy('${GFORTRAN_LIB}', libs_path)
 shutil.copy('${GNU_RT_LIB_1}', libs_path)
+if '${WITH_CUDNN_DSO}' == 'ON' and os.path.exists('${CUDNN_LIBRARY}'):
+    package_data['paddle.libs']+=[os.path.basename('${CUDNN_LIBRARY}')]
+    shutil.copy('${CUDNN_LIBRARY}', libs_path)
+    if sys.platform.startswith("linux") and '${CUDNN_MAJOR_VERSION}' == '8':
+        # libcudnn.so includes libcudnn_ops_infer.so, libcudnn_ops_train.so,
+        # libcudnn_cnn_infer.so, libcudnn_cnn_train.so, libcudnn_adv_infer.so,
+        # libcudnn_adv_train.so
+        cudnn_lib_files = glob.glob(os.path.dirname('${CUDNN_LIBRARY}') + '/libcudnn_*so.8')
+        for cudnn_lib in cudnn_lib_files:
+            if os.path.exists(cudnn_lib):
+                package_data['paddle.libs']+=[os.path.basename(cudnn_lib)]
+                shutil.copy(cudnn_lib, libs_path)
+
 if not sys.platform.startswith("linux"):
     package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]
     shutil.copy('${GNU_RT_LIB_2}', libs_path)
+
+if len('${FLASHATTN_LIBRARIES}') > 1:
+    package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_LIBRARIES}')]
+    shutil.copy('${FLASHATTN_LIBRARIES}', libs_path)
 
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
@@ -515,6 +580,12 @@ if '${WITH_CINN}' == 'ON':
     shutil.copy('${CINN_INCLUDE_DIR}/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
     package_data['paddle.libs']+=['libcinnapi.so']
     package_data['paddle.libs']+=['cinn_cuda_runtime_source.cuh']
+
+    cinn_fp16_file = '${CINN_INCLUDE_DIR}/cinn/runtime/cuda/float16.h'
+    if os.path.exists(cinn_fp16_file):
+        shutil.copy(cinn_fp16_file, libs_path)
+        package_data['paddle.libs']+=['float16.h']
+
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
         command = "patchelf --set-rpath '$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
         if os.system(command) != 0:
@@ -522,9 +593,11 @@ if '${WITH_CINN}' == 'ON':
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
+    shutil.copy('${JVM_LIB}', libs_path)
     if os.path.exists('${PSLIB_VERSION_PY}'):
-        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/fluid/incubate/fleet/parameter_server/pslib/')
+        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/incubate/distributed/fleet/parameter_server/pslib/')
     package_data['paddle.libs'] += ['libps' + ext_name]
+    package_data['paddle.libs'] += ['libjvm' + ext_name]
 
 if '${WITH_MKLDNN}' == 'ON':
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
@@ -565,13 +638,19 @@ if '${WITH_XPU}' == 'ON':
             if os.system(command) != 0:
                 raise Exception("patch ${XPU_API_LIB} failed, command: %s" % command)
     shutil.copy('${XPU_API_LIB}', libs_path)
-    shutil.copy('${XPU_RT_LIB}', libs_path)
-    package_data['paddle.libs']+=['${XPU_API_LIB_NAME}',
-                                  '${XPU_RT_LIB_NAME}']
+    package_data['paddle.libs']+=['${XPU_API_LIB_NAME}']
+    xpu_rt_lib_list = glob.glob('${XPU_RT_LIB}*')
+    for xpu_rt_lib_file in xpu_rt_lib_list:
+        shutil.copy(xpu_rt_lib_file, libs_path)
+        package_data['paddle.libs']+=[os.path.basename(xpu_rt_lib_file)]
 
 if '${WITH_XPU_BKCL}' == 'ON':
     shutil.copy('${XPU_BKCL_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_BKCL_LIB_NAME}']
+
+if '${WITH_XPU_XFT}' == 'ON':
+    shutil.copy('${XPU_XFT_LIB}', libs_path)
+    package_data['paddle.libs']+=['${XPU_XFT_LIB_NAME}']
 
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
@@ -651,6 +730,11 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     # externalErrorMsg.pb for External Error message
     headers += list(find_files('*.pb', '${externalError_INCLUDE_DIR}'))
 
+if '${WITH_XDNN_API}' == 'ON':
+    headers += list(find_files('*.h', '@PADDLE_BINARY_DIR@/third_party/xpu/src/extern_xpu/xpu', recursive=True)) # xdnn api headers
+
+headers += list(find_files('*.h', '${PYBIND_INCLUDE_DIR}', True)) # pybind headers
+
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
@@ -697,7 +781,7 @@ class InstallHeaders(Command):
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
-            patterns = ['install/mkldnn/include']
+            patterns = ['install/mkldnn/include', 'pybind/src/extern_pybind/include', 'third_party/xpu/src/extern_xpu/xpu/include/']
             for pattern in patterns:
                 install_dir = re.sub(pattern, '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
@@ -748,12 +832,8 @@ else:
         yield
 
 # Log for PYPI
-if sys.version_info > (3,0):
-    with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r", encoding='UTF-8') as f:
-        long_description = f.read()
-else:
-    with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r")as f:
-        long_description = unicode(f.read(), 'UTF-8')
+with open("@PADDLE_BINARY_DIR@/python/paddle/README.md", "r", encoding='UTF-8') as f:
+    long_description = f.read()
 
 # strip *.so to reduce package size
 if '${WITH_STRIP}' == 'ON':
@@ -773,7 +853,7 @@ with redirect_stdout():
         project_urls = {
             'Homepage': 'https://www.paddlepaddle.org.cn/',
             'Downloads': 'https://github.com/paddlepaddle/paddle'
-        }, 
+        },
         license='Apache Software License',
         packages=packages,
         install_requires=setup_requires,
@@ -801,11 +881,10 @@ with redirect_stdout():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 2.7',
-            'Programming Language :: Python :: 3.5',
-            'Programming Language :: Python :: 3.6',
             'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
+            'Programming Language :: Python :: 3.9',
+            'Programming Language :: Python :: 3.10',
         ],
     )
 

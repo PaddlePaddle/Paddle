@@ -26,6 +26,7 @@
 #include "cinn/auto_schedule/tuning.h"
 #include "cinn/common/target.h"
 #include "cinn/common/type.h"
+#include "cinn/frontend/op_mapper_registry.h"
 #include "cinn/frontend/optimize.h"
 #include "cinn/frontend/syntax.h"
 #include "cinn/hlir/framework/graph.h"
@@ -38,6 +39,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
+#include "paddle/fluid/framework/paddle2cinn/transform_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/analysis/dot.h"
@@ -54,6 +56,7 @@ namespace paddle2cinn {
 using ::cinn::auto_schedule::AutoTuner;
 using ::cinn::common::Target;
 using ::cinn::frontend::Optimize;
+using ::cinn::frontend::paddle::InplaceOutSuffix;
 using ::cinn::hlir::framework::BuildScope;
 using ::cinn::hlir::framework::GraphCompiler;
 using inference::analysis::Dot;
@@ -67,7 +70,7 @@ CinnCompiler *CinnCompiler::GetInstance() {
 
 const CinnCompiledObject &CinnCompiler::Compile(
     const Graph &graph,
-    const std::map<std::string, const LoDTensor *> &input_tensors,
+    const std::map<std::string, const phi::DenseTensor *> &input_tensors,
     const Target &target,
     void *stream) {
   VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(graph);
@@ -76,9 +79,11 @@ const CinnCompiledObject &CinnCompiler::Compile(
   CinnCacheKeyByStructure cur_key_by_struct;
 
   if (!cache_by_address_.count(cur_key_by_address)) {
+    VLOG(4) << "Not found CinnCompiledObject in cache_by_address_.";
     // generate the structure cache key
     cur_key_by_struct.SetKey(graph, input_tensors, target.arch_str());
     if (!cache_by_struct_.count(cur_key_by_struct)) {
+      VLOG(4) << "Not found CinnCompiledObject in cache_by_struct_.";
       std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
       auto compiled_res =
           CompileGraph(graph, input_tensors, target, compiled_num, stream);
@@ -107,7 +112,7 @@ const CinnCompiledObject &CinnCompiler::Compile(
 
 const CinnCompiledObject &CinnCompiler::Compile(
     int64_t compilation_key,
-    const std::map<std::string, const LoDTensor *> &input_tensors,
+    const std::map<std::string, const phi::DenseTensor *> &input_tensors,
     const Target &target,
     void *stream) {
   const auto &graph = FindGraph(compilation_key);
@@ -178,7 +183,8 @@ std::string CinnCompiler::VizGraph(const Graph &graph) const {
             shape.begin(), shape.end(), shape_str.begin(), [](const auto &val) {
               return std::to_string(val);
             });
-        label += "\n" + string::join_strings(shape_str, ',');
+        label += "\n[" + string::join_strings(shape_str, ',') + "]";
+        label += "\n" + VarDataTypeToString(n->Var()->GetDataType());
       }
       dot.AddNode(
           node_id,
@@ -236,14 +242,20 @@ void CinnCompiler::Clear() {
 
 void CinnCompiler::CheckCompiledValid(
     const ir::Graph &graph,
-    const std::map<std::string, const LoDTensor *> &input_tensors,
+    const std::map<std::string, const phi::DenseTensor *> &input_tensors,
     const CinnCompiledObject &compiled_obj) const {
   const auto &input_var_names = graph.Get<std::vector<std::string>>(kInputVars);
+  const auto &inplace_var_names =
+      graph.Get<std::unordered_set<std::string>>(kInplaceVarNames);
   const auto &output_var_names =
       graph.Get<std::vector<std::string>>(kOutputVars);
   auto *launch_context = compiled_obj.launch_context.get();
   // 1. check all of the output variables will be assigned by compiled program
-  for (auto &&var_name : output_var_names) {
+  for (auto var_name : output_var_names) {
+    // inplace variables are renamed with a specified suffix
+    if (inplace_var_names.count(var_name)) {
+      var_name += InplaceOutSuffix;
+    }
     PADDLE_ENFORCE_EQ(launch_context->IsVariableUsed(var_name),
                       true,
                       platform::errors::PreconditionNotMet(
@@ -264,7 +276,7 @@ void CinnCompiler::CheckCompiledValid(
 
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     const ir::Graph &graph,
-    const std::map<std::string, const LoDTensor *> &input_tensors,
+    const std::map<std::string, const phi::DenseTensor *> &input_tensors,
     const Target &target,
     std::int64_t compiled_num,
     void *stream) const {

@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import unittest
 import random
 import time
+import unittest
+
+import numpy as np
 
 from paddle.hapi.progressbar import ProgressBar
 
 
 class TestProgressBar(unittest.TestCase):
-
     def prog_bar(self, num, epoch, width, verbose=1):
         for epoch in range(epoch):
             progbar = ProgressBar(num, verbose=verbose)
@@ -40,7 +40,7 @@ class TestProgressBar(unittest.TestCase):
         progbar.update(1, [['loss', int(1)]])
         progbar.update(1, [['loss', 'INF']])
         progbar.update(1, [['loss', 1e-4]])
-        progbar.update(1, [['loss', np.array([1.])]])
+        progbar.update(1, [['loss', np.array([1.0])]])
         progbar.update(1, [['loss', np.array([1e-4])]])
         progbar.update(1, [['loss', np.array([1]).astype(np.uint16)]])
         progbar.start()

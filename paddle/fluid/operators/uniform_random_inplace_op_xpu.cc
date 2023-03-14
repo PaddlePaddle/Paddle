@@ -14,10 +14,10 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
@@ -27,7 +27,7 @@ class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
-    auto *tensor = out_var->GetMutable<framework::LoDTensor>();
+    auto *tensor = out_var->GetMutable<phi::DenseTensor>();
     T *data = tensor->mutable_data<T>(ctx.GetPlace());
 
     int64_t size = tensor->numel();
@@ -36,7 +36,7 @@ class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
+    auto engine = phi::GetCPURandomEngine(seed);
     for (int64_t i = 0; i < size; ++i) {
       data_cpu[i] = dist(*engine);
     }
@@ -75,7 +75,7 @@ template <typename T>
 class XPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     if (dx) {
       T *data = dx->mutable_data<T>(ctx.GetPlace());
       int64_t size = dx->numel();

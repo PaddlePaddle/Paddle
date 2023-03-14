@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
@@ -28,7 +26,8 @@ paddle.enable_static()
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestMLUReduceMaxOp(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -56,7 +55,8 @@ class TestMLUReduceMaxOp(OpTest):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMaxOpMultiAxises(TestMLUReduceMaxOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -74,7 +74,8 @@ class TestReduceMaxOpMultiAxises(TestMLUReduceMaxOp):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceAll(TestMLUReduceMaxOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -90,7 +91,8 @@ class TestReduceAll(TestMLUReduceMaxOp):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMaxOpWithOutDtype_int32(TestMLUReduceMaxOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -102,11 +104,12 @@ class TestReduceMaxOpWithOutDtype_int32(TestMLUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.INT32)
+            'out_dtype': int(core.VarDesc.VarType.INT32),
         }
         self.outputs = {
-            'Out':
-            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(np.int32)
+            'Out': self.inputs['X']
+            .max(axis=tuple(self.attrs['dim']))
+            .astype(np.int32)
         }
 
     def init_dtype(self):
@@ -115,7 +118,8 @@ class TestReduceMaxOpWithOutDtype_int32(TestMLUReduceMaxOp):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMaxOpWithOutDtype_fp16(TestMLUReduceMaxOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -127,12 +131,12 @@ class TestReduceMaxOpWithOutDtype_fp16(TestMLUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.FP16)
+            'out_dtype': int(core.VarDesc.VarType.FP16),
         }
         self.outputs = {
-            'Out':
-            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(
-                np.float16)
+            'Out': self.inputs['X']
+            .max(axis=tuple(self.attrs['dim']))
+            .astype(np.float16)
         }
 
     def init_dtype(self):
@@ -144,7 +148,8 @@ class TestReduceMaxOpWithOutDtype_fp16(TestMLUReduceMaxOp):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMaxOpWithOutDtype_fp32(TestMLUReduceMaxOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -156,12 +161,12 @@ class TestReduceMaxOpWithOutDtype_fp32(TestMLUReduceMaxOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.FP32)
+            'out_dtype': int(core.VarDesc.VarType.FP32),
         }
         self.outputs = {
-            'Out':
-            self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(
-                np.float32)
+            'Out': self.inputs['X']
+            .max(axis=tuple(self.attrs['dim']))
+            .astype(np.float32)
         }
 
     def init_dtype(self):

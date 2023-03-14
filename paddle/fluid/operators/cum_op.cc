@@ -15,6 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
@@ -25,11 +28,32 @@ class CumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
+  }
+};
+
+class CumGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "cumsum");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "cumsum");
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -69,16 +93,34 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("cumsum");
-    grad_op->SetInput("X", this->OutputGrad("Out"));
-    grad_op->SetOutput("Out", this->InputGrad("X"));
-    grad_op->SetAttr("axis", PADDLE_GET_CONST(int, this->GetAttr("axis")));
-    grad_op->SetAttr("flatten",
-                     PADDLE_GET_CONST(bool, this->GetAttr("flatten")));
+    grad_op->SetType("cumsum_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
     grad_op->SetAttr("reverse",
-                     !PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
-    grad_op->SetAttr("exclusive",
-                     PADDLE_GET_CONST(bool, this->GetAttr("exclusive")));
+                     PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
+  }
+};
+
+class CumsumCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+    auto* dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    bool flatten = static_cast<bool>(this->Attr<bool>("flatten"));
+    bool exclusive = static_cast<bool>(this->Attr<bool>("exclusive"));
+    bool reverse = static_cast<bool>(this->Attr<bool>("reverse"));
+    VLOG(6) << "Runing cumsum composite func";
+    prim::cumsum_grad<prim::DescTensor>(
+        x, out_grad, axis, flatten, exclusive, reverse, dx_ptr);
+    this->RecoverOutputName(dx, dx_name);
   }
 };
 
@@ -157,12 +199,14 @@ using CPU = phi::CPUContext;
 DECLARE_INFER_SHAPE_FUNCTOR(cumsum,
                             CumsumInferShapeFunctor,
                             PD_INFER_META(phi::CumScalarAxisInferMeta));
+
 DECLARE_INFER_SHAPE_FUNCTOR(logcumsumexp,
                             LogcumsumexpInferShapeFunctor,
                             PD_INFER_META(phi::CumInferMeta));
 REGISTER_OPERATOR(cumsum,
                   ops::CumOp,
                   ops::CumsumOpMaker,
+                  ops::CumsumCompositeGradOpMaker,
                   ops::CumsumGradMaker<paddle::framework::OpDesc>,
                   ops::CumsumGradMaker<paddle::imperative::OpBase>,
                   CumsumInferShapeFunctor);
@@ -173,6 +217,7 @@ REGISTER_OPERATOR(logcumsumexp,
                   ops::LogcumsumexpGradMaker<paddle::imperative::OpBase>,
                   LogcumsumexpInferShapeFunctor);
 REGISTER_OPERATOR(logcumsumexp_grad, ops::LogcumsumexpGradOp);
+REGISTER_OPERATOR(cumsum_grad, ops::CumGradOp);
 
 REGISTER_OP_VERSION(cumsum).AddCheckpoint(
     R"ROC(

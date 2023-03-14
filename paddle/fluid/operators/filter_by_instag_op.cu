@@ -30,11 +30,11 @@
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 #if defined(PADDLE_WITH_CUDA)
 namespace cg = cooperative_groups;
@@ -43,12 +43,10 @@ namespace cg = cooperative_groups;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 using SelectedRows = phi::SelectedRows;
-using LoDTensor = framework::LoDTensor;
 
 template <typename T>
-using Vector = framework::Vector<T>;
+using Vector = phi::Vector<T>;
 
 #define WARP_SIZE 32
 #define MAX_WARP_NUM 32
@@ -341,7 +339,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     //    context.cuda_device_context().GetMaxThreadsPerBlock();
     // X1 is global FC output
     // Dim [batch size, embedding size]
-    const LoDTensor* x1 = context.Input<LoDTensor>("Ins");
+    const phi::DenseTensor* x1 = context.Input<phi::DenseTensor>("Ins");
     bool is_lod = context.Attr<bool>("is_lod");
 
     int is_x1_lod = -1;
@@ -354,13 +352,13 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     size_t x1_embed_size = x1->dims()[1];
     // X2 is ins tag list
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
-    const LoDTensor* x2 = context.Input<LoDTensor>("Ins_tag");
+    const phi::DenseTensor* x2 = context.Input<phi::DenseTensor>("Ins_tag");
     // expected auto = const int64_t
     const int64_t* x2_data = x2->data<int64_t>();
 
     // X3 is local fc tag list
     // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
-    const Tensor* x3 = context.Input<Tensor>("Filter_tag");
+    const phi::DenseTensor* x3 = context.Input<phi::DenseTensor>("Filter_tag");
     const int64_t* x3_data = x3->data<int64_t>();
 
     Vector<size_t> x2_lods;
@@ -378,7 +376,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     }
 
     const size_t x2_lods_size = x2_lods.size() - 1;
-    paddle::framework::MixVector<size_t> mixv_x2_lods(&x2_lods);
+    phi::MixVector<size_t> mixv_x2_lods(&x2_lods);
 
     size_t* x2_lods_data = mixv_x2_lods.CUDAMutableData(gpu_place);
 
@@ -389,7 +387,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
         x1_lods.push_back(i + 1);
       }
     } else {
-      // x1_lods = context.Input<LoDTensor>("Ins")->lod()[0];
+      // x1_lods = context.Input<phi::DenseTensor>("Ins")->lod()[0];
       // new: lod_level=0 => lod() return {}
       if (x1->lod().size() != 0) {  // lod_level = 1
         x1_lods = x1->lod()[0];
@@ -403,7 +401,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
       }
     }
 
-    paddle::framework::MixVector<size_t> mixv_x1_lods(&x1_lods);
+    phi::MixVector<size_t> mixv_x1_lods(&x1_lods);
 
     size_t* x1_lods_data = mixv_x1_lods.CUDAMutableData(gpu_place);
     auto* x1_data = x1->data<T>();
@@ -412,9 +410,10 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     // for those whose ins been dropout, set 0 for whole lines.
     // otherwise, copy whole line
     // Dim [local fc count, batch size, embedding size]
-    LoDTensor* out = context.Output<LoDTensor>("Out");
-    LoDTensor* map = context.Output<LoDTensor>("IndexMap");
-    LoDTensor* loss_weight = context.Output<LoDTensor>("LossWeight");
+    phi::DenseTensor* out = context.Output<phi::DenseTensor>("Out");
+    phi::DenseTensor* map = context.Output<phi::DenseTensor>("IndexMap");
+    phi::DenseTensor* loss_weight =
+        context.Output<phi::DenseTensor>("LossWeight");
 
     int out_first = x1_lods.back();
 
@@ -434,12 +433,12 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
     Vector<size_t> out_lods(x2_lods_size + 1, 0);
     Vector<size_t> map_lods(x2_lods_size + 1, 0);
 
-    paddle::framework::MixVector<size_t> mixv_out_lods(&out_lods);
-    paddle::framework::MixVector<size_t> mixv_map_lods(&map_lods);
+    phi::MixVector<size_t> mixv_out_lods(&out_lods);
+    phi::MixVector<size_t> mixv_map_lods(&map_lods);
 
     // thrust::device_vector<size_t> out_idx(1);
     Vector<size_t> out_idx(1, 0);
-    paddle::framework::MixVector<size_t> mixv_out_idx(&out_idx);
+    phi::MixVector<size_t> mixv_out_idx(&out_idx);
 
     size_t* out_idx_data = mixv_out_idx.CUDAMutableData(gpu_place);
     size_t* out_lods_data = mixv_out_lods.CUDAMutableData(gpu_place);
@@ -501,7 +500,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     } else {
       Vector<size_t> map_lods(2, 0);
-      paddle::framework::MixVector<size_t> mixv_map_lods(&map_lods);
+      phi::MixVector<size_t> mixv_map_lods(&map_lods);
       thrust::device_ptr<int64_t> map_data_ptr(map_data);
 
       map_data_ptr[0] = 0;
@@ -563,13 +562,15 @@ class FilterByInstagGradGPUKernel : public framework::OpKernel<T> {
     auto gpu_place = context.GetPlace();
     gpuStream_t current_stream = context.cuda_device_context().stream();
     auto max_thread_num_per_block = 1024;
-    auto* output_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* x1_grad = context.Output<LoDTensor>(framework::GradVarName("Ins"));
-    auto* loss_weight = context.Input<LoDTensor>("LossWeight");
-    auto* mmap = context.Input<LoDTensor>("IndexMap");
-    auto* x1 = context.Input<LoDTensor>("Ins");
+    auto* output_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x1_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Ins"));
+    auto* loss_weight = context.Input<phi::DenseTensor>("LossWeight");
+    auto* mmap = context.Input<phi::DenseTensor>("IndexMap");
+    auto* x1 = context.Input<phi::DenseTensor>("Ins");
 
-    x1_grad->set_lod(context.Input<LoDTensor>("Ins")->lod());
+    x1_grad->set_lod(context.Input<phi::DenseTensor>("Ins")->lod());
     x1_grad->Resize(x1->dims());
 
     auto* mmap_data = mmap->data<int64_t>();

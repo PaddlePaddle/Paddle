@@ -92,15 +92,15 @@ TEST(test_var_helper, eager_var_helper) {
   ASSERT_TRUE(platform::is_cpu_place(GetPlace<egr::EagerVariable>(egr_tensor)));
   ASSERT_TRUE(GetDataType<egr::EagerVariable>(egr_tensor) ==
               framework::proto::VarType::FP32);
-  GetCachedValue<egr::EagerVariable>(
-      egr_tensor,
-      framework::OpKernelType(framework::proto::VarType::FP32,
-                              platform::CPUPlace()));
-  SetCachedValue<egr::EagerVariable>(
-      egr_tensor,
-      framework::OpKernelType(framework::proto::VarType::FP32,
-                              platform::CPUPlace()),
-      egr_tensor2);
+  GetCachedValue<egr::EagerVariable>(egr_tensor,
+                                     phi::KernelKey(phi::Backend::CPU,
+                                                    phi::DataLayout::ALL_LAYOUT,
+                                                    phi::DataType::FLOAT32));
+  SetCachedValue<egr::EagerVariable>(egr_tensor,
+                                     phi::KernelKey(phi::Backend::CPU,
+                                                    phi::DataLayout::ALL_LAYOUT,
+                                                    phi::DataType::FLOAT32),
+                                     egr_tensor2);
   ASSERT_ANY_THROW(GetPlace<egr::EagerVariable>(egr_tensor2));
   ASSERT_ANY_THROW(SetType<egr::EagerVariable>(
       egr_tensor, paddle::framework::proto::VarType::LOD_TENSOR_ARRAY));

@@ -27,7 +27,6 @@ register_unity_group(
   bilateral_slice_op.cc)
 register_unity_group(
   cc
-  mkldnn/batch_norm_mkldnn_op.cc
   bilinear_tensor_product_op.cc
   bmm_op.cc
   bpr_loss_op.cc
@@ -65,6 +64,7 @@ register_unity_group(
   cudnn_lstm_op.cc
   cumsum_op.cc
   cvm_op.cc
+  unzip_op.cc
   data_norm_op.cc
   deformable_conv_op.cc
   deformable_conv_v1_op.cc
@@ -108,7 +108,6 @@ register_unity_group(
 register_unity_group(
   cc
   flatten_op.cc
-  flip_op.cc
   fsp_op.cc
   gather_nd_op.cc
   gather_op.cc
@@ -363,7 +362,6 @@ register_unity_group(
   lstm_op.cu.cc
   rnn_op.cu.cc
   split_op.cu.cc
-  activation_cudnn_op.cu.cc
   assign_value_op.cu.cc
   run_program_op.cu.cc
   warpctc_op.cu.cc)
@@ -405,6 +403,7 @@ register_unity_group(
   ctc_align_op.cu
   cumsum_op.cu
   cvm_op.cu
+  unzip_op.cu
   data_norm_op.cu
   deformable_conv_op.cu
   deformable_conv_v1_op.cu
@@ -423,7 +422,6 @@ register_unity_group(cu expand_v2_op.cu fake_dequantize_op.cu
                      fill_any_like_op.cu)
 register_unity_group(
   cu
-  flip_op.cu
   fsp_op.cu
   gather_nd_op.cu
   gather_op.cu
@@ -583,3 +581,5 @@ register_unity_group(cu expand_op.cu)
 register_unity_group(cu matmul_v2_op.cu)
 register_unity_group(cu top_k_v2_op.cu)
 register_unity_group(cu set_value_op.cu)
+register_unity_group(cu unzip.cu)
+register_unity_group(cc unzip.cc)

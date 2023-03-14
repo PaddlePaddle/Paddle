@@ -14,16 +14,16 @@
 
 #include "paddle/phi/kernels/interpolate_grad_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
 namespace phi {
 
@@ -60,6 +60,7 @@ __global__ void KeLinearInterpBw(T* in,
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   bool align_flag = (align_mode == 0 && !align_corners);
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
     int out_id_w = tid % output_w;
@@ -79,13 +80,12 @@ __global__ void KeLinearInterpBw(T* in,
                                 : ratio_w * out_img_idx;
     in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;  // w
     int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;  // w_id
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    T src_w = static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    src_w = (src_w > static_cast<T>(0)) ? src_w : static_cast<T>(0);
-    T w1lambda = align_flag
-                     ? static_cast<T>(static_cast<MT>(src_w) - in_img_idx)
-                     : static_cast<T>(ratio_w * out_img_idx - in_img_idx);
-    T w2lambda = static_cast<T>(1.0) - w1lambda;
+
+    MT src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
+    src_w = (src_w > 0) ? src_w : 0;
+    MT w1lambda =
+        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
+    MT w2lambda = 1.0 - w1lambda;
 
     T* in_pos;
     if (data_layout == DataLayout::kNCHW) {
@@ -96,12 +96,17 @@ __global__ void KeLinearInterpBw(T* in,
     const T* out_pos = &out[out_id_w];
 
     if (data_layout == DataLayout::kNCHW) {
-      paddle::platform::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(&in_pos[w_id], w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(
+          &in_pos[0], static_cast<T>(w2lambda * static_cast<MT>(out_pos[0])));
+      phi::CudaAtomicAdd(
+          &in_pos[w_id],
+          static_cast<T>(w1lambda * static_cast<MT>(out_pos[0])));
     } else {
-      paddle::platform::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(&in_pos[w_id * num_channels],
-                                      w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(
+          &in_pos[0], static_cast<T>(w2lambda * static_cast<MT>(out_pos[0])));
+      phi::CudaAtomicAdd(
+          &in_pos[w_id * num_channels],
+          static_cast<T>(w1lambda * static_cast<MT>(out_pos[0])));
     }
   }
 }
@@ -141,7 +146,7 @@ __global__ void KeNearestNeighborInterpNCHWBw(T* in,
     while (nc_id < nc) {
       T* in_pos = &in[in_index];
       const T out_pos = out[out_index];
-      paddle::platform::CudaAtomicAdd(in_pos, out_pos);
+      phi::CudaAtomicAdd(in_pos, out_pos);
       in_index += in_index_stride;
       out_index += out_index_stride;
       nc_id += nc_stride;
@@ -194,7 +199,7 @@ __global__ void KeNearestNeighborInterpBw(
                     in_img_idx * num_channels + channel_id];
 
     const T out_pos = out[tid];
-    paddle::platform::CudaAtomicAdd(in_pos, out_pos);
+    phi::CudaAtomicAdd(in_pos, out_pos);
   }
 }
 
@@ -212,13 +217,13 @@ __inline__ __device__ T PartialBlockMin(T val,
 
   if (threadIdx.x < threshold) {
     shared_last_idx = (threshold >> 5) - 1;
-    val = phi::funcs::warpReduceMin(val, mask);
+    val = phi::funcs::WarpReduceMin(val, mask);
     if (lane == 0) {
       shared[wid] = val;
     }
   } else {
     shared_last_val = std::numeric_limits<T>::max();
-    paddle::platform::CudaAtomicMin(&shared_last_val, val);
+    phi::CudaAtomicMin(&shared_last_val, val);
     shared[wid] = shared_last_val;
     shared_last_idx = wid;
   }
@@ -227,7 +232,7 @@ __inline__ __device__ T PartialBlockMin(T val,
   if (threadIdx.x < threshold) {
     val = (lane <= shared_last_idx) ? shared[lane]
                                     : std::numeric_limits<T>::max();
-    val = phi::funcs::warpReduceMin(val, mask);
+    val = phi::funcs::WarpReduceMin(val, mask);
     shared_last_val = val;
   }
   __syncthreads();
@@ -250,7 +255,8 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
                                               float ratio_w,
                                               const float align_type_value,
                                               bool is_nchw) {
-  __shared__ T s_data[2][1024];
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  __shared__ MT s_data[2][1024];
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   int in_chw = in_h * in_w * num_channels;
@@ -262,18 +268,18 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
     int out_id_w = tid % out_chw;
     const int in_img_size = in_h * in_w;
     const int out_img_size = out_h * out_w;
-    T value = out[out_id_h * out_chw + out_id_w];
+    MT value = static_cast<MT>(out[out_id_h * out_chw + out_id_w]);
 
     int channel_id = out_id_w / out_img_size;
     int out_img_idy = (out_id_w % out_img_size) / out_w;
     int out_img_idx = tid % out_w;
 
     int in_img_idx, in_img_idy, w_id, h_id;
-    T w1lambda, h1lambda, w2lambda, h2lambda;
-    T src_w = static_cast<T>(ratio_w * (out_img_idx + align_type_value) -
-                             align_type_value);
-    T src_h = static_cast<T>(ratio_h * (out_img_idy + align_type_value) -
-                             align_type_value);
+    MT w1lambda, h1lambda, w2lambda, h2lambda;
+    MT src_w = static_cast<MT>(ratio_w * (out_img_idx + align_type_value) -
+                               align_type_value);
+    MT src_h = static_cast<MT>(ratio_h * (out_img_idy + align_type_value) -
+                               align_type_value);
 
     PreCalculatorForLinearInterpInputIndex(
         &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_w);
@@ -288,17 +294,17 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
     int bot_right_index = input_index + h_id * in_w + w_id;
     int in_top_min_index, in_bot_min_index;
 
-    s_data[0][threadIdx.x] = static_cast<T>(0);
-    s_data[1][threadIdx.x] = static_cast<T>(0);
+    s_data[0][threadIdx.x] = static_cast<MT>(0);
+    s_data[1][threadIdx.x] = static_cast<MT>(0);
     int remain = nthreads - (tid & (-blockDim.x));
     int in_top_max_index =
-        phi::funcs::blockReduceMax(top_right_index, FINAL_MASK);
+        phi::funcs::BlockReduceMax(top_right_index, FINAL_MASK);
     int in_bot_max_index =
-        phi::funcs::blockReduceMax(bot_right_index, FINAL_MASK);
+        phi::funcs::BlockReduceMax(bot_right_index, FINAL_MASK);
 
     if (remain > blockDim.x) {
-      in_top_min_index = phi::funcs::blockReduceMin(input_index, FINAL_MASK);
-      in_bot_min_index = phi::funcs::blockReduceMin(bot_left_index, FINAL_MASK);
+      in_top_min_index = phi::funcs::BlockReduceMin(input_index, FINAL_MASK);
+      in_bot_min_index = phi::funcs::BlockReduceMin(bot_left_index, FINAL_MASK);
     } else {
       in_top_min_index = PartialBlockMin(input_index, remain, FINAL_MASK);
       in_bot_min_index = PartialBlockMin(bot_left_index, remain, FINAL_MASK);
@@ -308,33 +314,27 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
                                     ? (in_top_max_index - in_top_min_index)
                                     : (in_bot_max_index - in_bot_min_index);
     if (h_id != 0) {
-      paddle::platform::CudaAtomicAdd(
-          &s_data[0][input_index - in_top_min_index],
-          h2lambda * w2lambda * value);
-      paddle::platform::CudaAtomicAdd(
-          &s_data[0][top_right_index - in_top_min_index],
-          h2lambda * w1lambda * value);
-      paddle::platform::CudaAtomicAdd(
-          &s_data[1][bot_left_index - in_bot_min_index],
-          h1lambda * w2lambda * value);
-      paddle::platform::CudaAtomicAdd(
-          &s_data[1][bot_right_index - in_bot_min_index],
-          h1lambda * w1lambda * value);
+      phi::CudaAtomicAdd(&s_data[0][input_index - in_top_min_index],
+                         h2lambda * w2lambda * value);
+      phi::CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
+                         h2lambda * w1lambda * value);
+      phi::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
+                         h1lambda * w2lambda * value);
+      phi::CudaAtomicAdd(&s_data[1][bot_right_index - in_bot_min_index],
+                         h1lambda * w1lambda * value);
     } else {
-      paddle::platform::CudaAtomicAdd(
-          &s_data[0][top_right_index - in_top_min_index],
-          (h2lambda + h1lambda) * w1lambda * value);
-      paddle::platform::CudaAtomicAdd(
-          &s_data[1][bot_left_index - in_bot_min_index],
-          (h1lambda + h2lambda) * w2lambda * value);
+      phi::CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
+                         (h2lambda + h1lambda) * w1lambda * value);
+      phi::CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
+                         (h1lambda + h2lambda) * w2lambda * value);
     }
     __syncthreads();
 
     if (threadIdx.x <= upper_limit_share_idx) {
-      paddle::platform::CudaAtomicAdd(&in[in_top_min_index + threadIdx.x],
-                                      s_data[0][threadIdx.x]);
-      paddle::platform::CudaAtomicAdd(&in[in_bot_min_index + threadIdx.x],
-                                      s_data[1][threadIdx.x]);
+      phi::CudaAtomicAdd(&in[in_top_min_index + threadIdx.x],
+                         static_cast<T>(s_data[0][threadIdx.x]));
+      phi::CudaAtomicAdd(&in[in_bot_min_index + threadIdx.x],
+                         static_cast<T>(s_data[1][threadIdx.x]));
     }
   }
 }
@@ -363,6 +363,7 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
   int stride = blockDim.x * gridDim.x;
   int num_out = n * num_channels * out_h * out_w;
   int num_in = n * num_channels * in_h * in_w;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (; index < num_out; index += stride) {
     int index_tmp = index;
@@ -372,32 +373,29 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
     int nc = index_tmp / out_h;
 
     int h1, y_id;
-    T h1lambda, h0lambda;
-    T src_y =
-        static_cast<T>(ratio_h * (h2 + align_type_value) - align_type_value);
+    MT h1lambda, h0lambda;
+    MT src_y =
+        static_cast<MT>(ratio_h * (h2 + align_type_value) - align_type_value);
 
     PreCalculatorForLinearInterpInputIndex(
         &h1, &y_id, &h1lambda, &h0lambda, src_y, in_h);
     int w1, x_id;
-    T w1lambda, w0lambda;
-    T src_x =
-        static_cast<T>(ratio_w * (w2 + align_type_value) - align_type_value);
+    MT w1lambda, w0lambda;
+    MT src_x =
+        static_cast<MT>(ratio_w * (w2 + align_type_value) - align_type_value);
     PreCalculatorForLinearInterpInputIndex(
         &w1, &x_id, &w1lambda, &w0lambda, src_x, in_w);
 
-    T d2val = out[index];
+    MT d2val = static_cast<MT>(out[index]);
 
-    paddle::platform::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1),
-                                    h0lambda * w0lambda * d2val);
-    paddle::platform::CudaAtomicAdd(
-        in + GetInputIndex(nc, in_h, in_w, h1, w1 + x_id),
-        h0lambda * w1lambda * d2val);
-    paddle::platform::CudaAtomicAdd(
-        in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1),
-        h1lambda * w0lambda * d2val);
-    paddle::platform::CudaAtomicAdd(
-        in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1 + x_id),
-        h1lambda * w1lambda * d2val);
+    phi::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1),
+                       static_cast<T>(h0lambda * w0lambda * d2val));
+    phi::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1, w1 + x_id),
+                       static_cast<T>(h0lambda * w1lambda * d2val));
+    phi::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1),
+                       static_cast<T>(h1lambda * w0lambda * d2val));
+    phi::CudaAtomicAdd(in + GetInputIndex(nc, in_h, in_w, h1 + y_id, w1 + x_id),
+                       static_cast<T>(h1lambda * w1lambda * d2val));
   }
 }
 
@@ -419,6 +417,7 @@ __global__ void KeBilinearInterpBw(T* in,
   int stride = blockDim.x * gridDim.x;
   int in_chw = in_h * in_w * num_channels;
   int nthreads = n * out_chw;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (; tid < nthreads; tid += stride) {
     auto out_id_divmod = divmods.output_w_div.Divmod(tid);
@@ -432,28 +431,28 @@ __global__ void KeBilinearInterpBw(T* in,
         divmods.channels_div.Divmod(outimg_id_divmod.val[1]).val[0];
 
     int in_img_idx, in_img_idy, w_id, h_id;
-    T w1lambda, h1lambda, w2lambda, h2lambda;
-    T src_w = static_cast<T>(ratio_w * (out_img_idx + align_type_value) -
-                             align_type_value);
-    T src_h = static_cast<T>(ratio_h * (out_img_idy + align_type_value) -
-                             align_type_value);
+    MT w1lambda, h1lambda, w2lambda, h2lambda;
+    MT src_w = static_cast<MT>(ratio_w * (out_img_idx + align_type_value) -
+                               align_type_value);
+    MT src_h = static_cast<MT>(ratio_h * (out_img_idy + align_type_value) -
+                               align_type_value);
 
     PreCalculatorForLinearInterpInputIndex(
         &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_w);
     PreCalculatorForLinearInterpInputIndex(
         &in_img_idy, &h_id, &h1lambda, &h2lambda, src_h, in_h);
 
-    T value = out[tid];
+    MT value = static_cast<MT>(out[tid]);
     T* in_pos = &in[out_id_h * in_chw + in_img_idy * in_w * num_channels +
                     in_img_idx * num_channels + channel_id];
-    paddle::platform::CudaAtomicAdd(&in_pos[0], h2lambda * w2lambda * value);
-    paddle::platform::CudaAtomicAdd(&in_pos[w_id * num_channels],
-                                    h2lambda * w1lambda * value);
-    paddle::platform::CudaAtomicAdd(&in_pos[h_id * in_w * num_channels],
-                                    h1lambda * w2lambda * value);
-    paddle::platform::CudaAtomicAdd(
+    phi::CudaAtomicAdd(&in_pos[0], static_cast<T>(h2lambda * w2lambda * value));
+    phi::CudaAtomicAdd(&in_pos[w_id * num_channels],
+                       static_cast<T>(h2lambda * w1lambda * value));
+    phi::CudaAtomicAdd(&in_pos[h_id * in_w * num_channels],
+                       static_cast<T>(h1lambda * w2lambda * value));
+    phi::CudaAtomicAdd(
         &in_pos[h_id * in_w * num_channels + w_id * num_channels],
-        h1lambda * w1lambda * value);
+        static_cast<T>(h1lambda * w1lambda * value));
   }
 }
 
@@ -476,6 +475,7 @@ __global__ void KeBicubicInterpBw(T* in,
   int nthreads = output_h * output_w;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   for (; tid < nthreads; tid += stride) {
     int out_id_h = tid / output_w;
@@ -494,23 +494,21 @@ __global__ void KeBicubicInterpBw(T* in,
       channel_id = tid % num_channels;
     }
 
-    T in_img_idy = align_corners
-                       ? static_cast<T>(ratio_h * out_img_idy)
-                       : static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
-    int input_y = floorf(in_img_idy);
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    const T y_t = static_cast<T>(static_cast<MT>(in_img_idy) - input_y);
-    T in_img_idx = align_corners
-                       ? static_cast<T>(ratio_w * out_img_idx)
-                       : static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    int input_x = floorf(in_img_idx);
-    const T x_t = static_cast<T>(static_cast<MT>(in_img_idx) - input_x);
+    MT in_img_idy = align_corners ? ratio_h * out_img_idy
+                                  : ratio_h * (out_img_idy + 0.5) - 0.5;
+    int input_y = floorf(static_cast<float>(in_img_idy));
 
-    T x_coeffs[4];
-    T y_coeffs[4];
+    const MT y_t = in_img_idy - input_y;
+    MT in_img_idx = align_corners ? ratio_w * out_img_idx
+                                  : ratio_w * (out_img_idx + 0.5) - 0.5;
+    int input_x = floorf(static_cast<float>(in_img_idx));
+    const MT x_t = in_img_idx - input_x;
 
-    funcs::get_cubic_upsample_coefficients(x_coeffs, x_t);
-    funcs::get_cubic_upsample_coefficients(y_coeffs, y_t);
+    MT x_coeffs[4];
+    MT y_coeffs[4];
+
+    funcs::get_cubic_upsample_coefficients<MT>(x_coeffs, x_t);
+    funcs::get_cubic_upsample_coefficients<MT>(y_coeffs, y_t);
 
     const T* out_pos = &out[out_id_h * output_w + out_id_w];
     T* in_pos;
@@ -530,8 +528,9 @@ __global__ void KeBicubicInterpBw(T* in,
           in_pos = &in[out_id_h * input_w + access_y * in_img_w * num_channels +
                        access_x * num_channels + channel_id];
         }
-        paddle::platform::CudaAtomicAdd(
-            &in_pos[0], (out_pos[0] * y_coeffs[j] * x_coeffs[i]));
+        phi::CudaAtomicAdd(&in_pos[0],
+                           static_cast<T>(static_cast<MT>(out_pos[0]) *
+                                          y_coeffs[j] * x_coeffs[i]));
       }
     }
   }
@@ -629,26 +628,22 @@ __global__ void KeTrilinearInterpBw(T* in,
       const T* out_pos = &out[out_id_h * output_w + out_id_w];
 
       // trilinear interpolation grad
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[0], d2lambda * h2lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[w_id], d2lambda * h2lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[h_id * in_img_w],
-          d2lambda * h1lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[h_id * in_img_w + w_id],
-          d2lambda * h1lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[0], d1lambda * h2lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[w_id], d1lambda * h2lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[h_id * in_img_w],
-          d1lambda * h1lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[h_id * in_img_w + w_id],
-          d1lambda * h1lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[0],
+                         d2lambda * h2lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[w_id],
+                         d2lambda * h2lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w],
+                         d2lambda * h1lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w + w_id],
+                         d2lambda * h1lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[0],
+                         d1lambda * h2lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[w_id],
+                         d1lambda * h2lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w],
+                         d1lambda * h1lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w + w_id],
+                         d1lambda * h1lambda * w1lambda * out_pos[0]);
     } else {
       int in_pos1_idx = out_id_h * input_w +
                         in_img_idt * in_img_h * in_img_w * num_channels +
@@ -661,26 +656,22 @@ __global__ void KeTrilinearInterpBw(T* in,
       const T* out_pos = &out[out_id_h * output_w + out_id_w];
 
       // trilinear interpolation grad
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[0], d2lambda * h2lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[w_id * num_channels],
-          d2lambda * h2lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos1[h_id * in_img_w * num_channels],
-          d2lambda * h1lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
+      phi::CudaAtomicAdd(&in_pos1[0],
+                         d2lambda * h2lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[w_id * num_channels],
+                         d2lambda * h2lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos1[h_id * in_img_w * num_channels],
+                         d2lambda * h1lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(
           &in_pos1[h_id * in_img_w * num_channels + w_id * num_channels],
           d2lambda * h1lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[0], d1lambda * h2lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[w_id * num_channels],
-          d1lambda * h2lambda * w1lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
-          &in_pos2[h_id * in_img_w * num_channels],
-          d1lambda * h1lambda * w2lambda * out_pos[0]);
-      paddle::platform::CudaAtomicAdd(
+      phi::CudaAtomicAdd(&in_pos2[0],
+                         d1lambda * h2lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[w_id * num_channels],
+                         d1lambda * h2lambda * w1lambda * out_pos[0]);
+      phi::CudaAtomicAdd(&in_pos2[h_id * in_img_w * num_channels],
+                         d1lambda * h1lambda * w2lambda * out_pos[0]);
+      phi::CudaAtomicAdd(
           &in_pos2[h_id * in_img_w * num_channels + w_id * num_channels],
           d1lambda * h1lambda * w1lambda * out_pos[0]);
     }
@@ -751,7 +742,7 @@ __global__ void KeNearestNeighbor3DInterpBw(T* in,
                    in_img_idx * num_channels + channel_id];
     }
     const T out_pos = out[out_id_h * output_w + out_id_w];
-    paddle::platform::CudaAtomicAdd(in_pos, out_pos);
+    phi::CudaAtomicAdd(in_pos, out_pos);
   }
 }
 
@@ -770,8 +761,7 @@ static void Interpolate1DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -806,8 +796,8 @@ static void Interpolate1DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    paddle::framework::TensorCopySync(
-        *out_size, paddle::platform::CPUPlace(), &sizes);
+    phi::Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
+
     auto size_data = sizes.data<int>();
     out_w = size_data[0];
   }
@@ -831,7 +821,7 @@ static void Interpolate1DCUDABwd(
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_w == out_w) {
-    paddle::framework::TensorCopy(output_grad, dev_ctx.GetPlace(), input_grad);
+    phi::Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
     return;
   }
 
@@ -885,8 +875,7 @@ static void Interpolate2DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -945,8 +934,7 @@ static void Interpolate2DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    paddle::framework::TensorCopySync(
-        *out_size, paddle::platform::CPUPlace(), &sizes);
+    phi::Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
     auto size_data = sizes.data<int>();
     out_h = size_data[0];
     out_w = size_data[1];
@@ -971,7 +959,7 @@ static void Interpolate2DCUDABwd(
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_h == out_h && in_w == out_w) {
-    paddle::framework::TensorCopy(output_grad, dev_ctx.GetPlace(), input_grad);
+    phi::Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
     return;
   }
 
@@ -1150,8 +1138,7 @@ static void Interpolate3DCUDABwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1228,8 +1215,7 @@ static void Interpolate3DCUDABwd(
 
   if (out_size) {
     DenseTensor sizes;
-    paddle::framework::TensorCopySync(
-        *out_size, paddle::platform::CPUPlace(), &sizes);
+    phi::Copy(dev_ctx, *out_size, phi::CPUPlace(), true, &sizes);
     auto size_data = sizes.data<int>();
     out_d = size_data[0];
     out_h = size_data[1];
@@ -1256,7 +1242,7 @@ static void Interpolate3DCUDABwd(
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
-    paddle::framework::TensorCopy(output_grad, dev_ctx.GetPlace(), input_grad);
+    phi::Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
     return;
   }
 
@@ -1588,7 +1574,8 @@ PD_REGISTER_KERNEL(bilinear_interp_grad,
                    phi::BilinearInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1598,7 +1585,8 @@ PD_REGISTER_KERNEL(nearest_interp_grad,
                    phi::NearestInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1608,7 +1596,8 @@ PD_REGISTER_KERNEL(trilinear_interp_grad,
                    phi::TrilinearInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1618,7 +1607,8 @@ PD_REGISTER_KERNEL(linear_interp_grad,
                    phi::LinearInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
@@ -1628,7 +1618,8 @@ PD_REGISTER_KERNEL(bicubic_interp_grad,
                    phi::BicubicInterpGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

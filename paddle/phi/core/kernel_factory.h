@@ -14,25 +14,38 @@
 
 #pragma once
 
+#include <map>
 #include <ostream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/type_defs.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
-
 namespace phi {
 
 using DataType = paddle::experimental::DataType;
-using DataLayout = paddle::experimental::DataLayout;
+
+struct OpCount {
+  OpCount() {
+    fp16_called_ = 0;
+    bf16_called_ = 0;
+    fp32_called_ = 0;
+    other_called_ = 0;
+  }
+  int fp16_called_;
+  int bf16_called_;
+  int fp32_called_;
+  int other_called_;
+};
 
 /**
  * [ Naming considerations ]
@@ -54,9 +67,28 @@ class KernelKey {
   KernelKey(Backend backend, DataLayout layout, DataType dtype)
       : backend_(backend), layout_(layout), dtype_(dtype) {}
 
+  explicit KernelKey(const Place& place)
+      : backend_(TransToPhiBackend(place)),
+        layout_(DataLayout::ALL_LAYOUT),
+        dtype_(DataType::ALL_DTYPE) {}
+
+  explicit KernelKey(const int& dtype, const Place& place)
+      : backend_(TransToPhiBackend(place)),
+        layout_(DataLayout::ALL_LAYOUT),
+        dtype_(phi::TransToPhiDataType(dtype)) {}
+
+  explicit KernelKey(const Place& place,
+                     const DataLayout& layout,
+                     const DataType& dtype)
+      : backend_(TransToPhiBackend(place)), layout_(layout), dtype_(dtype) {}
+
   Backend backend() const { return backend_; }
   DataLayout layout() const { return layout_; }
   DataType dtype() const { return dtype_; }
+
+  void set_backend(const Backend& backend) { backend_ = backend; }
+  void set_layout(const DataLayout& layout) { layout_ = layout; }
+  void set_dtype(const DataType& dtype) { dtype_ = dtype; }
 
   struct Hash {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is
@@ -142,7 +174,7 @@ enum class AttributeType {
   INT_ARRAY,
   DATA_TYPE,
   DATA_LAYOUT,
-  PLACE,
+  PLACE
 };
 
 struct AttributeArgDef {
@@ -208,13 +240,21 @@ class KernelArgsDef {
       {}};
 };
 
+enum class KernelRegisteredType { FUNCTION, STRUCTURE };
+
 class Kernel {
  public:
   // for map element construct
   Kernel() = default;
 
   explicit Kernel(KernelFn fn, void* variadic_fn)
-      : fn_(fn), variadic_fn_(variadic_fn) {}
+      : fn_(fn), variadic_fn_(variadic_fn) {
+    if (variadic_fn == nullptr) {
+      kernel_registered_type_ = KernelRegisteredType::STRUCTURE;
+    } else {
+      kernel_registered_type_ = KernelRegisteredType::FUNCTION;
+    }
+  }
 
   void operator()(KernelContext* ctx) const { fn_(ctx); }
 
@@ -242,10 +282,17 @@ class Kernel {
 
   bool IsValid() const { return fn_ != nullptr; }
 
+  KernelRegisteredType GetKernelRegisteredType() const {
+    return kernel_registered_type_;
+  }
+
+  GetKernelTypeForVarFn get_kerneltype_forvar_fn_{nullptr};
+
  private:
   KernelFn fn_{nullptr};
   void* variadic_fn_ = nullptr;
   KernelArgsDef args_def_;
+  KernelRegisteredType kernel_registered_type_ = KernelRegisteredType::FUNCTION;
 };
 
 using KernelKeyMap = paddle::flat_hash_map<KernelKey, Kernel, KernelKey::Hash>;
@@ -272,13 +319,12 @@ class KernelFactory {
 
   KernelNameMap& kernels() { return kernels_; }
 
-  bool HasCompatiblePhiKernel(const std::string& op_type) const {
-    return kernels_.find(TransToPhiKernelName(op_type)) != kernels_.end();
-  }
+  bool HasCompatiblePhiKernel(const std::string& op_type) const;
+
+  bool HasStructuredKernel(const std::string& op_type) const;
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
-                                        const KernelKey& kernel_key,
-                                        bool use_gpudnn = false) const;
+                                        const KernelKey& kernel_key) const;
 
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;
@@ -291,10 +337,19 @@ class KernelFactory {
   const KernelArgsDef& GetFirstKernelArgsDef(
       const std::string& kernel_name) const;
 
+  void AddToLowPrecisionKernelList(
+      const std::string& name,
+      const paddle::experimental::DataType& kernel_key_type);
+
+  std::map<const std::string, OpCount> GetLowPrecisionKernelList();
+
  private:
   KernelFactory() = default;
 
   KernelNameMap kernels_;
+
+  // Get the low precision kernel list of current module.
+  std::map<const std::string, OpCount> low_precision_kernels_;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {

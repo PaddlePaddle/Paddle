@@ -32,11 +32,12 @@ void SetMicroId(paddle::framework::Scope* scope,
   auto* ptr = scope->Var("microbatch_id");
   InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
   framework::Variable* var = scope->FindVar("microbatch_id");
-  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(),
-                    1,
-                    platform::errors::InvalidArgument(
-                        "the type of microbatch_id  should be LoDTensor"));
-  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  PADDLE_ENFORCE_EQ(
+      var->IsType<phi::DenseTensor>(),
+      1,
+      platform::errors::InvalidArgument(
+          "the type of microbatch_id  should be phi::DenseTensor"));
+  auto* tensor = var->GetMutable<phi::DenseTensor>();
   std::vector<int> dims{1};
   tensor->Resize(phi::make_ddim(dims));
   void* tensor_data = tensor->mutable_data(
@@ -44,7 +45,7 @@ void SetMicroId(paddle::framework::Scope* scope,
   if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
     std::vector<char> temp;
-    temp.resize(tensor->numel() * framework::DataTypeSize(tensor->dtype()));
+    temp.resize(tensor->numel() * phi::SizeOf(tensor->dtype()));
     char* temp_ptr = temp.data();
     float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
     temp_ptr_float[0] = micro_id;

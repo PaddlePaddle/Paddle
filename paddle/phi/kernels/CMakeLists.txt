@@ -9,6 +9,9 @@ file(
 )
 file(APPEND ${kernel_declare_file}
      "#include \"paddle/phi/core/kernel_registry.h\"\n\n")
+set(kernel_declare_file_prune
+    ${PADDLE_BINARY_DIR}/paddle/phi/kernels/declarations.h.prune
+    CACHE INTERNAL "declarations.h file")
 
 # phi functors and functions called by kernels
 add_subdirectory(funcs)
@@ -44,7 +47,7 @@ set(COMMON_KERNEL_DEPS
     concat_and_split_functor
     selected_rows_functor)
 # remove this dep after removing fluid deps on tensor creation
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils lod_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils
                        sparse_infermeta)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
@@ -62,25 +65,36 @@ set(COMMON_KERNEL_DEPS
     deformable_conv_functor
     matrix_reduce
     segment_pooling
-    gather_scatter_kernel
     pooling
     maxouting
     matrix_inverse
     matrix_solve
     phi_dynload_warpctc
+    phi_dynload_warprnnt
     sequence_padding
     sequence_scale
     fft
     phi_data_layout_transform
     gpc
     utf8proc
-    device_memory_aligment)
+    gather_scatter_functor)
 
-set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
-if(WITH_NCCL OR WITH_RCCL)
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_nccl)
+if(WITH_FLASHATTN)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_dynload_flashattn)
 endif()
 
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl
+                         nccl_comm_context)
+endif()
+if(WITH_GLOO)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} gloo_comm_context)
+endif()
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
+if(WITH_CUDNN_FRONTEND)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cudnn-frontend)
+endif()
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
@@ -99,6 +113,19 @@ file(
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
 
+if(WITH_CUTLASS)
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
+
+  file(GLOB cutlass_cu "fusion/cutlass/conv2d/generated/*.cu"
+       "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
+  list(APPEND kernel_cu ${cutlass_cu})
+endif()
+
 if(WITH_MKLDNN)
   file(
     GLOB
@@ -113,6 +140,7 @@ if(WITH_MKLDNN)
     "strings/cpu/*.cc"
     "onednn/*.cc"
     "fusion/*.cc"
+    "fusion/onednn/*.cc"
     "fusion/cpu/*.cc")
 else()
   file(
@@ -134,7 +162,12 @@ file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
 
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
-target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
+if(WITH_MKLDNN)
+  target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS}
+                        get_kerneltype_forvar_utils)
+else()
+  target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
+endif()
 
 set(ADD_PHI_KERNELS phi_cpu)
 
@@ -171,3 +204,7 @@ if(WITH_XPU)
 endif()
 
 set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})
+
+if(NOT "${KERNEL_LIST}" STREQUAL "")
+  prune_declaration_h()
+endif()

@@ -29,19 +29,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
 class GenerateProposalsV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Anchors"),
-        ctx.device_context());
+        ctx.GetPlace());
   }
 };
 
@@ -65,9 +62,10 @@ class GenerateProposalsV2OpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) Bounding box variances with same shape as `Anchors`.");
 
     AddOutput("RpnRois",
-              "(LoDTensor), Output proposals with shape (rois_num, 4).");
-    AddOutput("RpnRoiProbs",
-              "(LoDTensor) Scores of proposals with shape (rois_num, 1).");
+              "(phi::DenseTensor), Output proposals with shape (rois_num, 4).");
+    AddOutput(
+        "RpnRoiProbs",
+        "(phi::DenseTensor) Scores of proposals with shape (rois_num, 1).");
     AddOutput("RpnRoisNum", "(Tensor), The number of Rpn RoIs in each image")
         .AsDispensable();
     AddAttr<int>("pre_nms_topN",

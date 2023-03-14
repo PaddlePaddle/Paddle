@@ -11,19 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import numpy as np
-from paddle.fluid import Program, program_guard
-from paddle import fluid
+
 import paddle
+from paddle import fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestChunkOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The type of axis in chunk_op should be int or Variable.
@@ -54,9 +52,16 @@ class TestChunkOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_type_tensor)
 
+        with paddle.fluid.dygraph.guard():
+
+            def test_0_chunks_tensor():
+                x = paddle.uniform([1, 1, 1], dtype='float32')
+                paddle.chunk(x, chunks=0)
+
+            self.assertRaises(ValueError, test_0_chunks_tensor)
+
 
 class API_TestChunk(unittest.TestCase):
-
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = paddle.fluid.data('data1', shape=[4, 6, 6], dtype='float64')
@@ -66,11 +71,9 @@ class API_TestChunk(unittest.TestCase):
             exe = paddle.static.Executor(place)
             input1 = np.random.random([4, 6, 6]).astype('float64')
             input2 = np.array([2]).astype('int32')
-            r0, r1, r2, = exe.run(feed={
-                "data1": input1,
-                "data2": input2
-            },
-                                  fetch_list=[x0, x1, x2])
+            r0, r1, r2, = exe.run(
+                feed={"data1": input1, "data2": input2}, fetch_list=[x0, x1, x2]
+            )
             ex_x0, ex_x1, ex_x2 = np.array_split(input1, 3, axis=2)
             np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
@@ -78,7 +81,6 @@ class API_TestChunk(unittest.TestCase):
 
 
 class API_TestChunk1(unittest.TestCase):
-
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = paddle.fluid.data('data1', shape=[4, 6, 6], dtype='float64')
@@ -86,8 +88,11 @@ class API_TestChunk1(unittest.TestCase):
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             input1 = np.random.random([4, 6, 6]).astype('float64')
-            r0, r1, r2, = exe.run(feed={"data1": input1},
-                                  fetch_list=[x0, x1, x2])
+            (
+                r0,
+                r1,
+                r2,
+            ) = exe.run(feed={"data1": input1}, fetch_list=[x0, x1, x2])
             ex_x0, ex_x1, ex_x2 = np.array_split(input1, 3, axis=2)
             np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
@@ -95,7 +100,6 @@ class API_TestChunk1(unittest.TestCase):
 
 
 class API_TestDygraphChunk(unittest.TestCase):
-
     def test_out1(self):
         with fluid.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")

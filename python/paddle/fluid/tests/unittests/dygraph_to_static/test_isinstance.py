@@ -23,23 +23,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import numpy as np
 import unittest
+
+import numpy as np
 
 import paddle
 import paddle.nn as nn
 
 
 class SimpleReturnLayer(nn.Layer):
-
     def forward(self, x):
         return x
 
 
 class AddAttrLayer(nn.Layer):
-
     def __init__(self):
-        super(AddAttrLayer, self).__init__()
+        super().__init__()
         self.attr = None
 
     def forward(self, x):
@@ -48,23 +47,21 @@ class AddAttrLayer(nn.Layer):
 
 
 class IsInstanceLayer(nn.Layer):
-
     def __init__(self, layer):
-        super(IsInstanceLayer, self).__init__()
+        super().__init__()
         self.layer = layer
 
     @paddle.jit.to_static
     def forward(self, x):
-        if isinstance(self.layer, (AddAttrLayer, )):
+        if isinstance(self.layer, (AddAttrLayer,)):
             self.layer.attr = x
         res = self.layer(x)
         return res
 
 
 class SequentialLayer(nn.Layer):
-
     def __init__(self, layers):
-        super(SequentialLayer, self).__init__()
+        super().__init__()
         self.layers = nn.LayerList(layers)
 
     @paddle.jit.to_static
@@ -78,8 +75,7 @@ class SequentialLayer(nn.Layer):
 
 
 def train(model, to_static):
-    prog_trans = paddle.jit.ProgramTranslator.get_instance()
-    prog_trans.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     x = paddle.ones(shape=[2, 3], dtype='int32')
     out = model(x)
@@ -88,7 +84,6 @@ def train(model, to_static):
 
 
 class TestIsinstance(unittest.TestCase):
-
     def test_isinstance_simple_return_layer(self):
         model = IsInstanceLayer(SimpleReturnLayer())
         self._test_model(model)
@@ -108,11 +103,12 @@ class TestIsinstance(unittest.TestCase):
     def _test_model(self, model):
         st_out = train(model, to_static=True)
         dy_out = train(model, to_static=False)
-        np.testing.assert_allclose(dy_out,
-                                   st_out,
-                                   rtol=1e-05,
-                                   err_msg='dy_out:\n {}\n st_out:\n{}'.format(
-                                       dy_out, st_out))
+        np.testing.assert_allclose(
+            dy_out,
+            st_out,
+            rtol=1e-05,
+            err_msg='dy_out:\n {}\n st_out:\n{}'.format(dy_out, st_out),
+        )
 
 
 if __name__ == "__main__":

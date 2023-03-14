@@ -15,11 +15,11 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
@@ -77,14 +77,6 @@ class RandintOp : public framework::OperatorWithKernel {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(shape.empty(),
-                      false,
-                      platform::errors::InvalidArgument(
-                          "if there is no Input(ShapeTensorList) and no "
-                          "Input(ShapeTensor),the "
-                          "attr(shape) information must "
-                          "be set by Attr(shape)."));
-
     std::vector<int64_t> tensor_shape;
     tensor_shape.reserve(shape.size());
     for (auto dim : shape) {
@@ -94,9 +86,9 @@ class RandintOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }

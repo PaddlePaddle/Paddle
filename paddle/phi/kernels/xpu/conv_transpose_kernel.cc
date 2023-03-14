@@ -72,52 +72,30 @@ void Conv2dTransposeKernel(const Context& ctx,
 
   const int batch_size = static_cast<int>(x.dims()[0]);
   const int img_yc = static_cast<int>(x.dims()[1]);
-  const int img_yh = static_cast<int>(x.dims()[2]);
-  const int img_yw = static_cast<int>(x.dims()[3]);
   const int img_xc = static_cast<int>(out->dims()[1]);
   const int img_xh = static_cast<int>(out->dims()[2]);
   const int img_xw = static_cast<int>(out->dims()[3]);
 
-  {
-    std::vector<int> ksize_check = vector_extend(ksize, 2);
-    std::vector<int> stride_check = vector_extend(strides, 2);
-    std::vector<int> pad_check = vector_extend(paddings_, 4);
-    std::vector<int> dilation_check = vector_extend(dilations_, 2);
-
-    int xh_check = (img_yh - 1) * stride_check[0] - pad_check[0] -
-                   pad_check[1] +
-                   (dilation_check[0] * (ksize_check[0] - 1) + 1);
-    int xw_check = (img_yw - 1) * stride_check[1] - pad_check[2] -
-                   pad_check[3] +
-                   (dilation_check[1] * (ksize_check[1] - 1) + 1);
-
-    PADDLE_ENFORCE_EQ(
-        xh_check == img_xh && xw_check == img_xw,
-        true,
-        errors::InvalidArgument(
-            ("XPU output size check error in conv_transpose op.")));
-  }
-
-  int r =
-      xpu::conv2d_transpose<float, float, float, int16_t>(ctx.x_context(),
-                                                          x.data<float>(),
-                                                          filter_.data<float>(),
-                                                          out->data<float>(),
-                                                          batch_size,
-                                                          img_yc,
-                                                          img_yh,
-                                                          img_yw,
-                                                          img_xc,
-                                                          ksize,
-                                                          strides,
-                                                          paddings_,
-                                                          dilations_,
-                                                          groups,
-                                                          nullptr,
-                                                          nullptr,
-                                                          nullptr,
-                                                          true);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose");
+  int r = xpu::conv2d_transpose_v2<float, float, float, int16_t>(
+      ctx.x_context(),
+      x.data<float>(),
+      filter_.data<float>(),
+      out->data<float>(),
+      batch_size,
+      img_yc,
+      img_xh,
+      img_xw,
+      img_xc,
+      ksize,
+      strides,
+      paddings_,
+      dilations_,
+      groups,
+      nullptr,
+      nullptr,
+      nullptr,
+      true);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
 }
 
 }  // namespace phi

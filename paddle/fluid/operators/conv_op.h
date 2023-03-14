@@ -22,20 +22,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/layout_utils.h"
-#include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
+#include "paddle/phi/kernels/funcs/vol2col.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-constexpr int kConvMKLDNNFP32 = 1;
-constexpr int kConvMKLDNNINT8 = 2;
-constexpr int kConvMKLDNNINT8WS8 = 3;
-constexpr int MaxKeyLength = 256;
-
-// Base convolution operator definations for other conv
+// Base convolution operator definitions for other conv
 // like operators to reuse the implementation.
 inline int ConvOutputSize(
     int input_size, int filter_size, int dilation, int padding, int stride) {
@@ -202,13 +196,13 @@ class ConvOp : public framework::OperatorWithKernel {
   std::vector<int64_t> ComputeOutputShape(
       framework::InferShapeContext* ctx) const;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override;
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override;
 };
 
 class ConvOpGrad : public framework::OperatorWithKernel {
@@ -217,13 +211,13 @@ class ConvOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override;
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override;
 };
 
 class ConvOpDoubleGrad : public framework::OperatorWithKernel {
@@ -232,7 +226,7 @@ class ConvOpDoubleGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 };
 

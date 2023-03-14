@@ -75,7 +75,6 @@ Graph::Graph(const ProgramDesc &program,
     }
   } else {
     auto var_nodes = InitFromProgram(program_, start_op_index, end_op_index);
-    ResolveHazard(var_nodes);
   }
 }
 
@@ -88,7 +87,6 @@ Graph::Graph(const BlockDesc &block,
              const int64_t end_op_index)
     : main_graph_(main_graph) {
   auto var_nodes = InitFromBlock(block, start_op_index, end_op_index);
-  ResolveHazard(var_nodes);
 }
 
 // TODO(levi): delete this interface after when we can convert all

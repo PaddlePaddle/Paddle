@@ -122,7 +122,7 @@ void Prepare(f::Scope* scope,
 void TestHCCLReduceOp(f::Scope* scope, const p::DeviceContext& ctx, int iter) {
   // init
   auto x = scope->Var("Data");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   int rank_id = atoi(getenv("RANK_ID"));
   int num1 = 3;
@@ -141,7 +141,7 @@ void TestHCCLReduceOp(f::Scope* scope, const p::DeviceContext& ctx, int iter) {
   ctx.Wait();
 
   auto out = scope->Var("OutData");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
   tensor_out->Resize({num1, num2});
   tensor_out->mutable_data<float>(place);  // allocate
   ctx.Wait();

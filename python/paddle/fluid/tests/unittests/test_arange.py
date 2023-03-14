@@ -12,35 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
-from paddle.static import program_guard, Program
-import unittest
-import numpy as np
-from op_test import OpTest
+from paddle.static import Program, program_guard
+
+
+def arange_wrapper(start, end, step, dtype="float32"):
+    return paddle.arange(start, end, step, dtype)
 
 
 class TestArangeOp(OpTest):
-
     def setUp(self):
         self.op_type = "range"
         self.init_config()
         self.inputs = {
             'Start': np.array([self.case[0]]).astype(self.dtype),
             'End': np.array([self.case[1]]).astype(self.dtype),
-            'Step': np.array([self.case[2]]).astype(self.dtype)
+            'Step': np.array([self.case[2]]).astype(self.dtype),
         }
 
         self.outputs = {
-            'Out':
-            np.arange(self.case[0], self.case[1],
-                      self.case[2]).astype(self.dtype)
+            'Out': np.arange(self.case[0], self.case[1], self.case[2]).astype(
+                self.dtype
+            )
         }
 
     def init_config(self):
         self.dtype = np.float32
+        self.python_api = arange_wrapper
         self.case = (0, 1, 0.2)
 
     def test_check_output(self):
@@ -48,48 +52,100 @@ class TestArangeOp(OpTest):
 
 
 class TestFloatArangeOp(TestArangeOp):
-
     def init_config(self):
         self.dtype = np.float32
+        self.python_api = paddle.arange
         self.case = (0, 5, 1)
 
 
-class TestInt32ArangeOp(TestArangeOp):
+class TestFloa16ArangeOp(TestArangeOp):
+    def init_config(self):
+        self.dtype = np.float16
+        self.python_api = paddle.arange
+        self.case = (0, 5, 1)
+
+    def test_check_output(self):
+        self.check_output()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestBFloat16ArangeOp(OpTest):
+    def setUp(self):
+        self.op_type = "range"
+        self.init_config()
+        self.inputs = {
+            'Start': convert_float_to_uint16(self.start),
+            'End': convert_float_to_uint16(self.end),
+            'Step': convert_float_to_uint16(self.step),
+        }
+
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                np.arange(self.start, self.end, self.step)
+            )
+        }
 
     def init_config(self):
+        self.dtype = np.uint16
+        self.python_api = arange_wrapper
+        self.case = (0, 5, 1)
+        self.start = np.array([self.case[0]]).astype(np.float32)
+        self.end = np.array([self.case[1]]).astype(np.float32)
+        self.step = np.array([self.case[2]]).astype(np.float32)
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+
+class TestInt32ArangeOp(TestArangeOp):
+    def init_config(self):
         self.dtype = np.int32
+        self.python_api = paddle.arange
         self.case = (0, 5, 2)
 
 
 class TestFloat64ArangeOp(TestArangeOp):
-
     def init_config(self):
         self.dtype = np.float64
+        self.python_api = paddle.arange
         self.case = (10, 1, -2)
 
 
 class TestInt64ArangeOp(TestArangeOp):
-
     def init_config(self):
         self.dtype = np.int64
+        self.python_api = paddle.arange
         self.case = (-1, -10, -2)
 
 
-class TestArangeOpError(unittest.TestCase):
+class TestZeroSizeArangeOp(TestArangeOp):
+    def init_config(self):
+        self.dtype = np.int32
+        self.python_api = paddle.arange
+        self.case = (0, 0, 1)
 
+
+class TestArangeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             self.assertRaises(TypeError, paddle.arange, 10, dtype='int8')
 
 
 class TestArangeAPI(unittest.TestCase):
-
     def test_out(self):
         with program_guard(Program(), Program()):
             x1 = paddle.arange(0, 5, 1, 'float32')
 
-            place = paddle.CUDAPlace(
-                0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+            place = (
+                paddle.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else paddle.CPUPlace()
+            )
             exe = paddle.static.Executor(place)
             out = exe.run(fetch_list=[x1])
 
@@ -98,10 +154,12 @@ class TestArangeAPI(unittest.TestCase):
 
 
 class TestArangeImperative(unittest.TestCase):
-
     def test_out(self):
-        place = paddle.CUDAPlace(
-            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         paddle.disable_static(place)
         x1 = paddle.arange(0, 5, 1)
         x2 = paddle.tensor.arange(5)

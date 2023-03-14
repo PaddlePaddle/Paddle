@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-import paddle.fluid.dygraph as dg
-import numpy as np
 import unittest
-from paddle.fluid.framework import _test_eager_guard
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dg
 
 
 class TestComplexReshape(unittest.TestCase):
-
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
@@ -30,24 +30,24 @@ class TestComplexReshape(unittest.TestCase):
 
     def test_shape_norm_dims(self):
         for dtype in self._dtypes:
-            x_np = np.random.randn(
-                2, 3,
-                4).astype(dtype) + 1j * np.random.randn(2, 3, 4).astype(dtype)
+            x_np = np.random.randn(2, 3, 4).astype(
+                dtype
+            ) + 1j * np.random.randn(2, 3, 4).astype(dtype)
             shape = (2, -1)
             for place in self._places:
                 with dg.guard(place):
                     x_var = dg.to_variable(x_np)
                     y_var = paddle.reshape(x_var, shape)
                     y_np = y_var.numpy()
-                    np.testing.assert_allclose(np.reshape(x_np, shape),
-                                               y_np,
-                                               rtol=1e-05)
+                    np.testing.assert_allclose(
+                        np.reshape(x_np, shape), y_np, rtol=1e-05
+                    )
 
     def test_shape_omit_dims(self):
         for dtype in self._dtypes:
-            x_np = np.random.randn(
-                2, 3,
-                4).astype(dtype) + 1j * np.random.randn(2, 3, 4).astype(dtype)
+            x_np = np.random.randn(2, 3, 4).astype(
+                dtype
+            ) + 1j * np.random.randn(2, 3, 4).astype(dtype)
             shape = (0, -1)
             shape_ = (2, 12)
             for place in self._places:
@@ -55,14 +55,9 @@ class TestComplexReshape(unittest.TestCase):
                     x_var = dg.to_variable(x_np)
                     y_var = paddle.reshape(x_var, shape)
                     y_np = y_var.numpy()
-                    np.testing.assert_allclose(np.reshape(x_np, shape_),
-                                               y_np,
-                                               rtol=1e-05)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_shape_norm_dims()
-            self.test_shape_omit_dims()
+                    np.testing.assert_allclose(
+                        np.reshape(x_np, shape_), y_np, rtol=1e-05
+                    )
 
 
 if __name__ == "__main__":

@@ -37,7 +37,7 @@ namespace framework {
 class PADDLE_API OpMetaInfoHelper;
 }  // namespace framework
 
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 
 ///////////////// Util Marco Define ////////////////
 
@@ -271,7 +271,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     static void Compute(CustomOpKernelContext* ctx, const Args&... args) {
       static_assert(out_idx == 0,
                     "If return std::vector<Tensor> in Custom OpKernel, "
-                    "you cannot pass output by kernel funciton argument.");
+                    "you cannot pass output by kernel function argument.");
       auto outs = impl_fn(args...);
       auto* orig_outs = ctx->AllMutableOutput();
       PD_CHECK(orig_outs->size() == outs.size(),
@@ -618,17 +618,6 @@ class PADDLE_API OpMetaInfoBuilder {
   // - 0: op, 1: grad_op, 2: grad_grad_op
   size_t index_;
 };
-
-/////////////////////// Op register API /////////////////////////
-
-// For inference: compile directly with framework
-// Call after PD_BUILD_OP(...)
-void RegisterAllCustomOperator();
-
-// Using this api to load compiled custom operator's dynamic library and
-// register Custom
-// Operator into it
-void LoadCustomOperatorLib(const std::string& dso_name);
 
 /////////////////////// Op register Macro /////////////////////////
 

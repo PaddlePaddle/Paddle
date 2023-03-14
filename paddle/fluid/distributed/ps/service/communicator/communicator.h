@@ -37,13 +37,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace paddle {
 namespace distributed {
@@ -154,7 +154,7 @@ class BlockingQueue {
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
 inline void MergeVars(const std::string &var_name,
@@ -169,16 +169,16 @@ inline void MergeVars(const std::string &var_name,
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
 
-  if (var0->IsType<framework::LoDTensor>()) {
-    auto dims = var0->Get<framework::LoDTensor>().dims();
+  if (var0->IsType<phi::DenseTensor>()) {
+    auto dims = var0->Get<phi::DenseTensor>().dims();
     VLOG(3) << "merge " << var_name << " LoDTensor dims " << dims
             << "; merge add: " << merge_add;
     // init output tensor
-    auto *out_t = out_var->GetMutable<framework::LoDTensor>();
+    auto *out_t = out_var->GetMutable<phi::DenseTensor>();
     out_t->mutable_data<T>(dims, cpu_place);
     // check the input dims
     for (auto &var : vars) {
-      auto &var_t = var->Get<framework::LoDTensor>();
+      auto &var_t = var->Get<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(
           var_t.dims(),
           dims,
@@ -192,7 +192,7 @@ inline void MergeVars(const std::string &var_name,
     // sum all vars to out
     auto result = EigenVector<T>::Flatten(*out_t);
     for (auto &var : vars) {
-      auto &in_t = var->Get<framework::LoDTensor>();
+      auto &in_t = var->Get<phi::DenseTensor>();
       auto in = EigenVector<T>::Flatten(in_t);
       result.device(*cpu_ctx.eigen_device()) = result + in;
     }
@@ -212,11 +212,10 @@ inline void MergeVars(const std::string &var_name,
     }
     phi::CPUContext dev_ctx;
     if (merge_add) {
-      paddle::operators::math::scatter::MergeAdd<phi::CPUContext, T> merge_add;
+      phi::funcs::scatter::MergeAdd<phi::CPUContext, T> merge_add;
       merge_add(dev_ctx, inputs, out_slr);
     } else {
-      paddle::operators::math::scatter::MergeAverage<phi::CPUContext, T>
-          merge_average;
+      phi::funcs::scatter::MergeAverage<phi::CPUContext, T> merge_average;
       merge_average(dev_ctx, inputs, out_slr);
     }
 
@@ -278,7 +277,7 @@ class Communicator {
   virtual void RpcRecvSparse(const std::string &varname,
                              int table_id,
                              Scope *scope);
-  // 7. send gloabl step
+  // 7. send global step
   virtual void SendGlobalStep(const CommContext &ctx,
                               int batches,
                               Scope *send_scope);
@@ -485,18 +484,17 @@ class AsyncCommunicator : public Communicator {
       uint64_t padding_id,
       platform::Place place,
       bool is_training,
-      std::vector<const framework::LoDTensor *> *inputs,  // NOLINT
-      std::vector<framework::LoDTensor *> *outputs);      // NOLINT
+      std::vector<const phi::DenseTensor *> *inputs,  // NOLINT
+      std::vector<phi::DenseTensor *> *outputs);      // NOLINT
 
-  void PushSparseFromTensorAsync(
-      const uint64_t table_id,
-      int fea_dim,
-      uint64_t padding_id,
-      platform::Place place,
-      std::vector<const framework::LoDTensor *> *inputs,
-      const framework::LoDTensor *shows,
-      const framework::LoDTensor *clicks,
-      std::vector<framework::LoDTensor *> *outputs);
+  void PushSparseFromTensorAsync(const uint64_t table_id,
+                                 int fea_dim,
+                                 uint64_t padding_id,
+                                 platform::Place place,
+                                 std::vector<const phi::DenseTensor *> *inputs,
+                                 const phi::DenseTensor *shows,
+                                 const phi::DenseTensor *clicks,
+                                 std::vector<phi::DenseTensor *> *outputs);
 
  protected:
   std::unordered_map<std::string,
@@ -574,7 +572,7 @@ class SyncCommunicator : public HalfAsyncCommunicator {
       : HalfAsyncCommunicator(envs) {}
 
   void InitEnvs() {
-    // enfore to recv after send
+    // enforce to recv after send
     independent_recv_ = false;
     min_send_grad_num_before_recv_ = 0;
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));

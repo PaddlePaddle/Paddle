@@ -12,28 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import math
 import numbers
+
+import numpy as np
 
 import paddle
 import paddle.nn.functional as F
 
-import sys
-import collections
+from ...fluid.framework import Variable
 
 __all__ = []
 
 
 def _assert_image_tensor(img, data_format):
-    if not isinstance(
-            img, paddle.Tensor
-    ) or img.ndim < 3 or img.ndim > 4 or not data_format.lower() in ('chw',
-                                                                     'hwc'):
+    if (
+        not isinstance(img, (paddle.Tensor, Variable))
+        or img.ndim < 3
+        or img.ndim > 4
+        or not data_format.lower() in ('chw', 'hwc')
+    ):
         raise RuntimeError(
-            'not support [type={}, ndim={}, data_format={}] paddle image'.
-            format(type(img), img.ndim, data_format))
+            'not support [type={}, ndim={}, data_format={}] paddle image'.format(
+                type(img), img.ndim, data_format
+            )
+        )
 
 
 def _get_image_h_axis(data_format):
@@ -83,13 +86,15 @@ def _get_image_num_channels(img, data_format):
 
 
 def _get_image_size(img, data_format):
-    return img.shape[_get_image_w_axis(data_format)], img.shape[
-        _get_image_h_axis(data_format)]
+    return (
+        img.shape[_get_image_w_axis(data_format)],
+        img.shape[_get_image_h_axis(data_format)],
+    )
 
 
 def _rgb_to_hsv(img):
     """Convert a image Tensor from RGB to HSV. This implementation is based on Pillow (
-            https://github.com/python-pillow/Pillow/blob/main/src/libImaging/Convert.c)
+    https://github.com/python-pillow/Pillow/blob/main/src/libImaging/Convert.c)
     """
     maxc = img.max(axis=-3)
     minc = img.min(axis=-3)
@@ -116,8 +121,7 @@ def _rgb_to_hsv(img):
 
 
 def _hsv_to_rgb(img):
-    """Convert a image Tensor from HSV to RGB.
-    """
+    """Convert a image Tensor from HSV to RGB."""
     h, s, v = img.unbind(axis=-3)
     f = h * 6.0
     i = paddle.floor(f)
@@ -128,22 +132,28 @@ def _hsv_to_rgb(img):
     q = paddle.clip(v * (1.0 - s * f), 0.0, 1.0)
     t = paddle.clip(v * (1.0 - s * (1.0 - f)), 0.0, 1.0)
 
-    mask = paddle.equal(i.unsqueeze(axis=-3),
-                        paddle.arange(6, dtype=i.dtype).reshape(
-                            (-1, 1, 1))).astype(img.dtype)
-    matrix = paddle.stack([
-        paddle.stack([v, q, p, p, t, v], axis=-3),
-        paddle.stack([t, v, v, q, p, p], axis=-3),
-        paddle.stack([p, p, t, v, v, q], axis=-3)
-    ],
-                          axis=-4)
+    mask = paddle.equal(
+        i.unsqueeze(axis=-3),
+        paddle.arange(6, dtype=i.dtype).reshape((-1, 1, 1)),
+    ).astype(img.dtype)
+    matrix = paddle.stack(
+        [
+            paddle.stack([v, q, p, p, t, v], axis=-3),
+            paddle.stack([t, v, v, q, p, p], axis=-3),
+            paddle.stack([p, p, t, v, v, q], axis=-3),
+        ],
+        axis=-4,
+    )
     return paddle.einsum("...ijk, ...xijk -> ...xjk", mask, matrix)
 
 
 def _blend_images(img1, img2, ratio):
     max_value = 1.0 if paddle.is_floating_point(img1) else 255.0
-    return paddle.lerp(img2, img1,
-                       float(ratio)).clip(0, max_value).astype(img1.dtype)
+    return (
+        paddle.lerp(img2, img1, float(ratio))
+        .clip(0, max_value)
+        .astype(img1.dtype)
+    )
 
 
 def normalize(img, mean, std, data_format='CHW'):
@@ -191,8 +201,9 @@ def to_grayscale(img, num_output_channels=1, data_format='CHW'):
     if num_output_channels not in (1, 3):
         raise ValueError('num_output_channels should be either 1 or 3')
 
-    rgb_weights = paddle.to_tensor([0.2989, 0.5870, 0.1140],
-                                   place=img.place).astype(img.dtype)
+    rgb_weights = paddle.to_tensor(
+        [0.2989, 0.5870, 0.1140], place=img.place
+    ).astype(img.dtype)
 
     if _is_channel_first(data_format):
         rgb_weights = rgb_weights.reshape((-1, 1, 1))
@@ -212,11 +223,23 @@ def _affine_grid(theta, w, h, ow, oh):
 
     x_grid = paddle.linspace(-ow * 0.5 + d, ow * 0.5 + d - 1, ow)
     base_grid[..., 0] = x_grid
-    y_grid = paddle.linspace(-oh * 0.5 + d, oh * 0.5 + d - 1, oh).unsqueeze_(-1)
-    base_grid[..., 1] = y_grid
 
-    scaled_theta = theta.transpose(
-        (0, 2, 1)) / paddle.to_tensor([0.5 * w, 0.5 * h])
+    if paddle.in_dynamic_mode():
+        y_grid = paddle.linspace(
+            -oh * 0.5 + d, oh * 0.5 + d - 1, oh
+        ).unsqueeze_(-1)
+        base_grid[..., 1] = y_grid
+        tmp = paddle.to_tensor([0.5 * w, 0.5 * h])
+    else:
+        # To eliminate the warning:
+        # In static mode, unsqueeze_() is the same as unsqueeze() and does not perform inplace operation.
+        y_grid = paddle.linspace(-oh * 0.5 + d, oh * 0.5 + d - 1, oh).unsqueeze(
+            -1
+        )
+        base_grid[..., 1] = y_grid
+        tmp = paddle.assign(np.array([0.5 * w, 0.5 * h], dtype="float32"))
+
+    scaled_theta = theta.transpose((0, 2, 1)) / tmp
     output_grid = base_grid.reshape((1, oh * ow, 3)).bmm(scaled_theta)
 
     return output_grid.reshape((1, oh, ow, 2))
@@ -225,31 +248,42 @@ def _affine_grid(theta, w, h, ow, oh):
 def _grid_transform(img, grid, mode, fill):
     if img.shape[0] > 1:
         grid = grid.expand(
-            shape=[img.shape[0], grid.shape[1], grid.shape[2], grid.shape[3]])
+            shape=[img.shape[0], grid.shape[1], grid.shape[2], grid.shape[3]]
+        )
 
     if fill is not None:
-        dummy = paddle.ones((img.shape[0], 1, img.shape[2], img.shape[3]),
-                            dtype=img.dtype)
+        dummy = paddle.ones(
+            (img.shape[0], 1, img.shape[2], img.shape[3]), dtype=img.dtype
+        )
         img = paddle.concat((img, dummy), axis=1)
 
-    img = F.grid_sample(img,
-                        grid,
-                        mode=mode,
-                        padding_mode="zeros",
-                        align_corners=False)
+    img = F.grid_sample(
+        img, grid, mode=mode, padding_mode="zeros", align_corners=False
+    )
 
     # Fill with required color
     if fill is not None:
         mask = img[:, -1:, :, :]  # n 1 h w
         img = img[:, :-1, :, :]  # n c h w
-        mask = mask.expand_as(img)
+        mask = mask.tile([1, img.shape[1], 1, 1])
         len_fill = len(fill) if isinstance(fill, (tuple, list)) else 1
-        fill_img = paddle.to_tensor(fill).reshape(
-            (1, len_fill, 1, 1)).expand_as(img)
+
+        if paddle.in_dynamic_mode():
+            fill_img = (
+                paddle.to_tensor(fill)
+                .reshape((1, len_fill, 1, 1))
+                .astype(img.dtype)
+                .expand_as(img)
+            )
+        else:
+            fill = np.array(fill).reshape(len_fill).astype("float32")
+            fill_img = paddle.ones_like(img) * paddle.assign(fill).reshape(
+                [1, len_fill, 1, 1]
+            )
 
         if mode == 'nearest':
             mask = paddle.cast(mask < 0.5, img.dtype)
-            img = img * (1. - mask) + mask * fill_img
+            img = img * (1.0 - mask) + mask * fill_img
         else:  # 'bilinear'
             img = img * mask + (1.0 - mask) * fill_img
 
@@ -287,11 +321,9 @@ def affine(img, matrix, interpolation="nearest", fill=None, data_format='CHW'):
     matrix = matrix.reshape((1, 2, 3))
     shape = img.shape
 
-    grid = _affine_grid(matrix,
-                        w=shape[-1],
-                        h=shape[-2],
-                        ow=shape[-1],
-                        oh=shape[-2])
+    grid = _affine_grid(
+        matrix, w=shape[-1], h=shape[-2], ow=shape[-1], oh=shape[-2]
+    )
 
     if isinstance(fill, int):
         fill = tuple([fill] * 3)
@@ -304,13 +336,15 @@ def affine(img, matrix, interpolation="nearest", fill=None, data_format='CHW'):
     return out
 
 
-def rotate(img,
-           angle,
-           interpolation='nearest',
-           expand=False,
-           center=None,
-           fill=None,
-           data_format='CHW'):
+def rotate(
+    img,
+    angle,
+    interpolation='nearest',
+    expand=False,
+    center=None,
+    fill=None,
+    data_format='CHW',
+):
     """Rotates the image by angle.
 
     Args:
@@ -352,36 +386,69 @@ def rotate(img,
     else:
         rotn_center = [(p - s * 0.5) for p, s in zip(center, [w, h])]
 
-    angle = math.radians(angle)
-    matrix = [
-        math.cos(angle),
-        math.sin(angle),
-        0.0,
-        -math.sin(angle),
-        math.cos(angle),
-        0.0,
-    ]
+    if paddle.in_dynamic_mode():
+        angle = math.radians(angle)
+        matrix = [
+            math.cos(angle),
+            math.sin(angle),
+            0.0,
+            -math.sin(angle),
+            math.cos(angle),
+            0.0,
+        ]
+        matrix = paddle.to_tensor(matrix, place=img.place)
+    else:
+        angle = angle / 180 * math.pi
+        matrix = paddle.concat(
+            [
+                paddle.cos(angle),
+                paddle.sin(angle),
+                paddle.zeros([1]),
+                -paddle.sin(angle),
+                paddle.cos(angle),
+                paddle.zeros([1]),
+            ]
+        )
 
     matrix[2] += matrix[0] * (-rotn_center[0] - post_trans[0]) + matrix[1] * (
-        -rotn_center[1] - post_trans[1])
+        -rotn_center[1] - post_trans[1]
+    )
     matrix[5] += matrix[3] * (-rotn_center[0] - post_trans[0]) + matrix[4] * (
-        -rotn_center[1] - post_trans[1])
+        -rotn_center[1] - post_trans[1]
+    )
 
     matrix[2] += rotn_center[0]
     matrix[5] += rotn_center[1]
 
-    matrix = paddle.to_tensor(matrix, place=img.place)
     matrix = matrix.reshape((1, 2, 3))
 
     if expand:
         # calculate output size
-        corners = paddle.to_tensor(
-            [[-0.5 * w, -0.5 * h, 1.0], [-0.5 * w, 0.5 * h, 1.0],
-             [0.5 * w, 0.5 * h, 1.0], [0.5 * w, -0.5 * h, 1.0]],
-            place=matrix.place).astype(matrix.dtype)
+        if paddle.in_dynamic_mode():
+            corners = paddle.to_tensor(
+                [
+                    [-0.5 * w, -0.5 * h, 1.0],
+                    [-0.5 * w, 0.5 * h, 1.0],
+                    [0.5 * w, 0.5 * h, 1.0],
+                    [0.5 * w, -0.5 * h, 1.0],
+                ],
+                place=matrix.place,
+            ).astype(matrix.dtype)
+        else:
+            corners = paddle.assign(
+                [
+                    [-0.5 * w, -0.5 * h, 1.0],
+                    [-0.5 * w, 0.5 * h, 1.0],
+                    [0.5 * w, 0.5 * h, 1.0],
+                    [0.5 * w, -0.5 * h, 1.0],
+                ],
+            ).astype(matrix.dtype)
 
-        _pos = corners.reshape((1, -1, 3)).bmm(matrix.transpose(
-            (0, 2, 1))).reshape((1, -1, 2))
+        _pos = (
+            corners.reshape((1, -1, 3))
+            .bmm(matrix.transpose((0, 2, 1)))
+            .reshape((1, -1, 2))
+        )
         _min = _pos.min(axis=-2).floor()
         _max = _pos.max(axis=-2).ceil()
 
@@ -389,7 +456,10 @@ def rotate(img,
         nw = npos[0][0]
         nh = npos[0][1]
 
-        ow, oh = int(nw.numpy()[0]), int(nh.numpy()[0])
+        if paddle.in_dynamic_mode():
+            ow, oh = int(nw.numpy()[0]), int(nh.numpy()[0])
+        else:
+            ow, oh = nw.astype("int32"), nh.astype("int32")
 
     else:
         ow, oh = w, h
@@ -417,21 +487,21 @@ def _perspective_grid(img, coeffs, ow, oh, dtype):
     y_grid = paddle.linspace(d, oh * 1.0 + d - 1.0, oh).unsqueeze_(-1)
     base_grid[..., 1] = y_grid
 
-    scaled_theta1 = theta1.transpose(
-        (0, 2, 1)) / paddle.to_tensor([0.5 * ow, 0.5 * oh])
+    scaled_theta1 = theta1.transpose((0, 2, 1)) / paddle.to_tensor(
+        [0.5 * ow, 0.5 * oh]
+    )
     output_grid1 = base_grid.reshape((1, oh * ow, 3)).bmm(scaled_theta1)
-    output_grid2 = base_grid.reshape(
-        (1, oh * ow, 3)).bmm(theta2.transpose((0, 2, 1)))
+    output_grid2 = base_grid.reshape((1, oh * ow, 3)).bmm(
+        theta2.transpose((0, 2, 1))
+    )
 
     output_grid = output_grid1 / output_grid2 - 1.0
     return output_grid.reshape((1, oh, ow, 2))
 
 
-def perspective(img,
-                coeffs,
-                interpolation="nearest",
-                fill=None,
-                data_format='CHW'):
+def perspective(
+    img, coeffs, interpolation="nearest", fill=None, data_format='CHW'
+):
     """Perspective the image.
 
     Args:
@@ -526,48 +596,48 @@ def crop(img, top, left, height, width, data_format='CHW'):
     _assert_image_tensor(img, data_format)
 
     if _is_channel_first(data_format):
-        return img[:, top:top + height, left:left + width]
+        return img[:, top : top + height, left : left + width]
     else:
-        return img[top:top + height, left:left + width, :]
+        return img[top : top + height, left : left + width, :]
 
 
 def erase(img, i, j, h, w, v, inplace=False):
     """Erase the pixels of selected area in input Tensor image with given value.
 
-       Args:
-            img (paddle.Tensor): input Tensor image.
-            i (int): y coordinate of the top-left point of erased region.
-            j (int): x coordinate of the top-left point of erased region.
-            h (int): Height of the erased region.
-            w (int): Width of the erased region.
-            v (paddle.Tensor): value used to replace the pixels in erased region.
-            inplace (bool, optional): Whether this transform is inplace. Default: False.
+    Args:
+         img (paddle.Tensor): input Tensor image.
+         i (int): y coordinate of the top-left point of erased region.
+         j (int): x coordinate of the top-left point of erased region.
+         h (int): Height of the erased region.
+         w (int): Width of the erased region.
+         v (paddle.Tensor): value used to replace the pixels in erased region.
+         inplace (bool, optional): Whether this transform is inplace. Default: False.
 
-        Returns:
-            paddle.Tensor: Erased image.
+     Returns:
+         paddle.Tensor: Erased image.
 
     """
     _assert_image_tensor(img, 'CHW')
     if not inplace:
         img = img.clone()
 
-    img[..., i:i + h, j:j + w] = v
+    img[..., i : i + h, j : j + w] = v
     return img
 
 
 def center_crop(img, output_size, data_format='CHW'):
     """Crops the given paddle.Tensor Image and resize it to desired size.
 
-        Args:
-            img (paddle.Tensor): Image to be cropped. (0,0) denotes the top left corner of the image.
-            output_size (sequence or int): (height, width) of the crop box. If int,
-                it is used for both directions
-            data_format (str, optional): Data format of img, should be 'HWC' or
-                'CHW'. Default: 'CHW'.
-        Returns:
-            paddle.Tensor: Cropped image.
+    Args:
+        img (paddle.Tensor): Image to be cropped. (0,0) denotes the top left corner of the image.
+        output_size (sequence or int): (height, width) of the crop box. If int,
+            it is used for both directions
+        data_format (str, optional): Data format of img, should be 'HWC' or
+            'CHW'. Default: 'CHW'.
+    Returns:
+        paddle.Tensor: Cropped image.
 
-        """
+    """
     _assert_image_tensor(img, data_format)
 
     if isinstance(output_size, numbers.Number):
@@ -575,14 +645,16 @@ def center_crop(img, output_size, data_format='CHW'):
 
     image_width, image_height = _get_image_size(img, data_format)
     crop_height, crop_width = output_size
-    crop_top = int(round((image_height - crop_height) / 2.))
-    crop_left = int(round((image_width - crop_width) / 2.))
-    return crop(img,
-                crop_top,
-                crop_left,
-                crop_height,
-                crop_width,
-                data_format=data_format)
+    crop_top = int(round((image_height - crop_height) / 2.0))
+    crop_left = int(round((image_width - crop_width) / 2.0))
+    return crop(
+        img,
+        crop_top,
+        crop_left,
+        crop_height,
+        crop_width,
+        data_format=data_format,
+    )
 
 
 def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
@@ -630,11 +702,16 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
 
     if isinstance(padding, (list, tuple)) and len(padding) not in [2, 4]:
         raise ValueError(
-            "Padding must be an int or a 2, or 4 element tuple, not a " +
-            "{} element tuple".format(len(padding)))
+            "Padding must be an int or a 2, or 4 element tuple, not a "
+            + "{} element tuple".format(len(padding))
+        )
 
-    assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric'], \
-        'Padding mode should be either constant, edge, reflect or symmetric'
+    assert padding_mode in [
+        'constant',
+        'edge',
+        'reflect',
+        'symmetric',
+    ], 'Padding mode should be either constant, edge, reflect or symmetric'
 
     if isinstance(padding, int):
         pad_left = pad_right = pad_top = pad_bottom = padding
@@ -656,11 +733,13 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
 
     img = img.unsqueeze(0)
     #  'constant', 'reflect', 'replicate', 'circular'
-    img = F.pad(img,
-                pad=padding,
-                mode=padding_mode,
-                value=float(fill),
-                data_format='N' + data_format)
+    img = F.pad(
+        img,
+        pad=padding,
+        mode=padding_mode,
+        value=float(fill),
+        data_format='N' + data_format,
+    )
 
     return img.squeeze(0)
 
@@ -689,12 +768,22 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
     """
     _assert_image_tensor(img, data_format)
 
-    if not (isinstance(size, int) or
-            (isinstance(size, (tuple, list)) and len(size) == 2)):
+    if not (
+        isinstance(size, int)
+        or (isinstance(size, (tuple, list)) and len(size) == 2)
+    ):
         raise TypeError('Got inappropriate size arg: {}'.format(size))
 
     if isinstance(size, int):
         w, h = _get_image_size(img, data_format)
+        # TODO(Aurelius84): In static graph mode, w and h will be -1 for dynamic shape.
+        # We should consider to support this case in future.
+        if w <= 0 or h <= 0:
+            raise NotImplementedError(
+                "Not support while w<=0 or h<=0, but received w={}, h={}".format(
+                    w, h
+                )
+            )
         if (w <= h and w == size) or (h <= w and h == size):
             return img
         if w < h:
@@ -707,10 +796,12 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
         oh, ow = size
 
     img = img.unsqueeze(0)
-    img = F.interpolate(img,
-                        size=(oh, ow),
-                        mode=interpolation.lower(),
-                        data_format='N' + data_format.upper())
+    img = F.interpolate(
+        img,
+        size=(oh, ow),
+        mode=interpolation.lower(),
+        data_format='N' + data_format.upper(),
+    )
 
     return img.squeeze(0)
 
@@ -730,8 +821,10 @@ def adjust_brightness(img, brightness_factor):
     """
     _assert_image_tensor(img, 'CHW')
     assert brightness_factor >= 0, "brightness_factor should be non-negative."
-    assert _get_image_num_channels(
-        img, 'CHW') in [1, 3], "channels of input should be either 1 or 3."
+    assert _get_image_num_channels(img, 'CHW') in [
+        1,
+        3,
+    ], "channels of input should be either 1 or 3."
 
     extreme_target = paddle.zeros_like(img, img.dtype)
     return _blend_images(img, extreme_target, brightness_factor)
@@ -756,13 +849,13 @@ def adjust_contrast(img, contrast_factor):
     channels = _get_image_num_channels(img, 'CHW')
     dtype = img.dtype if paddle.is_floating_point(img) else paddle.float32
     if channels == 1:
-        extreme_target = paddle.mean(img.astype(dtype),
-                                     axis=(-3, -2, -1),
-                                     keepdim=True)
+        extreme_target = paddle.mean(
+            img.astype(dtype), axis=(-3, -2, -1), keepdim=True
+        )
     elif channels == 3:
-        extreme_target = paddle.mean(to_grayscale(img).astype(dtype),
-                                     axis=(-3, -2, -1),
-                                     keepdim=True)
+        extreme_target = paddle.mean(
+            to_grayscale(img).astype(dtype), axis=(-3, -2, -1), keepdim=True
+        )
     else:
         raise ValueError("channels of input should be either 1 or 3.")
 
@@ -818,7 +911,9 @@ def adjust_hue(img, hue_factor):
 
     """
     _assert_image_tensor(img, 'CHW')
-    assert hue_factor >= -0.5 and hue_factor <= 0.5, "hue_factor should be in range [-0.5, 0.5]"
+    assert (
+        hue_factor >= -0.5 and hue_factor <= 0.5
+    ), "hue_factor should be in range [-0.5, 0.5]"
     channels = _get_image_num_channels(img, 'CHW')
     if channels == 1:
         return img
@@ -829,7 +924,7 @@ def adjust_hue(img, hue_factor):
 
         img_hsv = _rgb_to_hsv(img)
         h, s, v = img_hsv.unbind(axis=-3)
-        h = (h + hue_factor)
+        h = h + hue_factor
         h = h - h.floor()
         img_adjusted = _hsv_to_rgb(paddle.stack([h, s, v], axis=-3))
 

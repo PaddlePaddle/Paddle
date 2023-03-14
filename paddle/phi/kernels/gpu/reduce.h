@@ -36,6 +36,7 @@ void Reduce(const KPDevice& dev_ctx,
             DataType out_dtype,
             DenseTensor* out,
             bool is_mean = false) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   std::vector<int> reduce_dims =
       phi::funcs::details::GetReduceDim(dims, x.dims().size(), reduce_all);
 

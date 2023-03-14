@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/sync_batch_norm_utils.h"
 
@@ -22,17 +23,16 @@ namespace phi {
 template <typename T, typename Context>
 void SyncBatchNormKernel(const Context &ctx,
                          const DenseTensor &x,
-                         const DenseTensor &scale,
-                         const DenseTensor &bias,
                          const DenseTensor &mean,
                          const DenseTensor &variance,
+                         const DenseTensor &scale,
+                         const DenseTensor &bias,
+                         bool is_test,
                          float momentum,
                          float epsilon_f,
                          const std::string &data_layout_str,
-                         bool is_test,
                          bool use_global_stats,
                          bool trainable_statistics,
-                         bool fuse_with_relu,
                          DenseTensor *y,
                          DenseTensor *mean_out,
                          DenseTensor *variance_out,
@@ -48,8 +48,7 @@ void SyncBatchNormKernel(const Context &ctx,
 
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout layout = phi::StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_statistics);
   const auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -77,16 +76,16 @@ void SyncBatchNormKernel(const Context &ctx,
   const int block = 512;
   int max_threads = ctx.GetMaxPhysicalThreadCount();
 
-  paddle::memory::AllocationPtr alloc_ptr{nullptr};
+  phi::Allocator::AllocationPtr alloc_ptr{nullptr};
 
   if (test_mode) {
     mean_data = mean.template data<BatchNormParamType<T>>();
     var_data = variance.template data<BatchNormParamType<T>>();
   } else {
     // x, x^2, 1, here 1 is used to calc device num
-    // device num also can be got from platform::DeviceContextPool
+    // device num also can be got from phi::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-    alloc_ptr = paddle::memory::Alloc(
+    alloc_ptr = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -94,40 +93,31 @@ void SyncBatchNormKernel(const Context &ctx,
     auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
     const int threads = 256;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
-    if (layout == paddle::framework::DataLayout::kNCHW) {
-      KeLocalStats<T, threads, paddle::framework::DataLayout::kNCHW>
+    if (layout == phi::DataLayout::kNCHW) {
+      KeLocalStats<T, threads, phi::DataLayout::kNCHW>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     } else {
-      KeLocalStats<T, threads, paddle::framework::DataLayout::kNHWC>
+      KeLocalStats<T, threads, phi::DataLayout::kNHWC>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    int global_gid = 0;
-    ncclComm_t comm = nullptr;
-
-    if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
-            global_gid)) {
-      auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
-          paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
-              global_gid));
-      comm = nccl_pg->NCCLComm(x.place());
-    } else {
+    ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
+    if (comm == nullptr) {
       comm = ctx.nccl_comm();
     }
 
     if (comm) {
-      int dtype = paddle::platform::ToNCCLDataType(
-          paddle::framework::TransToProtoVarType(mean_out->dtype()));
+      int dtype = phi::ToNCCLDataType(mean_out->dtype());
       // In-place operation
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
-          stats,
-          stats,
-          2 * C + 1,
-          static_cast<ncclDataType_t>(dtype),
-          ncclSum,
-          comm,
-          stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::ncclAllReduce(stats,
+                                      stats,
+                                      2 * C + 1,
+                                      static_cast<ncclDataType_t>(dtype),
+                                      ncclSum,
+                                      comm,
+                                      stream));
       VLOG(3) << "Sync result using all reduce";
     }
 #endif
@@ -159,8 +149,8 @@ void SyncBatchNormKernel(const Context &ctx,
   }
 
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
-  if (layout == paddle::framework::DataLayout::kNCHW) {
-    KeNormAffine<T, paddle::framework::DataLayout::kNCHW>
+  if (layout == phi::DataLayout::kNCHW) {
+    KeNormAffine<T, phi::DataLayout::kNCHW>
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,
@@ -172,7 +162,7 @@ void SyncBatchNormKernel(const Context &ctx,
                                       x_numel,
                                       y_d);
   } else {
-    KeNormAffine<T, paddle::framework::DataLayout::kNHWC>
+    KeNormAffine<T, phi::DataLayout::kNHWC>
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,

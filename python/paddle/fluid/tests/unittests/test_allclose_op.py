@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
+import paddle.fluid.core as core
 
 
 class TestAllcloseOp(OpTest):
-
     def set_args(self):
-        self.input = np.array([10000., 1e-07]).astype("float32")
+        self.input = np.array([10000.0, 1e-07]).astype("float32")
         self.other = np.array([10000.1, 1e-08]).astype("float32")
         self.rtol = np.array([1e-05]).astype("float64")
         self.atol = np.array([1e-08]).astype("float64")
@@ -35,61 +37,61 @@ class TestAllcloseOp(OpTest):
             'Input': self.input,
             'Other': self.other,
             "Rtol": self.rtol,
-            "Atol": self.atol
+            "Atol": self.atol,
         }
         self.attrs = {'equal_nan': self.equal_nan}
         self.outputs = {
-            'Out':
-            np.array([
-                np.allclose(self.inputs['Input'],
-                            self.inputs['Other'],
-                            rtol=self.rtol,
-                            atol=self.atol,
-                            equal_nan=self.equal_nan)
-            ])
+            'Out': np.array(
+                [
+                    np.allclose(
+                        self.inputs['Input'],
+                        self.inputs['Other'],
+                        rtol=self.rtol,
+                        atol=self.atol,
+                        equal_nan=self.equal_nan,
+                    )
+                ]
+            )
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestAllcloseOpException(TestAllcloseOp):
-
     def test_check_output(self):
-
         def test_rtol_num():
             self.inputs['Rtol'] = np.array([1e-05, 1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([1e-08]).astype("float64")
-            self.check_output(check_eager=True)
+            self.check_output()
 
         self.assertRaises(ValueError, test_rtol_num)
 
         def test_rtol_type():
             self.inputs['Rtol'] = np.array([5]).astype("int32")
             self.inputs['Atol'] = np.array([1e-08]).astype("float64")
-            self.check_output(check_eager=True)
+            self.check_output()
 
         self.assertRaises(ValueError, test_rtol_type)
 
         def test_atol_num():
             self.inputs['Rtol'] = np.array([1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([1e-08, 1e-08]).astype("float64")
-            self.check_output(check_eager=True)
+            self.check_output()
 
         self.assertRaises(ValueError, test_atol_num)
 
         def test_atol_type():
             self.inputs['Rtol'] = np.array([1e-05]).astype("float64")
             self.inputs['Atol'] = np.array([8]).astype("int32")
-            self.check_output(check_eager=True)
+            self.check_output()
 
         self.assertRaises(ValueError, test_atol_type)
 
 
 class TestAllcloseOpSmallNum(TestAllcloseOp):
-
     def set_args(self):
-        self.input = np.array([10000., 1e-08]).astype("float32")
+        self.input = np.array([10000.0, 1e-08]).astype("float32")
         self.other = np.array([10000.1, 1e-09]).astype("float32")
         self.rtol = np.array([1e-05]).astype("float64")
         self.atol = np.array([1e-08]).astype("float64")
@@ -97,7 +99,6 @@ class TestAllcloseOpSmallNum(TestAllcloseOp):
 
 
 class TestAllcloseOpNanFalse(TestAllcloseOp):
-
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
@@ -107,7 +108,6 @@ class TestAllcloseOpNanFalse(TestAllcloseOp):
 
 
 class TestAllcloseOpNanTrue(TestAllcloseOp):
-
     def set_args(self):
         self.input = np.array([1.0, float('nan')]).astype("float32")
         self.other = np.array([1.0, float('nan')]).astype("float32")
@@ -117,7 +117,6 @@ class TestAllcloseOpNanTrue(TestAllcloseOp):
 
 
 class TestAllcloseDygraph(unittest.TestCase):
-
     def test_api_case(self):
         paddle.disable_static()
         x_data = np.random.rand(10, 10)
@@ -131,21 +130,21 @@ class TestAllcloseDygraph(unittest.TestCase):
 
 
 class TestAllcloseError(unittest.TestCase):
-
     def test_input_dtype(self):
-
         def test_x_dtype():
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
-                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float16')
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.fluid.data(name='x', shape=[10, 10], dtype='int32')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='float64')
                 result = paddle.allclose(x, y)
 
         self.assertRaises(TypeError, test_x_dtype)
 
         def test_y_dtype():
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
                 y = paddle.fluid.data(name='y', shape=[10, 10], dtype='int32')
                 result = paddle.allclose(x, y)
@@ -172,8 +171,37 @@ class TestAllcloseError(unittest.TestCase):
         self.assertRaises(TypeError, test_equal_nan)
 
 
-class TestAllcloseOpFloat32(TestAllcloseOp):
+class TestAllcloseOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        x_data = np.random.rand(10, 10).astype('float16')
+        y_data = np.random.rand(10, 10).astype('float16')
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
+            y = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
+            out = paddle.allclose(x, y, rtol=1e-05, atol=1e-08)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
 
+
+class TestAllcloseOpFloat16(TestAllcloseOp):
+    def set_args(self):
+        self.input = np.array([10.1]).astype("float16")
+        self.other = np.array([10]).astype("float16")
+        self.rtol = np.array([0.01]).astype("float64")
+        self.atol = np.array([0]).astype("float64")
+        self.equal_nan = False
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place)
+
+
+class TestAllcloseOpFloat32(TestAllcloseOp):
     def set_args(self):
         self.input = np.array([10.1]).astype("float32")
         self.other = np.array([10]).astype("float32")
@@ -183,7 +211,6 @@ class TestAllcloseOpFloat32(TestAllcloseOp):
 
 
 class TestAllcloseOpFloat64(TestAllcloseOp):
-
     def set_args(self):
         self.input = np.array([10.1]).astype("float64")
         self.other = np.array([10]).astype("float64")
@@ -193,7 +220,6 @@ class TestAllcloseOpFloat64(TestAllcloseOp):
 
 
 class TestAllcloseOpLargeDimInput(TestAllcloseOp):
-
     def set_args(self):
         self.input = np.array(np.zeros([2048, 1024])).astype("float64")
         self.other = np.array(np.zeros([2048, 1024])).astype("float64")

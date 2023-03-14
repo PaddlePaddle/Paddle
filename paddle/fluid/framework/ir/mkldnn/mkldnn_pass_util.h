@@ -22,6 +22,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+using StringPairMap =
+    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+
 static void SaveInfoInTheFirstOp(
     ir::Graph* graph,
     const std::string& flag,
@@ -33,12 +36,39 @@ static void SaveInfoInTheFirstOp(
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
-        op_node->Op()->Type() == "fetch")
+        op_node->Op()->Type() == "fetch" ||
+        op_node->Op()->Type() == "fill_constant")
       continue;
 
     op_node->Op()->SetAttr(flag, true);
     for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
       op_node->Op()->SetAttr(iter->first + suffix, iter->second);
+    }
+    break;
+  }
+}
+
+static void SaveInfoInTheFirstOp(ir::Graph* graph,
+                                 const std::string& flag,
+                                 const std::string& key_suffix,
+                                 const StringPairMap& info_map) {
+  VLOG(3) << "save variables in the first op's attr";
+
+  const std::string suffix = "_" + key_suffix + "_" + flag;
+  for (auto* op_node :
+       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+    if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
+        op_node->Op()->Type() == "fetch" ||
+        op_node->Op()->Type() == "fill_constant")
+      continue;
+
+    op_node->Op()->SetAttr(flag, true);
+    for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
+      auto* data = iter->second.second.data<float>();
+      std::vector<float> data_v(data, data + iter->second.second.numel());
+      op_node->Op()->SetAttr(iter->first + suffix + "_unsigned",
+                             iter->second.first);
+      op_node->Op()->SetAttr(iter->first + suffix, data_v);
     }
     break;
   }
@@ -74,6 +104,75 @@ static void GetInfoFromTheFirstOp(
       }
       break;
     }
+  }
+}
+
+static void GetInfoFromTheFirstOp(ir::Graph* graph,
+                                  const std::string& flag,
+                                  const std::string& key_suffix,
+                                  StringPairMap* info_map) {
+  VLOG(3) << "get variables from the first op's attr";
+  const std::string unsigned_flag = "_unsigned";
+  const std::string suffix = "_" + key_suffix + "_" + flag;
+  const std::string suffix_is_unsigned = suffix + unsigned_flag;
+  for (auto* op_node :
+       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+    if (!op_node->IsOp() || op_node->Op()->Type() == "feed" ||
+        op_node->Op()->Type() == "fetch")
+      continue;
+
+    auto* op_desc = op_node->Op();
+    if (op_desc->GetAttrIfExists<bool>(flag)) {
+      op_desc->RemoveAttr(flag);
+      std::vector<std::string> attr_names = op_desc->AttrNames();
+      for (auto fake_name : attr_names) {
+        auto is_unsigned = false;
+        size_t pos = fake_name.find(suffix_is_unsigned);
+
+        if (pos != std::string::npos) {
+          std::string unsigned_var_name = fake_name;
+          is_unsigned =
+              PADDLE_GET_CONST(bool, op_desc->GetAttr(unsigned_var_name));
+
+          std::string var_name = fake_name.substr(0, pos);
+          size_t unsigned_pos = fake_name.find(unsigned_flag);
+          std::string vector_name =
+              fake_name.erase(unsigned_pos, unsigned_flag.length());
+          auto scales_vector = PADDLE_GET_CONST(std::vector<float>,
+                                                op_desc->GetAttr(vector_name));
+          phi::DenseTensor tensor;
+          const int size = static_cast<int>(scales_vector.size());
+          auto data = tensor.mutable_data<double>({size}, phi::CPUPlace());
+          std::copy(scales_vector.begin(), scales_vector.end(), data);
+          auto pair = std::make_pair(is_unsigned, tensor);
+          info_map->insert(std::make_pair(var_name, pair));
+          op_desc->RemoveAttr(unsigned_var_name);
+          op_desc->RemoveAttr(vector_name);
+        }
+      }
+      break;
+    }
+  }
+}
+
+inline void ConvertToFusedOp(OpDesc* op) {
+  const std::map<std::string, std::string> fused_ops = {
+      {"conv2d", "fused_conv2d"},
+      {"depthwise_conv2d", "fused_conv2d"},
+      {"matmul", "fused_matmul"},
+      {"matmul_v2", "fused_matmul"},
+      {"softplus", "fused_softplus"}};
+
+  if (op->Type() == "matmul") {
+    op->SetAttr("trans_x", op->GetAttr("transpose_X"));
+    op->SetAttr("trans_y", op->GetAttr("transpose_Y"));
+    op->SetAttr("matmul_alpha", op->GetAttr("alpha"));
+  }
+
+  auto it = fused_ops.find(op->Type());
+  if (it != fused_ops.end()) {
+    op->SetType(it->second);
+    VLOG(3) << "Converted " << it->first << " to " << it->second;
   }
 }
 

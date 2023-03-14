@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import six
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("../")
 from op_test import OpTest
 
-import paddle.fluid as fluid
+import paddle
 
 
 class TestSequenceUnpadOp(OpTest):
-
     def init(self):
         self.length = [2, 3, 4]
         self.x_shape = (3, 40)
@@ -35,13 +34,13 @@ class TestSequenceUnpadOp(OpTest):
         x = np.random.random(self.x_shape).astype(self.dtype)
         out_lod = [self.length]
 
-        out = x[0, 0:self.length[0]]
-        for i in six.moves.xrange(1, x.shape[0]):
-            out = np.append(out, x[i, 0:self.length[i]], axis=0)
+        out = x[0, 0 : self.length[0]]
+        for i in range(1, x.shape[0]):
+            out = np.append(out, x[i, 0 : self.length[i]], axis=0)
 
-        out_shape = (sum(self.length), )
+        out_shape = (sum(self.length),)
         if len(self.x_shape) == 2:
-            out_shape = out_shape + (1, )
+            out_shape = out_shape + (1,)
         else:
             out_shape = out_shape + self.x_shape[2:]
 
@@ -61,7 +60,6 @@ class TestSequenceUnpadOp(OpTest):
 
 
 class TestSequenceUnpadOp2(TestSequenceUnpadOp):
-
     def init(self):
         self.length = [2, 3, 4]
         self.x_shape = (3, 5, 4, 3)
@@ -69,7 +67,6 @@ class TestSequenceUnpadOp2(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOp3(TestSequenceUnpadOp):
-
     def init(self):
         self.length = [5, 2, 3, 4]
         self.x_shape = (4, 5, 3, 3, 6)
@@ -77,7 +74,6 @@ class TestSequenceUnpadOp3(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOp4(TestSequenceUnpadOp):
-
     def init(self):
         self.length = [5, 0, 0, 4]
         self.x_shape = (4, 5, 3, 3, 6)
@@ -85,7 +81,6 @@ class TestSequenceUnpadOp4(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOp5(TestSequenceUnpadOp):
-
     def init(self):
         self.length = [0, 4, 3, 0]
         self.x_shape = (4, 5, 3, 3, 6)
@@ -93,34 +88,32 @@ class TestSequenceUnpadOp5(TestSequenceUnpadOp):
 
 
 class TestSequenceUnpadOpError(unittest.TestCase):
-
     def test_error(self):
-
         def test_x_variable():
             x = np.random.random((10, 5)).astype("float64")
-            len = fluid.data(name='length2', shape=[10], dtype='int64')
-            fluid.layers.sequence_pad(x=x, length=len)
+            len = paddle.static.data(name='length2', shape=[10], dtype='int64')
+            paddle.static.nn.sequence_lod.sequence_pad(x=x, length=len)
 
         self.assertRaises(TypeError, test_x_variable)
 
         def test_length_variable():
-            x1 = fluid.data(name='x1', shape=[10, 5], dtype='float32')
+            x1 = paddle.static.data(name='x1', shape=[10, 5], dtype='float32')
             len1 = np.random.random((10)).astype("int64")
-            fluid.layers.sequence_pad(x=x1, length=len1)
+            paddle.static.nn.sequence_lod.sequence_pad(x=x1, length=len1)
 
         self.assertRaises(TypeError, test_length_variable)
 
         def test_x_dtype():
-            x2 = fluid.data(name='x2', shape=[10, 5], dtype='float16')
-            len2 = fluid.data(name='length2', shape=[10], dtype='int64')
-            fluid.layers.sequence_pad(x=x2, length=len2)
+            x2 = paddle.static.data(name='x2', shape=[10, 5], dtype='float16')
+            len2 = paddle.static.data(name='length2', shape=[10], dtype='int64')
+            paddle.static.nn.sequence_lod.sequence_pad(x=x2, length=len2)
 
         self.assertRaises(TypeError, test_x_dtype)
 
         def test_length_dtype():
-            x3 = fluid.data(name='x3', shape=[10, 5], dtype='float64')
-            len3 = fluid.data(name='length3', shape=[10], dtype='int32')
-            fluid.layers.sequence_pad(x=x3, length=len3)
+            x3 = paddle.static.data(name='x3', shape=[10, 5], dtype='float64')
+            len3 = paddle.static.data(name='length3', shape=[10], dtype='int32')
+            paddle.static.nn.sequence_lod.sequence_pad(x=x3, length=len3)
 
         self.assertRaises(TypeError, test_length_dtype)
 

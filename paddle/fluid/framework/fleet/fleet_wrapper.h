@@ -142,12 +142,13 @@ class FleetWrapper {
 
   // Pull sparse variables from server in sync mode
   // pull immediately to tensors
-  void PullSparseToTensorSync(const uint64_t table_id,
-                              int fea_dim,
-                              uint64_t padding_id,
-                              platform::Place place,
-                              std::vector<const LoDTensor*>* inputs,  // NOLINT
-                              std::vector<LoDTensor*>* outputs);      // NOLINT
+  void PullSparseToTensorSync(
+      const uint64_t table_id,
+      int fea_dim,
+      uint64_t padding_id,
+      platform::Place place,
+      std::vector<const phi::DenseTensor*>* inputs,  // NOLINT
+      std::vector<phi::DenseTensor*>* outputs);      // NOLINT
 
   // pull dense variables from server in sync mod
   // Param<in>: scope, table_id, var_names
@@ -256,8 +257,8 @@ class FleetWrapper {
       const std::string& click_name,
       platform::Place place,
       const std::vector<std::string>& input_names,
-      std::vector<const LoDTensor*>* inputs,    // NOLINT
-      std::vector<const LoDTensor*>* outputs);  // NOLINT
+      std::vector<const phi::DenseTensor*>* inputs,    // NOLINT
+      std::vector<const phi::DenseTensor*>* outputs);  // NOLINT
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
@@ -298,7 +299,7 @@ class FleetWrapper {
   // flush all push requests
   void ClientFlush();
   // load from paddle model
-  void LoadFromPaddleModel(Scope& scope,
+  void LoadFromPaddleModel(Scope& scope,             // NOLINT
                            const uint64_t table_id,  // NOLINT
                            std::vector<std::string> var_list,
                            std::string model_path,
@@ -306,7 +307,7 @@ class FleetWrapper {
                            std::vector<std::string> table_var_list,
                            bool load_combine);
 
-  void PrintTableStat(const uint64_t table_id);
+  void PrintTableStat(uint64_t table_id, uint32_t pass_id, size_t threshold);
   void SetFileNumOneShard(const uint64_t table_id, int file_num);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
@@ -380,6 +381,13 @@ class FleetWrapper {
   void Confirm();
   // revert all the updated params in the current pass
   void Revert();
+
+  std::string GetDistDesc() const {
+    CHECK(is_initialized_ == true)
+        << "fleetwrapper should be initialized first!!!";
+    return dist_desc_;
+  }
+
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
     {
@@ -401,6 +409,7 @@ class FleetWrapper {
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
+  std::string dist_desc_;
   static std::mutex ins_mutex;
 #ifdef PADDLE_WITH_PSLIB
   std::map<uint64_t, std::vector<paddle::ps::Region>> _regions;

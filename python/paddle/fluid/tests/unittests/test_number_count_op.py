@@ -12,33 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import op_test
-import numpy as np
 import unittest
+
+import numpy as np
+import op_test
+
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.backward import append_backward
 from paddle.distributed.models.moe import utils
-from paddle.fluid.framework import _test_eager_guard
 
 
 def count(x, upper_num):
-    res = np.zeros((upper_num, )).astype(int)
+    res = np.zeros((upper_num,)).astype(int)
     for i in x.reshape(-1):
         if i >= 0 and i < len(res):
             res[i] += 1
     return res
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNumberCountOpInt64(op_test.OpTest):
-
     def setUp(self):
         upper_num = 16
         self.op_type = "number_count"
@@ -51,14 +46,15 @@ class TestNumberCountOpInt64(op_test.OpTest):
         self.check_output_with_place(paddle.CUDAPlace(0))
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNumberCountAPI(unittest.TestCase):
-
     def setUp(self):
         self.upper_num = 320
-        self.x = np.random.randint(-1, self.upper_num,
-                                   size=(6000, 200)).astype('int64')
+        self.x = np.random.randint(-1, self.upper_num, size=(6000, 200)).astype(
+            'int64'
+        )
         self.out = count(self.x, self.upper_num)
         self.place = paddle.CUDAPlace(0)
 
@@ -71,16 +67,11 @@ class TestNumberCountAPI(unittest.TestCase):
             res = exe.run(feed={'x': self.x}, fetch_list=[out])
             assert np.allclose(res, self.out)
 
-    def func_api_dygraph(self):
+    def test_api_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         out = utils._number_count(x, self.upper_num)
         assert np.allclose(out.numpy(), self.out)
-
-    def test_api_dygraph(self):
-        with _test_eager_guard():
-            self.func_api_dygraph()
-        self.func_api_dygraph()
 
 
 if __name__ == '__main__':

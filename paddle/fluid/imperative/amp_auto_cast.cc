@@ -78,14 +78,31 @@ OpSupportedInfos(const std::string& place,
     }
   }
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto is_custom_place = [&](const std::string& place) {
+    return is_target_place.count(place) && place != "CPU" && place != "GPU" &&
+           place != "XPU";
+  };
+#endif
   auto phi_kernels = phi::KernelFactory::Instance().kernels();
   for (auto& kernel_pair : phi_kernels) {
     auto op_type = phi::TransToFluidOpName(kernel_pair.first);
     for (auto& info_pair : kernel_pair.second) {
-      framework::OpKernelType kernel_type =
-          framework::TransPhiKernelKeyToOpKernelType(info_pair.first);
-      if (is_target_place[query_place](kernel_type.place_) &&
-          kernel_type.data_type_ == dtype && all_ops.count(op_type)) {
+      if (dtype != framework::TransToProtoVarType(info_pair.first.dtype()) ||
+          all_ops.count(op_type) == 0) {
+        continue;
+      }
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      if (info_pair.first.backend() == phi::Backend::CUSTOM) {
+        if (is_custom_place(query_place)) {
+          VLOG(4) << op_type << " " << supported_ops.size();
+          supported_ops.emplace(op_type);
+        }
+        continue;
+      }
+#endif
+      if (is_target_place[query_place](
+              phi::TransToPhiPlace(info_pair.first.backend(), false))) {
         VLOG(4) << op_type << " " << supported_ops.size();
         supported_ops.emplace(op_type);
       }
@@ -181,6 +198,22 @@ AmpOperators::GetMutableAllowOps() {
 std::shared_ptr<std::unordered_set<std::string>>
 AmpOperators::GetMutableBlockOps() {
   return block_ops_;
+}
+
+std::shared_ptr<std::unordered_set<std::string>>
+AmpOperators::GetMutableUnsupportedOps(
+    const paddle::experimental::DataType& data_type) {
+  PADDLE_ENFORCE_EQ(
+      data_type == paddle::experimental::DataType::FLOAT16 ||
+          data_type == paddle::experimental::DataType::BFLOAT16,
+      true,
+      phi::errors::InvalidArgument(
+          "The data_type mismatch. It should be FLOAT16 or BFLOAT16."));
+  if (data_type == paddle::experimental::DataType::FLOAT16) {
+    return unsupported_fp16_ops_;
+  } else {
+    return unsupported_bf16_ops_;
+  }
 }
 
 std::shared_ptr<std::unordered_set<std::string>>
@@ -337,6 +370,11 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
           pair.first != "X") {
         continue;
       }
+      if ((op_type == "max_pool2d_with_index_grad" ||
+           op_type == "max_pool2d_with_index") &&
+          pair.first == "Mask") {
+        continue;
+      }
 
       if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {
         if (pair.first == "LnScale" || pair.first == "LnBias" ||
@@ -353,7 +391,9 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       }
     }
     return new_ins;
-  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type)) {
+  } else if (AmpOperators::Instance().GetMutableBlockOps()->count(op_type) ||
+             AmpOperators::Instance().GetMutableUnsupportedFp16Ops()->count(
+                 op_type)) {
     for (auto& pair : new_ins) {
       VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to float";
@@ -377,6 +417,11 @@ NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||
            op_type == "sync_batch_norm") &&
           pair.first == "X" && dst_type == framework::proto::VarType::FP32) {
+        continue;
+      }
+      if ((op_type == "max_pool2d_with_index_grad" ||
+           op_type == "max_pool2d_with_index") &&
+          pair.first != "Mask" && dst_type == framework::proto::VarType::FP32) {
         continue;
       }
       if ((op_type == "fused_attention" || op_type == "fused_feedforwad") &&
@@ -424,6 +469,11 @@ NameVarMap<VarType> CastPureFp16Inputs(const std::string& op_type,
     if ((op_type == "batch_norm" || op_type == "layer_norm" ||
          op_type == "sync_batch_norm") &&
         pair.first != "X") {
+      continue;
+    }
+    if ((op_type == "max_pool2d_with_index_grad" ||
+         op_type == "max_pool2d_with_index") &&
+        pair.first == "Mask") {
       continue;
     }
     if ((op_type == "fused_attention" || op_type == "fused_feedforward")) {

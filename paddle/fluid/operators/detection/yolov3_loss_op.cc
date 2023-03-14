@@ -21,18 +21,15 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class Yolov3LossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          platform::CPUPlace());
   }
 };
 
@@ -181,11 +178,10 @@ class Yolov3LossOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          platform::CPUPlace());
   }
 };
 
@@ -220,10 +216,10 @@ class Yolov3LossGradMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(yolov3_loss,
                             Yolov3LossInferShapeFunctor,
-                            PD_INFER_META(phi::Yolov3LossInferMeta));
+                            PD_INFER_META(phi::YoloLossInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(yolov3_loss_grad,
                             Yolov3LossGradInferShapeFunctor,
-                            PD_INFER_META(phi::Yolov3LossGradInferMeta));
+                            PD_INFER_META(phi::YoloLossGradInferMeta));
 REGISTER_OPERATOR(yolov3_loss,
                   ops::Yolov3LossOp,
                   ops::Yolov3LossOpMaker,

@@ -16,13 +16,11 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
-
-#include "paddle/fluid/framework/tensor_util.h"
 
 namespace paddle {
 namespace experimental {
@@ -35,7 +33,7 @@ inline bool NeedTransformDataType(const DataType& input,
           target == DataType::COMPLEX64 || target == DataType::COMPLEX128);
 }
 
-inline bool NeedTransformPlace(const paddle::platform::Place& input,
+inline bool NeedTransformPlace(const phi::Place& input,
                                const Backend& target,
                                const TransformFlag& transform_flag) {
   // NOTE(dev): The default value of TransformFlag is True, if it is set with
@@ -54,12 +52,12 @@ inline bool NeedTransformPlace(const paddle::platform::Place& input,
 
 inline bool NeedTransformLayout(const DataLayout& input,
                                 const DataLayout& target,
-                                const paddle::platform::Place& place,
+                                const phi::Place& place,
                                 const TransformFlag& transform_flag) {
   bool ret = transform_flag.need_trans_layout() &&
              (input != DataLayout::ALL_LAYOUT &&
               target != DataLayout::ALL_LAYOUT && input != target);
-  if (platform::is_gpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::GPU) {
     return false;
   }
   return ret;
@@ -67,10 +65,10 @@ inline bool NeedTransformLayout(const DataLayout& input,
 
 inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
                                         DataLayout layout) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
   VLOG(3) << "DataLayoutTransform src_layout: " << tensor.layout()
           << " dst_layout: " << layout;
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
     return phi::TransferLayout(*dev_ctx, tensor, layout);
   } else {
@@ -141,7 +139,7 @@ phi::DenseTensor CastDataType(const phi::GPUContext& dev_ctx,
 
 inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
                                       DataType dtype) {
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
+  auto& pool = phi::DeviceContextPool::Instance();
 
   VLOG(3) << "DataTypeTransform src_dtype: " << tensor.dtype()
           << " dst_dtype: " << dtype;
@@ -149,11 +147,11 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
   DefaultAllocator alloc(tensor.place());
   phi::DenseTensor out(&alloc, {dtype, tensor.dims(), tensor.layout()});
 
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  } else if (platform::is_gpu_place(tensor.place())) {
+  } else if (tensor.place().GetType() == phi::AllocationType::GPU) {
     auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(tensor.place()));
     return CastDataType(*dev_ctx, tensor, dtype);
 #endif
@@ -169,14 +167,10 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   VLOG(3) << "DeviceTransform in, src_place " << tensor.place()
           << " dst_place: " << dst_place;
 
-  DefaultAllocator alloc(dst_place);
-  phi::DenseTensor out(&alloc,
-                       {tensor.dtype(), tensor.dims(), tensor.layout()});
-
+  auto& pool = phi::DeviceContextPool::Instance();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  auto& pool = paddle::platform::DeviceContextPool::Instance();
   // NOTE(yy): TransDataPlace should wait for computation of input.
-  if (!platform::is_cuda_pinned_place(tensor.place())) {
+  if (tensor.place().GetType() != phi::AllocationType::GPUPINNED) {
     pool.Get(tensor.place())->Wait();
     pool.Get(dst_place)->Wait();
   }
@@ -191,7 +185,14 @@ inline phi::DenseTensor TransDataPlace(const phi::DenseTensor& tensor,
   // the transforming is from CPU to GPU and the number of elements is little.
   // But the embarrassment is that this solution this solution makes training
   // slower.
-  paddle::framework::TensorCopySync(tensor, dst_place, &out);
+  phi::DenseTensor out;
+  phi::DeviceContext* dev_ctx;
+  if (dst_place.GetType() != AllocationType::CPU) {
+    dev_ctx = pool.Get(dst_place);
+  } else {
+    dev_ctx = pool.Get(tensor.place());
+  }
+  phi::Copy(*dev_ctx, tensor, dst_place, true, &out);
   return out;
 }
 
@@ -205,7 +206,8 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
   if (NeedTransformLayout(tensor->layout(),
                           target_args_def.layout,
                           tensor->place(),
-                          transform_flag)) {
+                          transform_flag) &&
+      tensor->dims().size() != 1) {
     out = TransDataLayout(out, target_args_def.layout);
     trans_layout = true;
   }
@@ -300,6 +302,47 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     const TransformFlag& transform_flag) {
   if (inputs) {
     return {*PrepareData(*inputs, target_args_def, transform_flag)};
+  }
+  return paddle::none;
+}
+
+std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  const auto& tensor_in = input.impl();
+  if (tensor_in) {
+    phi::SelectedRows& selected_rows =
+        *static_cast<phi::SelectedRows*>(tensor_in.get());
+    if (!transform_flag.NeedTransform() || !selected_rows.initialized() ||
+        (!NeedTransformPlace(
+            selected_rows.place(), target_args_def.backend, transform_flag))) {
+      return std::static_pointer_cast<phi::SelectedRows>(tensor_in);
+    }
+
+    auto dense_out = TransDataPlace(
+        selected_rows.value(), phi::TransToPhiPlace(target_args_def.backend));
+    if (selected_rows.place().GetType() == AllocationType::GPUPINNED) {
+      selected_rows.mutable_value()->ShareBufferWith(dense_out);
+      return std::static_pointer_cast<phi::SelectedRows>(tensor_in);
+    }
+
+    auto out_new = std::make_shared<phi::SelectedRows>(selected_rows.rows(),
+                                                       selected_rows.height());
+    *out_new->mutable_value() = dense_out;
+    return out_new;
+  }
+  PADDLE_THROW(phi::errors::InvalidArgument(
+      "The impl() of input tensor is nullptr, it doesn't support for "
+      "selected_rows data transform now."));
+}
+
+paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
+    const paddle::optional<Tensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag) {
+  if (input) {
+    return *PrepareDataForSelectedRows(*input, target_args_def, transform_flag);
   }
   return paddle::none;
 }

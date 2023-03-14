@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.incubate.data_generator as dg
+import paddle.distributed.fleet as fleet
 
 cont_min_ = [0, -3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 cont_max_ = [20, 600, 100, 50, 64000, 500, 100, 50, 500, 10, 10, 10, 50]
@@ -22,8 +22,7 @@ continuous_range_ = range(1, 14)
 categorical_range_ = range(14, 40)
 
 
-class CriteoDataset(dg.MultiSlotDataGenerator):
-
+class CriteoDataset(fleet.MultiSlotDataGenerator):
     def generate_sample(self, line):
         """
         Read the data line by line and process it as a dictionary
@@ -38,7 +37,8 @@ class CriteoDataset(dg.MultiSlotDataGenerator):
             sparse_feature = []
             for idx in categorical_range_:
                 sparse_feature.append(
-                    [hash(str(idx) + features[idx]) % hash_dim_])
+                    [hash(str(idx) + features[idx]) % hash_dim_]
+                )
             for idx in categorical_range_:
                 feature_name.append("C" + str(idx - 13))
             yield list(zip(feature_name, sparse_feature))

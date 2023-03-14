@@ -21,19 +21,17 @@
 #include <sstream>
 #include <vector>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename T>
 class SamplingIdKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const Tensor* input = context.Input<Tensor>("X");
+    const phi::DenseTensor* input = context.Input<phi::DenseTensor>("X");
     const int batch_size = static_cast<int>(input->dims()[0]);
     const int width = static_cast<int>(input->dims()[1]);
 
@@ -58,7 +56,7 @@ class SamplingIdKernel : public framework::OpKernel<T> {
         static_cast<T>(context.Attr<float>("min")),
         static_cast<T>(context.Attr<float>("max")));
 
-    auto engine = framework::GetCPURandomEngine(seed);
+    auto engine = phi::GetCPURandomEngine(seed);
     std::vector<int64_t> ids(batch_size);
     for (int i = 0; i < batch_size; ++i) {
       T r = dist(*engine);
@@ -75,7 +73,7 @@ class SamplingIdKernel : public framework::OpKernel<T> {
     std::vector<int64_t> out_dim;
     out_dim.push_back(static_cast<int64_t>(batch_size));
 
-    Tensor* output = context.Output<Tensor>("Out");
+    phi::DenseTensor* output = context.Output<phi::DenseTensor>("Out");
     output->Resize(phi::make_ddim(out_dim));
     output->mutable_data<T>(context.GetPlace());
     framework::TensorFromVector(ids, context.device_context(), output);

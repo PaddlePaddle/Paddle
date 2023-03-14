@@ -16,8 +16,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device/npu/npu_op_runner.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -30,11 +30,11 @@ class Reshape2NPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     auto place = ctx.GetPlace();
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     std::vector<int32_t> target_shape_vector;
-    auto shape_tensor_vector = ctx.MultiInput<framework::Tensor>("ShapeTensor");
+    auto shape_tensor_vector = ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
     if (shape_tensor_vector.size() > 0) {
       for (auto* shape_tensor : shape_tensor_vector) {
         PADDLE_ENFORCE_EQ(
@@ -46,14 +46,15 @@ class Reshape2NPUKernel : public framework::OpKernel<T> {
                 "shape is [%d]",
                 shape_tensor->dims().size()));
 
-        target_shape_vector.push_back(GetDataFromTensor<int>(shape_tensor)[0]);
+        target_shape_vector.push_back(
+            phi::GetVectorFromTensor<int>(shape_tensor)[0]);
       }
     } else {
       auto* shape_tensor = ctx.HasInput("Shape")
-                               ? ctx.Input<framework::LoDTensor>("Shape")
+                               ? ctx.Input<phi::DenseTensor>("Shape")
                                : nullptr;
       if (shape_tensor) {
-        target_shape_vector = GetDataFromTensor<int>(shape_tensor);
+        target_shape_vector = phi::GetVectorFromTensor<int>(shape_tensor);
       } else {
         target_shape_vector = ctx.Attr<std::vector<int>>("shape");
         PADDLE_ENFORCE_GT(
@@ -127,8 +128,8 @@ template <typename DeviceContext, typename T>
 class Reshape2GradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto in_dims = d_x->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());

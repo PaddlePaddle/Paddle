@@ -45,10 +45,10 @@ void NormGradKernel(const Context& ctx,
 
   auto* place = ctx.eigen_device();
 
-  auto x_e = paddle::framework::EigenVector<T>::Flatten(*in_x);
-  auto dy_e = paddle::framework::EigenVector<T>::Flatten(*in_dy);
-  auto norm_e = paddle::framework::EigenVector<T>::Flatten(*in_norm);
-  auto dx_e = paddle::framework::EigenVector<T>::Flatten(*out_dx);
+  auto x_e = phi::EigenVector<T>::Flatten(*in_x);
+  auto dy_e = phi::EigenVector<T>::Flatten(*in_dy);
+  auto norm_e = phi::EigenVector<T>::Flatten(*in_norm);
+  auto dx_e = phi::EigenVector<T>::Flatten(*out_dx);
 
   Eigen::DSizes<int, 3> shape(pre, n, post);
   Eigen::DSizes<int, 3> rshape(pre, 1, post);
@@ -60,7 +60,7 @@ void NormGradKernel(const Context& ctx,
   DenseTensor rsum;
   rsum.Resize({pre, post});
   ctx.template Alloc<T>(&rsum);
-  auto sum = paddle::framework::EigenTensor<T, 2>::From(rsum);
+  auto sum = phi::EigenTensor<T, 2>::From(rsum);
 
   Eigen::DSizes<int, 1> rdim(1);
   Eigen::DSizes<int, 3> bcast(1, n, 1);

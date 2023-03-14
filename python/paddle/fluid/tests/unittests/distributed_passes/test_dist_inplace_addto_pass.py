@@ -13,21 +13,22 @@
 # limitations under the License.
 
 import os
+import unittest
+
+import numpy as np
+from dist_pass_test_base import DistPassTestBase
+
 import paddle
 import paddle.distributed.fleet as fleet
-import numpy as np
 import paddle.nn as nn
-from paddle.distributed.passes import new_pass, PassManager
-import unittest
-from dist_pass_test_base import DistPassTestBase
+from paddle.distributed.passes import PassManager, new_pass
 
 paddle.enable_static()
 
 
 class DemoNet(nn.Layer):
-
     def __init__(self):
-        super(DemoNet, self).__init__()
+        super().__init__()
 
         self.conv1 = nn.Conv2D(3, 3, (3, 3), padding=1, data_format="NHWC")
         self.conv2 = nn.Conv2D(3, 3, (3, 3), padding=1, data_format="NHWC")
@@ -43,16 +44,15 @@ class DemoNet(nn.Layer):
 
 
 class TestInplaceAddtoPass(DistPassTestBase):
-
     def init(self):
         self.atol = 0.0
         self.rtol = 0.0
         paddle.fluid.set_flags({"FLAGS_max_inplace_grad_add": 8})
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
-        image = paddle.static.data(shape=[batch_size] + image_shape,
-                                   dtype='float32',
-                                   name='image')
+        image = paddle.static.data(
+            shape=[batch_size] + image_shape, dtype='float32', name='image'
+        )
 
         model = DemoNet()
         pred_out = model(image)
@@ -83,7 +83,8 @@ class TestInplaceAddtoPass(DistPassTestBase):
 
     def apply_passes(self, main_prog, startup_prog):
         pass_manager = PassManager(
-            [new_pass("inplace_addto_op", {"use_cuda": True})])
+            [new_pass("inplace_addto_op", {"use_cuda": True})]
+        )
         pass_manager.apply([main_prog], [startup_prog])
         print(pass_manager.names)
 

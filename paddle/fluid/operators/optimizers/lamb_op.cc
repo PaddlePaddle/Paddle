@@ -29,21 +29,23 @@ class LambOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const {
     if (var_name == "Beta1Pow" || var_name == "Beta2Pow") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     } else {
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -52,10 +54,10 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Param",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input parameter that has to be updated.");
     AddInput("Grad",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input gradient of the parameter.");
     AddInput("LearningRate", "(Tensor) Learning rate.");
     AddInput("Moment1", "(Tensor) Input first moment.");
@@ -63,7 +65,7 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator.");
     AddInput("Beta2Pow", "(Tensor) Input beta2 power accumulator.");
     AddInput("MasterParam",
-             "(LoDTensor, default LoDTensor<float>) "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) "
              "Input master parameter that has to be updated.")
         .AsDispensable();
     AddInput(

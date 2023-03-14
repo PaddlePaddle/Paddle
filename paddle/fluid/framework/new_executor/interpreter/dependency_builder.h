@@ -35,10 +35,18 @@ class DependencyBuilder {
 
   // build op dependencies and return the mapping from op to its downstream-op
   // set
-  const std::map<int, std::set<int>>& Build(
+  const std::map<size_t, std::set<size_t>>& Build(
       const std::vector<Instruction>& instructions);
 
-  bool OpHappensBefore(int prior_op_idx, int posterior_op_idx);
+  const std::map<size_t, std::set<size_t>>& OpDownstreamMap() const;
+
+  bool OpHappensBefore(size_t prior_op_idx, size_t posterior_op_idx) const {
+    PADDLE_ENFORCE_GE(
+        op_happens_before_.size(),
+        0,
+        phi::errors::Unavailable("op_happen_before is not yet built"));
+    return op_happens_before_.at(prior_op_idx).at(posterior_op_idx);
+  }
 
  private:
   void AddDependencyForCoalesceTensorOp();
@@ -47,11 +55,9 @@ class DependencyBuilder {
   void AddDependencyForReadOp();
   void AddDependencyForSequentialRun();
 
-  void AddDownstreamOp(int prior_op_idx, int posterior_op_idx);
+  void AddDownstreamOp(size_t prior_op_idx, size_t posterior_op_idx);
 
   void BuildDownstreamMap();
-
-  void BuildOpHappensBefore();
 
   void ShrinkDownstreamMap();
 
@@ -59,13 +65,21 @@ class DependencyBuilder {
   const std::vector<Instruction>* instructions_;  // not_own
   size_t op_num_;
 
-  // op_happens_before_[i][j] == true means op[i] happens before op[j]
-  std::vector<std::vector<bool>> op_happens_before_;
+  // ops_behind_ is the adjacency list about op to its posterior-ops, that is to
+  // say, op_behind_[i] == {a, b, c} means op[a], op[b] and op[c] depend on
+  // op[i] directly or indirectly. ops_before_ is the revered adjacency list of
+  // ops_behind_.
+  std::vector<std::vector<size_t>> ops_before_;
+  std::vector<std::vector<size_t>> ops_behind_;
 
   // op_downstream_map_ is the mapping from op to its downstream-op set, that is
   // to say, op_downstream_map_[i] == {a, b, c} means op[a], op[b] and op[c]
-  // should be dispatched after op[i]
-  std::map<int, std::set<int>> op_downstream_map_;
+  // depend on op[i] directly.
+  std::map<size_t, std::set<size_t>> op_downstream_map_;
+
+  // op_happens_before_ is a matrix form of ops_before_ and ops_behind_, it is
+  // used to speed up the query.
+  std::vector<std::vector<bool>> op_happens_before_;
 };
 
 }  // namespace interpreter

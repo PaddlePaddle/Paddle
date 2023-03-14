@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
-from paddle.fluid import framework
-from paddle.fluid.backward import gradients_with_optimizer
 import paddle
+from paddle.fluid import core, framework
+from paddle.fluid.backward import gradients_with_optimizer  # noqa: F401
 
 __all__ = []
 
@@ -35,7 +34,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
 
         retain_graph(bool, optional): If False, the graph used to compute grads will be freed. If you would
             like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
-            :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
+            :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
             Defaults to False.
 
     Returns:
@@ -80,18 +79,16 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
         assert in_out_list is not None, "{} should not be None".format(name)
 
         if isinstance(in_out_list, (list, tuple)):
-            assert len(in_out_list) > 0, "{} connot be empyt".format(name)
+            assert len(in_out_list) > 0, "{} connot be empty".format(name)
             for each_var in in_out_list:
                 assert isinstance(
-                    each_var,
-                    (paddle.Tensor, core.eager.Tensor
-                     )), "Elements of {} must be paddle.Tensor".format(name)
+                    each_var, (paddle.Tensor, core.eager.Tensor)
+                ), "Elements of {} must be paddle.Tensor".format(name)
             return in_out_list
         else:
             assert isinstance(
-                in_out_list,
-                (paddle.Tensor, core.eager.Tensor
-                 )), "{} must be Tensor or list of Tensor".format(name)
+                in_out_list, (paddle.Tensor, core.eager.Tensor)
+            ), "{} must be Tensor or list of Tensor".format(name)
             return [in_out_list]
 
     tensors = check_tensors(tensors, "tensors")
@@ -110,19 +107,21 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
                     each_tensor, (paddle.Tensor, core.eager.Tensor)
                 ), "The argument 'grad_tensors' of paddle.autograd.backward is invalid, it can be 'None', 'paddle.Tensor' or 'list[None/paddle.Tensor]'."
     else:
-        if framework._in_eager_mode_:
+        if framework.global_var._in_eager_mode_:
             grad_tensors = []
         else:
             grad_tensors = [None] * len(tensors)
 
     if len(grad_tensors) > 0:
         assert len(tensors) == len(
-            grad_tensors), "The length of grad_tensors must be equal to tensors"
+            grad_tensors
+        ), "The length of grad_tensors must be equal to tensors"
 
     assert isinstance(retain_graph, bool), "retain_graph must be True or False"
 
-    if framework._in_eager_mode_:
+    if framework.global_var._in_eager_mode_:
         core.eager.run_backward(tensors, grad_tensors, retain_graph)
     else:
-        core.dygraph_run_backward(tensors, grad_tensors, retain_graph,
-                                  framework._dygraph_tracer())
+        core.dygraph_run_backward(
+            tensors, grad_tensors, retain_graph, framework._dygraph_tracer()
+        )

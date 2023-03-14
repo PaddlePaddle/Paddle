@@ -30,9 +30,6 @@ class OpBase;
 }  // namespace imperative
 }  // namespace paddle
 
-using LoDTensor = paddle::framework::LoDTensor;
-using Tensor = paddle::framework::Tensor;
-
 namespace paddle {
 namespace operators {
 
@@ -64,9 +61,9 @@ class CopyCrossScopeOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(
         id_var,
         platform::errors::NotFound("No variable with name %s found.", id_name));
-    auto id_tensor = id_var->GetMutable<LoDTensor>();
+    auto id_tensor = id_var->GetMutable<phi::DenseTensor>();
     auto it = scope.kids().begin();
-    framework::Tensor cpu_id_tensor;
+    phi::DenseTensor cpu_id_tensor;
     paddle::framework::TensorCopySync(
         *id_tensor, platform::CPUPlace(), &cpu_id_tensor);
     auto id_value = cpu_id_tensor.data<int64_t>();
@@ -88,8 +85,8 @@ class CopyCrossScopeOp : public framework::OperatorBase {
             platform::errors::NotFound(
                 "No variable with name %s found in destination scope.",
                 x_name));
-        auto dst_tensor = dst_var->GetMutable<LoDTensor>();
-        auto main_tensor = main_var->GetMutable<LoDTensor>();
+        auto dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
+        auto main_tensor = main_var->GetMutable<phi::DenseTensor>();
         paddle::framework::TensorCopySync(
             *dst_tensor, main_tensor->place(), main_tensor);
       }
@@ -109,8 +106,8 @@ class CopyCrossScopeOp : public framework::OperatorBase {
         dst_var,
         platform::errors::NotFound(
             "No variable with name %s found in destination scope.", x_name));
-    auto src_tensor = source_var->GetMutable<LoDTensor>();
-    auto dst_tensor = dst_var->GetMutable<LoDTensor>();
+    auto src_tensor = source_var->GetMutable<phi::DenseTensor>();
+    auto dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
     paddle::framework::TensorCopySync(
         *src_tensor, dst_tensor->place(), dst_tensor);
 
@@ -120,7 +117,7 @@ class CopyCrossScopeOp : public framework::OperatorBase {
           main_var,
           platform::errors::NotFound(
               "No variable with name %s found in destination scope.", x_name));
-      auto main_tensor = main_var->GetMutable<LoDTensor>();
+      auto main_tensor = main_var->GetMutable<phi::DenseTensor>();
       paddle::framework::TensorCopySync(
           *dst_tensor, main_tensor->place(), main_tensor);
     }

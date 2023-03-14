@@ -34,7 +34,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/phi/kernels/funcs/fast_divmod.h"
 
 namespace paddle {
 namespace operators {
@@ -100,11 +100,10 @@ void LaunchBiasAddFwKernel(const phi::GPUContext& ctx,
                            const T* in0,
                            const T* in1,
                            T* out) {
-  int in_vec_size =
-      std::min(phi::GetVectorizedSize<T>(in0), phi::GetVectorizedSize<T>(in1));
-  int out_vec_size = std::min(4, phi::GetVectorizedSize<T>(out));
-  int vec_size = std::min(out_vec_size, in_vec_size);
-
+  uint64_t addr =
+      (reinterpret_cast<uint64_t>(in0) | reinterpret_cast<uint64_t>(in1) |
+       reinterpret_cast<uint64_t>(out));
+  int vec_size = phi::GetVectorizedSize<T>(reinterpret_cast<T*>(addr));
   int numel = m * n;
   const int threads = 256;
   const int data_per_thread = 1;
@@ -324,7 +323,7 @@ void Launch2DColumnReduce(const phi::GPUContext& dev_ctx,
     BiasAddBwSinglePassKernel<T>
         <<<grid, block, 0, stream>>>(d_out, reduce_num, left_num, d_bias);
   } else {
-    framework::Tensor tmp_sum;
+    phi::DenseTensor tmp_sum;
     tmp_sum.Resize({grid.y, left_num});
     dev_ctx.template Alloc<ReduceParamType<T>>(
         &tmp_sum, tmp_sum.numel() * sizeof(ReduceParamType<T>));

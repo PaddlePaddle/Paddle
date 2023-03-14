@@ -5,7 +5,7 @@ cc_library(
 cc_library(
   var_helper
   SRCS var_helper.cc
-  DEPS tensor selected_rows)
+  DEPS tensor selected_rows extended_tensor)
 if(WITH_XPU)
   cc_library(
     prepared_operator
@@ -23,7 +23,8 @@ if(WITH_XPU)
          scalar
          int_array
          var_helper
-         profiler)
+         profiler
+         place)
 else()
   cc_library(
     prepared_operator
@@ -40,7 +41,8 @@ else()
          scalar
          int_array
          var_helper
-         profiler)
+         profiler
+         place)
 endif()
 cc_library(
   layer

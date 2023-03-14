@@ -12,32 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-import numpy as np
-
 import paddle
-from ..layer.conv import Conv1DTranspose, Conv2DTranspose, Conv3DTranspose
-from ..layer.common import Linear
+
 from .. import functional as F
+from ..layer.common import Linear
+from ..layer.conv import Conv1DTranspose, Conv2DTranspose, Conv3DTranspose
 
 __all__ = []
 
 
-def normal_(x, mean=0., std=1.):
+def normal_(x, mean=0.0, std=1.0):
     temp_value = paddle.normal(mean, std, shape=x.shape)
     x.set_value(temp_value)
     return x
 
 
-class SpectralNorm(object):
-
+class SpectralNorm:
     def __init__(self, name='weight', n_power_iterations=1, dim=0, eps=1e-12):
         self.name = name
         self.dim = dim
         if n_power_iterations <= 0:
             raise ValueError(
                 'Expected n_power_iterations to be positive, but '
-                'got n_power_iterations={}'.format(n_power_iterations))
+                'got n_power_iterations={}'.format(n_power_iterations)
+            )
         self.n_power_iterations = n_power_iterations
         self.eps = eps
 
@@ -46,8 +44,9 @@ class SpectralNorm(object):
         if self.dim != 0:
             # transpose dim to front
             weight_mat = weight_mat.transpose(
-                [self.dim] +
-                [d for d in range(weight_mat.dim()) if d != self.dim])
+                [self.dim]
+                + [d for d in range(weight_mat.dim()) if d != self.dim]
+            )
 
         height = weight_mat.shape[0]
 
@@ -64,20 +63,24 @@ class SpectralNorm(object):
                 for _ in range(self.n_power_iterations):
                     v.set_value(
                         F.normalize(
-                            paddle.matmul(weight_mat,
-                                          u,
-                                          transpose_x=True,
-                                          transpose_y=False),
+                            paddle.matmul(
+                                weight_mat,
+                                u,
+                                transpose_x=True,
+                                transpose_y=False,
+                            ),
                             axis=0,
                             epsilon=self.eps,
-                        ))
+                        )
+                    )
 
                     u.set_value(
                         F.normalize(
                             paddle.matmul(weight_mat, v),
                             axis=0,
                             epsilon=self.eps,
-                        ))
+                        )
+                    )
                 if self.n_power_iterations > 0:
                     u = u.clone()
                     v = v.clone()
@@ -87,15 +90,20 @@ class SpectralNorm(object):
         return weight
 
     def __call__(self, layer, inputs):
-        setattr(layer, self.name,
-                self.compute_weight(layer, do_power_iteration=layer.training))
+        setattr(
+            layer,
+            self.name,
+            self.compute_weight(layer, do_power_iteration=layer.training),
+        )
 
     @staticmethod
     def apply(layer, name, n_power_iterations, dim, eps):
         for k, hook in layer._forward_pre_hooks.items():
             if isinstance(hook, SpectralNorm) and hook.name == name:
-                raise RuntimeError("Cannot register two spectral_norm hooks on "
-                                   "the same parameter {}".format(name))
+                raise RuntimeError(
+                    "Cannot register two spectral_norm hooks on "
+                    "the same parameter {}".format(name)
+                )
 
         fn = SpectralNorm(name, n_power_iterations, dim, eps)
         weight = layer._parameters[name]
@@ -106,9 +114,9 @@ class SpectralNorm(object):
 
             # randomly initialize u and v
             u = layer.create_parameter([h])
-            u = normal_(u, 0., 1.)
+            u = normal_(u, 0.0, 1.0)
             v = layer.create_parameter([w])
-            v = normal_(v, 0., 1.)
+            v = normal_(v, 0.0, 1.0)
             u = F.normalize(u, axis=0, epsilon=fn.eps)
             v = F.normalize(v, axis=0, epsilon=fn.eps)
 
@@ -127,13 +135,11 @@ class SpectralNorm(object):
         return fn
 
 
-def spectral_norm(layer,
-                  name='weight',
-                  n_power_iterations=1,
-                  eps=1e-12,
-                  dim=None):
+def spectral_norm(
+    layer, name='weight', n_power_iterations=1, eps=1e-12, dim=None
+):
     r"""
-    This spectral_norm layer applies spectral normalization to a parameter according to the
+    Applies spectral normalization to a parameter according to the
     following Calculation:
 
     Step 1:
@@ -171,7 +177,7 @@ def spectral_norm(layer,
         dim(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: None.
 
     Returns:
-        The original layer with the spectral norm hook
+        Layer, the original layer with the spectral norm hook.
 
     Examples:
        .. code-block:: python
@@ -201,8 +207,8 @@ def spectral_norm(layer,
 
     if dim is None:
         if isinstance(
-                layer,
-            (Conv1DTranspose, Conv2DTranspose, Conv3DTranspose, Linear)):
+            layer, (Conv1DTranspose, Conv2DTranspose, Conv3DTranspose, Linear)
+        ):
             dim = 1
         else:
             dim = 0

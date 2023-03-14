@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
@@ -29,14 +28,13 @@ paddle.enable_static()
 
 
 class TestSyncBatchNormOp(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_identity(self, col_type="identity"):
-        self.check_with_place("sync_batch_norm_op_mlu.py",
-                              col_type,
-                              check_error_log=True)
+        self.check_with_place(
+            "sync_batch_norm_op_mlu.py", col_type, check_error_log=True
+        )
 
 
 if __name__ == '__main__':

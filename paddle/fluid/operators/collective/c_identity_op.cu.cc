@@ -22,4 +22,7 @@ REGISTER_OP_CUDA_KERNEL(c_identity,
                         ops::CIdentityOpKernel<double>,
                         ops::CIdentityOpKernel<int>,
                         ops::CIdentityOpKernel<int64_t>,
+#if NCCL_VERSION_CODE >= 21000
+                        ops::CIdentityOpKernel<plat::bfloat16>,
+#endif
                         ops::CIdentityOpKernel<plat::float16>);

@@ -28,6 +28,11 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
 #endif
 
+#ifdef PADDLE_WITH_PSLIB
+#include "downpour_accessor.h"  // NOLINT
+#include "pslib.h"              // NOLINT
+#endif
+
 namespace paddle {
 namespace framework {
 #define MF_DIM 8
@@ -65,29 +70,35 @@ class CommonFeatureValueAccessor {
     __host__ __device__ size_t Size() {
       return TYPEALIGN(8, Dim() * sizeof(float));
     }  // cpu_ptr:uint64=2float
-    __host__ __device__ int EmbedDim() { return embed_sgd_dim; }
-    __host__ __device__ int EmbedXDim() { return embedx_sgd_dim; }
-    __host__ __device__ int EmbedWDim() { return embedx_dim; }
-    __host__ __device__ int CpuPtrIndex() { return 0; }  // cpuprt uint64
-    __host__ __device__ int DeltaScoreIndex() { return CpuPtrIndex() + 2; }
-    __host__ __device__ int ShowIndex() { return DeltaScoreIndex() + 1; }
-    __host__ __device__ int ClickIndex() { return ShowIndex() + 1; }
-    __host__ __device__ int EmbedWIndex() { return ClickIndex() + 1; }
-    __host__ __device__ int EmbedG2SumIndex() { return EmbedWIndex() + 1; }
-    __host__ __device__ int SlotIndex() {
+    __host__ __device__ int EmbedDim() const { return embed_sgd_dim; }
+    __host__ __device__ int EmbedXDim() const { return embedx_sgd_dim; }
+    __host__ __device__ int EmbedWDim() const { return embedx_dim; }
+    __host__ __device__ int CpuPtrIndex() const { return 0; }  // cpuprt uint64
+    __host__ __device__ int DeltaScoreIndex() const {
+      return CpuPtrIndex() + 2;
+    }
+    __host__ __device__ int ShowIndex() const { return DeltaScoreIndex() + 1; }
+    __host__ __device__ int ClickIndex() const { return ShowIndex() + 1; }
+    __host__ __device__ int EmbedWIndex() const { return ClickIndex() + 1; }
+    __host__ __device__ int EmbedG2SumIndex() const {
+      return EmbedWIndex() + 1;
+    }
+    __host__ __device__ int SlotIndex() const {
       return EmbedG2SumIndex() + embed_sgd_dim;
     }
-    __host__ __device__ int MfDimIndex() { return SlotIndex() + 1; }
-    __host__ __device__ int MfSizeIndex() {
+    __host__ __device__ int MfDimIndex() const { return SlotIndex() + 1; }
+    __host__ __device__ int MfSizeIndex() const {
       return MfDimIndex() + 1;
     }  // actual mf size (ex. 0)
-    __host__ __device__ int EmbedxG2SumIndex() { return MfSizeIndex() + 1; }
-    __host__ __device__ int EmbedxWIndex() {
+    __host__ __device__ int EmbedxG2SumIndex() const {
+      return MfSizeIndex() + 1;
+    }
+    __host__ __device__ int EmbedxWIndex() const {
       return EmbedxG2SumIndex() + embedx_sgd_dim;
     }
 
     // 根据mf_dim计算的总长度
-    __host__ __device__ int Dim(int& mf_dim) {
+    __host__ __device__ int Dim(int mf_dim) {
       int tmp_embedx_sgd_dim = 1;
       if (optimizer_type_ == 3) {  // adam
         tmp_embedx_sgd_dim = mf_dim * 2 + 2;
@@ -98,12 +109,12 @@ class CommonFeatureValueAccessor {
     }
 
     // 根据mf_dim 计算的总byte数
-    __host__ __device__ size_t Size(int& mf_dim) {
+    __host__ __device__ size_t Size(int mf_dim) {
       return TYPEALIGN(8, Dim(mf_dim) * sizeof(float));  // cpu_ptr:2float
     }
 
     // 根据mf_dim 计算的 mf_size byte数
-    __host__ __device__ size_t MFSize(int& mf_dim) {
+    __host__ __device__ size_t MFSize(int mf_dim) {
       int tmp_embedx_sgd_dim = 1;
       if (optimizer_type_ == 3) {  // adam
         tmp_embedx_sgd_dim = mf_dim * 2 + 2;
@@ -117,9 +128,9 @@ class CommonFeatureValueAccessor {
     __host__ __device__ int EmbedxWOffsetIndex(float* val) {
       // has mf
       int tmp_embedx_sgd_dim = 1;
-      if (int(MfSize(val)) > 0) {
+      if (static_cast<int>(MfSize(val)) > 0) {
         if (optimizer_type_ == 3) {  // adam
-          tmp_embedx_sgd_dim = int(MfDim(val)) * 2 + 2;
+          tmp_embedx_sgd_dim = MfDim(val) * 2 + 2;
         } else if (optimizer_type_ == 4) {  // shared_adam
           tmp_embedx_sgd_dim = 4;
         }
@@ -166,12 +177,10 @@ class CommonFeatureValueAccessor {
       float mf_size
       std::vector<float> embedx_w;
     */
-    __host__ __device__ static int Dim(int embedx_dim) {
-      return 4 + embedx_dim;
-    }
+    __host__ __device__ int Dim(int embedx_dim) { return 4 + embedx_dim; }
     __host__ __device__ int DimSize(size_t dim) { return sizeof(float); }
     __host__ __device__ int Size(int embedx_dim) {
-      return TYPEALIGN(8, Dim(embedx_dim) * sizeof(float));
+      return Dim(embedx_dim) * sizeof(float);
     }
     __host__ __device__ int ShowIndex() { return 0; }
     __host__ __device__ int ClickIndex() { return 1; }
@@ -192,46 +201,46 @@ class CommonFeatureValueAccessor {
        std::vector<float> embedx_g;
        */
 
-    __host__ __device__ int Dim(int embedx_dim) { return 5 + embedx_dim; }
+    __host__ __device__ int Dim(int embedx_dim) const { return 5 + embedx_dim; }
 
-    __host__ __device__ int DimSize(int dim, int embedx_dim) {
+    __host__ __device__ int DimSize(int dim, int embedx_dim) const {
       return sizeof(float);
     }
-    __host__ __device__ int Size(int embedx_dim) {
-      return TYPEALIGN(8, Dim(embedx_dim) * sizeof(float));
+    __host__ __device__ int Size(int embedx_dim) const {
+      return Dim(embedx_dim) * sizeof(float);
     }
-    __host__ __device__ int SlotIndex() { return 0; }
-    __host__ __device__ int ShowIndex() {
+    __host__ __device__ int SlotIndex() const { return 0; }
+    __host__ __device__ int ShowIndex() const {
       return CommonPushValue::SlotIndex() + 1;
     }
-    __host__ __device__ int ClickIndex() {
+    __host__ __device__ int ClickIndex() const {
       return CommonPushValue::ShowIndex() + 1;
     }
-    __host__ __device__ int MfDimIndex() {
+    __host__ __device__ int MfDimIndex() const {
       return CommonPushValue::ClickIndex() + 1;
     }
-    __host__ __device__ int EmbedGIndex() {
+    __host__ __device__ int EmbedGIndex() const {
       return CommonPushValue::MfDimIndex() + 1;
     }
-    __host__ __device__ int EmbedxGIndex() {
+    __host__ __device__ int EmbedxGIndex() const {
       return CommonPushValue::EmbedGIndex() + 1;
     }
-    __host__ __device__ float& Slot(float* val) {
+    __host__ __device__ float& Slot(float* val) const {
       return val[CommonPushValue::SlotIndex()];
     }
-    __host__ __device__ float& Show(float* val) {
+    __host__ __device__ float& Show(float* val) const {
       return val[CommonPushValue::ShowIndex()];
     }
-    __host__ __device__ float& Click(float* val) {
+    __host__ __device__ float& Click(float* val) const {
       return val[CommonPushValue::ClickIndex()];
     }
-    __host__ __device__ float& MfDim(float* val) {
+    __host__ __device__ float& MfDim(float* val) const {
       return val[CommonPushValue::MfDimIndex()];
     }
-    __host__ __device__ float& EmbedG(float* val) {
+    __host__ __device__ float& EmbedG(float* val) const {
       return val[CommonPushValue::EmbedGIndex()];
     }
-    __host__ __device__ float* EmbedxG(float* val) {
+    __host__ __device__ float* EmbedxG(float* val) const {
       return val + CommonPushValue::EmbedxGIndex();
     }
   };
@@ -242,10 +251,10 @@ class CommonFeatureValueAccessor {
   __host__ int Initialize() {
     int optimizer_type = (_config.find("optimizer_type") == _config.end())
                              ? 1
-                             : int(_config["optimizer_type"]);
+                             : _config["optimizer_type"];
     int sparse_embedx_dim = (_config.find("embedx_dim") == _config.end())
                                 ? 8
-                                : int(_config["embedx_dim"]);
+                                : _config["embedx_dim"];
     if (optimizer_type == 3) {  // adam
       common_feature_value.embed_sgd_dim = 4;
       common_feature_value.embedx_sgd_dim = sparse_embedx_dim * 2 + 2;
@@ -262,19 +271,19 @@ class CommonFeatureValueAccessor {
     return 0;
   }
 
-  __host__ int Configure(std::unordered_map<std::string, float>& config) {
+  __host__ int Configure(const std::unordered_map<std::string, float>& config) {
     _config = config;
     Initialize();
     return 0;
   }
 
+#ifdef PADDLE_WITH_PSCORE
   // // build阶段从cpu_val赋值给gpu_val
   __host__ void BuildFill(
       float* gpu_val,
       void* cpu,
       paddle::distributed::ValueAccessor* cpu_table_accessor,
       int mf_dim) {
-#ifdef PADDLE_WITH_PSCORE
     paddle::distributed::CtrDymfAccessor* cpu_accessor =
         dynamic_cast<paddle::distributed::CtrDymfAccessor*>(cpu_table_accessor);
     paddle::distributed::FixedFeatureValue* cpu_ptr =
@@ -298,35 +307,98 @@ class CommonFeatureValueAccessor {
     }
     *(reinterpret_cast<uint64_t*>(
         gpu_val + common_feature_value.CpuPtrIndex())) = (uint64_t)(cpu);
-    cpu_val[cpu_accessor->common_feature_value.MfDimIndex()] = float(mf_dim);
+    cpu_val[cpu_accessor->common_feature_value.MfDimIndex()] =
+        static_cast<float>(mf_dim);
     gpu_val[common_feature_value.MfDimIndex()] = mf_dim;
     if (cpu_dim > cpu_accessor->GetAccessorInfo().dim -
                       cpu_accessor->GetAccessorInfo().mf_size / sizeof(float)) {
       gpu_val[common_feature_value.MfSizeIndex()] =
           common_feature_value.MFSize(mf_dim) / sizeof(float);
 
-      for (int x = 0;
-           x < int(common_feature_value.MFSize(mf_dim) / sizeof(float));
+      for (size_t x = 0;
+           x < (common_feature_value.MFSize(mf_dim) / sizeof(float));
            x++) {
         gpu_val[common_feature_value.EmbedxG2SumIndex() + x] =
             cpu_val[cpu_accessor->common_feature_value.EmbedxG2SumIndex() + x];
       }
     } else {
       gpu_val[common_feature_value.MfSizeIndex()] = 0;
-      for (int x = common_feature_value.EmbedxG2SumIndex();
-           x < int(common_feature_value.Size(mf_dim) / sizeof(float));
+      for (size_t x = common_feature_value.EmbedxG2SumIndex();
+           x < (common_feature_value.Size(mf_dim) / sizeof(float));
            x++) {
         gpu_val[x] = 0;
       }
     }
-#endif
   }
+#endif
 
+#ifdef PADDLE_WITH_PSLIB
+  // build阶段从cpu_val赋值给gpu_val
+  template <typename ShowClickType>
+  __host__ void BuildFill(float* gpu_val,
+                          void* _cpu_val,
+                          ::paddle::ps::ValueAccessor* _cpu_accessor,
+                          int mf_dim) {
+    auto* cpu_accessor =
+        dynamic_cast<::paddle::ps::DownpourCtrDymfTplAccessor<ShowClickType>*>(
+            _cpu_accessor);
+    auto* cpu_val =
+        reinterpret_cast<::paddle::ps::DownpourFixedFeatureValue*>(_cpu_val);
+    float* ptr_val = cpu_val->data();
+    size_t cpu_dim = cpu_val->size();
+
+    gpu_val[common_feature_value.DeltaScoreIndex()] =
+        ptr_val[cpu_accessor->get_delta_score_index()];
+    gpu_val[common_feature_value.ShowIndex()] = cpu_accessor->get_show(ptr_val);
+    gpu_val[common_feature_value.ClickIndex()] =
+        cpu_accessor->get_click(ptr_val);
+
+    gpu_val[common_feature_value.SlotIndex()] =
+        ptr_val[cpu_accessor->get_slot_index()];
+
+    // lr
+    gpu_val[common_feature_value.EmbedWIndex()] =
+        ptr_val[cpu_accessor->get_embed_w_index()];
+
+    // cpu_ptr
+    *(reinterpret_cast<uint64_t*>(
+        gpu_val + common_feature_value.CpuPtrIndex())) = (uint64_t)(cpu_val);
+
+    // lr_g2sum
+    // for dymf && adagrad, embed_dim = 1
+    for (int i = 0; i < common_feature_value.EmbedDim(); i++) {
+      gpu_val[common_feature_value.EmbedG2SumIndex() + i] =
+          ptr_val[cpu_accessor->get_embed_g2sum_index() + i];
+    }
+
+    ptr_val[cpu_accessor->get_mf_dim_index()] = static_cast<float>(mf_dim);
+    gpu_val[common_feature_value.MfDimIndex()] = static_cast<float>(mf_dim);
+    constexpr int n = 2 * (sizeof(ShowClickType) / sizeof(float) - 1);
+
+    if (cpu_dim > 8 + n) {
+      gpu_val[common_feature_value.MfSizeIndex()] =
+          common_feature_value.MFSize(mf_dim) / sizeof(float);
+
+      for (int x = 0; x < static_cast<int>(common_feature_value.MFSize(mf_dim) /
+                                           sizeof(float));
+           x++) {
+        gpu_val[common_feature_value.EmbedxG2SumIndex() + x] =
+            ptr_val[8 + n + x];
+      }
+    } else {
+      gpu_val[common_feature_value.MfSizeIndex()] = 0;
+      for (int i = 0; i < mf_dim + common_feature_value.EmbedXDim(); i++) {
+        gpu_val[common_feature_value.EmbedxG2SumIndex() + i] = 0;
+      }
+    }
+  }
+#endif
+
+#ifdef PADDLE_WITH_PSCORE
   // dump_to_cpu阶段从gpu_val赋值给cpu_val
   __host__ void DumpFill(float* gpu_val,
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
                          int mf_dim) {
-#ifdef PADDLE_WITH_PSCORE
     paddle::distributed::CtrDymfAccessor* cpu_accessor =
         dynamic_cast<paddle::distributed::CtrDymfAccessor*>(cpu_table_accessor);
 
@@ -335,9 +407,10 @@ class CommonFeatureValueAccessor {
             gpu_val + common_feature_value.CpuPtrIndex())));
     size_t downpour_value_size = downpour_value->size();
     if (gpu_val[common_feature_value.MfSizeIndex()] > 0 &&
-        downpour_value_size == (cpu_accessor->GetAccessorInfo().dim -
-                                int(cpu_accessor->GetAccessorInfo().mf_size /
-                                    sizeof(float)))) {  // cpu_accessor
+        downpour_value_size ==
+            (cpu_accessor->GetAccessorInfo().dim -
+             static_cast<int>(cpu_accessor->GetAccessorInfo().mf_size /
+                              sizeof(float)))) {  // cpu_accessor
       downpour_value->resize(cpu_accessor->common_feature_value.Dim(mf_dim));
     }
     float* cpu_val = downpour_value->data();
@@ -358,15 +431,71 @@ class CommonFeatureValueAccessor {
     }
 
     if (gpu_val[common_feature_value.MfSizeIndex()] > 0) {
-      for (int x = 0;
-           x < int(common_feature_value.MFSize(mf_dim) / sizeof(float));
+      for (size_t x = 0;
+           x < (common_feature_value.MFSize(mf_dim) / sizeof(float));
            x++) {
         cpu_val[cpu_accessor->common_feature_value.EmbedxG2SumIndex() + x] =
             gpu_val[common_feature_value.EmbedxG2SumIndex() + x];
       }
     }
-#endif
   }
+#endif
+
+#ifdef PADDLE_WITH_PSLIB
+  // dump_to_cpu阶段从gpu_val赋值给cpu_val
+  // gpu_val is firstly copied to mem
+  // so gpu_val is in mem, not in hbm
+  template <typename ShowClickType>
+  __host__ void DumpFill(float* gpu_val,
+                         ::paddle::ps::ValueAccessor* _cpu_accessor,
+                         int mf_dim) {
+    auto* cpu_accessor =
+        dynamic_cast<::paddle::ps::DownpourCtrDymfTplAccessor<ShowClickType>*>(
+            _cpu_accessor);
+    uint64_t cpu_addr = *reinterpret_cast<uint64_t*>(
+        gpu_val + common_feature_value.CpuPtrIndex());
+    auto* downpour_value = (::paddle::ps::DownpourFixedFeatureValue*)cpu_addr;
+    int downpour_value_size = downpour_value->size();
+    constexpr int n = 2 * (sizeof(ShowClickType) / sizeof(float) - 1);
+    if (static_cast<int>(gpu_val[common_feature_value.MfSizeIndex()]) > 0 &&
+        downpour_value_size == 8 + n) {
+      int mf_size =
+          common_feature_value.MFSize(mf_dim) /
+          sizeof(
+              float);  // mf_size = gpu_val[common_feature_value.MfSizeIndex()];
+      downpour_value->resize(downpour_value_size + mf_size);
+    }
+    float* cpu_val = downpour_value->data();
+
+    cpu_val[cpu_accessor->get_delta_score_index()] =
+        gpu_val[common_feature_value.DeltaScoreIndex()];
+    *reinterpret_cast<ShowClickType*>(cpu_val +
+                                      cpu_accessor->get_show_index()) =
+        (ShowClickType)gpu_val[common_feature_value.ShowIndex()];
+    *reinterpret_cast<ShowClickType*>(cpu_val +
+                                      cpu_accessor->get_click_index()) =
+        (ShowClickType)gpu_val[common_feature_value.ClickIndex()];
+    cpu_val[cpu_accessor->get_embed_w_index()] =
+        gpu_val[common_feature_value.EmbedWIndex()];
+    cpu_val[cpu_accessor->get_slot_index()] =
+        gpu_val[common_feature_value.SlotIndex()];
+
+    // for dymf && adagrad, embed_dim = 1
+    for (int i = 0; i < common_feature_value.EmbedDim(); i++) {
+      cpu_val[cpu_accessor->get_embed_g2sum_index() + i] =
+          gpu_val[common_feature_value.EmbedG2SumIndex() + i];
+    }
+
+    if (static_cast<int>(gpu_val[common_feature_value.MfSizeIndex()]) > 0) {
+      for (int x = 0; x < static_cast<int>(common_feature_value.MFSize(mf_dim) /
+                                           sizeof(float));
+           x++) {
+        cpu_val[x + 8 + n] =
+            gpu_val[common_feature_value.EmbedxG2SumIndex() + x];
+      }
+    }
+  }
+#endif
 
   // dy_mf_fill_dvals_kernel 阶段 gpukernel
   // 中从src_val赋值给dest_val
@@ -395,8 +524,8 @@ class CommonFeatureValueAccessor {
     dest_val[common_feature_value.MfSizeIndex()] =
         src_val[common_feature_value.MfSizeIndex()];
 
-    for (int x = common_feature_value.EmbedxG2SumIndex();
-         x < int(common_feature_value.Size(mf_dim) / sizeof(float));
+    for (size_t x = common_feature_value.EmbedxG2SumIndex();
+         x < (common_feature_value.Size(mf_dim) / sizeof(float));
          x++) {
       dest_val[x] = src_val[x];
     }
@@ -412,20 +541,32 @@ class CommonFeatureValueAccessor {
     dest_val[common_pull_value.EmbedWIndex()] =
         src_val[common_feature_value.EmbedWIndex()];
 
-    int mf_size = int(src_val[common_feature_value.MfSizeIndex()]);
+    int mf_size = static_cast<int>(src_val[common_feature_value.MfSizeIndex()]);
     if (mf_size == 0) {
       dest_val[common_pull_value.MfSizeIndex()] = 0;
       return;
     }
     // set pull value real dim size
-    int mf_dim = int(src_val[common_feature_value.MfDimIndex()]);
+    int mf_dim = static_cast<int>(src_val[common_feature_value.MfDimIndex()]);
     dest_val[common_pull_value.MfSizeIndex()] = mf_dim;
+    // check
+    if (mf_dim > mf_size) {
+      printf("mf_dim[%d] <= mf_size[%d]", mf_dim, mf_size);
+      return;
+    }
 
     int embedx_off = common_pull_value.EmbedxWIndex();
     int value_off = common_feature_value.EmbedxWIndex();
     for (int k = 0; k < mf_dim; ++k) {
       dest_val[embedx_off + k] = src_val[value_off + k];
     }
+  }
+  // set zero value by infer
+  __host__ __device__ void PullZeroValue(float* dest_val) {
+    dest_val[common_pull_value.ShowIndex()] = 0.0;
+    dest_val[common_pull_value.ClickIndex()] = 0.0;
+    dest_val[common_pull_value.EmbedWIndex()] = 0.0;
+    dest_val[common_pull_value.MfSizeIndex()] = 0;
   }
 
   // dy_mf_fill_shard_grads_kernel,update_one 阶段 gpukernel
@@ -443,7 +584,7 @@ class CommonFeatureValueAccessor {
     dest_val[common_push_value.EmbedGIndex()] =
         src_val[common_push_value.EmbedGIndex()];
 
-    for (int x = 0; x < int(src_val[common_push_value.MfDimIndex()]); x++) {
+    for (size_t x = 0; x < (src_val[common_push_value.MfDimIndex()]); x++) {
       dest_val[common_push_value.EmbedxGIndex() + x] =
           src_val[common_push_value.EmbedxGIndex() + x];
     }
@@ -451,7 +592,7 @@ class CommonFeatureValueAccessor {
 
   // update_basic 阶段 gpukernel 中从src_val赋值给dest_val
   __host__ __device__ void PushValueFillBasic(float* dest_val,
-                                              const float* src_val) {
+                                              const float* src_val) const {
     dest_val[common_push_value.SlotIndex()] =
         src_val[common_push_value.SlotIndex()];
     dest_val[common_push_value.ShowIndex()] =
@@ -473,7 +614,7 @@ class CommonFeatureValueAccessor {
         src_val[common_push_value.ClickIndex()];
     dest_val[common_push_value.EmbedGIndex()] +=
         src_val[common_push_value.EmbedGIndex()];
-    for (int j = 0; j < int(dest_val[common_push_value.MfDimIndex()]); j++) {
+    for (size_t j = 0; j < (dest_val[common_push_value.MfDimIndex()]); j++) {
       dest_val[common_push_value.EmbedxGIndex() + j] +=
           src_val[common_push_value.EmbedxGIndex() + j];
     }
@@ -481,7 +622,7 @@ class CommonFeatureValueAccessor {
 
   // merge_basic 阶段 gpukernel 中 PushValue 从src_val赋值给dest_val
   __host__ __device__ void MergePushValueBasic(float* dest_val,
-                                               const float* src_val) {
+                                               const float* src_val) const {
     dest_val[common_push_value.ShowIndex()] +=
         src_val[common_push_value.ShowIndex()];
     dest_val[common_push_value.ClickIndex()] +=
@@ -501,16 +642,16 @@ class CommonFeatureValueAccessor {
       *(dest_val + common_pull_value.EmbedWIndex()) = 0;
     } else {
       *(dest_val + common_pull_value.ShowIndex()) =
-          src_val[common_feature_value.ShowIndex()];
+          src_val[common_pull_value.ShowIndex()];
       *(dest_val + common_pull_value.ClickIndex()) =
-          src_val[common_feature_value.ClickIndex()];
+          src_val[common_pull_value.ClickIndex()];
       *(dest_val + common_pull_value.EmbedWIndex()) =
-          src_val[common_feature_value.EmbedWIndex()];
+          src_val[common_pull_value.EmbedWIndex()];
     }
-
-    if (src_val[common_feature_value.MfSizeIndex()] == 0 || *key == 0) {
+    int mf_size = static_cast<int>(src_val[common_pull_value.MfSizeIndex()]);
+    if (mf_size == 0 || *key == 0) {
       for (int j = 0; j < mf_dim; j++) {
-        *(dest_val + common_pull_value.EmbedxWIndex() + j) = 0;
+        *(dest_val + 3 + j) = 0;
       }
     } else {
       for (int j = 0; j < mf_dim; j++) {
@@ -545,7 +686,8 @@ class CommonFeatureValueAccessor {
          i++) {
       os << " " << v[i];
     }
-    int mf_dim = int(common_feature_value.MfDim(const_cast<float*>(v)));
+    int mf_dim =
+        static_cast<int>(common_feature_value.MfDim(const_cast<float*>(v)));
     os << " slot: " << common_feature_value.Slot(const_cast<float*>(v))
        << " mf_dim: " << mf_dim
        << " mf_size: " << common_feature_value.MfSize(const_cast<float*>(v))
@@ -642,12 +784,13 @@ class VirtualAccessor {
  public:
   virtual int Configure(std::unordered_map<std::string, float> config) = 0;
 
-  virtual size_t GetFeatureValueSize(int& mf_dim) = 0;
+  virtual size_t GetFeatureValueSize(int& mf_dim) = 0;  // NOLINT
 
-  virtual size_t GetPushValueSize(int& mf_dim) = 0;
+  virtual size_t GetPushValueSize(int& mf_dim) = 0;  // NOLINT
 
-  virtual size_t GetPullValueSize(int& mf_dim) = 0;
+  virtual size_t GetPullValueSize(int& mf_dim) = 0;  // NOLINT
 
+#ifdef PADDLE_WITH_PSCORE
   virtual void BuildFill(void* gpu_val,
                          void* cpu_val,
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
@@ -656,6 +799,22 @@ class VirtualAccessor {
   virtual void DumpFill(float* gpu_val,
                         paddle::distributed::ValueAccessor* cpu_table_accessor,
                         int mf_dim) = 0;
+#endif
+
+#ifdef PADDLE_WITH_PSLIB
+  virtual void BuildFill(
+      float* gpu_val,
+      void* cpu_val,
+      paddle::ps::ValueAccessor* cpu_accessor,
+      int mf_dim,
+      const std::string& accessor_type = "DownpourCtrDymfAccessor") = 0;
+
+  virtual void DumpFill(
+      float* gpu_val,
+      ::paddle::ps::ValueAccessor* cpu_accessor,
+      int mf_dim,
+      const std::string& accessor_type = "DownpourCtrDymfAccessor") = 0;
+#endif
 
   virtual void CopyForPull(const paddle::platform::Place& place,
                            uint64_t** gpu_keys,
@@ -687,8 +846,8 @@ class VirtualAccessor {
                            const uint64_t total_length,
                            const int batch_size,
                            size_t grad_value_size,
-                           std::vector<int>& slot_vector,
-                           std::vector<int>& slot_mf_dim_vector) = 0;
+                           std::vector<int>& slot_vector,              // NOLINT
+                           std::vector<int>& slot_mf_dim_vector) = 0;  // NOLINT
 
   // dedup
   virtual void CopyForPush(const paddle::platform::Place& place,
@@ -729,7 +888,7 @@ class VirtualAccessor {
 template <typename GPUAccessor>
 class AccessorWrapper : public VirtualAccessor {
  public:
-  explicit AccessorWrapper() {}
+  AccessorWrapper() {}
   virtual ~AccessorWrapper() {}
   AccessorWrapper(const AccessorWrapper&) = delete;
   AccessorWrapper& operator=(const AccessorWrapper&) = delete;
@@ -738,26 +897,27 @@ class AccessorWrapper : public VirtualAccessor {
     return gpu_accessor_.Configure(config);
   }
 
-  virtual size_t GetFeatureValueSize(int& mf_dim) {
+  virtual size_t GetFeatureValueSize(int& mf_dim) {  // NOLINT
     return gpu_accessor_.common_feature_value.Size(mf_dim);
   }
 
-  virtual size_t GetPushValueSize(int& mf_dim) {
+  virtual size_t GetPushValueSize(int& mf_dim) {  // NOLINT
     return gpu_accessor_.common_push_value.Size(mf_dim);
   }
 
-  virtual size_t GetPullValueSize(int& mf_dim) {
+  virtual size_t GetPullValueSize(int& mf_dim) {  // NOLINT
     return gpu_accessor_.common_pull_value.Size(mf_dim);
   }
 
   GPUAccessor* AccessorPtr() { return &gpu_accessor_; }
 
+#ifdef PADDLE_WITH_PSCORE
   virtual void BuildFill(void* gpu_val,
                          void* cpu_val,
                          paddle::distributed::ValueAccessor* cpu_table_accessor,
                          int mf_dim) {
     gpu_accessor_.BuildFill(
-        (float*)(gpu_val), cpu_val, cpu_table_accessor, mf_dim);
+        reinterpret_cast<float*>(gpu_val), cpu_val, cpu_table_accessor, mf_dim);
   }
 
   virtual void DumpFill(float* gpu_val,
@@ -765,6 +925,36 @@ class AccessorWrapper : public VirtualAccessor {
                         int mf_dim) {
     gpu_accessor_.DumpFill(gpu_val, cpu_table_accessor, mf_dim);
   }
+#endif
+
+#ifdef PADDLE_WITH_PSLIB
+  virtual void BuildFill(
+      float* gpu_val,
+      void* cpu_val,
+      paddle::ps::ValueAccessor* cpu_accessor,
+      int mf_dim,
+      const std::string& accessor_type = "DownpourCtrDymfAccessor") {
+    if (accessor_type == "DownpourCtrDymfAccessor") {
+      gpu_accessor_.template BuildFill<float>(
+          gpu_val, cpu_val, cpu_accessor, mf_dim);
+    } else if (accessor_type == "DownpourCtrDoubleDymfAccessor") {
+      gpu_accessor_.template BuildFill<double>(
+          gpu_val, cpu_val, cpu_accessor, mf_dim);
+    }
+  }
+
+  virtual void DumpFill(
+      float* gpu_val,
+      paddle::ps::ValueAccessor* cpu_accessor,
+      int mf_dim,
+      const std::string& accessor_type = "DownpourCtrDymfAccessor") {
+    if (accessor_type == "DownpourCtrDymfAccessor") {
+      gpu_accessor_.template DumpFill<float>(gpu_val, cpu_accessor, mf_dim);
+    } else if (accessor_type == "DownpourCtrDoubleDymfAccessor") {
+      gpu_accessor_.template DumpFill<double>(gpu_val, cpu_accessor, mf_dim);
+    }
+  }
+#endif
 
   virtual void CopyForPull(const paddle::platform::Place& place,
                            uint64_t** gpu_keys,
@@ -819,8 +1009,8 @@ class AccessorWrapper : public VirtualAccessor {
                            const uint64_t total_length,
                            const int batch_size,
                            size_t grad_value_size,
-                           std::vector<int>& slot_vector,
-                           std::vector<int>& slot_mf_dim_vector) {
+                           std::vector<int>& slot_vector,           // NOLINT
+                           std::vector<int>& slot_mf_dim_vector) {  // NOLINT
     CopyForPushImpl(place,
                     grad_values,
                     total_grad_values_gpu,
@@ -914,8 +1104,8 @@ class AccessorWrapper : public VirtualAccessor {
                        const uint64_t total_length,
                        const int batch_size,
                        size_t grad_value_size,
-                       std::vector<int>& slot_vector,
-                       std::vector<int>& slot_mf_dim_vector);
+                       std::vector<int>& slot_vector,          // NOLINT
+                       std::vector<int>& slot_mf_dim_vector);  // NOLINT
 
   void CopyForPullDedupImpl(const paddle::platform::Place& place,
                             const uint64_t* total_keys,

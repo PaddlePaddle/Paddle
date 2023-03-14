@@ -54,20 +54,19 @@ class MemcpyOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   tensor.layout());
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -100,9 +99,9 @@ class MemcpyKernel {
 class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input variable ");
+    AddInput("X", "(phi::DenseTensor) The input variable ");
     AddOutput("Out",
-              "(LoDTensor) The type of output "
+              "(phi::DenseTensor) The type of output "
               "is the same as input X.");
     AddAttr<int>("dst_place_type",
                  "Determine the dst place of tensor copy. "
@@ -122,7 +121,7 @@ class MemcpyOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     NPUPlace <-> CPUPlace, and used as an internal op by Recompute-Offload.
     You would have to update it if you want other more capacities.
 
-Out = X,  when type in [LoDTensor]
+Out = X,  when type in [phi::DenseTensor]
 raise error if the type is not listed above.
 )DOC");
   }

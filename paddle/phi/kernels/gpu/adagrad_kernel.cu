@@ -13,15 +13,90 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/adagrad_kernel.h"
-
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 #include "paddle/phi/kernels/impl/adagrad_kernel_impl.h"
 
 namespace phi {
+
+template <typename T, typename MT>
+__global__ void AdagradGPUKernel(const T* param,
+                                 const T* grad,
+                                 const MT* moment,
+                                 const MT* lr,
+                                 const MT* master_param,
+                                 MT epsilon,
+                                 T* param_out,
+                                 MT* moment_out,
+                                 MT* master_param_out,
+                                 int num) {
+  auto idx = blockDim.x * blockIdx.x + threadIdx.x;
+  MT lr_data = static_cast<T>(lr[0]);
+
+  for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
+    MT grad_data = static_cast<MT>(grad[i]);
+    MT moment_out_data = static_cast<MT>(moment[i]) + grad_data * grad_data;
+    moment_out[i] = static_cast<MT>(moment_out_data);
+    auto in = master_param_out ? master_param[i] : static_cast<MT>(param[i]);
+    MT param_out_data =
+        in - (lr_data * grad_data) / (sqrt(moment_out_data) + epsilon);
+
+    param_out[i] = static_cast<MT>(param_out_data);
+
+    if (master_param_out) {
+      master_param_out[i] = param_out_data;
+    }
+  }
+}
+
+template <typename T>
+struct DenseAdagradFunctor<phi::GPUContext, T> {
+  void operator()(const phi::GPUContext& ctx,
+                  const DenseTensor& param_t,
+                  const DenseTensor& grad_t,
+                  const DenseTensor& moment_t,
+                  const DenseTensor& learning_rate,
+                  const paddle::optional<DenseTensor>& master_param,
+                  float epsilon_t,
+                  bool multi_precision,
+                  DenseTensor* param_out_tensor,
+                  DenseTensor* moment_out_tensor,
+                  DenseTensor* master_param_outs) {
+    using MPDType = typename phi::dtype::template MPTypeTrait<T>::Type;
+    T* param_out_data = ctx.template Alloc<T>(param_out_tensor);
+    MPDType* moment_out_data = ctx.template Alloc<MPDType>(moment_out_tensor);
+    const MPDType* master_in_data =
+        multi_precision ? master_param->data<MPDType>() : nullptr;
+    MPDType* master_out_data =
+        multi_precision ? ctx.template Alloc<MPDType>(master_param_outs)
+                        : nullptr;
+
+    MPDType epsilon = static_cast<MPDType>(epsilon_t);
+
+    int numel = param_t.numel();
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, 1);
+    int grid = config.block_per_grid.x;
+    int block = config.thread_per_block.x;
+    auto stream = ctx.stream();
+    AdagradGPUKernel<T, MPDType>
+        <<<block, grid, 0, stream>>>(param_t.data<T>(),
+                                     grad_t.data<T>(),
+                                     moment_t.data<MPDType>(),
+                                     learning_rate.data<MPDType>(),
+                                     master_in_data,
+                                     epsilon,
+                                     param_out_data,
+                                     moment_out_data,
+                                     master_out_data,
+                                     numel);
+  }
+};
 
 template <typename T, int block_size>
 __global__ void MergeGradKernel(const T* grad,
@@ -47,7 +122,7 @@ __global__ void MergeGradKernel(const T* grad,
   grad += ty * row_numel;
   grad_merge += grad_merge_idx * row_numel;
   for (int index = tid; index < row_numel; index += block_size) {
-    paddle::platform::CudaAtomicAdd(grad_merge + index, grad[index]);
+    phi::CudaAtomicAdd(grad_merge + index, grad[index]);
   }
 }
 
@@ -69,9 +144,9 @@ __global__ void SparseAdagradFunctorKernel(const T* grad,
   for (int index = tid; index < row_numel; index += block_size) {
     // Since index in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
-    paddle::platform::CudaAtomicAdd(param + index,
-                                    -1.0 * learning_rate[0] * grad[index] /
-                                        (sqrt(moment[index]) + epsilon));
+    phi::CudaAtomicAdd(param + index,
+                       -1.0 * learning_rate[0] * grad[index] /
+                           (sqrt(moment[index]) + epsilon));
   }
 }
 
@@ -85,16 +160,15 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
                   DenseTensor* param) {
     // 1. g_m.rows = set(g.rows)
     auto grad_width = grad.value().dims()[1];
-    paddle::operators::math::scatter::MergeAdd<phi::GPUContext, T> merge_func;
+    phi::funcs::scatter::MergeAdd<phi::GPUContext, T> merge_func;
     auto grad_merge = merge_func(context, grad);
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
-    paddle::framework::Vector<int64_t> merge_rows(grad_merge.rows());
+    phi::Vector<int64_t> merge_rows(grad_merge.rows());
     // 2. m += g_m * g_m
     auto grad_square =
         SquareSelectedRows<phi::GPUContext, T>(context, grad_merge);
 
-    paddle::operators::math::SelectedRowsAddToTensor<phi::GPUContext, T>
-        functor;
+    phi::funcs::SelectedRowsAddToTensor<phi::GPUContext, T> functor;
     functor(context, grad_square, moment);
 
     // 3. update parameter
@@ -105,7 +179,7 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
     const int block_size = 256;
     dim3 threads(block_size, 1);
     dim3 grid2(1, merge_rows.size());
-    paddle::framework::MixVector<int64_t> mixv_merge_rows(&merge_rows);
+    phi::MixVector<int64_t> mixv_merge_rows(&merge_rows);
     SparseAdagradFunctorKernel<T, 256>
         <<<grid2,
            threads,
@@ -124,11 +198,19 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
 
 template struct SparseAdagradFunctor<phi::GPUContext, float>;
 template struct SparseAdagradFunctor<phi::GPUContext, double>;
+template struct DenseAdagradFunctor<phi::GPUContext, float>;
+template struct DenseAdagradFunctor<phi::GPUContext, double>;
+template struct DenseAdagradFunctor<phi::GPUContext, phi::dtype::float16>;
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    adagrad, GPU, ALL_LAYOUT, phi::AdagradDenseKernel, float, double) {}
+PD_REGISTER_KERNEL(adagrad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::AdagradDenseKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(adagrad_dense_param_sparse_grad,
                    GPU,

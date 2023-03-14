@@ -27,10 +27,11 @@ class ResidualConnectionMKLDNNFusePass : public FusePassBase {
  private:
   GraphWithStats FuseConv(const std::string& name_scope,
                           const GraphWithStats& graph_with_stats,
+                          const std::string& conv_type,
                           bool as_x) const;
-  GraphWithStats FuseProjectionConv(
-      const std::string& name_scope,
-      const GraphWithStats& graph_with_stats) const;
+  GraphWithStats FuseProjectionConv(const std::string& name_scope,
+                                    const GraphWithStats& graph_with_stats,
+                                    const std::string& conv_type) const;
 
  public:
   ResidualConnectionMKLDNNFusePass();

@@ -22,14 +22,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
@@ -83,9 +81,9 @@ void prepare_csr_data(const std::vector<uint64_t> &offset,
 template <typename T>
 struct EmbeddingVSumFunctor {
   void operator()(const framework::ExecutionContext &context,
-                  const LoDTensor *table_t,
-                  const LoDTensor *ids_t,
-                  LoDTensor *output_t) {
+                  const phi::DenseTensor *table_t,
+                  const phi::DenseTensor *ids_t,
+                  phi::DenseTensor *output_t) {
     auto *table = table_t->data<T>();
     int64_t table_height = table_t->dims()[0];
     int64_t table_width = table_t->dims()[1];
@@ -110,17 +108,17 @@ struct EmbeddingVSumFunctor {
                           "But received the ids's LoD[0] = %d.",
                           ids_lod.size()));
 
-    jit::emb_seq_pool_attr_t attr(table_height,
-                                  table_width,
-                                  0,
-                                  idx_width,
-                                  out_width,
-                                  jit::SeqPoolType::kSum);
+    phi::jit::emb_seq_pool_attr_t attr(table_height,
+                                       table_width,
+                                       0,
+                                       idx_width,
+                                       out_width,
+                                       phi::jit::SeqPoolType::kSum);
     for (size_t i = 0; i != ids_lod.size() - 1; ++i) {
       attr.index_height = ids_lod[i + 1] - ids_lod[i];
-      auto emb_seqpool =
-          jit::KernelFuncs<jit::EmbSeqPoolTuple<T>, platform::CPUPlace>::Cache()
-              .At(attr);
+      auto emb_seqpool = phi::jit::KernelFuncs<phi::jit::EmbSeqPoolTuple<T>,
+                                               platform::CPUPlace>::Cache()
+                             .At(attr);
       emb_seqpool(
           table, ids + ids_lod[i] * idx_width, output + i * out_width, &attr);
     }
@@ -141,9 +139,11 @@ template <typename T>
 class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const LoDTensor *ids_t = context.Input<LoDTensor>("Ids");  // int tensor
-    LoDTensor *output_t = context.Output<LoDTensor>("Out");    // float tensor
-    const LoDTensor *table_var = context.Input<LoDTensor>("W");
+    const phi::DenseTensor *ids_t =
+        context.Input<phi::DenseTensor>("Ids");  // int tensor
+    phi::DenseTensor *output_t =
+        context.Output<phi::DenseTensor>("Out");  // float tensor
+    const phi::DenseTensor *table_var = context.Input<phi::DenseTensor>("W");
     const std::string &combiner_type = context.Attr<std::string>("combiner");
 
     int64_t last_dim =
@@ -174,7 +174,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       auto len = ids_t->numel();
       int idx_width = len / offset.back();
 
-      Tensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
+      phi::DenseTensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
       csr_vals_t.Resize({len});
       csr_colmuns_t.Resize({len});
       csr_row_idx_t.Resize({(batch_size + 1) * idx_width});
@@ -228,23 +228,24 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto *table_var = context.InputVar("W");
     DDim table_dim;
-    if (table_var->IsType<LoDTensor>()) {
-      table_dim = context.Input<LoDTensor>("W")->dims();
+    if (table_var->IsType<phi::DenseTensor>()) {
+      table_dim = context.Input<phi::DenseTensor>("W")->dims();
     } else if (table_var->IsType<phi::SelectedRows>()) {
       auto *table_t = context.Input<phi::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
       PADDLE_THROW(platform::errors::PermissionDenied(
           "The parameter W of a LookupTable "
-          "must be either LoDTensor or SelectedRows."));
+          "must be either phi::DenseTensor or SelectedRows."));
     }
 
     bool is_sparse = context.Attr<bool>("is_sparse");
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      auto *ids = context.Input<LoDTensor>("Ids");
-      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto *ids = context.Input<phi::DenseTensor>("Ids");
+      auto *d_output =
+          context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto *d_table =
           context.Output<phi::SelectedRows>(framework::GradVarName("W"));
       // runtime shape
@@ -255,7 +256,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto lod = ids->lod()[0];
       int64_t out_width = d_output->dims()[1];
 
-      framework::Vector<int64_t> *new_rows = d_table->mutable_rows();
+      phi::Vector<int64_t> *new_rows = d_table->mutable_rows();
       new_rows->resize(ids_num);
       std::memcpy(&(*new_rows)[0], ids_data, ids_num * sizeof(int64_t));
 
@@ -264,9 +265,9 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       T *d_table_data = d_table_value->mutable_data<T>(context.GetPlace());
       const T *d_output_data = d_output->data<T>();
 
-      auto vbroadcast =
-          jit::KernelFuncs<jit::VBroadcastTuple<T>, platform::CPUPlace>::Cache()
-              .At(out_width);
+      auto vbroadcast = phi::jit::KernelFuncs<phi::jit::VBroadcastTuple<T>,
+                                              platform::CPUPlace>::Cache()
+                            .At(out_width);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         int64_t h = static_cast<int64_t>(lod[i + 1] - lod[i]);
         const T *src = d_output_data + i * out_width;
@@ -276,9 +277,11 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
     } else {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
-      auto *ids = context.Input<LoDTensor>("Ids");
-      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
-      auto *d_table = context.Output<LoDTensor>(framework::GradVarName("W"));
+      auto *ids = context.Input<phi::DenseTensor>("Ids");
+      auto *d_output =
+          context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+      auto *d_table =
+          context.Output<phi::DenseTensor>(framework::GradVarName("W"));
       int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
       d_table->Resize(table_dim);
@@ -296,7 +299,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto len = ids->numel();
       int idx_width = len / offset.back();
 
-      Tensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
+      phi::DenseTensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
       csr_vals_t.Resize({len});
       csr_colmuns_t.Resize({len});
       int64_t batch_size = ids_lod[0].size() - 1;

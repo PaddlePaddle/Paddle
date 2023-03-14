@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <sstream>
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#include "paddle/phi/kernels/funcs/dims_simplifier.h"
 
 namespace kps = phi::kps;
 
@@ -27,209 +29,22 @@ namespace funcs {
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 
-struct DimensionsTransform {
-  using DimVector = std::vector<int64_t>;
-  typedef void (*MergeFunctor)(
-      bool &, std::vector<DimVector> &, DimVector &, int, int);
-  int64_t N;
-  int64_t dim_size;
-  DimVector out_dims;
-  std::vector<DimVector> in_dims;
+enum BroadcastLoadType { kMixed = 1, kBroadcast = 2, kElementwise = 3 };
 
- private:
-  // To compensate the lackage of input_tensors` dimension with input
-  // variable 'axis'.
-  void InputDimensionsExtend(int N, int axis) {
-    for (auto &in_dim : in_dims) {
-      int64_t in_idx = 0;
-      if (in_dim.size() < dim_size) {
-        DimVector tmp_dim(dim_size, 1);
-        do {
-          if (in_dim[in_idx] == out_dims[axis] || in_dim[in_idx] == 1) {
-            tmp_dim[axis] = in_dim[in_idx];
-            in_idx++;
-            axis++;
-          } else {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "The %d-th dimension of input tensor is expected to be equal "
-                "with the %d-th dimension of output tensor %d or 1, but "
-                "received %d.",
-                in_idx + 1,
-                axis + 1,
-                out_dims[axis],
-                in_dim[in_idx]));
-          }
-        } while (in_idx < in_dim.size());
-        in_dim.resize(dim_size);
-        std::copy(tmp_dim.begin(), tmp_dim.end(), in_dim.begin());
-      } else {
-        do {
-          if (in_dim[in_idx] == out_dims[in_idx] || in_dim[in_idx] == 1) {
-            in_idx++;
-          } else {
-            PADDLE_THROW(phi::errors::InvalidArgument(
-                "The %d-th dimension of input tensor is expected to be equal "
-                "with the %d-th dimension of output tensor %d or 1, but "
-                "received %d.",
-                in_idx + 1,
-                in_idx + 1,
-                out_dims[in_idx],
-                in_dim[in_idx]));
-          }
-        } while (in_idx < dim_size);
-      }
-      std::reverse(in_dim.begin(), in_dim.end());
-    }
-    std::reverse(out_dims.begin(), out_dims.end());
-  }
-
-  // Merge sequential dimension to shrink calculation cost for
-  // offset computation in CUDA Kernel.
-  template <typename MergeFunctor>
-  __inline__ void MergeDimensions(MergeFunctor merge_func, int N) {
-    auto VectorReorganise = [](DimVector *vec, int l_idx, int m_idx) {
-      (*vec)[m_idx - 1] = std::accumulate(vec->begin() + l_idx,
-                                          vec->begin() + m_idx,
-                                          1,
-                                          std::multiplies<int64_t>());
-      vec->erase(vec->begin() + l_idx, vec->begin() + m_idx - 1);
-    };
-
-    int64_t i = 0;
-    while (i < dim_size) {
-      int cnt = 0;
-      int low_idx = i;
-      bool equal = true;
-      do {
-        merge_func(equal, in_dims, out_dims, i, N);
-        if (equal) {
-          i++;
-          cnt++;
-        } else {
-          break;
-        }
-      } while (i < dim_size);
-
-      if (cnt > 1) {
-        for (auto &in_dim : in_dims) {
-          VectorReorganise(&in_dim, low_idx, i);
-        }
-        VectorReorganise(&out_dims, low_idx, i);
-        dim_size -= --cnt;
-        i -= cnt;
-      } else if (cnt < 1) {
-        i++;
-      }
-    }
-  }
-
-  // To judge whether shape of any input tensors is sequential
-  // 1-value-dimensions, and metric the length of it.
-  bool FindSequentialOneDim(int *swap_index) {
-    int index = 0;
-    int max_one_length = 0;
-    for (int j = 0; j < N; ++j) {
-      int seq_one_length = 0;
-      bool active_seq = false;
-
-      for (int i = 0; i < dim_size; ++i) {
-        if (!active_seq && in_dims[j][i] == 1) {
-          seq_one_length = 1;
-          active_seq = true;
-        } else if (active_seq) {
-          if (in_dims[j][i] == 1) {
-            seq_one_length++;
-          } else {
-            active_seq = false;
-          }
-        }
-      }
-      index = seq_one_length > max_one_length ? j : index;
-      max_one_length = std::max(seq_one_length, max_one_length);
-    }
-
-    bool has_seq_one = max_one_length > 1;
-    if (has_seq_one) {
-      std::swap(in_dims[0], in_dims[index]);
-      *swap_index = index;
-    }
-    return has_seq_one;
-  }
-
+template <typename InT, typename OutT, int Arity>
+struct LoaderTypeClassifier {
  public:
-  explicit DimensionsTransform(const std::vector<const DenseTensor *> &ins,
-                               const phi::DDim &dims,
-                               int axis) {
-    N = std::max(static_cast<int>(ins.size()), 2);
-    dim_size = dims.size();
-    out_dims = phi::vectorize<int64_t>(dims);
-    in_dims.resize(N);
-    if (ins.size() == 1) {
-      // when ins.size() = 1, broadcast input to output
-      in_dims[0] = phi::vectorize<int64_t>(ins[0]->dims());
-      in_dims[1] = out_dims;
-      // Add out_dims to in_dims to avoid errors in dims merging
-    } else {
-      for (int j = 0; j < N; ++j) {
-        in_dims[j] = phi::vectorize<int64_t>(ins[j]->dims());
-      }
-    }
-    InputDimensionsExtend(N, axis);
+  int64_t numel{0};
+  int vec_size{1};
+  int broadcast_num{0};
+  bool all_elementwise{true};
+  phi::Array<int, Arity> use_broadcast;
+  phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
 
-    // To Merge the dimensions of input_tensors while the consequtive
-    // equal-dimensions appears. Example below :
-    //   in_1.shape = [2, 3, 4, 5]    in_1.shape = [2, 12, 5]
-    //   in_2.shape = [1, 3, 4, 5] -> in_2.shape = [1, 12, 5]
-    //   in_3.shape = [2, 3, 4, 1]    in_3.shape = [2, 12, 1]
-    auto merge_sequential_dims = [](bool &equal,
-                                    std::vector<DimVector> &in_dims,
-                                    DimVector &out,
-                                    int i,
-                                    int num) {
-      for (int j = 1; j < num; ++j) {
-        equal &= (in_dims[0][i] == in_dims[j][i]) ? true : false;
-      }
-    };
-    MergeFunctor merge_ptr = merge_sequential_dims;
-    MergeDimensions<MergeFunctor>(merge_ptr, N);
-
-    // To Merge the dimension of input_tensors while the sequential
-    // 1-value-dimensions appears. Example below :
-    //   in_1.shape = [2, 1, 1, 5]    in_1.shape = [2,  1, 5]
-    //   in_2.shape = [2, 3, 4, 5] -> in_2.shape = [1, 12, 5]
-    //   in_3.shape = [2, 3, 4, 1]    in_3.shape = [2, 12, 1]
-    // Caution: Once 1-value-dimensions appears, the corresponding
-    // shape position of other input tensors must be same with the
-    // output tensor`s shape, or incorrect merge may occur.
-    auto merge_sequential_one_dims = [](bool &equal,
-                                        std::vector<DimVector> &in_dims,
-                                        DimVector &out,
-                                        int i,
-                                        int num) {
-      equal = in_dims[0][i] == 1;
-      if (equal) {
-        for (int j = 1; j < num; ++j) {
-          equal &= in_dims[j][i] == out[i];
-        }
-      }
-    };
-    for (auto i = 0; i < dim_size; ++i) {
-      int swap_idx = 0;
-      bool has_seq_one = FindSequentialOneDim(&swap_idx);
-      if (!has_seq_one) break;
-      merge_ptr = merge_sequential_one_dims;
-      MergeDimensions<MergeFunctor>(merge_ptr, N);
-      std::swap(in_dims[swap_idx], in_dims[0]);
-    }
-  }
-};
-
-template <typename InT, typename OutT>
-int GetVecsize(const std::vector<const DenseTensor *> &ins,
-               std::vector<DenseTensor *> *outs) {
-  int in_vec_size = 4;
-  int out_vec_size = 4;
-  if (outs->size() > 1) {
+  LoaderTypeClassifier() {}
+  LoaderTypeClassifier(const std::vector<const DenseTensor *> &ins,
+                       std::vector<DenseTensor *> *outs) {
+    uint64_t out_addr = reinterpret_cast<uint64_t>((*outs)[0]->data<OutT>());
     for (auto i = 1; i < outs->size(); ++i) {
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
@@ -238,28 +53,37 @@ int GetVecsize(const std::vector<const DenseTensor *> &ins,
               "The shape of each output tensor shall be identical yet, but "
               "%d-th output tensor`s shape is not.",
               i));
-      out_vec_size = std::min(
-          phi::GetVectorizedSize<OutT>((*outs)[i]->data<OutT>()), out_vec_size);
+      out_addr =
+          (out_addr | reinterpret_cast<uint64_t>((*outs)[i]->data<OutT>()));
     }
-  } else {
-    out_vec_size = phi::GetVectorizedSize<OutT>((*outs)[0]->data<OutT>());
-  }
+    int out_vec_size =
+        phi::GetVectorizedSize<OutT>(reinterpret_cast<OutT *>(out_addr));
 
-  for (auto *in : ins) {
-    auto temp_size = phi::GetVectorizedSize<InT>(in->data<InT>());
-    in_vec_size = in->dims() == (*outs)[0]->dims()
-                      ? std::min(temp_size, in_vec_size)
-                      : in_vec_size;
+    uint64_t in_addr = static_cast<uint64_t>(0);
+    numel = (*outs)[0]->numel();
+    for (int i = 0; i < Arity; ++i) {
+      auto in_data = ins[i]->data<InT>();
+      ins_data[i] = (const _ptr_ InT *)(in_data);
+
+      bool is_same_dim = ins[i]->numel() == numel;
+      if (is_same_dim) {
+        use_broadcast[i] = false;
+        in_addr = (in_addr | reinterpret_cast<uint64_t>(in_data));
+      } else {
+        use_broadcast[i] = true;
+        broadcast_num++;
+      }
+      all_elementwise &= is_same_dim;
+    }
+    int in_vec_size = std::min(
+        4, phi::GetVectorizedSize<InT>(reinterpret_cast<InT *>(in_addr)));
+    vec_size = std::min(out_vec_size, in_vec_size);
   }
-  return std::min(out_vec_size, in_vec_size);
-}
+};
 
 #ifndef PADDLE_WITH_XPU_KP
-template <typename T,
-          int VecSize,
-          int Arity,
-          bool IsBoundary,
-          bool is_all_broadcast>
+// Common broadcast/elementwise Loader.
+template <typename T, int VecSize, int Arity, bool IsBoundary, int LoadType>
 struct BroadcastDataLoader {
   __device__ __forceinline__ void operator()(
       T args[Arity][VecSize],
@@ -283,8 +107,63 @@ struct BroadcastDataLoader {
   }
 };
 
+// Scalar elementwise Loader with consideration of IsBoundary.
+template <typename T, int VecSize, int Arity>
+struct BroadcastDataLoader<T, VecSize, Arity, true, kElementwise> {
+  __device__ __forceinline__ void operator()(
+      T args[Arity][VecSize],
+      const phi::Array<const _ptr_ T *__restrict__, Arity> &ins,
+      const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
+      const phi::Array<int, Arity> &use_broadcast,
+      const int block_offset,
+      const int num,
+      const uint32_t numel) {
+    int thread_offset = threadIdx.x * VecSize + block_offset;
+#pragma unroll
+    for (int i = 0; i < Arity; ++i) {
+#pragma unroll
+      for (int idx = 0; idx < VecSize; ++idx) {
+        args[i][idx] = static_cast<T>(1);
+        int index = thread_offset + idx;
+        if (index < numel) {
+          args[i][idx] = ins[i][index];
+        }
+      }
+    }
+  }
+};
+
+// Vectorized elementwise Loader without consideration of IsBoundary.
+template <typename T, int VecSize, int Arity>
+struct BroadcastDataLoader<T, VecSize, Arity, false, kElementwise> {
+  __device__ __forceinline__ void operator()(
+      T args[Arity][VecSize],
+      const phi::Array<const _ptr_ T *__restrict__, Arity> &ins,
+      const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
+      const phi::Array<int, Arity> &use_broadcast,
+      const int block_offset,
+      const int num,
+      const uint32_t numel) {
+    using VecType = phi::kps::details::VectorType<T, VecSize>;
+    VecType vec_temp[Arity];
+
+    int thread_offset = threadIdx.x + blockIdx.x * blockDim.x;
+#pragma unroll
+    for (int i = 0; i < Arity; ++i) {
+      const VecType *__restrict__ vec_input =
+          reinterpret_cast<const VecType *__restrict__>(ins[i]);
+      vec_temp[i] = vec_input[thread_offset];
+#pragma unroll
+      for (int idx = 0; idx < VecSize; ++idx) {
+        args[i][idx] = vec_temp[i].val[idx];
+      }
+    }
+  }
+};
+
+// Common broadcast data loader.
 template <typename T, int VecSize, int Arity, bool IsBoundary>
-struct BroadcastDataLoader<T, VecSize, Arity, IsBoundary, true> {
+struct BroadcastDataLoader<T, VecSize, Arity, IsBoundary, kBroadcast> {
   __device__ __forceinline__ void operator()(
       T args[Arity][VecSize],
       const phi::Array<const _ptr_ T *__restrict__, Arity> &ins,
@@ -313,7 +192,7 @@ struct BroadcastDataLoader<T, VecSize, Arity, IsBoundary, true> {
 
 #pragma unroll
       for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-        if (i == configs[0].kDims) break;
+        if (i == configs[0].rank) break;
         auto fast_divmoder = configs[0].divmoders[i].Divmod(idx);
         idx = fast_divmoder.val[0];
 #pragma unroll
@@ -341,7 +220,7 @@ template <typename InT,
           int NumOuts,
           int VecSize,
           bool IsBoundary,
-          bool IsAllBroadcast = false>
+          int LoadType>
 __device__ void VectorizedBroadcastKernelImpl(
     const phi::Array<const _ptr_ InT *__restrict__, Arity> &ins,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
@@ -367,12 +246,12 @@ __device__ void VectorizedBroadcastKernelImpl(
     }
   }
 #else
-  BroadcastDataLoader<InT, VecSize, Arity, IsBoundary, IsAllBroadcast>()(
+  BroadcastDataLoader<InT, VecSize, Arity, IsBoundary, LoadType>()(
       args, ins, configs, use_broadcast, block_offset, num, numel);
 #endif
 
   constexpr bool kCallElementwiseAny =
-      paddle::platform::FunctionTraits<Functor>::has_pointer_args;
+      phi::funcs::FunctionTraits<Functor>::has_pointer_args;
   phi::funcs::ElementwisePrimitiveCaller<InT,
                                          ConditionalT<OutT, NumOuts>,
                                          VecSize,
@@ -391,7 +270,7 @@ template <typename Functor,
           int Arity,
           int NumOuts,
           int VecSize,
-          bool IsAllBroadcast>
+          int LoadType>
 __global__ void VectorizedBroadcastKernel(
     phi::Array<const _ptr_ InT *__restrict__, Arity> ins,
     phi::Array<_ptr_ OutT *, NumOuts> outs,
@@ -413,15 +292,15 @@ __global__ void VectorizedBroadcastKernel(
                                   NumOuts,
                                   VecSize,
                                   false,
-                                  IsAllBroadcast>(ins,
-                                                  outs,
-                                                  use_broadcast,
-                                                  numel,
-                                                  configs,
-                                                  BLOCK_NUM_X * read_lens,
-                                                  block_offset,
-                                                  read_lens,
-                                                  func);
+                                  LoadType>(ins,
+                                            outs,
+                                            use_broadcast,
+                                            numel,
+                                            configs,
+                                            BLOCK_NUM_X * read_lens,
+                                            block_offset,
+                                            read_lens,
+                                            func);
   }
   int num = numel - block_offset;
   if (num > 0) {
@@ -432,15 +311,15 @@ __global__ void VectorizedBroadcastKernel(
                                   NumOuts,
                                   VecSize,
                                   true,
-                                  IsAllBroadcast>(ins,
-                                                  outs,
-                                                  use_broadcast,
-                                                  numel,
-                                                  configs,
-                                                  num,
-                                                  block_offset,
-                                                  read_lens,
-                                                  func);
+                                  LoadType>(ins,
+                                            outs,
+                                            use_broadcast,
+                                            numel,
+                                            configs,
+                                            num,
+                                            block_offset,
+                                            read_lens,
+                                            func);
   }
 #else
   int block_offset = BLOCK_ID_X * BLOCK_NUM_X * VecSize;
@@ -452,15 +331,15 @@ __global__ void VectorizedBroadcastKernel(
                                   NumOuts,
                                   VecSize,
                                   false,
-                                  IsAllBroadcast>(ins,
-                                                  outs,
-                                                  use_broadcast,
-                                                  numel,
-                                                  configs,
-                                                  BLOCK_NUM_X * VecSize,
-                                                  block_offset,
-                                                  read_lens,
-                                                  func);
+                                  LoadType>(ins,
+                                            outs,
+                                            use_broadcast,
+                                            numel,
+                                            configs,
+                                            BLOCK_NUM_X * VecSize,
+                                            block_offset,
+                                            read_lens,
+                                            func);
   } else {
     VectorizedBroadcastKernelImpl<InT,
                                   OutT,
@@ -469,22 +348,22 @@ __global__ void VectorizedBroadcastKernel(
                                   NumOuts,
                                   VecSize,
                                   true,
-                                  IsAllBroadcast>(ins,
-                                                  outs,
-                                                  use_broadcast,
-                                                  numel,
-                                                  configs,
-                                                  tail_tid,
-                                                  block_offset,
-                                                  read_lens,
-                                                  func);
+                                  LoadType>(ins,
+                                            outs,
+                                            use_broadcast,
+                                            numel,
+                                            configs,
+                                            tail_tid,
+                                            block_offset,
+                                            read_lens,
+                                            func);
   }
 #endif
 }
 
 template <typename InT,
           typename OutT,
-          typename Functor,
+          typename Func,
           int Arity,
           int NumOuts,
           int VecSize>
@@ -492,29 +371,16 @@ void LaunchBroadcastKernel(
     const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
     std::vector<DenseTensor *> *outs,
-    Functor func,
-    const phi::Array<kps::details::BroadcastConfig, Arity> &configs) {
-  int broadcast_num = 0;
-  int numel = (*outs)[0]->numel();
-  phi::Array<int, Arity> use_broadcast;
-  phi::Array<const _ptr_ InT *__restrict__, Arity> ins_data;
+    Func func,
+    const phi::Array<kps::details::BroadcastConfig, Arity> &configs,
+    const LoaderTypeClassifier<InT, OutT, Arity> &loader_classifier) {
   phi::Array<_ptr_ OutT *, NumOuts> outs_data;
-
   for (int i = 0; i < NumOuts; ++i) {
     outs_data[i] = (_ptr_ OutT *)(ctx.Alloc<OutT>((*outs)[i]));
   }
 
-  for (int i = 0; i < Arity; ++i) {
-    if (ins[i]->numel() != numel) {
-      broadcast_num++;
-      use_broadcast[i] = true;
-    } else {
-      use_broadcast[i] = false;
-    }
-    ins_data[i] = (const _ptr_ InT *)(ins[i]->data<InT>());
-  }
-
 #ifdef PADDLE_WITH_XPU_KP
+  int numel = (*outs)[0]->numel();
   const int threads = 64;
   const int blocks = 8;
   int read_lens = configs[0].buf_len;
@@ -522,10 +388,10 @@ void LaunchBroadcastKernel(
   int main_offset = (numel / (read_lens * threads)) * read_lens * threads;
   int tail_tid = numel % (read_lens * threads);
 
-  VectorizedBroadcastKernel<Functor, InT, OutT, Arity, NumOuts, VecSize, false>
-      <<<blocks, threads, 0, stream>>>(ins_data,
+  VectorizedBroadcastKernel<Func, InT, OutT, Arity, NumOuts, VecSize, false>
+      <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
                                        outs_data,
-                                       use_broadcast,
+                                       loader_classifier.use_broadcast,
                                        numel,
                                        configs,
                                        main_offset,
@@ -533,49 +399,54 @@ void LaunchBroadcastKernel(
                                        read_lens,
                                        func);
 #else
+  const auto &numel = loader_classifier.numel;
   auto gpu_config =
       phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, VecSize);
-  int read_lens = VecSize;
   auto stream = ctx.stream();
-  auto threads = gpu_config.thread_per_block;
+  auto threads = gpu_config.GetBlockSize();
   auto blocks = gpu_config.block_per_grid;
-  int main_offset = (numel / (read_lens * gpu_config.GetBlockSize())) *
-                    read_lens * gpu_config.GetBlockSize();
-  int tail_tid = numel % (read_lens * gpu_config.GetBlockSize());
+  int main_offset = (numel / (VecSize * threads)) * VecSize * threads;
+  int tail_tid = numel % (VecSize * threads);
 
-  if (broadcast_num > (Arity >> 1)) {
-    VectorizedBroadcastKernel<Functor,
+  if (loader_classifier.all_elementwise) {
+    VectorizedBroadcastKernel<Func,
                               InT,
                               OutT,
                               Arity,
                               NumOuts,
                               VecSize,
-                              (Arity > 1)>
-        <<<blocks, threads, 0, stream>>>(ins_data,
+                              kElementwise>
+        <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
                                          outs_data,
-                                         use_broadcast,
+                                         loader_classifier.use_broadcast,
                                          numel,
                                          configs,
                                          main_offset,
                                          tail_tid,
-                                         read_lens,
+                                         VecSize,
+                                         func);
+  } else if (loader_classifier.broadcast_num > (Arity >> 1)) {
+    constexpr BroadcastLoadType type_ = (Arity > 1) ? kBroadcast : kMixed;
+    VectorizedBroadcastKernel<Func, InT, OutT, Arity, NumOuts, VecSize, type_>
+        <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
+                                         outs_data,
+                                         loader_classifier.use_broadcast,
+                                         numel,
+                                         configs,
+                                         main_offset,
+                                         tail_tid,
+                                         VecSize,
                                          func);
   } else {
-    VectorizedBroadcastKernel<Functor,
-                              InT,
-                              OutT,
-                              Arity,
-                              NumOuts,
-                              VecSize,
-                              false>
-        <<<blocks, threads, 0, stream>>>(ins_data,
+    VectorizedBroadcastKernel<Func, InT, OutT, Arity, NumOuts, VecSize, kMixed>
+        <<<blocks, threads, 0, stream>>>(loader_classifier.ins_data,
                                          outs_data,
-                                         use_broadcast,
+                                         loader_classifier.use_broadcast,
                                          numel,
                                          configs,
                                          main_offset,
                                          tail_tid,
-                                         read_lens,
+                                         VecSize,
                                          func);
   }
 #endif
@@ -983,7 +854,7 @@ void BroadcastKernelForDifferentVecSize(
     std::vector<DenseTensor *> *outs,
     int axis,
     Functor func) {
-  using Traits = paddle::platform::FunctionTraits<Functor>;
+  using Traits = phi::funcs::FunctionTraits<Functor>;
   const int kArity =
       Traits::has_pointer_args ? static_cast<int>(ET) : Traits::arity;
   PADDLE_ENFORCE_EQ(
@@ -991,7 +862,7 @@ void BroadcastKernelForDifferentVecSize(
       kArity,
       phi::errors::InvalidArgument("The number of inputs is expected to be "
                                    "equal to the "
-                                   "arity of functor. But recieved: the "
+                                   "arity of functor. But received: the "
                                    "number of inputs "
                                    "is %d, the arity of functor is %d.",
                                    ins.size(),
@@ -1019,8 +890,8 @@ void BroadcastKernelForDifferentVecSize(
       kEnabledInt64IndexKernel &&
       (*outs)[0]->numel() >= std::numeric_limits<int32_t>::max();
   if (use_int64_index_kernel) {
-    int vec_size = GetVecsize<InT, OutT>(ins, outs);
-    switch (vec_size) {
+    auto loader_classifier = LoaderTypeClassifier<InT, OutT, kArity>(ins, outs);
+    switch (loader_classifier.vec_size) {
       case VecSizeL: {
         LaunchBroadcastKernelWithInt64IndexHelper<InT,
                                                   OutT,
@@ -1062,7 +933,7 @@ void BroadcastKernelForDifferentVecSize(
       }
       default: {
         PADDLE_THROW(phi::errors::Unimplemented(
-            "Unsupported vectorized size: %d!", vec_size));
+            "Unsupported vectorized size: %d!", loader_classifier.vec_size));
         break;
       }
     }
@@ -1070,61 +941,73 @@ void BroadcastKernelForDifferentVecSize(
   }
 #endif
 
-  // mergedim and get vec_size
-  const auto merge_dims = DimensionsTransform(ins, (*outs)[0]->dims(), axis);
   phi::Array<kps::details::BroadcastConfig, kArity> configs;
-
-// get vec_size
 #ifdef PADDLE_WITH_XPU_KP
   PADDLE_ENFORCE_EQ(
       ins.size(),
       2,
       phi::errors::InvalidArgument(
           "XPU only support inputs is 2, but received %d", ins.size()));
-  configs[0] = kps::details::BroadcastConfig(merge_dims.out_dims,
-                                             merge_dims.in_dims[0],
-                                             merge_dims.in_dims[1],
-                                             merge_dims.dim_size);
-  configs[1] = kps::details::BroadcastConfig(merge_dims.out_dims,
-                                             merge_dims.in_dims[1],
-                                             merge_dims.in_dims[0],
-                                             merge_dims.dim_size);
+
+  auto loader_classifier = LoaderTypeClassifier<InT, OutT, kArity>();
+  const auto dims_simplifier =
+      BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
+  if (VLOG_IS_ON(6)) {
+    DimsSimplifiedLogger<int64_t>::Log(
+        ins, outs, dims_simplifier, "XPU Broadcast");
+  }
+  configs[0] = kps::details::BroadcastConfig(dims_simplifier.out_dims,
+                                             dims_simplifier.in_dims[0],
+                                             dims_simplifier.in_dims[1],
+                                             dims_simplifier.rank);
+  configs[1] = kps::details::BroadcastConfig(dims_simplifier.out_dims,
+                                             dims_simplifier.in_dims[1],
+                                             dims_simplifier.in_dims[0],
+                                             dims_simplifier.rank);
   auto type = kps::details::OptType::CanNotOptimize;
   bool is_optimize = configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
-  for (int i = 0; i < kArity; ++i) {
-    // get the broadcast config,
-    // if data shape is[m, n], then you should set data_dim = {n, m}
-    // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
-    // if (ins[i]->numel() != (*outs)[0]->numel()) {
-    if (ins[i]->numel()) {
-      configs[i] = kps::details::BroadcastConfig(
-          merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
+  auto loader_classifier = LoaderTypeClassifier<InT, OutT, kArity>(ins, outs);
+  if (!loader_classifier.all_elementwise) {
+    const auto dims_simplifier =
+        BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
+
+    if (VLOG_IS_ON(6)) {
+      DimsSimplifiedLogger<int64_t>::Log(
+          ins, outs, dims_simplifier, "GPU Broadcast");
+    }
+    for (int i = 0; i < kArity; ++i) {
+      // if data shape is[m, n], then you should set data_dim = {n, m}
+      // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
+      // if (ins[i]->numel() != (*outs)[0]->numel()) {
+      if (ins[i]->numel()) {
+        configs[i] = kps::details::BroadcastConfig(dims_simplifier.out_dims,
+                                                   dims_simplifier.in_dims[i],
+                                                   dims_simplifier.rank);
+      }
     }
   }
-  int vec_size = GetVecsize<InT, OutT>(ins, outs);
 #endif
-
-  switch (vec_size) {
+  switch (loader_classifier.vec_size) {
     case VecSizeL: {
       LaunchBroadcastKernel<InT, OutT, Functor, kArity, NumOuts, VecSizeL>(
-          ctx, ins, outs, func, configs);
+          ctx, ins, outs, func, configs, loader_classifier);
       break;
     }
     case VecSizeM: {
       LaunchBroadcastKernel<InT, OutT, Functor, kArity, NumOuts, VecSizeM>(
-          ctx, ins, outs, func, configs);
+          ctx, ins, outs, func, configs, loader_classifier);
       break;
     }
     case VecSizeS: {
       LaunchBroadcastKernel<InT, OutT, Functor, kArity, NumOuts, VecSizeS>(
-          ctx, ins, outs, func, configs);
+          ctx, ins, outs, func, configs, loader_classifier);
       break;
     }
     default: {
       PADDLE_THROW(phi::errors::Unimplemented(
-          "Unsupported vectorized size: %d!", vec_size));
+          "Unsupported vectorized size: %d!", loader_classifier.vec_size));
       break;
     }
   }
@@ -1140,15 +1023,20 @@ void BroadcastKernel(const KPDevice &ctx,
                      std::vector<DenseTensor *> *outs,
                      int axis,
                      Functor func) {
-  std::vector<int> dims_size;
-  dims_size.reserve(ins.size());
+  // When there are multiple inputs, the outputs's rank should be equal the
+  // maximum rank of all inputs.
+  int max_rank = 0;
+  int min_rank = phi::DDim::kMaxRank;
   for (auto *in : ins) {
-    dims_size.emplace_back(in->dims().size());
+    max_rank = std::max(max_rank, in->dims().size());
+    min_rank = std::min(min_rank, in->dims().size());
   }
-
-  axis = axis == -1 ? *std::max_element(dims_size.begin(), dims_size.end()) -
-                          *std::min_element(dims_size.begin(), dims_size.end())
-                    : axis;
+  if (ins.size() == 1) {
+    // When there is only 1 input, the input's rank may be less than outputs'
+    // rank.
+    max_rank = std::max(max_rank, (*outs)[0]->dims().size());
+  }
+  axis = axis == -1 ? max_rank - min_rank : axis;
   BroadcastKernelForDifferentVecSize<ET, InT, OutT, Functor, NumOuts>(
       ctx, ins, outs, axis, func);
 }
@@ -1162,7 +1050,7 @@ void ElementwiseCompute(const GPUContext &dev_ctx,
                         DenseTensor *z) {
   std::vector<const DenseTensor *> ins = {&x, &y};
   std::vector<DenseTensor *> outs = {z};
-  z->mutable_data<OutType>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<OutType>(z);
   BroadcastKernel<ElementwiseType::kBinary, T, OutType, Functor, 1>(
       dev_ctx, ins, &outs, axis, func);
 }
@@ -1203,7 +1091,6 @@ void DefaultElementwiseOperator(const DeviceContext &dev_ctx,
         dev_ctx, x, y, axis, InverseFunctor(), z);
   }
 }
-
 #endif
 
 }  // namespace funcs

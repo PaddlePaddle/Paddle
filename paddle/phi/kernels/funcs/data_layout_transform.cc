@@ -16,8 +16,7 @@
 
 #include "glog/logging.h"
 
-#include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/layout.h"
@@ -48,16 +47,16 @@ void* GetDataFromTensor(const DenseTensor& tensor,
     case dnnl::memory::data_type::bf16:
       return to_void_cast(tensor.data<dtype::bfloat16>());
     default:
-      PADDLE_THROW(errors::InvalidArgument("Wrong mkldnn type provided."));
+      PADDLE_THROW(errors::InvalidArgument("Wrong oneDNN type provided."));
   }
 }
 
-void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
-                                    DataLayout out_layout,
-                                    const DenseTensor& in,
-                                    DenseTensor* out,
-                                    Place place,
-                                    bool always_copy) {
+void TransDataLayoutFromOneDNN(DataLayout in_layout,
+                               DataLayout out_layout,
+                               const DenseTensor& in,
+                               DenseTensor* out,
+                               Place place,
+                               bool always_copy) {
   // Set default as NCHW in case not specified
   out_layout = out_layout == DataLayout::ANY ? DataLayout::NCHW : out_layout;
 
@@ -98,11 +97,6 @@ void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 
     auto& astream = OneDNNContext::tls().get_stream();
-    ::paddle::platform::RecordEvent record_reorder(
-        "ext_reorder",
-        ::paddle::platform::TracerEventType::UserDefined,
-        2,
-        ::paddle::platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
   } else {
@@ -115,8 +109,6 @@ void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
   out->set_layout(DataLayout::kNCHW);
   VLOG(10) << "out->layout: " << out->layout() << " in->dims: " << in.dims()
            << " out->dims: " << out->dims();
-  // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(OneDNNMemoryFormat::undef);
 }
 
 #endif

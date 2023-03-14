@@ -17,7 +17,7 @@ from paddle.fluid import core
 __all__ = []
 
 
-class saved_tensors_hooks():
+class saved_tensors_hooks:
     """
     Dynamic graph, registers a pair of pack / unpack hooks for saved tensors.
 
@@ -29,7 +29,7 @@ class saved_tensors_hooks():
             of the original tensor. `pack_hook` will also be called while any
             tensor need be saved by `PyLayerContext.save_for_backward`. If a tensor
             saved for backward is no need buffer, `pack_hook` will not be called.
-            Only the thensor saved for backward is LoDTensor, `pack_hook` will be
+            Only the tensor saved for backward is LoDTensor, `pack_hook` will be
             called.
         unpack_hook (function): The unpack hook will be called every time the
             backward need use the saved inputs/outputs tensors. Then you can reload
@@ -104,8 +104,9 @@ class saved_tensors_hooks():
         self.unpack_hook = unpack_hook
 
     def __enter__(self):
-        core.eager.register_saved_tensors_hooks(self.pack_hook,
-                                                self.unpack_hook)
+        core.eager.register_saved_tensors_hooks(
+            self.pack_hook, self.unpack_hook
+        )
 
     def __exit__(self, *args):
         core.eager.reset_saved_tensors_hooks()

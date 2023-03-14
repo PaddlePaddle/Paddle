@@ -196,7 +196,7 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
     SET_IN(WeightH, weight_h);
     SET_IN(Bias, bias);
 #undef SET_IN
-    // TODO(grygielski): Add H0 to the pass
+    // H0 is required for oneDNN and optional in PaddlePaddle
     op_desc.SetInput("H0", {});
     op_desc.SetOutput("Hidden", {hidden->Name()});
     op_desc.SetAttr("is_reverse", gru->Op()->GetAttr("is_reverse"));
@@ -228,8 +228,8 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
           nullptr,
           platform::errors::NotFound("FC bias var has not been found."));
 
-      auto* gru_bias_tensor = gru_bias_var->GetMutable<LoDTensor>();
-      auto* fc_bias_tensor = fc_bias_var->GetMutable<LoDTensor>();
+      auto* gru_bias_tensor = gru_bias_var->GetMutable<phi::DenseTensor>();
+      auto* fc_bias_tensor = fc_bias_var->GetMutable<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(
           gru_bias_tensor->numel(),
           fc_bias_tensor->numel(),
@@ -350,7 +350,8 @@ void FCGRUFusePass::ApplyImpl(ir::Graph* graph) const {
       graph, name_scope_, param_scope(), true /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (fusion_count > 0))
     string::PrettyLogDetail("---    fused %d pairs of fc gru patterns",
                             fusion_count);
 }

@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import os
 import copy
-import argparse
+
 from . import constants
 
 
-class BaseConfig(object):
-
+class BaseConfig:
     def __init__(self, category, config_dict=None):
         self._category = category
         self._config_dict = None
@@ -29,13 +27,15 @@ class BaseConfig(object):
             else:
                 raise ValueError(
                     "Expected a dictionary. But received: {}".format(
-                        config_dict))
+                        config_dict
+                    )
+                )
         # Initialize attributes by the default config
         config = constants.get_category_default_config(self._category)
         for field, default_value in config.items():
             setattr(self, field, default_value)
 
-        # Overide attributes by the config_dict
+        # Override attributes by the config_dict
         if self._config_dict:
             self.from_dict(self._config_dict)
 
@@ -73,52 +73,62 @@ class BaseConfig(object):
             setattr(result, k, copy.deepcopy(v, memo))
         return result
 
+    def get(self, k, d=None):
+        result_dict = self.to_dict()
+        return result_dict.get(k, d)
+
 
 class RecomputeConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.RECOMPUTE
-        super(RecomputeConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class AMPConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.AMP
-        super(AMPConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class ShardingConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.SHARDING
-        super(ShardingConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class GradientMergeConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.GRADIENT_MERGE
-        super(GradientMergeConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class QATConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.QAT
-        super(QATConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
 
 
 class TuningConfig(BaseConfig):
-
     def __init__(self, config_dict=None):
         category = constants.TUNING
-        super(TuningConfig, self).__init__(category, config_dict)
+        super().__init__(category, config_dict)
+
+
+class DatasetConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.DATASET
+        super().__init__(category, config_dict)
+
+
+class FusedPassesConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.FUSED_PASSES
+        super().__init__(category, config_dict)
 
 
 class Strategy(BaseConfig):
     """
-    The `Strategy` object is used to configure the paralleization and optimization beheviors.
+    The `Strategy` object is used to configure the parallelization and optimization behaviors.
 
     Args:
         config (dict|string, optional): If this is None, the default configurations will used.
@@ -156,12 +166,13 @@ class Strategy(BaseConfig):
             #         self._config_dict = yaml.load(yaml_file, Loader=yaml.Loader)
             else:
                 raise ValueError(
-                    "Expected a dictionary. But received: {}".format(config))
+                    "Expected a dictionary. But received: {}".format(config)
+                )
         else:
             self._config_dict = {}
 
         category = constants.BASE
-        super(Strategy, self).__init__(category, self._config_dict)
+        super().__init__(category, self._config_dict)
 
         config_dict = self._config_dict.get(constants.RECOMPUTE, None)
         self.recompute = RecomputeConfig(config_dict)
@@ -180,3 +191,9 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.TUNING, None)
         self.tuning = TuningConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.DATASET, None)
+        self.dataset = DatasetConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.FUSED_PASSES, None)
+        self.fused_passes = FusedPassesConfig(config_dict)

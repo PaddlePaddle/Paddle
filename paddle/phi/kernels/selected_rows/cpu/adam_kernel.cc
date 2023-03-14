@@ -14,13 +14,12 @@
 
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/threadpool.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace phi {
 namespace sr {
@@ -60,7 +59,7 @@ void AdamDenseParamSparseGradKernel(
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   // skip_update=true, just copy input to output, and TensorCopy will call
@@ -118,7 +117,7 @@ void AdamDenseParamSparseGradKernel(
   } else {
     // merge duplicated rows if any.
     // The rows of grad_merge have been sorted inside MergeAdd functor
-    paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+    phi::funcs::scatter::MergeAdd<Context, T> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
   }
@@ -127,7 +126,7 @@ void AdamDenseParamSparseGradKernel(
   auto& grad_tensor = grad_merge.value();
   const T* grad_data = grad_tensor.template data<T>();
   auto* grad_merge_rows = &grad_merge.rows();
-  paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
@@ -201,12 +200,12 @@ void AdamDenseParamSparseGradKernel(
       if (end > static_cast<int64_t>(param_row_count)) {
         end = static_cast<int64_t>(param_row_count);
       }
-      fs.push_back(paddle::framework::Async([&functor,
-                                             &row_id_to_grad_row_offset,
-                                             &grad_data,
-                                             row_numel,
-                                             start,
-                                             end]() {
+      fs.push_back(phi::Async([&functor,
+                               &row_id_to_grad_row_offset,
+                               &grad_data,
+                               row_numel,
+                               start,
+                               end]() {
         for (int64_t row_id = start; row_id < end; ++row_id) {
           auto iter = row_id_to_grad_row_offset.find(row_id);
           if (iter != row_id_to_grad_row_offset.end()) {

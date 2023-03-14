@@ -16,15 +16,14 @@
 
 #include <algorithm>
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void Pad3DConstNCDHW(const int nthreads,
@@ -583,6 +582,7 @@ PD_REGISTER_KERNEL(pad3d,
                    ALL_LAYOUT,
                    phi::Pad3dKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    int,

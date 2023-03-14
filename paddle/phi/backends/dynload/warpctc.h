@@ -39,8 +39,8 @@ extern void* warpctc_dso_handle;
       std::call_once(warpctc_dso_flag, []() {                        \
         warpctc_dso_handle = phi::dynload::GetWarpCTCDsoHandle();    \
       });                                                            \
-      static void* p_##_name = dlsym(warpctc_dso_handle, #__name);   \
-      return reinterpret_cast<warpctcFunc>(p_##_name)(args...);      \
+      static void* p_##__name = dlsym(warpctc_dso_handle, #__name);  \
+      return reinterpret_cast<warpctcFunc>(p_##__name)(args...);     \
     }                                                                \
   };                                                                 \
   extern DynLoad__##__name __name

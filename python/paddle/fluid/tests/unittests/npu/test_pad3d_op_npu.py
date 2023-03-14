@@ -27,7 +27,6 @@ import paddle.fluid as fluid
 
 
 class TestPad3dNPUOp(op_test.OpTest):
-
     def setUp(self):
         paddle.enable_static()
         self.__class__.use_npu = True
@@ -39,16 +38,18 @@ class TestPad3dNPUOp(op_test.OpTest):
         self.variable_paddings = False
         self.initTestCase()
 
-        self.value = 0  #Asend npu only support constant_values = 0 right now.
+        self.value = 0  # Asend npu only support constant_values = 0 right now.
         self.inputs = {'X': np.random.random(self.shape).astype(self.x_type)}
         self.attrs = {}
         if self.variable_paddings:
             self.attrs['paddings'] = []
-            self.inputs['Paddings'] = np.array(
-                self.paddings).flatten().astype("int32")
+            self.inputs['Paddings'] = (
+                np.array(self.paddings).flatten().astype("int32")
+            )
         else:
-            self.attrs['paddings'] = np.array(
-                self.paddings).flatten().astype("int32")
+            self.attrs['paddings'] = (
+                np.array(self.paddings).flatten().astype("int32")
+            )
         self.attrs['value'] = self.value
         self.attrs['mode'] = self.mode
         self.attrs['data_format'] = self.data_format
@@ -69,10 +70,12 @@ class TestPad3dNPUOp(op_test.OpTest):
                 (0, 0),
             ]
 
-        out = np.pad(self.inputs['X'],
-                     paddings,
-                     mode=self.mode,
-                     constant_values=self.value)
+        out = np.pad(
+            self.inputs['X'],
+            paddings,
+            mode=self.mode,
+            constant_values=self.value,
+        )
 
         self.outputs = {'Out': out}
 
@@ -89,7 +92,6 @@ class TestPad3dNPUOp(op_test.OpTest):
 
 
 class TestCase1(TestPad3dNPUOp):
-
     def initTestCase(self):
         self.shape = (3, 4, 5, 6, 7)
         self.paddings = [0, 1, 2, 3, 4, 5]
@@ -102,7 +104,6 @@ class TestCase1(TestPad3dNPUOp):
 
 
 class TestCase2(TestPad3dNPUOp):
-
     def initTestCase(self):
         self.shape = (4, 5, 6, 7, 8)
         self.paddings = [1, 1, 1, 1, 1, 1]
@@ -111,13 +112,9 @@ class TestCase2(TestPad3dNPUOp):
 
 
 class TestPadAPI(unittest.TestCase):
-
-    def _get_numpy_out(self,
-                       input_data,
-                       pad,
-                       mode,
-                       value=0,
-                       data_format="NCDHW"):
+    def _get_numpy_out(
+        self, input_data, pad, mode, value=0, data_format="NCDHW"
+    ):
         if mode == "constant" and len(pad) == len(input_data.shape) * 2:
             pad = np.reshape(pad, (-1, 2)).tolist()
         elif data_format == "NCDHW":
@@ -168,8 +165,11 @@ class TestPadAPI(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        self.place = fluid.NPUPlace(
-            0) if fluid.core.is_compiled_with_npu() else fluid.CPUPlace()
+        self.place = (
+            fluid.NPUPlace(0)
+            if fluid.core.is_compiled_with_npu()
+            else fluid.CPUPlace()
+        )
         with program_guard(Program(), Program()):
             input_shape = (1, 2, 3, 4, 5)
             pad = [1, 2, 1, 1, 3, 4]
@@ -177,31 +177,25 @@ class TestPadAPI(unittest.TestCase):
             value = 0
             input_data = np.random.rand(*input_shape).astype(np.float32)
             x = paddle.fluid.data(name="x", shape=input_shape)
-            result1 = F.pad(x=x,
-                            pad=pad,
-                            value=value,
-                            mode=mode,
-                            data_format="NCDHW")
-            result2 = F.pad(x=x,
-                            pad=pad,
-                            value=value,
-                            mode=mode,
-                            data_format="NDHWC")
+            result1 = F.pad(
+                x=x, pad=pad, value=value, mode=mode, data_format="NCDHW"
+            )
+            result2 = F.pad(
+                x=x, pad=pad, value=value, mode=mode, data_format="NDHWC"
+            )
             exe = Executor(self.place)
-            fetches = exe.run(default_main_program(),
-                              feed={"x": input_data},
-                              fetch_list=[result1, result2])
+            fetches = exe.run(
+                default_main_program(),
+                feed={"x": input_data},
+                fetch_list=[result1, result2],
+            )
 
-            np_out1 = self._get_numpy_out(input_data,
-                                          pad,
-                                          mode,
-                                          value,
-                                          data_format="NCDHW")
-            np_out2 = self._get_numpy_out(input_data,
-                                          pad,
-                                          mode,
-                                          value,
-                                          data_format="NDHWC")
+            np_out1 = self._get_numpy_out(
+                input_data, pad, mode, value, data_format="NCDHW"
+            )
+            np_out2 = self._get_numpy_out(
+                input_data, pad, mode, value, data_format="NDHWC"
+            )
             np.testing.assert_allclose(fetches[0], np_out1)
             np.testing.assert_allclose(fetches[1], np_out2)
 
@@ -216,27 +210,19 @@ class TestPadAPI(unittest.TestCase):
         input_data = np.random.rand(*input_shape).astype(np.float32)
         tensor_data = paddle.to_tensor(input_data)
 
-        np_out1 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NCDHW")
-        np_out2 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NDHWC")
+        np_out1 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NCDHW"
+        )
+        np_out2 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NDHWC"
+        )
 
-        y1 = F.pad(tensor_data,
-                   pad=pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NCDHW")
-        y2 = F.pad(tensor_data,
-                   pad=pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NDHWC")
+        y1 = F.pad(
+            tensor_data, pad=pad, mode=mode, value=value, data_format="NCDHW"
+        )
+        y2 = F.pad(
+            tensor_data, pad=pad, mode=mode, value=value, data_format="NDHWC"
+        )
 
         np.testing.assert_allclose(y1.numpy(), np_out1)
         np.testing.assert_allclose(y2.numpy(), np_out2)
@@ -252,27 +238,19 @@ class TestPadAPI(unittest.TestCase):
         input_data = np.random.rand(*input_shape).astype(np.float32)
         tensor_data = paddle.to_tensor(input_data)
 
-        np_out1 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NCHW")
-        np_out2 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NHWC")
+        np_out1 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NCHW"
+        )
+        np_out2 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NHWC"
+        )
 
-        y1 = F.pad(tensor_data,
-                   pad=pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NCHW")
-        y2 = F.pad(tensor_data,
-                   pad=pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NHWC")
+        y1 = F.pad(
+            tensor_data, pad=pad, mode=mode, value=value, data_format="NCHW"
+        )
+        y2 = F.pad(
+            tensor_data, pad=pad, mode=mode, value=value, data_format="NHWC"
+        )
 
         np.testing.assert_allclose(y1.numpy(), np_out1)
         np.testing.assert_allclose(y2.numpy(), np_out2)
@@ -288,40 +266,28 @@ class TestPadAPI(unittest.TestCase):
         input_data = np.random.rand(*input_shape).astype(np.float32)
         tensor_data = paddle.to_tensor(input_data)
 
-        np_out1 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NCL")
-        np_out2 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NLC")
+        np_out1 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NCL"
+        )
+        np_out2 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NLC"
+        )
 
-        y1 = F.pad(tensor_data,
-                   pad=pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NCL")
-        y2 = F.pad(tensor_data,
-                   pad=pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NLC")
+        y1 = F.pad(
+            tensor_data, pad=pad, mode=mode, value=value, data_format="NCL"
+        )
+        y2 = F.pad(
+            tensor_data, pad=pad, mode=mode, value=value, data_format="NLC"
+        )
 
         np.testing.assert_allclose(y1.numpy(), np_out1)
         np.testing.assert_allclose(y2.numpy(), np_out2)
 
 
 class TestPad1dAPI(unittest.TestCase):
-
-    def _get_numpy_out(self,
-                       input_data,
-                       pad,
-                       mode,
-                       value=0.0,
-                       data_format="NCL"):
+    def _get_numpy_out(
+        self, input_data, pad, mode, value=0.0, data_format="NCL"
+    ):
         if data_format == "NCL":
             pad = [
                 (0, 0),
@@ -348,36 +314,33 @@ class TestPad1dAPI(unittest.TestCase):
         input_data = np.random.rand(*input_shape).astype(np.float32)
 
         pad_constant = nn.Pad1D(padding=pad, mode="constant", value=value)
-        pad_constant_int = nn.Pad1D(padding=pad_int,
-                                    mode="constant",
-                                    value=value)
+        pad_constant_int = nn.Pad1D(
+            padding=pad_int, mode="constant", value=value
+        )
 
         data = paddle.to_tensor(input_data)
 
         output = pad_constant(data)
-        np_out = self._get_numpy_out(input_data,
-                                     pad,
-                                     "constant",
-                                     value=value,
-                                     data_format="NCL")
+        np_out = self._get_numpy_out(
+            input_data, pad, "constant", value=value, data_format="NCL"
+        )
         np.testing.assert_allclose(output.numpy(), np_out)
 
         output = pad_constant_int(data)
-        np_out = self._get_numpy_out(input_data, [pad_int] * 2,
-                                     "constant",
-                                     value=value,
-                                     data_format="NCL")
+        np_out = self._get_numpy_out(
+            input_data,
+            [pad_int] * 2,
+            "constant",
+            value=value,
+            data_format="NCL",
+        )
         np.testing.assert_allclose(output.numpy(), np_out)
 
 
 class TestPad2dAPI(unittest.TestCase):
-
-    def _get_numpy_out(self,
-                       input_data,
-                       pad,
-                       mode,
-                       value=0.0,
-                       data_format="NCHW"):
+    def _get_numpy_out(
+        self, input_data, pad, mode, value=0.0, data_format="NCHW"
+    ):
         if data_format == "NCHW":
             pad = [
                 (0, 0),
@@ -406,36 +369,33 @@ class TestPad2dAPI(unittest.TestCase):
         input_data = np.random.rand(*input_shape).astype(np.float32)
 
         pad_constant = nn.Pad2D(padding=pad, mode="constant", value=value)
-        pad_constant_int = nn.Pad2D(padding=pad_int,
-                                    mode="constant",
-                                    value=value)
+        pad_constant_int = nn.Pad2D(
+            padding=pad_int, mode="constant", value=value
+        )
 
         data = paddle.to_tensor(input_data)
 
         output = pad_constant(data)
-        np_out = self._get_numpy_out(input_data,
-                                     pad,
-                                     "constant",
-                                     value=value,
-                                     data_format="NCHW")
+        np_out = self._get_numpy_out(
+            input_data, pad, "constant", value=value, data_format="NCHW"
+        )
         np.testing.assert_allclose(output.numpy(), np_out)
 
         output = pad_constant_int(data)
-        np_out = self._get_numpy_out(input_data, [pad_int] * 4,
-                                     "constant",
-                                     value=value,
-                                     data_format="NCHW")
+        np_out = self._get_numpy_out(
+            input_data,
+            [pad_int] * 4,
+            "constant",
+            value=value,
+            data_format="NCHW",
+        )
         np.testing.assert_allclose(output.numpy(), np_out)
 
 
 class TestPad3dAPI(unittest.TestCase):
-
-    def _get_numpy_out(self,
-                       input_data,
-                       pad,
-                       mode,
-                       value=0.0,
-                       data_format="NCDHW"):
+    def _get_numpy_out(
+        self, input_data, pad, mode, value=0.0, data_format="NCDHW"
+    ):
         if data_format == "NCDHW":
             pad = [
                 (0, 0),
@@ -466,32 +426,31 @@ class TestPad3dAPI(unittest.TestCase):
         input_data = np.random.rand(*input_shape).astype(np.float32)
 
         pad_constant = nn.Pad3D(padding=pad, mode="constant", value=value)
-        pad_constant_int = nn.Pad3D(padding=pad_int,
-                                    mode="constant",
-                                    value=value)
+        pad_constant_int = nn.Pad3D(
+            padding=pad_int, mode="constant", value=value
+        )
 
         data = paddle.to_tensor(input_data)
 
         output = pad_constant(data)
-        np_out = self._get_numpy_out(input_data,
-                                     pad,
-                                     "constant",
-                                     value=value,
-                                     data_format="NCDHW")
+        np_out = self._get_numpy_out(
+            input_data, pad, "constant", value=value, data_format="NCDHW"
+        )
         np.testing.assert_allclose(output.numpy(), np_out)
 
         output = pad_constant_int(data)
-        np_out = self._get_numpy_out(input_data, [pad_int] * 6,
-                                     "constant",
-                                     value=value,
-                                     data_format="NCDHW")
+        np_out = self._get_numpy_out(
+            input_data,
+            [pad_int] * 6,
+            "constant",
+            value=value,
+            data_format="NCDHW",
+        )
         np.testing.assert_allclose(output.numpy(), np_out)
 
 
 class TestPad3dOpNpuError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_value():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
@@ -538,14 +497,16 @@ class TestPad3dOpNpuError(unittest.TestCase):
 
 
 class TestPadDataformatError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_ncl():
             input_shape = (1, 2, 3, 4)
             pad = paddle.to_tensor(np.array([2, 1, 2, 1]).astype('int32'))
-            data = np.arange(np.prod(input_shape),
-                             dtype=np.float64).reshape(input_shape) + 1
+            data = (
+                np.arange(np.prod(input_shape), dtype=np.float64).reshape(
+                    input_shape
+                )
+                + 1
+            )
             my_pad = nn.Pad1D(padding=pad, mode="replicate", data_format="NCL")
             data = paddle.to_tensor(data)
             result = my_pad(data)
@@ -553,8 +514,12 @@ class TestPadDataformatError(unittest.TestCase):
         def test_nchw():
             input_shape = (1, 2, 4)
             pad = paddle.to_tensor(np.array([2, 1, 2, 1]).astype('int32'))
-            data = np.arange(np.prod(input_shape),
-                             dtype=np.float64).reshape(input_shape) + 1
+            data = (
+                np.arange(np.prod(input_shape), dtype=np.float64).reshape(
+                    input_shape
+                )
+                + 1
+            )
             my_pad = nn.Pad1D(padding=pad, mode="replicate", data_format="NCHW")
             data = paddle.to_tensor(data)
             result = my_pad(data)
@@ -562,11 +527,15 @@ class TestPadDataformatError(unittest.TestCase):
         def test_ncdhw():
             input_shape = (1, 2, 3, 4)
             pad = paddle.to_tensor(np.array([2, 1, 2, 1]).astype('int32'))
-            data = np.arange(np.prod(input_shape),
-                             dtype=np.float64).reshape(input_shape) + 1
-            my_pad = nn.Pad1D(padding=pad,
-                              mode="replicate",
-                              data_format="NCDHW")
+            data = (
+                np.arange(np.prod(input_shape), dtype=np.float64).reshape(
+                    input_shape
+                )
+                + 1
+            )
+            my_pad = nn.Pad1D(
+                padding=pad, mode="replicate", data_format="NCDHW"
+            )
             data = paddle.to_tensor(data)
             result = my_pad(data)
 

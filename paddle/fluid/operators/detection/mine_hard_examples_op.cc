@@ -53,10 +53,10 @@ template <typename DeviceContext, typename T>
 class MineHardExamplesKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in_cls_loss = ctx.Input<framework::Tensor>("ClsLoss");
-    auto* in_loc_loss = ctx.Input<framework::Tensor>("LocLoss");
-    auto* in_matched_indices = ctx.Input<framework::Tensor>("MatchIndices");
-    auto* in_match_dist = ctx.Input<framework::Tensor>("MatchDist");
+    auto* in_cls_loss = ctx.Input<phi::DenseTensor>("ClsLoss");
+    auto* in_loc_loss = ctx.Input<phi::DenseTensor>("LocLoss");
+    auto* in_matched_indices = ctx.Input<phi::DenseTensor>("MatchIndices");
+    auto* in_match_dist = ctx.Input<phi::DenseTensor>("MatchDist");
     float neg_pos_ratio = ctx.Attr<float>("neg_pos_ratio");
     T neg_dist_threshold =
         static_cast<T>(ctx.Attr<float>("neg_dist_threshold"));
@@ -64,9 +64,9 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
     MiningType mining_type =
         GetMiningType(ctx.Attr<std::string>("mining_type"));
 
-    auto out_neg_indices = ctx.Output<framework::LoDTensor>("NegIndices");
+    auto out_neg_indices = ctx.Output<phi::DenseTensor>("NegIndices");
     auto out_match_indices =
-        ctx.Output<framework::Tensor>("UpdatedMatchIndices");
+        ctx.Output<phi::DenseTensor>("UpdatedMatchIndices");
 
     framework::TensorCopy(
         *in_matched_indices, ctx.GetPlace(), out_match_indices);
@@ -316,9 +316,9 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "ClsLoss"),
         platform::CPUPlace());
   }
@@ -363,15 +363,15 @@ class MineHardExamplesOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("max_negative")
         .InEnum({"hard_example", "max_negative"});
 
-    AddOutput(
-        "NegIndices",
-        "(LoDTensor<int>) The output of negative example indices. a LoDTensor "
-        "with shape [Neg, 1]. The size of lod[0] minus 1 is batch size, "
-        "and each element is the prior box index. "
-        "For example, the batch size is 2, the lod is [[0, 1, 2]], "
-        "the sample 0's box 1(MatchIndices[0][1]) is selected, "
-        "and sample 1's box 0 is selected. The output NegIndices is "
-        "[[1], [0]].");
+    AddOutput("NegIndices",
+              "(phi::DenseTensor<int>) The output of negative example indices. "
+              "a phi::DenseTensor "
+              "with shape [Neg, 1]. The size of lod[0] minus 1 is batch size, "
+              "and each element is the prior box index. "
+              "For example, the batch size is 2, the lod is [[0, 1, 2]], "
+              "the sample 0's box 1(MatchIndices[0][1]) is selected, "
+              "and sample 1's box 0 is selected. The output NegIndices is "
+              "[[1], [0]].");
 
     AddOutput("UpdatedMatchIndices",
               "(Tensor<int>) The output of updated MatchIndices, a tensor with "

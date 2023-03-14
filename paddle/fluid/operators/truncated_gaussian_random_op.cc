@@ -18,9 +18,9 @@ limitations under the License. */
 #include <random>
 #include <vector>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
@@ -31,15 +31,11 @@ class TruncatedGaussianRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
-    return framework::OpKernelType(
+    return phi::KernelKey(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
-        ctx.device_context(),
-        layout,
-        library);
+        ctx.GetPlace());
   }
 };
 

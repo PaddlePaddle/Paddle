@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
 import unittest
+
 import paddle
 
 
 class TestPropertySave(unittest.TestCase):
-    """test jit property save
-    """
+    """test jit property save"""
 
     def setUp(self):
         a = paddle.framework.core.Property()
@@ -45,8 +44,7 @@ class TestPropertySave(unittest.TestCase):
             self.a.get_float(1)
 
     def test_set(self):
-        """test propety set.
-        """
+        """test propety set."""
         try:
             a = paddle.framework.core.Property()
             a.set_float('float', 10.0)

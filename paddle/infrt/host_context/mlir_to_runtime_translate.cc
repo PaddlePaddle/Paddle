@@ -308,7 +308,7 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
           arg_value = GetOpResult(upstream_op);
         }
       }
-      if (arg_value->is_type<::phi::DenseTensor>()) {
+      if (arg_value->is_type<::Tensor>()) {
         impl_->runtime->FeedInArgs(
             std::make_pair(std::to_string(i), ValueRef(arg_value)));
       }
@@ -462,8 +462,8 @@ bool MlirToRuntimeTranslator::EmitGeneralOp(
   for (int i = 0, e = op->getNumResults(); i < e; i++) {
     auto res = op->getResult(i);
     if (res.getType().isa<::infrt::DenseTensorType>()) {
-      auto r = impl_->value_map.try_emplace(
-          res, ValueRef(new Value{::phi::DenseTensor()}));
+      auto r =
+          impl_->value_map.try_emplace(res, ValueRef(new Value{::Tensor()}));
       CHECK(r.second) << "Duplicate add mlir value [" << DumpToString(res)
                       << "]";
       res_values.push_back(r.first->second.get());

@@ -187,7 +187,7 @@ bool ONNXRuntimePredictor::Init() {
   session_ = std::make_shared<Ort::Session>(
       *env_, onnx_proto, static_cast<size_t>(out_size), session_options);
   InitBinding();
-
+  paddle::framework::InitMemoryMethod();
   delete onnx_proto;
   onnx_proto = nullptr;
   return true;
@@ -313,7 +313,7 @@ Ort::Value ONNXRuntimePredictor::GetOrtValue(const ONNXDesc &desc,
   Ort::MemoryInfo memory_info(
       device_name, OrtDeviceAllocator, place_.GetDeviceId(), OrtMemTypeDefault);
   auto *var = scope_->FindVar(desc.name);
-  auto *tensor = var->GetMutable<framework::LoDTensor>();
+  auto *tensor = var->GetMutable<phi::DenseTensor>();
   size_t size =
       tensor->numel() *
       framework::SizeOfType(framework::TransToProtoVarType(tensor->dtype()));

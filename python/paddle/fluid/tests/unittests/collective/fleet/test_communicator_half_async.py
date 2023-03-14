@@ -12,37 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import sys
-import time
-import threading
 import subprocess
+import sys
 import unittest
+
 import numpy
 
 import paddle
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
 
 class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
-
     def net(self):
-        x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-        y_predict = fluid.layers.fc(input=x, size=1, act=None)
-        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+        y_predict = paddle.static.nn.fc(x, size=1, activation=None)
+        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
         avg_cost = paddle.mean(cost)
         return avg_cost, x, y
 
     def fake_reader(self):
-
         def reader():
             for i in range(10000):
                 x = numpy.random.random((1, 13)).astype('float32')
@@ -78,9 +73,11 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
         feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
 
         for batch_id, data in enumerate(train_reader()):
-            exe.run(paddle.static.default_main_program(),
-                    feed=feeder.feed(data),
-                    fetch_list=[])
+            exe.run(
+                paddle.static.default_main_program(),
+                feed=feeder.feed(data),
+                fetch_list=[],
+            )
 
         fleet.stop_worker()
 
@@ -93,9 +90,11 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
             role=role_maker.Role.WORKER
-            if training_role == "TRAINER" else role_maker.Role.SERVER,
+            if training_role == "TRAINER"
+            else role_maker.Role.SERVER,
             worker_num=1,
-            server_endpoints=["127.0.0.1:6002"])
+            server_endpoints=["127.0.0.1:6002"],
+        )
 
         if training_role == "TRAINER":
             self.run_trainer(role, strategy)
@@ -104,7 +103,6 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
 
     def test_communicator(self):
         run_server_cmd = """
-from __future__ import print_function
 
 import sys
 import os
@@ -142,9 +140,11 @@ half_run_server.run_ut()
         _python = sys.executable
 
         ps_cmd = "{} {}".format(_python, server_file)
-        ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
+        ps_proc = subprocess.Popen(
+            ps_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
 
         os.environ["http_proxy"] = ""
         os.environ["https_proxy"] = ""

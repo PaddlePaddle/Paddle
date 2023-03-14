@@ -35,22 +35,22 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
                           "but the received is %s",
                           ctx->Inputs("X").front(),
                           ctx->GetInputsVarType("X").front()));
-    PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out").front(),
-                      framework::proto::VarType::LOD_TENSOR,
-                      platform::errors::InvalidArgument(
-                          "The output Out(%s)'s type should be LoDTensor, "
-                          "but the received is %s",
-                          ctx->Outputs("Out").front(),
-                          ctx->GetOutputsVarType("Out").front()));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetOutputsVarType("Out").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The output Out(%s)'s type should be phi::DenseTensor, "
+            "but the received is %s",
+            ctx->Outputs("Out").front(),
+            ctx->GetOutputsVarType("Out").front()));
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -58,7 +58,7 @@ class GetTensorFromSelectedRowsKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
     auto *x = ctx.Input<phi::SelectedRows>("X");
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
 
     out->Resize(x->value().dims());
     out->mutable_data(ctx.GetPlace(), x->value().type());
@@ -72,7 +72,7 @@ class GetTensorFromSelectedRowsOpProtoMaker
  public:
   void Make() override {
     AddInput("X", "The input type is SelectedRows.");
-    AddOutput("Out", "The output type is LoDTensor.");
+    AddOutput("Out", "The output type is phi::DenseTensor.");
     AddComment(
         R"DOC(
 GetTensorFromSelectedRows Operator

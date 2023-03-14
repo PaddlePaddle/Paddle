@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {
@@ -47,7 +48,7 @@ constexpr uint8_t GetDLDataTypeCode() {
 template <typename T>
 void TestMain(const platform::Place &place, uint16_t lanes) {
   DDim dims{4, 5, 6, 7};
-  Tensor tensor;
+  phi::DenseTensor tensor;
   tensor.Resize(dims);
   void *p = tensor.mutable_data<T>(place);
 
@@ -85,7 +86,7 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
 template <typename T>
 void TestToDLManagedTensor(const platform::Place &place, uint16_t lanes) {
   DDim dims{6, 7};
-  Tensor tensor;
+  phi::DenseTensor tensor;
   tensor.Resize(dims);
   tensor.mutable_data<T>(place);
 

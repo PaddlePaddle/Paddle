@@ -31,13 +31,15 @@ class DGCClipByNormOp : public ClipByNormOp {
     return ClipByNormOp::InferShape(ctx);
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "current_step") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
 
     return framework::OperatorWithKernel::GetKernelTypeForVar(

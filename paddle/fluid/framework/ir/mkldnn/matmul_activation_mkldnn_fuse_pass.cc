@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,10 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/matmul_activation_mkldnn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -25,8 +26,8 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
-  auto act_types = paddle::platform::GetSupportedActivations();
-  auto matmul_types = {"matmul", "matmul_v2"};
+  auto act_types = GetSupportedActivations();
+  auto matmul_types = {"fused_matmul", "matmul", "matmul_v2"};
 
   for (const auto& matmul_type : matmul_types)
     for (auto& act_type : act_types) {
@@ -37,7 +38,7 @@ void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
 void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     Graph* graph, const std::string& matmul_type, std::string& act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(matmul_type + "_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
@@ -62,22 +63,9 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
         activation_out, activation_out, matmul_act_pattern);
 
     OpDesc* matmul_op = matmul->Op();
-    OpDesc* act_op = activation->Op();
 
-    auto attr_map = paddle::platform::GetAttributeMap(act_type);
-    for (const auto& attrs : attr_map) {
-      if (act_op->HasAttr(attrs.first)) {
-        matmul_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
-      }
-    }
-
-    if (act_type == "gelu" && activation->Op()->HasAttr("approximate")) {
-      act_type =
-          PADDLE_GET_CONST(bool, activation->Op()->GetAttr("approximate"))
-              ? "gelu_tanh"
-              : "gelu_erf";
-    }
-    matmul_op->SetAttr("fuse_activation", act_type);
+    ConvertToFusedOp(matmul_op);
+    SetActivationAttrs(matmul_op, activation->Op(), act_type);
     matmul_op->SetOutput("Out", {activation_out->Name()});
 
     IR_NODE_LINK_TO(matmul, activation_out);
@@ -87,7 +75,8 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
 
   gpd(graph, handler);
   AddStatis(found_matmul_activation_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_matmul_activation_count > 0)) {
     PrettyLogDetail("---    fused %d %s with %s activation",
                     found_matmul_activation_count,
                     matmul_type,
@@ -102,11 +91,6 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .End()
       .AddInput("Y")
       .IsTensor()
-      .End()
-      .AddInput(
-          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
-      .IsTensor()
-      .IsOptional()
       .End()
       .AddOutput("Out")
       .IsTensor()
@@ -128,8 +112,24 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .AddInput("Y")
       .IsTensor()
       .End()
-      .AddInput(
-          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End();
+
+  AddOpCompat(OpCompat("fused_matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
       .IsTensor()
       .IsOptional()
       .End()
@@ -294,6 +294,7 @@ REGISTER_PASS(matmul_activation_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(matmul_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("fused_matmul", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)
             .EQ("abs", 0)

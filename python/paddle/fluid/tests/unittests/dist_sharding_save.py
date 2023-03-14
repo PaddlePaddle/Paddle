@@ -12,20 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import os
+import pickle
+import sys
+
+from dist_mnist import cnn_model  # noqa: F401
 
 import paddle
-import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase
-from dist_mnist import cnn_model
-# from paddle.fluid.incubate.fleet.collective import fleet
-import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet.meta_optimizers.sharding as sharding
-
-import os
-import sys
-import pickle
+import paddle.fluid as fluid
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -42,20 +38,22 @@ def runtime_main():
     fleet.init(role)
     with fluid.program_guard(train_prog, startup_prog):
         with fluid.unique_name.guard():
-            input_x = paddle.fluid.layers.data(name="x",
-                                               shape=[32],
-                                               dtype='float32')
-            input_y = paddle.fluid.layers.data(name="y",
-                                               shape=[1],
-                                               dtype='int64')
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
+            )
+            input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
-            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=256, act='tanh')
-            prediction = paddle.fluid.layers.fc(input=[fc_2],
-                                                size=2,
-                                                act='softmax')
-            cost = paddle.fluid.layers.cross_entropy(input=prediction,
-                                                     label=input_y)
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            fc_2 = paddle.static.nn.fc(x=fc_1, size=256, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=[fc_2], size=2, activation='softmax'
+            )
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -66,10 +64,12 @@ def runtime_main():
                 "sharding_degree": 2,
             }
 
-            optimizer = paddle.fluid.optimizer.Momentum(learning_rate=0.01,
-                                                        momentum=0.9)
-            optimizer = fleet.distributed_optimizer(optimizer,
-                                                    strategy=strategy)
+            optimizer = paddle.fluid.optimizer.Momentum(
+                learning_rate=0.01, momentum=0.9
+            )
+            optimizer = fleet.distributed_optimizer(
+                optimizer, strategy=strategy
+            )
             optimizer.minimize(avg_cost)
 
     # execution
@@ -78,19 +78,18 @@ def runtime_main():
     exe = fluid.Executor(place)
     exe.run(startup_prog)
     dirname = "./ut_sharding_save_model"
-    sharding.utils.save_persistables(exe,
-                                     dirname,
-                                     main_program=train_prog,
-                                     filename=None)
+    sharding.utils.save_persistables(
+        exe, dirname, main_program=train_prog, filename=None
+    )
 
     out_losses = []
     sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
 if __name__ == "__main__":
-    #NOTE(liangjianzhong): dist unittest should be imlpement using runtime_main in test_dist_base.py
+    # NOTE(liangjianzhong): dist unittest should be imlpement using runtime_main in test_dist_base.py
     # but the runtime_main in test_dist_base.py use the fleet, DistributedStrategy from
-    # paddle.fluid.incubate.fleet.collective which is not support by sharding (paddle.distributed.fleet).
+    # paddle.incubate.distributed.fleet.collective which is not support by sharding (paddle.distributed.fleet).
     # this should be update in future.
     # runtime_main(TestDistMnist2x2)
     runtime_main()

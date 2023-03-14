@@ -56,18 +56,13 @@ void serialize_params(std::string* str,
                       framework::Scope* scope,
                       const std::vector<std::string>& params) {
   std::ostringstream os;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::CUDAPlace place;
-  phi::GPUContext ctx(place);
-#else
   phi::CPUContext ctx;
-#endif
   for (const auto& param : params) {
     PADDLE_ENFORCE_NOT_NULL(
         scope->FindVar(param),
         platform::errors::NotFound("Block should already have a '%s' variable",
                                    param));
-    auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+    auto* tensor = scope->FindVar(param)->GetMutable<phi::DenseTensor>();
     framework::SerializeToStream(os, *tensor, ctx);
   }
   *str = os.str();
@@ -81,8 +76,7 @@ float random(float low, float high) {
   std::uniform_real_distribution<double> dist(low, high);
   return dist(mt);
 }
-void RandomizeTensor(framework::LoDTensor* tensor,
-                     const platform::Place& place) {
+void RandomizeTensor(phi::DenseTensor* tensor, const platform::Place& place) {
   auto dims = tensor->dims();
   size_t num_elements = analysis::AccuDims(dims, dims.size());
   PADDLE_ENFORCE_GT(num_elements,
@@ -91,7 +85,7 @@ void RandomizeTensor(framework::LoDTensor* tensor,
                         "The input tensor dimension of the randomized tensor "
                         "function should be greater than zero."));
   platform::CPUPlace cpu_place;
-  framework::LoDTensor temp_tensor;
+  phi::DenseTensor temp_tensor;
   temp_tensor.Resize(dims);
   auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
   for (size_t i = 0; i < num_elements; i++) {
@@ -102,23 +96,12 @@ void RandomizeTensor(framework::LoDTensor* tensor,
 
 void CreateTensor(framework::Scope* scope,
                   const std::string& name,
-                  const std::vector<int64_t>& shape,
-                  bool in_cuda = true) {
+                  const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
-  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  auto* tensor = var->GetMutable<phi::DenseTensor>();
   auto dims = phi::make_ddim(shape);
   tensor->Resize(dims);
-  platform::Place place;
-  if (in_cuda) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    place = platform::CUDAPlace(0);
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "You must define PADDLE_WITH_CUDA for using CUDAPlace."));
-#endif
-  } else {
-    place = platform::CPUPlace();
-  }
+  platform::Place place = platform::CPUPlace();
   RandomizeTensor(tensor, place);
 }
 

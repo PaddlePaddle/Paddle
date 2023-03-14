@@ -12,33 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import unittest
 import tempfile
+import unittest
+import warnings
+
+import gradient_checker
 import numpy as np
-from op_test import OpTest
+from decorator_helper import prog_scope
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
+
 import paddle
-from paddle import enable_static
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import (OpTest,
-                                                  convert_float_to_uint16,
-                                                  convert_uint16_to_float)
-from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import _test_eager_guard
 import paddle.inference as paddle_infer
-import gradient_checker
-from decorator_helper import prog_scope
-import paddle.fluid.layers as layers
+from paddle import enable_static
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.op import Operator
+
+
+def sum_wrapper(X, use_mkldnn=False):
+    res = 0
+    for x in X:
+        res += x
+    return res
 
 
 class TestSumOp(OpTest):
-
     def setUp(self):
         self.op_type = "sum"
+        self.python_api = sum_wrapper
         self.init_kernel_type()
         self.use_mkldnn = False
         self.init_kernel_type()
@@ -61,7 +68,6 @@ class TestSumOp(OpTest):
 
 
 class TestSelectedRowsSumOp(unittest.TestCase):
-
     def setUp(self):
         self.height = 10
         self.row_numel = 12
@@ -70,14 +76,18 @@ class TestSelectedRowsSumOp(unittest.TestCase):
         self.init_kernel_type()
 
     def check_with_place(self, place, inplace):
-        self.check_input_and_optput(core.Scope(), place, inplace, True, True,
-                                    True)
-        self.check_input_and_optput(core.Scope(), place, inplace, False, True,
-                                    True)
-        self.check_input_and_optput(core.Scope(), place, inplace, False, False,
-                                    True)
-        self.check_input_and_optput(core.Scope(), place, inplace, False, False,
-                                    False)
+        self.check_input_and_optput(
+            core.Scope(), place, inplace, True, True, True
+        )
+        self.check_input_and_optput(
+            core.Scope(), place, inplace, False, True, True
+        )
+        self.check_input_and_optput(
+            core.Scope(), place, inplace, False, False, True
+        )
+        self.check_input_and_optput(
+            core.Scope(), place, inplace, False, False, False
+        )
 
     def init_kernel_type(self):
         pass
@@ -88,13 +98,15 @@ class TestSelectedRowsSumOp(unittest.TestCase):
             array[i] *= rows[i]
         return array
 
-    def check_input_and_optput(self,
-                               scope,
-                               place,
-                               inplace,
-                               w1_has_data=False,
-                               w2_has_data=False,
-                               w3_has_data=False):
+    def check_input_and_optput(
+        self,
+        scope,
+        place,
+        inplace,
+        w1_has_data=False,
+        w2_has_data=False,
+        w3_has_data=False,
+    ):
 
         self.create_selected_rows(scope, place, "W1", w1_has_data)
         self.create_selected_rows(scope, place, "W2", w2_has_data)
@@ -120,7 +132,8 @@ class TestSelectedRowsSumOp(unittest.TestCase):
             self.assertEqual(len(out.rows()), 7)
             np.testing.assert_array_equal(
                 np.array(out.get_tensor()),
-                self._get_array(self.rows, self.row_numel) * has_data_w_num)
+                self._get_array(self.rows, self.row_numel) * has_data_w_num,
+            )
         else:
             self.assertEqual(len(out.rows()), 0)
 
@@ -151,15 +164,14 @@ class TestSelectedRowsSumOp(unittest.TestCase):
 
 
 class TestSelectedRowsSumOpInt(TestSelectedRowsSumOp):
-
     def init_kernel_type(self):
         self.dtype = np.int32
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 'place does not support BF16 evaluation')
+@unittest.skipIf(
+    not core.supports_bfloat16(), 'place does not support BF16 evaluation'
+)
 class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
-
     def setUp(self):
         self.height = 10
         self.row_numel = 12
@@ -167,8 +179,9 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         self.dtype = np.uint16
         self.init_kernel_type()
         np.random.seed(12345)
-        self.data = np.random.random(
-            (len(self.rows), self.row_numel)).astype(np.float32)
+        self.data = np.random.random((len(self.rows), self.row_numel)).astype(
+            np.float32
+        )
 
     def _get_array(self, rows, row_numel):
         if len(rows) > 0:
@@ -176,13 +189,15 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
         else:
             return np.ndarray((0, row_numel), dtype=self.dtype)
 
-    def check_input_and_optput(self,
-                               scope,
-                               place,
-                               inplace,
-                               w1_has_data=False,
-                               w2_has_data=False,
-                               w3_has_data=False):
+    def check_input_and_optput(
+        self,
+        scope,
+        place,
+        inplace,
+        w1_has_data=False,
+        w2_has_data=False,
+        w3_has_data=False,
+    ):
 
         self.create_selected_rows(scope, place, "W1", w1_has_data)
         self.create_selected_rows(scope, place, "W2", w2_has_data)
@@ -208,8 +223,12 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
             self.assertEqual(len(out.rows()), 7)
             out_bf16 = np.array(out.get_tensor())
             out_fp32 = convert_uint16_to_float(out_bf16)
-            ref_fp32 = convert_uint16_to_float(
-                self._get_array(self.rows, self.row_numel)) * has_data_w_num
+            ref_fp32 = (
+                convert_uint16_to_float(
+                    self._get_array(self.rows, self.row_numel)
+                )
+                * has_data_w_num
+            )
             np.testing.assert_allclose(out_fp32, ref_fp32, atol=0, rtol=0.95e-2)
         else:
             self.assertEqual(len(out.rows()), 0)
@@ -220,13 +239,11 @@ class TestSelectedRowsSumBF16Op(TestSelectedRowsSumOp):
 
 
 class TestSelectedRowsSumBF16OpBigRow(TestSelectedRowsSumBF16Op):
-
     def init_kernel_type(self):
         self.row_numel = 102
 
 
 class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
-
     def setUp(self):
         self.height = 10
         self.row_numel = 12
@@ -258,23 +275,25 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
         self.assertEqual(out_t.shape[0], self.height)
         np.testing.assert_array_equal(
             out_t,
-            self._get_array([i for i in range(self.height)], self.row_numel) *
-            np.tile(np.array(result).reshape(self.height, 1), self.row_numel))
+            self._get_array([i for i in range(self.height)], self.row_numel)
+            * np.tile(np.array(result).reshape(self.height, 1), self.row_numel),
+        )
 
     def create_lod_tensor(self, scope, place, var_name):
         var = scope.var(var_name)
         w_tensor = var.get_tensor()
-        w_array = self._get_array([i for i in range(self.height)],
-                                  self.row_numel)
+        w_array = self._get_array(
+            [i for i in range(self.height)], self.row_numel
+        )
         w_tensor.set(w_array, place)
         return var
 
 
-#----------- test fp16 -----------
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+# ----------- test fp16 -----------
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16SumOp(TestSumOp):
-
     def init_kernel_type(self):
         self.dtype = np.float16
 
@@ -292,11 +311,10 @@ class TestFP16SumOp(TestSumOp):
 
 
 def create_test_sum_fp16_class(parent):
-
-    @unittest.skipIf(not core.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
     class TestSumFp16Case(parent):
-
         def init_kernel_type(self):
             self.dtype = np.float16
 
@@ -311,9 +329,8 @@ def create_test_sum_fp16_class(parent):
     globals()[cls_name] = TestSumFp16Case
 
 
-#----------- test bf16 -----------
+# ----------- test bf16 -----------
 class TestSumBF16Op(OpTest):
-
     def setUp(self):
         self.op_type = "sum"
         self.init_kernel_type()
@@ -322,9 +339,11 @@ class TestSumBF16Op(OpTest):
         x2 = np.random.random((3, 40)).astype(np.float32)
         y = x0 + x1 + x2
         self.inputs = {
-            "X": [("x0", convert_float_to_uint16(x0)),
-                  ("x1", convert_float_to_uint16(x1)),
-                  ("x2", convert_float_to_uint16(x2))]
+            "X": [
+                ("x0", convert_float_to_uint16(x0)),
+                ("x1", convert_float_to_uint16(x1)),
+                ("x2", convert_float_to_uint16(x2)),
+            ]
         }
         self.outputs = {'Out': convert_float_to_uint16(y)}
 
@@ -332,22 +351,25 @@ class TestSumBF16Op(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        self.check_output()
+        # new dynamic graph mode does not support unit16 type
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', numeric_grad_delta=0.5)
+        # new dynamic graph mode does not support unit16 type
+        self.check_grad(
+            ['x0'], 'Out', numeric_grad_delta=0.5, check_dygraph=False
+        )
 
 
 class API_Test_Add_n(unittest.TestCase):
-
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input0 = fluid.layers.fill_constant(shape=[2, 3],
-                                                dtype='int64',
-                                                value=5)
-            input1 = fluid.layers.fill_constant(shape=[2, 3],
-                                                dtype='int64',
-                                                value=3)
+            input0 = fluid.layers.fill_constant(
+                shape=[2, 3], dtype='int64', value=5
+            )
+            input1 = fluid.layers.fill_constant(
+                shape=[2, 3], dtype='int64', value=3
+            )
             expected_result = np.empty((2, 3))
             expected_result.fill(8)
             sum_value = paddle.add_n([input0, input1])
@@ -366,24 +388,24 @@ class API_Test_Add_n(unittest.TestCase):
 
     def test_dygraph_api(self):
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                input0 = paddle.ones(shape=[2, 3], dtype='float32')
-                input1 = paddle.ones(shape=[2, 3], dtype='float32')
-                input0.stop_gradient = False
-                input1.stop_gradient = False
-                expected_result = np.empty((2, 3))
-                expected_result.fill(2)
-                sum_value = paddle.add_n([input0, input1])
-                self.assertEqual((sum_value.numpy() == expected_result).all(),
-                                 True)
+            input0 = paddle.ones(shape=[2, 3], dtype='float32')
+            input1 = paddle.ones(shape=[2, 3], dtype='float32')
+            input0.stop_gradient = False
+            input1.stop_gradient = False
+            expected_result = np.empty((2, 3))
+            expected_result.fill(2)
+            sum_value = paddle.add_n([input0, input1])
+            self.assertEqual((sum_value.numpy() == expected_result).all(), True)
 
-                expected_grad_result = np.empty((2, 3))
-                expected_grad_result.fill(1)
-                sum_value.backward()
-                self.assertEqual(
-                    (input0.grad.numpy() == expected_grad_result).all(), True)
-                self.assertEqual(
-                    (input1.grad.numpy() == expected_grad_result).all(), True)
+            expected_grad_result = np.empty((2, 3))
+            expected_grad_result.fill(1)
+            sum_value.backward()
+            self.assertEqual(
+                (input0.grad.numpy() == expected_grad_result).all(), True
+            )
+            self.assertEqual(
+                (input1.grad.numpy() == expected_grad_result).all(), True
+            )
 
     def test_add_n_and_add_and_grad(self):
         with fluid.dygraph.guard():
@@ -400,7 +422,7 @@ class API_Test_Add_n(unittest.TestCase):
 
             dx, dy = paddle.grad([out], [x, y], create_graph=True)
 
-            expected_out = np.array([[10., 12., 14.], [16., 18., 20.]])
+            expected_out = np.array([[10.0, 12.0, 14.0], [16.0, 18.0, 20.0]])
             expected_dx = np.array([[1, 1, 1], [1, 1, 1]])
             expected_dy = np.array([[1, 1, 1], [1, 1, 1]])
 
@@ -410,54 +432,51 @@ class API_Test_Add_n(unittest.TestCase):
 
 
 class TestRaiseSumError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_type():
-            fluid.layers.sum([11, 22])
+            paddle.add_n([11, 22])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
             data2 = fluid.data(name="input2", shape=[10], dtype="int8")
-            fluid.layers.sum([data1, data2])
+            paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            fluid.layers.sum(data1)
+            paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 
 
 class TestRaiseSumsError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_type():
-            fluid.layers.sums([11, 22])
+            paddle.add_n([11, 22])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
             data2 = fluid.data(name="input2", shape=[10], dtype="int8")
-            fluid.layers.sums([data1, data2])
+            paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            fluid.layers.sums(data1)
+            paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 
         def test_out_type():
             data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
             data2 = fluid.data(name="input2", shape=[10], dtype="float32")
-            fluid.layers.sums([data1, data2], out=[10])
+            out = [10]
+            out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_type)
 
@@ -465,15 +484,13 @@ class TestRaiseSumsError(unittest.TestCase):
             data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
             data2 = fluid.data(name="input2", shape=[10], dtype="float32")
             out = fluid.data(name="out", shape=[10], dtype="int8")
-            fluid.layers.sums([data1, data2], out=out)
+            out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_dtype)
 
 
 class TestSumOpError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_empty_list_input():
             with fluid.dygraph.guard():
                 fluid._legacy_C_ops.sum([])
@@ -491,14 +508,16 @@ create_test_sum_fp16_class(TestLoDTensorAndSelectedRowsOp)
 
 
 class TestReduceOPTensorAxisBase(unittest.TestCase):
-
     def setUp(self):
         paddle.disable_static()
         paddle.seed(2022)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.save_path = os.path.join(self.temp_dir.name, 'reduce_tensor_axis')
-        self.place = paddle.CUDAPlace(
-            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         self.keepdim = False
         self.init_data()
 
@@ -517,7 +536,8 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
         pd_out = self.pd_api(self.x, self.tensor_axis)
         np_out = self.np_api(self.x.numpy(), tuple(self.np_axis))
         np.testing.assert_allclose(
-            pd_out.numpy() if pd_out.size > 1 else pd_out.item(), np_out)
+            pd_out.numpy() if pd_out.size > 1 else pd_out.item(), np_out
+        )
         pd_out.backward()
         self.assertEqual(self.x.gradient().shape, tuple(self.x.shape))
 
@@ -527,9 +547,9 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
         starup_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, starup_prog):
             # run static
-            x = paddle.static.data(shape=self.x.shape,
-                                   name='x',
-                                   dtype='float32')
+            x = paddle.static.data(
+                shape=self.x.shape, name='x', dtype='float32'
+            )
             if isinstance(self.tensor_axis, paddle.Tensor):
                 axis = paddle.assign(self.np_axis)
             else:
@@ -543,15 +563,20 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
             linear = paddle.nn.Linear(x.shape[-1], 5)
             linear_out = linear(x)
             out = self.pd_api(linear_out, axis, keepdim=self.keepdim)
+
+            sgd = paddle.optimizer.SGD(learning_rate=0.0)
+            sgd.minimize(paddle.mean(out))
             exe = paddle.static.Executor(self.place)
             exe.run(starup_prog)
-            static_out = exe.run(feed={'x': self.x.numpy().astype('float32')},
-                                 fetch_list=[out])
+            static_out = exe.run(
+                feed={'x': self.x.numpy().astype('float32')}, fetch_list=[out]
+            )
 
             # run infer
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)
-            config = paddle_infer.Config(self.save_path + '.pdmodel',
-                                         self.save_path + '.pdiparams')
+            config = paddle_infer.Config(
+                self.save_path + '.pdmodel', self.save_path + '.pdiparams'
+            )
             if paddle.is_compiled_with_cuda():
                 config.enable_use_gpu(100, 0)
             else:
@@ -570,7 +595,6 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
 
 
 class TestSumWithTensorAxis1(TestReduceOPTensorAxisBase):
-
     def init_data(self):
         self.pd_api = paddle.sum
         self.np_api = np.sum
@@ -579,12 +603,11 @@ class TestSumWithTensorAxis1(TestReduceOPTensorAxisBase):
         self.tensor_axis = [
             0,
             paddle.to_tensor([1], 'int64'),
-            paddle.to_tensor([2], 'int64')
+            paddle.to_tensor([2], 'int64'),
         ]
 
 
 class TestAddNDoubleGradCheck(unittest.TestCase):
-
     def add_n_wrapper(self, x):
         return paddle.add_n(x)
 
@@ -594,25 +617,28 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data1 = layers.data('data1', [3, 4, 5], False, dtype)
+        data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
-        data2 = layers.data('data2', [3, 4, 5], False, dtype)
+        data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
 
-        gradient_checker.double_grad_check([data1, data2],
-                                           out,
-                                           x_init=[data1_arr, data2_arr],
-                                           place=place,
-                                           eps=eps)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(
-            self.add_n_wrapper, [data1, data2],
+        gradient_checker.double_grad_check(
+            [data1, data2],
             out,
             x_init=[data1_arr, data2_arr],
-            place=place)
+            place=place,
+            eps=eps,
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.add_n_wrapper,
+            [data1, data2],
+            out,
+            x_init=[data1_arr, data2_arr],
+            place=place,
+        )
 
     def test_grad(self):
         paddle.enable_static()
@@ -624,7 +650,6 @@ class TestAddNDoubleGradCheck(unittest.TestCase):
 
 
 class TestAddNTripleGradCheck(unittest.TestCase):
-
     def add_n_wrapper(self, x):
         return paddle.add_n(x)
 
@@ -634,25 +659,28 @@ class TestAddNTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data1 = layers.data('data1', [3, 4, 5], False, dtype)
+        data1 = paddle.static.data('data1', [3, 4, 5], dtype)
         data1.persistable = True
-        data2 = layers.data('data2', [3, 4, 5], False, dtype)
+        data2 = paddle.static.data('data2', [3, 4, 5], dtype)
         data2.persistable = True
         out = paddle.add_n([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
 
-        gradient_checker.triple_grad_check([data1, data2],
-                                           out,
-                                           x_init=[data1_arr, data2_arr],
-                                           place=place,
-                                           eps=eps)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.triple_grad_check_for_dygraph(
-            self.add_n_wrapper, [data1, data2],
+        gradient_checker.triple_grad_check(
+            [data1, data2],
             out,
             x_init=[data1_arr, data2_arr],
-            place=place)
+            place=place,
+            eps=eps,
+        )
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.add_n_wrapper,
+            [data1, data2],
+            out,
+            x_init=[data1_arr, data2_arr],
+            place=place,
+        )
 
     def test_grad(self):
         paddle.enable_static()
@@ -664,7 +692,6 @@ class TestAddNTripleGradCheck(unittest.TestCase):
 
 
 class TestSumDoubleGradCheck(unittest.TestCase):
-
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
@@ -674,21 +701,17 @@ class TestSumDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 4], False, dtype)
+        data = paddle.static.data('data', [2, 4], dtype)
         data.persistable = True
         out = paddle.sum(data, axis=1, keepdim=True)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
-        gradient_checker.double_grad_check([data],
-                                           out,
-                                           x_init=[data_arr],
-                                           place=place,
-                                           eps=eps)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(self.sum_wrapper, [data],
-                                                       out,
-                                                       x_init=[data_arr],
-                                                       place=place)
+        gradient_checker.double_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.sum_wrapper, [data], out, x_init=[data_arr], place=place
+        )
 
     def test_grad(self):
         paddle.enable_static()
@@ -700,7 +723,6 @@ class TestSumDoubleGradCheck(unittest.TestCase):
 
 
 class TestSumTripleGradCheck(unittest.TestCase):
-
     def sum_wrapper(self, x):
         return paddle.sum(x[0], axis=1, keepdim=True)
 
@@ -710,21 +732,17 @@ class TestSumTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [2, 4], False, dtype)
+        data = paddle.static.data('data', [2, 4], dtype)
         data.persistable = True
         out = paddle.sum(data, axis=1, keepdim=True)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
-        gradient_checker.triple_grad_check([data],
-                                           out,
-                                           x_init=[data_arr],
-                                           place=place,
-                                           eps=eps)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.triple_grad_check_for_dygraph(self.sum_wrapper, [data],
-                                                       out,
-                                                       x_init=[data_arr],
-                                                       place=place)
+        gradient_checker.triple_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.sum_wrapper, [data], out, x_init=[data_arr], place=place
+        )
 
     def test_grad(self):
         paddle.enable_static()
@@ -733,6 +751,31 @@ class TestSumTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestSumAPIWarnings(unittest.TestCase):
+    def test_warnings(self):
+        with warnings.catch_warnings(record=True) as context:
+            warnings.simplefilter("always")
+            paddle.enable_static()
+            helper = LayerHelper("sum")
+            data = paddle.static.data(
+                name='data', shape=[32, 32], dtype='float32'
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            attrs = {'dim': [1], 'keep_dim': True, 'reduce_all': True}
+            os.environ["FLAGS_print_extra_attrs"] = '1'
+            helper.append_op(
+                type="reduce_sum",
+                inputs={'X': data},
+                outputs={'Out': out},
+                attrs=attrs,
+            )
+            self.assertTrue(
+                "op reduce_sum's attr reduce_all = True is not the default value: False"
+                in str(context[-1].message)
+            )
+            os.environ["FLAGS_print_extra_attrs"] = '0'
 
 
 if __name__ == "__main__":

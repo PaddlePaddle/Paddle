@@ -18,8 +18,10 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -46,6 +48,34 @@ CPUQuantizeSquashPass::CPUQuantizeSquashPass() {
       .End();
 
   AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .End()
+      .AddAttr("paddings")
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .End()
+      .AddAttr("data_format")
+      .IsOptional()
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("fused_conv2d"))
       .AddInput("Input")
       .IsTensor()
       .End()
@@ -104,51 +134,23 @@ void CPUQuantizeSquashPass::FindNodesToKeep(
   AddStatis(found_count);
 }
 
-bool CPUQuantizeSquashPass::IsDequantizeInputUint8(
-    const Node* dequant_in) const {
-  PADDLE_ENFORCE_EQ(
-      dequant_in->inputs.size(),
-      1,
-      platform::errors::InvalidArgument(
-          "Dequantize (id: %f) should have only one input.", dequant_in->id()));
-  if (dequant_in->inputs[0]->IsOp()) {
-    auto prev_op = dequant_in->inputs[0]->Op();
-    std::string act_name;
-    if (prev_op->Type() == "relu") {
-      return true;
-    } else {
-      if (prev_op->Type() == "conv2d") {
-        act_name = "fuse_activation";
-      } else if (prev_op->Type() == "fc") {
-        act_name = "activation_type";
-      }
-      if (!act_name.empty()) {
-        auto act = prev_op->GetAttrIfExists<std::string>(act_name);
-        if (act == "relu" || act == "relu6") {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
 bool CPUQuantizeSquashPass::IsDequantizeQuantizeIncompatible(
-    Node* quant_op, Node* dequant_in, Node* next_op) const {
-  bool is_concat_signed =
+    Node* quant_op, Node* dequant_op, Node* next_op) const {
+  bool is_next_op_signed =
       quant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
-  bool is_input_unsigned = IsDequantizeInputUint8(dequant_in);
-  /* TODO(sfraczek): remove elementwise from this condition when BinaryMKLDNN
-   kernel will support two different input data types */
+  bool is_input_signed =
+      dequant_op->Op()->GetAttrIfExists<bool>("is_negative_input");
+
+  // BinaryOneDNN doesn't support two different input data types
   bool is_next_op_concat_or_elementwise =
       next_op->Op()->Type() == "concat" ||
       next_op->Op()->Type().find("elementwise") == 0;
-  if (is_next_op_concat_or_elementwise && is_concat_signed &&
-      is_input_unsigned) {
+  if (is_next_op_concat_or_elementwise &&
+      (is_next_op_signed ^ is_input_signed)) {
     VLOG(4) << "Do not squash dequant-quant, because "
             << "next_op is: " << next_op->Op()->Type()
-            << ", is_concat_signed: " << is_concat_signed
-            << ", is_input_unsigned: " << is_input_unsigned << ".";
+            << ", is_next_op_signed: " << is_next_op_signed
+            << ", is_input_signed: " << is_input_signed << ".";
     return true;
   }
   return false;
@@ -173,7 +175,7 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     GET_IR_NODE_FROM_SUBGRAPH(quant_out, quant_out, squash_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, squash_pattern);
 
-    if (IsDequantizeQuantizeIncompatible(quant_op, dequant_in, next_op)) {
+    if (IsDequantizeQuantizeIncompatible(quant_op, dequant_op, next_op)) {
       return;
     }
 
@@ -184,6 +186,11 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
         PADDLE_GET_CONST(float, quant_op->Op()->GetAttr("Scale"));
     float dequant_shift = dequant_op->Op()->GetAttrIfExists<float>("Shift");
     float quant_shift = quant_op->Op()->GetAttrIfExists<float>("Shift");
+    if (quant_op->Op()->GetAttrIfExists<bool>("is_negative_input") !=
+        dequant_op->Op()->GetAttrIfExists<bool>("is_negative_input")) {
+      return;
+    }
+
     PADDLE_ENFORCE_NE(
         nodes_keep_counter->find(dequant_out),
         nodes_keep_counter->end(),
@@ -195,14 +202,13 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     if (dequant_scale == quant_scale && dequant_shift == quant_shift) {
       // squash dequantize-quantize to nothing
       auto quant_out_var_name = quant_out->Name();
-      auto next_op_inputs = next_op_desc->InputNames();
-      for (const auto& name : next_op_inputs) {
-        auto input_names = next_op_desc->Input(name);
+      for (auto input_name : next_op_desc->InputNames()) {
+        auto& input_names = next_op_desc->MutableInputs()->at(input_name);
         std::replace(input_names.begin(),
                      input_names.end(),
                      quant_out_var_name,
                      dequant_in->Name());
-        next_op_desc->SetInput(name, input_names);
+        next_op_desc->SetInput(input_name, input_names);
       }
 
       if (keep_dequant)
@@ -262,10 +268,8 @@ void CPUQuantizeSquashPass::OpRequantSquash(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(requant_out, requant_out, op_requant_pattern);
 
     if (requant_in->outputs.size() == 1) {
-      std::string any_op_output_name;
-      for (auto name : any_op->Op()->OutputNames())
-        for (auto output_name : any_op->Op()->Output(name))
-          if (output_name == requant_in->Name()) any_op_output_name = name;
+      std::string any_op_output_name =
+          FindOutputNameByVarName(any_op->Op(), requant_in->Name());
 
       PADDLE_ENFORCE_NE(
           any_op_output_name.empty(),
@@ -308,10 +312,8 @@ void CPUQuantizeSquashPass::RequantOpSquash(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(any_op, any_op, requant_op_pattern);
 
     if (requant_out->outputs.size() == 1) {
-      std::string any_op_input_name;
-      for (auto name : any_op->Op()->InputNames())
-        for (auto input_name : any_op->Op()->Input(name))
-          if (input_name == requant_out->Name()) any_op_input_name = name;
+      std::string any_op_input_name =
+          FindInputNameByVarName(any_op->Op(), requant_out->Name());
 
       PADDLE_ENFORCE_NE(any_op_input_name.empty(),
                         true,
@@ -367,20 +369,22 @@ void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
 
     if (dequant_in->outputs.size() == 1) {
       if (any_op->Op()->Type() == "conv2d" ||
-          any_op->Op()->Type() == "conv2d_transpose") {
+          any_op->Op()->Type() == "fused_conv2d" ||
+          any_op->Op()->Type() == "conv2d_transpose" ||
+          any_op->Op()->Type() == "fc") {
         // do not squash if fuse residual connection is true
         // because residual fusion does not support force output with fp32
         if (any_op->Op()->GetAttrIfExists<bool>("fuse_residual_connection"))
           return;
       }
       // Find the name of the output linking any_op to dequant_in
-      std::string output_name;
-      for (auto name : any_op->Op()->OutputNames())
-        for (auto out_name : any_op->Op()->Output(name))
-          if (out_name == dequant_in->Name()) output_name = name;
+      std::string output_name =
+          FindOutputNameByVarName(any_op->Op(), dequant_in->Name());
 
       if (output_name.empty()) return;
-
+      if (any_op->Op()->Type() == "conv2d") {
+        ConvertToFusedOp(any_op->Op());
+      }
       any_op->Op()->SetAttr("force_fp32_output", true);
       any_op->Op()->SetOutput(output_name,
                               std::vector<std::string>({dequant_out->Name()}));
@@ -430,29 +434,27 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
           quant_op->Op()->GetAttrIfExists<float>("Shift") == shift) {
         auto quant_out = quant_op->outputs[0];
         auto last_op = quant_out->outputs[0];
+        auto last_op_op = last_op->Op();
 
-        std::string last_op_input_name;
-        for (auto name : last_op->Op()->InputNames())
-          for (auto input_name : last_op->Op()->Input(name))
-            if (input_name == quant_out->Name()) last_op_input_name = name;
+        std::string last_op_input_name =
+            FindInputNameByVarName(last_op_op, quant_out->Name());
 
         PADDLE_ENFORCE_NE(
             last_op_input_name.empty(),
             true,
             platform::errors::NotFound("Operator after quantize operator(%s) "
-                                       "should has quantize output as input.",
+                                       "should have quantize output as input.",
                                        quant_out->Name()));
 
         // update the next operator input,
         // by replacing quant_out with first_quant_out
-        auto last_op_names = last_op->Op()->Input(last_op_input_name);
-        last_op_names.erase(
-            std::remove(
-                last_op_names.begin(), last_op_names.end(), quant_out->Name()),
-            last_op_names.end());
-        last_op_names.push_back(first_quant_out->Name());
-        last_op->Op()->SetInput(last_op_input_name,
-                                std::vector<std::string>(last_op_names));
+        auto last_op_names = last_op->Op()->Inputs().at(last_op_input_name);
+        std::replace(last_op_names.begin(),
+                     last_op_names.end(),
+                     quant_out->Name(),
+                     first_quant_out->Name());
+        last_op_op->SetInput(last_op_input_name,
+                             std::vector<std::string>(last_op_names));
 
         IR_NODE_LINK_TO(first_quant_out, last_op);
         GraphSafeRemoveNodes(graph, {quant_op, quant_out});
@@ -570,11 +572,17 @@ void CPUQuantizeSquashPass::ScaleQuantSquash(Graph* graph) const {
                   found_scale_quant_squash_count);
 }
 
-// squash quantize if is before bfloat16 conv2d
+// squash quantize if is before bfloat16 conv2d or fused_conv2d
 void CPUQuantizeSquashPass::QuantizeBf16Conv(Graph* graph) const {
+  QuantizeBf16ConvImpl(graph, "conv2d");
+  QuantizeBf16ConvImpl(graph, "fused_conv2d");
+}
+
+void CPUQuantizeSquashPass::QuantizeBf16ConvImpl(
+    Graph* graph, const std::string& conv_type) const {
   GraphPatternDetector gpd;
   patterns::QuantConv pattern{gpd.mutable_pattern(), "quant_conv"};
-  pattern();
+  pattern(conv_type);
 
   int found_quant_conv_squash_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -602,8 +610,9 @@ void CPUQuantizeSquashPass::QuantizeBf16Conv(Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(found_quant_conv_squash_count);
-  PrettyLogDetail("---    squashed %d quantize with bfloat16 conv2d op",
-                  found_quant_conv_squash_count);
+  PrettyLogDetail("---    squashed %d quantize with bfloat16 %s op",
+                  found_quant_conv_squash_count,
+                  conv_type);
 }
 
 void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {

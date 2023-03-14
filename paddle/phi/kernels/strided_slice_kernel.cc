@@ -59,3 +59,13 @@ PD_REGISTER_KERNEL(strided_slice,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 #endif
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(strided_slice,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::StridedSliceKernel,
+                   int,
+                   int16_t,
+                   float,
+                   phi::dtype::float16) {}
+#endif

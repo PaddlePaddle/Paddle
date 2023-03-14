@@ -93,9 +93,9 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto inputs = ctx.MultiInput<LoDTensor>("X");
+    auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto* input : inputs) {
@@ -109,10 +109,10 @@ class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
                       1,
                       platform::errors::InvalidArgument(
                           "All Inputs of fused_seqpool_cvm OP are Empty!"));
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
-    // return framework::OpKernelType(framework::proto::VarType::FP32,
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
+    // return phi::KernelKey(framework::proto::VarType::FP32,
     //                                ctx.device_context());
-    // return framework::OpKernelType(
+    // return phi::KernelKey(
     //   OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
@@ -121,7 +121,7 @@ class FusedSeqpoolCVMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>) The input tensors of"
+             "(vector<phi::DenseTensor>) The input tensors of"
              " operator.")
         .AsDuplicable();
     AddInput("CVM",
@@ -210,11 +210,11 @@ class FusedSeqpoolCVMGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 

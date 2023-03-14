@@ -1,81 +1,4 @@
 cc_test(
-  test_copy_dev_api
-  SRCS test_copy_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_dot_dev_api
-  SRCS test_dot_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_creation_dev_api
-  SRCS test_creation_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_flatten_dev_api
-  SRCS test_flatten_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_matmul_dev_api
-  SRCS test_matmul_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_mean_dev_api
-  SRCS test_mean_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_scale_dev_api
-  SRCS test_scale_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_cast_dev_api
-  SRCS test_cast_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_elementwise_dev_api
-  SRCS test_elementwise_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_reshape_dev_api
-  SRCS test_reshape_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_sum_dev_api
-  SRCS test_sum_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_conj_dev_api
-  SRCS test_conj_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_concat_dev_api
-  SRCS test_concat_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_split_dev_api
-  SRCS test_split_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_sparse_utils_dev_api
-  SRCS test_sparse_utils_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_sparse_conv3d_dev_api
-  SRCS test_sparse_conv3d_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_sparse_pool_dev_api
-  SRCS test_sparse_pool_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_sparse_activation_dev_api
-  SRCS test_sparse_activation_dev_api.cc
-  DEPS phi phi_api_utils)
-cc_test(
-  test_sparse_elementwise_dev_api
-  SRCS test_sparse_elementwise_dev_api.cc
-  DEPS phi phi_api_utils)
-
-cc_test(
   test_math_function
   SRCS test_math_function.cc
   DEPS math_function)
@@ -99,7 +22,7 @@ endif()
 cc_test(
   test_cpu_vec
   SRCS test_cpu_vec.cc
-  DEPS blas cpu_info)
+  DEPS blas phi_backends)
 
 # For String Kernels
 cc_test(
@@ -143,3 +66,42 @@ cc_test(
   test_transfer_layout_dev_api
   SRCS test_transfer_layout_dev_api.cc
   DEPS phi phi_api_utils)
+
+if(WITH_GPU)
+  nv_test(
+    test_gpu_timer
+    SRCS test_gpu_timer.cu
+    DEPS gtest)
+  nv_test(
+    test_auto_tune
+    SRCS test_auto_tune.cu
+    DEPS gtest)
+  cc_test(
+    test_fused_adam_kernel
+    SRCS test_fused_adam_kernel.cc
+    DEPS gtest phi phi_api_utils)
+elseif(WITH_ROCM)
+  hip_test(
+    test_gpu_timer
+    SRCS test_gpu_timer.cu
+    DEPS gtest)
+  hip_test(
+    test_auto_tune
+    SRCS test_auto_tune.cu
+    DEPS gtest)
+endif()
+
+cc_test(
+  test_cache
+  SRCS test_cache.cc
+  DEPS gtest cache)
+
+cc_test(
+  strided_memcpy_test
+  SRCS strided_memcpy_test.cc
+  DEPS phi_backends memory)
+
+cc_test(
+  sequence_padding_test
+  SRCS sequence_padding_test.cc
+  DEPS sequence_padding)

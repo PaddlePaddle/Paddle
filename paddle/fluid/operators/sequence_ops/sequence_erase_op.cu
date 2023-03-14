@@ -16,12 +16,11 @@ limitations under the License. */
 #include <thrust/host_vector.h>
 
 #include "paddle/fluid/operators/sequence_ops/sequence_erase_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
-using platform::PADDLE_CUDA_NUM_THREADS;
-using LoDTensor = framework::LoDTensor;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
 __global__ void LabelErasedIdx(const T* in_dat,
@@ -67,8 +66,8 @@ template <typename T>
 class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto lod = in->lod();
     PADDLE_ENFORCE_EQ(
@@ -98,7 +97,7 @@ class SequenceEraseOpCUDAKernel : public framework::OpKernel<T> {
     // Copy LoD to GPU
     auto last_lod = lod[lod.size() - 1];
     auto lod_len = last_lod.size();
-    paddle::framework::MixVector<size_t> mixv_last_lod(&last_lod);
+    phi::MixVector<size_t> mixv_last_lod(&last_lod);
     const size_t* dev_in_lod_ptr = mixv_last_lod.CUDAData(ctx.GetPlace());
     // Calc output LoD
     thrust::device_vector<size_t> dev_out_lod(lod_len);

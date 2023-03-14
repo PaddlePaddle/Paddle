@@ -149,18 +149,22 @@ if(NOT WIN32)
       -Wno-unused-parameter
       -Wno-unused-function
       -Wno-error=literal-suffix
-      -Wno-error=unused-local-typedefs
+      -Wno-error=array-bounds #Warning in Eigen, gcc 12.2
       -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
       -Wno-error=terminate # Warning in PADDLE_ENFORCE
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
-      -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
       ${fsanitize})
 
   if(WITH_IPU)
     set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare # Warnings in Popart
                      -Wno-non-virtual-dtor # Warnings in Popart
     )
+  endif()
+
+  if(WITH_CUDNN_FRONTEND)
+    # flags from https://github.com/NVIDIA/cudnn-frontend/blob/v0.7.1/CMakeLists.txt
+    set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare -Wno-non-virtual-dtor)
   endif()
 
   if(WITH_ASCEND_CL AND WITH_ARM_BRPC)
@@ -170,13 +174,7 @@ if(NOT WIN32)
   if(NOT APPLE)
     if((${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0) OR (WITH_ROCM))
       set(COMMON_FLAGS
-          ${COMMON_FLAGS}
-          -Wno-format-truncation # Warning in boost gcc 8.2
-          -Wno-error=parentheses # Warning in boost gcc 8.2
-          -Wno-error=catch-value # Warning in boost gcc 8.2
-          -Wno-error=nonnull-compare # Warning in boost gcc 8.2
-          -Wno-error=address # Warning in boost gcc 8.2
-          -Wno-ignored-qualifiers # Warning in boost gcc 8.2
+          ${COMMON_FLAGS} -Wno-ignored-qualifiers # Warning in Paddle-Lite
           -Wno-ignored-attributes # Warning in Eigen gcc 8.3
           -Wno-parentheses # Warning in Eigen gcc 8.3
       )
@@ -214,7 +212,16 @@ if(APPLE)
         CACHE STRING "Build architectures for OSX" FORCE)
   endif()
   # On Mac OS X register class specifier is deprecated and will cause warning error on latest clang 10.0
-  set(COMMON_FLAGS -Wno-deprecated-register)
+  set(COMMON_FLAGS
+      -Wno-deprecated-register
+      -Werror=format
+      -Werror=inconsistent-missing-override
+      -Werror=braced-scalar-init
+      -Werror=uninitialized
+      -Werror=tautological-constant-out-of-range-compare
+      -Werror=literal-conversion
+      -Werror=pragma-pack
+      -Werror=c++17-extensions)
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)
@@ -251,7 +258,9 @@ if(WITH_ROCM)
   string(REPLACE "-Werror" "-Wno-error" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 endif()
 
-if(WITH_PSCORE OR WITH_PSLIB)
+if(WITH_PSCORE
+   OR WITH_PSLIB
+   OR WITH_TENSORRT)
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_CXX_FLAGS
                  ${CMAKE_CXX_FLAGS})
   string(REPLACE "-Wnon-virtual-dtor" "-Wno-non-virtual-dtor" CMAKE_C_FLAGS

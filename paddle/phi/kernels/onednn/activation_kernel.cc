@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/gelu_grad_kernel.h"
 
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
@@ -48,7 +49,7 @@ void EltwiseForward(const OneDNNContext& dev_ctx,
                     float beta,
                     DenseTensor* out,
                     dnnl::algorithm algorithm) {
-  PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
+  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
                     true,
                     phi::errors::PreconditionNotMet(
                         "Operator DNNL eletwise_forward must use ONEDNNPlace"));
@@ -91,16 +92,18 @@ template <typename T>
 using AbsOneDNNFunctor = OneDNNActivationFunc<T, dnnl::algorithm::eltwise_abs>;
 
 template <typename T>
-using ReluOneDNNFunctor =
-    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_relu>;
+using EluOneDNNFunctor = OneDNNActivationFunc<T, dnnl::algorithm::eltwise_elu>;
 
 template <typename T>
-using Relu6OneDNNFunctor =
-    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
+using ExpOneDNNFunctor = OneDNNActivationFunc<T, dnnl::algorithm::eltwise_exp>;
 
 template <typename T>
-using SwishOneDNNFunctor =
-    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_swish>;
+using GeluTanhOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_gelu_tanh>;
+
+template <typename T>
+using GeluErfOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_gelu_erf>;
 
 template <typename T>
 using HardSwishOneDNNFunctor =
@@ -111,71 +114,100 @@ using MishOneDNNFunctor =
     OneDNNActivationFunc<T, dnnl::algorithm::eltwise_mish>;
 
 template <typename T>
-using SigmoidOneDNNFunctor =
-    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_logistic>;
+using ReluOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_relu>;
 
 template <typename T>
-using TanhOneDNNFunctor =
-    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_tanh>;
+using Relu6OneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_clip_v2>;
+
+template <typename T>
+using RoundOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_round>;
+
+template <typename T>
+using SigmoidOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_logistic>;
 
 template <typename T>
 using SqrtOneDNNFunctor =
     OneDNNActivationFunc<T, dnnl::algorithm::eltwise_sqrt>;
 
 template <typename T>
-using EluOneDNNFunctor = OneDNNActivationFunc<T, dnnl::algorithm::eltwise_elu>;
+using SwishOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_swish>;
 
 template <typename T>
-using ExpOneDNNFunctor = OneDNNActivationFunc<T, dnnl::algorithm::eltwise_exp>;
-
-template <typename T>
-using RoundOneDNNFunctor =
-    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_round>;
+using TanhOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_tanh>;
 
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Abs, AbsOneDNNFunctor)
-DEFINE_ONEDNN_ACTIVATION_KERNEL(Relu, ReluOneDNNFunctor)
-DEFINE_ONEDNN_ACTIVATION_KERNEL(Tanh, TanhOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Exp, ExpOneDNNFunctor)
-DEFINE_ONEDNN_ACTIVATION_KERNEL(Sqrt, SqrtOneDNNFunctor)
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Relu, ReluOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Sigmoid, SigmoidOneDNNFunctor)
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Sqrt, SqrtOneDNNFunctor)
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Tanh, TanhOneDNNFunctor)
 
 // round eltwise primitive doesn't support BF16, nor does it support grad
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Round, RoundOneDNNFunctor)
 
+DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishOneDNNFunctor, threshold)
-DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
-DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Relu6, Relu6OneDNNFunctor, threshold)
-DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Swish, SwishOneDNNFunctor, beta)
+DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(SwishRaw, SwishOneDNNFunctor, beta)
 
 template <typename T, typename Context>
-void HardSwishKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     float threshold,
-                     float scale,
-                     float offset,
-                     DenseTensor* out) {
+void HardSwishRawKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        float threshold,
+                        float scale,
+                        float offset,
+                        DenseTensor* out) {
   HardSwishOneDNNFunctor<T> functor;
   functor(dev_ctx, x, threshold, 0, out);
 }
 
+template <typename T, typename Context>
+void GeluKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                bool approximate,
+                DenseTensor* out) {
+  if (approximate) {
+    GeluTanhOneDNNFunctor<T> functor;
+    functor(dev_ctx, x, 0, 0, out);
+  } else {
+    GeluErfOneDNNFunctor<T> functor;
+    functor(dev_ctx, x, 0, 0, out);
+  }
+}
+
+template <typename T, typename Context>
+void Relu6RawKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    float threshold,
+                    DenseTensor* out) {
+  Relu6OneDNNFunctor<T> functor;
+  functor(dev_ctx, x, 0, threshold, out);
+}
+
 }  // namespace phi
 
-PD_REGISTER_KERNEL(round, OneDNN, ALL_LAYOUT, phi::RoundKernel, float) {}
+PD_REGISTER_KERNEL(round, OneDNN, ONEDNN, phi::RoundKernel, float) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(                             \
-      name, OneDNN, ALL_LAYOUT, phi::func, float, phi::dtype::bfloat16) {}
+      name, OneDNN, ONEDNN, phi::func, float, phi::dtype::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_KERNEL(abs, AbsKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hard_swish, HardSwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(gelu, GeluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardswish_raw, HardSwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu, ReluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
-PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)

@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
+import os
+import tempfile
 import unittest
+
 import paddle
 import paddle.fluid as fluid
+import paddle.static as static
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
-import tempfile
-import os
 
 
 class TestSaveLoadAPIError(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.save_dir = os.path.join(self.temp_dir.name, "fake_dir")
@@ -32,86 +30,73 @@ class TestSaveLoadAPIError(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def func_test_get_valid_program_error(self):
+    def test_get_valid_program_error(self):
         # case 1: CompiledProgram no program
         graph = core.Graph(core.ProgramDesc())
         compiled_program = fluid.CompiledProgram(graph)
         with self.assertRaises(TypeError):
-            fluid.io._get_valid_program(compiled_program)
+            paddle.static.io._get_valid_program(compiled_program)
 
         # case 2: main_program type error
         with self.assertRaises(TypeError):
-            fluid.io._get_valid_program("program")
+            paddle.static.io._get_valid_program("program")
 
-    def test_get_valid_program_error(self):
-        with _test_eager_guard():
-            self.func_test_get_valid_program_error()
-        self.func_test_get_valid_program_error()
-
-    def func_test_load_vars_error(self):
+    def test_load_vars_error(self):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         # case 1: main_program type error when vars None
         with self.assertRaises(TypeError):
-            fluid.io.load_vars(executor=exe,
-                               dirname=self.save_dir,
-                               main_program="program")
+            static.io.load_vars(
+                executor=exe, dirname=self.save_dir, main_program="program"
+            )
 
         # case 2: main_program type error when vars not None
         with self.assertRaises(TypeError):
-            fluid.io.load_vars(executor=exe,
-                               dirname=self.save_dir,
-                               main_program="program",
-                               vars="vars")
-
-    def test_load_vars_error(self):
-        with _test_eager_guard():
-            self.func_test_load_vars_error()
-        self.func_test_load_vars_error()
+            static.io.load_vars(
+                executor=exe,
+                dirname=self.save_dir,
+                main_program="program",
+                vars="vars",
+            )
 
 
 class TestSaveInferenceModelAPIError(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def func_test_useless_feeded_var_names(self):
+    def test_useless_feeded_var_names(self):
         start_prog = fluid.Program()
         main_prog = fluid.Program()
         with fluid.program_guard(main_prog, start_prog):
             x = fluid.data(name='x', shape=[10, 16], dtype='float32')
             y = fluid.data(name='y', shape=[10, 16], dtype='float32')
-            z = fluid.layers.fc(x, 4)
+            z = paddle.static.nn.fc(x, 4)
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
-        with self.assertRaisesRegexp(
-                ValueError, "not involved in the target_vars calculation"):
-            fluid.io.save_inference_model(dirname=os.path.join(
-                self.temp_dir.name, 'model'),
-                                          feeded_var_names=['x', 'y'],
-                                          target_vars=[z],
-                                          executor=exe,
-                                          main_program=main_prog)
-
-    def test_useless_feeded_var_names(self):
-        with _test_eager_guard():
-            self.func_test_useless_feeded_var_names()
-        self.func_test_useless_feeded_var_names()
+        with self.assertRaisesRegex(
+            ValueError, "not involved in the target_vars calculation"
+        ):
+            fluid.io.save_inference_model(
+                dirname=os.path.join(self.temp_dir.name, 'model'),
+                feeded_var_names=['x', 'y'],
+                target_vars=[z],
+                executor=exe,
+                main_program=main_prog,
+            )
 
 
 class TestWhenTrainWithNoGrad(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def func_test_when_train_with_no_grad(self):
+    def test_when_train_with_no_grad(self):
         paddle.disable_static()
         net = paddle.nn.Linear(1024, 1)
         net = paddle.jit.to_static(net)
@@ -126,11 +111,6 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
         with paddle.no_grad():
             x = paddle.rand([1024], 'float32')
             net(x)
-
-    def test_when_train_with_no_grad(self):
-        with _test_eager_guard():
-            self.func_test_when_train_with_no_grad()
-        self.func_test_when_train_with_no_grad()
 
 
 if __name__ == '__main__':

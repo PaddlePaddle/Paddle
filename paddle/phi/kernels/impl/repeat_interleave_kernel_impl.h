@@ -18,9 +18,9 @@
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
 #include "paddle/phi/kernels/repeat_interleave_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 #endif
@@ -30,7 +30,7 @@
 namespace phi {
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename IndexT>
 __global__ void index_select_cuda_kernel(const T* input,
                                          T* output,
@@ -75,18 +75,17 @@ void RepeatInterleaveKernel(const Context& ctx,
   index.Resize(phi::make_ddim({index_size}));
   if (place == cpu_place) {
     DenseTensor x_copy = x;
-    paddle::framework::TensorFromVector<int>(index_vec, &index);
+    phi::TensorFromVector<int>(index_vec, ctx, &index);
 
     auto output_dim = phi::vectorize(x.dims());
     output_dim[dim] = index_size;
     out->Resize(phi::make_ddim(output_dim));
     phi::IndexSelectInner<Context, T, int>(ctx, &x_copy, index, out, dim);
-  }
 #if defined(__NVCC__) || defined(__HIPCC__)
-  else {
+  } else {
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];
-    paddle::framework::TensorFromVector<int>(index_vec, ctx, &index);
+    phi::TensorFromVector<int>(index_vec, ctx, &index);
     auto stream = ctx.stream();
     auto output_dim = phi::vectorize(x.dims());
     output_dim[dim] = index_size;
@@ -104,6 +103,8 @@ void RepeatInterleaveKernel(const Context& ctx,
            0,
            stream>>>(
             x.data<T>(), out_data, index_data, numel, stride, size, delta);
+  }
+#else
   }
 #endif
 }
@@ -130,32 +131,28 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
                         "But received: [%s], required: [%d].",
                         repeats_tensor.dims()[0],
                         x.dims()[dim]));
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(repeats_tensor.dtype());
+  const auto& index_type = repeats_tensor.dtype();
   bool index_type_match =
-      index_type == paddle::framework::proto::VarType::INT32 ||
-      index_type == paddle::framework::proto::VarType::INT64;
+      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
   PADDLE_ENFORCE_EQ(
       index_type_match,
       true,
       phi::errors::InvalidArgument(
           "Input(RepeatsTensor) holds the wrong type, it holds %s, but "
           "desires to be %s or %s",
-          paddle::framework::DataTypeToString(index_type),
-          paddle::framework::DataTypeToString(
-              paddle::framework::proto::VarType::INT32),
-          paddle::framework::DataTypeToString(
-              paddle::framework::proto::VarType::INT64)));
+          phi::DataTypeToString(index_type),
+          phi::DataTypeToString(phi::DataType::INT32),
+          phi::DataTypeToString(phi::DataType::INT64)));
   if (place == cpu_place) {
     auto x_copy = x;
-    if (index_type == paddle::framework::proto::VarType::INT32) {
+    if (index_type == phi::DataType::INT32) {
       phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
           ctx, repeats_tensor, &index);
       auto output_dim = phi::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
       out->Resize(phi::make_ddim(output_dim));
       IndexSelectInner<Context, T, int>(ctx, &x_copy, index, out, dim);
-    } else if (index_type == paddle::framework::proto::VarType::INT64) {
+    } else if (index_type == phi::DataType::INT64) {
       phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
           ctx, repeats_tensor, &index);
       auto output_dim = phi::vectorize(x.dims());
@@ -163,14 +160,13 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
       out->Resize(phi::make_ddim(output_dim));
       IndexSelectInner<Context, T, int64_t>(ctx, &x_copy, index, out, dim);
     }
-  }
 #if defined(__NVCC__) || defined(__HIPCC__)
-  else {
+  } else {
     auto stride_dim = phi::stride(input_dim);
     int64_t stride = stride_dim[dim];
     auto stream = ctx.stream();
     auto* in_data = x.data<T>();
-    if (index_type == paddle::framework::proto::VarType::INT64) {
+    if (index_type == phi::DataType::INT64) {
       phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
           ctx, repeats_tensor, &index);
 
@@ -208,6 +204,8 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
              stream>>>(
               in_data, out_data, index_data, numel, stride, size, delta);
     }
+  }
+#else
   }
 #endif
 }

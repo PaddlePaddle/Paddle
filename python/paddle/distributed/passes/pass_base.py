@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
-import sys
 from abc import ABC, abstractmethod
-from paddle.fluid.framework import program_guard, _apply_pass as _apply_cpp_pass
+
+from paddle.framework import _apply_pass as _apply_cpp_pass
 
 
 class PassContext:
-
     def __init__(self):
         self._applied_passes = []
         self._attrs = {}
@@ -55,6 +53,7 @@ class PassBase(ABC):
 
     _BEFORE_WHITE_LISTS_DICT = {}
     _AFTER_WHITE_LISTS_DICT = {}
+    _PASS_PROCESS_ORDER_LIST = []
 
     name = None
 
@@ -86,7 +85,8 @@ class PassBase(ABC):
 
     def _check_conflict_including_common_rules(self, other_pass):
         return self._check_conflict(other_pass) and all(
-            [r(other_pass, self) for r in PassBase._COMMON_RULES])
+            [r(other_pass, self) for r in PassBase._COMMON_RULES]
+        )
 
     def apply(self, main_programs, startup_programs, context=None):
         if context is None:
@@ -95,10 +95,12 @@ class PassBase(ABC):
         if not self._check_self():
             return context
 
-        if not all([
+        if not all(
+            [
                 self._check_conflict_including_common_rules(p)
                 for p in context.passes
-        ]):
+            ]
+        ):
             return context
 
         assert isinstance(main_programs, list)
@@ -109,8 +111,9 @@ class PassBase(ABC):
         return context
 
     def _apply_impl(self, main_programs, startup_programs, context):
-        for main_program, startup_program in zip(main_programs,
-                                                 startup_programs):
+        for main_program, startup_program in zip(
+            main_programs, startup_programs
+        ):
             self._apply_single_impl(main_program, startup_program, context)
 
     @abstractmethod
@@ -119,7 +122,6 @@ class PassBase(ABC):
 
 
 def register_pass(name):
-
     def impl(cls):
         PassBase._register(name, cls)
         cls.name = name
@@ -138,9 +140,8 @@ def new_pass(name, pass_attrs={}):
 
 
 class CPPPassWrapper(PassBase):
-
     def __init__(self):
-        super(CPPPassWrapper, self).__init__()
+        super().__init__()
 
     @property
     def cpp_name(self):
@@ -157,21 +158,38 @@ class CPPPassWrapper(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, context):
-        _apply_cpp_pass(main_program, startup_program, self.cpp_name,
-                        self._attrs, self.cpp_attr_types)
+        _apply_cpp_pass(
+            main_program,
+            startup_program,
+            self.cpp_name,
+            self._attrs,
+            self.cpp_attr_types,
+        )
 
 
 def _fusion_opt_last_rule(pass_before, pass_after):
-    if pass_before._type(
-    ) == PassType.FUSION_OPT and pass_after._type() != PassType.FUSION_OPT:
+    if (
+        pass_before._type() == PassType.FUSION_OPT
+        and pass_after._type() != PassType.FUSION_OPT
+    ):
         return False
     else:
         return True
 
 
-def _make_rule_from_white_lists_dict(before_white_lists_dict,
-                                     after_white_lists_dict):
+def _fusion_opt_list_rule(pass_before, pass_after):
+    if (
+        pass_before._type() == PassType.FUSION_OPT
+        and pass_after._type() == PassType.FUSION_OPT
+    ):
+        return _get_list_index(pass_before) < _get_list_index(pass_after)
+    else:
+        return True
 
+
+def _make_rule_from_white_lists_dict(
+    before_white_lists_dict, after_white_lists_dict
+):
     def collect_pass_names(white_lists_dict, result):
         for k, v in white_lists_dict.items():
             result.add(k)
@@ -198,12 +216,22 @@ def _make_rule_from_white_lists_dict(before_white_lists_dict,
 
     def rule(pass_before, pass_after):
         all_passes_after = compatible_pass_dict.get(pass_before.name)
-        if all_passes_after is None or pass_after.name not in compatible_pass_dict:
+        if (
+            all_passes_after is None
+            or pass_after.name not in compatible_pass_dict
+        ):
             return True
         else:
             return pass_after.name in all_passes_after
 
     return rule
+
+
+def _get_list_index(in_pass):
+    assert (
+        in_pass.name in PassBase._PASS_PROCESS_ORDER_LIST
+    ), "Pass {} is not in _PASS_PROCESS_ORDER_LIST".format(in_pass.name)
+    return PassBase._PASS_PROCESS_ORDER_LIST.index(in_pass.name)
 
 
 # The key-value pair (k, [v1, v2, ..., vn]) means the pass k can be
@@ -219,11 +247,23 @@ PassBase._AFTER_WHITE_LISTS_DICT = {
     # Add more white lists here
 }
 
+# The index of pass in this list represent the order in which the pass is processed.
+PassBase._PASS_PROCESS_ORDER_LIST = [
+    "fuse_relu_depthwise_conv",
+    "fuse_bn_add_act",
+    "fuse_bn_act",
+    "fused_attention",
+    "fuse_gemm_epilogue",
+    "fuse_optimizer",
+]
+
 PassBase._COMMON_RULES = [
     _fusion_opt_last_rule,
+    _fusion_opt_list_rule,
     lambda pass_before, pass_after: type(pass_before) != type(pass_after),
-    _make_rule_from_white_lists_dict(PassBase._BEFORE_WHITE_LISTS_DICT,
-                                     PassBase._AFTER_WHITE_LISTS_DICT),
+    _make_rule_from_white_lists_dict(
+        PassBase._BEFORE_WHITE_LISTS_DICT, PassBase._AFTER_WHITE_LISTS_DICT
+    ),
     # Add more common rules here
 ]
 
@@ -256,7 +296,17 @@ def _find_longest_path(edges):
             for j in range(n):
                 if dists[i][j] > dists[i][k] + dists[k][j]:
                     dists[i][j] = dists[i][k] + dists[k][j]
-                    paths[i][j] = paths[i][k] + paths[k][j]
+                    if paths[i][k]:
+                        assert paths[i][k][-1] == k
+                    else:
+                        continue
+                    if paths[k][j]:
+                        assert paths[k][j][0] == k
+                    else:
+                        continue
+                    paths[i][j] = (
+                        paths[i][k] + paths[k][j][1:] if paths[k][j] else []
+                    )
                     if dists[i][j] < min_dist:
                         min_dist = dists[i][j]
                         min_path = paths[i][j]
@@ -272,10 +322,12 @@ def _solve_pass_conflict(passes, context):
     old_passes = passes
     passes = []
     for p in old_passes:
-        if all([
+        if all(
+            [
                 p._check_conflict_including_common_rules(applied_p)
                 for applied_p in context.passes
-        ]):
+            ]
+        ):
             passes.append(p)
 
     if not passes:
@@ -289,14 +341,14 @@ def _solve_pass_conflict(passes, context):
     for i in range(n):
         for j in range(n):
             adjacent_matrix[i][j] = passes[
-                j]._check_conflict_including_common_rules(passes[i])
+                j
+            ]._check_conflict_including_common_rules(passes[i])
 
     longest_path = _find_longest_path(adjacent_matrix)
     return [passes[idx] for idx in longest_path]
 
 
 class PassManager:
-
     def __init__(self, passes, context=None, auto_solve_conflict=True):
         if context is None:
             context = PassContext()

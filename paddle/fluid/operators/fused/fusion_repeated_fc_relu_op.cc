@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace paddle {
 namespace operators {
@@ -99,35 +99,40 @@ void FusionRepeatedFCReluOp::InferShape(
   ctx->ShareLoD("X", /*->*/ "Out");
 }
 
-framework::OpKernelType FusionRepeatedFCReluOp::GetExpectedKernelType(
+phi::KernelKey FusionRepeatedFCReluOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 void FusionRepeatedFCReluOpMaker::Make() {
-  AddInput("X", "(LoDTensor) Input tensors of this operator.");
-  AddInput("W", "(Tensor) The weight tensors of this operator.").AsDuplicable();
-  AddInput("Bias", "(Tensor) The bias tensors of this operator.")
+  AddInput("X", "(phi::DenseTensor) Input tensors of this operator.");
+  AddInput("W", "(phi::DenseTensor) The weight tensors of this operator.")
       .AsDuplicable();
-  AddOutput("ReluOut", "(Tensor) The output tensor of each relu operator.")
+  AddInput("Bias", "(phi::DenseTensor) The bias tensors of this operator.")
+      .AsDuplicable();
+  AddOutput("ReluOut",
+            "(phi::DenseTensor) The output tensor of each relu operator.")
       .AsDuplicable()
       .AsIntermediate();
-  AddOutput("Out", "(LoDTensor) Output tensor of this operator.");
+  AddOutput("Out", "(phi::DenseTensor) Output tensor of this operator.");
   AddComment(R"DOC(
   Fusion Repeated FC with Relu Operator.
 )DOC");
 }
 
 template <typename T>
-static void fc_relu(
-    const T* x, const T* w, const T* b, T* y, const jit::matmul_attr_t& attr) {
-  auto matmul =
-      jit::KernelFuncs<jit::MatMulTuple<T>, platform::CPUPlace>::Cache().At(
-          attr);
-  auto addbias_relu =
-      jit::KernelFuncs<jit::VAddReluTuple<T>, platform::CPUPlace>::Cache().At(
-          attr.n);
+static void fc_relu(const T* x,
+                    const T* w,
+                    const T* b,
+                    T* y,
+                    const phi::jit::matmul_attr_t& attr) {
+  auto matmul = phi::jit::KernelFuncs<phi::jit::MatMulTuple<T>,
+                                      platform::CPUPlace>::Cache()
+                    .At(attr);
+  auto addbias_relu = phi::jit::KernelFuncs<phi::jit::VAddReluTuple<T>,
+                                            platform::CPUPlace>::Cache()
+                          .At(attr.n);
   matmul(x, w, y, &attr);
   T* dst = y;
   for (int i = 0; i < attr.m; ++i) {
@@ -140,17 +145,17 @@ template <typename T>
 class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto in = ctx.Input<Tensor>("X");
-    auto weights = ctx.MultiInput<Tensor>("W");
-    auto biases = ctx.MultiInput<Tensor>("Bias");
-    auto relus = ctx.MultiOutput<Tensor>("ReluOut");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto weights = ctx.MultiInput<phi::DenseTensor>("W");
+    auto biases = ctx.MultiInput<phi::DenseTensor>("Bias");
+    auto relus = ctx.MultiOutput<phi::DenseTensor>("ReluOut");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto place = ctx.GetPlace();
     int weight_sz = static_cast<int>(weights.size());
 
     auto i_dims = in->dims();
     const auto& w_dims = weights[0]->dims();
-    jit::matmul_attr_t attr;
+    phi::jit::matmul_attr_t attr;
     attr.m = i_dims[0];
     attr.n = w_dims[1];
     attr.k = w_dims[0];

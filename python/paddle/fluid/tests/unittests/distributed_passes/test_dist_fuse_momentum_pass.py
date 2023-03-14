@@ -13,21 +13,22 @@
 # limitations under the License.
 
 import os
+import unittest
+
+import numpy as np
+from dist_pass_test_base import DistPassTestBase
+
 import paddle
 import paddle.distributed.fleet as fleet
-import numpy as np
 import paddle.nn as nn
-from paddle.distributed.passes import new_pass, PassManager
-import unittest
-from dist_pass_test_base import DistPassTestBase
+from paddle.distributed.passes import PassManager, new_pass
 
 paddle.enable_static()
 
 
 class DemoNet(nn.Layer):
-
     def __init__(self):
-        super(DemoNet, self).__init__()
+        super().__init__()
 
         self.conv1 = nn.Conv2D(3, 8, (3, 3), data_format="NHWC")
         self.bn1 = nn.BatchNorm2D(8, data_format="NHWC")
@@ -42,15 +43,14 @@ class DemoNet(nn.Layer):
 
 
 class TestFuseAdamPass(DistPassTestBase):
-
     def init(self):
         self.atol = 1e-4
         self.rtol = 1e-4
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
-        image = paddle.static.data(shape=[batch_size] + image_shape,
-                                   dtype='float32',
-                                   name='image')
+        image = paddle.static.data(
+            shape=[batch_size] + image_shape, dtype='float32', name='image'
+        )
 
         model = DemoNet()
         pred_out = model(image)
@@ -86,11 +86,14 @@ class TestFuseAdamPass(DistPassTestBase):
         for op in main_prog.global_block().ops:
             op_type.append(op.type)
             if op.type == "momentum":
-                self.assertTrue("@FUSEDVAR@_momentum_Param_batch_norm2d_0.b_0"
-                                in op.input("Param"))
                 self.assertTrue(
-                    "@FUSEDVAR@_momentum_Grad_batch_norm2d_0.b_0@GRAD" in
-                    op.input("Grad"))
+                    "@FUSEDVAR@_momentum_Param_batch_norm2d_0.b_0"
+                    in op.input("Param")
+                )
+                self.assertTrue(
+                    "@FUSEDVAR@_momentum_Grad_batch_norm2d_0.b_0@GRAD"
+                    in op.input("Grad")
+                )
         self.assertTrue("coalesce_tensor" in op_type)
 
     def test_fuse_adam(self):

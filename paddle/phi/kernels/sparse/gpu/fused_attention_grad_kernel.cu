@@ -47,7 +47,7 @@ __global__ void AttnSoftmaxGpuGradKernel(const int64_t* out_crows,
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     mul += out_values[row_first + idx] * dout_values[row_first + idx];
   }
-  T mul_sum = phi::funcs::warpReduceSum<T>(mul, 0xFFFFFFFF);
+  T mul_sum = phi::funcs::WarpReduceSum<T>(mul, 0xFFFFFFFF);
 
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     dx_values[row_first + idx] = (dout_values[row_first + idx] - mul_sum) *
@@ -65,7 +65,7 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
                                  DenseTensor* dquery,
                                  DenseTensor* dkey,
                                  DenseTensor* dvalue) {
-#if CUDA_VERSION >= 11070
+#if CUDA_VERSION >= 11080
   /* Step1: Forward: softmax{CSR} * value{Dense} -> out{Dense}, reuse */
   SparseCsrTensor dsoftmax;
   MatmulCsrDenseGradKernel<T, Context>(
@@ -129,7 +129,7 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
   PADDLE_THROW(
       phi::errors::Unimplemented("backward of 'sparse.nn.functional.attention' "
                                  "use 'cusparseCsrSetStridedBatch', which is "
-                                 "completed supported from CUDA 11.7"));
+                                 "completed supported from CUDA 11.8"));
 #endif
 }
 

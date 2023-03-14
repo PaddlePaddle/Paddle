@@ -61,7 +61,10 @@ DECLARE_SPARSE_UNARY_GRAD_KERNEL(Square)
 DECLARE_SPARSE_UNARY_GRAD_KERNEL(Sqrt)
 DECLARE_SPARSE_UNARY_GRAD_KERNEL(Log1p)
 DECLARE_SPARSE_UNARY_GRAD_KERNEL(Abs)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Expm1)
 DECLARE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(Pow, factor)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(Relu6, threshold)
 
 template <typename T, typename Context>
 void CastCooGradKernel(const Context& dev_ctx,
@@ -76,6 +79,30 @@ void CastCsrGradKernel(const Context& dev_ctx,
                        const SparseCsrTensor& dout,
                        DataType value_dtype,
                        SparseCsrTensor* dx);
+
+template <typename T, typename Context>
+void TransposeCooGradKernel(const Context& dev_ctx,
+                            const SparseCooTensor& dout,
+                            const std::vector<int>& perm,
+                            SparseCooTensor* dx);
+
+template <typename T, typename Context>
+void TransposeCsrGradKernel(const Context& dev_ctx,
+                            const SparseCsrTensor& dout,
+                            const std::vector<int>& perm,
+                            SparseCsrTensor* dx);
+
+template <typename T, typename Context>
+void ReshapeCooGradKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          const SparseCooTensor& dout,
+                          SparseCooTensor* dx);
+
+template <typename T, typename Context>
+void ReshapeCsrGradKernel(const Context& dev_ctx,
+                          const SparseCsrTensor& x,
+                          const SparseCsrTensor& dout,
+                          SparseCsrTensor* dx);
 
 }  // namespace sparse
 }  // namespace phi

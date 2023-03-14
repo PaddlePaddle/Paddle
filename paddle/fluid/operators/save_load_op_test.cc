@@ -30,7 +30,7 @@ TEST(SaveLoadOp, CPU) {
   paddle::platform::CPUPlace place;
 
   auto var = scope.Var("test_var");
-  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+  auto tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize({3, 10});
   paddle::framework::LoD expect_lod;
   expect_lod.resize(1);
@@ -52,7 +52,7 @@ TEST(SaveLoadOp, CPU) {
   save_op->Run(scope, place);
 
   auto load_var = scope.Var("out_var");
-  auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
+  auto target = load_var->GetMutable<phi::DenseTensor>();
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
   load_op->Run(scope, place);
@@ -111,7 +111,7 @@ TEST(SaveFP16Op, CPU) {
   paddle::platform::CPUPlace place;
 
   auto var = scope.Var("test_var");
-  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+  auto tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize({3, 10});
   paddle::framework::LoD expect_lod;
   expect_lod.resize(1);
@@ -135,7 +135,7 @@ TEST(SaveFP16Op, CPU) {
   save_op->Run(scope, place);
 
   auto load_var = scope.Var("out_var");
-  auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
+  auto target = load_var->GetMutable<phi::DenseTensor>();
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
   load_op->Run(scope, place);
@@ -157,7 +157,7 @@ TEST(LoadFP16Op, CPU) {
   paddle::platform::CPUPlace place;
 
   auto var = scope.Var("test_var");
-  auto tensor = var->GetMutable<paddle::framework::LoDTensor>();
+  auto tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize({3, 10});
 
   paddle::framework::LoD expect_lod;
@@ -182,12 +182,12 @@ TEST(LoadFP16Op, CPU) {
   save_op->Run(scope, place);
 
   auto load_var = scope.Var("out_var");
-  load_var->GetMutable<paddle::framework::LoDTensor>();
+  load_var->GetMutable<phi::DenseTensor>();
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
   load_op->Run(scope, place);
 
-  auto target = load_var->Get<paddle::framework::LoDTensor>();
+  auto target = load_var->Get<phi::DenseTensor>();
   paddle::platform::float16* actual = target.data<paddle::platform::float16>();
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     EXPECT_EQ(expect[i], static_cast<float>(actual[i]));

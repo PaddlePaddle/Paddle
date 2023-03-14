@@ -37,7 +37,7 @@ template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   int dim0 = 1;
   int dim1 = 10;
@@ -56,7 +56,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // run
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   std::vector<int> axis;
   axis.push_back(2);

@@ -15,14 +15,14 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest, IPUOpTest
 from paddle.jit import to_static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, IPUD2STest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -49,10 +49,12 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype=self.feed_dtype[0])
-        out = paddle.fluid.layers.conv2d(x, num_filters=3, filter_size=3)
+        x = paddle.static.data(
+            name=self.feed_list[0],
+            shape=self.feed_shape[0],
+            dtype=self.feed_dtype[0],
+        )
+        out = paddle.static.nn.conv2d(x, num_filters=3, filter_size=3)
         out = paddle.fluid.layers.Print(out, **self.attrs)
 
         if self.is_training:
@@ -74,13 +76,11 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {"message": "input_data"}
 
 
 class TestTrainCase1(TestBase):
-
     def set_op_attrs(self):
         # "forward" : print forward
         # "backward" : print forward and backward
@@ -94,7 +94,6 @@ class TestTrainCase1(TestBase):
 
 @unittest.skip("attrs are not supported")
 class TestCase2(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {
             "first_n": 10,
@@ -103,34 +102,33 @@ class TestCase2(TestBase):
             "print_tensor_type": True,
             "print_tensor_shape": True,
             "print_tensor_layout": True,
-            "print_tensor_lod": True
+            "print_tensor_lod": True,
         }
 
 
 class SimpleLayer(paddle.nn.Layer):
-
     def __init__(self):
-        super(SimpleLayer, self).__init__()
-        self.conv = paddle.nn.Conv2D(in_channels=3,
-                                     out_channels=1,
-                                     kernel_size=2,
-                                     stride=1)
+        super().__init__()
+        self.conv = paddle.nn.Conv2D(
+            in_channels=3, out_channels=1, kernel_size=2, stride=1
+        )
 
     @to_static()
     def forward(self, x, target=None):
         x = self.conv(x)
         print(x)
-        x = paddle.fluid.layers.flatten(x, axis=1)
+        x = paddle.flatten(x, 1, -1)
         if target is not None:
-            x = paddle.fluid.layers.softmax(x)
-            loss = paddle.fluid.layers.cross_entropy(x, target)
+            x = paddle.nn.functional.softmax(x)
+            loss = paddle.paddle.nn.functional.cross_entropy(
+                x, target, reduction='none', use_softmax=False
+            )
             loss = paddle.incubate.identity_loss(loss, 1)
             return x, loss
         return x
 
 
 class TestD2S(IPUD2STest):
-
     def setUp(self):
         self.set_data_feed()
 
@@ -142,16 +140,19 @@ class TestD2S(IPUD2STest):
         paddle.seed(self.SEED)
         np.random.seed(self.SEED)
         model = SimpleLayer()
-        optim = paddle.optimizer.Adam(learning_rate=0.01,
-                                      parameters=model.parameters())
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=model.parameters()
+        )
 
         if use_ipu:
             paddle.set_device('ipu')
             ipu_strategy = paddle.static.IpuStrategy()
-            ipu_strategy.set_graph_config(num_ipus=1,
-                                          is_training=True,
-                                          micro_batch_size=1,
-                                          enable_manual_shard=False)
+            ipu_strategy.set_graph_config(
+                num_ipus=1,
+                is_training=True,
+                micro_batch_size=1,
+                enable_manual_shard=False,
+            )
             ipu_strategy.set_optimizer(optim)
 
         result = []

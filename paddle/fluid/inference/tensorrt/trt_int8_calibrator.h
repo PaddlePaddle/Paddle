@@ -73,7 +73,7 @@ struct TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
   std::condition_variable cond_;
 
   std::unordered_map<std::string, std::pair<void*, size_t>> data_buffers_;
-  std::vector<framework::Tensor> data_tensors_;
+  std::vector<phi::DenseTensor> data_tensors_;
 
   std::string engine_name_;
   std::string calibration_table_;

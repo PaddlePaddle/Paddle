@@ -30,6 +30,7 @@ void SetOp(ProgramDesc* prog,
   auto* op = prog->MutableBlock(0)->AppendOp();
 
   op->SetType(type);
+  op->SetAttr("use_mkldnn", true);
   op->SetAttr("mkldnn_data_type", mkldnn_data_type);
 
   if (type == "conv2d") {

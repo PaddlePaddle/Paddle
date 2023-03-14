@@ -18,13 +18,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/math/sequence_padding.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sequence_padding.h"
 
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 template <typename DeviceContext, typename T>
@@ -36,7 +36,7 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
     auto* out_t = ctx.Output<LoDTensor>("Out");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    framework::Tensor seq_len_cpu =
+    phi::DenseTensor seq_len_cpu =
         ctx.AllocateTmpTensor<T, DeviceContext>(len_t->dims(), dev_ctx);
     if (platform::is_gpu_place(ctx.GetPlace()) ||
         platform::is_xpu_place(ctx.GetPlace())) {
@@ -70,8 +70,14 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
     out_t->mutable_data<T>(ctx.GetPlace());
 
     int64_t padded_length = x_t->dims()[1];
-    math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-        dev_ctx, *x_t, out_t, padded_length, 0, false, math::kBatchLengthWidth);
+    phi::funcs::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
+        dev_ctx,
+        *x_t,
+        out_t,
+        padded_length,
+        0,
+        false,
+        phi::funcs::kBatchLengthWidth);
   }
 };
 
@@ -93,7 +99,7 @@ class SequenceUnpadGradOpKernel : public framework::OpKernel<T> {
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       set_zero(dev_ctx, &zero_pads, static_cast<T>(0));
 
-      math::PaddingLoDTensorFunctor<DeviceContext, T>()(
+      phi::funcs::PaddingLoDTensorFunctor<DeviceContext, T>()(
           ctx.template device_context<DeviceContext>(),
           *d_out,
           d_x,
@@ -101,7 +107,7 @@ class SequenceUnpadGradOpKernel : public framework::OpKernel<T> {
           padded_length,
           0,
           false,
-          math::kBatchLengthWidth);
+          phi::funcs::kBatchLengthWidth);
     }
   }
 };

@@ -13,21 +13,22 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 
 
 def ref_std(x, axis=None, unbiased=True, keepdim=False):
     ddof = 1 if unbiased else 0
     if isinstance(axis, int):
-        axis = (axis, )
+        axis = (axis,)
     if axis is not None:
         axis = tuple(axis)
     return np.std(x, axis=axis, ddof=ddof, keepdims=keepdim)
 
 
 class TestStdAPI(unittest.TestCase):
-
     def setUp(self):
         self.dtype = 'float64'
         self.shape = [1, 3, 4, 10]
@@ -36,9 +37,11 @@ class TestStdAPI(unittest.TestCase):
         self.unbiased = True
         self.set_attrs()
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        self.place=paddle.CUDAPlace(0) \
-            if paddle.fluid.core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def set_attrs(self):
         pass
@@ -68,43 +71,36 @@ class TestStdAPI(unittest.TestCase):
 
 
 class TestStdAPI_dtype(TestStdAPI):
-
     def set_attrs(self):
         self.dtype = 'float32'
 
 
 class TestStdAPI_axis_int(TestStdAPI):
-
     def set_attrs(self):
         self.axis = 2
 
 
 class TestStdAPI_axis_list(TestStdAPI):
-
     def set_attrs(self):
         self.axis = [1, 2]
 
 
 class TestStdAPI_axis_tuple(TestStdAPI):
-
     def set_attrs(self):
         self.axis = (1, 3)
 
 
 class TestStdAPI_keepdim(TestStdAPI):
-
     def set_attrs(self):
         self.keepdim = False
 
 
 class TestStdAPI_unbiased(TestStdAPI):
-
     def set_attrs(self):
         self.unbiased = False
 
 
 class TestStdAPI_alias(unittest.TestCase):
-
     def test_alias(self):
         paddle.disable_static()
         x = paddle.to_tensor(np.array([10, 12], 'float32'))
@@ -117,11 +113,35 @@ class TestStdAPI_alias(unittest.TestCase):
 
 
 class TestStdError(unittest.TestCase):
-
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [2, 3, 4], 'int32')
             self.assertRaises(TypeError, paddle.std, x)
+
+
+class Testfp16Std(unittest.TestCase):
+    def test_fp16_with_gpu(self):
+        paddle.enable_static()
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([12, 14]).astype("float16")
+                x = paddle.static.data(
+                    name="x", shape=[12, 14], dtype="float16"
+                )
+
+                y = paddle.std(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
 
 
 if __name__ == '__main__':

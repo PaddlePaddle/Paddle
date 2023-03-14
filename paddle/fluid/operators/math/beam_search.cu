@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 
 namespace paddle {
 namespace operators {
@@ -406,13 +406,13 @@ template <typename T>
 class BeamSearchFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const framework::LoDTensor* pre_ids,
-                  const framework::LoDTensor* pre_scores,
-                  const framework::LoDTensor* ids,
-                  const framework::LoDTensor* scores,
-                  framework::LoDTensor* selected_ids,
-                  framework::LoDTensor* selected_scores,
-                  framework::Tensor* parent_idx,
+                  const phi::DenseTensor* pre_ids,
+                  const phi::DenseTensor* pre_scores,
+                  const phi::DenseTensor* ids,
+                  const phi::DenseTensor* scores,
+                  phi::DenseTensor* selected_ids,
+                  phi::DenseTensor* selected_scores,
+                  phi::DenseTensor* parent_idx,
                   size_t level,
                   size_t beam_size,
                   int end_id,
@@ -446,8 +446,8 @@ class BeamSearchFunctor<phi::GPUContext, T> {
     framework::LoD selected_lod(2);
     selected_lod[0].assign(abs_lod[level].begin(), abs_lod[level].end());
     selected_lod[1].resize(scores->dims()[0] + 1);
-    paddle::framework::MixVector<size_t> mix_vector(&selected_lod[1]);
-    paddle::framework::MixVector<size_t> mixv_abs(&abs_lod[level]);
+    phi::MixVector<size_t> mix_vector(&selected_lod[1]);
+    phi::MixVector<size_t> mixv_abs(&abs_lod[level]);
     size_t* selected_offsets = mix_vector.CUDAMutableData(context.GetPlace());
 
     if (num_seqs == 1) {

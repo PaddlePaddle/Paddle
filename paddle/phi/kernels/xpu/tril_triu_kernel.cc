@@ -46,7 +46,32 @@ void TrilTriuKernel(const Context& ctx,
   }
 }
 
+template <typename T, typename Context>
+void TrilKernel(const Context& ctx,
+                const DenseTensor& x,
+                int diagonal,
+                DenseTensor* out) {
+  TrilTriuKernel<T, Context>(ctx, x, diagonal, true, out);
+}
+
+template <typename T, typename Context>
+void TriuKernel(const Context& ctx,
+                const DenseTensor& x,
+                int diagonal,
+                DenseTensor* out) {
+  TrilTriuKernel<T, Context>(ctx, x, diagonal, false, out);
+}
+
 }  // namespace phi
 
+PD_REGISTER_KERNEL(tril_triu,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TrilTriuKernel,
+                   int,
+                   float,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
-    tril_triu, XPU, ALL_LAYOUT, phi::TrilTriuKernel, int, float) {}
+    tril, XPU, ALL_LAYOUT, phi::TrilKernel, int, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    triu, XPU, ALL_LAYOUT, phi::TriuKernel, int, float, phi::dtype::float16) {}

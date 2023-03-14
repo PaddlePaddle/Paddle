@@ -49,11 +49,16 @@ body:
       Paddle With CUDA:
 
       OS:
+      GCC version:
+      Clang version:
+      CMake version:
+      Libc version:
       Python version:
 
       CUDA version:
       cuDNN version:
       Nvidia driver version:
+      Nvidia driver List:
       ****************************************
   validations:
     required: true

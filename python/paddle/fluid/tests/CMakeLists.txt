@@ -10,8 +10,7 @@ endforeach()
 
 add_subdirectory(unittests)
 add_subdirectory(book)
+add_subdirectory(cpp_extension)
 add_subdirectory(custom_op)
 add_subdirectory(custom_kernel)
 add_subdirectory(custom_runtime)
-
-set_tests_properties(test_beam_search_decoder PROPERTIES TIMEOUT 120)

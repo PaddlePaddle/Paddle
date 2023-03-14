@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
@@ -22,17 +24,18 @@ paddle.enable_static()
 
 
 class TestFleetExecutor(unittest.TestCase):
-
     def run_fleet_executor(self, place, x_data, y_data):
         exe = paddle.static.Executor(place)
         empty_program = paddle.static.Program()
         with fluid.program_guard(empty_program, empty_program):
-            x = fluid.layers.data(name='x',
-                                  shape=x_data.shape,
-                                  dtype=x_data.dtype)
-            y = fluid.layers.data(name='y',
-                                  shape=y_data.shape,
-                                  dtype=y_data.dtype)
+            x = paddle.static.data(
+                name='x', shape=[-1] + list(x_data.shape), dtype=x_data.dtype
+            )
+            x.desc.set_need_check_feed(False)
+            y = paddle.static.data(
+                name='y', shape=[-1] + list(y_data.shape), dtype=y_data.dtype
+            )
+            y.desc.set_need_check_feed(False)
             z = x + y
             a = 2 * x + 3 * y
             loss = paddle.mean(a)
@@ -41,11 +44,13 @@ class TestFleetExecutor(unittest.TestCase):
             steps_per_pass = 10
             bd = [steps_per_pass * p for p in passes]
             lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-            lr_val = paddle.optimizer.lr.PiecewiseDecay(boundaries=bd,
-                                                        values=lr)
+            lr_val = paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=bd, values=lr
+            )
             opt = paddle.optimizer.AdamW(
                 learning_rate=lr_val,
-                grad_clip=fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0))
+                grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
+            )
             opt.minimize(loss)
         # TODO: section_program will be removed in the future
         task_node = TaskNode(
@@ -54,23 +59,20 @@ class TestFleetExecutor(unittest.TestCase):
             rank=0,
             node_type="Compute",
             max_run_times=1,
-            max_slot_times=1,
-            lazy_initialize=True)
+            lazy_initialize=True,
+        )
         empty_program._pipeline_opt = {
             "fleet_opt": {
                 'tasks': [task_node],
-                'task_id_to_rank': {
-                    task_node.task_id(): 0
-                }
+                'task_id_to_rank': {task_node.task_id(): 0},
             },
-            "section_program": empty_program
+            "section_program": empty_program,
         }
-        res = exe.run(empty_program,
-                      feed={
-                          'x': x_data,
-                          'y': y_data
-                      },
-                      fetch_list=[z.name, a.name])
+        res = exe.run(
+            empty_program,
+            feed={'x': x_data, 'y': y_data},
+            fetch_list=[z.name, a.name],
+        )
         return res
 
     def test_executor_on_single_device(self):

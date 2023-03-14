@@ -81,6 +81,15 @@ inline PaddleDType ConvertToPaddleDType(
   }
 }
 
+inline bool IsFloatVar(framework::proto::VarType::Type t) {
+  if (t == framework::proto::VarType::FP16 ||
+      t == framework::proto::VarType::FP32 ||
+      t == framework::proto::VarType::FP64 ||
+      t == framework::proto::VarType::BF16)
+    return true;
+  return false;
+}
+
 using paddle::framework::DataTypeToString;
 
 // Timer for timer
@@ -422,6 +431,8 @@ static bool IsFileExists(const std::string &path) {
 }
 
 void RegisterAllCustomOperator();
+
+void InitGflagsFromEnv();
 
 static inline double ToMegaBytes(size_t bytes) {
   return static_cast<double>(bytes) / (1 << 20);

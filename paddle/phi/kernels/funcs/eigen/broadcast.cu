@@ -84,6 +84,7 @@ INSTANTIATION(EigenBroadcast, int);
 INSTANTIATION(EigenBroadcast, int64_t);
 INSTANTIATION(EigenBroadcastGrad, bool);
 INSTANTIATION(EigenBroadcastGrad, float);
+INSTANTIATION(EigenBroadcastGrad, dtype::bfloat16);
 INSTANTIATION(EigenBroadcastGrad, dtype::float16);
 INSTANTIATION(EigenBroadcastGrad, double);
 INSTANTIATION(EigenBroadcastGrad, dtype::complex<float>);

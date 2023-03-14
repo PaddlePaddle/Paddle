@@ -66,10 +66,10 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -82,43 +82,44 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, required) The input tensor with shape [N, D], "
+             "(phi::DenseTensor, required) The input tensor with shape [N, D], "
              "where N is the size of mini-batch, and D is the feature size.");
     AddInput("W",
-             "(LoDTensor, required), The parameters of hierarchical "
+             "(phi::DenseTensor, required), The parameters of hierarchical "
              "sigmoid operator, each of them is a 2-D tensor, the shape is"
              "[K, D]. Which K is the num of non-leaf node in Path Tree");
     AddInput("Label",
-             "(LoDTensor, required), The labels of training data. It's a"
+             "(phi::DenseTensor, required), The labels of training data. It's a"
              "tensor with shape [N, 1].");
-    AddInput("PathTable",
-             "(LoDTensor, optional), The Path Table from root to current word"
-             "it should have shape like [N, L], L is the length of the Path")
-        .AsDispensable();
     AddInput(
-        "PathCode",
-        "(LoDTensor, optional), The Code on each Node of the Path from root "
-        "to current word"
+        "PathTable",
+        "(phi::DenseTensor, optional), The Path Table from root to current word"
         "it should have shape like [N, L], L is the length of the Path")
         .AsDispensable();
+    AddInput("PathCode",
+             "(phi::DenseTensor, optional), The Code on each Node of the Path "
+             "from root "
+             "to current word"
+             "it should have shape like [N, L], L is the length of the Path")
+        .AsDispensable();
     AddInput("Bias",
-             "(LoDTensor, optional), The bias is a tensor with shape or "
+             "(phi::DenseTensor, optional), The bias is a tensor with shape or "
              "[num_classes, 1]"
              "[num_classes - 1, 1].")
         .AsDispensable();
-    AddOutput(
-        "Out",
-        "(LoDTensor, required) The output of hierarchical sigmoid operator."
-        "The shape is [N, 1].");
+    AddOutput("Out",
+              "(phi::DenseTensor, required) The output of hierarchical sigmoid "
+              "operator."
+              "The shape is [N, 1].");
     AddOutput("PreOut",
-              "(LoDTensor, required) A intermedia 2-D tensor with shape "
+              "(phi::DenseTensor, required) A intermedia 2-D tensor with shape "
               "[batch_size, code_length], where code_length represents the "
               "maximum path length from root to leaf nodes.")
         .AsIntermediate();
-    AddOutput(
-        "W_Out",
-        "(LoDTensor, optional) using input 'W' as Output to make it mutable"
-        "When we are using prefetch")
+    AddOutput("W_Out",
+              "(phi::DenseTensor, optional) using input 'W' as Output to make "
+              "it mutable"
+              "When we are using prefetch")
         .AsIntermediate();
     AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
         .SetDefault(2);
@@ -212,10 +213,10 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -227,7 +228,8 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
     auto bias_grad_var_name = framework::GradVarName("Bias");
     if (ctx->HasOutput(bias_grad_var_name)) {
       VLOG(3) << "hierarchical_sigmoid_grad op "
-              << framework::GradVarName("Bias") << " is set to LoDTensor";
+              << framework::GradVarName("Bias")
+              << " is set to phi::DenseTensor";
       ctx->SetOutputType(bias_grad_var_name,
                          framework::proto::VarType::LOD_TENSOR);
     }
@@ -241,7 +243,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
                          framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
-              << " is set to LoDTensor";
+              << " is set to phi::DenseTensor";
       ctx->SetOutputType(w_grad_var_name,
                          framework::proto::VarType::LOD_TENSOR);
     }
@@ -259,7 +261,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(hierarchical_sigmoid,
                             HierarchicalSigmoidInferShapeFunctor,
-                            PD_INFER_META(phi::HierarchicalSigmoidInferMeta));
+                            PD_INFER_META(phi::HSigmoidLossInferMeta));
 REGISTER_OPERATOR(hierarchical_sigmoid,
                   ops::HierarchicalSigmoidOp,
                   ops::HierarchicalSigmoidOpMaker<int>,

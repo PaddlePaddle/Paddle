@@ -25,6 +25,7 @@
 #include <iostream>
 #include <limits>
 
+#include "paddle/phi/core/hostdevice.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
@@ -50,16 +51,6 @@
 #endif
 
 #define CUDA_ARCH_FP16_SUPPORTED(CUDA_ARCH) (CUDA_ARCH >= 600)
-
-#if (defined(__CUDACC__) || defined(__HIPCC__))
-#define HOSTDEVICE __host__ __device__
-#define DEVICE __device__
-#define HOST __host__
-#else
-#define HOSTDEVICE
-#define DEVICE
-#define HOST
-#endif
 
 namespace phi {
 namespace dtype {
@@ -1073,7 +1064,7 @@ struct numeric_limits<phi::dtype::float16> {
     return phi::dtype::raw_uint16_to_float16(0x7bff);
   }
   HOSTDEVICE static phi::dtype::float16 epsilon() {
-    return phi::dtype::raw_uint16_to_float16(0x0800);
+    return phi::dtype::raw_uint16_to_float16(0x1400);
   }
   HOSTDEVICE static phi::dtype::float16 round_error() {
     return phi::dtype::float16(0.5);

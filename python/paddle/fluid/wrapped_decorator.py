@@ -19,7 +19,6 @@ __all__ = ['wrap_decorator', 'signature_safe_contextmanager']
 
 
 def wrap_decorator(decorator_func):
-
     @decorator.decorator
     def __impl__(func, *args, **kwargs):
         wrapped_func = decorator_func(func)

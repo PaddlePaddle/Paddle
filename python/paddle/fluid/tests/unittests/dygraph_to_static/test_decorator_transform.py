@@ -12,24 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
+import warnings
+from contextlib import contextmanager
+from functools import wraps
+
+import decos
+import numpy as np
 
 import paddle
-import unittest
-import numpy as np
-import decos
-import warnings
-from functools import wraps
-from contextlib import contextmanager
 
 
 def deco1(func):
-
     @wraps(func)
     def inner(*args, **kwargs):
         print('in deco1, added 1')
         _x = 2
-        if (_x < 1):
+        if _x < 1:
             _x += 1
         else:
             _x -= 1
@@ -41,7 +40,6 @@ def deco1(func):
 
 
 def deco2(fun):
-
     @wraps(fun)
     def inner(*args, **kwargs):
         print('in deco2, added 2')
@@ -53,9 +51,7 @@ def deco2(fun):
 
 
 def deco3(x=3):
-
     def inner_deco(func):
-
         @wraps(func)
         def inner(*args, **kwargs):
             print('in deco3, added {}'.format(x))
@@ -69,9 +65,7 @@ def deco3(x=3):
 
 
 def deco4(func=None, x=0):
-
     def decorated(pyfunc):
-
         @wraps(pyfunc)
         def inner_deco(*args, **kwargs):
             print('in deco4, added {}'.format(x))
@@ -81,7 +75,7 @@ def deco4(func=None, x=0):
 
         return inner_deco
 
-    if func == None:
+    if func is None:
         return decorated
     return decorated(func)
 
@@ -189,7 +183,6 @@ def deco_with_paddle_api():
 
 
 class TestDecoratorTransform(unittest.TestCase):
-
     def test_deco_transform(self):
         outs = forward()
         np.testing.assert_allclose(outs[0], np.array(3), rtol=1e-05)
@@ -208,9 +201,11 @@ class TestDecoratorTransform(unittest.TestCase):
             warn1()
             flag = False
             for warn in w:
-                if (issubclass(warn.category, UserWarning)
-                    ) and "A context manager decorator is used" in str(
-                        warn.message):
+                if (
+                    issubclass(warn.category, UserWarning)
+                ) and "A context manager decorator is used" in str(
+                    warn.message
+                ):
                     flag = True
                     break
             self.assertTrue(flag)

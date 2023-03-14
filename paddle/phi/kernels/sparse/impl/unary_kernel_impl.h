@@ -37,6 +37,7 @@ namespace sparse {
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);                       \
     phi::prefix##Kernel<T, Context>(                                       \
         dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
+    out->SetIndicesDict(x.GetIndicesDict());                               \
   }                                                                        \
                                                                            \
   template <typename T, typename Context>                                  \
@@ -88,8 +89,22 @@ DEFINE_SPARSE_UNARY_KERNEL(Relu)
 DEFINE_SPARSE_UNARY_KERNEL(Abs)
 DEFINE_SPARSE_UNARY_KERNEL(Expm1)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
-DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Relu6, threshold)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Relu6Raw, threshold)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
+
+template <typename T, typename Context>
+void Relu6CooKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    SparseCooTensor* out) {
+  Relu6RawCooKernel<T, Context>(dev_ctx, x, 6, out);
+}
+
+template <typename T, typename Context>
+void Relu6CsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    SparseCsrTensor* out) {
+  Relu6RawCsrKernel<T, Context>(dev_ctx, x, 6, out);
+}
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,
@@ -105,6 +120,7 @@ void ScaleCooKernel(const Context& dev_ctx,
                                bias,
                                bias_after_scale,
                                out->mutable_non_zero_elements());
+  out->SetIndicesDict(x.GetIndicesDict());
 }
 
 template <typename T, typename Context>
@@ -155,6 +171,7 @@ void CastCooKernel(const Context& dev_ctx,
     meta.set_dtype(value_dtype);
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
+  out->SetIndicesDict(x.GetIndicesDict());
 }
 
 template <typename T, typename Context>

@@ -1,16 +1,16 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/c_allreduce_op_plugin.h"
@@ -32,8 +32,9 @@ class CAllReduceOpConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(4) << "convert fluid callreduce op to tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Unsupported static mode. Please set dynamic shape of inputs."));
+      PADDLE_THROW(
+          platform::errors::Fatal("Unsupported static graph mode. Please set "
+                                  "dynamic shape of inputs."));
     }
     ReduceType red_type = op_to_reduce_type[op.type()];
     std::string name = op.type();
@@ -55,7 +56,7 @@ class CAllReduceOpConverter : public OpConverter {
         output_num,
         1UL,
         platform::errors::InvalidArgument(
-            "The ouput Out's size must equal to 1 in TRT c_allreduce op. "
+            "The output Out's size must equal to 1 in TRT c_allreduce op. "
             "But received Out's size %u.",
             output_num));
     // Get attrs

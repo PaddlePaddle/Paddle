@@ -12,36 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
 from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import (OpTest,
-                                                  convert_float_to_uint16,
-                                                  convert_uint16_to_float)
-from paddle import _C_ops, _legacy_C_ops
-import op_test
-from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
 
 
 class XPUTestSumOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'sum'
         self.use_dynamic_create_class = False
 
     class TestSumOp(XPUOpTest):
-
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -73,30 +69,24 @@ class XPUTestSumOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['x0'], 'Out')
 
     class TestSumOp1(TestSumOp):
-
         def set_shape(self):
-            self.shape = (5)
+            self.shape = 5
 
     class TestSumOp2(TestSumOp):
-
         def set_shape(self):
             self.shape = (1, 1, 1, 1, 1)
 
     class TestSumOp3(TestSumOp):
-
         def set_shape(self):
             self.shape = (10, 5, 7)
 
     class TestSumOp4(TestSumOp):
-
         def set_shape(self):
             self.shape = (2, 2, 3, 3)
 
 
 def create_test_sum_fp16_class(parent):
-
     class TestSumFp16Case(parent):
-
         def init_kernel_type(self):
             self.dtype = np.float16
 
@@ -112,15 +102,14 @@ def create_test_sum_fp16_class(parent):
 
 
 class API_Test_Add_n(unittest.TestCase):
-
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input0 = fluid.layers.fill_constant(shape=[2, 3],
-                                                dtype='int64',
-                                                value=5)
-            input1 = fluid.layers.fill_constant(shape=[2, 3],
-                                                dtype='int64',
-                                                value=3)
+            input0 = fluid.layers.fill_constant(
+                shape=[2, 3], dtype='int64', value=5
+            )
+            input1 = fluid.layers.fill_constant(
+                shape=[2, 3], dtype='int64', value=3
+            )
             expected_result = np.empty((2, 3))
             expected_result.fill(8)
             sum_value = paddle.add_n([input0, input1])
@@ -139,54 +128,51 @@ class API_Test_Add_n(unittest.TestCase):
 
 
 class TestRaiseSumError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_type():
-            fluid.layers.sum([11, 22])
+            paddle.add_n([11, 22])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
             data2 = fluid.data(name="input2", shape=[10], dtype="int8")
-            fluid.layers.sum([data1, data2])
+            paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            fluid.layers.sum(data1)
+            paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 
 
 class TestRaiseSumsError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_type():
-            fluid.layers.sums([11, 22])
+            paddle.add_n([11, 22])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
             data2 = fluid.data(name="input2", shape=[10], dtype="int8")
-            fluid.layers.sums([data1, data2])
+            paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            fluid.layers.sums(data1)
+            paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 
         def test_out_type():
             data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
             data2 = fluid.data(name="input2", shape=[10], dtype="float32")
-            fluid.layers.sums([data1, data2], out=[10])
+            out = [10]
+            out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_type)
 
@@ -194,15 +180,13 @@ class TestRaiseSumsError(unittest.TestCase):
             data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
             data2 = fluid.data(name="input2", shape=[10], dtype="float32")
             out = fluid.data(name="out", shape=[10], dtype="int8")
-            fluid.layers.sums([data1, data2], out=out)
+            out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_dtype)
 
 
 class TestSumOpError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_empty_list_input():
             with fluid.dygraph.guard():
                 fluid._legacy_C_ops.sum([])
@@ -213,6 +197,91 @@ class TestSumOpError(unittest.TestCase):
 
         self.assertRaises(Exception, test_empty_list_input)
         self.assertRaises(Exception, test_list_of_none_input)
+
+
+class TestLoDTensorAndSelectedRowsOp(unittest.TestCase):
+    def setUp(self):
+        self.height = 10
+        self.row_numel = 12
+        self.rows = [0, 1, 2, 3, 4, 5, 6]
+        self.dtype = np.float32
+        self.init_kernel_type()
+
+    def check_with_place(self, place, inplace):
+        self.check_input_and_optput(place, inplace, True, True, True)
+
+    def init_kernel_type(self):
+        pass
+
+    def _get_array(self, rows, row_numel):
+        array = np.ones((len(rows), row_numel)).astype(self.dtype)
+        for i in range(len(rows)):
+            array[i] *= rows[i]
+        return array
+
+    def check_input_and_optput(
+        self,
+        place,
+        inplace,
+        w1_has_data=False,
+        w2_has_data=False,
+        w3_has_data=False,
+    ):
+        paddle.disable_static()
+        w1 = self.create_lod_tensor(place)
+        w2 = self.create_selected_rows(place, w2_has_data)
+
+        x = [w1, w2]
+        out = paddle.add_n(x)
+
+        result = np.ones((1, self.height)).astype(np.int32).tolist()[0]
+        for ele in self.rows:
+            result[ele] += 1
+
+        out_t = np.array(out)
+        self.assertEqual(out_t.shape[0], self.height)
+        np.testing.assert_array_equal(
+            out_t,
+            self._get_array([i for i in range(self.height)], self.row_numel)
+            * np.tile(np.array(result).reshape(self.height, 1), self.row_numel),
+        )
+
+        paddle.enable_static()
+
+    def create_selected_rows(self, place, has_data):
+        # create and initialize W Variable
+        if has_data:
+            rows = self.rows
+        else:
+            rows = []
+
+        w_array = self._get_array(self.rows, self.row_numel)
+        var = core.eager.Tensor(
+            core.VarDesc.VarType.FP32,
+            w_array.shape,
+            "selected_rows",
+            core.VarDesc.VarType.SELECTED_ROWS,
+            True,
+        )
+
+        w_selected_rows = var.value().get_selected_rows()
+        w_selected_rows.set_height(self.height)
+        w_selected_rows.set_rows(rows)
+        w_tensor = w_selected_rows.get_tensor()
+        w_tensor.set(w_array, place)
+
+        return var
+
+    def create_lod_tensor(self, place):
+        w_array = self._get_array(
+            [i for i in range(self.height)], self.row_numel
+        )
+        return paddle.to_tensor(w_array)
+
+    def test_w_is_selected_rows(self):
+        places = [core.XPUPlace(0)]
+        for place in places:
+            self.check_with_place(place, True)
 
 
 support_types = get_xpu_op_support_types('sum')

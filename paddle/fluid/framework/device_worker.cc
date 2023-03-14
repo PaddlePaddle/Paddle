@@ -32,7 +32,7 @@ void DeviceWorker::SetDataFeed(DataFeed* data_feed) {
 }
 
 template <typename T>
-std::string PrintLodTensorType(Tensor* tensor,
+std::string PrintLodTensorType(phi::DenseTensor* tensor,
                                int64_t start,
                                int64_t end,
                                char separator = ',',
@@ -55,10 +55,10 @@ std::string PrintLodTensorType(Tensor* tensor,
   return os.str();
 }
 template <typename T>
-void PrintLodTensorType(Tensor* tensor,
+void PrintLodTensorType(phi::DenseTensor* tensor,
                         int64_t start,
                         int64_t end,
-                        std::string& out_val,
+                        std::string& out_val,  // NOLINT
                         char separator = ',',
                         bool need_leading_separator = true) {
   auto count = tensor->numel();
@@ -84,10 +84,10 @@ void PrintLodTensorType(Tensor* tensor,
 #define FLOAT_EPS 1e-8
 #define MAX_FLOAT_BUFF_SIZE 40
 template <>
-void PrintLodTensorType<float>(Tensor* tensor,
+void PrintLodTensorType<float>(phi::DenseTensor* tensor,
                                int64_t start,
                                int64_t end,
-                               std::string& out_val,
+                               std::string& out_val,  // NOLINT
                                char separator,
                                bool need_leading_separator) {
   char buf[MAX_FLOAT_BUFF_SIZE];
@@ -101,15 +101,15 @@ void PrintLodTensorType<float>(Tensor* tensor,
   for (int64_t i = start; i < end; i++) {
     if (i != start || need_leading_separator) out_val += separator;
     if (tensor->data<float>()[i] > -FLOAT_EPS &&
-        tensor->data<float>()[i] < FLOAT_EPS)
+        tensor->data<float>()[i] < FLOAT_EPS) {
       out_val += "0";
-    else {
-      sprintf(buf, "%.9f", tensor->data<float>()[i]);
+    } else {
+      sprintf(buf, "%.9f", tensor->data<float>()[i]);  // NOLINT
       out_val += buf;
     }
   }
 }
-std::string PrintLodTensorIntType(Tensor* tensor,
+std::string PrintLodTensorIntType(phi::DenseTensor* tensor,
                                   int64_t start,
                                   int64_t end,
                                   char separator = ',',
@@ -132,10 +132,10 @@ std::string PrintLodTensorIntType(Tensor* tensor,
   return os.str();
 }
 
-void PrintLodTensorIntType(Tensor* tensor,
+void PrintLodTensorIntType(phi::DenseTensor* tensor,
                            int64_t start,
                            int64_t end,
-                           std::string& out_val,
+                           std::string& out_val,  // NOLINT
                            char separator = ',',
                            bool need_leading_separator = true) {
   auto count = tensor->numel();
@@ -160,7 +160,7 @@ void PrintLodTensorIntType(Tensor* tensor,
   // return os.str();
 }
 
-std::string PrintLodTensor(Tensor* tensor,
+std::string PrintLodTensor(phi::DenseTensor* tensor,
                            int64_t start,
                            int64_t end,
                            char separator,
@@ -183,10 +183,10 @@ std::string PrintLodTensor(Tensor* tensor,
   return out_val;
 }
 
-void PrintLodTensor(Tensor* tensor,
+void PrintLodTensor(phi::DenseTensor* tensor,
                     int64_t start,
                     int64_t end,
-                    std::string& out_val,
+                    std::string& out_val,  // NOLINT
                     char separator,
                     bool need_leading_separator) {
   if (framework::TransToProtoVarType(tensor->dtype()) == proto::VarType::FP32) {
@@ -205,7 +205,8 @@ void PrintLodTensor(Tensor* tensor,
   }
 }
 
-std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
+std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor,
+                                           int index) {
   auto& dims = tensor->dims();
   if (tensor->lod().size() != 0) {
     auto& lod = tensor->lod()[0];
@@ -215,7 +216,7 @@ std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
   }
 }
 
-bool CheckValidOutput(LoDTensor* tensor, size_t batch_size) {
+bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size) {
   auto& dims = tensor->dims();
   if (dims.size() != 2) return false;
   if (tensor->lod().size() != 0) {
@@ -239,8 +240,8 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    framework::LoDTensor cpu_tensor;
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor cpu_tensor;
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       tensor = &cpu_tensor;
@@ -292,7 +293,7 @@ void DeviceWorker::DumpField(const Scope& scope,
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (!tensor->IsInitialized()) {
         VLOG(0) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
@@ -315,8 +316,9 @@ void DeviceWorker::DumpField(const Scope& scope,
     if (dump_fields_ == NULL || (*dump_fields_).size() == 0) {
       return;
     }
-    auto set_output_str = [&, this](
-                              size_t begin, size_t end, LoDTensor* tensor) {
+    auto set_output_str = [&, this](size_t begin,
+                                    size_t end,
+                                    phi::DenseTensor* tensor) {
       std::pair<int64_t, int64_t> bound;
       auto& dims = tensor->dims();
       for (size_t i = begin; i < end; ++i) {
@@ -339,13 +341,13 @@ void DeviceWorker::DumpField(const Scope& scope,
                 << "] cannot be find in scope, so it was skipped.";
         continue;
       }
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (!tensor->IsInitialized()) {
         VLOG(0) << "Note: field[" << field
                 << "] is not initialized, so it was skipped.";
         continue;
       }
-      framework::LoDTensor cpu_tensor;
+      phi::DenseTensor cpu_tensor;
       if (platform::is_gpu_place(tensor->place())) {
         TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
         cpu_tensor.set_lod(tensor->lod());
@@ -361,7 +363,7 @@ void DeviceWorker::DumpField(const Scope& scope,
         continue;
       }
       size_t acutal_thread_num =
-          std::min((size_t)batch_size, tensor_iterator_thread_num);
+          std::min(static_cast<size_t>(batch_size), tensor_iterator_thread_num);
       for (size_t i = 0; i < acutal_thread_num; i++) {
         size_t average_size = batch_size / acutal_thread_num;
         size_t begin =
@@ -378,7 +380,7 @@ void DeviceWorker::DumpField(const Scope& scope,
     VLOG(1) << "writing a batch takes " << tt.count() << " us";
 
     size_t acutal_thread_num =
-        std::min((size_t)batch_size, tensor_iterator_thread_num);
+        std::min(static_cast<size_t>(batch_size), tensor_iterator_thread_num);
     for (size_t i = 0; i < acutal_thread_num; i++) {
       size_t average_size = batch_size / acutal_thread_num;
       size_t begin =
@@ -413,7 +415,7 @@ void DeviceWorker::DumpField(const Scope& scope,
       continue;
     }
     ars[i] += ins_id_vec[i];
-    ars[i] += "\t" + ins_content_vec[i];
+    if (ins_content_vec.size() > i) ars[i] = ars[i] + "\t" + ins_content_vec[i];
   }
   for (auto& field : *dump_fields_) {
     Variable* var = scope.FindVar(field);
@@ -422,13 +424,13 @@ void DeviceWorker::DumpField(const Scope& scope,
               << "] cannot be find in scope, so it was skipped.";
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     if (!tensor->IsInitialized()) {
       VLOG(0) << "Note: field[" << field
               << "] is not initialized, so it was skipped.";
       continue;
     }
-    framework::LoDTensor cpu_tensor;
+    phi::DenseTensor cpu_tensor;
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       cpu_tensor.set_lod(tensor->lod());
@@ -446,7 +448,8 @@ void DeviceWorker::DumpField(const Scope& scope,
         continue;
       }
       auto bound = GetTensorBound(tensor, i);
-      ars[i] += "\t" + field + ":" + std::to_string(bound.second - bound.first);
+      ars[i] +=
+          "\t" + field + ":" + std::to_string(bound.second - bound.first) + ":";
       ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
     }
   }
@@ -458,6 +461,7 @@ void DeviceWorker::DumpField(const Scope& scope,
     }
     writer_ << ars[i];
   }
+  writer_.Flush();
 }
 
 }  // namespace framework

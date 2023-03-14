@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/sigmoid_cross_entropy_with_logits_kernel.h"
 
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/gpu/sigmoid_cross_entropy_with_logits.h"
 
 namespace phi {
@@ -37,9 +38,8 @@ struct SigmoidFwdFunctor {
     } else {
       T term1 = (x > 0) ? x : 0;
       T term2 = x * label;
-      T term3 = paddle::operators::real_log(
-          static_cast<T>(1) +
-          paddle::operators::real_exp(static_cast<T>(-abs(x))));
+      T term3 = phi::funcs::real_log(
+          static_cast<T>(1) + phi::funcs::real_exp(static_cast<T>(-abs(x))));
 
       out_data = term1 - term2 + term3;
       counts = 1;
@@ -87,14 +87,14 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context &dev_ctx,
     funcs::ReduceKernel<T, T, kps::AddFunctor, NonzeroFunctor<T>>(
         dev_ctx, *counts_tensor, norm_tensor, NonzeroFunctor<T>(), reduce_dim);
     T *norm = dev_ctx.template Alloc<T>(norm_tensor);
-    auto norm_cpu_mem = paddle::memory::Alloc(phi::CPUPlace(), sizeof(T));
+    auto norm_cpu_mem = phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(T));
     T *norm_cpu_ptr = reinterpret_cast<T *>(norm_cpu_mem->ptr());
-    paddle::memory::Copy(phi::CPUPlace(),
-                         norm_cpu_ptr,
-                         dev_ctx.GetPlace(),
-                         norm,
-                         sizeof(T),
-                         dev_ctx.stream());
+    memory_utils::Copy(phi::CPUPlace(),
+                       norm_cpu_ptr,
+                       dev_ctx.GetPlace(),
+                       norm,
+                       sizeof(T),
+                       dev_ctx.stream());
     dev_ctx.Wait();
     auto eps = static_cast<T>(1e-5);
     *norm_cpu_ptr = *norm_cpu_ptr > eps ? *norm_cpu_ptr : eps;

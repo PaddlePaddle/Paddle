@@ -15,6 +15,7 @@
 import paddle
 from paddle.fluid import core
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.utils import deprecated
 
 from .streams import Stream  # noqa: F401
 from .streams import Event  # noqa: F401
@@ -37,16 +38,22 @@ __all__ = [
 ]
 
 
+@deprecated(
+    since="2.5.0",
+    update_to="paddle.device.current_stream",
+    level=1,
+    reason="current_stream in paddle.device.cuda will be removed in future",
+)
 def current_stream(device=None):
     '''
     Return the current CUDA stream by the device.
 
-    Parameters:
+    Args:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device which want to get stream from.
-        If device is None, the device is the current device. Default: None.
+                If device is None, the device is the current device. Default: None.
 
     Returns:
-        CUDAStream: the stream to the device.
+            CUDAStream: the stream to the device.
 
     Examples:
         .. code-block:: python
@@ -75,13 +82,19 @@ def current_stream(device=None):
     return core._get_current_stream(device_id)
 
 
+@deprecated(
+    since="2.5.0",
+    update_to="paddle.device.synchronize",
+    level=1,
+    reason="synchronize in paddle.device.cuda will be removed in future",
+)
 def synchronize(device=None):
     '''
     Wait for the compute on the given CUDA device to finish.
 
-    Parameters:
+    Args:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
-        If device is None, the device is the current device. Default: None.
+                If device is None, the device is the current device. Default: None.
 
     Examples:
         .. code-block:: python
@@ -124,8 +137,11 @@ def device_count():
 
     '''
 
-    num_gpus = core.get_cuda_device_count() if hasattr(
-        core, 'get_cuda_device_count') else 0
+    num_gpus = (
+        core.get_cuda_device_count()
+        if hasattr(core, 'get_cuda_device_count')
+        else 0
+    )
 
     return num_gpus
 
@@ -165,7 +181,7 @@ def extract_cuda_device_id(device, op_name):
     Return:
         int: The id of the given device. If device is None, return the id of current device.
     '''
-    if (device is None):
+    if device is None:
         return core.get_cuda_current_device_id()
 
     if isinstance(device, int):
@@ -178,15 +194,19 @@ def extract_cuda_device_id(device, op_name):
         else:
             raise ValueError(
                 "The current string {} is not expected. Because {} only support string which is like 'gpu:x'. "
-                "Please input appropriate string again!".format(
-                    device, op_name))
+                "Please input appropriate string again!".format(device, op_name)
+            )
     else:
         raise ValueError(
             "The device type {} is not expected. Because {} only support int, str or paddle.CUDAPlace. "
-            "Please input appropriate device again!".format(device, op_name))
+            "Please input appropriate device again!".format(device, op_name)
+        )
 
-    assert device_id >= 0, f"The device id must be not less than 0, but got id = {device_id}."
-    assert device_id < device_count(
+    assert (
+        device_id >= 0
+    ), f"The device id must be not less than 0, but got id = {device_id}."
+    assert (
+        device_id < device_count()
     ), f"The device id {device_id} exceeds gpu card number {device_count()}"
 
     return device_id
@@ -196,12 +216,12 @@ def max_memory_allocated(device=None):
     '''
     Return the peak size of gpu memory that is allocated to tensor of the given device.
 
-    .. note::
+    Note:
         The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may larger than the memory size that tensor actually need.
         For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -232,7 +252,7 @@ def max_memory_reserved(device=None):
     Return the peak size of GPU memory that is held by the allocator of the given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -262,12 +282,12 @@ def memory_allocated(device=None):
     '''
     Return the current size of gpu memory that is allocated to tensor of the given device.
 
-    .. note::
+    Note:
         The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may be larger than the memory size that tensor actually need.
         For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -298,7 +318,7 @@ def memory_reserved(device=None):
     Return the current size of GPU memory that is held by the allocator of the given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
             the string name of device like 'gpu:x'. If device is None, the device is the current device.
             Default: None.
 
@@ -345,11 +365,17 @@ def _set_current_stream(stream):
     return core._set_current_stream(stream)
 
 
+@deprecated(
+    since="2.5.0",
+    update_to="paddle.device.stream_guard",
+    level=1,
+    reason="stream_guard in paddle.device.cuda will be removed in future",
+)
 @signature_safe_contextmanager
 def stream_guard(stream):
     '''
-    **Notes**:
-        **This API only supports dygraph mode currently.**
+    Notes:
+        This API only supports dynamic graph mode currently.
 
     A context manager that specifies the current stream context by the given stream.
 
@@ -389,7 +415,7 @@ def get_device_properties(device=None):
     Return the properties of given device.
 
     Args:
-        device(paddle.CUDAPlace or int or str): The device, the id of the device or
+        device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
             the string name of device like 'gpu:x' which to get the properties of the
             device from. If device is None, the device is the current device.
             Default: None.
@@ -424,7 +450,8 @@ def get_device_properties(device=None):
         raise ValueError(
             "The API paddle.device.cuda.get_device_properties is not supported in "
             "CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support "
-            "to call this API.")
+            "to call this API."
+        )
 
     if device is not None:
         if isinstance(device, int):
@@ -438,12 +465,14 @@ def get_device_properties(device=None):
                 raise ValueError(
                     "The current string {} is not expected. Because paddle.device."
                     "cuda.get_device_properties only support string which is like 'gpu:x'. "
-                    "Please input appropriate string again!".format(device))
+                    "Please input appropriate string again!".format(device)
+                )
         else:
             raise ValueError(
                 "The device type {} is not expected. Because paddle.device.cuda."
                 "get_device_properties only support int, str or paddle.CUDAPlace. "
-                "Please input appropriate device again!".format(device))
+                "Please input appropriate device again!".format(device)
+            )
     else:
         device_id = -1
 

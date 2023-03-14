@@ -31,6 +31,7 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims_arr, reduce_all);
   auto dims = dims_arr.GetData();
 
   dev_ctx.template Alloc<T>(x_grad);
@@ -74,6 +75,14 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
       xpu_malloc(reinterpret_cast<void**>(&brocast2), x.numel() * sizeof(T)),
       XPU_SUCCESS,
       errors::ResourceExhausted("XPU has no enough memory"));
+
+  // use [1] to replace [], because xpu not support []
+  if (xdims.size() == 0) {
+    xdims = std::vector<int>({1});
+  }
+  if (ydims.size() == 0) {
+    ydims = std::vector<int>({1});
+  }
 
   // step 1. brocast out and out_grad
   int r =

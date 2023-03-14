@@ -41,10 +41,8 @@ taskkill /f /im python.exe /t 2>NUL
 taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
-taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
 wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL
@@ -99,6 +97,10 @@ set PYTHON_VENV_ROOT=%cache_dir%\python_venv
 set PYTHON_EXECUTABLE=!PYTHON_VENV_ROOT!\Scripts\python.exe
 %PYTHON_ROOT%\python.exe -m venv --clear !PYTHON_VENV_ROOT!
 call !PYTHON_VENV_ROOT!\Scripts\activate.bat
+if %ERRORLEVEL% NEQ 0 (
+    echo activate python virtual environment failed!
+    exit /b 5
+)
 
 if "%WITH_PYTHON%" == "ON" (
     where python
@@ -114,18 +116,16 @@ if "%WITH_PYTHON%" == "ON" (
 )
 
 rem -------Caching strategy 1: keep build directory for incremental compilation-----------
-rmdir %BUILD_DIR%\python /s/q
-rmdir %BUILD_DIR%\paddle\third_party\externalError /s/q
-rem rmdir %BUILD_DIR%\paddle\fluid\pybind /s/q
-rmdir %BUILD_DIR%\paddle_install_dir /s/q
-rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
-rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
-del %BUILD_DIR%\CMakeCache.txt
-
 if "%WITH_CACHE%"=="OFF" (
     rmdir %BUILD_DIR% /s/q
     goto :mkbuild
 )
+
+rmdir %BUILD_DIR%\python /s/q
+rmdir %BUILD_DIR%\paddle_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_install_dir /s/q
+rmdir %BUILD_DIR%\paddle_inference_c_install_dir /s/q
+del %BUILD_DIR%\CMakeCache.txt
 
 : set /p error_code=< %cache_dir%\error_code.txt
 if %error_code% NEQ 0 (
@@ -172,14 +172,15 @@ echo ipipe_log_param_Windows_Build_Cache: %Windows_Build_Cache%
 cd /d %BUILD_DIR%
 dir .
 dir %cache_dir%
-dir paddle\fluid\pybind\Release
 rem -------Caching strategy 1: End --------------------------------
 
 
 rem -------Caching strategy 2: sccache decorate compiler-----------
 if not defined SCCACHE_ROOT set SCCACHE_ROOT=D:\sccache
+set PATH=%SCCACHE_ROOT%;%PATH%
 if "%WITH_SCCACHE%"=="ON" (
     cmd /C sccache -V || call :install_sccache
+
     sccache --stop-server 2> NUL
     del %SCCACHE_ROOT%\sccache_log.txt
 
@@ -203,7 +204,7 @@ if "%WITH_SCCACHE%"=="ON" (
     sccache -z
     goto :CASE_%1
 ) else (
-    del %PYTHON_ROOT%\sccache.exe 2> NUL
+    del %SCCACHE_ROOT%\sccache.exe 2> NUL
     goto :CASE_%1
 )
 
@@ -211,7 +212,7 @@ if "%WITH_SCCACHE%"=="ON" (
 echo There is not sccache in this PC, will install sccache.
 echo Download package from https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe
 %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-ci.gz.bcebos.com/window_requirement/sccache.exe')"
-xcopy sccache.exe %PYTHON_ROOT%\ /Y
+xcopy sccache.exe %SCCACHE_ROOT%\ /Y
 del sccache.exe
 goto:eof
 rem -------Caching strategy 2: End --------------------------------
@@ -240,6 +241,7 @@ call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_whl_pacakage || goto test_whl_pacakage_error
 call :test_unit || goto test_unit_error
+call :test_inference || goto test_inference_error
 goto:success
 
 rem ------PR CI windows check for OPENBLAS/CPU------
@@ -452,16 +454,25 @@ echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -D
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME%
+
+echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
+-DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
+-DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
+-DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
+-DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
+-DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME% >> %work_dir%\win_cmake.sh
 
 cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
 -DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DPYTHON_EXECUTABLE=%PYTHON_EXECUTABLE% -DON_INFER=%ON_INFER% ^
 -DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
 -DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
 -DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
+-DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUDA_ARCH_BIN=%CUDA_ARCH_BIN% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
 -DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
 -DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% -DWITH_ONNXRUNTIME=%WITH_ONNXRUNTIME%
 goto:eof
@@ -529,10 +540,8 @@ taskkill /f /im csc.exe /t 2>NUL
 taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
-taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
 wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cmake.exe" call terminate 2>NUL
@@ -627,6 +636,10 @@ for /F %%# in ('wmic os get localdatetime^|findstr 20') do set end=%%#
 set end=%end:~4,10%
 call :timestamp "%start%" "%end%" "Build"
 
+%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle\fluid\pybind\libpaddle.dll > paddle_dll_size.txt
+set /p paddledllsize=< paddle_dll_size.txt
+for /F %%i in ("%paddledllsize%") do echo "Windows libpaddle.dll Size: %%i"
+
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\python\dist > whl_size.txt
 set /p whlsize=< whl_size.txt
 for /F %%i in ("%whlsize%") do echo "Windows PR whl Size: %%i"
@@ -640,7 +653,6 @@ pip uninstall -y paddlepaddle
 pip uninstall -y paddlepaddle-gpu
 pip install %PADDLE_WHL_FILE_WIN%
 if %ERRORLEVEL% NEQ 0 (
-    call paddle_winci\Scripts\deactivate.bat 2>NUL
     echo pip install whl package failed!
     exit /b 1
 )
@@ -662,6 +674,7 @@ echo    ========================================
 echo    Step 4. Running unit tests ...
 echo    ========================================
 
+pip install requests
 pip install -r %work_dir%\python\unittest_py\requirements.txt
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
@@ -678,8 +691,7 @@ dir %THIRD_PARTY_PATH:/=\%\install\zlib\bin
 dir %THIRD_PARTY_PATH:/=\%\install\mklml\lib
 dir %THIRD_PARTY_PATH:/=\%\install\mkldnn\bin
 dir %THIRD_PARTY_PATH:/=\%\install\warpctc\bin
-
-pip install requests
+dir %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib
 
 set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\install\openblas\bin;^
 %THIRD_PARTY_PATH:/=\%\install\zlib\bin;%THIRD_PARTY_PATH:/=\%\install\mklml\lib;^
@@ -689,7 +701,9 @@ set PATH=%THIRD_PARTY_PATH:/=\%\install\openblas\lib;%THIRD_PARTY_PATH:/=\%\inst
 %PATH%
 
 REM TODO: make ut find .dll in install\onnxruntime\lib
-xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
+if "%WITH_ONNXRUNTIME%"=="ON" (
+    xcopy %THIRD_PARTY_PATH:/=\%\install\onnxruntime\lib\onnxruntime.dll %work_dir%\%BUILD_DIR%\paddle\fluid\inference\tests\api\ /Y
+)
 
 if "%WITH_GPU%"=="ON" (
     call:parallel_test_base_gpu
@@ -725,14 +739,6 @@ set CUDA_DEVICE_COUNT=1
 
 :: For hypothesis tests(mkldnn op and inference pass), we set use 'ci' profile
 set HYPOTHESIS_TEST_PROFILE=ci
-echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
--DWITH_TESTING=%WITH_TESTING% -DWITH_PYTHON=%WITH_PYTHON% -DON_INFER=%ON_INFER% ^
--DWITH_INFERENCE_API_TEST=%WITH_INFERENCE_API_TEST% -DTHIRD_PARTY_PATH=%THIRD_PARTY_PATH% ^
--DINFERENCE_DEMO_INSTALL_DIR=%INFERENCE_DEMO_INSTALL_DIR% -DWITH_STATIC_LIB=%WITH_STATIC_LIB% ^
--DWITH_TENSORRT=%WITH_TENSORRT% -DTENSORRT_ROOT="%TENSORRT_ROOT%" -DMSVC_STATIC_CRT=%MSVC_STATIC_CRT% ^
--DWITH_UNITY_BUILD=%WITH_UNITY_BUILD% -DCUDA_ARCH_NAME=%CUDA_ARCH_NAME% -DCUB_PATH=%THIRD_PARTY_HOME%/cub ^
--DCUDA_TOOLKIT_ROOT_DIR="%CUDA_TOOLKIT_ROOT_DIR%" -DNEW_RELEASE_ALL=%NEW_RELEASE_ALL% -DNEW_RELEASE_PYPI=%NEW_RELEASE_PYPI% ^
--DNEW_RELEASE_JIT=%NEW_RELEASE_JIT% >> %work_dir%\win_cmake.sh
 
 %cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\run_unittests.sh %NIGHTLY_MODE% %PRECISION_TEST% %WITH_GPU%
 
@@ -763,13 +769,10 @@ echo    Step 5. Testing fluid library for inference ...
 echo    ========================================
 
 tree /F %cd%\paddle_inference_install_dir\paddle
-%cache_dir%\tools\busybox64.exe du -h -d 0 -k %cd%\paddle_inference_install_dir\paddle\lib > lib_size.txt
+%cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle_inference_install_dir > lib_size.txt
 set /p libsize=< lib_size.txt
-for /F %%i in ("%libsize%") do (
-    set /a libsize_m=%%i/1024
-    echo "Windows Paddle_Inference Size: !libsize_m!M"
-    echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
-)
+for /F %%i in ("%libsize%") do echo "Windows Paddle_Inference Size: !libsize_m!M"
+for /F %%i in ("%libsize%") do echo ipipe_log_param_Windows_Paddle_Inference_Size: !libsize_m!M
 
 cd /d %work_dir%\paddle\fluid\inference\api\demo_ci
 %cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %WITH_TENSORRT% %TENSORRT_ROOT% %WITH_ONNXRUNTIME% %MSVC_STATIC_CRT% "%CUDA_TOOLKIT_ROOT_DIR%"
@@ -931,10 +934,8 @@ taskkill /f /im python.exe /t 2>NUL
 taskkill /f /im nvcc.exe /t 2>NUL
 taskkill /f /im cicc.exe /t 2>NUL
 taskkill /f /im ptxas.exe /t 2>NUL
-taskkill /f /im op_function_generator.exe /t 2>NUL
 taskkill /f /im eager_generator.exe /t 2>NUL
 taskkill /f /im eager_legacy_op_function_generator.exe /t 2>NUL
-wmic process where name="op_function_generator.exe" call terminate 2>NUL
 wmic process where name="eager_generator.exe" call terminate 2>NUL
 wmic process where name="eager_legacy_op_function_generator.exe" call terminate 2>NUL
 wmic process where name="cvtres.exe" call terminate 2>NUL

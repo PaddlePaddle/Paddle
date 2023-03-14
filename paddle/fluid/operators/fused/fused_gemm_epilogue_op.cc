@@ -14,13 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 
 class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
  public:
@@ -139,19 +137,16 @@ class FusedGemmEpilogueOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
-    // Note (Ming Huang): Reserve space of relu is a bit-mask,
-    // which cannot pass nan_and_inf checking if shape is set.
-    if (activation == "gelu" && ctx->HasOutput("ReserveSpace")) {
+
+    if (ctx->HasOutput("ReserveSpace")) {
       ctx->SetOutputDim("ReserveSpace", phi::make_ddim(out_dims));
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -320,12 +315,10 @@ class FusedGemmEpilogueGradOp : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -397,7 +390,7 @@ class FusedGemmEpilogueOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
     if (act_type != "none") {
-      op->SetInput("ReserveSpace", this->Input("ReserveSpace"));
+      op->SetInput("ReserveSpace", this->Output("ReserveSpace"));
     }
     op->SetInput("DOut", this->OutputGrad("Out"));
 

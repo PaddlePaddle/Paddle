@@ -22,26 +22,26 @@
 namespace phi {
 namespace autotune {
 
-template <typename T, typename RetureType, typename... Args>
+template <typename T, typename ReturnType, typename... Args>
 class KernelCallback {
  public:
-  using ReturnT = RetureType;
-  using FuncType = RetureType (*)(Args...);
+  using ReturnT = ReturnType;
+  using FuncType = ReturnType (*)(Args...);
 
   KernelCallback() {}
   explicit KernelCallback(FuncType func_) : func(func_) {}
   virtual ~KernelCallback() {}
 
-  RetureType Run(Args... args) { return func(args...); }
+  ReturnType Run(Args... args) { return func(args...); }
 
  private:
   FuncType func;
 };
 
-template <typename T, typename RetureType, typename... Args>
-static KernelCallback<T, RetureType, Args...> MakeCallback(
-    RetureType (*cb)(Args...)) {
-  return KernelCallback<T, RetureType, Args...>(cb);
+template <typename T, typename ReturnType, typename... Args>
+static KernelCallback<T, ReturnType, Args...> MakeCallback(
+    ReturnType (*cb)(Args...)) {
+  return KernelCallback<T, ReturnType, Args...>(cb);
 }
 
 template <typename T, typename KernelType>
@@ -54,10 +54,11 @@ class AutoTuneBase {
     kernels_.push_back(/*default=*/kernel);
   }
 
-  void AddCallBack(KernelType kernel) {
+  template <typename ReturnType, typename... Args>
+  void AddCallBack(ReturnType (*func)(Args...)) {
     if (!is_init_) {
       std::lock_guard<std::mutex> lock(mutex_);
-      kernels_.push_back(kernel);
+      kernels_.push_back(MakeCallback<T>(func));
     }
   }
 
@@ -66,13 +67,8 @@ class AutoTuneBase {
            const AlgorithmType& algo,
            const size_t key,
            Args&&... args) {
-    PADDLE_ENFORCE_GT(
-        kernels_.size(),
-        0,
-        paddle::platform::errors::InvalidArgument(
-            "kernel num must be greater than 0, now is %d", kernels_.size()));
     is_init_ = true;
-
+    CheckKernelSize();
     auto& cache = AutoTuneCache::Instance().Get(algo);
     if (cache.Find(key)) {
       auto best_idx = cache.Get(key);
@@ -90,19 +86,22 @@ class AutoTuneBase {
     }
   }
 
- private:
+ protected:
   bool is_init_{false};
   std::vector<KernelType> kernels_;
   mutable std::mutex mutex_;
 
-  template <typename Context, typename... Args>
-  size_t PickBestKernel(const Context& ctx, Args&&... args) {
-    std::lock_guard<std::mutex> lock(mutex_);
+  void CheckKernelSize() {
     PADDLE_ENFORCE_GT(
         kernels_.size(),
         0,
-        paddle::platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "kernel num must be greater than 0, now is %d", kernels_.size()));
+  }
+
+  template <typename Context, typename... Args>
+  size_t PickBestKernel(const Context& ctx, Args&&... args) {
+    std::lock_guard<std::mutex> lock(mutex_);
     size_t best_idx = 0;
     float min_time = std::numeric_limits<float>::max();
 
@@ -120,9 +119,9 @@ class AutoTuneBase {
 
   template <typename Context, typename... Args>
   float RunAndMeasureKernel(const Context& ctx, const int idx, Args&&... args) {
-    // Regard 1st run as warmup. Judge the result by the time cost of rest run
-    // cycles.
-    constexpr int repeats = 3;
+    // Regard 1st run as warmup, judge the compare result by the time cost
+    // of rest cycles.
+    constexpr int repeats = 6;
     phi::GpuTimer timer;
     float time_cost = 0;
     const auto& stream = ctx.stream();
@@ -142,37 +141,80 @@ class AutoTuneBase {
   }
 };
 
-template <typename T, typename RetureType, typename... Args>
-static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>> MakeAutoTuner(
-    RetureType (*func)(Args...)) {
-  auto obj = MakeCallback<T>(func);
-  return AutoTuneBase<T, decltype(obj)>(obj);
-}
-
-template <typename T, typename KernelType>
-class TransposeAutoTuner : public AutoTuneBase<T, KernelType> {
+template <typename T, typename ReturnType, typename... Args>
+class MatmulAutoTuner
+    : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
  public:
-  static AutoTuneBase<T, KernelType>* Instance(KernelType kernel) {
-    static std::unique_ptr<AutoTuneBase<T, KernelType>> instance_;
-    std::call_once(init_flag_, [&] {
-      instance_.reset(new AutoTuneBase<T, KernelType>(kernel));
+  static MatmulAutoTuner<T, ReturnType, Args...>* Instance(
+      ReturnType (*func)(Args...)) {
+    static std::once_flag matmul_init_flag;
+    static std::unique_ptr<MatmulAutoTuner<T, ReturnType, Args...>> instance;
+    std::call_once(matmul_init_flag, [&] {
+      auto obj = MakeCallback<T>(func);
+      instance.reset(new MatmulAutoTuner<T, ReturnType, Args...>);
+      instance->AddCallBack(func);
     });
-    return instance_.get();
+    return instance.get();
   }
 
- private:
-  static std::once_flag init_flag_;
+  template <typename Context>
+  void Run(const Context& ctx, const size_t key, Args... args) {
+    this->is_init_ = true;
+    this->CheckKernelSize();
+    auto& cache = AutoTuneCache::Instance().GetMatmul();
+    if (cache.Find(key)) {
+      auto best_idx = cache.Get(key);
+      this->kernels_[best_idx].Run(args...);
+    } else {
+      bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
+      if (use_autotune) {
+        auto best_idx = this->PickBestKernel(ctx, args...);
+        cache.Set(key, best_idx);
+      } else {
+        this->kernels_[0].Run(args...);
+      }
+    }
+  }
 };
 
-template <typename T, typename KernelType>
-std::once_flag TransposeAutoTuner<T, KernelType>::init_flag_;
+// Define the auto_tuner inital object.
+#define DEFINE_AUTOTUNER_COMMON_OBJ(name)                                \
+  template <typename T, typename ReturnType, typename... Args>           \
+  class name##AutoTuner                                                  \
+      : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> { \
+   public:                                                               \
+    static name##AutoTuner<T, ReturnType, Args...>* Instance(            \
+        ReturnType (*func)(Args...)) {                                   \
+      static std::once_flag name##_init_flag;                            \
+      static std::unique_ptr<name##AutoTuner<T, ReturnType, Args...>>    \
+          instance;                                                      \
+      std::call_once(name##_init_flag, [&] {                             \
+        auto obj = MakeCallback<T>(func);                                \
+        instance.reset(new name##AutoTuner<T, ReturnType, Args...>);     \
+        instance->AddCallBack(func);                                     \
+      });                                                                \
+      return instance.get();                                             \
+    }                                                                    \
+  };
 
-template <typename T, typename RetureType, typename... Args>
-static AutoTuneBase<T, KernelCallback<T, RetureType, Args...>>*
-MakeTransposeTuner(RetureType (*func)(Args...)) {
-  auto obj = MakeCallback<T>(func);
-  return TransposeAutoTuner<T, decltype(obj)>::Instance(obj);
-}
+// Define the auto_tuner inital function.
+#define DEFINE_AUTOTUNER_FN(name)                                    \
+  template <typename T, typename ReturnType, typename... Args>       \
+  static name##AutoTuner<T, ReturnType, Args...>* Make##name##Tuner( \
+      ReturnType (*func)(Args...)) {                                 \
+    return name##AutoTuner<T, ReturnType, Args...>::Instance(func);  \
+  }
+
+#define DEFINE_AUTOTUNER(name)      \
+  DEFINE_AUTOTUNER_COMMON_OBJ(name) \
+  DEFINE_AUTOTUNER_FN(name)
+
+DEFINE_AUTOTUNER(Transpose)
+DEFINE_AUTOTUNER_FN(Matmul)
+
+#undef DEFINE_AUTOTUNER_COMMON_OBJECT
+#undef DEFINE_AUTOTUNER_FN
+#undef DEFINE_AUTOTUNER
 
 }  // namespace autotune
 }  // namespace phi

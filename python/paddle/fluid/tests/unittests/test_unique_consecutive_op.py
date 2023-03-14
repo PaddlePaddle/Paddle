@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.framework as framework
+import paddle.fluid.core as core
 
 
-def reference_unique_consecutive(X, return_inverse=False, return_counts=False):
+def reference_unique_consecutive(
+    X, return_inverse=False, return_counts=False, axis=None
+):
     """
     Reference unique_consecutive implementation using python.
     Args:
@@ -34,12 +34,14 @@ def reference_unique_consecutive(X, return_inverse=False, return_counts=False):
         return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
     """
     X = list(X)
+    is_empty = len(X) == 0
     counts_vec = [1] * len(X)
     i = 0
     counts = 1
     last = 0
     inverse_vec = [0] * len(X)
-    inverse_vec[last] = i
+    if not is_empty:
+        inverse_vec[last] = i
     cnt = 0
     while i < len(X) - 1:
         if X[i] == X[i + 1]:
@@ -53,7 +55,7 @@ def reference_unique_consecutive(X, return_inverse=False, return_counts=False):
             last += 1
             inverse_vec[last] = i
     if return_counts:
-        counts_vec = counts_vec[:len(X)]
+        counts_vec = counts_vec[: len(X)]
     if return_inverse and return_counts:
         return X, np.array(inverse_vec), np.array(counts_vec)
     elif return_counts:
@@ -82,8 +84,9 @@ class TestUniqueConsecutiveOp(OpTest):
         self.config()
         self.op_type = "unique_consecutive"
         x = np.random.randint(self.x_range, size=self.x_size).astype(self.dtype)
-        result = reference_unique_consecutive(x, self.return_inverse,
-                                              self.return_counts)
+        result = reference_unique_consecutive(
+            x, self.return_inverse, self.return_counts
+        )
         out = reference_unique_consecutive(x)
         out = np.array(out).astype(self.dtype)
         self.inputs = {
@@ -114,8 +117,9 @@ class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
         self.config()
         self.op_type = "unique_consecutive"
         x = np.random.randint(self.x_range, size=self.x_size).astype(self.dtype)
-        result, inverse = reference_unique_consecutive(x, self.return_inverse,
-                                                       self.return_counts)
+        result, inverse = reference_unique_consecutive(
+            x, self.return_inverse, self.return_counts
+        )
         result = np.array(result).astype(self.dtype)
         inverse = inverse.astype(self.dtype)
         self.inputs = {
@@ -123,7 +127,7 @@ class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
         }
         self.attrs = {
             'return_inverse': self.return_inverse,
-            'dtype': int(core.VarDesc.VarType.INT32)
+            'dtype': int(core.VarDesc.VarType.INT32),
         }
         self.python_out_sig = ["Out"]
         self.outputs = {'Out': result, 'Index': inverse}
@@ -144,8 +148,9 @@ class TestUniqueConsecutiveOp3(TestUniqueConsecutiveOp):
         self.config()
         self.op_type = "unique_consecutive"
         x = np.random.randint(self.x_range, size=self.x_size).astype(self.dtype)
-        result, counts = reference_unique_consecutive(x, self.return_inverse,
-                                                      self.return_counts)
+        result, counts = reference_unique_consecutive(
+            x, self.return_inverse, self.return_counts
+        )
         result = np.array(result).astype(self.dtype)
         counts = counts.astype(self.dtype)
         self.inputs = {
@@ -153,7 +158,7 @@ class TestUniqueConsecutiveOp3(TestUniqueConsecutiveOp):
         }
         self.attrs = {
             'return_counts': self.return_counts,
-            'dtype': int(core.VarDesc.VarType.INT32)
+            'dtype': int(core.VarDesc.VarType.INT32),
         }
         self.python_out_sig = ["Out"]
         self.outputs = {'Out': result, 'Counts': counts}
@@ -175,7 +180,8 @@ class TestUniqueConsecutiveOp4(TestUniqueConsecutiveOp):
         self.op_type = "unique_consecutive"
         x = np.random.randint(self.x_range, size=self.x_size).astype(self.dtype)
         result, inverse, counts = reference_unique_consecutive(
-            x, self.return_inverse, self.return_counts)
+            x, self.return_inverse, self.return_counts
+        )
         result = np.array(result).astype(self.dtype)
         inverse = inverse.astype(self.dtype)
         counts = counts.astype(self.dtype)
@@ -185,14 +191,13 @@ class TestUniqueConsecutiveOp4(TestUniqueConsecutiveOp):
         self.attrs = {
             'return_inverse': self.return_inverse,
             'return_counts': self.return_counts,
-            'dtype': int(core.VarDesc.VarType.INT32)
+            'dtype': int(core.VarDesc.VarType.INT32),
         }
         self.python_out_sig = ["Out"]
         self.outputs = {'Out': result, 'Index': inverse, 'Counts': counts}
 
 
 class TestUniqueConsecutiveAPI(unittest.TestCase):
-
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -201,15 +206,21 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             paddle.enable_static()
-            input_x = fluid.data(name="input_x", shape=[
-                100,
-            ], dtype="float32")
+            input_x = fluid.data(
+                name="input_x",
+                shape=[
+                    100,
+                ],
+                dtype="float32",
+            )
             result = paddle.unique_consecutive(input_x)
             x_np = np.random.randint(20, size=100).astype("float32")
             exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"input_x": x_np},
-                              fetch_list=[result])
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input_x": x_np},
+                fetch_list=[result],
+            )
 
     def test_static(self):
         for place in self.places:
@@ -224,7 +235,6 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
 
 
 class TestUniqueConsecutiveCase2API(unittest.TestCase):
-
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -233,16 +243,23 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             paddle.enable_static()
-            input_x = fluid.data(name="input_x", shape=[
-                100,
-            ], dtype="float32")
+            input_x = fluid.data(
+                name="input_x",
+                shape=[
+                    100,
+                ],
+                dtype="float32",
+            )
             result, inverse, counts = paddle.unique_consecutive(
-                input_x, return_inverse=True, return_counts=True)
+                input_x, return_inverse=True, return_counts=True
+            )
             x_np = np.random.randint(20, size=100).astype("float32")
             exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"input_x": x_np},
-                              fetch_list=[result])
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input_x": x_np},
+                fetch_list=[result],
+            )
 
     def test_static(self):
         for place in self.places:
@@ -254,7 +271,83 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
                 input_x = np.random.randint(20, size=100).astype("float64")
                 x = paddle.to_tensor(input_x)
                 result, inverse, counts = paddle.unique_consecutive(
-                    x, return_inverse=True, return_counts=True)
+                    x, return_inverse=True, return_counts=True
+                )
+
+
+class TestUniqueConsecutiveCase3API(unittest.TestCase):
+    def setUp(self):
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            paddle.enable_static()
+            input_x = fluid.data(
+                name="input_x",
+                shape=[
+                    100,
+                ],
+                dtype="float32",
+            )
+            result, inverse, counts = paddle.unique_consecutive(
+                input_x, return_inverse=True, return_counts=True, axis=-1
+            )
+            x_np = np.random.randint(20, size=100).astype("float32")
+            exe = fluid.Executor(place)
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input_x": x_np},
+                fetch_list=[result],
+            )
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input_x = np.random.randint(20, size=100).astype("float64")
+                x = paddle.to_tensor(input_x)
+                result, inverse, counts = paddle.unique_consecutive(
+                    x, return_inverse=True, return_counts=True, axis=-1
+                )
+
+
+class TestUniqueConsecutiveEmptyInput(OpTest):
+    """empty input"""
+
+    def config(self):
+        self.return_inverse = True
+        self.return_counts = True
+        self.python_api = paddle.unique_consecutive
+
+    def init_kernel_type(self):
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+
+    def setUp(self):
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "unique_consecutive"
+        x = np.array([]).astype(self.dtype)
+        result = reference_unique_consecutive(
+            x, self.return_inverse, self.return_counts
+        )
+        out = reference_unique_consecutive(x)
+        out = np.array(out).astype(self.dtype)
+        self.inputs = {
+            'X': x,
+        }
+        self.python_out_sig = ["Out"]
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.outputs = {
+            'Out': out,
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 if __name__ == "__main__":

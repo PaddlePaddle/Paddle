@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
+
 import numpy as np
+
+import paddle.fluid.core as core
 import paddle.fluid.op as fluid_op
+from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
 
 
 class TestSumMKLDNN(TestSumOp):
-
     def setUp(self):
         self.op_type = "sum"
         self.init_data_type()
@@ -48,7 +47,6 @@ class TestSumMKLDNN(TestSumOp):
 
 
 class TestMKLDNNSumInplaceOp(unittest.TestCase):
-
     def setUp(self):
         self.op_type = "sum"
         self.init_data_type()
@@ -72,10 +70,9 @@ class TestMKLDNNSumInplaceOp(unittest.TestCase):
                 tensor = var.get_tensor()
                 tensor.set(var_value, place)
 
-        sum_op = fluid_op.Operator("sum",
-                                   X=["x0", "x1"],
-                                   Out=out_var_name,
-                                   use_mkldnn=True)
+        sum_op = fluid_op.Operator(
+            "sum", X=["x0", "x1"], Out=out_var_name, use_mkldnn=True
+        )
         expected_out = np.array(self.x0 + self.x1)
         sum_op.run(scope, place)
         out = scope.find_var("x0").get_tensor()
@@ -85,7 +82,7 @@ class TestMKLDNNSumInplaceOp(unittest.TestCase):
             out_array,
             rtol=1e-05,
             atol=1e-05,
-            err_msg='Inplace sum_mkldnn_op output has diff with expected output'
+            err_msg='Inplace sum_mkldnn_op output has diff with expected output',
         )
 
     def test_check_grad(self):
@@ -94,5 +91,6 @@ class TestMKLDNNSumInplaceOp(unittest.TestCase):
 
 if __name__ == '__main__':
     from paddle import enable_static
+
     enable_static()
     unittest.main()

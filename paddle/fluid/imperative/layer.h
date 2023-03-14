@@ -211,13 +211,11 @@ class VarBase {
 
   framework::proto::VarType::Type DataType() const { return var_->DataType(); }
 
-  void SetDataLayout(paddle::experimental::DataLayout data_layout) {
+  void SetDataLayout(phi::DataLayout data_layout) {
     var_->SetDataLayout(data_layout);
   }
 
-  paddle::experimental::DataLayout DataLayout() const {
-    return var_->DataLayout();
-  }
+  phi::DataLayout DataLayout() const { return var_->DataLayout(); }
 
   size_t ElementSize() const { return framework::SizeOfType(var_->DataType()); }
 

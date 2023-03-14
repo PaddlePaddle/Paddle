@@ -41,6 +41,9 @@ void BindPSGPUWrapper(py::module* m) {
       .def("set_slot_vector",
            &framework::PSGPUWrapper::SetSlotVector,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_slot_num_for_pull_feature",
+           &framework::PSGPUWrapper::SetPullFeatureSlotNum,
+           py::call_guard<py::gil_scoped_release>())
 #ifdef PADDLE_WITH_CUDA
       .def("set_slot_dim_vector",
            &framework::PSGPUWrapper::SetSlotDimVector,
@@ -64,6 +67,9 @@ void BindPSGPUWrapper(py::module* m) {
       .def("begin_pass",
            &framework::PSGPUWrapper::BeginPass,
            py::call_guard<py::gil_scoped_release>())
+      .def("dump_to_mem",
+           &framework::PSGPUWrapper::DumpToMem,
+           py::call_guard<py::gil_scoped_release>())
       .def("load_into_memory",
            &framework::PSGPUWrapper::LoadIntoMemory,
            py::call_guard<py::gil_scoped_release>())
@@ -74,6 +80,9 @@ void BindPSGPUWrapper(py::module* m) {
 #endif
       .def("finalize",
            &framework::PSGPUWrapper::Finalize,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_mode",
+           &framework::PSGPUWrapper::SetMode,
            py::call_guard<py::gil_scoped_release>());
 }  // end PSGPUWrapper
 #ifdef PADDLE_WITH_PSLIB

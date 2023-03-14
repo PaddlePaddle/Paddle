@@ -40,4 +40,20 @@ void TrilTriuGradKernel(const Context& ctx,
   for_range(tril_triu_grad_computer);
 }
 
+template <typename T, typename Context>
+void TrilGradKernel(const Context& ctx,
+                    const DenseTensor& out_grad,
+                    int diagonal,
+                    DenseTensor* x_grad) {
+  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, true, x_grad);
+}
+
+template <typename T, typename Context>
+void TriuGradKernel(const Context& ctx,
+                    const DenseTensor& out_grad,
+                    int diagonal,
+                    DenseTensor* x_grad) {
+  TrilTriuGradKernel<T, Context>(ctx, out_grad, diagonal, false, x_grad);
+}
+
 }  // namespace phi

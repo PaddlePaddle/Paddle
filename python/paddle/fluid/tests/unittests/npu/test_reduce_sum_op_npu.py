@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -28,7 +26,6 @@ SEED = 2021
 
 
 class TestReduceSum(OpTest):
-
     def setUp(self):
         np.random.seed(SEED)
         self.set_npu()
@@ -41,16 +38,16 @@ class TestReduceSum(OpTest):
         self.attrs = {
             'dim': self.axis,
             'keep_dim': self.keep_dim,
-            'reduce_all': self.reduce_all
+            'reduce_all': self.reduce_all,
         }
         self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         if self.attrs['reduce_all']:
             self.outputs = {'Out': self.inputs['X'].sum()}
         else:
             self.outputs = {
-                'Out':
-                self.inputs['X'].sum(axis=self.axis,
-                                     keepdims=self.attrs['keep_dim'])
+                'Out': self.inputs['X'].sum(
+                    axis=self.axis, keepdims=self.attrs['keep_dim']
+                )
             }
 
     def set_npu(self):
@@ -67,7 +64,7 @@ class TestReduceSum(OpTest):
 
     def initTestCase(self):
         self.shape = (5, 6)
-        self.axis = (0)
+        self.axis = 0
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
@@ -81,16 +78,14 @@ class TestReduceSum(OpTest):
 
 
 class TestReduceSum2(OpTest):
-
     def init_dtype(self):
         self.dtype = np.int32
 
 
 class TestReduceSumNet(unittest.TestCase):
-
     def set_reduce_sum_function(self, x):
         # keep_dim = False
-        return paddle.fluid.layers.reduce_sum(x, dim=-1)
+        return paddle.sum(x, axis=-1)
 
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -106,19 +101,19 @@ class TestReduceSumNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[2, 3, 4], dtype='float32')
             b = paddle.static.data(name="b", shape=[2, 3, 4], dtype='float32')
-            label = paddle.static.data(name="label",
-                                       shape=[2, 1],
-                                       dtype='int64')
+            label = paddle.static.data(
+                name="label", shape=[2, 1], dtype='int64'
+            )
 
-            a_1 = fluid.layers.fc(input=a, size=4, num_flatten_dims=2, act=None)
-            b_1 = fluid.layers.fc(input=b, size=4, num_flatten_dims=2, act=None)
+            a_1 = paddle.static.nn.fc(x=a, size=4, num_flatten_dims=2, activation=None)
+            b_1 = paddle.static.nn.fc(x=b, size=4, num_flatten_dims=2, activation=None)
             z = paddle.add(a_1, b_1)
             z_1 = self.set_reduce_sum_function(z)
 
-            prediction = fluid.layers.fc(input=z_1, size=2, act='softmax')
+            prediction = paddle.static.nn.fc(x=z_1, size=2, activation='softmax')
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
+            cost = paddle.nn.functional.cross_entropy(input=prediction, label=label, reduction='none', use_softmax=False)
+            loss = paddle.mean(cost)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -133,16 +128,17 @@ class TestReduceSumNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(main_prog,
-                                         feed={
-                                             "a": a_np,
-                                             "b": b_np,
-                                             "label": label_np
-                                         },
-                                         fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -155,14 +151,12 @@ class TestReduceSumNet(unittest.TestCase):
 
 
 class TestReduceSumNet2(TestReduceSumNet):
-
     def set_reduce_sum_function(self, x):
         # keep_dim = True
-        return paddle.fluid.layers.reduce_sum(x, dim=-1, keep_dim=True)
+        return paddle.sum(x, axis=-1, keepdim=True)
 
 
 class TestReduceSumNet3(TestReduceSumNet):
-
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -178,7 +172,7 @@ class TestReduceSumNet3(TestReduceSumNet):
             b = paddle.static.data(name="b", shape=[2, 3, 4], dtype='float32')
 
             z = paddle.add(a, b)
-            loss = fluid.layers.reduce_sum(z)
+            loss = paddle.sum(z)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 
@@ -193,12 +187,9 @@ class TestReduceSumNet3(TestReduceSumNet):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            loss_res = exe.run(main_prog,
-                               feed={
-                                   "a": a_np,
-                                   "b": b_np
-                               },
-                               fetch_list=[loss])
+            loss_res = exe.run(
+                main_prog, feed={"a": a_np, "b": b_np}, fetch_list=[loss]
+            )
             if epoch % 10 == 0:
                 print("Epoch {} | Loss: {}".format(epoch, loss_res))
 

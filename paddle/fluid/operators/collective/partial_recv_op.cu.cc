@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/partial_recv_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -29,7 +29,7 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     auto out_dims = out->dims();
     auto numel = out->numel();
 
@@ -75,14 +75,14 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup *pg = map->get(rid);
-      auto task = pg->Recv_Partial(*out, peer, offset, recv_numel);
+      auto task = pg->Recv(out, peer, offset, recv_numel, /*sync_op*/ true);
       task->Wait();
     } else {
       gpuStream_t stream = nullptr;
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-        stream = static_cast<phi::GPUContext *>(dev_ctx)->stream();
+        // should ExecutionContext for calc stream.
+        stream = ctx.cuda_device_context().stream();
       } else {
         stream = comm->stream();
       }

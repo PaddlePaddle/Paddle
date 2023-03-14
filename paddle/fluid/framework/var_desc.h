@@ -71,9 +71,7 @@ class VarDesc {
     need_updated_ = true;
   }
 
-  explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {
-    // need_updated_ = true;
-  }
+  explicit VarDesc(const proto::VarDesc &desc);
 
   // Explicitly implement the copy constructor for auto parallel
   VarDesc(const VarDesc &other);
@@ -90,7 +88,7 @@ class VarDesc {
   }
 
   proto::VarDesc *Proto() {
-    need_updated_ = true;
+    Flush();  // Only flush attrs for auto parallel
     return &desc_;
   }
 
@@ -194,6 +192,8 @@ class VarDesc {
   bool NeedUpdate() const { return need_updated_; }
   void SetNeedUpdate(bool need) { need_updated_ = need; }
 
+  void Flush();
+
   // The following methods are only used for auto parallel.
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
@@ -210,7 +210,7 @@ class VarDesc {
   proto::VarType::TensorDesc *mutable_tensor_desc();
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
-  // it it really needed? or just mantain a ptr from block?
+  // Is it really needed? Or just mantain a ptr from the block?
   proto::VarDesc desc_;
   AttributeMap attrs_;
 

@@ -13,17 +13,18 @@
 # limitations under the License.
 
 import os
-import paddle
-import paddle.nn as nn
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
+
 import numpy as np
-from test_dist_base import TestDistRunnerBase, runtime_main
 from dist_mnist import cnn_model
+from test_dist_base import TestDistRunnerBase, runtime_main
+
+import paddle
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
+import paddle.nn as nn
 
 
 class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
-
     def get_model(self, batch_size=2, single_device=False):
         paddle.enable_static()
         paddle.seed(1)
@@ -54,9 +55,9 @@ class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
         strategy.without_graph_optimization = True
 
         fleet.init(is_collective=True, strategy=strategy)
-        image = paddle.static.data(name='image',
-                                   shape=[None, 1, 28, 28],
-                                   dtype="float32")
+        image = paddle.static.data(
+            name='image', shape=[None, 1, 28, 28], dtype="float32"
+        )
         label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
         predict = cnn_model(image)
         acc = paddle.metric.accuracy(predict, label)
@@ -68,7 +69,8 @@ class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
             optimizer = fluid.optimizer.GradientMergeOptimizer(
                 optimizer,
                 k_steps=strategy.gradient_merge_configs["k_steps"],
-                avg=strategy.gradient_merge_configs["avg"])
+                avg=strategy.gradient_merge_configs["avg"],
+            )
             world_size = 1
         else:
             optimizer = fleet.distributed_optimizer(optimizer)
@@ -88,10 +90,12 @@ class TestDistMnistGradientMergeRawOptimizer(TestDistRunnerBase):
             else:
                 assert start_allreduce_idx == 1
 
-        train_reader = paddle.batch(paddle.dataset.mnist.test(),
-                                    batch_size=batch_size)
-        test_reader = paddle.batch(paddle.dataset.mnist.test(),
-                                   batch_size=batch_size)
+        train_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
+        test_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
         return test_program, cost, train_reader, test_reader, acc, predict
 
 

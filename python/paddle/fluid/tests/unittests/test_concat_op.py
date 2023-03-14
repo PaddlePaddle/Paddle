@@ -12,25 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard, core
-from paddle.fluid.framework import _test_eager_guard
-import paddle
+
 import gradient_checker
+import numpy as np
 from decorator_helper import prog_scope
-import paddle.fluid.layers as layers
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid import Program, core, program_guard
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    skip_check_grad_ci,
+)
 
 
 class TestConcatOp(OpTest):
-
     def setUp(self):
         self.op_type = "concat"
         self.python_api = paddle.concat
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_test_data()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
@@ -42,8 +45,9 @@ class TestConcatOp(OpTest):
             self.actual_axis = self.axis
 
         self.outputs = {
-            'Out':
-            np.concatenate((self.x0, self.x1, self.x2), axis=self.actual_axis)
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.actual_axis
+            )
         }
 
     def get_dtype(self):
@@ -59,13 +63,13 @@ class TestConcatOp(OpTest):
     def test_check_grad(self):
         if self.dtype == np.uint16:
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['x0'], 'Out')
-            self.check_grad_with_place(place, ['x1'], 'Out')
-            self.check_grad_with_place(place, ['x2'], 'Out')
+            self.check_grad_with_place(place, ['x0'], 'Out', check_prim=True)
+            self.check_grad_with_place(place, ['x1'], 'Out', check_prim=True)
+            self.check_grad_with_place(place, ['x2'], 'Out', check_prim=True)
         else:
-            self.check_grad(['x0'], 'Out', check_eager=True)
-            self.check_grad(['x1'], 'Out', check_eager=True)
-            self.check_grad(['x2'], 'Out', check_eager=True)
+            self.check_grad(['x0'], 'Out', check_eager=True, check_prim=True)
+            self.check_grad(['x1'], 'Out', check_eager=True, check_prim=True)
+            self.check_grad(['x2'], 'Out', check_eager=True, check_prim=True)
 
     def init_test_data(self):
         if self.dtype == np.uint16:
@@ -83,7 +87,6 @@ class TestConcatOp(OpTest):
 
 
 class TestConcatOp2(TestConcatOp):
-
     def init_test_data(self):
         self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
@@ -92,9 +95,9 @@ class TestConcatOp2(TestConcatOp):
 
 
 @skip_check_grad_ci(
-    reason="The function 'check_grad' for large inputs is too slow.")
+    reason="The function 'check_grad' for large inputs is too slow."
+)
 class TestConcatOp3(TestConcatOp):
-
     def init_test_data(self):
         self.x0 = np.random.random((1, 256, 170, 256)).astype(self.dtype)
         self.x1 = np.random.random((1, 128, 170, 256)).astype(self.dtype)
@@ -106,11 +109,9 @@ class TestConcatOp3(TestConcatOp):
 
 
 @skip_check_grad_ci(
-    reason=
-    "This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
+    reason="This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
 )
 class TestConcatOp4(TestConcatOp):
-
     def init_test_data(self):
         self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
@@ -122,7 +123,6 @@ class TestConcatOp4(TestConcatOp):
 
 
 class TestConcatOp5(TestConcatOp):
-
     def init_test_data(self):
         self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
@@ -131,17 +131,21 @@ class TestConcatOp5(TestConcatOp):
 
 
 class TestConcatOp6(TestConcatOp):
-
     def setUp(self):
         self.op_type = "concat"
         self.dtype = self.get_dtype()
         self.python_api = paddle.concat
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.init_test_data()
         self.lod = [[20, 80]]
         self.out_lod = [[20, 80, 20, 80, 20, 80]]
         self.inputs = {
-            'X': [('x0', (self.x0, self.lod)), ('x1', (self.x1, self.lod)),
-                  ('x2', (self.x2, self.lod))]
+            'X': [
+                ('x0', (self.x0, self.lod)),
+                ('x1', (self.x1, self.lod)),
+                ('x2', (self.x2, self.lod)),
+            ]
         }
         self.attrs = {'axis': self.axis}
         if self.axis < 0:
@@ -167,32 +171,82 @@ class TestConcatOp6(TestConcatOp):
         self.axis = 0
 
 
+class TestConcatOp7(TestConcatOp):
+    def setUp(self):
+        self.op_type = "concat"
+        self.python_api = paddle.concat
+        self.prim_op_type = "prim"
+        self.enable_cinn = True
+        self.dtype = self.get_dtype()
+        self.init_test_data()
+        self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
+        self.attrs = {'axis': self.axis}
+        if self.axis < 0:
+            self.actual_axis = self.axis + len(self.x0.shape)
+            self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+        else:
+            self.actual_axis = self.axis
+
+        self.outputs = {
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.actual_axis
+            )
+        }
+
+    def get_dtype(self):
+        return "float64"
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['x1'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['x2'], 'Out', check_eager=True, check_prim=True)
+
+    def init_test_data(self):
+        if self.dtype == np.uint16:
+            x0 = np.random.random((5, 1, 4, 5)).astype(np.float32)
+            self.x0 = convert_float_to_uint16(x0)
+            x1 = np.random.random((5, 2, 4, 5)).astype(np.float32)
+            self.x1 = convert_float_to_uint16(x1)
+            x2 = np.random.random((5, 3, 4, 5)).astype(np.float32)
+            self.x2 = convert_float_to_uint16(x2)
+        else:
+            self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
+            self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
+            self.x2 = np.random.random((5, 3, 4, 5)).astype(self.dtype)
+        self.axis = 1
+
+
 def create_test_AxisTensor(parent):
-
     class TestConcatAxisTensor(parent):
-
         def setUp(self):
             self.op_type = "concat"
             self.python_api = paddle.concat
             self.dtype = self.get_dtype()
             self.init_test_data()
 
+            self.prim_op_type = "prim"
+            self.enable_cinn = False
             self.inputs = {
                 'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)],
-                'AxisTensor': np.array([self.axis]).astype("int32")
+                'AxisTensor': np.array([self.axis]).astype("int32"),
             }
             self.attrs = {}
 
             if self.axis < 0:
                 self.actual_axis = self.axis + len(self.x0.shape)
-                self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+                self.actual_axis = (
+                    self.actual_axis if self.actual_axis > 0 else 0
+                )
             else:
                 self.actual_axis = self.axis
 
             self.outputs = {
-                'Out':
-                np.concatenate((self.x0, self.x1, self.x2),
-                               axis=self.actual_axis)
+                'Out': np.concatenate(
+                    (self.x0, self.x1, self.x2), axis=self.actual_axis
+                )
             }
 
     cls_name = "{0}_{1}".format(parent.__name__, "AxisTensor")
@@ -207,13 +261,11 @@ create_test_AxisTensor(TestConcatOp4)
 create_test_AxisTensor(TestConcatOp5)
 create_test_AxisTensor(TestConcatOp6)
 
-#----------------Concat Fp16----------------
+# ----------------Concat Fp16----------------
 
 
 def create_test_fp16(parent):
-
     class TestConcatFp16(parent):
-
         def get_dtype(self):
             return np.float16
 
@@ -230,13 +282,12 @@ create_test_fp16(TestConcatOp5)
 create_test_fp16(TestConcatOp6)
 
 
-#----------------Concat Bf16----------------
+# ----------------Concat Bf16----------------
 def create_test_bf16(parent):
-
-    @unittest.skipIf(not paddle.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
     class TestConcatBf16(parent):
-
         def get_dtype(self):
             return np.uint16
 
@@ -249,45 +300,48 @@ create_test_bf16(TestConcatOp)
 
 
 class TestConcatOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of concat_op should be list.
-            x1 = fluid.layers.data(shape=[4], dtype='int32', name='x1')
-            fluid.layers.concat(x1)
+
+            x1 = paddle.static.data(shape=[-1, 4], dtype='int32', name='x1')
+            paddle.concat(x1)
+
             # The item in input must be Variable.
-            x2 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
-                                         fluid.CPUPlace())
-            x3 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
-                                         fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.concat, [x2])
+            x2 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
+            x3 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
+            self.assertRaises(TypeError, paddle.concat, [x2])
             # The input dtype of concat_op must be float16, float32, float64, int32, int64.
-            x4 = fluid.layers.data(shape=[4], dtype='uint8', name='x4')
-            x5 = fluid.layers.data(shape=[4], dtype='uint8', name='x5')
-            self.assertRaises(TypeError, fluid.layers.concat, [x4, x5])
-            x6 = fluid.layers.data(shape=[4], dtype='float16', name='x6')
-            x7 = fluid.layers.data(shape=[4], dtype='float16', name='x7')
-            x8 = fluid.layers.data(shape=[4], dtype='float32', name='x8')
-            fluid.layers.concat([x6, x7])
+
+            x4 = paddle.static.data(shape=[-1, 4], dtype='uint8', name='x4')
+            x5 = paddle.static.data(shape=[-1, 4], dtype='uint8', name='x5')
+            self.assertRaises(TypeError, paddle.concat, [x4, x5])
+            x6 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x6')
+            x7 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x7')
+            x8 = paddle.static.data(shape=[-1, 4], dtype='float32', name='x8')
+            paddle.concat([x6, x7])
 
             # The type of axis in concat_op should be int or Variable.
             def test_axis_type():
-                fluid.layers.concat([x6, x7], 3.2)
+                paddle.concat([x6, x7], 3.2)
 
             self.assertRaises(TypeError, test_axis_type)
 
             def test_input_same_dtype():
-                fluid.layers.concat([x7, x8])
+                paddle.concat([x7, x8])
 
             self.assertRaises(TypeError, test_input_same_dtype)
 
 
 class TestConcatAPI(unittest.TestCase):
-
     def test_fluid_api(self):
         paddle.enable_static()
         x_1 = fluid.data(shape=[None, 1, 4, 5], dtype='int32', name='x_1')
-        fluid.layers.concat([x_1, x_1], 0)
+        paddle.concat([x_1, x_1], 0)
 
         input_2 = np.random.random([2, 1, 4, 5]).astype("int32")
         input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
@@ -295,27 +349,25 @@ class TestConcatAPI(unittest.TestCase):
         x_3 = fluid.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
         positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
         positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
-        out_1 = fluid.layers.concat(input=[x_2, x_3], axis=1)
-        out_2 = fluid.layers.concat(input=[x_2, x_3], axis=positive_1_int32)
-        out_3 = fluid.layers.concat(input=[x_2, x_3], axis=positive_1_int64)
+        out_1 = paddle.concat([x_2, x_3], axis=1)
+        out_2 = paddle.concat([x_2, x_3], axis=positive_1_int32)
+        out_3 = paddle.concat([x_2, x_3], axis=positive_1_int64)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        [res_1, res_2, res_3] = exe.run(fluid.default_main_program(),
-                                        feed={
-                                            "x_1": input_2,
-                                            "x_2": input_2,
-                                            "x_3": input_3
-                                        },
-                                        fetch_list=[out_1, out_2, out_3])
+        [res_1, res_2, res_3] = exe.run(
+            fluid.default_main_program(),
+            feed={"x_1": input_2, "x_2": input_2, "x_3": input_3},
+            fetch_list=[out_1, out_2, out_3],
+        )
         assert np.array_equal(res_1, np.concatenate((input_2, input_3), axis=1))
         assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
         assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
 
     def test_api(self):
         paddle.enable_static()
-        x_1 = paddle.fluid.data(shape=[None, 1, 4, 5],
-                                dtype='int32',
-                                name='x_1')
+        x_1 = paddle.fluid.data(
+            shape=[None, 1, 4, 5], dtype='int32', name='x_1'
+        )
         paddle.concat([x_1, x_1], 0)
 
         input_2 = np.random.random([2, 1, 4, 5]).astype("int32")
@@ -331,14 +383,11 @@ class TestConcatAPI(unittest.TestCase):
         out_4 = paddle.concat(x=[x_2, x_3], axis=negative_int64)
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
-        [res_1, res_2, res_3,
-         res_4] = exe.run(paddle.static.default_main_program(),
-                          feed={
-                              "x_1": input_2,
-                              "x_2": input_2,
-                              "x_3": input_3
-                          },
-                          fetch_list=[out_1, out_2, out_3, out_4])
+        [res_1, res_2, res_3, res_4] = exe.run(
+            paddle.static.default_main_program(),
+            feed={"x_1": input_2, "x_2": input_2, "x_3": input_3},
+            fetch_list=[out_1, out_2, out_3, out_4],
+        )
         assert np.array_equal(res_1, np.concatenate((input_2, input_3), axis=1))
         assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
         assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
@@ -352,7 +401,7 @@ class TestConcatAPI(unittest.TestCase):
         x1 = paddle.to_tensor(in1)
         x2 = paddle.to_tensor(in2)
         x3 = paddle.to_tensor(in3)
-        out1 = fluid.layers.concat(input=[x1, x2, x3], axis=-1)
+        out1 = paddle.concat([x1, x2, x3], axis=-1)
         out2 = paddle.concat(x=[x1, x2], axis=0)
         np_out1 = np.concatenate([in1, in2, in3], axis=-1)
         np_out2 = np.concatenate([in1, in2], axis=0)
@@ -360,29 +409,25 @@ class TestConcatAPI(unittest.TestCase):
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_api()
-            self.test_fluid_api()
-            self.test_imperative()
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The item in input must be Variable.
-            x2 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
-                                         fluid.CPUPlace())
-            x3 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
-                                         fluid.CPUPlace())
+            x2 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
+            x3 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
             self.assertRaises(TypeError, paddle.concat, [x2])
             # The input dtype of concat_op must be float16, float32, float64, int32, int64.
             x4 = paddle.fluid.data(shape=[4], dtype='uint8', name='x4')
             x5 = paddle.fluid.data(shape=[4], dtype='uint8', name='x5')
-            self.assertRaises(TypeError, fluid.layers.concat, [x4, x5])
+            self.assertRaises(TypeError, paddle.concat, [x4, x5])
 
             # The type of axis in concat_op should be int or Variable.
-            x6 = fluid.layers.data(shape=[4], dtype='float16', name='x6')
-            x7 = fluid.layers.data(shape=[4], dtype='float16', name='x7')
-            x8 = fluid.layers.data(shape=[4], dtype='float32', name='x8')
+            x6 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x6')
+            x7 = paddle.static.data(shape=[-1, 4], dtype='float16', name='x7')
+            x8 = paddle.static.data(shape=[-1, 4], dtype='float32', name='x8')
 
             def test_axis_type():
                 paddle.concat([x6, x7], 3.2)
@@ -406,36 +451,39 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
         self.iter_num = 3
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
-        self.place = fluid.CUDAPlace(0) \
-            if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
 
     def set_program(self, use_fluid_api):
         paddle.enable_static()
         if use_fluid_api:
             self.program = fluid.Program()
             with fluid.program_guard(self.program):
-                input = fluid.layers.assign(self.x)
-                tensor_array = fluid.layers.create_array(dtype='float32')
-                zero = fluid.layers.fill_constant(shape=[1],
-                                                  value=0,
-                                                  dtype="int64")
+                input = paddle.assign(self.x)
+                tensor_array = paddle.tensor.create_array(dtype='float32')
+                zero = fluid.layers.fill_constant(
+                    shape=[1], value=0, dtype="int64"
+                )
 
                 for i in range(self.iter_num):
-                    fluid.layers.array_write(input, zero + i, tensor_array)
+                    paddle.tensor.array_write(input, zero + i, tensor_array)
 
-                self.out_var = fluid.layers.concat(tensor_array, axis=self.axis)
+                self.out_var = paddle.concat(tensor_array, axis=self.axis)
         else:
             self.program = paddle.static.Program()
             with paddle.static.program_guard(self.program):
                 input = paddle.assign(self.x)
-                tensor_array = fluid.layers.create_array(
+                tensor_array = paddle.tensor.create_array(
                     dtype='float32'
                 )  # Api create_array is not supported in paddle 2.0 yet.
                 zero = paddle.zeros(shape=[1], dtype="int64")
 
                 for i in range(self.iter_num):
                     # Api array_write is not supported in paddle 2.0 yet.
-                    fluid.layers.array_write(input, zero + i, tensor_array)
+                    paddle.tensor.array_write(input, zero + i, tensor_array)
 
                 self.out_var = paddle.concat(tensor_array, axis=self.axis)
 
@@ -451,11 +499,11 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
         np.testing.assert_array_equal(
-            res[0], np.concatenate([self.x] * self.iter_num, axis=self.axis))
+            res[0], np.concatenate([self.x] * self.iter_num, axis=self.axis)
+        )
 
 
 class TestConcatDoubleGradCheck(unittest.TestCase):
-
     def concat_wrapper(self, x):
         return paddle.concat(x)
 
@@ -465,24 +513,27 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data1 = layers.data('data1', [2, 3], False, dtype)
+        data1 = paddle.static.data('data1', [2, 3], dtype)
         data1.persistable = True
-        data2 = layers.data('data2', [2, 3], False, dtype)
+        data2 = paddle.static.data('data2', [2, 3], dtype)
         data2.persistable = True
         out = paddle.concat([data1, data2])
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data2.shape).astype(dtype)
-        gradient_checker.double_grad_check([data1, data2],
-                                           out,
-                                           x_init=[data1_arr, data2_arr],
-                                           place=place,
-                                           eps=eps)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(
-            self.concat_wrapper, [data1, data2],
+        gradient_checker.double_grad_check(
+            [data1, data2],
             out,
             x_init=[data1_arr, data2_arr],
-            place=place)
+            place=place,
+            eps=eps,
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.concat_wrapper,
+            [data1, data2],
+            out,
+            x_init=[data1_arr, data2_arr],
+            place=place,
+        )
 
     def test_grad(self):
         paddle.enable_static()
@@ -494,7 +545,6 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
 
 
 class TestConcatTripleGradCheck(unittest.TestCase):
-
     def concat_wrapper(self, x):
         return paddle.concat(x, 1)
 
@@ -504,24 +554,27 @@ class TestConcatTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data1 = layers.data('data1', [2, 3, 4], False, dtype)
+        data1 = paddle.static.data('data1', [2, 3, 4], dtype)
         data1.persistable = True
-        data2 = layers.data('data2', [2, 3, 4], False, dtype)
+        data2 = paddle.static.data('data2', [2, 3, 4], dtype)
         data2.persistable = True
         out = paddle.concat([data1, data2], 1)
         data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
         data2_arr = np.random.uniform(-1, 1, data2.shape).astype(dtype)
-        gradient_checker.double_grad_check([data1, data2],
-                                           out,
-                                           x_init=[data1_arr, data2_arr],
-                                           place=place,
-                                           eps=eps)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(
-            self.concat_wrapper, [data1, data2],
+        gradient_checker.double_grad_check(
+            [data1, data2],
             out,
             x_init=[data1_arr, data2_arr],
-            place=place)
+            place=place,
+            eps=eps,
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.concat_wrapper,
+            [data1, data2],
+            out,
+            x_init=[data1_arr, data2_arr],
+            place=place,
+        )
 
     def test_grad(self):
         paddle.enable_static()

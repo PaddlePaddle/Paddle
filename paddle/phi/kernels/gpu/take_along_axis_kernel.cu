@@ -14,11 +14,11 @@
 
 #include "paddle/phi/kernels/take_along_axis_kernel.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/operators/gather_scatter_kernel.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 
 namespace phi {
 
@@ -29,21 +29,18 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
                          int axis,
                          DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_gpu_place(dev_ctx.GetPlace()),
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
       true,
       errors::PreconditionNotMet("This kernel only runs on GPU device."));
 
   out->Resize(index.dims());
   dev_ctx.template Alloc<T>(out);
 
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(index.dtype());
-  if (index_type == paddle::framework::proto::VarType::INT32) {
-    paddle::operators::gpu_gather_kernel<T, int32_t>(
-        x, axis, index, *out, dev_ctx);
-  } else if (index_type == paddle::framework::proto::VarType::INT64) {
-    paddle::operators::gpu_gather_kernel<T, int64_t>(
-        x, axis, index, *out, dev_ctx);
+  const auto& index_type = index.dtype();
+  if (index_type == DataType::INT32) {
+    phi::funcs::gpu_gather_kernel<T, int32_t>(x, axis, index, *out, dev_ctx);
+  } else if (index_type == DataType::INT64) {
+    phi::funcs::gpu_gather_kernel<T, int64_t>(x, axis, index, *out, dev_ctx);
   }
 }
 

@@ -16,6 +16,10 @@ limitations under the License. */
 
 #include <string>
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -32,30 +36,15 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    // choose cudnn kernel if the runtime supported.
-    bool use_cudnn =
-        ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
-    bool runtime_cudnn_support = false;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-      runtime_cudnn_support = dev_ctx.cudnn_handle() != nullptr ? true : false;
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    phi::DataLayout layout_ = DataLayout::kAnyLayout;
+    if (ctx.HasAttr("data_format")) {
+      layout_ = phi::StringToDataLayout(ctx.Attr<std::string>("data_format"));
     }
-#endif
-    framework::LibraryType library_ = framework::LibraryType::kPlain;
-    if (use_cudnn && runtime_cudnn_support) {
-      library_ = framework::LibraryType::kCUDNN;
-    }
-    std::string data_format = ctx.HasAttr("data_format")
-                                  ? ctx.Attr<std::string>("data_format")
-                                  : "AnyLayout";
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.GetPlace(),
-        framework::StringToDataLayout(data_format),
-        library_);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
   }
 };
 
@@ -72,14 +61,6 @@ class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
         .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout")
         .AsExtra();
     AddComment(R"DOC(
 Sequence Softmax Operator.
@@ -140,30 +121,15 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    // choose cudnn kernel if the runtime supported.
-    bool use_cudnn =
-        ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
-    bool runtime_cudnn_support = false;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(ctx.GetPlace())) {
-      auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-      runtime_cudnn_support = dev_ctx.cudnn_handle() != nullptr ? true : false;
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Out");
+    phi::DataLayout layout_ = DataLayout::kAnyLayout;
+    if (ctx.HasAttr("data_format")) {
+      layout_ = phi::StringToDataLayout(ctx.Attr<std::string>("data_format"));
     }
-#endif
-    framework::LibraryType library_ = framework::LibraryType::kPlain;
-    if (use_cudnn && runtime_cudnn_support) {
-      library_ = framework::LibraryType::kCUDNN;
-    }
-    std::string data_format = ctx.HasAttr("data_format")
-                                  ? ctx.Attr<std::string>("data_format")
-                                  : "AnyLayout";
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Out"),
-        ctx.GetPlace(),
-        framework::StringToDataLayout(data_format),
-        library_);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
   }
 };
 

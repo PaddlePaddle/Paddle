@@ -34,7 +34,7 @@ using float16 = ::phi::dtype::float16;
 using bfloat16 = ::phi::dtype::bfloat16;
 using pstring = ::phi::dtype::pstring;
 
-// The enum valuea are consistent with jit/property.proto
+// The enum value are consistent with jit/property.proto
 enum class DataType {
   UNDEFINED = 0,
 
@@ -98,7 +98,7 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::COMPLEX128:
       return 16;
     case DataType::PSTRING:
-      return 24;
+      return 48;
     case DataType::UNDEFINED:
       return 0;
     case DataType::NUM_DATA_TYPES:
@@ -212,11 +212,54 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
   return os;
 }
 
+inline std::string DataTypeToString(const DataType& dtype) {
+  switch (dtype) {
+    case DataType::UNDEFINED:
+      return "Undefined(ALL_DTYPE)";
+    case DataType::BOOL:
+      return "bool";
+    case DataType::INT8:
+      return "int8";
+    case DataType::UINT8:
+      return "uint8";
+    case DataType::INT16:
+      return "int16";
+    case DataType::UINT16:
+      return "uint16";
+    case DataType::INT32:
+      return "int32";
+    case DataType::UINT32:
+      return "uint32";
+    case DataType::INT64:
+      return "int64";
+    case DataType::UINT64:
+      return "uint64";
+    case DataType::BFLOAT16:
+      return "bfloat16";
+    case DataType::FLOAT16:
+      return "float16";
+    case DataType::FLOAT32:
+      return "float32";
+    case DataType::FLOAT64:
+      return "float64";
+    case DataType::COMPLEX64:
+      return "complex64";
+    case DataType::COMPLEX128:
+      return "complex128";
+    case DataType::PSTRING:
+      return "pstring";
+    default:
+      PD_THROW("Invalid enum data type `", static_cast<int>(dtype), "`.");
+  }
+}
+
 }  // namespace experimental
 }  // namespace paddle
 
 namespace phi {
 using DataType = paddle::experimental::DataType;
+using paddle::experimental::DataTypeToString;
+using paddle::experimental::SizeOf;
 }  // namespace phi
 
 namespace paddle {

@@ -12,20 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
 import numpy as np
-import six
+
+import paddle.fluid as fluid
 
 
 class TensorToNumpyTest(unittest.TestCase):
-
     def setUp(self):
         self.shape = [11, 25, 32, 43]
 
     def test_main(self):
         dtypes = [
-            'float32', 'float64', 'int32', 'int64', 'uint8', 'int8', 'bool'
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'uint8',
+            'int8',
+            'bool',
         ]
 
         places = [fluid.CPUPlace()]
@@ -36,8 +42,9 @@ class TensorToNumpyTest(unittest.TestCase):
         for p in places:
             for dtype in dtypes:
                 np_arr = np.reshape(
-                    np.array(six.moves.range(np.prod(
-                        self.shape))).astype(dtype), self.shape)
+                    np.array(range(np.prod(self.shape))).astype(dtype),
+                    self.shape,
+                )
 
                 t = fluid.LoDTensor()
                 t.set(np_arr, p)

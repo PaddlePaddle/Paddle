@@ -12,31 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
+import unittest
+
+from hybrid_parallel_mp_model import TestDistMPTraning
 
 import paddle
-import numpy as np
-from hybrid_parallel_mp_model import TestDistMPTraning
 import paddle.distributed.fleet as fleet
-import unittest
 
 
 class TestMPFP16(TestDistMPTraning):
-
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(1.0)
-        scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=0.001,
-                                                         gamma=0.999,
-                                                         verbose=True)
-        optimizer = paddle.optimizer.SGD(scheduler,
-                                         grad_clip=grad_clip,
-                                         parameters=model.parameters())
+        scheduler = paddle.optimizer.lr.ExponentialDecay(
+            learning_rate=0.001, gamma=0.999, verbose=True
+        )
+        optimizer = paddle.optimizer.SGD(
+            scheduler, grad_clip=grad_clip, parameters=model.parameters()
+        )
 
-        model, optimizer = paddle.amp.decorate(models=model,
-                                               optimizers=optimizer,
-                                               level='O2',
-                                               save_dtype='float32')
+        model, optimizer = paddle.amp.decorate(
+            models=model, optimizers=optimizer, level='O2', save_dtype='float32'
+        )
 
         return optimizer
 

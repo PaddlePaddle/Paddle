@@ -12,22 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
+import itertools
 import os
 import shutil
 import unittest
-import itertools
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+import paddle.static.nn as nn
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTInstanceNormTest(InferencePassTest):
-
     def setUp(self):
         self.bs = 4
         self.channel = 4
@@ -39,13 +38,14 @@ class TRTInstanceNormTest(InferencePassTest):
 
     def build(self):
         self.trt_parameters = InferencePassTest.TensorRTParam(
-            1 << 30, self.bs, 2, self.precision, self.serialize, False)
+            1 << 30, self.bs, 2, self.precision, self.serialize, False
+        )
 
         with fluid.program_guard(self.main_program, self.startup_program):
             shape = [-1, self.channel, self.height, self.width]
             data = fluid.data(name='in', shape=shape, dtype='float32')
-            instance_norm_out = fluid.layers.instance_norm(data)
-            out = fluid.layers.batch_norm(instance_norm_out, is_test=True)
+            instance_norm_out = nn.instance_norm(data)
+            out = nn.batch_norm(instance_norm_out, is_test=True)
 
         shape[0] = self.bs
         self.feeds = {
@@ -63,7 +63,8 @@ class TRTInstanceNormTest(InferencePassTest):
                 atol = 2e-2
             self.check_output_with_option(use_gpu, atol, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
     def run_test(self, remove_cache=False):
         self.build()
@@ -71,12 +72,14 @@ class TRTInstanceNormTest(InferencePassTest):
 
     def run_all_tests(self):
         precision_opt = [
-            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+            AnalysisConfig.Precision.Float32,
+            AnalysisConfig.Precision.Half,
         ]
         serialize_opt = [False, True]
 
-        for precision, serialize in itertools.product(precision_opt,
-                                                      serialize_opt):
+        for precision, serialize in itertools.product(
+            precision_opt, serialize_opt
+        ):
             self.precision = precision
             self.serialize = serialize
             self.run_test()

@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/operators/uniform_random_op.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
@@ -23,15 +23,15 @@ template <typename T>
 class MLUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    framework::Tensor *tensor = nullptr;
+    phi::DenseTensor *tensor = nullptr;
     auto out_var = ctx.OutputVar("Out");
 
     std::vector<int64_t> new_shape;
     auto list_new_shape_tensor =
-        ctx.MultiInput<framework::Tensor>("ShapeTensorList");
+        ctx.MultiInput<phi::DenseTensor>("ShapeTensorList");
     if (list_new_shape_tensor.size() > 0 || ctx.HasInput("ShapeTensor")) {
       if (ctx.HasInput("ShapeTensor")) {
-        auto *shape_tensor = ctx.Input<framework::Tensor>("ShapeTensor");
+        auto *shape_tensor = ctx.Input<phi::DenseTensor>("ShapeTensor");
         new_shape = GetNewDataFromShapeTensor(shape_tensor);
       } else if (list_new_shape_tensor.size() > 0) {
         new_shape = GetNewDataFromShapeTensorList(list_new_shape_tensor);
@@ -45,12 +45,13 @@ class MLUUniformRandomKernel : public framework::OpKernel<T> {
       if (!new_shape.empty()) shape = new_shape;
       tensor->Resize(phi::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
-    } else if (out_var->IsType<framework::LoDTensor>()) {
-      tensor = out_var->GetMutable<framework::LoDTensor>();
+    } else if (out_var->IsType<phi::DenseTensor>()) {
+      tensor = out_var->GetMutable<phi::DenseTensor>();
       if (!new_shape.empty()) tensor->Resize(phi::make_ddim(new_shape));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Output(out) in uniform_random_op must be Tensor, "
+          "Expected type of Output(out) in uniform_random_op must be "
+          "phi::DenseTensor, "
           "SelectedRows. But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));
@@ -59,7 +60,7 @@ class MLUUniformRandomKernel : public framework::OpKernel<T> {
     tensor->mutable_data<T>(ctx.GetPlace());
     int64_t size = tensor->numel();
 
-    Tensor cpu_tensor(tensor->dtype());
+    phi::DenseTensor cpu_tensor(tensor->dtype());
     cpu_tensor.Resize(tensor->dims());
     T *data_cpu = cpu_tensor.mutable_data<T>(platform::CPUPlace());
 
@@ -67,7 +68,7 @@ class MLUUniformRandomKernel : public framework::OpKernel<T> {
         static_cast<T>(ctx.Attr<float>("min")),
         static_cast<T>(ctx.Attr<float>("max")));
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
+    auto engine = phi::GetCPURandomEngine(seed);
 
     for (int64_t i = 0; i < size; ++i) {
       data_cpu[i] = dist(*engine);

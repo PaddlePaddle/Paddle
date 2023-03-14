@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/phi/kernels/primitive/datamover_primitives.h"
 #endif
 
 namespace phi {
@@ -83,26 +83,29 @@ inline std::vector<int> get_new_shape(
     const std::vector<const DenseTensor*>& list_new_shape_tensor) {
   // get tensor from
   std::vector<int> vec_new_shape;
+  auto& pool = phi::DeviceContextPool::Instance();
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
-    PADDLE_ENFORCE_EQ(
-        tensor->dims(),
-        phi::make_ddim({1}),
-        errors::InvalidArgument("The shape of dimension tensor should be [1],"
-                                "but received d%.",
-                                tensor->dims()));
+    phi::DeviceContext* dev_ctx = pool.Get(tensor->place());
+    PADDLE_ENFORCE_EQ(tensor->dims() == phi::make_ddim({1}) ||
+                          tensor->dims() == phi::make_ddim({}),
+                      true,
+                      errors::InvalidArgument(
+                          "The shape of dimension tensor should be [1] or [],"
+                          "but received d%.",
+                          tensor->dims()));
+
 #ifdef PADDLE_WITH_XPU
     if (tensor->place().GetType() == phi::AllocationType::XPU) {
       DenseTensor temp;
-      paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
+      phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
       continue;
     }
 #endif
-    if (paddle::platform::is_gpu_place(tensor->place())) {
+    if (tensor->place().GetType() == phi::AllocationType::GPU) {
       DenseTensor temp;
-      paddle::framework::TensorCopySync(
-          *tensor, paddle::platform::CPUPlace(), &temp);
+      phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
       vec_new_shape.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
@@ -118,22 +121,24 @@ inline std::vector<T> get_new_data_from_tensor(
   std::vector<T> vec_new_data;
   auto* new_data = new_data_tensor->data<T>();
   DenseTensor cpu_starts_tensor;
-  if (paddle::platform::is_gpu_place(new_data_tensor->place())) {
-    paddle::framework::TensorCopySync(
-        *new_data_tensor, paddle::platform::CPUPlace(), &cpu_starts_tensor);
+  auto& pool = phi::DeviceContextPool::Instance();
+  phi::DeviceContext* dev_ctx = pool.Get(new_data_tensor->place());
+  if (new_data_tensor->place().GetType() == phi::AllocationType::GPU) {
+    phi::Copy(
+        *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #ifdef PADDLE_WITH_ASCEND_CL
-  if (paddle::platform::is_npu_place(new_data_tensor->place())) {
-    paddle::framework::TensorCopySync(
-        *new_data_tensor, paddle::platform::CPUPlace(), &cpu_starts_tensor);
+  if (new_data_tensor->place().GetType() == phi::AllocationType::NPU) {
+    phi::Copy(
+        *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #endif
 #ifdef PADDLE_WITH_XPU
-  if (paddle::platform::is_xpu_place(new_data_tensor->place())) {
-    paddle::framework::TensorCopySync(
-        *new_data_tensor, paddle::platform::CPUPlace(), &cpu_starts_tensor);
+  if (new_data_tensor->place().GetType() == phi::AllocationType::XPU) {
+    phi::Copy(
+        *dev_ctx, *new_data_tensor, phi::CPUPlace(), true, &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
 #endif
@@ -142,7 +147,7 @@ inline std::vector<T> get_new_data_from_tensor(
 }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-using paddle::platform::FastDivMod;
+using phi::kps::details::FastDivMod;
 
 struct FastDivModForInterpolate {
  public:

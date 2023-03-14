@@ -15,16 +15,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/interpolate_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 inline std::vector<int> get_new_shape_mlu(
-    const std::vector<const Tensor*>& list_new_shape_tensor) {
+    const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
   // get tensor from
   std::vector<int> vec_new_shape;
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
@@ -33,7 +32,7 @@ inline std::vector<int> get_new_shape_mlu(
         tensor->dims(),
         phi::make_ddim({1}),
         platform::errors::InvalidArgument("shape of dim tensor should be [1]"));
-    framework::Tensor temp;
+    phi::DenseTensor temp;
     paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
     vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
   }
@@ -46,8 +45,8 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<MLUDeviceContext>();
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
 
     auto input_dims = input->dims();
     PADDLE_ENFORCE_GE(
@@ -62,8 +61,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
                                    "range less or equal than 5. "));
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
     ExtractNCDWH(input_dims, data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -79,7 +77,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
     float scale_h = -1;
     float scale_w = -1;
 
-    auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+    auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
     if (list_new_size_tensor.size() > 0) {
       // have size tensor
       auto new_size = get_new_shape_mlu(list_new_size_tensor);
@@ -94,11 +92,11 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
         out_w = new_size[2];
       }
     } else {
-      auto scale_tensor = ctx.Input<Tensor>("Scale");
+      auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
         std::vector<float> scale_data;
-        scale_data = GetDataFromTensor<float>(scale_tensor);
+        scale_data = phi::GetVectorFromTensor<float>(scale_tensor);
 
         if (scale_data.size() > 1 && scale_data.size() <= 2) {
           scale_h = scale_data[0];
@@ -146,10 +144,10 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
       if (scale_d > 0.) {
         out_d = static_cast<int>(in_d * scale_d);
       }
-      auto out_size = ctx.Input<Tensor>("OutSize");
+      auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
       if (out_size != nullptr) {
         std::vector<int32_t> out_size_data;
-        out_size_data = GetDataFromTensor<int>(out_size);
+        out_size_data = phi::GetVectorFromTensor<int>(out_size);
         if (out_size_data.size() <= 2) {
           out_h = out_size_data[0];
           out_w = out_size_data[1];
@@ -177,7 +175,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
     // cnnlInterp_v2 only accepts NHWC when mode is CNNL_INTERP_BILINEAR and
     // CNNL_INTERP_NEAREST,
     framework::DDim dim_in, dim_in_trans, dim_out, dim_out_trans;
-    Tensor transformed_input, transformed_output;
+    phi::DenseTensor transformed_input, transformed_output;
     bool need_transpose = input_dims.size() != 2;
     if (input_dims.size() == 4) {
       // need to do transpose if layout is kNCHW
@@ -359,8 +357,10 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<MLUDeviceContext>();
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     auto output_grad_dims = output_grad->dims();
 
@@ -369,11 +369,10 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
                       platform::errors::External(
                           "XPU Interpolategrad kernel only support 2d"));
 
-    auto* input = ctx.Input<Tensor>("X");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
     auto input_dims = input->dims();
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
     ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -388,18 +387,18 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
     float scale_h = -1;
     float scale_w = -1;
 
-    auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+    auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
     if (list_new_size_tensor.size() > 0) {
       // have size tensor
       auto new_size = get_new_shape_mlu(list_new_size_tensor);
       out_h = new_size[0];
       out_w = new_size[1];
     } else {
-      auto scale_tensor = ctx.Input<Tensor>("Scale");
+      auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
         std::vector<float> scale_data;
-        scale_data = GetDataFromTensor<float>(scale_tensor);
+        scale_data = phi::GetVectorFromTensor<float>(scale_tensor);
         if (scale_data.size() > 1) {
           scale_h = scale_data[0];
           scale_w = scale_data[1];
@@ -428,10 +427,10 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
         out_h = static_cast<int>(in_h * scale_h);
         out_w = static_cast<int>(in_w * scale_w);
       }
-      auto out_size = ctx.Input<Tensor>("OutSize");
+      auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
       if (out_size != nullptr) {
         std::vector<int32_t> out_size_data;
-        out_size_data = GetDataFromTensor<int>(out_size);
+        out_size_data = phi::GetVectorFromTensor<int>(out_size);
         out_h = out_size_data[0];
         out_w = out_size_data[1];
       }
@@ -440,7 +439,7 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
     framework::DDim dim_grad;
     framework::DDim dim_out_grad, dim_out_trans_grad, dim_in_grad,
         dim_in_trans_grad;
-    Tensor transformed_output_grad, transformed_input_grad;
+    phi::DenseTensor transformed_output_grad, transformed_input_grad;
     bool need_transpose =
         input_dims.size() != 2 && data_layout == DataLayout::kNCHW;
 

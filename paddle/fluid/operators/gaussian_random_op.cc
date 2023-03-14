@@ -14,19 +14,14 @@ limitations under the License. */
 
 #include <random>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/infermeta/nullary.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <typename T>
 class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
@@ -34,7 +29,7 @@ class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<phi::DenseTensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
@@ -56,32 +51,24 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-      return framework::OpKernelType(data_type,
-                                     ctx.device_context(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.device_context().GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -142,7 +129,7 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(gaussian_random,
                             GaussianRandomInferShapeFunctor,
-                            PD_INFER_META(phi::GaussianRandomInferMeta));
+                            PD_INFER_META(phi::GaussianInferMeta));
 
 REGISTER_OPERATOR(
     gaussian_random,

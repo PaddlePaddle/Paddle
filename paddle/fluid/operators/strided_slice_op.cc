@@ -19,7 +19,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/slice_op.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
@@ -27,14 +26,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 class StridedSliceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto *in_var = ctx.InputVar("Input");
     auto is_in_var_array = in_var->IsType<framework::LoDTensorArray>();
@@ -53,35 +50,37 @@ class StridedSliceOp : public framework::OperatorWithKernel {
                   string::to_string(tensor.place())));
         }
       }
-      return framework::OpKernelType(
+      return phi::KernelKey(
           OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-          ctx.device_context());
+          ctx.GetPlace());
     }
     // NOTE: cuda pinned tensor need to copy its data to target place
-    auto in_tensor = ctx.Input<Tensor>("Input");
+    auto in_tensor = ctx.Input<phi::DenseTensor>("Input");
     if (platform::is_cuda_pinned_place(in_tensor->place())) {
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(in_tensor->dtype()),
-          ctx.device_context());
+      return phi::KernelKey(framework::TransToProtoVarType(in_tensor->dtype()),
+                            ctx.GetPlace());
     }
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        in_tensor->place());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          in_tensor->place());
   }
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
         var_name == "StridesTensor") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
         var_name == "StridesTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -167,26 +166,30 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
         var_name == "StridesTensor") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
     if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
         var_name == "StridesTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 

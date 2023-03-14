@@ -51,6 +51,14 @@ void LUUnpackKernel(const Context& dev_ctx,
 
   if (unpack_pivots) {
     dev_ctx.template Alloc<T>(pmat);
+
+    PADDLE_ENFORCE_EQ(
+        pivots.dtype(),
+        phi::DataType::INT32,
+        phi::errors::InvalidArgument(
+            "The pivots of lu_unpack must be of type int32, but received [%s].",
+            pivots.dtype()));
+
     Unpack_Pivot<Context, T>(dev_ctx, pivots, pmat, m, k);
   }
 }

@@ -36,10 +36,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-#ifdef PADDLE_WITH_PSLIB
-#include "proto/the_one_ps.pb.h"
-#endif
-
 namespace paddle {
 namespace framework {
 
@@ -117,7 +113,8 @@ class MultiTrainer : public TrainerBase {
   virtual std::string GetDumpPath(int tid);
 
   template <typename T>
-  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  void MergeToRootScope(phi::DenseTensor* root_tensor,
+                        phi::DenseTensor* thread_tensor);
 #ifdef PADDLE_WITH_HETERPS
 
   void MergeDenseParam();
@@ -125,7 +122,6 @@ class MultiTrainer : public TrainerBase {
 
  protected:
   int thread_num_;
-  std::vector<std::thread> threads_;
   std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
   std::vector<std::string> need_merge_var_names_;
@@ -149,13 +145,15 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void Run();
   virtual void Finalize();
   template <typename T>
-  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  void MergeToRootScope(phi::DenseTensor* root_tensor,
+                        phi::DenseTensor* thread_tensor);
   virtual void InitDumpEnv();
   virtual Scope* GetWorkerScope(int thread_id);
   virtual void RegisterHeterCallback();
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  std::vector<std::thread> threads_;
 };
 
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \
@@ -207,19 +205,20 @@ class HeterXpuTrainer : public TrainerBase {
   virtual void InitDumpEnv() {}
   template <typename T>
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void HeterMemCpy(LoDTensor* tensor,
-                   LoDTensor* root_tensor,
+  void HeterMemCpy(phi::DenseTensor* tensor,
+                   phi::DenseTensor* root_tensor,
                    const paddle::platform::Place& thread_place,
                    gpuStream_t stream);
 #endif
 #ifdef PADDLE_WITH_XPU
-  void HeterMemCpy(LoDTensor* thread_tensor,
-                   LoDTensor* root_tensor,
+  void HeterMemCpy(phi::DenseTensor* thread_tensor,
+                   phi::DenseTensor* root_tensor,
                    const paddle::platform::Place& thread_place);
 #endif
   void CreateThreadParam(const ProgramDesc& program, int num);
   template <typename T>
-  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  void MergeToRootScope(phi::DenseTensor* root_tensor,
+                        phi::DenseTensor* thread_tensor);
   int EndPass(const HeterRequest* request, HeterResponse* response);
   int StopService(const HeterRequest* request, HeterResponse* response);
 
@@ -274,7 +273,8 @@ class PSGPUTrainer : public TrainerBase {
   virtual void MergeDenseParam();
 
   template <typename T>
-  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  void MergeToRootScope(phi::DenseTensor* root_tensor,
+                        phi::DenseTensor* thread_tensor);
   void InitializeGPUServer(const TrainerDesc& trainer_desc);
 
  protected:

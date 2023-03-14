@@ -12,12 +12,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/fused_softmax_mask_upper_triangle_op.h"
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/generator.h"
 namespace paddle {
 namespace operators {
-
-using framework::Tensor;
 
 class SoftmaxMaskFuseUpperTriangleOp : public framework::OperatorWithKernel {
  public:

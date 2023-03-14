@@ -27,7 +27,10 @@ void ScatterKernel(const Context &ctx,
                    const DenseTensor &updates,
                    bool overwrite,
                    DenseTensor *out) {
-  phi::Copy(ctx, x, ctx.GetPlace(), false, out);
+  out->Resize(x.dims());
+  ctx.template Alloc<T>(out);
+  int ret = xpu::copy(ctx.x_context(), x.data<T>(), out->data<T>(), x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
   bool index_type_match =
@@ -43,30 +46,34 @@ void ScatterKernel(const Context &ctx,
 
   // check index of shape 1-D
   PADDLE_ENFORCE_EQ(
-      index.dims().size() == 1 ||
+      index.dims().size() == 1 || index.dims().size() == 0 ||
           (index.dims().size() == 2 && index.dims()[1] == 1),
       true,
       phi::errors::InvalidArgument(
           "index's shape is error, "
-          "expect index'dims shape is 1 or 2 and index.dims[1] is 1"
-          "but got index'dims shape is %d",
+          "expect index'dims shape is 0, 1, 2 (index.dims[1] should "
+          "be 1), 0 but got index'dims shape is %d",
           index.dims().size()));
 
-  int index_size = static_cast<int>(index.dims()[0]);
+  int index_size =
+      static_cast<int>(index.dims().size() == 0 ? 1 : index.dims()[0]);
   auto x_dims = x.dims();
   auto update_dims = updates.dims();
-  for (int i = 1; i < x_dims.size(); i++)
-    PADDLE_ENFORCE_EQ(
-        x_dims[i],
-        update_dims[i],
-        phi::errors::InvalidArgument(
-            "The dimensions of the source tensor and target tensor should"
-            " match, but received source tensor's %d-th dimension is %d,"
-            "target tensor's %d-th dimension is %d.",
-            i,
-            x_dims[i],
-            i,
-            update_dims[i]));
+  if (index.dims().size() != 0) {
+    // only check when the updates tensor is not a 0D tensor
+    for (int i = 1; i < x_dims.size(); i++)
+      PADDLE_ENFORCE_EQ(
+          x_dims[i],
+          update_dims[i],
+          phi::errors::InvalidArgument(
+              "The dimensions of the source tensor and target tensor should"
+              " match, but received source tensor's %d-th dimension is %d,"
+              "target tensor's %d-th dimension is %d.",
+              i,
+              x_dims[i],
+              i,
+              update_dims[i]));
+  }
 
   int dim0 = static_cast<int>(x.dims()[0]);
   int dim1 =

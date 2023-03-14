@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
+
+import numpy as np
+from op_test import OpTest, convert_float_to_uint16
+
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest, convert_float_to_uint16
-import paddle.fluid.core as core
 from paddle.fluid.framework import Program, program_guard
+
+paddle.enable_static()
 
 
 class TestStackOpBase(OpTest):
-
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
@@ -42,11 +44,13 @@ class TestStackOpBase(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'stack'
+        self.prim_op_type = "comp"
         self.python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
-                np.random.random(size=self.input_dim).astype(self.dtype))
+                np.random.random(size=self.input_dim).astype(self.dtype)
+            )
 
         tmp = []
         x_names = self.get_x_names()
@@ -58,50 +62,51 @@ class TestStackOpBase(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(self.get_x_names(), 'Y', check_eager=True)
+        self.check_grad(
+            self.get_x_names(), 'Y', check_eager=True, check_prim=True
+        )
 
 
 class TestStackOp1(TestStackOpBase):
-
     def initParameters(self):
         self.num_inputs = 8
 
 
 class TestStackOp2(TestStackOpBase):
-
     def initParameters(self):
         self.num_inputs = 10
 
 
 class TestStackOp3(TestStackOpBase):
-
     def initParameters(self):
         self.axis = -1
 
 
 class TestStackOp4(TestStackOpBase):
-
     def initParameters(self):
         self.axis = -4
 
 
 class TestStackOp5(TestStackOpBase):
-
     def initParameters(self):
         self.axis = 1
 
 
 class TestStackOp6(TestStackOpBase):
-
     def initParameters(self):
         self.axis = 3
 
 
-class TestStackBF16Op(OpTest):
+class TestStackOp_ZeroDim(TestStackOpBase):
+    def initParameters(self):
+        self.input_dim = ()
+        self.enable_cinn = False
 
+
+class TestStackBF16Op(OpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
@@ -121,11 +126,14 @@ class TestStackBF16Op(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'stack'
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
         self.python_api = paddle.stack
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
-                np.random.random(size=self.input_dim).astype(np.float32))
+                np.random.random(size=self.input_dim).astype(np.float32)
+            )
 
         out = np.stack(self.x, axis=self.axis)
 
@@ -139,9 +147,10 @@ class TestStackBF16Op(OpTest):
         self.attrs = {'axis': self.axis}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=True, check_prim=True)
 
     def test_check_grad(self):
+        # concat_grad unspport bfloat16 dtype, skip check_prim
         self.check_grad(self.get_x_names(), 'Y', check_eager=True)
 
 
@@ -155,28 +164,32 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
         self.iter_num = 3
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
-        self.place = fluid.CUDAPlace(0) \
-            if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
         self.set_program()
 
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
-            input = fluid.layers.assign(self.x)
-            tensor_array = fluid.layers.create_array(dtype='float32')
+            input = paddle.assign(self.x)
+            tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
             for i in range(self.iter_num):
-                fluid.layers.array_write(input, zero + i, tensor_array)
+                paddle.tensor.array_write(input, zero + i, tensor_array)
 
-            self.out_var = fluid.layers.stack(tensor_array, axis=self.axis)
+            self.out_var = paddle.stack(tensor_array, axis=self.axis)
 
     def test_case(self):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
         np.testing.assert_array_equal(
-            res[0], np.stack([self.x] * self.iter_num, axis=self.axis))
+            res[0], np.stack([self.x] * self.iter_num, axis=self.axis)
+        )
 
 
 class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
@@ -189,19 +202,22 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
         self.iter_num = 3
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
-        self.place = fluid.CUDAPlace(0) \
-            if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
         self.set_program()
 
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
-            input = fluid.layers.assign(self.x)
-            tensor_array = fluid.layers.create_array(dtype='float32')
+            input = paddle.assign(self.x)
+            tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
 
             for i in range(self.iter_num):
-                fluid.layers.array_write(input, zero + i, tensor_array)
+                paddle.tensor.array_write(input, zero + i, tensor_array)
 
             self.out_var = paddle.stack(tensor_array, axis=self.axis)
 
@@ -210,28 +226,26 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
         np.testing.assert_array_equal(
-            res[0], np.stack([self.x] * self.iter_num, axis=self.axis))
+            res[0], np.stack([self.x] * self.iter_num, axis=self.axis)
+        )
 
 
 class API_test(unittest.TestCase):
-
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data('data1', shape=[1, 2], dtype='float64')
-            data2 = fluid.layers.data('data2', shape=[1, 2], dtype='float64')
-            data3 = fluid.layers.data('data3', shape=[1, 2], dtype='float64')
+            data1 = paddle.static.data('data1', shape=[1, 2], dtype='float64')
+            data2 = paddle.static.data('data2', shape=[1, 2], dtype='float64')
+            data3 = paddle.static.data('data3', shape=[1, 2], dtype='float64')
             result_stack = paddle.stack([data1, data2, data3], axis=0)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([1, 2]).astype('float64')
             input2 = np.random.random([1, 2]).astype('float64')
             input3 = np.random.random([1, 2]).astype('float64')
-            result, = exe.run(feed={
-                "data1": input1,
-                "data2": input2,
-                "data3": input3
-            },
-                              fetch_list=[result_stack])
+            (result,) = exe.run(
+                feed={"data1": input1, "data2": input2, "data3": input3},
+                fetch_list=[result_stack],
+            )
             expected_result = np.stack([input1, input2, input3], axis=0)
             np.testing.assert_allclose(expected_result, result, rtol=1e-05)
 
@@ -242,7 +256,6 @@ class API_test(unittest.TestCase):
 
 
 class API_DygraphTest(unittest.TestCase):
-
     def test_out(self):
         data1 = np.array([[1.0, 2.0]])
         data2 = np.array([[3.0, 4.0]])
@@ -270,7 +283,6 @@ class API_DygraphTest(unittest.TestCase):
 
 
 class TestStackOpWithNegativeShape(unittest.TestCase):
-
     def test_out(self):
         main_prg, startup_prg = Program(), Program()
         with program_guard(main_prg, startup_prg):
@@ -279,19 +291,45 @@ class TestStackOpWithNegativeShape(unittest.TestCase):
             k = paddle.stack([b, e], axis=0)
             exe = paddle.static.Executor()
             exe.run(startup_prg)
-            out = exe.run(main_prg,
-                          feed={
-                              'b': np.ones([
-                                  3,
-                              ]).astype("int64"),
-                              'e': np.zeros([
-                                  3,
-                              ]).astype("int64")
-                          },
-                          fetch_list=[k])
-        np.testing.assert_allclose(out[0],
-                                   np.array([[1, 1, 1], [0, 0, 0]]),
-                                   rtol=1e-05)
+            out = exe.run(
+                main_prg,
+                feed={
+                    'b': np.ones(
+                        [
+                            3,
+                        ]
+                    ).astype("int64"),
+                    'e': np.zeros(
+                        [
+                            3,
+                        ]
+                    ).astype("int64"),
+                },
+                fetch_list=[k],
+            )
+        np.testing.assert_allclose(
+            out[0], np.array([[1, 1, 1], [0, 0, 0]]), rtol=1e-05
+        )
+
+
+class TestStackAPI_ZeroDim(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out = paddle.stack([x1, x2])
+        out.retain_grads()
+        out.backward()
+
+        self.assertEqual(out.shape, [2])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(out.grad.shape, [2])
+
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

@@ -16,9 +16,10 @@
 
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/fluid/framework/expect.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/expect.h"
 
 namespace phi {
 
@@ -41,8 +42,7 @@ OneDNNContextThreadLocals::Body::~Body() {
   auto cpu_place = phi::CPUPlace();
   // TODO(YuanRisheng): we need remove the dependency on fluid device context
   // here
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   OneDNNContext* dev_ctx = static_cast<OneDNNContext*>(pool.Get(cpu_place));
   dev_ctx->ResetBlobMap(exec_ptr_);
 }
@@ -284,6 +284,71 @@ struct OneDNNContext::Impl {
     return key_it->second;
   }
 
+  bool HasDnnAttr(const std::string& attr_name) const {
+    return dnn_attrs_.count(attr_name) != 0UL;
+  }
+  const Attribute& GetDnnAttr(const std::string& attr_name) const {
+    auto iter = dnn_attrs_.find(attr_name);
+    PADDLE_ENFORCE_NE(
+        iter,
+        dnn_attrs_.end(),
+        phi::errors::NotFound("Attribute `%s` is not found in OneDNNContext."));
+    return iter->second;
+  }
+
+  void SetDnnAttr(const std::string& attr_name, Attribute attr) {
+    dnn_attrs_[attr_name] = attr;
+  }
+
+  void ClearDnnAttr() { dnn_attrs_.clear(); }
+
+  bool HasDnnInput(const std::string& input_name) const {
+    return dnn_inputs_.count(input_name) != 0UL;
+  }
+
+  const DenseTensor* GetDnnInput(const std::string& input_name) const {
+    auto iter = dnn_inputs_.find(input_name);
+    PADDLE_ENFORCE_NE(
+        iter,
+        dnn_inputs_.end(),
+        phi::errors::NotFound(
+            "Input DenseTensor `%s` is not found in OneDNNContext."));
+    return iter->second;
+  }
+
+  void SetDnnInput(const std::string& input_name, const DenseTensor* input) {
+    dnn_inputs_[input_name] = input;
+  }
+
+  void SetInputsName(const TensorNameMap& inputs_name) {
+    inputs_name_ = inputs_name;
+  }
+
+  void SetOutputsName(const TensorNameMap& outputs_name) {
+    outputs_name_ = outputs_name;
+  }
+
+  const std::vector<std::string>& GetInputsName(
+      const std::string& input) const {
+    auto it = inputs_name_.find(input);
+    PADDLE_ENFORCE_NE(it,
+                      inputs_name_.end(),
+                      phi::errors::NotFound(
+                          "OneDnnContext does not have the input %s.", input));
+    return it->second;
+  }
+
+  const std::vector<std::string>& GetOutputsName(
+      const std::string& output) const {
+    auto it = outputs_name_.find(output);
+    PADDLE_ENFORCE_NE(
+        it,
+        outputs_name_.end(),
+        phi::errors::NotFound("OneDnnContext does not have the output %s.",
+                              output));
+    return it->second;
+  }
+
   std::shared_ptr<BlobMap> p_blobmap_;
   // Map key is pointer of executor and value is a data(iterator in map) needed
   // to erase
@@ -291,7 +356,34 @@ struct OneDNNContext::Impl {
   std::shared_ptr<std::mutex> p_mutex_;
   // 0 - clearing is allowed. x > 0 do not clear.
   unsigned int block_next_cache_clearing_ = 0;
+
+  // Holds some attributes only used by the onednn kernel calculation
+  // Since original mkldnn op kernel directly adds the operations that require
+  // fusion to the native kernel operations, and uses the attribute `fuse_xxx`
+  // to control, for onednn, there will be some attributes that seem to be
+  // independent of the device are also saved here.
+  // Here, the operation of fusion needs to be implemented separately as
+  // a fusion op and kernel, instead of patching it to a basic operation.
+  // Because DeviceContext is a global singleton, you need to ensure thread
+  // safety, use the thread_local variable
+  static thread_local AttributeMap dnn_attrs_;
+  // For onednn, in addition to extra attrs, there are also extra inputs,
+  // but the number is small. Hope that the implementation can be optimized
+  // to remove this member in the future.
+  static thread_local paddle::flat_hash_map<std::string, const DenseTensor*>
+      dnn_inputs_;
+
+  // Onednn need get input and output's name in current Kernel for generating
+  // unique_key.
+  static thread_local TensorNameMap inputs_name_;
+  static thread_local TensorNameMap outputs_name_;
 };
+
+thread_local AttributeMap OneDNNContext::Impl::dnn_attrs_ = {};
+thread_local paddle::flat_hash_map<std::string, const DenseTensor*>
+    OneDNNContext::Impl::dnn_inputs_ = {};
+thread_local TensorNameMap OneDNNContext::Impl::inputs_name_ = {};
+thread_local TensorNameMap OneDNNContext::Impl::outputs_name_ = {};
 
 OneDNNContext::OneDNNContext(const Place& place)
     : CPUContext(place), impl_(std::make_unique<Impl>()) {}
@@ -320,6 +412,52 @@ unsigned int OneDNNContext::GetCachedObjectsNumber(void) const {
 OneDNNContext::BlobPtr_t<void> OneDNNContext::GetBlob(
     const std::string& name) const {
   return impl_->GetBlob(name);
+}
+
+bool OneDNNContext::HasDnnAttr(const std::string& attr_name) const {
+  return impl_->HasDnnAttr(attr_name);
+}
+
+const Attribute& OneDNNContext::GetDnnAttr(const std::string& attr_name) const {
+  return impl_->GetDnnAttr(attr_name);
+}
+
+void OneDNNContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
+  return impl_->SetDnnAttr(attr_name, std::move(attr));
+}
+
+void OneDNNContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
+
+bool OneDNNContext::HasDnnInput(const std::string& input_name) const {
+  return impl_->HasDnnInput(input_name);
+}
+
+const DenseTensor* OneDNNContext::GetDnnInput(
+    const std::string& input_name) const {
+  return impl_->GetDnnInput(input_name);
+}
+
+void OneDNNContext::SetDnnInput(const std::string& input_name,
+                                const DenseTensor* input) {
+  return impl_->SetDnnInput(input_name, input);
+}
+
+void OneDNNContext::SetInputsName(const TensorNameMap& inputs_name) {
+  impl_->SetInputsName(inputs_name);
+}
+
+void OneDNNContext::SetOutputsName(const TensorNameMap& outputs_name) {
+  impl_->SetOutputsName(outputs_name);
+}
+
+const std::vector<std::string>& OneDNNContext::GetInputsName(
+    const std::string& input) const {
+  return impl_->GetInputsName(input);
+}
+
+const std::vector<std::string>& OneDNNContext::GetOutputsName(
+    const std::string& output) const {
+  return impl_->GetOutputsName(output);
 }
 
 }  // namespace phi

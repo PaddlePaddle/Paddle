@@ -32,15 +32,13 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
                             bool keep_dim,
                             bool reduce_all,
                             DenseTensor* x_grad) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto* in_x = &x;
   auto* out_y = &out;
   auto* d_out = &out_grad;
   auto* d_x = x_grad;
   // get reduce_dim and reduce_num for reduce_mean_grad
   int dim_size = in_x->dims().size();
-  if (dims.size() == 0) {
-    reduce_all = true;
-  }
   auto reduce_dims = funcs::details::GetReduceDim(dims, dim_size, reduce_all);
   auto update_dims = vectorize(d_x->dims());
   int reduce_num = 1;
@@ -94,7 +92,14 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
           reduce_dims,
           false);
 
-  // 3. dx = Div(dout, equal_out)
+  // 3. dx = dout * 1
+  std::vector<const phi::DenseTensor*> mul_inputs = {&new_dout,
+                                                     &equal_out_tensor};
+  std::vector<phi::DenseTensor*> mul_outputs = {&equal_out_tensor};
+  funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+      dev_ctx, mul_inputs, &mul_outputs, 0, funcs::MultiplyFunctor<T>());
+
+  // 4. dx = Div(dx, equal_out)
   std::vector<const phi::DenseTensor*> grad_inputs = {&equal_out_tensor,
                                                       equal_count};
   std::vector<phi::DenseTensor*> grad_outputs = {new_dx_tensor};

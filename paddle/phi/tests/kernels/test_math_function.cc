@@ -26,38 +26,42 @@ inline phi::funcs::BlasT<phi::CPUContext, T> GetBlas(
 }
 
 TEST(math_function, gemm_notrans_cblas) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input2;
-  paddle::framework::Tensor input3;
+  phi::DenseTensor input1;
+  phi::DenseTensor input2;
+  phi::DenseTensor input3;
 
   int m = 2;
   int n = 3;
   int k = 3;
-  auto* cpu_place = new paddle::platform::CPUPlace();
-  float* input1_ptr = input1.mutable_data<float>({2, 3}, *cpu_place);
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+
+  input1.Resize({2, 3});
+  float* input1_ptr = dev_ctx->template Alloc<float>(&input1);
   float arr1[6] = {0, 1, 2, 3, 4, 5};
   memcpy(input1_ptr, arr1, 6 * sizeof(float));
-  float* input2_ptr = input2.mutable_data<float>({3, 4}, *cpu_place);
+  input2.Resize({3, 4});
+  float* input2_ptr = dev_ctx->template Alloc<float>(&input2);
   float arr2[12] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
   memcpy(input2_ptr, arr2, 12 * sizeof(float));
-  float* input3_ptr = input3.mutable_data<float>({2, 4}, *cpu_place);
+  input3.Resize({2, 4});
+  float* input3_ptr = dev_ctx->template Alloc<float>(&input3);
   float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
-  phi::CPUContext context(*cpu_place);
-  GetBlas<float>(context).GEMM(false,
-                               false,
-                               m,
-                               n,
-                               k,
-                               1,
-                               input1_ptr,
-                               3,
-                               input2_ptr + 1,
-                               4,
-                               1,
-                               input3_ptr + 1,
-                               4);
+  GetBlas<float>(*dev_ctx).GEMM(false,
+                                false,
+                                m,
+                                n,
+                                k,
+                                1,
+                                input1_ptr,
+                                3,
+                                input2_ptr + 1,
+                                4,
+                                1,
+                                input3_ptr + 1,
+                                4);
 
   EXPECT_EQ(input3_ptr[0], 0);
   EXPECT_EQ(input3_ptr[1], 24);
@@ -71,16 +75,22 @@ TEST(math_function, gemm_notrans_cblas) {
 #ifdef PADDLE_WITH_LIBXSMM
 template <typename T>
 void MklSmmCompare(int m, int n, int k) {
-  paddle::framework::Tensor mat_a;
-  paddle::framework::Tensor mat_b;
-  paddle::framework::Tensor mat_c_smm;
-  paddle::framework::Tensor mat_c_mkl;
-  auto* cpu_place = new paddle::platform::CPUPlace();
+  phi::DenseTensor mat_a;
+  phi::DenseTensor mat_b;
+  phi::DenseTensor mat_c_smm;
+  phi::DenseTensor mat_c_mkl;
 
-  T* A = mat_a.mutable_data<T>({m, k}, *cpu_place);
-  T* B = mat_b.mutable_data<T>({k, n}, *cpu_place);
-  T* CSMM = mat_c_smm.mutable_data<T>({m, n}, *cpu_place);
-  T* CMKL = mat_c_mkl.mutable_data<T>({m, n}, *cpu_place);
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+
+  mat_a.Resize({m, k});
+  T* A = dev_ctx->template Alloc<T>(&mat_a);
+  mat_b.Resize({k, n});
+  T* B = dev_ctx->template Alloc<T>(&mat_b);
+  mat_c_smm.Resize({m, n});
+  T* CSMM = dev_ctx->template Alloc<T>(&mat_c_smm);
+  mat_c_mkl.Resize({m, n});
+  T* CMKL = dev_ctx->template Alloc<T>(&mat_c_mkl);
   T alpha = static_cast<T>(1);
   T beta = static_cast<T>(0);
   for (int i = 0; i < mat_a.numel(); ++i) {
@@ -147,40 +157,42 @@ TEST(math_function, gemm_mkl_vs_smm) {
 #endif
 
 TEST(math_function, gemm_trans_cblas) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input2;
-  paddle::framework::Tensor input3;
+  phi::DenseTensor input1;
+  phi::DenseTensor input2;
+  phi::DenseTensor input3;
 
   int m = 2;
   int n = 3;
   int k = 3;
-  auto* cpu_place = new paddle::platform::CPUPlace();
-  float* input1_ptr = input1.mutable_data<float>({2, 3}, *cpu_place);
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+
+  input1.Resize({2, 3});
+  float* input1_ptr = dev_ctx->template Alloc<float>(&input1);
   float arr1[6] = {0, 1, 2, 3, 4, 5};
   memcpy(input1_ptr, arr1, 6 * sizeof(float));
-  float* input2_ptr = input2.mutable_data<float>({4, 3}, *cpu_place);
+  input2.Resize({4, 3});
+  float* input2_ptr = dev_ctx->template Alloc<float>(&input2);
   float arr2[12] = {0, 4, 8, 1, 5, 9, 2, 6, 10, 3, 7, 11};
   memcpy(input2_ptr, arr2, 12 * sizeof(float));
-  float* input3_ptr = input3.mutable_data<float>({2, 4}, *cpu_place);
+  input3.Resize({2, 4});
+  float* input3_ptr = dev_ctx->template Alloc<float>(&input3);
   float arr3[8] = {0, 1, 2, 3, 4, 5, 6, 7};
   memcpy(input3_ptr, arr3, 8 * sizeof(float));
 
-  phi::CPUContext context(*cpu_place);
-  GetBlas<float>(context).GEMM(false,
-                               true,
-                               m,
-                               n,
-                               k,
-                               1,
-                               input1_ptr,
-                               3,
-                               input2_ptr + 3,
-                               3,
-                               1,
-                               input3_ptr + 1,
-                               4);
-  delete cpu_place;
-  cpu_place = NULL;
+  GetBlas<float>(*dev_ctx).GEMM(false,
+                                true,
+                                m,
+                                n,
+                                k,
+                                1,
+                                input1_ptr,
+                                3,
+                                input2_ptr + 3,
+                                3,
+                                1,
+                                input3_ptr + 1,
+                                4);
 
   EXPECT_EQ(input3_ptr[0], 0);
   EXPECT_EQ(input3_ptr[1], 24);
@@ -193,18 +205,20 @@ TEST(math_function, gemm_trans_cblas) {
 }
 
 TEST(math_function, zero) {
-  paddle::framework::Tensor tensor;
-  auto* cpu_place = new paddle::platform::CPUPlace();
-  float* t = tensor.mutable_data<float>({2, 2}, *cpu_place);
-  phi::CPUContext context(*cpu_place);
+  phi::DenseTensor tensor;
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+
+  tensor.Resize({2, 2});
+  float* t = dev_ctx->template Alloc<float>(&tensor);
   phi::funcs::SetConstant<phi::CPUContext, float> functor;
-  functor(context, &tensor, 0);
+  functor(*dev_ctx, &tensor, 0);
   EXPECT_EQ(t[0], 0);
   EXPECT_EQ(t[1], 0);
   EXPECT_EQ(t[2], 0);
   EXPECT_EQ(t[3], 0);
 
-  functor(context, &tensor, 1);
+  functor(*dev_ctx, &tensor, 1);
 
   EXPECT_EQ(t[0], 1);
   EXPECT_EQ(t[1], 1);
@@ -214,16 +228,21 @@ TEST(math_function, zero) {
 
 template <typename T>
 void GemvTest(int m, int n, bool trans) {
-  paddle::framework::Tensor mat_a;
-  paddle::framework::Tensor vec_b;
-  paddle::framework::Tensor vec_c;
-  auto* cpu_place = new paddle::platform::CPUPlace();
+  phi::DenseTensor mat_a;
+  phi::DenseTensor vec_b;
+  phi::DenseTensor vec_c;
   int b_num = trans ? m : n;
   int c_num = trans ? n : m;
 
-  T* data_a = mat_a.mutable_data<T>({m, n}, *cpu_place);
-  T* data_b = vec_b.mutable_data<T>({b_num}, *cpu_place);
-  T* data_c = vec_c.mutable_data<T>({c_num}, *cpu_place);
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+
+  mat_a.Resize({m, n});
+  T* data_a = dev_ctx->template Alloc<T>(&mat_a);
+  vec_b.Resize({b_num});
+  T* data_b = dev_ctx->template Alloc<T>(&vec_b);
+  vec_c.Resize({c_num});
+  T* data_c = dev_ctx->template Alloc<T>(&vec_c);
   for (int i = 0; i < mat_a.numel(); ++i) {
     data_a[i] = static_cast<T>(i);
   }
@@ -231,15 +250,14 @@ void GemvTest(int m, int n, bool trans) {
     data_b[i] = static_cast<T>(i);
   }
 
-  phi::CPUContext context(*cpu_place);
-  GetBlas<T>(context).GEMV(trans,
-                           static_cast<int>(m),
-                           static_cast<int>(n),
-                           1.,
-                           data_a,
-                           data_b,
-                           0.,
-                           data_c);
+  GetBlas<T>(*dev_ctx).GEMV(trans,
+                            static_cast<int>(m),
+                            static_cast<int>(n),
+                            1.,
+                            data_a,
+                            data_b,
+                            0.,
+                            data_c);
 
   if (!trans) {
     for (int i = 0; i < m; ++i) {
@@ -258,7 +276,6 @@ void GemvTest(int m, int n, bool trans) {
       ASSERT_FLOAT_EQ(data_c[i], sum);
     }
   }
-  delete cpu_place;
 }
 
 TEST(math_function, gemv) {
@@ -269,34 +286,40 @@ TEST(math_function, gemv) {
 }
 
 TEST(math_funciton, set_constant) {
-  paddle::framework::Tensor t;
+  phi::DenseTensor t;
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
   t.Resize({10, 10});
-  t.mutable_data<int>(paddle::platform::CPUPlace());
-  auto* ctx = new phi::CPUContext();
-  phi::funcs::set_constant(*ctx, &t, 10);
+  dev_ctx->template Alloc<int>(&t);
+  phi::funcs::set_constant(*dev_ctx, &t, 10);
   for (int64_t i = 0; i < t.numel(); ++i) {
-    PADDLE_ENFORCE_EQ(10,
-                      t.data<int>()[i],
-                      paddle::platform::errors::InvalidArgument(
-                          "Each value of input tensor should be 10, "
-                          "but received %d.",
-                          t.data<int>()[i]));
+    PADDLE_ENFORCE_EQ(
+        10,
+        t.data<int>()[i],
+        phi::errors::InvalidArgument("Each value of input tensor should be 10, "
+                                     "but received %d.",
+                                     t.data<int>()[i]));
   }
-  delete ctx;
 }
 
 template <typename T>
 void GemmWarpTest(int m, int n, int k, T alpha, T beta) {
-  paddle::framework::Tensor mat_a;
-  paddle::framework::Tensor mat_b;
-  paddle::framework::Tensor mat_c_ref;
-  paddle::framework::Tensor mat_c_mkl;
-  auto* cpu_place = new paddle::platform::CPUPlace();
+  phi::DenseTensor mat_a;
+  phi::DenseTensor mat_b;
+  phi::DenseTensor mat_c_ref;
+  phi::DenseTensor mat_c_mkl;
 
-  T* A = mat_a.mutable_data<T>({m, k}, *cpu_place);
-  T* B = mat_b.mutable_data<T>({k, n}, *cpu_place);
-  T* CREF = mat_c_ref.mutable_data<T>({m, n}, *cpu_place);
-  T* CMKL = mat_c_mkl.mutable_data<T>({m, n}, *cpu_place);
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+
+  mat_a.Resize({m, k});
+  T* A = dev_ctx->template Alloc<T>(&mat_a);
+  mat_b.Resize({k, n});
+  T* B = dev_ctx->template Alloc<T>(&mat_b);
+  mat_c_ref.Resize({m, n});
+  T* CREF = dev_ctx->template Alloc<T>(&mat_c_ref);
+  mat_c_mkl.Resize({m, n});
+  T* CMKL = dev_ctx->template Alloc<T>(&mat_c_mkl);
 
   ASSERT_EQ(mat_c_mkl.numel(), mat_c_ref.numel());
   for (int i = 0; i < mat_a.numel(); ++i) {
@@ -311,8 +334,7 @@ void GemmWarpTest(int m, int n, int k, T alpha, T beta) {
   }
 
   // this would call gemm_warp
-  phi::CPUContext context(*cpu_place);
-  GetBlas<T>(context).GEMM(
+  GetBlas<T>(*dev_ctx).GEMM(
       CblasNoTrans, CblasNoTrans, m, n, k, alpha, A, B, beta, CREF);
 
   // lda,ldb,ldc follow RowMajor
@@ -337,7 +359,6 @@ void GemmWarpTest(int m, int n, int k, T alpha, T beta) {
   for (int i = 0; i < mat_c_mkl.numel(); ++i) {
     EXPECT_FLOAT_EQ(CREF[i], CMKL[i]);
   }
-  delete cpu_place;
 }
 
 TEST(math_function, gemm_warp) {

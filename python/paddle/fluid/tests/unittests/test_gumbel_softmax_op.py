@@ -11,19 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid.core as core
+from eager_op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
+import paddle.nn.functional as F
 
 paddle.enable_static()
 
 
 class TestGumbelSoftmaxOp(OpTest):
-
     def init_attrs(self):
         self.shape = [20, 10]
         self.attrs = {"hard": True, "axis": -1}
@@ -38,6 +37,7 @@ class TestGumbelSoftmaxOp(OpTest):
 
     def setUp(self):
         self.op_type = "gumbel_softmax"
+        self.python_api = F.gumbel_softmax
         self.init_attrs()
         np.random.seed(0)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -52,8 +52,26 @@ class TestGumbelSoftmaxOp(OpTest):
         self.check_grad(["X"], "Out")
 
 
-class TestGumbelSoftmaxOp2(TestGumbelSoftmaxOp):
+class TestGumbelSoftmax_ZeroDim(OpTest):
+    def setUp(self):
+        self.op_type = "gumbel_softmax"
+        self.python_api = F.gumbel_softmax
+        self.dtype = "float64"
+        x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        out = np.array(1.0).astype(self.dtype)
 
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {"hard": True, "axis": -1}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+
+class TestGumbelSoftmaxOp2(TestGumbelSoftmaxOp):
     def init_attrs(self):
         self.shape = [20, 10]
         self.attrs = {"hard": True, "axis": 0}
@@ -62,7 +80,6 @@ class TestGumbelSoftmaxOp2(TestGumbelSoftmaxOp):
 
 
 class TestGumbelSoftmaxOp3(TestGumbelSoftmaxOp):
-
     def init_attrs(self):
         self.shape = [100]
         self.attrs = {"hard": True, "axis": -1}
@@ -71,7 +88,6 @@ class TestGumbelSoftmaxOp3(TestGumbelSoftmaxOp):
 
 
 class TestGumbelSoftmaxOp4(TestGumbelSoftmaxOp):
-
     def init_attrs(self):
         self.shape = [20, 10, 5]
         self.attrs = {"hard": True, "axis": -1}
@@ -80,7 +96,6 @@ class TestGumbelSoftmaxOp4(TestGumbelSoftmaxOp):
 
 
 class TestGumbelSoftmaxOp5(TestGumbelSoftmaxOp):
-
     def init_attrs(self):
         self.shape = [20, 10, 5]
         self.attrs = {"hard": True, "axis": 1}
@@ -89,7 +104,6 @@ class TestGumbelSoftmaxOp5(TestGumbelSoftmaxOp):
 
 
 class TestGumbelSoftmaxOpSampleDistribution(OpTest):
-
     def softmax(self, x):
         x_row_max = x.max(axis=-1)
         x_row_max = x_row_max.reshape(list(x.shape)[:-1] + [1])
@@ -112,6 +126,7 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
 
     def setUp(self):
         self.op_type = "gumbel_softmax"
+        self.python_api = F.gumbel_softmax
         self.init_attrs()
         single_x = np.array([0.2, 0.3, 0.5])
         batch_x = np.ones(self.shape) * single_x
@@ -141,7 +156,6 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
 
 
 class TestGumbelSoftmaxOpGrad(unittest.TestCase):
-
     def init_attrs(self):
         self.shape = [20, 10]
         self.dtype = "float64"
@@ -161,22 +175,22 @@ class TestGumbelSoftmaxOpGrad(unittest.TestCase):
         out_hard.sum().backward()
         out_soft.sum().backward()
 
-        np.testing.assert_allclose(x_hard.grad.numpy(),
-                                   x_soft.grad.numpy(),
-                                   rtol=1e-5,
-                                   atol=1e-8)
+        np.testing.assert_allclose(
+            x_hard.grad.numpy(), x_soft.grad.numpy(), rtol=1e-5, atol=1e-8
+        )
         paddle.enable_static()
 
 
 class TestGumbelSoftmaxAPI(unittest.TestCase):
-
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
-        self.x = np.random.uniform(-1., 1., self.x_shape).astype(np.float32)
+        self.x = np.random.uniform(-1.0, 1.0, self.x_shape).astype(np.float32)
         self.count_expected = 24
-        self.place = paddle.CUDAPlace(0) \
-            if paddle.fluid.core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def test_check_api(self):
         # test static api
@@ -195,21 +209,15 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
             out_np = np.array(y)
             self.assertEqual(out_np.sum(), self.count_expected)
 
-            with _test_eager_guard():
-                x = paddle.to_tensor(self.x)
-                y = paddle.nn.functional.gumbel_softmax(x, hard=True)
-                out_np = np.array(y)
-                self.assertEqual(out_np.sum(), self.count_expected)
-
 
 class TestGumbelSoftmaxOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.disable_static()
 
         def test_Variable():
-            x1 = fluid.create_lod_tensor(np.zeros((100, 784)),
-                                         [[10, 10, 10, 70]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(
+                np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace()
+            )
             paddle.nn.functional.gumbel_softmax(x1)
 
         self.assertRaises(ValueError, test_Variable)
@@ -236,9 +244,9 @@ class TestGumbelSoftmaxOpError(unittest.TestCase):
 
         def test_dtype():
             with paddle.static.program_guard(paddle.static.Program()):
-                x_int32 = paddle.fluid.data(name='x_int32',
-                                            shape=[2, 3],
-                                            dtype='int32')
+                x_int32 = paddle.fluid.data(
+                    name='x_int32', shape=[2, 3], dtype='int32'
+                )
                 paddle.nn.functional.gumbel_softmax(x_int32)
 
         self.assertRaises(TypeError, test_dtype)

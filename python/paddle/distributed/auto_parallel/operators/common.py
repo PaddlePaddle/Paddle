@@ -13,29 +13,45 @@
 # limitations under the License
 
 import abc
-import paddle
-from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
-from ..dist_attribute import OperatorDistributedAttribute
-from ..utils import _get_comm_group, _get_corresponding_rank, is_optimize_op
+
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+
+from ..dist_attribute import OperatorDistAttr
 from ..process_group import new_process_group
+from ..utils import _get_comm_group, _get_corresponding_rank, is_optimize_op
 
 _g_distributed_operator_impl_containers = {}
 
 _g_elementwise_ops = [
-    "elementwise", "gelu", "dropout", "cast", "gather", "concat",
-    "fused_softmax_mask_upper_triangle"
+    "elementwise",
+    "gelu",
+    "dropout",
+    "cast",
+    "gather",
+    "concat",
+    "fused_softmax_mask_upper_triangle",
 ]
 BACKWARD_ONLY_DIST_OPS = {'check_finite_and_unscale', 'update_loss_scaling'}
 
 
-class ParallelMode():
+class ParallelMode:
     """
     the parallel mode for communication or auxiliary operator
     """
+
     DataParallel = "auto_parallel/data_parallel"
     ModelParallel = "auto_parallel/model_parallel"
     PipelineParalel = "auto_parallel/pipeline_paralel"
     MoEParallel = "auto_parallel/moe_parallel"
+
+
+class SyncMode:
+    """
+    the synchorization mode for communication or auxiliary operator
+    """
+
+    AmpFlagSync = "auto_parallel/amp_flag_synchorization"
+    GlobalNormSync = "auto_parallel/global_norm_synchorization"
 
 
 def is_elementwise_op(op_type):
@@ -47,7 +63,6 @@ def is_elementwise_op(op_type):
 
 
 class DistributedOperatorImplContainer:
-
     def __init__(self, op_type):
         self._type = op_type
         self._impls = []
@@ -65,8 +80,9 @@ class DistributedOperatorImplContainer:
         return self._impls
 
     def register_impl(self, dist_impl):
-        assert self.type == dist_impl.type, \
-            "Op type of container must be same as that of the implementation."
+        assert (
+            self.type == dist_impl.type
+        ), "Op type of container must be same as that of the implementation."
         impl_idx = len(self.impls)
         dist_impl.idx = impl_idx
         self._impls.append(dist_impl)
@@ -97,7 +113,6 @@ class DistributedOperatorImplContainer:
 
 
 class DistributedOperatorImpl(abc.ABC):
-
     def __init__(self, name):
         self._name = name
         self._type = None
@@ -176,60 +191,75 @@ def register_distributed_operator_impl(op_type, dist_impl):
 
 def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
     """
-    Here just return the first compatible implemention.
+    Here just return the first compatible implementation.
     This will be improved by cost model in the future.
     """
     op_type = dist_op.serial_op.type
     dist_op_impl_container = get_distributed_operator_impl_container(op_type)
     dist_op_eltwise_impl_container = get_distributed_operator_impl_container(
-        "elementwise")
+        "elementwise"
+    )
     dist_op_default_impl_container = get_distributed_operator_impl_container(
-        "default")
+        "default"
+    )
     compatible_impls = []
     if partial:
         if fwd:
             # First, find impls in the corresponding container
             if dist_op_impl_container:
                 compatible_impls.extend(
-                    dist_op_impl_container.get_input_compatible_impls(dist_op))
+                    dist_op_impl_container.get_input_compatible_impls(dist_op)
+                )
             # Second, find impls in the elementwise container
             if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
                 compatible_impls.extend(
                     dist_op_eltwise_impl_container.get_input_compatible_impls(
-                        dist_op))
+                        dist_op
+                    )
+                )
             # Third, find impls in the default container
             if dist_op_default_impl_container:
                 compatible_impls.extend(
                     dist_op_default_impl_container.get_input_compatible_impls(
-                        dist_op))
+                        dist_op
+                    )
+                )
         else:
             # First, find impls in the corresponding container
             if dist_op_impl_container:
                 compatible_impls.extend(
-                    dist_op_impl_container.get_output_compatible_impls(dist_op))
+                    dist_op_impl_container.get_output_compatible_impls(dist_op)
+                )
             # Second, find impls in the elementwise container
             if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
                 compatible_impls.extend(
                     dist_op_eltwise_impl_container.get_output_compatible_impls(
-                        dist_op))
+                        dist_op
+                    )
+                )
             # Third, find impls in the default container
             if dist_op_default_impl_container:
                 compatible_impls.extend(
                     dist_op_default_impl_container.get_output_compatible_impls(
-                        dist_op))
+                        dist_op
+                    )
+                )
     else:
         # First, find impls in the corresponding container
         if dist_op_impl_container:
             compatible_impls.extend(
-                dist_op_impl_container.get_compatible_impls(dist_op))
+                dist_op_impl_container.get_compatible_impls(dist_op)
+            )
         # Second, find impls in the elementwise container
         if dist_op_eltwise_impl_container and is_elementwise_op(op_type):
             compatible_impls.extend(
-                dist_op_eltwise_impl_container.get_compatible_impls(dist_op))
+                dist_op_eltwise_impl_container.get_compatible_impls(dist_op)
+            )
         # Third, find impls in the default container
         if dist_op_default_impl_container:
             compatible_impls.extend(
-                dist_op_default_impl_container.get_compatible_impls(dist_op))
+                dist_op_default_impl_container.get_compatible_impls(dist_op)
+            )
 
     if compatible_impls:
         # For now, just return the first compatible impl
@@ -242,19 +272,23 @@ def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
 
 def is_parameter_related(varname, block):
     if ".subprog_" in varname:
-        varname = varname[:varname.index(".subprog_")]
+        varname = varname[: varname.index(".subprog_")]
     if ".cast_fp" in varname:
-        varname = varname[:varname.index(".cast_fp")]
+        varname = varname[: varname.index(".cast_fp")]
+    if ".cast_bf" in varname:
+        varname = varname[: varname.index(".cast_bf")]
     if ".quantized" in varname:
-        varname = varname[:varname.index(".quantized")]
-    assert block.has_var(varname)
-    var = block.var(varname)
+        varname = varname[: varname.index(".quantized")]
+    # if "@RESHARD" in varname:
+    #     varname = varname[: varname.index("@RESHARD")]
+    assert block._find_var_recursive(varname)
+    var = block._var_recursive(varname)
     return var.is_parameter
 
 
 def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
-    var_shape = block.var(src_var.name).shape
-    var_topoloy = src_var_dist_attr.process_mesh.topology
+    var_shape = block._var_recursive(src_var.name).shape
+    var_topoloy = src_var_dist_attr.process_mesh.shape
     var_dims_mapping = src_var_dist_attr.dims_mapping
 
     complete_shape = []
@@ -266,7 +300,7 @@ def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
             complete_shape.append(new_shape)
 
     exact_shape = []
-    input_topology = op_input_dist_attr.process_mesh.topology
+    input_topology = op_input_dist_attr.process_mesh.shape
     input_dims_mapping = op_input_dist_attr.dims_mapping
     for idx, shape in enumerate(complete_shape):
         if input_dims_mapping[idx] == -1:
@@ -278,12 +312,13 @@ def infer_shape(block, src_var, src_var_dist_attr, op_input_dist_attr):
     return exact_shape
 
 
-def set_comm_op_dist_attr_for_program(new_op, process_mesh, tensor_dist_attr,
-                                      ctx):
+def set_comm_op_dist_attr_for_program(
+    new_op, process_mesh, tensor_dist_attr, ctx
+):
     assert process_mesh is not None
     assert tensor_dist_attr is not None
 
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = process_mesh
     for input_varname in new_op.desc.input_arg_names():
         new_op_dist_attr.set_input_dist_attr(input_varname, tensor_dist_attr)
@@ -295,7 +330,7 @@ def set_comm_op_dist_attr_for_program(new_op, process_mesh, tensor_dist_attr,
 def naive_copy_op_dist_attr_for_program(new_op, ref_op, ctx):
 
     ref_dist_attr = ctx.get_op_dist_attr_for_program(ref_op)
-    new_op_dist_attr = OperatorDistributedAttribute()
+    new_op_dist_attr = OperatorDistAttr()
     new_op_dist_attr.process_mesh = ref_dist_attr.process_mesh
 
     for input_name in ref_op.input_names:
@@ -304,9 +339,11 @@ def naive_copy_op_dist_attr_for_program(new_op, ref_op, ctx):
         assert len(new_op.input(input_name)) == 1
 
         ref_tensor_dist_attr = ref_dist_attr.get_input_dist_attr(
-            ref_op.input(input_name)[0])
+            ref_op.input(input_name)[0]
+        )
         new_op_dist_attr.set_input_dist_attr(
-            new_op.input(input_name)[0], ref_tensor_dist_attr)
+            new_op.input(input_name)[0], ref_tensor_dist_attr
+        )
 
     for output_name in ref_op.output_names:
         assert output_name in new_op.output_names
@@ -314,9 +351,11 @@ def naive_copy_op_dist_attr_for_program(new_op, ref_op, ctx):
         assert len(new_op.output(output_name)) == 1
 
         ref_tensor_dist_attr = ref_dist_attr.get_output_dist_attr(
-            ref_op.output(output_name)[0])
+            ref_op.output(output_name)[0]
+        )
         new_op_dist_attr.set_output_dist_attr(
-            new_op.output(output_name)[0], ref_tensor_dist_attr)
+            new_op.output(output_name)[0], ref_tensor_dist_attr
+        )
 
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
@@ -336,10 +375,10 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
 
     op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
     process_mesh = op_dist_attr.process_mesh
-    mesh_shape = process_mesh.topology
+    mesh_shape = process_mesh.shape
     # FIXME Hack for Pipeline Parallelism where the current operator
     # not belong to the mesh the current rank belong to.
-    if rank not in process_mesh.processes:
+    if rank not in process_mesh.process_ids:
         rank = _get_corresponding_rank(dist_ctx, process_mesh, rank)
 
     for var_name in act_grad_names:
@@ -349,9 +388,12 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
         batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
 
         if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
-            group_ranks = _get_comm_group(process_mesh.processes,
-                                          process_mesh.topology,
-                                          batch_size_axis, rank)
+            group_ranks = _get_comm_group(
+                process_mesh.process_ids,
+                process_mesh.shape,
+                batch_size_axis,
+                rank,
+            )
             dp_group = new_process_group(group_ranks)
             break
 
@@ -378,44 +420,51 @@ def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
     for var_name in allreduce_var_names:
         added_ops = []
         grad_var = main_block.var(var_name)
-        allreduce_op = main_block.append_op(type='c_allreduce_sum',
-                                            inputs={'X': [grad_var]},
-                                            outputs={'Out': [grad_var]},
-                                            attrs={
-                                                'ring_id': dp_group.id,
-                                                'use_calc_stream': True,
-                                                OP_ROLE_KEY: OpRole.Backward
-                                            })
-        allreduce_op._set_attr('op_namescope',
-                               str('/') + ParallelMode.DataParallel)
+        allreduce_op = main_block.append_op(
+            type='c_allreduce_sum',
+            inputs={'X': [grad_var]},
+            outputs={'Out': [grad_var]},
+            attrs={
+                'ring_id': dp_group.id,
+                'use_calc_stream': True,
+                OP_ROLE_KEY: OpRole.Backward,
+            },
+        )
+        allreduce_op._set_attr(
+            'op_namescope', str('/') + ParallelMode.DataParallel
+        )
         added_ops.append(allreduce_op)
 
         if dist_ctx.gradient_scale:
-            scale_op = main_block.append_op(type='scale',
-                                            inputs={'X': grad_var},
-                                            outputs={'Out': grad_var},
-                                            attrs={
-                                                'scale': 1.0 / dp_degree,
-                                                OP_ROLE_KEY: OpRole.Backward
-                                            })
-            scale_op._set_attr('op_namescope',
-                               str('/') + ParallelMode.DataParallel)
+            scale_op = main_block.append_op(
+                type='scale',
+                inputs={'X': grad_var},
+                outputs={'Out': grad_var},
+                attrs={'scale': 1.0 / dp_degree, OP_ROLE_KEY: OpRole.Backward},
+            )
+            scale_op._set_attr(
+                'op_namescope', str('/') + ParallelMode.DataParallel
+            )
             added_ops.append(scale_op)
 
         dims_mapping = op_dist_attr.get_output_dims_mapping(grad_var.name)
-        assert dims_mapping is not None, "Unexception: dims_mapping of output [{}] of op [{}] is None".format(
-            grad_var.name, op_dist_attr.op_type)
+        assert (
+            dims_mapping is not None
+        ), "Unexpected: dims_mapping of output [{}] of op [{}] is None".format(
+            grad_var.name, op_dist_attr.op_type
+        )
         # NOTE auxiliary op's dist attr should follow dist_op not dist_tensor
         for new_op in added_ops:
-            new_op_attr = OperatorDistributedAttribute()
+            new_op_attr = OperatorDistAttr()
             new_op_attr.process_mesh = process_mesh
             new_op_attr.set_output_dims_mapping(grad_var.name, dims_mapping)
             new_op_attr.set_input_dims_mapping(grad_var.name, dims_mapping)
             dist_ctx.set_op_dist_attr_for_program(new_op, new_op_attr)
 
 
-def gradient_synchronization(dist_ctx, op, act_grad_names, out_grad_names,
-                             rank):
+def gradient_synchronization(
+    dist_ctx, op, act_grad_names, out_grad_names, rank
+):
     """
     conduct the allreudce and scaling（dp size）for gradients of model
     parameters for operator in data parallelism.
@@ -431,8 +480,11 @@ def gradient_synchronization(dist_ctx, op, act_grad_names, out_grad_names,
     if not is_in_backward_phase(dist_ctx):
         return
 
-    if is_optimize_op(op) or len(act_grad_names) == 0 or len(
-            out_grad_names) == 0:
+    if (
+        is_optimize_op(op)
+        or len(act_grad_names) == 0
+        or len(out_grad_names) == 0
+    ):
         return
 
     dp_group = get_data_parallel_group(dist_ctx, op, act_grad_names, rank)
@@ -444,13 +496,35 @@ def gradient_synchronization(dist_ctx, op, act_grad_names, out_grad_names,
 
 
 def is_data_parallel_scale_op(op):
-    return op.type == "scale" and op.desc.has_attr("op_namescope") \
-            and ParallelMode.DataParallel in op.desc.attr("op_namescope")
+    return (
+        op.type == "scale"
+        and op.desc.has_attr("op_namescope")
+        and ParallelMode.DataParallel in op.desc.attr("op_namescope")
+    )
 
 
 def is_data_parallel_reduce_op(op):
-    return op.type in ["c_reduce_sum", "c_allreduce_sum"] and op.desc.has_attr("op_namescope") \
-            and ParallelMode.DataParallel in op.desc.attr("op_namescope")
+    return (
+        op.type in ["c_reduce_sum", "c_allreduce_sum"]
+        and op.desc.has_attr("op_namescope")
+        and ParallelMode.DataParallel in op.desc.attr("op_namescope")
+    )
+
+
+def is_amp_flag_sync_op(op):
+    return (
+        op.type == "c_allreduce_max"
+        and op.desc.has_attr("op_namescope")
+        and SyncMode.AmpFlagSync in op.desc.attr("op_namescope")
+    )
+
+
+def is_global_norm_sync_op(op):
+    return (
+        op.type == "c_allreduce_sum"
+        and op.desc.has_attr("op_namescope")
+        and SyncMode.GlobalNormSync in op.desc.attr("op_namescope")
+    )
 
 
 def is_in_backward_phase(dist_ctx):

@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
-import unittest
-import paddle
-import numpy as np
 import random
+import unittest
+
+import numpy as np
+from hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
+
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from hybrid_parallel_pp_layer import AlexNetPipeDesc, AlexNet
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -37,7 +35,6 @@ micro_batch_size = 2
 
 
 class TestDistPPTraning(unittest.TestCase):
-
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -50,7 +47,7 @@ class TestDistPPTraning(unittest.TestCase):
         }
         strategy.pipeline_configs = {
             "accumulate_steps": batch_size // micro_batch_size,
-            "micro_batch_size": micro_batch_size
+            "micro_batch_size": micro_batch_size,
         }
         fleet.init(is_collective=True, strategy=strategy)
 
@@ -64,14 +61,16 @@ class TestDistPPTraning(unittest.TestCase):
 
         grad_clip = paddle.nn.ClipGradByGlobalNorm(1.0)
 
-        #construct model a
+        # construct model a
         model_a = AlexNet(10)
-        scheduler_a = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
-                                                         values=[0.001, 0.002],
-                                                         verbose=True)
-        optimizer_a = paddle.optimizer.SGD(learning_rate=scheduler_a,
-                                           grad_clip=grad_clip,
-                                           parameters=model_a.parameters())
+        scheduler_a = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2], values=[0.001, 0.002], verbose=True
+        )
+        optimizer_a = paddle.optimizer.SGD(
+            learning_rate=scheduler_a,
+            grad_clip=grad_clip,
+            parameters=model_a.parameters(),
+        )
 
         scaler_a = paddle.amp.GradScaler(init_loss_scaling=2**5)
 
@@ -82,12 +81,14 @@ class TestDistPPTraning(unittest.TestCase):
 
         # construct model b
         model_b = AlexNetPipeDesc(num_stages=self.pipeline_parallel_size)
-        scheduler_b = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
-                                                         values=[0.001, 0.002],
-                                                         verbose=True)
-        optimizer_b = paddle.optimizer.SGD(learning_rate=scheduler_b,
-                                           grad_clip=grad_clip,
-                                           parameters=model_b.parameters())
+        scheduler_b = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2], values=[0.001, 0.002], verbose=True
+        )
+        optimizer_b = paddle.optimizer.SGD(
+            learning_rate=scheduler_b,
+            grad_clip=grad_clip,
+            parameters=model_b.parameters(),
+        )
         model_b = fleet.distributed_model(model_b)
         optimizer_b = fleet.distributed_optimizer(optimizer_b)
         scaler_b = paddle.amp.GradScaler(init_loss_scaling=2**5)
@@ -97,15 +98,21 @@ class TestDistPPTraning(unittest.TestCase):
             param.set_value(parameters[idx + pp_id * (param_len // 2)])
 
         # construct reader
-        train_reader = paddle.batch(paddle.dataset.mnist.train(),
-                                    batch_size=batch_size,
-                                    drop_last=True)
+        train_reader = paddle.batch(
+            paddle.dataset.mnist.train(), batch_size=batch_size, drop_last=True
+        )
 
         for step_id, data in enumerate(train_reader()):
-            x_data = np.array([x[0] for x in data]).astype('float32').reshape(
-                batch_size, 1, 28, 28)
-            y_data = np.array([x[1] for x in data
-                               ]).astype('int64').reshape(batch_size, 1)
+            x_data = (
+                np.array([x[0] for x in data])
+                .astype('float32')
+                .reshape(batch_size, 1, 28, 28)
+            )
+            y_data = (
+                np.array([x[1] for x in data])
+                .astype('int64')
+                .reshape(batch_size, 1)
+            )
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
             img.stop_gradient = True
@@ -123,15 +130,14 @@ class TestDistPPTraning(unittest.TestCase):
             scheduler_a.step()
 
             with paddle.amp.auto_cast():
-                loss_b = model_b.train_batch([img, label],
-                                             optimizer_b,
-                                             scheduler_b,
-                                             scaler=scaler_b)
+                loss_b = model_b.train_batch(
+                    [img, label], optimizer_b, scheduler_b, scaler=scaler_b
+                )
 
             print("loss: ", loss_a.numpy(), loss_b.numpy())
-            np.testing.assert_allclose(loss_a.numpy(),
-                                       loss_b.numpy(),
-                                       rtol=5e-5)
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=5e-5
+            )
 
 
 if __name__ == "__main__":

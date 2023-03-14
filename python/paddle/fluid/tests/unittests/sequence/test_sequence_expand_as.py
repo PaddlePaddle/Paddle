@@ -12,20 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("../")
-import paddle.fluid as fluid
 from op_test import OpTest
+
+import paddle
 from paddle.fluid import Program, program_guard
 
 
 class TestSequenceExpandAs(OpTest):
-
     def setUp(self):
         self.op_type = 'sequence_expand_as'
         self.set_data()
@@ -62,7 +61,6 @@ class TestSequenceExpandAs(OpTest):
 
 
 class TestSequenceExpandAsCase1(TestSequenceExpandAs):
-
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [5, 20]).astype('float64')
         x_lod = [[2, 3]]
@@ -72,7 +70,6 @@ class TestSequenceExpandAsCase1(TestSequenceExpandAs):
 
 
 class TestSequenceExpandAsCase2(TestSequenceExpandAs):
-
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [5, 20]).astype('float64')
         x_lod = [[2, 3]]
@@ -82,7 +79,6 @@ class TestSequenceExpandAsCase2(TestSequenceExpandAs):
 
 
 class TestSequenceExpandAsCase3(TestSequenceExpandAs):
-
     def set_data(self):
         x_data = np.random.uniform(0.1, 1, [1, 2, 50]).astype('float64')
         x_lod = [[1]]
@@ -92,21 +88,29 @@ class TestSequenceExpandAsCase3(TestSequenceExpandAs):
 
 
 class TestSequenceExpandAsOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input x must be Variable
             x1 = np.random.random((2, 4)).astype("float32")
-            self.assertRaises(TypeError, fluid.layers.sequence_expand_as, x1)
+            self.assertRaises(
+                TypeError, paddle.static.nn.sequence_lod.sequence_expand_as, x1
+            )
 
             # the dtype of input x must be float32, float64, int32 or int64
-            x2 = fluid.data(name='x2', shape=[None, 4], dtype="bool")
-            self.assertRaises(TypeError, fluid.layers.sequence_expand_as, x2)
+            x2 = paddle.static.data(name='x2', shape=[None, 4], dtype="bool")
+            self.assertRaises(
+                TypeError, paddle.static.nn.sequence_lod.sequence_expand_as, x2
+            )
 
             # the input y must be Variable
-            x3 = fluid.data(name='x3', shape=[None, 4], dtype="float32")
+            x3 = paddle.static.data(name='x3', shape=[None, 4], dtype="float32")
             y = np.random.random((2, 4)).astype("float32")
-            self.assertRaises(TypeError, fluid.layers.sequence_expand_as, x3, y)
+            self.assertRaises(
+                TypeError,
+                paddle.static.nn.sequence_lod.sequence_expand_as,
+                x3,
+                y,
+            )
 
 
 if __name__ == '__main__':

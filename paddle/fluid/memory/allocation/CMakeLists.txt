@@ -4,7 +4,6 @@ set(ALLOCATOR_DEPS place stats profiler phi_backends device_context)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc
-    locked_allocator.cc
     aligned_allocator.cc
     buffered_allocator.cc
     best_fit_allocator.cc
@@ -33,7 +32,7 @@ if(WITH_GPU OR WITH_ROCM)
 endif()
 
 if(WITH_GPU)
-  list(APPEND ALLOCATOR_DEPS cuda_graph)
+  list(APPEND ALLOCATOR_DEPS phi_backends)
 endif()
 
 if(CUDA_VERSION VERSION_GREATER_EQUAL 10.2)
@@ -45,6 +44,10 @@ if(NOT WIN32)
   if(WITH_GPU)
     list(APPEND ALLOCATOR_SRCS cuda_ipc_allocator.cc)
   endif()
+endif()
+
+if(UNIX AND NOT APPLE)
+  list(APPEND ALLOCATOR_DEPS rt)
 endif()
 
 if(WITH_ASCEND_CL)
@@ -75,10 +78,8 @@ cc_test(
   naive_best_fit_allocator_test
   SRCS naive_best_fit_allocator_test.cc
   DEPS allocator)
-cc_test(
-  buffered_allocator_test
-  SRCS buffered_allocator_test.cc
-  DEPS allocator)
+cc_test_old(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS
+            allocator)
 
 if(WITH_GPU)
   nv_test(
@@ -104,21 +105,14 @@ elseif(WITH_ROCM)
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
     DEPS allocator memcpy)
 else()
-  cc_test(
-    best_fit_allocator_test
-    SRCS best_fit_allocator_test.cc
-    DEPS allocator)
+  cc_test_old(best_fit_allocator_test SRCS best_fit_allocator_test.cc DEPS
+              allocator)
 endif()
 
-cc_test(
-  test_aligned_allocator
-  SRCS test_aligned_allocator.cc
-  DEPS allocator)
+cc_test_old(test_aligned_allocator SRCS test_aligned_allocator.cc DEPS
+            allocator)
 
-cc_test(
-  retry_allocator_test
-  SRCS retry_allocator_test.cc
-  DEPS allocator)
+cc_test_old(retry_allocator_test SRCS retry_allocator_test.cc DEPS allocator)
 if(TEST retry_allocator_test)
   set_tests_properties(retry_allocator_test PROPERTIES LABELS
                                                        "RUN_TYPE=EXCLUSIVE")
@@ -138,10 +132,8 @@ cc_test(
   auto_growth_best_fit_allocator_facade_test
   SRCS auto_growth_best_fit_allocator_facade_test.cc
   DEPS allocator)
-cc_test(
-  auto_growth_best_fit_allocator_test
-  SRCS auto_growth_best_fit_allocator_test.cc
-  DEPS allocator)
+cc_test_old(auto_growth_best_fit_allocator_test SRCS
+            auto_growth_best_fit_allocator_test.cc DEPS allocator)
 
 if(NOT WIN32)
   cc_test(
@@ -161,11 +153,6 @@ cc_test(
   DEPS allocator)
 
 if(WITH_TESTING)
-  if(TEST buddy_allocator_test)
-    set_tests_properties(buddy_allocator_test PROPERTIES LABELS
-                                                         "RUN_TYPE=EXCLUSIVE")
-  endif()
-
   # TODO(zhiqiu): why not win32? because wget is not found on windows
   if(NOT WIN32)
     add_custom_target(
@@ -173,6 +160,5 @@ if(WITH_TESTING)
       COMMAND wget -nc --no-check-certificate
               https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar
       COMMAND tar -xf buddy_allocator_test_data.tar)
-    add_dependencies(buddy_allocator_test download_data)
   endif()
 endif()

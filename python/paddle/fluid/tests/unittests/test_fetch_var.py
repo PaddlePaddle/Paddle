@@ -12,24 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import op_test
-import numpy as np
 import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 
 
 class TestFetchVar(unittest.TestCase):
-
     def set_input(self):
         self.val = np.array([1, 3, 5]).astype(np.int32)
 
     def test_fetch_var(self):
         self.set_input()
-        x = layers.create_tensor(dtype="int32", persistable=True, name="x")
-        layers.assign(input=self.val, output=x)
+        x = paddle.tensor.create_tensor(
+            dtype="int32", persistable=True, name="x"
+        )
+        paddle.assign(self.val, output=x)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_main_program(), feed={}, fetch_list=[])
         fetched_x = fluid.executor._fetch_var("x")
@@ -38,7 +38,6 @@ class TestFetchVar(unittest.TestCase):
 
 
 class TestFetchNullVar(TestFetchVar):
-
     def set_input(self):
         self.val = np.array([]).astype(np.int32)
 

@@ -17,7 +17,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
 
 namespace paddle {
@@ -25,38 +25,25 @@ namespace operators {
 
 class ElementwiseMulOp : public ElementwiseOp {
  public:
-  using Tensor = framework::Tensor;
   using ElementwiseOp::ElementwiseOp;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()),
-          tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };

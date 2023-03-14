@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-from paddle.fluid.wrapped_decorator import wrap_decorator
 import unittest
 from unittest import TestCase
+
 import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.wrapped_decorator import wrap_decorator
 
 
 def _dygraph_guard_(func):
-
     def __impl__(*args, **kwargs):
         if fluid._non_static_mode():
             return func(*args, **kwargs)
@@ -36,7 +37,6 @@ dygraph_guard = wrap_decorator(_dygraph_guard_)
 
 
 class TestDygraphClearGradient(TestCase):
-
     def setUp(self):
         self.input_shape = [10, 2]
 

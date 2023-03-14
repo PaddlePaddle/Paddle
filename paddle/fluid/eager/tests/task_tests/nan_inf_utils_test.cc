@@ -30,32 +30,30 @@ PD_DECLARE_KERNEL(strings_empty, CPU, ALL_LAYOUT);
 
 namespace egr {
 
-#define CHECK_NAN_INF(tensors)                                         \
-  {                                                                    \
-    bool caught_exception = false;                                     \
-    try {                                                              \
-      CheckTensorHasNanOrInf("nan_inf_test", tensors);                 \
-    } catch (paddle::platform::EnforceNotMet & error) {                \
-      caught_exception = true;                                         \
-      std::string ex_msg = error.what();                               \
-      EXPECT_TRUE(ex_msg.find("There are `nan` or `inf` in tensor") != \
-                  std::string::npos);                                  \
-    }                                                                  \
-    EXPECT_TRUE(caught_exception);                                     \
+#define CHECK_NAN_INF(tensors)                                               \
+  {                                                                          \
+    bool caught_exception = false;                                           \
+    try {                                                                    \
+      CheckTensorHasNanOrInf("nan_inf_test", tensors);                       \
+    } catch (paddle::platform::EnforceNotMet & error) {                      \
+      caught_exception = true;                                               \
+      std::string ex_msg = error.what();                                     \
+      EXPECT_TRUE(ex_msg.find("There are NAN or INF") != std::string::npos); \
+    }                                                                        \
+    EXPECT_TRUE(caught_exception);                                           \
   }
 
-#define CHECK_NO_NAN_INF(tensors)                                      \
-  {                                                                    \
-    bool caught_exception = false;                                     \
-    try {                                                              \
-      CheckTensorHasNanOrInf("nan_inf_test", tensors);                 \
-    } catch (paddle::platform::EnforceNotMet & error) {                \
-      caught_exception = true;                                         \
-      std::string ex_msg = error.what();                               \
-      EXPECT_TRUE(ex_msg.find("There are `nan` or `inf` in tensor") != \
-                  std::string::npos);                                  \
-    }                                                                  \
-    EXPECT_FALSE(caught_exception);                                    \
+#define CHECK_NO_NAN_INF(tensors)                                            \
+  {                                                                          \
+    bool caught_exception = false;                                           \
+    try {                                                                    \
+      CheckTensorHasNanOrInf("nan_inf_test", tensors);                       \
+    } catch (paddle::platform::EnforceNotMet & error) {                      \
+      caught_exception = true;                                               \
+      std::string ex_msg = error.what();                                     \
+      EXPECT_TRUE(ex_msg.find("There are NAN or INF") != std::string::npos); \
+    }                                                                        \
+    EXPECT_FALSE(caught_exception);                                          \
   }
 
 TEST(NanInfUtils, Functions) {
@@ -85,17 +83,16 @@ TEST(NanInfUtils, Functions) {
   auto six_tensors =
       std::make_tuple(tensor, tensor1, tensor2, tensor3, tensor4, tensor5);
   CHECK_NAN_INF(six_tensors);
-  std::vector<paddle::experimental::Tensor> tensor_vec;
+  std::vector<paddle::Tensor> tensor_vec;
   tensor_vec.emplace_back(tensor);
   tensor_vec.emplace_back(tensor1);
   CHECK_NAN_INF(tensor_vec);
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       small_vec;
   small_vec.emplace_back(tensor_vec);
   CHECK_NAN_INF(small_vec);
   // test selected_rows
-  paddle::experimental::Tensor tensor_sr;
+  paddle::Tensor tensor_sr;
   auto sr = std::make_shared<phi::SelectedRows>();
   *sr->mutable_value() =
       *(static_cast<const phi::DenseTensor*>(tensor.impl().get()));

@@ -21,21 +21,16 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-#pragma GCC diagnostic ignored "-Wunused-variable"
 DECLARE_bool(check_nan_inf);
 
-paddle::experimental::Tensor conv2d_ad_func(
-    const paddle::experimental::Tensor& input,
-    const paddle::experimental::Tensor& filter,
-    std::vector<int> strides,
-    std::vector<int> paddings,
-    std::string paddding_algorithm,
-    int groups,
-    std::vector<int> dilations,
-    std::string data_format,
-    bool use_addto,
-    int workspace_size_MB,
-    bool exhaustive_search) {
+paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
+                              const paddle::Tensor& filter,
+                              std::vector<int> strides,
+                              std::vector<int> paddings,
+                              std::string padding_algorithm,
+                              std::vector<int> dilations,
+                              int groups,
+                              std::string data_format) {
   // Dygraph Record Event
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "conv2d dygraph", paddle::platform::TracerEventType::Operator, 1);
@@ -45,8 +40,7 @@ paddle::experimental::Tensor conv2d_ad_func(
       paddle::imperative::AmpLevel::O0) {
     VLOG(5) << "Check and Prepare For AMP";
     auto op_name = phi::TransToFluidOpName("conv2d");
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{input}, {filter}};
 
     auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
@@ -64,13 +58,10 @@ paddle::experimental::Tensor conv2d_ad_func(
                             new_filter,
                             strides,
                             paddings,
-                            paddding_algorithm,
-                            groups,
+                            padding_algorithm,
                             dilations,
-                            data_format,
-                            use_addto,
-                            workspace_size_MB,
-                            exhaustive_search);
+                            groups,
+                            data_format);
     }
   }
 
@@ -78,8 +69,7 @@ paddle::experimental::Tensor conv2d_ad_func(
 
   if (egr::Controller::Instance().UseLayoutAutoTune()) {
     VLOG(5) << "Check and Prepare For LAYOUT";
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         tensors_vector = {{input}, {filter}};
 
     auto op_name = phi::TransToFluidOpName("conv2d");
@@ -92,13 +82,10 @@ paddle::experimental::Tensor conv2d_ad_func(
                               filter,
                               strides,
                               paddings,
-                              paddding_algorithm,
-                              groups,
+                              padding_algorithm,
                               dilations,
-                              data_format,
-                              use_addto,
-                              workspace_size_MB,
-                              exhaustive_search);
+                              groups,
+                              data_format);
     transformer->SetOutTensorLayout(&out);
     if (need_tune) {
       egr::Controller::Instance().EnableLayoutAutoTune();
@@ -119,13 +106,10 @@ paddle::experimental::Tensor conv2d_ad_func(
                                                  filter,
                                                  strides,
                                                  paddings,
-                                                 paddding_algorithm,
-                                                 groups,
+                                                 padding_algorithm,
                                                  dilations,
-                                                 data_format,
-                                                 use_addto,
-                                                 workspace_size_MB,
-                                                 exhaustive_search);
+                                                 groups,
+                                                 data_format);
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d", api_result);
@@ -157,13 +141,10 @@ paddle::experimental::Tensor conv2d_ad_func(
     // SetAttributes if needed
     grad_node->SetAttributestrides(strides);
     grad_node->SetAttributepaddings(paddings);
-    grad_node->SetAttributepaddding_algorithm(paddding_algorithm);
+    grad_node->SetAttributepadding_algorithm(padding_algorithm);
     grad_node->SetAttributegroups(groups);
     grad_node->SetAttributedilations(dilations);
     grad_node->SetAttributedata_format(data_format);
-    grad_node->SetAttributeuse_addto(use_addto);
-    grad_node->SetAttributeworkspace_size_MB(workspace_size_MB);
-    grad_node->SetAttributeexhaustive_search(exhaustive_search);
     // Set TensorWrappers for Forward Inputs if needed
     grad_node->SetTensorWrapperinput(input);
     grad_node->SetTensorWrapperfilter(filter);
@@ -178,7 +159,6 @@ paddle::experimental::Tensor conv2d_ad_func(
       egr::EagerUtils::SetHistory(out_autograd_meta, grad_node);
     }
     grad_node->SetGradInMeta(out, 0);
-    egr::EagerUtils::CheckAndRetainGrad(out);
     // Set TensorWrappers for Forward Outputs if needed
   }
 

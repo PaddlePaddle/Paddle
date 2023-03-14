@@ -74,9 +74,9 @@ class OpConverter {
         }
         if (op_desc.Type().find("elementwise") != std::string::npos) {
           static std::unordered_set<std::string> add_tensor_op_set{
-              "add", "mul", "sub", "div", "max", "min", "pow"};
+              "add", "mul", "sub", "div", "max", "min", "pow", "mod"};
           static std::unordered_set<std::string> add_weight_op_set{
-              "add", "mul", "sub", "div", "pow"};
+              "add", "mul", "sub", "div", "max", "min", "pow", "mod"};
           PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
                             1UL,
                             platform::errors::InvalidArgument(
@@ -146,6 +146,14 @@ class OpConverter {
         // reshape2 == reshape
         if (op_desc.Type() == "reshape2") {
           it = Registry<OpConverter>::Global().Lookup("reshape");
+          PADDLE_ENFORCE_NOT_NULL(
+              it,
+              platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+        }
+        // lookup_table_v2 == lookup_table
+        if (op_desc.Type() == "lookup_table_v2") {
+          it = Registry<OpConverter>::Global().Lookup("lookup_table");
           PADDLE_ENFORCE_NOT_NULL(
               it,
               platform::errors::Unimplemented("no OpConverter for optype [%s]",
@@ -355,9 +363,26 @@ class OpConverter {
                           "check the INFO log above for more details."));
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);
+
     for (auto& output : outputs) {
-      engine->DeclareOutput(output);
+      auto* var = block_desc->FindVar(output);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::NotFound("no variable called %s in block.",
+                                     output.c_str()));
+      PADDLE_ENFORCE_EQ(
+          var->GetType(),
+          FluidDT::VarType_Type_LOD_TENSOR,
+          platform::errors::InvalidArgument(
+              "The output tensor in TensorRT subgraph should be LoDTensor"));
+      engine->DeclareOutput(
+          output,
+          FluidDataType2TRT(
+              var->Proto()->type().lod_tensor().tensor().data_type()));
+      VLOG(6) << "DeclareOutput(name: " << output << ", dtype: "
+              << var->Proto()->type().lod_tensor().tensor().data_type() << ")";
     }
+
     engine->FreezeNetwork();
     engine->ClearWeights();
   }
@@ -495,7 +520,7 @@ class OpConverter {
 
     int data_size = std::accumulate(
         shape.d, shape.d + shape.nbDims, 1, std::multiplies<int>());
-    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+    std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
     tmp_tensor->Resize({data_size});
     auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
     for (int i = 0; i < data_size; i++) {
@@ -530,7 +555,7 @@ class OpConverter {
           "supports float, half or int32_t."));
     }
 
-    std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+    std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
     int data_size = data.size();
     tmp_tensor->Resize({data_size});
     auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
@@ -577,6 +602,9 @@ class OpConverter {
       const std::string& layer_type,
       const std::vector<std::string>& output_tensor_names,
       bool test_mode = false) {
+    if (layer == nullptr) {
+      return;
+    }
     size_t num_out = output_tensor_names.size();
     std::string layer_name = layer_type + " (Output: ";
     for (size_t i = 0; i < num_out; i++) {

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -56,7 +56,7 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
     for (int64_t index = threadIdx.x; index < row_numel; index += blockDim.x) {
       // Since index in rows of SelectedRows can be duplicate, we have to use
       // Atomic Operation to avoid concurrent write error.
-      paddle::platform::CudaAtomicAdd(
+      phi::CudaAtomicAdd(
           tensor_out_ptr + index,
           -static_cast<T>(1.0) * learning_rate[0] * selected_rows_ptr[index]);
     }
@@ -69,25 +69,25 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+    PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
-                          "The Var(%s)'s type should be LoDTensor, "
+                          "The Var(%s)'s type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
                           paddle::framework::ToTypeName(param_var->Type())));
-    using paddle::framework::Tensor;
+
     using MPDType = typename details::MPTypeTrait<T>::Type;
 
-    auto* param = ctx.Input<framework::Tensor>("Param");
-    auto* param_out = ctx.Output<framework::Tensor>("ParamOut");
-    auto* learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    auto* param = ctx.Input<phi::DenseTensor>("Param");
+    auto* param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    auto* learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
 
     auto* grad_var = ctx.InputVar("Grad");
 
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
-    const Tensor* master_param = nullptr;
-    Tensor* master_param_out = nullptr;
+    const phi::DenseTensor* master_param = nullptr;
+    phi::DenseTensor* master_param_out = nullptr;
     if (multi_precision) {
       bool has_master =
           ctx.HasInput("MasterParam") && ctx.HasOutput("MasterParamOut");
@@ -97,8 +97,8 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
                             "The Input(MasterParam) and Output(MasterParamOut) "
                             "should not be null when "
                             "the attr `multi_precision` is true"));
-      master_param = ctx.Input<framework::Tensor>("MasterParam");
-      master_param_out = ctx.Output<framework::Tensor>("MasterParamOut");
+      master_param = ctx.Input<phi::DenseTensor>("MasterParam");
+      master_param_out = ctx.Output<phi::DenseTensor>("MasterParamOut");
     }
     const MPDType* master_in_data =
         multi_precision ? master_param->data<MPDType>() : nullptr;
@@ -107,9 +107,9 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
             ? master_param_out->mutable_data<MPDType>(ctx.GetPlace())
             : nullptr;
 
-    // Actually, all tensors are LoDTensor except SelectedRows.
-    if (grad_var->IsType<framework::LoDTensor>()) {
-      auto* grad = ctx.Input<framework::Tensor>("Grad");
+    // Actually, all tensors are phi::DenseTensor except SelectedRows.
+    if (grad_var->IsType<phi::DenseTensor>()) {
+      auto* grad = ctx.Input<phi::DenseTensor>("Grad");
 
       int block = 512;
       int grid = (param->numel() + block - 1) / block;
@@ -164,7 +164,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
       int thread_x = kThreadsPerBlock;
       int max_threads = ctx.cuda_device_context().GetMaxPhysicalThreadCount();
       int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
-      paddle::framework::MixVector<int64_t> mixv_in_rows(&in_rows);
+      phi::MixVector<int64_t> mixv_in_rows(&in_rows);
       SparseSGDFunctorKernel<<<max_blocks,
                                thread_x,
                                0,

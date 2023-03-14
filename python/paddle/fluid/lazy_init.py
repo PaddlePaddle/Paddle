@@ -17,9 +17,9 @@ from . import framework
 __all__ = ["LazyGuard"]
 
 
-class LazyInitHelper(object):
+class LazyInitHelper:
     """
-    A Helper Context to trigger switching mode between dygraph and static mode,
+    A Helper Context to trigger switching mode between dygraph and static graph mode,
     and holds the startup program resource.
     """
 
@@ -36,7 +36,8 @@ class LazyInitHelper(object):
         """
         if self._state:
             return
-        assert framework.in_dygraph_mode(
+        assert (
+            framework._non_static_mode()
         ), "LazyInit.enable() is only available in dygraph mode."
         self._state = True
 
@@ -53,12 +54,13 @@ class LazyInitHelper(object):
     def __enter__(self):
         """
         Switch into lazy mode and set _dygraph_tracer_ with None to convert
-        dygraph mode into static mode.
+        dygraph mode into static graph mode.
         """
         self.enable()
-        if self._in_guard: return
-        self._tracer = framework._dygraph_tracer_
-        framework._dygraph_tracer_ = None
+        if self._in_guard:
+            return
+        self._tracer = framework.global_var._dygraph_tracer_
+        framework.global_var._dygraph_tracer_ = None
         self._in_guard = True
 
     def __exit__(self, *args, **kwargs):
@@ -66,9 +68,10 @@ class LazyInitHelper(object):
         Exit from lazy mode and recover _dygraph_tracer_.
         """
         self.disable()
-        if not self._in_guard: return
+        if not self._in_guard:
+            return
         assert self._tracer is not None
-        framework._dygraph_tracer_ = self._tracer
+        framework.global_var._dygraph_tracer_ = self._tracer
         self._tracer = None
         self._in_guard = False
 
@@ -85,7 +88,7 @@ def lazy_init_helper():
     return _lazy_init_helper
 
 
-class LazyGuard(object):
+class LazyGuard:
     """
     LazyGuard is a wrapper interface for nn.Layer, it forwards the construct
     process of user defined Layer. Meanwhile, it provides necessary API to

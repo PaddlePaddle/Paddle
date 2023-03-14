@@ -45,7 +45,7 @@ class StandaloneExecutor {
   framework::interpreter::CostInfo DryRun(
       Scope* scope,
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors);
+      const std::vector<phi::DenseTensor>& feed_tensors);
 
  private:
   std::shared_ptr<InterpreterCore> GetInterpreterCore(

@@ -17,23 +17,22 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 class AdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
+                          ctx.GetPlace());
   }
 };
 
@@ -44,14 +43,23 @@ class AdagradOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("Moment", "(Tensor) Second moment");
     AddInput("LearningRate", "(Tensor) Learning rate");
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("MomentOut", "(Tensor) Output second moment");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
 
     AddAttr<float>("epsilon",
                    "(float, default 1.0e-6) "
                    "Constant for numerical stability")
         .SetDefault(1.0e-6f);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
     AddComment(R"DOC(
 
 Adaptive Gradient Algorithm (Adagrad).

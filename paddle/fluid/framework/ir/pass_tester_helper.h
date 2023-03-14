@@ -146,12 +146,32 @@ struct Layers {
     return unary_op("relu", x, out);
   }
 
+  VarDesc* gelu(VarDesc* x, VarDesc* out = nullptr, bool approximate = true) {
+    AttributeMap attrs;
+    attrs["approximate"] = approximate;
+    return unary_op("gelu", x, out, &attrs);
+  }
+
   VarDesc* sigmoid(VarDesc* x, VarDesc* out = nullptr) {
     return unary_op("sigmoid", x, out);
   }
 
   VarDesc* tanh(VarDesc* x, VarDesc* out = nullptr) {
     return unary_op("tanh", x, out);
+  }
+
+  VarDesc* c_identity(VarDesc* x, VarDesc* out = nullptr, int ring_id = -1) {
+    AttributeMap attrs;
+    attrs["ring_id"] = ring_id;
+    return unary_op("c_identity", x, out, &attrs);
+  }
+
+  VarDesc* c_allreduce_sum(VarDesc* x,
+                           VarDesc* out = nullptr,
+                           int ring_id = -1) {
+    AttributeMap attrs;
+    attrs["ring_id"] = ring_id;
+    return unary_op("c_allreduce_sum", x, out, &attrs);
   }
 
   VarDesc* fc(VarDesc* input,
@@ -332,6 +352,37 @@ struct Layers {
     return outs;
   }
 
+  std::vector<VarDesc*> split(VarDesc* x, int num_or_section, int axis = 0) {
+    std::vector<VarDesc*> outs(num_or_section);
+    for (int i = 0; i < num_or_section; i++) {
+      outs[i] = lod_tensor(unique_name());
+    }
+    std::vector<std::string> out_names(num_or_section);
+    for (int i = 0; i < num_or_section; i++) {
+      out_names[i] = outs[i]->Name();
+    }
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("split");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", out_names);
+    op->SetAttr("num_or_section", num_or_section);
+    op->SetAttr("axis", axis);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return outs;
+  }
+
+  VarDesc* assign(VarDesc* x) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("assign");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
   VarDesc* matmul(VarDesc* x,
                   VarDesc* y,
                   VarDesc* alpha = nullptr,
@@ -459,6 +510,154 @@ struct Layers {
     return out;
   }
 
+  VarDesc* while_loop(std::vector<VarDesc*> xs, VarDesc* cond = nullptr) {
+    VarDesc* out = lod_tensor(unique_name());
+    VarDesc* step_scopes = lod_tensor(unique_name());
+    if (cond == nullptr) cond = lod_tensor(unique_name());
+
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("while");
+    std::vector<std::string> xs_names;
+    for (auto& x : xs) xs_names.emplace_back(x->Name());
+    op->SetInput("X", xs_names);
+    op->SetInput("Condition", {cond->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetOutput("StepScopes", {step_scopes->Name()});
+    op->SetAttr("sub_block", {program_.MutableBlock(0)});
+    op->SetAttr("is_test", true);
+    return out;
+  }
+
+  VarDesc* shape(VarDesc* input) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("shape");
+    op->SetInput("Input", {input->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* slice(VarDesc* input,
+                 std::vector<int> axes,
+                 std::vector<int> starts,
+                 std::vector<int> ends) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("slice");
+    op->SetInput("Input", {input->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("axes", axes);
+    op->SetAttr("starts", starts);
+    op->SetAttr("ends", ends);
+    return out;
+  }
+
+  VarDesc* fill_constant_batch_size_like(VarDesc* x,
+                                         int dtype,
+                                         int input_dim_idx,
+                                         int output_dim_idx,
+                                         std::vector<int> shape,
+                                         float value) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("fill_constant_batch_size_like");
+    op->SetInput("Input", {x->Name()});
+    op->SetAttr("dtype", dtype);
+    op->SetAttr("input_dim_idx", input_dim_idx);
+    op->SetAttr("output_dim_idx", output_dim_idx);
+    op->SetAttr("shape", shape);
+    op->SetAttr("value", value);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* fused_multi_transformer(VarDesc* x,
+                                   VarDesc* cache_kv,
+                                   VarDesc* src_mask,
+                                   VarDesc* qkv_w,
+                                   VarDesc* qkv_bias,
+                                   VarDesc* out_linear_w,
+                                   VarDesc* out_linear_bias,
+                                   VarDesc* ffn1_w,
+                                   VarDesc* ffn1_bias,
+                                   VarDesc* ffn2_w,
+                                   VarDesc* ffn2_bias,
+                                   VarDesc* ln_scale,
+                                   VarDesc* ln_bias,
+                                   VarDesc* ffn_ln_scale,
+                                   VarDesc* ffn_ln_bias,
+                                   float epsilon,
+                                   float dropout_rate,
+                                   VarDesc* time_stamp = nullptr,
+                                   VarDesc* qkv_out_scale = nullptr,
+                                   VarDesc* out_linear_out_scale = nullptr,
+                                   VarDesc* ffn1_out_scale = nullptr,
+                                   VarDesc* ffn2_out_scale = nullptr,
+                                   std::vector<float> qkv_in_scale = {},
+                                   std::vector<float> out_linear_in_scale = {},
+                                   std::vector<float> ffn1_in_scale = {},
+                                   std::vector<float> ffn2_in_scale = {}) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    std::string op_type = qkv_out_scale ? "fused_multi_transformer_int8"
+                                        : "fused_multi_transformer";
+    op->SetType(op_type);
+    op->SetInput("X", {x->Name()});
+    op->SetInput("CacheKV", {cache_kv->Name()});
+    op->SetInput("SrcMask", {src_mask->Name()});
+    op->SetInput("QKVW", {qkv_w->Name()});
+    op->SetInput("QKVBias", {qkv_bias->Name()});
+    op->SetInput("OutLinearW", {out_linear_w->Name()});
+    op->SetInput("OutLinearBias", {out_linear_bias->Name()});
+    op->SetInput("FFN1Weight", {ffn1_w->Name()});
+    op->SetInput("FFN1Bias", {ffn1_bias->Name()});
+    op->SetInput("FFN2Weight", {ffn2_w->Name()});
+    op->SetInput("FFN2Bias", {ffn2_bias->Name()});
+    op->SetInput("LnScale", {ln_scale->Name()});
+    op->SetInput("LnBias", {ln_bias->Name()});
+    op->SetInput("FFNLnScale", {ffn_ln_scale->Name()});
+    op->SetInput("FFNLnBias", {ffn_ln_bias->Name()});
+    op->SetAttr("pre_layer_norm", true);
+    op->SetAttr("is_test", true);
+    op->SetAttr("dropout_implementation", "upscale_in_train");
+    op->SetAttr("dropout_rate", dropout_rate);
+    op->SetAttr("epsilon", epsilon);
+    op->SetOutput("Out", {out->Name()});
+
+    if (time_stamp) {
+      op->SetInput("TimeStep", {time_stamp->Name()});
+    }
+
+    if (qkv_out_scale) {
+      op->SetInput("QKVOutScale", {qkv_out_scale->Name()});
+      op->SetInput("OutLinearOutScale", {out_linear_out_scale->Name()});
+      op->SetInput("FFN1OutScale", {ffn1_out_scale->Name()});
+      op->SetInput("FFN2OutScale", {ffn2_out_scale->Name()});
+      op->SetAttr("qkv_in_scale", qkv_in_scale);
+      op->SetAttr("out_linear_in_scale", out_linear_in_scale);
+      op->SetAttr("ffn1_in_scale", ffn1_in_scale);
+      op->SetAttr("ffn2_in_scale", ffn2_in_scale);
+    }
+    return out;
+  }
+
+  VarDesc* dequantize_linear(VarDesc* x,
+                             VarDesc* scale,
+                             VarDesc* zero_point,
+                             int bit_length = 8,
+                             int quant_axis = -1) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("dequantize_linear");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Scale", {scale->Name()});
+    op->SetInput("ZeroPoint", {zero_point->Name()});
+    op->SetAttr("bit_length", bit_length);
+    op->SetAttr("quant_axis", quant_axis);
+    op->SetOutput("Y", {out->Name()});
+    return out;
+  }
+
   void backward(std::vector<VarDesc*> targets) {
     // This function is designed to simulate the structure of training program,
     //  but is constructed differently as the actual program.
@@ -523,7 +722,10 @@ struct Layers {
     return var;
   }
 
-  VarDesc* unary_op(std::string type, VarDesc* x, VarDesc* out = nullptr) {
+  VarDesc* unary_op(std::string type,
+                    VarDesc* x,
+                    VarDesc* out = nullptr,
+                    const AttributeMap* attrs = nullptr) {
     if (!out) {
       out = lod_tensor(unique_name());
     }
@@ -531,6 +733,11 @@ struct Layers {
     op->SetType(type);
     op->SetInput("X", {x->Name()});
     op->SetOutput("Out", {out->Name()});
+    if (attrs) {
+      for (auto& iter : *attrs) {
+        op->SetAttr(iter.first, iter.second);
+      }
+    }
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
@@ -724,6 +931,21 @@ static int GetNumOpNodes(const std::unique_ptr<Graph>& graph,
     }
   }
   return num_nodes;
+}
+
+static void RegisterOpKernel(std::vector<std::string>&& op_types) {
+  auto& all_kernels = OperatorWithKernel::AllOpKernels();
+
+  platform::CPUPlace place = platform::CPUPlace();
+  OpKernelType mkldnn_kernel_type = OpKernelType(proto::VarType::FP32,
+                                                 place,
+                                                 DataLayout::kAnyLayout,
+                                                 LibraryType::kMKLDNN);
+
+  auto fake_kernel_func = [](const ExecutionContext&) -> void {};
+
+  for (auto& op_name : op_types)
+    all_kernels[op_name][mkldnn_kernel_type] = fake_kernel_func;
 }
 
 }  // namespace ir

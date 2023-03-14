@@ -12,35 +12,73 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import argparse
 import os
-import sys
-import signal
-import time
-import socket
-from contextlib import closing
-from six import string_types
-import math
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-import paddle.fluid.unique_name as nameGen
-from paddle.fluid import core
-import unittest
 import pickle
-from multiprocessing import Process
-import paddle.fluid.layers as layers
-from functools import reduce
+import sys
+
 import test_collective_api_base as test_base
+
+import paddle
+import paddle.distributed as dist
+import paddle.fluid as fluid
+import paddle.fluid.data_feeder as data_feeder
+import paddle.framework as framework
 
 paddle.enable_static()
 
 
-class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
+def all_gather_new(tensor_list, tensor, group=None):
+    op_type = 'all_gather'
+    helper = framework.LayerHelper(op_type, **locals())
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+    for elem in tensor_list:
+        data_feeder.check_variable_and_dtype(
+            elem,
+            'tensor_list',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'int8',
+                'uint8',
+            ],
+            op_type,
+        )
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'int8',
+            'uint8',
+        ],
+        op_type,
+    )
 
+    ring_id = 0 if group is None else group.id
+    nranks = dist.get_world_size()
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [out]},
+        attrs={
+            'ring_id': ring_id,
+            'nranks': nranks,
+        },
+    )
+    tensor_list.clear()
+    tensor_list.extend(paddle.split(out, nranks, 0))
+
+
+class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
@@ -48,8 +86,21 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         dtype = "float32" if dtype is None else dtype
         with fluid.program_guard(main_prog, startup_program):
             tensor_list = []
-            tindata = layers.data(name="tindata", shape=[10, 1000], dtype=dtype)
+            tindata = paddle.static.data(
+                name="tindata", shape=[10, 1000], dtype=dtype
+            )
             paddle.distributed.all_gather(tensor_list, tindata)
+            return tensor_list
+
+    def get_model_new(
+        self, main_prog, startup_program, rank, dtype=None, reduce_type=None
+    ):
+        with fluid.program_guard(main_prog, startup_program):
+            tensor_list = []
+            tindata = paddle.static.data(
+                name="tindata", shape=[10, 1000], dtype=dtype
+            )
+            all_gather_new(tensor_list, tindata)
             return tensor_list
 
     def run_trainer(self, args):
@@ -59,33 +110,43 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        paddle.distributed.init_parallel_env()
+        if args["use_comm_context"]:
+            paddle.distributed.collective._init_parallel_env(args["backend"])
+        else:
+            paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(
-                device_id)  #if args.use_gpu else fluid.CPUPlace()
+                device_id
+            )  # if args.use_gpu else fluid.CPUPlace()
         elif args['backend'] == 'bkcl':
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = fluid.XPUPlace(device_id)
         else:
             place = fluid.CPUPlace()
-        indata = test_base.create_test_data(shape=(10, 1000),
-                                            dtype=args["dtype"],
-                                            seed=os.getpid())
-        assert args[
-            'static_mode'] == 1, "collective_allgather_api only support static mode"
-        result = self.get_model(train_prog,
-                                startup_prog,
-                                rank,
-                                dtype=args["dtype"])
+        indata = test_base.create_test_data(
+            shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
+        )
+        assert (
+            args['static_mode'] == 1
+        ), "collective_allgather_api only support static graph mode"
+        result = (
+            self.get_model_new(
+                train_prog, startup_prog, rank, dtype=args["dtype"]
+            )
+            if args["use_comm_context"]
+            else self.get_model(
+                train_prog, startup_prog, rank, dtype=args["dtype"]
+            )
+        )
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         fetch_list = []
         for elem in result:
             fetch_list.append(elem.name)
-        out = exe.run(train_prog,
-                      feed={'tindata': indata},
-                      fetch_list=fetch_list)
+        out = exe.run(
+            train_prog, feed={'tindata': indata}, fetch_list=fetch_list
+        )
         sys.stdout.buffer.write(pickle.dumps(out))
 
 

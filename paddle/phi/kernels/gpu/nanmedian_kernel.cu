@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/nanmedian_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/nanmedian_kernel_impl.h"
@@ -25,7 +25,7 @@
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -56,15 +56,15 @@ __global__ void KernelNanCounts(const T* input,
     const T x = input[index];
     if (isnan(static_cast<float>(x))) {
       auto bin = static_cast<int64_t>(index / stride);
-      paddle::platform::CudaAtomicAdd(&buf[bin], 1);
+      phi::CudaAtomicAdd(&buf[bin], 1);
     }
   }
   __syncthreads();
 
   for (int i = threadIdx.x; i < pre_dim; i += blockDim.x) {
-    paddle::platform::CudaAtomicAdd(&nan_counts[i], buf[i]);
-    paddle::platform::CudaAtomicAdd(&nan_total[0], buf[i]);
-    paddle::platform::CudaAtomicMax(&nan_total[1], stride - buf[i]);
+    phi::CudaAtomicAdd(&nan_counts[i], buf[i]);
+    phi::CudaAtomicAdd(&nan_total[0], buf[i]);
+    phi::CudaAtomicMax(&nan_total[1], stride - buf[i]);
   }
 }
 
@@ -176,15 +176,15 @@ void ProcessMedianKernel(const Context& dev_ctx,
                                    nan_counts_ptr);
 
     auto nan_stat_mem_cpu =
-        paddle::memory::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
+        phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
     int64_t* nan_stat_cpu_ptr =
         reinterpret_cast<int64_t*>(nan_stat_mem_cpu->ptr());
-    paddle::memory::Copy(phi::CPUPlace(),
-                         nan_stat_cpu_ptr,
-                         dev_ctx.GetPlace(),
-                         nan_stat_mem,
-                         sizeof(int64_t) * 2,
-                         stream);
+    memory_utils::Copy(phi::CPUPlace(),
+                       nan_stat_cpu_ptr,
+                       dev_ctx.GetPlace(),
+                       nan_stat_mem,
+                       sizeof(int64_t) * 2,
+                       stream);
 
     // all elements are nan values
     T nan_val = std::numeric_limits<T>::quiet_NaN();

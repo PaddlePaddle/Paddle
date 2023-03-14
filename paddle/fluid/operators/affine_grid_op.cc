@@ -28,8 +28,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 class AffineGridOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -132,17 +130,10 @@ class AffineGridOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::CanCUDNNBeUsed(ctx)) {
-      library = framework::LibraryType::kCUDNN;
-    }
-#endif
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Theta");
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), framework::DataLayout::kAnyLayout, library);
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -250,19 +241,11 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::CanCUDNNBeUsed(ctx)) {
-      library_ = framework::LibraryType::kCUDNN;
-    }
-#endif
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Output")),
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout,
-                                   library_);
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Output"));
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 

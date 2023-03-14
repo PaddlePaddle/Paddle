@@ -12,21 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import os
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestCollectiveBatchIsendIrecv(TestMultipleGpus):
-
     def test_collective_batch_isend_irecv(self):
         self.run_mnist_2gpu('collective_batch_isend_irecv.py', eager_mode=True)
 
 
 if __name__ == "__main__":
-    os.environ["FLAGS_enable_eager_mode"] = "1"
     unittest.main()

@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import queue
-import threading
 import os
-import json
-import time
+import queue
 import sys
+import threading
+import time
 
 taskQueue = queue.Queue()
 
@@ -32,9 +31,12 @@ def worker(fun):
 def threadPool(threadPoolNum):
     threadPool = []
     for i in range(threadPoolNum):
-        thread = threading.Thread(target=worker, args={
-            doFun,
-        })
+        thread = threading.Thread(
+            target=worker,
+            args={
+                doFun,
+            },
+        )
         thread.daemon = True
         threadPool.append(thread)
     return threadPool
@@ -61,11 +63,38 @@ def insert_pile_to_h_file(rootPath):
         os.system('echo "\n#include <cstdio>\n" >> %s' % line)
         os.system(
             'echo "__attribute__((constructor)) static void calledFirst%s()\n{" >> %s'
-            % (func, line))
+            % (func, line)
+        )
         os.system(
-            'echo \'    printf("precise test map fileeee: %%s\\\\n", __FILE__);\n}\' >> %s'
-            % line)
+            'echo \'    fprintf(stderr,"precise test map fileeee: %%s\\\\n", __FILE__);\n}\' >> %s'
+            % line
+        )
         os.system('echo "\n#endif" >> %s' % line)
+
+
+def add_simple_cxx_test(rootPath):
+    variant_test_path = '%s/paddle/utils/variant_test.cc' % rootPath
+    variant_test_cmakeflie_path = '%s/paddle/utils/CMakeLists.txt' % rootPath
+    if os.path.exists(variant_test_path) and os.path.exists(
+        variant_test_cmakeflie_path
+    ):
+        simple_test_path = '%s/paddle/utils/simple_precision_test.cc' % rootPath
+        os.system('touch %s' % simple_test_path)
+        os.system(
+            "echo '#include \"gtest/gtest.h\"\n' >> %s" % simple_test_path
+        )
+        os.system(
+            'echo "TEST(interface_test, type) { }\n" >> %s' % simple_test_path
+        )
+        os.system('echo "cc_test(" >> %s' % variant_test_cmakeflie_path)
+        os.system(
+            'echo "  simple_precision_test" >> %s' % variant_test_cmakeflie_path
+        )
+        os.system(
+            'echo "  SRCS simple_precision_test.cc" >> %s'
+            % variant_test_cmakeflie_path
+        )
+        os.system('echo "  DEPS gtest)\n" >> %s' % variant_test_cmakeflie_path)
 
 
 def remove_pile_from_h_file(rootPath):
@@ -86,9 +115,14 @@ def get_h_cu_file(file_path):
     dir_path = file_path[1]
     filename = file_path[2]
     ut = filename.replace('^', '').replace('$', '').replace('.log', '')
-    os.system(
-        "cat %s/%s | grep 'precise test map fileeee:'| uniq >> %s/build/ut_map/%s/related_%s.txt"
-        % (dir_path, filename, rootPath, ut, ut))
+    ut_path = "%s/build/ut_map/%s" % (rootPath, ut)
+    if os.path.exists(ut_path):
+        os.system(
+            "cat %s/%s | grep 'precise test map fileeee:'| uniq >> %s/build/ut_map/%s/related_%s.txt"
+            % (dir_path, filename, rootPath, ut, ut)
+        )
+    else:
+        print("%s has failed,no has direcotory" % ut)
 
 
 def doFun(file_path):
@@ -121,6 +155,7 @@ if __name__ == "__main__":
     elif func == 'insert_pile_to_h_file':
         rootPath = sys.argv[2]
         insert_pile_to_h_file(rootPath)
+        add_simple_cxx_test(rootPath)
     elif func == 'analy_h_cu_file':
         dir_path = sys.argv[2]
         rootPath = sys.argv[3]

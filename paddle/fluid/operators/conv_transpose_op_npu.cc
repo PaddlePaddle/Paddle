@@ -20,16 +20,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("Input");
-    const Tensor* filter = ctx.Input<Tensor>("Filter");
-    Tensor* output = ctx.Output<Tensor>("Output");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
+    const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
+    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
     std::vector<int> output_padding =
         ctx.Attr<std::vector<int>>("output_padding");
@@ -65,7 +64,7 @@ class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides(4, 1);
     std::vector<int> dilations(4, 1);
 
-    Tensor input_tensor, output_tensor;
+    phi::DenseTensor input_tensor, output_tensor;
     input_tensor.ShareDataWith(*input);
     output_tensor.ShareDataWith(*output);
 
@@ -107,12 +106,14 @@ template <typename T>
 class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("Input");
-    const Tensor* filter = ctx.Input<Tensor>("Filter");
-    const Tensor* output_grad =
-        ctx.Input<Tensor>(framework::GradVarName("Output"));
-    Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
-    Tensor* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
+    const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
+    const phi::DenseTensor* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
+    phi::DenseTensor* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+    phi::DenseTensor* filter_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
 
     if ((!input_grad) && (!filter_grad)) return;
 
@@ -122,15 +123,14 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     const int groups = ctx.Attr<int>("groups");
     std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     const std::string data_format = ctx.Attr<std::string>("data_format");
-    const framework::DataLayout data_layout =
-        framework::StringToDataLayout(data_format);
+    const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
 
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
     // auto out_grad_dims = output_grad->dims();
     // const int batch_size = static_cast<int>(input->dims()[0]);
 
-    const bool channel_last = (data_layout == framework::DataLayout::kNHWC);
+    const bool channel_last = (data_layout == phi::DataLayout::kNHWC);
 
     framework::DDim in_data_dims;
     if (channel_last) {
@@ -147,7 +147,7 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides_vec(4, 1);
     std::vector<int> dilations_vec(4, 1);
 
-    Tensor input_tensor, output_grad_tensor;
+    phi::DenseTensor input_tensor, output_grad_tensor;
     input_tensor.ShareDataWith(*input);
     output_grad_tensor.ShareDataWith(*output_grad);
     if (channel_last) {
@@ -181,7 +181,7 @@ class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
     }
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
-      Tensor input_grad_tensor;
+      phi::DenseTensor input_grad_tensor;
       input_grad_tensor.ShareDataWith(*input_grad);
       if (channel_last) {
         input_grad_tensor.set_layout(DataLayout::kNHWC);
@@ -203,9 +203,9 @@ template <typename T>
 class Conv3DTransposeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("Input");
-    const Tensor* filter = ctx.Input<Tensor>("Filter");
-    Tensor* output = ctx.Output<Tensor>("Output");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
+    const phi::DenseTensor* filter = ctx.Input<phi::DenseTensor>("Filter");
+    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
     std::vector<int> output_padding =
         ctx.Attr<std::vector<int>>("output_padding");
@@ -247,7 +247,7 @@ class Conv3DTransposeNPUKernel : public framework::OpKernel<T> {
     std::vector<int> strides(5, 1);
     std::vector<int> dilations(5, 1);
 
-    Tensor input_tensor, output_tensor, filter_tensor;
+    phi::DenseTensor input_tensor, output_tensor, filter_tensor;
     input_tensor.Resize(input->dims());
     input_tensor.ShareDataWith(*input);
     output_tensor.Resize(output->dims());

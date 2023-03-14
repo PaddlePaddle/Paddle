@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# url: https://aistudio.baidu.com/aistudio/projectdetail/3756986?forkThirdPart=1
-from net import EfficientNet
-from paddle.jit import to_static
-from paddle.static import InputSpec
-import paddle
 import sys
 
+# url: https://aistudio.baidu.com/aistudio/projectdetail/3756986?forkThirdPart=1
+from net import EfficientNet
+
+import paddle
+from paddle.jit import to_static
+from paddle.static import InputSpec
+
 model = EfficientNet.from_name('efficientnet-b4')
-net = to_static(model,
-                input_spec=[InputSpec(shape=[None, 3, 256, 256], name='x')])
+net = to_static(
+    model, input_spec=[InputSpec(shape=[None, 3, 256, 256], name='x')]
+)
 paddle.jit.save(net, sys.argv[1])

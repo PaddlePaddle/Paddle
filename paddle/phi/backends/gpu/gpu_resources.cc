@@ -14,6 +14,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 
+#include <set>
+
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -22,6 +24,7 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
+#include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
@@ -32,8 +35,7 @@
 
 #include "unsupported/Eigen/CXX11/Tensor"
 
-// TODO(phi): remove fluid header.
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
@@ -56,6 +58,28 @@ void InitGpuProperties(Place place,
       backends::gpu::GetGPUMaxThreadsPerBlock(place.GetDeviceId());
   *driver_version = backends::gpu::GetGPUDriverVersion(place.GetDeviceId());
   *runtime_version = backends::gpu::GetGPURuntimeVersion(place.GetDeviceId());
+
+  const gpuDeviceProp& prop =
+      backends::gpu::GetDeviceProperties(place.GetDeviceId());
+
+#ifdef PADDLE_WITH_CUDA
+  static const std::set<int> compiled_archs{CUDA_REAL_ARCHS};
+  // Make sure compiled cuda arch is as same as runtime cuda arch.
+  if (compiled_archs.find(*compute_capability) == compiled_archs.cend() &&
+      compiled_archs.find(prop.major * 10) == compiled_archs.cend()) {
+    static std::atomic<bool> once_flag(false);
+    if (!once_flag.exchange(true)) {
+      std::string compile_arch_str = "";
+      for (const int32_t& arch : compiled_archs) {
+        compile_arch_str += std::to_string(arch) + " ";
+      }
+      LOG(WARNING) << "Paddle with runtime capability " << *compute_capability
+                   << " is not compatible with Paddle installation with arch: "
+                   << compile_arch_str
+                   << ". Please check compiled version of Paddle. ";
+    }
+  }
+#endif
 
   // TODO(wilber): glog may be replaced in the future?
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: "
@@ -97,6 +121,22 @@ void InitGpuProperties(Place place,
       (*driver_version / 1000) * 10 + (*driver_version % 100) / 10;
   auto compile_cuda_version =
       (CUDA_VERSION / 1000) * 10 + (CUDA_VERSION % 100) / 10;
+#if defined(__linux__)
+  PADDLE_ENFORCE_EQ(
+      (local_cuda_version / 10 < compile_cuda_version / 10) &&
+          (cudnn_dso_ver / 1000 < CUDNN_VERSION / 1000),
+      false,
+      phi::errors::InvalidArgument(
+          "The installed Paddle is compiled with CUDA%d/cuDNN%d,"
+          "but CUDA/cuDNN version in your machine is CUDA%d/cuDNN%d. "
+          "which will cause serious incompatible bug. "
+          "Please recompile or reinstall Paddle with compatible CUDA/cuDNN "
+          "version.",
+          compile_cuda_version / 10,
+          CUDNN_VERSION / 1000,
+          local_cuda_version / 10,
+          cudnn_dso_ver / 1000));
+#endif
   if (local_cuda_version < compile_cuda_version) {
     LOG_FIRST_N(WARNING, 1)
         << "WARNING: device: " << static_cast<int>(place.device)

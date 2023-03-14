@@ -12,29 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
 
 
 class TestMinusOp(OpTest):
-
     def setUp(self):
         self.op_type = "minus"
         self.inputs = {
             'X': np.random.random((32, 84)).astype("float32"),
-            'Y': np.random.random((32, 84)).astype("float32")
+            'Y': np.random.random((32, 84)).astype("float32"),
         }
         self.outputs = {'Out': (self.inputs['X'] - self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
 
 
 if __name__ == "__main__":

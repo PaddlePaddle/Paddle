@@ -22,7 +22,7 @@ template <typename DeviceContext, typename T>
 class NPUSeedKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int user_seed = ctx.Attr<int>("seed");
     std::random_device rnd;
     int seed;

@@ -79,7 +79,6 @@ __global__ void ScatterKernelV2(const T* input,
                                 const int* index_groups,
                                 const int non_zero_num,
                                 const int kernel_size,
-                                const int max_voxel,
                                 const int channels,
                                 const int buffer_counts,
                                 T* out) {
@@ -97,11 +96,10 @@ __global__ void ScatterKernelV2(const T* input,
                           &sums);
     for (int it = 0; it < buffer_counts; it++) {
       int len = index_counts[indices_i + it * non_zero_num];
-      const int group_offset = it * max_voxel * kernel_size * non_zero_num;
+      const int group_offset = it * kernel_size * non_zero_num;
       for (int j = 0; j < len; j++) {
         const int out_feature_i =
-            index_groups[indices_i * max_voxel * kernel_size + j +
-                         group_offset];
+            index_groups[indices_i * kernel_size + j + group_offset];
         LoadT vec_in;
         phi::Load<T, VecSize>(
             input + out_feature_i * channels + channels_i * VecSize, &vec_in);
@@ -123,7 +121,6 @@ void ScatterV2(const GPUContext& dev_ctx,
                const int* index_groups,
                const int non_zero_num,
                const int kernel_size,
-               const int max_voxel,
                const int channels,
                const int buffer_counts,
                T* output) {
@@ -139,7 +136,6 @@ void ScatterV2(const GPUContext& dev_ctx,
                                                       index_groups,
                                                       non_zero_num,
                                                       kernel_size,
-                                                      max_voxel,
                                                       channels,
                                                       buffer_counts,
                                                       output);
@@ -154,7 +150,6 @@ void ScatterV2(const GPUContext& dev_ctx,
                                                 index_groups,
                                                 non_zero_num,
                                                 kernel_size,
-                                                max_voxel,
                                                 channels,
                                                 buffer_counts,
                                                 output);

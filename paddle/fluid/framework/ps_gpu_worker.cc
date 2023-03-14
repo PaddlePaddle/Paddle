@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -164,7 +165,7 @@ void PSGPUWorker::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (tensor == nullptr || !tensor->IsInitialized()) {
         continue;
       }

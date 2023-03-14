@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestMul(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -35,7 +35,7 @@ class TestMul(IPUOpTest):
             return True
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_mul
+        self.op = paddle.tensor.math._multiply_with_axis
 
     def set_feed_attr(self):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
@@ -43,12 +43,12 @@ class TestMul(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
-        y = paddle.static.data(name=self.feed_list[1],
-                               shape=self.feed_shape[1],
-                               dtype='float32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
         out = self.op(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -125,43 +125,36 @@ class TestMul(IPUOpTest):
 
 
 class TestAdd(TestMul):
-
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_add
+        self.op = paddle.add
 
 
 class TestSub(TestMul):
-
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_sub
+        self.op = paddle.subtract
 
 
 class TestDiv(TestMul):
-
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_div
+        self.op = paddle.divide
 
 
 class TestMin(TestMul):
-
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_min
+        self.op = paddle.minimum
 
 
 class TestMax(TestMul):
-
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_max
+        self.op = paddle.maximum
 
 
 class TestPow(TestMul):
-
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_pow
+        self.op = paddle.pow
 
 
 class TestMod(TestMul):
-
     def set_atol(self):
         self.atol = 1e-7
         self.rtol = 1e-5
@@ -169,7 +162,7 @@ class TestMod(TestMul):
         self.rtol_fp16 = 1e-3
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_mod
+        self.op = paddle.remainder
 
 
 if __name__ == "__main__":

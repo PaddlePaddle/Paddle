@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import unittest
-import paddle
 import warnings
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
-from paddle.fluid.layers.control_flow import cond
+
+import paddle
+from paddle.static.nn import cond
 
 
 @paddle.jit.to_static
@@ -38,7 +38,6 @@ def false_fn():
 
 
 class TestReturnNoneInIfelse(unittest.TestCase):
-
     def test_dy2static_warning(self):
         paddle.disable_static()
         with warnings.catch_warnings(record=True) as w:
@@ -47,9 +46,10 @@ class TestReturnNoneInIfelse(unittest.TestCase):
             flag = False
             for warn in w:
                 if (
-                        issubclass(warn.category, UserWarning)
+                    issubclass(warn.category, UserWarning)
                 ) and "Set var to 'None' in ifelse block might lead to error." in str(
-                        warn.message):
+                    warn.message
+                ):
                     flag = True
                     break
             self.assertTrue(flag)
@@ -64,9 +64,10 @@ class TestReturnNoneInIfelse(unittest.TestCase):
             flag = False
             for warn in w:
                 if (
-                        issubclass(warn.category, UserWarning)
+                    issubclass(warn.category, UserWarning)
                 ) and "Set var to 'None' in ifelse block might lead to error." in str(
-                        warn.message):
+                    warn.message
+                ):
                     flag = True
                     break
             self.assertTrue(flag)

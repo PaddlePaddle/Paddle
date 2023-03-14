@@ -23,18 +23,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 using SelectedRows = phi::SelectedRows;
-using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
 class SumNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensor>()) {
-      auto *out = out_var->GetMutable<framework::LoDTensor>();
-      auto x = ctx.MultiInput<Tensor>("X");
+    if (out_var->IsType<phi::DenseTensor>()) {
+      auto *out = out_var->GetMutable<phi::DenseTensor>();
+      auto x = ctx.MultiInput<phi::DenseTensor>("X");
       out->mutable_data<T>(ctx.GetPlace());
 
       auto place = ctx.GetPlace();
@@ -45,7 +43,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
         return;
       }
 
-      std::vector<framework::Tensor> inputs;
+      std::vector<phi::DenseTensor> inputs;
       std::vector<std::string> names;
       for (int i = 0; i < n; ++i) {
         if (x[i] && x[i]->numel() > 0) {
@@ -107,7 +105,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Expected type of Output(out) must be Tensor or "
+          "Expected type of Output(out) must be phi::DenseTensor or "
           "LoDTensorArray. But got "
           "unsupport type: %s.",
           framework::ToTypeName(out_var->Type())));

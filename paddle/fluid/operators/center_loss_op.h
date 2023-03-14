@@ -20,13 +20,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -45,10 +44,10 @@ template <typename DeviceContext, typename T>
 class CenterLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *X = ctx.Input<Tensor>("X");  // deep feature
-    auto *labels = ctx.Input<Tensor>("Label");
-    auto *centers = ctx.Input<Tensor>("Centers");
-    auto *update_rate = ctx.Input<Tensor>("CenterUpdateRate");
+    auto *X = ctx.Input<phi::DenseTensor>("X");  // deep feature
+    auto *labels = ctx.Input<phi::DenseTensor>("Label");
+    auto *centers = ctx.Input<phi::DenseTensor>("Centers");
+    auto *update_rate = ctx.Input<phi::DenseTensor>("CenterUpdateRate");
     int cluster_num = ctx.Attr<int>("cluster_num");
     auto *lr_center = update_rate->data<T>();
     T alpha = lr_center[0];
@@ -64,11 +63,11 @@ class CenterLossKernel : public framework::OpKernel<T> {
     int batch_size = x_dims[0];
     int deep_feat_dim = x_dims[1];
 
-    auto centers_diff = ctx.Output<Tensor>("SampleCenterDiff");
+    auto centers_diff = ctx.Output<phi::DenseTensor>("SampleCenterDiff");
     auto centers_diff_data = centers_diff->mutable_data<T>(ctx.GetPlace());
-    auto *out_loss = ctx.Output<Tensor>("Loss");
+    auto *out_loss = ctx.Output<phi::DenseTensor>("Loss");
 
-    auto *centers_out = ctx.Output<Tensor>("CentersOut");
+    auto *centers_out = ctx.Output<phi::DenseTensor>("CentersOut");
     auto *centers_out_data = centers_out->mutable_data<T>(ctx.GetPlace());
 
     if (centers_out_data != centers_data) {
@@ -81,7 +80,7 @@ class CenterLossKernel : public framework::OpKernel<T> {
 
     auto loss_data = out_loss->mutable_data<T>(ctx.GetPlace());
 
-    Tensor centers_diffacc;  // used to accumulate all diff
+    phi::DenseTensor centers_diffacc;  // used to accumulate all diff
     auto centers_diffacc_data =
         centers_diffacc.mutable_data<T>(centers_dim, ctx.GetPlace());
     int numel = centers_diffacc.numel();
@@ -95,7 +94,7 @@ class CenterLossKernel : public framework::OpKernel<T> {
     T *center_out_index;
     T *center_loss_diff_index;
     T *acc_index;
-    platform::Transform<DeviceContext> trans;
+    phi::Transform<DeviceContext> trans;
 
     for (int i = 0; i < batch_size; ++i) {
       tLabel = label_data[i];
@@ -138,9 +137,9 @@ template <typename DeviceContext, typename T>
 class CenterLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *in0 = context.Input<Tensor>("SampleCenterDiff");
-    auto *in1 = context.Input<Tensor>(framework::GradVarName("Loss"));
-    auto *x_g = context.Output<Tensor>(framework::GradVarName("X"));
+    auto *in0 = context.Input<phi::DenseTensor>("SampleCenterDiff");
+    auto *in1 = context.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
+    auto *x_g = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto sub_result = EigenMatrix<T>::From(*in0);
     auto out_grad = EigenMatrix<T>::From(*in1);
 

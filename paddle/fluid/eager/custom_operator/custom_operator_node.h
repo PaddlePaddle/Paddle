@@ -37,21 +37,21 @@ class RunCustomOpNode : public GradNodeBase {
   }
 
   // Functor: perform backward computations
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>
   operator()(  // NOLINT
-      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+      paddle::small_vector<std::vector<paddle::Tensor>,
                            kSlotSmallVectorSize>& grads,  // NOLINT
       bool create_graph = false,
       bool is_new_grad = false)  // NOLINT
       override;
 
-  std::string name() {
+  std::string name() override {
     return paddle::string::Sprintf("RunCustomOpNode: %s_grad", op_type_);
   }
 
   static std::vector<egr::TensorWrapper> ConstructTensorWrapper(
-      const std::vector<paddle::experimental::Tensor>& fwd_var) {
+      const std::vector<paddle::Tensor>& fwd_var) {
     std::vector<egr::TensorWrapper> res;
     for (auto const& var : fwd_var) {
       res.emplace_back(var);
@@ -59,9 +59,9 @@ class RunCustomOpNode : public GradNodeBase {
     return res;
   }
 
-  static std::vector<paddle::experimental::Tensor> Recover(
+  static std::vector<paddle::Tensor> Recover(
       std::vector<egr::TensorWrapper>* fwd_var) {
-    std::vector<paddle::experimental::Tensor> res;
+    std::vector<paddle::Tensor> res;
     for (size_t i = 0; i < fwd_var->size(); i++) {
       res.emplace_back(fwd_var->at(i).recover());
     }
@@ -107,22 +107,22 @@ class RunCustomOpDoubleGradNode : public GradNodeBase {
   }
 
   // Functor: perform backward computations
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>
   operator()(  // NOLINT
-      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+      paddle::small_vector<std::vector<paddle::Tensor>,
                            kSlotSmallVectorSize>& grads,  // NOLINT
       bool create_graph = false,
       bool is_new_grad = false)  // NOLINT
       override;
 
-  std::string name() {
+  std::string name() override {
     return paddle::string::Sprintf("RunCustomOpDoubleGradNode: %s_grad_grad",
                                    op_type_);
   }
 
   static std::vector<egr::TensorWrapper> ConstructTensorWrapper(
-      const std::vector<paddle::experimental::Tensor>& fwd_var) {
+      const std::vector<paddle::Tensor>& fwd_var) {
     std::vector<egr::TensorWrapper> res;
     for (auto const& var : fwd_var) {
       res.emplace_back(var);
@@ -130,9 +130,9 @@ class RunCustomOpDoubleGradNode : public GradNodeBase {
     return res;
   }
 
-  static std::vector<paddle::experimental::Tensor> Recover(
+  static std::vector<paddle::Tensor> Recover(
       std::vector<egr::TensorWrapper>* fwd_var) {
-    std::vector<paddle::experimental::Tensor> res;
+    std::vector<paddle::Tensor> res;
     for (size_t i = 0; i < fwd_var->size(); i++) {
       res.emplace_back(fwd_var->at(i).recover());
     }

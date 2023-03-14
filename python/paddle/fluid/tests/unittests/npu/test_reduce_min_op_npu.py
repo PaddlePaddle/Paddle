@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
@@ -28,7 +26,8 @@ paddle.enable_static()
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestNPUReduceMinOp(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -56,7 +55,8 @@ class TestNPUReduceMinOp(OpTest):
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMinOpMultiAxises(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -74,7 +74,8 @@ class TestReduceMinOpMultiAxises(TestNPUReduceMinOp):
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceAll(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -90,7 +91,8 @@ class TestReduceAll(TestNPUReduceMinOp):
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMinOpWithOutDtype_bool(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -102,17 +104,19 @@ class TestReduceMinOpWithOutDtype_bool(TestNPUReduceMinOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.BOOL)
+            'out_dtype': int(core.VarDesc.VarType.BOOL),
         }
         self.outputs = {
-            'Out':
-            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(np.bool_)
+            'Out': self.inputs['X']
+            .min(axis=tuple(self.attrs['dim']))
+            .astype(np.bool_)
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMinOpWithOutDtype_int16(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -124,18 +128,20 @@ class TestReduceMinOpWithOutDtype_int16(TestNPUReduceMinOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.INT16)
+            'out_dtype': int(core.VarDesc.VarType.INT16),
         }
 
         self.outputs = {
-            'Out':
-            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(np.int16)
+            'Out': self.inputs['X']
+            .min(axis=tuple(self.attrs['dim']))
+            .astype(np.int16)
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMinOpWithOutDtype_int32(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -147,17 +153,19 @@ class TestReduceMinOpWithOutDtype_int32(TestNPUReduceMinOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.INT32)
+            'out_dtype': int(core.VarDesc.VarType.INT32),
         }
         self.outputs = {
-            'Out':
-            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(np.int32)
+            'Out': self.inputs['X']
+            .min(axis=tuple(self.attrs['dim']))
+            .astype(np.int32)
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMinOpWithOutDtype_int64(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -169,17 +177,19 @@ class TestReduceMinOpWithOutDtype_int64(TestNPUReduceMinOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.INT64)
+            'out_dtype': int(core.VarDesc.VarType.INT64),
         }
         self.outputs = {
-            'Out':
-            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(np.int64)
+            'Out': self.inputs['X']
+            .min(axis=tuple(self.attrs['dim']))
+            .astype(np.int64)
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMinOpWithOutDtype_fp16(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -191,12 +201,12 @@ class TestReduceMinOpWithOutDtype_fp16(TestNPUReduceMinOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.FP16)
+            'out_dtype': int(core.VarDesc.VarType.FP16),
         }
         self.outputs = {
-            'Out':
-            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
-                np.float16)
+            'Out': self.inputs['X']
+            .min(axis=tuple(self.attrs['dim']))
+            .astype(np.float16)
         }
 
     def test_check_output(self):
@@ -205,7 +215,8 @@ class TestReduceMinOpWithOutDtype_fp16(TestNPUReduceMinOp):
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMinOpWithOutDtype_fp32(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -217,18 +228,19 @@ class TestReduceMinOpWithOutDtype_fp32(TestNPUReduceMinOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.FP32)
+            'out_dtype': int(core.VarDesc.VarType.FP32),
         }
         self.outputs = {
-            'Out':
-            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
-                np.float32)
+            'Out': self.inputs['X']
+            .min(axis=tuple(self.attrs['dim']))
+            .astype(np.float32)
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMinOpWithOutDtype_fp64(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -240,18 +252,19 @@ class TestReduceMinOpWithOutDtype_fp64(TestNPUReduceMinOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.FP64)
+            'out_dtype': int(core.VarDesc.VarType.FP64),
         }
         self.outputs = {
-            'Out':
-            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
-                np.float64)
+            'Out': self.inputs['X']
+            .min(axis=tuple(self.attrs['dim']))
+            .astype(np.float64)
         }
 
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMinOpWithOutDtype_fp32_2(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -263,12 +276,12 @@ class TestReduceMinOpWithOutDtype_fp32_2(TestNPUReduceMinOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.FP32)
+            'out_dtype': int(core.VarDesc.VarType.FP32),
         }
         self.outputs = {
-            'Out':
-            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
-                np.float32)
+            'Out': self.inputs['X']
+            .min(axis=tuple(self.attrs['dim']))
+            .astype(np.float32)
         }
 
     def init_dtype(self):
@@ -277,7 +290,8 @@ class TestReduceMinOpWithOutDtype_fp32_2(TestNPUReduceMinOp):
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMinOpInt64(TestNPUReduceMinOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -289,12 +303,12 @@ class TestReduceMinOpInt64(TestNPUReduceMinOp):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.attrs = {
             'dim': [-2, -1],
-            'out_dtype': int(core.VarDesc.VarType.INT64)
+            'out_dtype': int(core.VarDesc.VarType.INT64),
         }
         self.outputs = {
-            'Out':
-            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
-                np.float32)
+            'Out': self.inputs['X']
+            .min(axis=tuple(self.attrs['dim']))
+            .astype(np.float32)
         }
 
     def init_dtype(self):

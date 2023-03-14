@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
+
+import paddle
 
 sys.path.append("../")
 from op_test import OpTest
 
 
 class TestSequenceReverseBase(OpTest):
-
     def initParameters(self):
         pass
 
@@ -37,14 +37,20 @@ class TestSequenceReverseBase(OpTest):
         self.y = self.get_output()
 
         self.inputs = {
-            'X': (self.x, [
-                self.lod,
-            ]),
+            'X': (
+                self.x,
+                [
+                    self.lod,
+                ],
+            ),
         }
         self.outputs = {
-            'Y': (self.y, [
-                self.lod,
-            ]),
+            'Y': (
+                self.y,
+                [
+                    self.lod,
+                ],
+            ),
         }
 
     def get_output(self):
@@ -66,48 +72,45 @@ class TestSequenceReverseBase(OpTest):
 
 
 class TestSequenceReserve1(TestSequenceReverseBase):
-
     def initParameters(self):
         self.size = (12, 10)
         self.lod = [4, 5, 3]
 
 
 class TestSequenceReverse2(TestSequenceReverseBase):
-
     def initParameters(self):
         self.size = (12, 10)
         self.lod = [12]
 
 
 class TestSequenceReverse3(TestSequenceReverseBase):
-
     def initParameters(self):
         self.size = (12, 10)
         self.lod = [3, 0, 6, 3]
 
 
 class TestSequenceReverse4(TestSequenceReverseBase):
-
     def initParameters(self):
         self.size = (12, 10)
         self.lod = [0, 2, 10, 0]
 
 
 class TestSequenceReverseOpError(unittest.TestCase):
-
     def test_error(self):
-
         def test_variable():
             # the input type must be Variable
             x_data = np.random.random((2, 4)).astype("float32")
-            fluid.layers.sequence_reverse(x=x_data)
+            paddle.static.nn.sequence_lod.sequence_reverse(x=x_data)
 
         self.assertRaises(TypeError, test_variable)
 
         def test_dtype():
             # dtype must be 'float32', 'float64', 'int8', 'int32', 'int64'
-            x2_data = fluid.layers.data(name='x2', shape=[4], dtype='float16')
-            fluid.layers.sequence_reverse(x=x2_data)
+
+            x2_data = paddle.static.data(
+                name='x2', shape=[-1, 4], dtype='float16'
+            )
+            paddle.static.nn.sequence_lod.sequence_reverse(x=x2_data)
 
         self.assertRaises(TypeError, test_dtype)
 

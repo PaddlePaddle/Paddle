@@ -13,14 +13,19 @@
 # limitations under the License.
 
 import unittest
+
+import paddle
 import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+    fleet,
+)
+from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+    StrategyFactory,
+)
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
-
     def test_dist_geo_server_transpiler(self):
         num_voc = 128
         embed_dim = 64
@@ -49,15 +54,17 @@ class TestPyramidHashOpApi(unittest.TestCase):
             ),
             param_attr_bl=None,
             distribute_update_vars=["PyramidHash_emb_0"],
-            name=None)
+            name=None,
+        )
 
-        cost = fluid.layers.reduce_sum(hash_embd)
+        cost = paddle.sum(hash_embd)
 
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
             role=role_maker.Role.SERVER,
             worker_num=2,
-            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"],
+        )
 
         fleet.init(role)
 
@@ -71,4 +78,5 @@ class TestPyramidHashOpApi(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

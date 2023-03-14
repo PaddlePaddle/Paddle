@@ -25,10 +25,10 @@ __global__ void WhereGradCUDAKernel(
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < N; idx += blockDim.x * gridDim.x) {
     if (dx != nullptr) {
-      dx[idx] = cond[idx] ? dout[idx] : 0.;
+      dx[idx] = cond[idx] ? dout[idx] : static_cast<T>(0.);
     }
     if (dy != nullptr) {
-      dy[idx] = cond[idx] ? 0. : dout[idx];
+      dy[idx] = cond[idx] ? static_cast<T>(0.) : dout[idx];
     }
   }
 }
@@ -61,6 +61,8 @@ PD_REGISTER_KERNEL(where_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::WhereGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double,
                    int,

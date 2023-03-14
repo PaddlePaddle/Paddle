@@ -52,7 +52,7 @@ bool Check(T value, int size = 2 * 512 * 8192) {
       p::DeviceContextPool::Instance().Get(p::NPUPlace(0)));
   auto place = ctx.GetPlace();
 
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
   tensor_x->Resize({size});
   tensor_x->mutable_data<T>(place);  // allocate
 

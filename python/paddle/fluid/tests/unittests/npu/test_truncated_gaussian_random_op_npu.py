@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -31,7 +29,6 @@ SEED = 2021
 
 
 class TestTruncatedNormal(unittest.TestCase):
-
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -46,12 +43,13 @@ class TestTruncatedNormal(unittest.TestCase):
             with paddle.static.program_guard(main_prog, startup_prog):
                 weight_attr = paddle.framework.ParamAttr(
                     name="linear_weight",
-                    initializer=paddle.nn.initializer.TruncatedNormal(mean=0.0,
-                                                                      std=2.0))
-                linear = paddle.nn.Linear(2,
-                                          2,
-                                          weight_attr=weight_attr,
-                                          bias_attr=False)
+                    initializer=paddle.nn.initializer.TruncatedNormal(
+                        mean=0.0, std=2.0
+                    ),
+                )
+                linear = paddle.nn.Linear(
+                    2, 2, weight_attr=weight_attr, bias_attr=False
+                )
 
             if run_npu:
                 place = paddle.NPUPlace(0)

@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import warnings
-from ...static import Variable
+from paddle import _C_ops
+
+from ...common_ops_import import Variable
+from ...fluid.data_feeder import check_variable_and_dtype
+from ...fluid.framework import in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
-from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -90,30 +88,26 @@ def one_hot(x, num_classes, name=None):
     if in_dygraph_mode():
         return _C_ops.one_hot(x, num_classes)
     else:
-        if _in_legacy_dygraph():
-            return _legacy_C_ops.one_hot_v2(x, 'depth', num_classes,
-                                            'allow_out_of_range', False)
-        else:
-            check_variable_and_dtype(x, 'input', ['int32', 'int64'],
-                                     'one_hot_v2')
-            helper = LayerHelper("one_hot_v2", **locals())
+        check_variable_and_dtype(x, 'input', ['int32', 'int64'], 'one_hot_v2')
+        helper = LayerHelper("one_hot_v2", **locals())
 
-            one_hot_out = helper.create_variable_for_type_inference(
-                dtype='float32')
-            if not isinstance(num_classes, Variable):
-                # user attribute
-                inputs = {'X': x}
-                attrs = {'depth': num_classes, 'allow_out_of_range': False}
-            else:
-                num_classes.stop_gradient = True
-                inputs = {'X': x, 'depth_tensor': num_classes}
-                attrs = {'allow_out_of_range': False}
-            helper.append_op(type="one_hot_v2",
-                             inputs=inputs,
-                             attrs=attrs,
-                             outputs={'Out': one_hot_out},
-                             stop_gradient=True)
-            return one_hot_out
+        one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
+        if not isinstance(num_classes, Variable):
+            # user attribute
+            inputs = {'X': x}
+            attrs = {'depth': num_classes, 'allow_out_of_range': False}
+        else:
+            num_classes.stop_gradient = True
+            inputs = {'X': x, 'depth_tensor': num_classes}
+            attrs = {'allow_out_of_range': False}
+        helper.append_op(
+            type="one_hot_v2",
+            inputs=inputs,
+            attrs=attrs,
+            outputs={'Out': one_hot_out},
+            stop_gradient=True,
+        )
+        return one_hot_out
 
 
 def embedding(x, weight, padding_idx=None, sparse=False, name=None):
@@ -192,43 +186,48 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
                     x=x, weight=w, sparse=True, name="embedding")
 
     """
-    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-        weight.shape[0] + padding_idx)
+    padding_idx = (
+        -1
+        if padding_idx is None
+        else padding_idx
+        if padding_idx >= 0
+        else (weight.shape[0] + padding_idx)
+    )
 
     if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
-        raise ValueError("padding_idx must be within [-{}, {})".format(
-            weight.shape[0], weight.shape[0]))
+        raise ValueError(
+            "padding_idx must be within [-{}, {})".format(
+                weight.shape[0], weight.shape[0]
+            )
+        )
 
     if in_dygraph_mode():
         return _C_ops.embedding(x, weight, padding_idx, sparse)
-    elif _in_legacy_dygraph():
-        return _legacy_C_ops.lookup_table_v2(weight, x, 'is_sparse', sparse,
-                                             'is_distributed', False,
-                                             'remote_prefetch', False,
-                                             'padding_idx', padding_idx)
     else:
         helper = LayerHelper('embedding', **locals())
         dtype = helper.input_dtype(input_param_name='weight')
 
-        check_variable_and_dtype(x, 'input',
-                                 ['uint8', 'int8', 'int16', 'int32', 'int64'],
-                                 'embedding')
+        check_variable_and_dtype(
+            x,
+            'input',
+            ['uint8', 'int8', 'int16', 'int32', 'int64'],
+            'embedding',
+        )
 
         is_distributed = False
         remote_prefetch = sparse and (not is_distributed)
 
         tmp = helper.create_variable_for_type_inference(dtype)
 
-        helper.append_op(type='lookup_table_v2',
-                         inputs={
-                             'Ids': x,
-                             'W': weight
-                         },
-                         outputs={'Out': tmp},
-                         attrs={
-                             'is_sparse': sparse,
-                             'is_distributed': is_distributed,
-                             'remote_prefetch': remote_prefetch,
-                             'padding_idx': padding_idx
-                         })
+        helper.append_op(
+            type='lookup_table_v2',
+            inputs={'Ids': x, 'W': weight},
+            outputs={'Out': tmp},
+            attrs={
+                'is_sparse': sparse,
+                'is_distributed': is_distributed,
+                'remote_prefetch': remote_prefetch,
+                'padding_idx': padding_idx,
+            },
+        )
         return tmp

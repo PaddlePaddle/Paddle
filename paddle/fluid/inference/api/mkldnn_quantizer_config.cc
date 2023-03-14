@@ -26,6 +26,12 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["conv2d"]["ResidualData"] = ScaleAlgo::KL;
   rules_["conv2d"]["Output"] = ScaleAlgo::KL;
 
+  rules_["fused_conv2d"]["Input"] = ScaleAlgo::KL;
+  rules_["fused_conv2d"]["Filter"] = ScaleAlgo::MAX_CH;
+  rules_["fused_conv2d"]["Bias"] = ScaleAlgo::NONE;  // do not compute scale
+  rules_["fused_conv2d"]["ResidualData"] = ScaleAlgo::KL;
+  rules_["fused_conv2d"]["Output"] = ScaleAlgo::KL;
+
   rules_["pool2d"]["X"] = ScaleAlgo::KL;
   rules_["pool2d"]["Out"] = ScaleAlgo::KL;
 
@@ -47,6 +53,9 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
 
   rules_["shape"]["Input"] = ScaleAlgo::KL;
   rules_["shape"]["Out"] = ScaleAlgo::NONE;
+
+  rules_["split"]["X"] = ScaleAlgo::KL;
+  rules_["split"]["Out"] = ScaleAlgo::NONE;
 
   rules_["fc"]["Input"] = ScaleAlgo::KL;
   rules_["fc"]["W"] = ScaleAlgo::MAX_CH_T;

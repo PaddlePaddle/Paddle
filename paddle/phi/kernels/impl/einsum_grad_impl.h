@@ -13,22 +13,27 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/impl/einsum_impl.h"
 #include "paddle/phi/kernels/tile_kernel.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace phi {
+
 template <typename T, typename Context>
 DenseTensor PerformTileAndReduction(const Context& dev_ctx,
                                     const LabelMap& label2type,
                                     const LabelMap& label2shape,
                                     const std::vector<int>& broadcast_dims,
                                     const std::vector<int>& ellipsis_dims,
-                                    std::string op_label,  // value pass
-                                    DenseTensor& t) {      // NOLINT
-  ReplaceEllipsis(op_label);
+                                    std::string equ,   // value pass
+                                    DenseTensor& t) {  // NOLINT
+  auto tmp_label = equ;
+  ReplaceEllipsis(tmp_label);
+  auto tmp_union = unique_labels(tmp_label);
+  auto op_label = std::string(tmp_union.begin(), tmp_union.end());
+  VLOG(5) << "Start PerformTileAndReduction" << equ;
   DenseTensor ret;
   std::vector<int> repeat_times;
   std::vector<int> resize_dims;
@@ -61,6 +66,8 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
       })) {
     after_tile = t;
   } else {
+    VLOG(4) << "do TileKernel with repeat_times="
+            << paddle::string::join_strings(repeat_times, ",");
     TileKernel<T, Context>(dev_ctx, t, repeat_times, &after_tile);
   }
   size_t n_ellipsis_idx = op_label.find(".", 0);
@@ -92,7 +99,11 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
   VLOG(5) << "PermformTileAndReduction: recover shape: "
           << paddle::string::join_strings(recover_shape, ",");
   ret.Resize(make_ddim(recover_shape));
-  return ret;
+  // undiagonalize by einsum equation. only contain undiagonal operations.
+  DenseTensor out;
+  VLOG(5) << "Undiagonal by einsum with args: " << op_label + "->" + equ;
+  EinsumInferKernel<T, Context>(dev_ctx, {&ret}, op_label + "->" + equ, &out);
+  return out;
 }
 
 template <typename T, typename Context>
@@ -115,6 +126,7 @@ void EinsumGradKernel(const Context& dev_ctx,
   for (auto& i : x) {
     input_dims.push_back(i->dims());
   }
+  std::vector<std::string> input_strs;
   std::string right;
   ParseEinsumEquation(equation,
                       input_dims,
@@ -125,13 +137,15 @@ void EinsumGradKernel(const Context& dev_ctx,
                       &ellipsis_dims,
                       &broadcast_dims,
                       &output_dims,
-                      &right);
+                      &right,
+                      &input_strs);
 
   auto gather_labels_except_reduction = [&labeltype](std::string all) {
     std::string res("");
     for (auto c : all)
       if (labeltype[static_cast<int>(c)] != LabelType::Reduction) res += c;
-    return res;
+    auto tmp_unique = unique_labels(res);
+    return std::string(tmp_unique.begin(), tmp_unique.end());
   };
   if (x.size() == 1) {  // Unary
     auto splits = paddle::string::split_string(equation, "->");
@@ -141,7 +155,9 @@ void EinsumGradKernel(const Context& dev_ctx,
     auto new_operands = std::vector<const DenseTensor*>();
     new_operands.push_back(&out_grad);
     DenseTensor before_tile;
-    EinsumKernel<T, Context>(dev_ctx, new_operands, new_equation, &before_tile);
+    VLOG(5) << "new_equation is " << new_equation;
+    EinsumInferKernel<T, Context>(
+        dev_ctx, new_operands, new_equation, &before_tile);
     *(x_grad[0]) = PerformTileAndReduction<T, Context>(dev_ctx,
                                                        labeltype,
                                                        labelshape,
@@ -162,11 +178,12 @@ void EinsumGradKernel(const Context& dev_ctx,
     auto operands_for_A = std::vector<const DenseTensor*>();
     auto operands_for_B = std::vector<const DenseTensor*>();
     DenseTensor dA, dB;
+    auto out_grad_conj = Conj<T, Context>(dev_ctx, out_grad);
     // dA = einsum(B, dC)
     operands_for_A.push_back(x[1]);
-    operands_for_A.push_back(&out_grad);
+    operands_for_A.push_back(&out_grad_conj);
     // dB = einsum(dC, A)
-    operands_for_B.push_back(&out_grad);
+    operands_for_B.push_back(&out_grad_conj);
     operands_for_B.push_back(x[0]);
 
     DenseTensor before_tile;
@@ -204,6 +221,7 @@ void EinsumGradKernel(const Context& dev_ctx,
                                                          ellipsis_dims[0],
                                                          ops[0],
                                                          dA);
+      *(x_grad[0]) = Conj<T, Context>(dev_ctx, *x_grad[0]);
     }
     if (x_grad[1]) {
       *(x_grad[1]) = PerformTileAndReduction<T, Context>(dev_ctx,
@@ -213,6 +231,7 @@ void EinsumGradKernel(const Context& dev_ctx,
                                                          ellipsis_dims[1],
                                                          ops[1],
                                                          dB);
+      *(x_grad[1]) = Conj<T, Context>(dev_ctx, *x_grad[1]);
     }
   }
 }

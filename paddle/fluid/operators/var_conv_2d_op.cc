@@ -24,18 +24,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
 void VarConv2dOpMaker::Make() {
   AddInput("X",
-           "X (LoDTensor, default LoDTensor<float>) Input variable which "
+           "X (phi::DenseTensor, default phi::DenseTensor<float>) Input "
+           "variable which "
            "should contain lod information.");
-  AddInput("ROW", "(LoDTensor) the row variable provides lod information");
+  AddInput("ROW",
+           "(phi::DenseTensor) the row variable provides lod information");
   AddInput("COLUMN",
-           "(LoDTensor) the column variable provides lod information");
-  AddInput("W", "W (Tensor), the filter.");
+           "(phi::DenseTensor) the column variable provides lod information");
+  AddInput("W", "W (phi::DenseTensor), the filter.");
   AddAttr<int>("InputChannel", "the input filter num").SetDefault(1);
   AddAttr<int>("OutputChannel", "the output filter num").SetDefault(1);
   AddAttr<int>("StrideH", "the height of Stride").SetDefault(1);
@@ -43,9 +43,12 @@ void VarConv2dOpMaker::Make() {
   AddAttr<int>("KernelH", "the height of Kernel").SetDefault(1);
   AddAttr<int>("KernelW", "the width of Kernel").SetDefault(1);
 
-  AddOutput("Out", "(LoDTensor, default LoDTensor<float>) Output variable");
+  AddOutput(
+      "Out",
+      "(phi::DenseTensor, default phi::DenseTensor<float>) Output variable");
   AddOutput("Col",
-            "(LoDTensor, default LoDTensor<float>) the intermediate result "
+            "(phi::DenseTensor, default phi::DenseTensor<float>) the "
+            "intermediate result "
             "variable");
 
   AddComment(R"DOC(
@@ -125,12 +128,12 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
         PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
-    const auto& x_lod = x_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE_EQ(
-        !x_lod.empty(),
-        true,
-        platform::errors::InvalidArgument("The Input(X) Tensor of VarConv2dOP "
-                                          "does not contain LoD information."));
+    const auto& x_lod = x_var->Get<phi::DenseTensor>().lod();
+    PADDLE_ENFORCE_EQ(!x_lod.empty(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The Input(X) phi::DenseTensor of VarConv2dOP "
+                          "does not contain LoD information."));
 
     PADDLE_ENFORCE_GE(x_lod.size(),
                       1,
@@ -146,21 +149,23 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
 
     framework::Variable* row_var =
         PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("ROW")[0]);
-    const auto& row_lod = row_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE_EQ(!row_lod.empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The Input(ROW) Tensor of VarConv2dOP does not "
-                          "contain LoD information."));
+    const auto& row_lod = row_var->Get<phi::DenseTensor>().lod();
+    PADDLE_ENFORCE_EQ(
+        !row_lod.empty(),
+        true,
+        platform::errors::InvalidArgument(
+            "The Input(ROW) phi::DenseTensor of VarConv2dOP does not "
+            "contain LoD information."));
 
     framework::Variable* col_var =
         PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("COLUMN")[0]);
-    const auto& col_lod = col_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE_EQ(!col_lod.empty(),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "The Input(COLUMN) Tensor of VarConv2dOP does not "
-                          "contain LoD information."));
+    const auto& col_lod = col_var->Get<phi::DenseTensor>().lod();
+    PADDLE_ENFORCE_EQ(
+        !col_lod.empty(),
+        true,
+        platform::errors::InvalidArgument(
+            "The Input(COLUMN) phi::DenseTensor of VarConv2dOP does not "
+            "contain LoD information."));
   } else {
     std::vector<int64_t> out_dims_vec{-1};
     out_dims_vec.push_back(1);
@@ -175,11 +180,11 @@ template <typename DeviceContext, typename T>
 class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
  public:
   void Im2Col(const framework::ExecutionContext& ctx,
-              const LoDTensor& input,
-              LoDTensor* col) const {
+              const phi::DenseTensor& input,
+              phi::DenseTensor* col) const {
     int input_channel = ctx.Attr<int>("InputChannel");
-    auto* in_row = ctx.Input<LoDTensor>("ROW");
-    auto* in_col = ctx.Input<LoDTensor>("COLUMN");
+    auto* in_row = ctx.Input<phi::DenseTensor>("ROW");
+    auto* in_col = ctx.Input<phi::DenseTensor>("COLUMN");
     int kernel_h = ctx.Attr<int>("KernelH");
     int kernel_w = ctx.Attr<int>("KernelW");
     int stride_h = ctx.Attr<int>("StrideH");
@@ -267,12 +272,12 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* bottom = ctx.Input<LoDTensor>("X");
-    auto* in_row = ctx.Input<LoDTensor>("ROW");
-    auto* in_col = ctx.Input<LoDTensor>("COLUMN");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* top = ctx.Output<LoDTensor>("Out");
-    auto* col = ctx.Output<LoDTensor>("Col");
+    auto* bottom = ctx.Input<phi::DenseTensor>("X");
+    auto* in_row = ctx.Input<phi::DenseTensor>("ROW");
+    auto* in_col = ctx.Input<phi::DenseTensor>("COLUMN");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* top = ctx.Output<phi::DenseTensor>("Out");
+    auto* col = ctx.Output<phi::DenseTensor>("Col");
 
     int output_channel = ctx.Attr<int>("OutputChannel");
     int input_channel = ctx.Attr<int>("InputChannel");
@@ -390,10 +395,10 @@ template <typename DeviceContext, typename T>
 class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
  public:
   void Im2ColGrad(const framework::ExecutionContext& ctx, T* top_diff) const {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* in_row = ctx.Input<LoDTensor>("ROW");
-    auto* in_col = ctx.Input<LoDTensor>("COLUMN");
-    auto* col = ctx.Input<LoDTensor>("Col");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* in_row = ctx.Input<phi::DenseTensor>("ROW");
+    auto* in_col = ctx.Input<phi::DenseTensor>("COLUMN");
+    auto* col = ctx.Input<phi::DenseTensor>("Col");
 
     int input_channel = ctx.Attr<int>("InputChannel");
     int kernel_h = ctx.Attr<int>("KernelH");
@@ -401,7 +406,7 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
     int stride_h = ctx.Attr<int>("StrideH");
     int stride_w = ctx.Attr<int>("StrideW");
 
-    auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
     memset(dx_data, 0.0, x->dims()[0] * x->dims()[1] * sizeof(T));
@@ -450,21 +455,21 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* col = ctx.Input<LoDTensor>("Col");
-    auto* out = ctx.Input<LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* col = ctx.Input<phi::DenseTensor>("Col");
+    auto* out = ctx.Input<phi::DenseTensor>("Out");
 
     int output_channel = ctx.Attr<int>("OutputChannel");
     int input_channel = ctx.Attr<int>("InputChannel");
     int kernel_h = ctx.Attr<int>("KernelH");
     int kernel_w = ctx.Attr<int>("KernelW");
 
-    auto* d_out = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* d_w = ctx.Output<Tensor>(framework::GradVarName("W"));
+    auto* d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_w = ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
-    Tensor col_grad;
+    phi::DenseTensor col_grad;
     col_grad.Resize(col->dims());
     auto* col_diff = col_grad.mutable_data<T>(ctx.GetPlace());
     auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());

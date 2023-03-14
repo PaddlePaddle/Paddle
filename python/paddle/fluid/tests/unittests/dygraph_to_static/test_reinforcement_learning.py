@@ -12,55 +12,54 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import gym
-import math
 import itertools
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.dygraph.nn as nn
-from paddle.fluid.dygraph import to_variable, Layer
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-
+import math
 import unittest
 
+import gym
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+import paddle.nn.functional as F
+from paddle.fluid.dygraph import Layer, to_variable
+from paddle.jit.api import to_static
+
 SEED = 2020
-program_translator = ProgramTranslator()
 
 
 class Policy(Layer):
-
     def __init__(self):
-        super(Policy, self).__init__()
+        super().__init__()
 
-        self.affine1 = nn.Linear(4, 128)
-        self.affine2 = nn.Linear(128, 2)
+        self.affine1 = paddle.nn.Linear(4, 128)
+        self.affine2 = paddle.nn.Linear(128, 2)
         self.dropout_ratio = 0.6
 
         self.saved_log_probs = []
         self.rewards = []
 
-    @declarative
+    @to_static
     def forward(self, x):
-        x = fluid.layers.reshape(x, shape=[1, 4])
+        x = paddle.reshape(x, shape=[1, 4])
         x = self.affine1(x)
-        x = fluid.layers.dropout(x, self.dropout_ratio)
-        x = fluid.layers.relu(x)
+        x = paddle.nn.functional.dropout(x, self.dropout_ratio)
+        x = F.relu(x)
         action_scores = self.affine2(x)
 
-        log_prob = fluid.layers.softmax(action_scores, axis=1)
+        log_prob = paddle.nn.functional.softmax(action_scores, axis=1)
 
         return log_prob
 
 
-class Args(object):
+class Args:
     gamma = 0.99
     log_interval = 1
     train_step = 10
 
 
 def train(args, place, to_static):
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     env = gym.make('CartPole-v0')
     env.seed(SEED)
@@ -74,17 +73,18 @@ def train(args, place, to_static):
 
         eps = np.finfo(np.float32).eps.item()
         optimizer = fluid.optimizer.AdamaxOptimizer(
-            learning_rate=1e-2, parameter_list=policy.parameters())
+            learning_rate=1e-2, parameter_list=policy.parameters()
+        )
 
         def get_mean_and_std(values=[]):
-            n = 0.
-            s = 0.
+            n = 0.0
+            s = 0.0
             for val in values:
                 s += val
                 n += 1
             mean = s / n
 
-            std = 0.
+            std = 0.0
             for val in values:
                 std += (val - mean) * (val - mean)
             std /= n
@@ -99,14 +99,14 @@ def train(args, place, to_static):
             while idx < len(probs) and sample > probs[idx]:
                 sample -= probs[idx]
                 idx += 1
-            mask = [0.] * len(probs)
-            mask[idx] = 1.
+            mask = [0.0] * len(probs)
+            mask[idx] = 1.0
 
             return idx, np.array([mask]).astype("float32")
 
         def choose_best_action(probs):
             idx = 0 if probs[0] > probs[1] else 1
-            mask = [1., 0.] if idx == 0 else [0., 1.]
+            mask = [1.0, 0.0] if idx == 0 else [0.0, 1.0]
 
             return idx, np.array([mask]).astype("float32")
 
@@ -121,9 +121,9 @@ def train(args, place, to_static):
             mask = to_variable(_mask)
             mask.stop_gradient = True
 
-            loss_probs = fluid.layers.log(loss_probs)
-            loss_probs = fluid.layers.elementwise_mul(loss_probs, mask)
-            loss_probs = fluid.layers.reduce_sum(loss_probs, dim=-1)
+            loss_probs = paddle.log(loss_probs)
+            loss_probs = paddle.multiply(loss_probs, mask)
+            loss_probs = paddle.sum(loss_probs, axis=-1)
 
             policy.saved_log_probs.append(loss_probs)
             return action, loss_probs
@@ -149,11 +149,11 @@ def train(args, place, to_static):
                 _R = -1 * R * R_numpy
                 _R = to_variable(_R)
                 _R.stop_gradient = True
-                cur_loss = fluid.layers.elementwise_mul(_R, log_prob)
+                cur_loss = paddle.multiply(_R, log_prob)
                 policy_loss.append(cur_loss)
 
-            policy_loss = fluid.layers.concat(policy_loss)
-            policy_loss = fluid.layers.reduce_sum(policy_loss)
+            policy_loss = paddle.concat(policy_loss)
+            policy_loss = paddle.sum(policy_loss)
 
             policy_loss.backward()
             optimizer.minimize(policy_loss)
@@ -189,9 +189,10 @@ def train(args, place, to_static):
             running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
             if i_episode % args.log_interval == 0:
                 print(
-                    'Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\t loss_probs: {}'
-                    .format(i_episode, ep_reward, running_reward,
-                            loss.numpy()[0]))
+                    'Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\t loss_probs: {}'.format(
+                        i_episode, ep_reward, running_reward, loss.numpy()[0]
+                    )
+                )
 
             if i_episode > args.train_step:
                 break
@@ -200,10 +201,12 @@ def train(args, place, to_static):
 
 
 class TestDeclarative(unittest.TestCase):
-
     def setUp(self):
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
+        )
         self.args = Args()
 
     def test_train(self):
@@ -213,5 +216,4 @@ class TestDeclarative(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

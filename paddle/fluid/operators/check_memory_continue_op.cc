@@ -31,12 +31,13 @@ class CheckMemoryContinueOp : public framework::OperatorWithKernel {
 class CheckMemoryContinueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(vector<LoDTensor>) The input tensors.").AsDuplicable();
-    AddOutput("Out", "(LoDTensor) The output tensor.").AsDuplicable();
-    AddOutput(
-        "XOut",
-        "(vector<LoDTensor>) The output tensors which are the same as x. It is "
-        "used to build the graph dependency");
+    AddInput("X", "(vector<phi::DenseTensor>) The input tensors.")
+        .AsDuplicable();
+    AddOutput("Out", "(phi::DenseTensor) The output tensor.").AsDuplicable();
+    AddOutput("XOut",
+              "(vector<phi::DenseTensor>) The output tensors which are the "
+              "same as x. It is "
+              "used to build the graph dependency");
     AddComment(R"DOC(
 CheckMemoryContinue Operator.
 

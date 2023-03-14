@@ -36,20 +36,20 @@ void CreateVarsOnScope(framework::Scope* scope,
                        const platform::DeviceContext& ctx) {
   // var 1
   framework::Variable* var1 = scope->Var("x1");
-  auto* tensor1 = var1->GetMutable<framework::LoDTensor>();
+  auto* tensor1 = var1->GetMutable<phi::DenseTensor>();
   tensor1->Resize(phi::make_ddim({512, 8, 4, 2}));
   framework::LoD lod1;
-  lod1.push_back(framework::Vector<size_t>({1, 3, 8}));
+  lod1.push_back(phi::Vector<size_t>({1, 3, 8}));
   tensor1->set_lod(lod1);
   tensor1->mutable_data<float>(*place);
   phi::funcs::set_constant(ctx, tensor1, 31.9);
 
   // var 2
   framework::Variable* var2 = scope->Var("x2");
-  auto* tensor2 = var2->GetMutable<framework::LoDTensor>();
+  auto* tensor2 = var2->GetMutable<phi::DenseTensor>();
   tensor2->Resize(phi::make_ddim({1000, 64}));
   framework::LoD lod2;
-  lod2.push_back(framework::Vector<size_t>({1, 1}));
+  lod2.push_back(phi::Vector<size_t>({1, 1}));
   tensor2->set_lod(lod2);
   tensor2->mutable_data<int>(*place);
   phi::funcs::set_constant(ctx, tensor2, 100);
@@ -96,9 +96,9 @@ void RunMultiVarMsg(platform::Place place) {
 
   // check var1
   framework::Variable* var1 = scope_recv.FindVar("x1");
-  auto* tensor1 = var1->GetMutable<framework::LoDTensor>();
+  auto* tensor1 = var1->GetMutable<phi::DenseTensor>();
   EXPECT_EQ(tensor1->dims(), phi::make_ddim({512, 8, 4, 2}));
-  // EXPECT_EQ(tensor1->lod(), framework::Vector<size_t>({1, 3, 8}));
+  // EXPECT_EQ(tensor1->lod(), phi::Vector<size_t>({1, 3, 8}));
   auto* tensor_data1 = const_cast<float*>(tensor1->data<float>());
   int tensor_numel1 = 512 * 8 * 4 * 2;
   for (int i = 0; i < tensor_numel1; ++i)
@@ -106,9 +106,9 @@ void RunMultiVarMsg(platform::Place place) {
 
   // check var2
   framework::Variable* var2 = scope_recv.FindVar("x2");
-  auto* tensor2 = var2->GetMutable<framework::LoDTensor>();
+  auto* tensor2 = var2->GetMutable<phi::DenseTensor>();
   EXPECT_EQ(tensor2->dims(), phi::make_ddim({1000, 64}));
-  // EXPECT_EQ(tensor2->lod(), framework::Vector<size_t>({1, 1}));
+  // EXPECT_EQ(tensor2->lod(), phi::Vector<size_t>({1, 1}));
   auto* tensor_data2 = const_cast<int*>(tensor2->data<int>());
   int tensor_numel2 = 1000 * 64;
   for (int i = 0; i < tensor_numel2; ++i) EXPECT_EQ(tensor_data2[i], 100);
@@ -116,7 +116,7 @@ void RunMultiVarMsg(platform::Place place) {
   // check var3
   framework::Variable* var3 = scope_recv.FindVar("x3");
   auto* slr = var3->GetMutable<phi::SelectedRows>();
-  EXPECT_EQ(slr->rows().size(), 564);
+  EXPECT_EQ(slr->rows().size(), 564UL);
   for (int i = 0; i < 564; ++i) {
     EXPECT_EQ(slr->rows()[i], i);
   }

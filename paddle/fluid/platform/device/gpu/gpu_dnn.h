@@ -14,14 +14,34 @@
 
 #pragma once
 
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/rocm/miopen_desc.h"
-#include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
-#else  // CUDA
-#include "paddle/fluid/platform/device/gpu/cuda/cudnn_desc.h"
-#include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
+namespace paddle {
+namespace platform {
+
+using DataLayout = phi::backends::gpu::DataLayout;
+using PoolingMode = phi::backends::gpu::PoolingMode;
+template <typename T>
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using ScopedTensorDescriptor = phi::backends::gpu::ScopedTensorDescriptor;
+using ScopedDropoutDescriptor = phi::backends::gpu::ScopedDropoutDescriptor;
+using ScopedRNNDescriptor = phi::backends::gpu::ScopedRNNDescriptor;
+using ScopedFilterDescriptor = phi::backends::gpu::ScopedFilterDescriptor;
+using ScopedConvolutionDescriptor =
+    phi::backends::gpu::ScopedConvolutionDescriptor;
+using ScopedPoolingDescriptor = phi::backends::gpu::ScopedPoolingDescriptor;
+using ScopedActivationDescriptor =
+    phi::backends::gpu::ScopedActivationDescriptor;
+
+#if defined(PADDLE_WITH_CUDA)
+using ScopedRNNTensorDescriptor = phi::backends::gpu::ScopedRNNTensorDescriptor;
+using ScopedSpatialTransformerDescriptor =
+    phi::backends::gpu::ScopedSpatialTransformerDescriptor;
 #endif
+
+}  // namespace platform
+}  // namespace paddle
 
 #endif

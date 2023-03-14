@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-import six
-import unittest
 
 
 class TestEmbeddingIdStopGradientBase(unittest.TestCase):
-
     def setUp(self):
         self.reshape_times = 1
         self.iteration = 10
@@ -51,14 +51,16 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
             with fluid.scope_guard(scope):
                 x_1 = fluid.data(name='x1', shape=[4, 1], dtype='int64')
                 x_2 = fluid.data(name='x2', shape=[4, 1], dtype='int64')
-                x = fluid.layers.concat([x_1, x_2], axis=-1)
+                x = paddle.concat([x_1, x_2], axis=-1)
 
-                for _ in six.moves.range(self.reshape_times):
-                    x = fluid.layers.reshape(x, [-1, 1])
+                for _ in range(self.reshape_times):
+                    x = paddle.reshape(x, [-1, 1])
 
                 x.stop_gradient = stop_gradient
 
-                emb = fluid.embedding(x, size=[10, 32], dtype='float32')
+                emb = paddle.static.nn.embedding(
+                    x, size=[10, 32], dtype='float32'
+                )
                 avg_cost = paddle.mean(emb, name='mean_loss')
                 optim = fluid.optimizer.SGD(learning_rate=0.001)
                 optim.minimize(avg_cost)
@@ -70,18 +72,16 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
                 x2_data = np.random.randint(0, 9, x_2.shape).astype('int64')
 
                 fetch_val = None
-                for _ in six.moves.range(self.iteration):
-                    fetch_val = exe.run(feed={
-                        x_1.name: x1_data,
-                        x_2.name: x2_data
-                    },
-                                        fetch_list=[emb])[0]
+                for _ in range(self.iteration):
+                    fetch_val = exe.run(
+                        feed={x_1.name: x1_data, x_2.name: x2_data},
+                        fetch_list=[emb],
+                    )[0]
 
                 return fetch_val
 
 
 class TestEmbeddingIdStopGradient2(TestEmbeddingIdStopGradientBase):
-
     def setUp(self):
         self.reshape_times = 100
         self.iteration = 10

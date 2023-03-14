@@ -12,38 +12,445 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
-import collections
-import itertools
-import six
 import math
-import sys
-import warnings
+from collections.abc import Sequence
 from functools import partial, reduce
 
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
-from paddle import framework
-from paddle.device import get_device, get_cudnn_version
+from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
+from paddle.common_ops_import import Variable
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.fluid.framework import (
+    _non_static_mode,
+    default_startup_program,
+    in_dygraph_mode,
+    program_guard,
+)
+from paddle.fluid.layers import control_flow
+from paddle.framework import core
+from paddle.nn import Layer
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
-from paddle.nn import Layer, LayerList
-from paddle.fluid.layers import utils
-from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
-from paddle.fluid.data_feeder import convert_dtype
-from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.framework import core
-from paddle.static import default_startup_program
-from paddle.static import program_guard
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from paddle.tensor.manipulation import tensor_array_to_tensor
+
+from .container import LayerList
 
 __all__ = []
+
+
+def rnn(
+    cell,
+    inputs,
+    initial_states=None,
+    sequence_length=None,
+    time_major=False,
+    is_reverse=False,
+    **kwargs
+):
+    r"""
+    rnn creates a recurrent neural network specified by RNNCell `cell`,
+    which performs :code:`cell.call()` (for dygraph mode :code:`cell.forward`)
+    repeatedly until reaches to the maximum length of `inputs`.
+
+    Parameters:
+        cell(RNNCellBase): An instance of `RNNCellBase`.
+        inputs(Tensor): the input sequences.
+            If time_major is True, the shape is
+            `[time_steps, batch_size, input_size]`
+            else the shape is `[batch_size, time_steps, input_size]`.
+        initial_states(Tensor|tuple|list, optional): the initial state of the
+            rnn cell. Tensor or a possibly nested structure of tensors. If not
+            provided, `cell.get_initial_states` would be called to produce
+            the initial state. Defaults to None.
+        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64
+            or int32. The valid lengths of input sequences. Defaults to None.
+            If `sequence_length` is not None, the inputs are treated as
+            padded sequences. In each input sequence, elements whose time step
+            index are not less than the valid length are treated as paddings.
+        time_major (bool, optional): Whether the first dimension of the input means the
+            time steps. Defaults to False.
+        is_reverse (bool, optional): Indicate whether to calculate in the reverse
+            order of input sequences. Defaults to False.
+        **kwargs: Additional keyword arguments to pass to `forward` of the cell.
+
+    Returns:
+        outputs (Tensor|list|tuple): the output sequence. Tensor or nested
+            structure of Tensors.
+            If `time_major` is True, the shape of each tensor in outpus is
+            `[time_steps, batch_size, hidden_size]`, else
+            `[batch_size, time_steps, hidden_size]`.
+        final_states (Tensor|list|tuple): final states. A (possibly nested structure of)
+            tensor[s], representing the final state for RNN. It has the same
+            structure of intial state. Each tensor in final states has the same
+            shape and dtype as the corresponding tensor in initial states.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.disable_static()
+
+            cell = paddle.nn.SimpleRNNCell(16, 32)
+
+            inputs = paddle.rand((4, 23, 16))
+            prev_h = paddle.randn((4, 32))
+            outputs, final_states = paddle.nn.layer.rnn(cell, inputs, prev_h)
+
+    """
+
+    if _non_static_mode():
+        return _rnn_dynamic_graph(
+            cell,
+            inputs,
+            initial_states,
+            sequence_length,
+            time_major,
+            is_reverse,
+            **kwargs
+        )
+    else:
+        return _rnn_static_graph(
+            cell,
+            inputs,
+            initial_states,
+            sequence_length,
+            time_major,
+            is_reverse,
+            **kwargs
+        )
+
+
+class ArrayWrapper:
+    def __init__(self, x):
+        self.array = [x]
+
+    def append(self, x):
+        self.array.append(x)
+        return self
+
+    def __getitem__(self, item):
+        return self.array.__getitem__(item)
+
+
+def _maybe_copy(state, new_state, step_mask):
+    """update rnn state or just pass the old state through"""
+    new_state = paddle.tensor.math._multiply_with_axis(
+        new_state, step_mask, axis=0
+    ) + paddle.tensor.math._multiply_with_axis(state, (1 - step_mask), axis=0)
+    return new_state
+
+
+def _transpose_batch_time(x):
+    perm = [1, 0] + list(range(2, len(x.shape)))
+    return paddle.transpose(x, perm)
+
+
+def _rnn_dynamic_graph(
+    cell,
+    inputs,
+    initial_states=None,
+    sequence_length=None,
+    time_major=False,
+    is_reverse=False,
+    **kwargs
+):
+    time_step_index = 0 if time_major else 1
+    flat_inputs = paddle.utils.flatten(inputs)
+    time_steps = flat_inputs[0].shape[time_step_index]
+
+    if initial_states is None:
+        initial_states = cell.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0
+        )
+
+    if not time_major:
+        inputs = paddle.utils.map_structure(_transpose_batch_time, inputs)
+
+    if sequence_length is not None:
+        mask = paddle.static.nn.sequence_lod.sequence_mask(
+            sequence_length, maxlen=time_steps, dtype=inputs.dtype
+        )
+        mask = paddle.transpose(mask, [1, 0])
+
+    if is_reverse:
+        inputs = paddle.utils.map_structure(
+            lambda x: paddle.reverse(x, axis=[0]), inputs
+        )
+        mask = (
+            paddle.reverse(mask, axis=[0])
+            if sequence_length is not None
+            else None
+        )
+
+    states = initial_states
+    outputs = []
+    for i in range(time_steps):
+        step_inputs = paddle.utils.map_structure(lambda x: x[i], inputs)
+        step_outputs, new_states = cell(step_inputs, states, **kwargs)
+        if sequence_length is not None:
+            new_states = paddle.utils.map_structure(
+                partial(_maybe_copy, step_mask=mask[i]), states, new_states
+            )
+        states = new_states
+        outputs = (
+            paddle.utils.map_structure(lambda x: ArrayWrapper(x), step_outputs)
+            if i == 0
+            else paddle.utils.map_structure(
+                lambda x, x_array: x_array.append(x), step_outputs, outputs
+            )
+        )
+
+    final_outputs = paddle.utils.map_structure(
+        lambda x: paddle.stack(x.array, axis=time_step_index), outputs
+    )
+
+    if is_reverse:
+        final_outputs = paddle.utils.map_structure(
+            lambda x: paddle.reverse(x, axis=time_step_index), final_outputs
+        )
+
+    final_states = new_states
+    return final_outputs, final_states
+
+
+def _rnn_static_graph(
+    cell,
+    inputs,
+    initial_states=None,
+    sequence_length=None,
+    time_major=False,
+    is_reverse=False,
+    **kwargs
+):
+    check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
+    if isinstance(inputs, (list, tuple)):
+        for i, input_x in enumerate(inputs):
+            check_variable_and_dtype(
+                input_x, 'inputs[' + str(i) + ']', ['float32', 'float64'], 'rnn'
+            )
+    check_type(
+        initial_states,
+        'initial_states',
+        (Variable, list, tuple, type(None)),
+        'rnn',
+    )
+
+    check_type(
+        sequence_length, 'sequence_length', (Variable, type(None)), 'rnn'
+    )
+
+    def _switch_grad(x, stop=False):
+        x.stop_gradient = stop
+        return x
+
+    if initial_states is None:
+        initial_states = cell.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0
+        )
+    initial_states = paddle.utils.map_structure(_switch_grad, initial_states)
+
+    if not time_major:
+        inputs = paddle.utils.map_structure(_transpose_batch_time, inputs)
+
+    max_seq_len = paddle.shape(paddle.utils.flatten(inputs)[0])[0]
+    if sequence_length:
+        mask = paddle.static.nn.sequence_lod.sequence_mask(
+            sequence_length,
+            maxlen=max_seq_len,
+            dtype=paddle.utils.flatten(initial_states)[0].dtype,
+        )
+        mask = paddle.transpose(mask, [1, 0])
+    if is_reverse:
+        inputs = paddle.utils.map_structure(
+            lambda x: paddle.reverse(x, axis=[0]), inputs
+        )
+        mask = paddle.reverse(mask, axis=[0]) if sequence_length else None
+
+    with paddle.fluid.framework.device_guard("cpu"):
+        start_i = paddle.zeros([1], dtype="int64")
+        end = max_seq_len
+
+        end = paddle.cast(end, "int64")
+        cond = start_i < end
+    while_op = control_flow.While(cond)
+
+    out_array = paddle.tensor.create_array(
+        dtype=paddle.utils.flatten(inputs)[0].dtype
+    )
+
+    init_array = paddle.utils.map_structure(
+        lambda x: paddle.tensor.create_array(dtype=x.dtype), initial_states
+    )
+
+    paddle.utils.map_structure(
+        lambda x, y: paddle.tensor.array_write(x, start_i, y),
+        initial_states,
+        init_array,
+    )
+
+    with while_op.block():
+
+        step_in = inputs[start_i]
+        # step_in = paddle.fluid.layers.Print( step_in, message="step in")
+        pre_state = paddle.utils.map_structure(
+            lambda x: paddle.tensor.array_read(x, start_i), init_array
+        )
+        # pre_state = paddle.fluid.layers.Print( pre_state, message="pre")
+        outputs, new_states = cell(step_in, pre_state, **kwargs)
+        assert isinstance(outputs, paddle.fluid.framework.Variable)
+        paddle.utils.assert_same_structure(new_states, pre_state)
+        if sequence_length:
+            step_mask = paddle.unsqueeze(mask[start_i], 1)
+            # paddle.fluid.layers.Print( step_mask, message="mask")
+            # new_states = map_structure(
+            #     partial(_maybe_copy, step_mask=step_mask),
+            #     pre_state, new_states
+            # )
+            new_states = paddle.utils.map_structure(
+                lambda x, y: (x * step_mask + y * (1.0 - step_mask)),
+                new_states,
+                pre_state,
+            )
+
+        paddle.tensor.array_write(outputs, start_i, out_array)
+
+        with paddle.fluid.framework.device_guard("cpu"):
+
+            start_i = paddle.tensor.increment(x=start_i, value=1)
+        paddle.utils.map_structure(
+            lambda x, y: paddle.tensor.array_write(x, start_i, y),
+            new_states,
+            init_array,
+        )
+
+        with paddle.fluid.framework.device_guard("cpu"):
+            new_cond = paddle.tensor.less_than(start_i, end)
+            paddle.assign(new_cond, cond)
+
+    out, _ = tensor_array_to_tensor(out_array, axis=0, use_stack=True)
+
+    all_state = paddle.utils.map_structure(
+        lambda x: tensor_array_to_tensor(x, axis=0, use_stack=True)[0],
+        init_array,
+    )
+    final_outputs = out
+    final_states = paddle.utils.map_structure(lambda x: x[-1], all_state)
+
+    if is_reverse:
+        final_outputs = paddle.utils.map_structure(
+            lambda x: paddle.reverse(x, axis=[0]), final_outputs
+        )
+
+    if not time_major:
+        final_outputs = paddle.utils.map_structure(
+            _transpose_batch_time, final_outputs
+        )
+
+    return (final_outputs, final_states)
+
+
+def birnn(
+    cell_fw,
+    cell_bw,
+    inputs,
+    initial_states=None,
+    sequence_length=None,
+    time_major=False,
+    **kwargs
+):
+    r"""
+    birnn creates a bidirectional recurrent neural network specified by
+    RNNCell `cell_fw` and `cell_bw`, which performs :code:`cell.call()`
+    (for dygraph mode :code:`cell.forward`) repeatedly until reaches to
+    the maximum length of `inputs` and then concat the outputs for both RNNs
+    along the last axis.
+
+    Parameters:
+        cell_fw(RNNCellBase): An instance of `RNNCellBase`.
+        cell_bw(RNNCellBase): An instance of `RNNCellBase`.
+        inputs(Tensor): the input sequences.
+            If time_major is True, the shape is
+            `[time_steps, batch_size, input_size]`
+            else the shape is `[batch_size, time_steps, input_size]`.
+        initial_states(tuple, optional): A tuple of initial states of
+            `cell_fw` and `cell_bw`.
+            If not provided, `cell.get_initial_states` would be called to
+            produce initial state for each cell. Defaults to None.
+        sequence_length (Tensor, optional): shape `[batch_size]`, dtype: int64
+            or int32. The valid lengths of input sequences. Defaults to None.
+            If `sequence_length` is not None, the inputs are treated as
+            padded sequences. In each input sequence, elements whose time step
+            index are not less than the valid length are treated as paddings.
+        time_major (bool): Whether the first dimension of the input means the
+            time steps. Defaults to False.
+        **kwargs: Additional keyword arguments to pass to `forward` of each cell.
+
+    Returns:
+        outputs (Tensor): the outputs of the bidirectional RNN. It is the
+            concatenation of the outputs from the forward RNN and backward
+            RNN along the last axis.
+            If time major is True, the shape is `[time_steps, batch_size, size]`,
+            else the shape is `[batch_size, time_steps, size]`, where size is
+            `cell_fw.hidden_size + cell_bw.hidden_size`.
+        final_states (tuple): A tuple of the final states of the forward
+            cell and backward cell.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            paddle.disable_static()
+
+            cell_fw = paddle.nn.LSTMCell(16, 32)
+            cell_bw = paddle.nn.LSTMCell(16, 32)
+
+            inputs = paddle.rand((4, 23, 16))
+            hf, cf = paddle.rand((4, 32)), paddle.rand((4, 32))
+            hb, cb = paddle.rand((4, 32)), paddle.rand((4, 32))
+            initial_states = ((hf, cf), (hb, cb))
+            outputs, final_states = paddle.nn.layer.birnn(
+                cell_fw, cell_bw, inputs, initial_states)
+
+    """
+
+    if initial_states is None:
+        states_fw = cell_fw.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0
+        )
+        states_bw = cell_fw.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0
+        )
+    else:
+        states_fw, states_bw = initial_states
+    outputs_fw, states_fw = rnn(
+        cell_fw,
+        inputs,
+        states_fw,
+        sequence_length,
+        time_major=time_major,
+        **kwargs
+    )
+
+    outputs_bw, states_bw = rnn(
+        cell_bw,
+        inputs,
+        states_bw,
+        sequence_length,
+        time_major=time_major,
+        is_reverse=True,
+        **kwargs
+    )
+
+    outputs = paddle.utils.map_structure(
+        lambda x, y: paddle.concat([x, y], -1), outputs_fw, outputs_bw
+    )
+
+    final_states = (states_fw, states_bw)
+    return outputs, final_states
 
 
 def split_states(states, bidirectional=False, state_components=1):
@@ -132,9 +539,9 @@ def concat_states(states, bidirectional=False, state_components=1):
 
     """
     if state_components == 1:
-        return paddle.stack(flatten(states))
+        return paddle.stack(paddle.utils.flatten(states))
     else:
-        states = flatten(states)
+        states = paddle.utils.flatten(states)
         componnets = []
         for i in range(state_components):
             componnets.append(states[i::state_components])
@@ -148,12 +555,9 @@ class RNNCellBase(Layer):
     and mostly used in RNN.
     """
 
-    def get_initial_states(self,
-                           batch_ref,
-                           shape=None,
-                           dtype=None,
-                           init_value=0.,
-                           batch_dim_idx=0):
+    def get_initial_states(
+        self, batch_ref, shape=None, dtype=None, init_value=0.0, batch_dim_idx=0
+    ):
         r"""
         Generate initialized states according to provided shape, data type and
         value.
@@ -185,56 +589,55 @@ class RNNCellBase(Layer):
                 packed in the same structure as `shape` and `type` does.
         """
         # TODO: use inputs and batch_size
-        batch_ref = flatten(batch_ref)[0]
+        batch_ref = paddle.utils.flatten(batch_ref)[0]
 
         def _is_shape_sequence(seq):
-            if sys.version_info < (3, ):
-                integer_types = (
-                    int,
-                    long,
-                )
-            else:
-                integer_types = (int, )
             """For shape, list/tuple of integer is the finest-grained objection"""
-            if (isinstance(seq, list) or isinstance(seq, tuple)):
-                if reduce(lambda flag, x: isinstance(x, integer_types) and flag,
-                          seq, True):
+            if isinstance(seq, list) or isinstance(seq, tuple):
+                if reduce(
+                    lambda flag, x: isinstance(x, int) and flag, seq, True
+                ):
                     return False
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
                 return True
-            return (isinstance(seq, Sequence)
-                    and not isinstance(seq, six.string_types))
+            return isinstance(seq, Sequence) and not isinstance(seq, str)
 
-        class Shape(object):
-
+        class Shape:
             def __init__(self, shape):
                 self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
 
         # nested structure of shapes
         states_shapes = self.state_shape if shape is None else shape
-        is_sequence_ori = utils.is_sequence
-        utils.is_sequence = _is_shape_sequence
-        states_shapes = map_structure(lambda shape: Shape(shape), states_shapes)
-        utils.is_sequence = is_sequence_ori
+        is_sequence_ori = paddle.utils.layers_utils.is_sequence
+        paddle.utils.layers_utils.is_sequence = _is_shape_sequence
+        states_shapes = paddle.utils.map_structure(
+            lambda shape: Shape(shape), states_shapes
+        )
+        paddle.utils.layers_utils.is_sequence = is_sequence_ori
 
         # nested structure of dtypes
         try:
             states_dtypes = self.state_dtype if dtype is None else dtype
         except NotImplementedError:
             states_dtypes = framework.get_default_dtype()
-        if len(flatten(states_dtypes)) == 1:
-            dtype = flatten(states_dtypes)[0]
-            states_dtypes = map_structure(lambda shape: dtype, states_shapes)
+        if len(paddle.utils.flatten(states_dtypes)) == 1:
+            dtype = paddle.utils.flatten(states_dtypes)[0]
+            states_dtypes = paddle.utils.map_structure(
+                lambda shape: dtype, states_shapes
+            )
 
-        init_states = map_structure(
-            lambda shape, dtype: paddle.fluid.layers.
-            fill_constant_batch_size_like(input=batch_ref,
-                                          shape=shape.shape,
-                                          dtype=dtype,
-                                          value=init_value,
-                                          input_dim_idx=batch_dim_idx),
-            states_shapes, states_dtypes)
+        init_states = paddle.utils.map_structure(
+            lambda shape, dtype: paddle.fluid.layers.fill_constant_batch_size_like(
+                input=batch_ref,
+                shape=shape.shape,
+                dtype=dtype,
+                value=init_value,
+                input_dim_idx=batch_dim_idx,
+            ),
+            states_shapes,
+            states_dtypes,
+        )
         return init_states
 
     @property
@@ -250,7 +653,8 @@ class RNNCellBase(Layer):
         `get_initial_states`.
         """
         raise NotImplementedError(
-            "Please add implementaion for `state_shape` in the used cell.")
+            "Please add implementaion for `state_shape` in the used cell."
+        )
 
     @property
     def state_dtype(self):
@@ -265,7 +669,8 @@ class RNNCellBase(Layer):
         `get_initial_states`.
         """
         raise NotImplementedError(
-            "Please add implementaion for `state_dtype` in the used cell.")
+            "Please add implementaion for `state_dtype` in the used cell."
+        )
 
 
 class SimpleRNNCell(RNNCellBase):
@@ -335,50 +740,57 @@ class SimpleRNNCell(RNNCellBase):
 
     """
 
-    def __init__(self,
-                 input_size,
-                 hidden_size,
-                 activation="tanh",
-                 weight_ih_attr=None,
-                 weight_hh_attr=None,
-                 bias_ih_attr=None,
-                 bias_hh_attr=None,
-                 name=None):
-        super(SimpleRNNCell, self).__init__()
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        activation="tanh",
+        weight_ih_attr=None,
+        weight_hh_attr=None,
+        bias_ih_attr=None,
+        bias_hh_attr=None,
+        name=None,
+    ):
+        super().__init__()
         if hidden_size <= 0:
             raise ValueError(
-                "hidden_size of {} must be greater than 0, but now equals to {}"
-                .format(self.__class__.__name__, hidden_size))
+                "hidden_size of {} must be greater than 0, but now equals to {}".format(
+                    self.__class__.__name__, hidden_size
+                )
+            )
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (hidden_size, input_size),
             weight_ih_attr,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
         self.weight_hh = self.create_parameter(
             (hidden_size, hidden_size),
             weight_hh_attr,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
         self.bias_ih = self.create_parameter(
-            (hidden_size, ),
+            (hidden_size,),
             bias_ih_attr,
             is_bias=True,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
         self.bias_hh = self.create_parameter(
-            (hidden_size, ),
+            (hidden_size,),
             bias_hh_attr,
             is_bias=True,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
 
         self.input_size = input_size
         self.hidden_size = hidden_size
         if activation not in ["tanh", "relu"]:
             raise ValueError(
                 "activation for SimpleRNNCell should be tanh or relu, "
-                "but get {}".format(activation))
+                "but get {}".format(activation)
+            )
         self.activation = activation
-        self._activation_fn = paddle.tanh \
-            if activation == "tanh" \
-            else F.relu
+        self._activation_fn = paddle.tanh if activation == "tanh" else F.relu
 
     def forward(self, inputs, states=None):
         if states is None:
@@ -395,7 +807,7 @@ class SimpleRNNCell(RNNCellBase):
 
     @property
     def state_shape(self):
-        return (self.hidden_size, )
+        return (self.hidden_size,)
 
     def extra_repr(self):
         s = '{input_size}, {hidden_size}'
@@ -488,38 +900,46 @@ class LSTMCell(RNNCellBase):
 
     """
 
-    def __init__(self,
-                 input_size,
-                 hidden_size,
-                 weight_ih_attr=None,
-                 weight_hh_attr=None,
-                 bias_ih_attr=None,
-                 bias_hh_attr=None,
-                 name=None):
-        super(LSTMCell, self).__init__()
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        weight_ih_attr=None,
+        weight_hh_attr=None,
+        bias_ih_attr=None,
+        bias_hh_attr=None,
+        name=None,
+    ):
+        super().__init__()
         if hidden_size <= 0:
             raise ValueError(
-                "hidden_size of {} must be greater than 0, but now equals to {}"
-                .format(self.__class__.__name__, hidden_size))
+                "hidden_size of {} must be greater than 0, but now equals to {}".format(
+                    self.__class__.__name__, hidden_size
+                )
+            )
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (4 * hidden_size, input_size),
             weight_ih_attr,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
         self.weight_hh = self.create_parameter(
             (4 * hidden_size, hidden_size),
             weight_hh_attr,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
         self.bias_ih = self.create_parameter(
-            (4 * hidden_size, ),
+            (4 * hidden_size,),
             bias_ih_attr,
             is_bias=True,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
         self.bias_hh = self.create_parameter(
-            (4 * hidden_size, ),
+            (4 * hidden_size,),
             bias_hh_attr,
             is_bias=True,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
 
         self.hidden_size = hidden_size
         self.input_size = input_size
@@ -555,7 +975,7 @@ class LSTMCell(RNNCellBase):
         automatically inserted into shape). These two shapes correspond
         to :math:`h_{t-1}` and :math:`c_{t-1}` separately.
         """
-        return ((self.hidden_size, ), (self.hidden_size, ))
+        return ((self.hidden_size,), (self.hidden_size,))
 
     def extra_repr(self):
         return '{input_size}, {hidden_size}'.format(**self.__dict__)
@@ -639,38 +1059,46 @@ class GRUCell(RNNCellBase):
 
     """
 
-    def __init__(self,
-                 input_size,
-                 hidden_size,
-                 weight_ih_attr=None,
-                 weight_hh_attr=None,
-                 bias_ih_attr=None,
-                 bias_hh_attr=None,
-                 name=None):
-        super(GRUCell, self).__init__()
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        weight_ih_attr=None,
+        weight_hh_attr=None,
+        bias_ih_attr=None,
+        bias_hh_attr=None,
+        name=None,
+    ):
+        super().__init__()
         if hidden_size <= 0:
             raise ValueError(
-                "hidden_size of {} must be greater than 0, but now equals to {}"
-                .format(self.__class__.__name__, hidden_size))
+                "hidden_size of {} must be greater than 0, but now equals to {}".format(
+                    self.__class__.__name__, hidden_size
+                )
+            )
         std = 1.0 / math.sqrt(hidden_size)
         self.weight_ih = self.create_parameter(
             (3 * hidden_size, input_size),
             weight_ih_attr,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
         self.weight_hh = self.create_parameter(
             (3 * hidden_size, hidden_size),
             weight_hh_attr,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
         self.bias_ih = self.create_parameter(
-            (3 * hidden_size, ),
+            (3 * hidden_size,),
             bias_ih_attr,
             is_bias=True,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
         self.bias_hh = self.create_parameter(
-            (3 * hidden_size, ),
+            (3 * hidden_size,),
             bias_hh_attr,
             is_bias=True,
-            default_initializer=I.Uniform(-std, std))
+            default_initializer=I.Uniform(-std, std),
+        )
 
         self.hidden_size = hidden_size
         self.input_size = input_size
@@ -706,7 +1134,7 @@ class GRUCell(RNNCellBase):
         size would be automatically inserted into shape). The shape corresponds
         to the shape of :math:`h_{t-1}`.
         """
-        return (self.hidden_size, )
+        return (self.hidden_size,)
 
     def extra_repr(self):
         return '{input_size}, {hidden_size}'.format(**self.__dict__)
@@ -763,7 +1191,7 @@ class RNN(Layer):
     """
 
     def __init__(self, cell, is_reverse=False, time_major=False):
-        super(RNN, self).__init__()
+        super().__init__()
         self.cell = cell
         if not hasattr(self.cell, "call"):
             # for non-dygraph mode, `rnn` api uses cell.call
@@ -771,19 +1199,18 @@ class RNN(Layer):
         self.is_reverse = is_reverse
         self.time_major = time_major
 
-    def forward(self,
-                inputs,
-                initial_states=None,
-                sequence_length=None,
-                **kwargs):
-        final_outputs, final_states = paddle.fluid.layers.rnn(
+    def forward(
+        self, inputs, initial_states=None, sequence_length=None, **kwargs
+    ):
+        final_outputs, final_states = rnn(
             self.cell,
             inputs,
             initial_states=initial_states,
             sequence_length=sequence_length,
             time_major=self.time_major,
             is_reverse=self.is_reverse,
-            **kwargs)
+            **kwargs
+        )
         return final_outputs, final_states
 
 
@@ -797,7 +1224,7 @@ class BiRNN(Layer):
     Parameters:
         cell_fw (RNNCellBase): A RNNCellBase instance used for forward RNN.
         cell_bw (RNNCellBase): A RNNCellBase instance used for backward RNN.
-        time_major (bool): Whether the first dimension of the input means the
+        time_major (bool, optional): Whether the first dimension of the input means the
             time steps. Defaults to False.
 
     Inputs:
@@ -838,31 +1265,39 @@ class BiRNN(Layer):
     """
 
     def __init__(self, cell_fw, cell_bw, time_major=False):
-        super(BiRNN, self).__init__()
+        super().__init__()
         self.cell_fw = cell_fw
         self.cell_bw = cell_bw
         if cell_fw.input_size != cell_bw.input_size:
-            raise ValueError("input size of forward cell({}) does not equals"
-                             "that of backward cell({})".format(
-                                 cell_fw.input_size, cell_bw.input_size))
+            raise ValueError(
+                "input size of forward cell({}) does not equals"
+                "that of backward cell({})".format(
+                    cell_fw.input_size, cell_bw.input_size
+                )
+            )
         for cell in [self.cell_fw, self.cell_bw]:
             if not hasattr(cell, "call"):
                 # for non-dygraph mode, `rnn` api uses cell.call
                 cell.call = cell.forward
         self.time_major = time_major
 
-    def forward(self,
-                inputs,
-                initial_states=None,
-                sequence_length=None,
-                **kwargs):
+    def forward(
+        self, inputs, initial_states=None, sequence_length=None, **kwargs
+    ):
         if isinstance(initial_states, (list, tuple)):
-            assert len(initial_states) == 2, \
-                "length of initial_states should be 2 when it is a list/tuple"
+            assert (
+                len(initial_states) == 2
+            ), "length of initial_states should be 2 when it is a list/tuple"
 
-        outputs, final_states = paddle.fluid.layers.birnn(
-            self.cell_fw, self.cell_bw, inputs, initial_states, sequence_length,
-            self.time_major, **kwargs)
+        outputs, final_states = birnn(
+            self.cell_fw,
+            self.cell_bw,
+            inputs,
+            initial_states,
+            sequence_length,
+            self.time_major,
+            **kwargs
+        )
         return outputs, final_states
 
 
@@ -872,19 +1307,21 @@ class RNNBase(LayerList):
     and other common methods for SimpleRNN, LSTM and GRU.
     """
 
-    def __init__(self,
-                 mode,
-                 input_size,
-                 hidden_size,
-                 num_layers=1,
-                 direction="forward",
-                 time_major=False,
-                 dropout=0.,
-                 weight_ih_attr=None,
-                 weight_hh_attr=None,
-                 bias_ih_attr=None,
-                 bias_hh_attr=None):
-        super(RNNBase, self).__init__()
+    def __init__(
+        self,
+        mode,
+        input_size,
+        hidden_size,
+        num_layers=1,
+        direction="forward",
+        time_major=False,
+        dropout=0.0,
+        weight_ih_attr=None,
+        weight_hh_attr=None,
+        bias_ih_attr=None,
+        bias_hh_attr=None,
+    ):
+        super().__init__()
         bidirectional_list = ["bidirectional", "bidirect"]
         self.mode = mode
         self.input_size = input_size
@@ -899,7 +1336,7 @@ class RNNBase(LayerList):
             "weight_ih_attr": weight_ih_attr,
             "weight_hh_attr": weight_hh_attr,
             "bias_ih_attr": bias_ih_attr,
-            "bias_hh_attr": bias_hh_attr
+            "bias_hh_attr": bias_hh_attr,
         }
 
         if mode == "LSTM":
@@ -928,11 +1365,13 @@ class RNNBase(LayerList):
         else:
             raise ValueError(
                 "direction should be forward or bidirect (or bidirectional), "
-                "received direction = {}".format(direction))
+                "received direction = {}".format(direction)
+            )
 
         self.could_use_cudnn = True
         self.could_use_cudnn &= len(self.parameters()) == num_layers * 4 * (
-            2 if direction in bidirectional_list else 1)
+            2 if direction in bidirectional_list else 1
+        )
 
         # Expose params as RNN's attribute, which can make it compatible when
         # replacing small ops composed rnn with cpp rnn kernel.
@@ -944,8 +1383,10 @@ class RNNBase(LayerList):
             for direction in range(self.num_directions):
                 suffix = '_reverse' if direction == 1 else ''
                 param_names.extend(['weight_ih_l{}{}', 'weight_hh_l{}{}'])
-                if bias_ih_attr != False: param_names.append('bias_ih_l{}{}')
-                if bias_hh_attr != False: param_names.append('bias_hh_l{}{}')
+                if bias_ih_attr is not False:
+                    param_names.append('bias_ih_l{}{}')
+                if bias_hh_attr is not False:
+                    param_names.append('bias_hh_l{}{}')
                 param_names = [x.format(layer, suffix) for x in param_names]
         for name, param in zip(param_names, self.parameters()):
             setattr(self, name, param)
@@ -966,8 +1407,11 @@ class RNNBase(LayerList):
             shape = [np.prod(param.shape) for param in params]
             self._all_weights = [None] * len(params)
             for i, param in enumerate(params):
-                offset = 0 if i % 4 < 2 else (2 * self.num_layers *
-                                              self.num_directions)
+                offset = (
+                    0
+                    if i % 4 < 2
+                    else (2 * self.num_layers * self.num_directions)
+                )
                 layer_idx = i // 4
                 self._all_weights[offset + layer_idx * 2 + i % 2] = param
             # Wrap using a list to avoid registed into params and saving, maybe
@@ -975,51 +1419,93 @@ class RNNBase(LayerList):
             # add both to main_program and startup_program for static-graph.
             # Use Constant initializer to avoid make effect on random generator.
             self._flat_weight = [
-                self.create_parameter(shape=[np.sum(shape)],
-                                      dtype=params[0].dtype,
-                                      default_initializer=I.Constant(0.0))
+                self.create_parameter(
+                    shape=[np.sum(shape)],
+                    dtype=params[0].dtype,
+                    default_initializer=I.Constant(0.0),
+                )
             ]
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
             self._dropout_state = self.create_variable(
-                dtype=core.VarDesc.VarType.UINT8)
+                dtype=core.VarDesc.VarType.UINT8
+            )
             if in_dynamic_mode():
                 with paddle.no_grad():
-                    _legacy_C_ops.coalesce_tensor(self._all_weights,
-                                                  self._all_weights,
-                                                  self._flat_weight[0],
-                                                  "copy_data", True,
-                                                  "use_align", False, "dtype",
-                                                  params[0].dtype)
+                    _legacy_C_ops.coalesce_tensor(
+                        self._all_weights,
+                        self._all_weights,
+                        self._flat_weight[0],
+                        "copy_data",
+                        True,
+                        "use_align",
+                        False,
+                        "dtype",
+                        params[0].dtype,
+                    )
                     return
             # for static-graph, append coalesce_tensor into startup program
-            with program_guard(default_startup_program(),
-                               default_startup_program()):
+            with program_guard(
+                default_startup_program(), default_startup_program()
+            ):
                 with paddle.no_grad():
-                    self._helper.append_op(type="coalesce_tensor",
-                                           inputs={"Input": self._all_weights},
-                                           outputs={
-                                               "Output": self._all_weights,
-                                               "FusedOutput": self._flat_weight
-                                           },
-                                           attrs={
-                                               "copy_data": True,
-                                               "use_align": False,
-                                               "dtype": params[0].dtype
-                                           })
+                    self._helper.append_op(
+                        type="coalesce_tensor",
+                        inputs={"Input": self._all_weights},
+                        outputs={
+                            "Output": self._all_weights,
+                            "FusedOutput": self._flat_weight,
+                        },
+                        attrs={
+                            "copy_data": True,
+                            "use_align": False,
+                            "dtype": params[0].dtype,
+                        },
+                    )
 
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
-        if in_dynamic_mode():
+        if in_dygraph_mode():
+            out, _, state = _C_ops.rnn(
+                inputs,
+                initial_states,
+                self._all_weights,
+                sequence_length,
+                self._dropout_state,
+                self.dropout,
+                self.num_directions == 2,
+                self.input_size,
+                self.hidden_size,
+                self.num_layers,
+                self.mode,
+                0,
+                not self.training,
+            )
+        elif in_dynamic_mode():
             _, _, out, state = _legacy_C_ops.rnn(
-                inputs, initial_states, self._all_weights, sequence_length,
-                self._dropout_state, self.state_components, 'dropout_prob',
-                self.dropout, 'is_bidirec', self.num_directions == 2,
-                'input_size', self.input_size, 'hidden_size', self.hidden_size,
-                'num_layers', self.num_layers, 'mode', self.mode, 'is_test',
-                not self.training)
+                inputs,
+                initial_states,
+                self._all_weights,
+                sequence_length,
+                self._dropout_state,
+                self.state_components,
+                'dropout_prob',
+                self.dropout,
+                'is_bidirec',
+                self.num_directions == 2,
+                'input_size',
+                self.input_size,
+                'hidden_size',
+                self.hidden_size,
+                'num_layers',
+                self.num_layers,
+                'mode',
+                self.mode,
+                'is_test',
+                not self.training,
+            )
         else:
             out = self._helper.create_variable_for_type_inference(inputs.dtype)
             state = [
@@ -1027,13 +1513,14 @@ class RNNBase(LayerList):
                 for i in range(self.state_components)
             ]
             reserve = self._helper.create_variable_for_type_inference(
-                dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+                dtype=core.VarDesc.VarType.UINT8, stop_gradient=True
+            )
 
             inputs = {
                 'Input': inputs,
                 'WeightList': self._all_weights,
                 'PreState': initial_states,
-                'SequenceLength': sequence_length
+                'SequenceLength': sequence_length,
             }
             attrs = {
                 'dropout_prob': self.dropout,
@@ -1042,7 +1529,7 @@ class RNNBase(LayerList):
                 'hidden_size': self.hidden_size,
                 'num_layers': self.num_layers,
                 'mode': self.mode,
-                'is_test': not self.training
+                'is_test': not self.training,
             }
 
             outputs = {
@@ -1052,58 +1539,74 @@ class RNNBase(LayerList):
                 'DropoutState': self._dropout_state,
             }
 
-            self._helper.append_op(type="rnn",
-                                   inputs=inputs,
-                                   outputs=outputs,
-                                   attrs=attrs)
+            self._helper.append_op(
+                type="rnn", inputs=inputs, outputs=outputs, attrs=attrs
+            )
 
-        out = paddle.tensor.transpose(out,
-                                      [1, 0, 2]) if not self.time_major else out
+        out = (
+            paddle.tensor.transpose(out, [1, 0, 2])
+            if not self.time_major
+            else out
+        )
         return out, tuple(state) if len(state) > 1 else state[0]
 
     def forward(self, inputs, initial_states=None, sequence_length=None):
         batch_index = 1 if self.time_major else 0
         dtype = inputs.dtype
         if initial_states is None:
-            state_shape = (self.num_layers * self.num_directions, -1,
-                           self.hidden_size)
-            initial_states = tuple([
-                paddle.fluid.layers.fill_constant_batch_size_like(
-                    inputs, state_shape, dtype, 0, batch_index, 1)
-                for _ in range(self.state_components)
-            ])
+            state_shape = (
+                self.num_layers * self.num_directions,
+                -1,
+                self.hidden_size,
+            )
+            initial_states = tuple(
+                [
+                    paddle.fluid.layers.fill_constant_batch_size_like(
+                        inputs, state_shape, dtype, 0, batch_index, 1
+                    )
+                    for _ in range(self.state_components)
+                ]
+            )
         else:
-            initial_states = [initial_states] if isinstance(
-                initial_states, paddle.static.Variable) else initial_states
+            initial_states = (
+                [initial_states]
+                if isinstance(initial_states, paddle.static.Variable)
+                else initial_states
+            )
 
-        if self.could_use_cudnn and (not paddle.device.is_compiled_with_rocm()
-                                     or sequence_length is None):
+        if self.could_use_cudnn and (
+            not paddle.device.is_compiled_with_rocm() or sequence_length is None
+        ):
             # Add CPU kernel and dispatch in backend later
             return self._cudnn_impl(inputs, initial_states, sequence_length)
 
-        states = split_states(initial_states, self.num_directions == 2,
-                              self.state_components)
+        states = split_states(
+            initial_states, self.num_directions == 2, self.state_components
+        )
         final_states = []
 
         for i, rnn_layer in enumerate(self):
             if i > 0:
-                inputs = F.dropout(inputs,
-                                   self.dropout,
-                                   training=self.training,
-                                   mode="upscale_in_train")
+                inputs = F.dropout(
+                    inputs,
+                    self.dropout,
+                    training=self.training,
+                    mode="upscale_in_train",
+                )
             outputs, final_state = rnn_layer(inputs, states[i], sequence_length)
             final_states.append(final_state)
             inputs = outputs
 
-        final_states = concat_states(final_states, self.num_directions == 2,
-                                     self.state_components)
+        final_states = concat_states(
+            final_states, self.num_directions == 2, self.state_components
+        )
         return outputs, final_states
 
     def extra_repr(self):
         main_str = '{input_size}, {hidden_size}'
         if self.num_layers != 1:
             main_str += ', num_layers={num_layers}'
-        if self.time_major != False:
+        if self.time_major is not False:
             main_str += ', time_major={time_major}'
         if self.dropout != 0:
             main_str += ', dropout={dropout}'
@@ -1195,19 +1698,21 @@ class SimpleRNN(RNNBase):
 
     """
 
-    def __init__(self,
-                 input_size,
-                 hidden_size,
-                 num_layers=1,
-                 direction="forward",
-                 time_major=False,
-                 dropout=0.,
-                 activation="tanh",
-                 weight_ih_attr=None,
-                 weight_hh_attr=None,
-                 bias_ih_attr=None,
-                 bias_hh_attr=None,
-                 name=None):
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        num_layers=1,
+        direction="forward",
+        time_major=False,
+        dropout=0.0,
+        activation="tanh",
+        weight_ih_attr=None,
+        weight_hh_attr=None,
+        bias_ih_attr=None,
+        bias_hh_attr=None,
+        name=None,
+    ):
         if activation == "tanh":
             mode = "RNN_TANH"
         elif activation == "relu":
@@ -1215,10 +1720,19 @@ class SimpleRNN(RNNBase):
         else:
             raise ValueError("Unknown activation '{}'".format(activation))
         self.activation = activation
-        super(SimpleRNN,
-              self).__init__(mode, input_size, hidden_size, num_layers,
-                             direction, time_major, dropout, weight_ih_attr,
-                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
+        super().__init__(
+            mode,
+            input_size,
+            hidden_size,
+            num_layers,
+            direction,
+            time_major,
+            dropout,
+            weight_ih_attr,
+            weight_hh_attr,
+            bias_ih_attr,
+            bias_hh_attr,
+        )
 
 
 class LSTM(RNNBase):
@@ -1318,22 +1832,33 @@ class LSTM(RNNBase):
 
     """
 
-    def __init__(self,
-                 input_size,
-                 hidden_size,
-                 num_layers=1,
-                 direction="forward",
-                 time_major=False,
-                 dropout=0.,
-                 weight_ih_attr=None,
-                 weight_hh_attr=None,
-                 bias_ih_attr=None,
-                 bias_hh_attr=None,
-                 name=None):
-        super(LSTM,
-              self).__init__("LSTM", input_size, hidden_size, num_layers,
-                             direction, time_major, dropout, weight_ih_attr,
-                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        num_layers=1,
+        direction="forward",
+        time_major=False,
+        dropout=0.0,
+        weight_ih_attr=None,
+        weight_hh_attr=None,
+        bias_ih_attr=None,
+        bias_hh_attr=None,
+        name=None,
+    ):
+        super().__init__(
+            "LSTM",
+            input_size,
+            hidden_size,
+            num_layers,
+            direction,
+            time_major,
+            dropout,
+            weight_ih_attr,
+            weight_hh_attr,
+            bias_ih_attr,
+            bias_hh_attr,
+        )
 
 
 class GRU(RNNBase):
@@ -1426,19 +1951,30 @@ class GRU(RNNBase):
 
     """
 
-    def __init__(self,
-                 input_size,
-                 hidden_size,
-                 num_layers=1,
-                 direction="forward",
-                 time_major=False,
-                 dropout=0.,
-                 weight_ih_attr=None,
-                 weight_hh_attr=None,
-                 bias_ih_attr=None,
-                 bias_hh_attr=None,
-                 name=None):
-        super(GRU,
-              self).__init__("GRU", input_size, hidden_size, num_layers,
-                             direction, time_major, dropout, weight_ih_attr,
-                             weight_hh_attr, bias_ih_attr, bias_hh_attr)
+    def __init__(
+        self,
+        input_size,
+        hidden_size,
+        num_layers=1,
+        direction="forward",
+        time_major=False,
+        dropout=0.0,
+        weight_ih_attr=None,
+        weight_hh_attr=None,
+        bias_ih_attr=None,
+        bias_hh_attr=None,
+        name=None,
+    ):
+        super().__init__(
+            "GRU",
+            input_size,
+            hidden_size,
+            num_layers,
+            direction,
+            time_major,
+            dropout,
+            weight_ih_attr,
+            weight_hh_attr,
+            bias_ih_attr,
+            bias_hh_attr,
+        )

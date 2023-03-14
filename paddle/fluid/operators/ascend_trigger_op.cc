@@ -23,10 +23,10 @@ class AscendTriggerOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.device_context());
+    return phi::KernelKey(framework::proto::VarType::FP32,
+                          ctx.device_context().GetPlace());
   }
 };
 

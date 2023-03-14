@@ -12,26 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-from op_test import OpTest, _set_use_system_allocator
-from paddle.fluid.framework import grad_var_name
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
+
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 
 
 class TestInstanceNorm(unittest.TestCase):
-
     def test_error(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
+            "instance_norm"
+        ):
             places.append(fluid.CUDAPlace(0))
         for p in places:
 
@@ -52,9 +48,9 @@ class TestInstanceNorm(unittest.TestCase):
 
             def weight_bias_false():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm3d = paddle.nn.InstanceNorm3D(1,
-                                                           weight_attr=False,
-                                                           bias_attr=False)
+                instance_norm3d = paddle.nn.InstanceNorm3D(
+                    1, weight_attr=False, bias_attr=False
+                )
 
             with fluid.dygraph.guard(p):
                 weight_bias_false()
@@ -65,14 +61,15 @@ class TestInstanceNorm(unittest.TestCase):
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
+            "instance_norm"
+        ):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.dygraph.InstanceNorm(shape[1])
+                    bn = paddle.nn.InstanceNorm2D(shape[1])
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
@@ -90,7 +87,8 @@ class TestInstanceNorm(unittest.TestCase):
     def test_static(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
+            "instance_norm"
+        ):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             exe = fluid.Executor(p)
@@ -98,7 +96,7 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v1(x_np):
                 with program_guard(Program(), Program()):
-                    ins = fluid.dygraph.InstanceNorm(shape[1])
+                    ins = paddle.nn.InstanceNorm2D(shape[1])
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = ins(x)
                     exe.run(fluid.default_startup_program())
@@ -118,11 +116,6 @@ class TestInstanceNorm(unittest.TestCase):
             y1 = compute_v1(x)
             y2 = compute_v2(x)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
-
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_error()
 
 
 if __name__ == '__main__':

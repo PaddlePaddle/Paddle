@@ -69,6 +69,9 @@ inline OneDNNMemoryFormat OneDNNFormatForSize(size_t dims_size,
 
 inline dnnl::memory::format_tag GetPlainOneDNNFormat(int tensor_rank) {
   switch (tensor_rank) {
+    case 0:
+      // use 1D to represent 0D
+      return dnnl::memory::format_tag::a;
     case 1:
       return dnnl::memory::format_tag::a;
     case 2:
@@ -96,29 +99,29 @@ inline dnnl::memory::format_tag GetPlainOneDNNFormat(int tensor_rank) {
 }
 
 template <typename Type>
-dnnl::memory::data_type oneDNNGetDataType() {
+dnnl::memory::data_type OneDNNGetDataType() {
   return dnnl::memory::data_type::undef;
 }
 
 template <>
-inline dnnl::memory::data_type oneDNNGetDataType<float>() {
+inline dnnl::memory::data_type OneDNNGetDataType<float>() {
   return dnnl::memory::data_type::f32;
 }
 template <>
-inline dnnl::memory::data_type oneDNNGetDataType<int32_t>() {
+inline dnnl::memory::data_type OneDNNGetDataType<int32_t>() {
   return dnnl::memory::data_type::s32;
 }
 template <>
-inline dnnl::memory::data_type oneDNNGetDataType<int8_t>() {
+inline dnnl::memory::data_type OneDNNGetDataType<int8_t>() {
   return dnnl::memory::data_type::s8;
 }
 template <>
-inline dnnl::memory::data_type oneDNNGetDataType<uint8_t>() {
+inline dnnl::memory::data_type OneDNNGetDataType<uint8_t>() {
   return dnnl::memory::data_type::u8;
 }
 
 template <>
-inline dnnl::memory::data_type oneDNNGetDataType<dtype::bfloat16>() {
+inline dnnl::memory::data_type OneDNNGetDataType<dtype::bfloat16>() {
   return dnnl::memory::data_type::bf16;
 }
 
@@ -193,6 +196,19 @@ inline std::string CreateKey(const OneDNNContext& dev_ctx, ArgTypes&&... args) {
   expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
   key += OneDNNContext::tls().get_key_suffix();
   return key;
+}
+
+// The function adjusts the vector of weight dimensions for group convolutions
+inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
+                                  const int groups) {
+  if (groups > 1) {
+    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
+    // else [o, i, h, w] -> [g, o/g, i, h, w]
+    weights_tz.push_back(0);
+    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
+    weights_tz[0] = groups;
+    weights_tz[1] = weights_tz[1] / groups;
+  }
 }
 
 inline void MatchShapeToLayout(DenseTensor* tensor_in,
@@ -271,10 +287,7 @@ inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
              : key;
 }
 
-template <typename T>
-bool constexpr is_int8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-}
+enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
 
 }  // namespace funcs
 }  // namespace phi

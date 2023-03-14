@@ -40,7 +40,7 @@ const std::unordered_set<std::string> standard_kernel_suffixs({
  * after 2.0, and can no longer be occupied by the previously abandoned ops.
  * They are marked here uniformly.
  */
-const std::unordered_set<std::string> deprecated_op_names(
+static const std::unordered_set<std::string> deprecated_op_names(
     {"diag",
      "flatten",
      "flatten_grad",
@@ -81,7 +81,10 @@ const std::unordered_set<std::string> deprecated_op_names(
      "nearest_interp",
      "nearest_interp_grad",
      "bicubic_interp",
-     "bicubic_interp_grad"});
+     "bicubic_interp_grad",
+     "crop",
+     "crop_grad",
+     "generate_proposals"});
 
 class DefaultKernelSignatureMap {
  public:
@@ -129,18 +132,23 @@ class OpUtilsMap {
   static OpUtilsMap& Instance();
 
   bool Contains(const std::string& op_type) const {
-    return base_kernel_name_map_.count(op_type) ||
+    return fluid_op_to_phi_kernel_.count(op_type) ||
            arg_mapping_fn_map_.count(op_type);
   }
 
-  void InsertBaseKernelName(std::string op_type, std::string base_kernel_name) {
+  void InsertBaseKernelName(const std::string& op_type,
+                            const std::string& base_kernel_name) {
+    fluid_op_to_phi_kernel_.insert({op_type, base_kernel_name});
+  }
+  void InsertFluidOplName(std::string op_type, std::string base_kernel_name) {
     PADDLE_ENFORCE_EQ(
-        base_kernel_name_map_.count(op_type),
+        phi_kernel_to_fluid_op_.count(base_kernel_name),
         0UL,
         phi::errors::AlreadyExists(
-            "Operator (%s)'s api name has been registered.", op_type));
-    base_kernel_name_map_.insert(
-        {std::move(op_type), std::move(base_kernel_name)});
+            "Operator (%s)'s kernel name (%s) has been registered.",
+            op_type,
+            base_kernel_name));
+    phi_kernel_to_fluid_op_.insert({base_kernel_name, op_type});
   }
 
   bool HasArgumentMappingFn(const std::string& op_type) const {
@@ -161,8 +169,8 @@ class OpUtilsMap {
     if (deprecated_op_names.find(op_type) != deprecated_op_names.end()) {
       return deprecated_kernel_name;
     }
-    auto it = base_kernel_name_map_.find(op_type);
-    if (it == base_kernel_name_map_.end()) {
+    auto it = fluid_op_to_phi_kernel_.find(op_type);
+    if (it == fluid_op_to_phi_kernel_.end()) {
       return op_type;
     } else {
       return it->second;
@@ -179,15 +187,23 @@ class OpUtilsMap {
     }
   }
 
-  const paddle::flat_hash_map<std::string, std::string>& base_kernel_name_map()
-      const {
-    return base_kernel_name_map_;
+  const paddle::flat_hash_map<std::string, std::string>&
+  fluid_op_to_phi_kernel() const {
+    return fluid_op_to_phi_kernel_;
+  }
+
+  const paddle::flat_hash_map<std::string, std::string>&
+  phi_kernel_to_fluid_op() const {
+    return phi_kernel_to_fluid_op_;
   }
 
  private:
   OpUtilsMap() = default;
 
-  paddle::flat_hash_map<std::string, std::string> base_kernel_name_map_;
+  paddle::flat_hash_map<std::string, std::string> fluid_op_to_phi_kernel_;
+
+  paddle::flat_hash_map<std::string, std::string> phi_kernel_to_fluid_op_;
+
   paddle::flat_hash_map<std::string, ArgumentMappingFn> arg_mapping_fn_map_;
 
   DISABLE_COPY_AND_ASSIGN(OpUtilsMap);
@@ -196,6 +212,7 @@ class OpUtilsMap {
 struct BaseKernelNameRegistrar {
   BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name) {
     OpUtilsMap::Instance().InsertBaseKernelName(op_type, base_kernel_name);
+    OpUtilsMap::Instance().InsertFluidOplName(op_type, base_kernel_name);
   }
 };
 
@@ -207,21 +224,22 @@ struct ArgumentMappingFnRegistrar {
   }
 };
 
-#define PD_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)                \
-  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
-      PD_REGISTER_base_kernel_name_ns_check_##op_type,                         \
-      "PD_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");     \
-  static const ::phi::BaseKernelNameRegistrar                                  \
-      __registrar_base_kernel_name_for_##op_type(#op_type, #base_kernel_name); \
-  int TouchBaseKernelNameSymbol_##op_type() { return 0; }
+#define PD_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)               \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      PD_REGISTER_base_kernel_name_ns_check_##base_kernel_name,               \
+      "PD_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");    \
+  static const ::phi::BaseKernelNameRegistrar                                 \
+      __registrar_base_kernel_name_for_##base_kernel_name(#op_type,           \
+                                                          #base_kernel_name); \
+  int TouchBaseKernelNameSymbol_##base_kernel_name() { return 0; }
 
-#define PD_DECLARE_BASE_KERNEL_NAME(op_type)                              \
-  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
-      PD_DECLARE_ai_name_ns_check_##op_type,                              \
-      "PD_DECLARE_BASE_KERNEL_NAME must be called in global namespace."); \
-  extern int TouchBaseKernelNameSymbol_##op_type();                       \
-  UNUSED static int __declare_base_kernel_name_symbol_for_##op_type =     \
-      TouchBaseKernelNameSymbol_##op_type()
+#define PD_DECLARE_BASE_KERNEL_NAME(op_type, base_kernel_name)                 \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+      PD_DECLARE_ai_name_ns_check_##base_kernel_name,                          \
+      "PD_DECLARE_BASE_KERNEL_NAME must be called in global namespace.");      \
+  extern int TouchBaseKernelNameSymbol_##base_kernel_name();                   \
+  UNUSED static int __declare_base_kernel_name_symbol_for_##base_kernel_name = \
+      TouchBaseKernelNameSymbol_##base_kernel_name()
 
 #define PD_REGISTER_ARG_MAPPING_FN(op_type, arg_mapping_fn)              \
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \

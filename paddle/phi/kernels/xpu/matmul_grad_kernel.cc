@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/matmul_grad_kernel.h"
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -56,6 +55,15 @@ void MatmulGradKernel(const Context& dev_ctx,
                               : reinterpret_cast<XPUType*>(dx->data<T>());
   XPUType* c_2 = (dy == NULL) ? reinterpret_cast<XPUType*>(NULL)
                               : reinterpret_cast<XPUType*>(dy->data<T>());
+
+  if (info_forward.is_x_need_broadcast) {
+    XPUType* new_c_1 = nullptr;
+    new_c_1 = RAII_GUARD.alloc_l3_or_gm<XPUType>(
+        info_forward.bs * info_forward.m * info_forward.k);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(new_c_1);
+    c_1 = new_c_1;
+  }
+
   XpuFcInfo info_dx;
   XpuFcInfo info_dy;
   std::tuple<XpuFcInfo,
@@ -75,6 +83,15 @@ void MatmulGradKernel(const Context& dev_ctx,
   std::tie(info_dx, info_dy, a_1, b_1, a_2, b_2) = fc_info;
   if (dx) {
     MatMulXPUFunction<XPUType>(xpu_ctx, a_1, b_1, c_1, info_dx, 1.0f);
+    if (info_forward.is_x_need_broadcast) {
+      int r = xpu::reduce_sum<XPUType>(
+          xpu_ctx,
+          c_1,
+          reinterpret_cast<XPUType*>(dx->data<T>()),
+          {info_forward.bs, info_forward.m, info_forward.k},
+          {0});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
+    }
   }
   if (dy) {
     MatMulXPUFunction<XPUType>(xpu_ctx, a_2, b_2, c_2, info_dy, 1.0f);
@@ -92,12 +109,10 @@ void MatmulWithFlattenGradKernel(const Context& dev_ctx,
                                  DenseTensor* y_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  auto x_matrix = x.dims().size() > 2
-                      ? paddle::framework::ReshapeToMatrix(x, x_num_col_dims)
-                      : static_cast<const DenseTensor&>(x);
-  auto y_matrix = y.dims().size() > 2
-                      ? paddle::framework::ReshapeToMatrix(y, y_num_col_dims)
-                      : static_cast<const DenseTensor&>(y);
+  auto x_matrix = x.dims().size() > 2 ? phi::ReshapeToMatrix(x, x_num_col_dims)
+                                      : static_cast<const DenseTensor&>(x);
+  auto y_matrix = y.dims().size() > 2 ? phi::ReshapeToMatrix(y, y_num_col_dims)
+                                      : static_cast<const DenseTensor&>(y);
   DenseTensor dout_mat;
   dout_mat.Resize({phi::flatten_to_2d(x.dims(), x_num_col_dims)[0],
                    phi::flatten_to_2d(y.dims(), y_num_col_dims)[1]});

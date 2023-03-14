@@ -55,6 +55,10 @@ TEST(PD_Config, interface) {
   bool ir_optim = PD_ConfigIrOptim(config);
   EXPECT_TRUE(ir_optim);
 
+  PD_ConfigEnableMemoryOptim(config, true);
+  bool memory_enabled = PD_ConfigMemoryOptimEnabled(config);
+  EXPECT_TRUE(memory_enabled);
+
 #ifndef PADDLE_WITH_LITE
   PD_ConfigEnableLiteEngine(
       config, PD_PRECISION_FLOAT32, TRUE, 0, nullptr, 0, nullptr);
@@ -81,6 +85,10 @@ TEST(PD_Config, interface) {
 
   PD_ConfigEnableMkldnnBfloat16(config);
   PD_ConfigSetBfloat16Op(config, 1, &ops_name);
+
+  PD_ConfigEnableMkldnnInt8(config);
+  bool mkldnn_int8_enabled = PD_ConfigMkldnnInt8Enabled(config);
+  EXPECT_TRUE(mkldnn_int8_enabled);
 #endif
 
   PD_ConfigEnableONNXRuntime(config);
@@ -94,10 +102,6 @@ TEST(PD_Config, interface) {
   bool onnxruntime_disabled = PD_ConfigONNXRuntimeEnabled(config);
   EXPECT_FALSE(onnxruntime_disabled);
   PD_ConfigEnableORTOptimization(config);
-
-  PD_ConfigEnableMemoryOptim(config, true);
-  bool memory_enabled = PD_ConfigMemoryOptimEnabled(config);
-  EXPECT_TRUE(memory_enabled);
 
   PD_ConfigEnableProfile(config);
   bool profile_enabled = PD_ConfigProfileEnabled(config);

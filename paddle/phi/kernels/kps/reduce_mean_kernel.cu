@@ -25,6 +25,7 @@ void MeanRawKernel(const Context& dev_ctx,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out, true);
@@ -44,6 +45,7 @@ PD_REGISTER_KERNEL(mean_raw,
                    float,
                    double,
                    bool,
+                   phi::dtype::bfloat16,
                    float16,
                    int,
                    int64_t) {}

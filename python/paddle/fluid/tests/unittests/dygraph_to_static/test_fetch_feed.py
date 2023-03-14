@@ -12,28 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
 import numpy as np
-import unittest
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit.api import to_static
 
 SEED = 2020
 
 
 class Pool2D(fluid.dygraph.Layer):
-
     def __init__(self):
-        super(Pool2D, self).__init__()
-        self.pool2d = fluid.dygraph.Pool2D(pool_size=2,
-                                           pool_type='avg',
-                                           pool_stride=1,
-                                           global_pooling=False)
+        super().__init__()
+        self.pool2d = paddle.nn.AvgPool2D(kernel_size=2, stride=1)
 
-    @declarative
+    @to_static
     def forward(self, x):
         # Add func `get_result` for testing arg_name_to_idx in ast transformation.
         def get_result(x):
@@ -44,34 +39,35 @@ class Pool2D(fluid.dygraph.Layer):
 
 
 class Linear(fluid.dygraph.Layer):
-
     def __init__(self, input_dim=10, output_dim=5):
-        super(Linear, self).__init__()
-        self.fc = fluid.dygraph.Linear(
+        super().__init__()
+        self.fc = paddle.nn.Linear(
             input_dim,
             output_dim,
-            act='relu',
-            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=0.99)),
-            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=0.5)))
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.99)
+            ),
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.5)
+            ),
+        )
+        self.act = paddle.nn.ReLU()
 
-    @declarative
+    @to_static
     def forward(self, x):
         pre = self.fc(x)
+        pre = self.act(pre)
         loss = paddle.mean(pre)
         return pre, loss
 
 
 class TestPool2D(unittest.TestCase):
-
     def setUp(self):
         self.dygraph_class = Pool2D
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
 
     def train(self, to_static=False):
-        program_translator = ProgramTranslator()
-        program_translator.enable(to_static)
+        paddle.jit.enable_to_static(to_static)
 
         with fluid.dygraph.guard():
             dy_layer = self.dygraph_class()
@@ -97,11 +93,12 @@ class TestPool2D(unittest.TestCase):
             static_res,
             rtol=1e-05,
             err_msg='dygraph_res is {}\n static_res is \n{}'.format(
-                dygraph_res, static_res))
+                dygraph_res, static_res
+            ),
+        )
 
 
 class TestLinear(TestPool2D):
-
     def setUp(self):
         self.dygraph_class = Linear
         self.data = np.random.random((4, 10)).astype('float32')

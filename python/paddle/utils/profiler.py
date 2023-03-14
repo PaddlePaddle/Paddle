@@ -12,26 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 import warnings
 
 from ..fluid import core
 from ..fluid.profiler import cuda_profiler  # noqa: F401
-from ..fluid.profiler import start_profiler
 from ..fluid.profiler import profiler  # noqa: F401
-from ..fluid.profiler import stop_profiler
-from ..fluid.profiler import reset_profiler
+from ..fluid.profiler import reset_profiler, start_profiler, stop_profiler
+from .deprecated import deprecated
 
-__all__ = [  #noqa
-    'Profiler', 'get_profiler', 'ProfilerOptions', 'cuda_profiler',
-    'start_profiler', 'profiler', 'stop_profiler', 'reset_profiler'
+__all__ = [  # noqa
+    'Profiler',
+    'get_profiler',
+    'ProfilerOptions',
+    'cuda_profiler',
+    'start_profiler',
+    'profiler',
+    'stop_profiler',
+    'reset_profiler',
 ]
 
 
-class ProfilerOptions(object):
-
+@deprecated(
+    since="2.4.2",
+    update_to="paddle.profiler.Profiler",
+    level=1,
+    reason="Please use new profiler tool, this profiler tool is no longer maintained.",
+)
+class ProfilerOptions:
     def __init__(self, options=None):
         self.options = {
             'state': 'All',
@@ -41,7 +49,7 @@ class ProfilerOptions(object):
             'output_thread_detail': False,
             'profile_path': 'none',
             'timeline_path': 'none',
-            'op_summary_path': 'none'
+            'op_summary_path': 'none',
         }
         if options is not None:
             for key in self.options.keys():
@@ -56,10 +64,13 @@ class ProfilerOptions(object):
     def __getitem__(self, name):
         if self.options.get(name, None) is None:
             raise ValueError(
-                "ProfilerOptions does not have an option named %s." % name)
+                "ProfilerOptions does not have an option named %s." % name
+            )
         else:
-            if isinstance(self.options[name],
-                          str) and self.options[name] == 'none':
+            if (
+                isinstance(self.options[name], str)
+                and self.options[name] == 'none'
+            ):
                 return None
             else:
                 return self.options[name]
@@ -68,8 +79,13 @@ class ProfilerOptions(object):
 _current_profiler = None
 
 
-class Profiler(object):
-
+@deprecated(
+    since="2.4.2",
+    update_to="paddle.profiler.Profiler",
+    level=1,
+    reason="Please use new profiler tool, this profiler tool is no longer maintained.",
+)
+class Profiler:
     def __init__(self, enabled=True, options=None):
         if options is not None:
             self.profiler_options = options
@@ -101,22 +117,28 @@ class Profiler(object):
             try:
                 start_profiler(
                     state=self.profiler_options['state'],
-                    tracer_option=self.profiler_options['tracer_level'])
+                    tracer_option=self.profiler_options['tracer_level'],
+                )
             except Exception as e:
                 warnings.warn(
-                    "Profiler is not enabled becuase following exception:\n{}".
-                    format(e))
+                    "Profiler is not enabled becuase following exception:\n{}".format(
+                        e
+                    )
+                )
 
     def stop(self):
         if self.enabled:
             try:
                 stop_profiler(
                     sorted_key=self.profiler_options['sorted_key'],
-                    profile_path=self.profiler_options['profile_path'])
+                    profile_path=self.profiler_options['profile_path'],
+                )
             except Exception as e:
                 warnings.warn(
-                    "Profiler is not disabled becuase following exception:\n{}".
-                    format(e))
+                    "Profiler is not disabled becuase following exception:\n{}".format(
+                        e
+                    )
+                )
 
     def reset(self):
         if self.enabled and core.is_profiler_enabled():
@@ -137,6 +159,12 @@ class Profiler(object):
                 self.stop()
 
 
+@deprecated(
+    since="2.4.2",
+    update_to="paddle.profiler.Profiler",
+    level=1,
+    reason="Please use new profiler tool, this profiler tool is no longer maintained.",
+)
 def get_profiler():
     global _current_profiler
     if _current_profiler is None:

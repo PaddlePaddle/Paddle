@@ -19,7 +19,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace phi {
 namespace sr {
@@ -50,6 +50,7 @@ void AdamDenseParamSparseGradKernel(
     DenseTensor* beta1_pow_out,
     DenseTensor* beta2_pow_out,
     DenseTensor* master_param_outs) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   float* param_ptr = nullptr;
   funcs::GetDataPointer<Context, float>(param, &param_ptr, dev_ctx);
 
@@ -62,16 +63,32 @@ void AdamDenseParamSparseGradKernel(
   float* lr_ptr = nullptr;
   funcs::GetDataPointer<Context, float>(learning_rate, &lr_ptr, dev_ctx);
 
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   float* beta1_pow_ptr = nullptr;
   const float* beta1_const_pow_ptr = nullptr;
+
   if (beta1_pow.place() == CPUPlace()) {
-    DenseTensor xpu_beta1_pow;
-    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, &xpu_beta1_pow);
-    if (xpu_beta1_pow.dtype() == DataType::FLOAT16)
-      funcs::GetDataPointer<Context, float>(
-          xpu_beta1_pow, &beta1_pow_ptr, dev_ctx);
-    else
-      beta1_const_pow_ptr = xpu_beta1_pow.template data<float>();
+    if (beta1_pow.dtype() == DataType::FLOAT16) {
+      XPUType* beta1_pow_t =
+          RAII_GUARD.alloc_l3_or_gm<XPUType>(beta1_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta1_pow_t,
+                         beta1_pow.place(),
+                         beta1_pow.data<T>(),
+                         sizeof(T) * beta1_pow.numel());
+
+      int r = xpu::cast<XPUType, float>(
+          dev_ctx.x_context(), beta1_pow_t, beta1_pow_ptr, beta1_pow.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    } else {
+      beta1_pow_ptr = RAII_GUARD.alloc_l3_or_gm<float>(beta1_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta1_pow_ptr,
+                         beta1_pow.place(),
+                         beta1_pow.data<T>(),
+                         sizeof(T) * beta1_pow.numel());
+    }
+
   } else {
     if (beta1_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(beta1_pow, &beta1_pow_ptr, dev_ctx);
@@ -81,14 +98,28 @@ void AdamDenseParamSparseGradKernel(
 
   float* beta2_pow_ptr = nullptr;
   const float* beta2_const_pow_ptr = nullptr;
+
   if (beta2_pow.place() == CPUPlace()) {
-    DenseTensor xpu_beta2_pow;
-    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, &xpu_beta2_pow);
-    if (xpu_beta2_pow.dtype() == DataType::FLOAT16)
-      funcs::GetDataPointer<Context, float>(
-          xpu_beta2_pow, &beta2_pow_ptr, dev_ctx);
-    else
-      beta2_const_pow_ptr = xpu_beta2_pow.template data<float>();
+    if (beta2_pow.dtype() == DataType::FLOAT16) {
+      XPUType* beta2_pow_t =
+          RAII_GUARD.alloc_l3_or_gm<XPUType>(beta2_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta2_pow_t,
+                         beta2_pow.place(),
+                         beta2_pow.data<T>(),
+                         sizeof(T) * beta2_pow.numel());
+
+      int r = xpu::cast<XPUType, float>(
+          dev_ctx.x_context(), beta2_pow_t, beta2_pow_ptr, beta2_pow.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    } else {
+      beta2_pow_ptr = RAII_GUARD.alloc_l3_or_gm<float>(beta2_pow.numel());
+      memory_utils::Copy(param.place(),
+                         beta2_pow_ptr,
+                         beta2_pow.place(),
+                         beta2_pow.data<T>(),
+                         sizeof(T) * beta2_pow.numel());
+    }
   } else {
     if (beta2_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(beta2_pow, &beta2_pow_ptr, dev_ctx);
@@ -125,7 +156,7 @@ void AdamDenseParamSparseGradKernel(
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
 
@@ -181,7 +212,7 @@ void AdamDenseParamSparseGradKernel(
   if (is_strict_sorted) {
     grad_merge_ptr = &grad;
   } else {
-    paddle::operators::math::scatter::MergeAdd<Context, float> merge_func;
+    phi::funcs::scatter::MergeAdd<Context, float> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
 
     xpu_wait(dev_ctx.x_context()->xpu_stream);
@@ -195,7 +226,6 @@ void AdamDenseParamSparseGradKernel(
 
   int row_count = grad_merge.rows().size();
   std::vector<int> rows(row_count);
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int* xpu_rows = RAII_GUARD.alloc_l3_or_gm<int>(row_count);
   std::vector<int64_t> merge_rows(grad_merge.rows().begin(),
                                   grad_merge.rows().end());
@@ -203,11 +233,11 @@ void AdamDenseParamSparseGradKernel(
     rows[i] = static_cast<int>(merge_rows[i]);
   }
   xpu_wait(dev_ctx.x_context()->xpu_stream);
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       xpu_rows,
-                       CPUPlace(),
-                       rows.data(),
-                       row_count * sizeof(int));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     xpu_rows,
+                     CPUPlace(),
+                     rows.data(),
+                     row_count * sizeof(int));
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
   auto ori_rows = param.numel() / row_numel;
 

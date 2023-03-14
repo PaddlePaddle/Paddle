@@ -12,25 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 
 import paddle
 
 paddle.enable_static()
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from op_test import OpTest
-from paddle.fluid import Program, program_guard
-from test_conv2d_op import TestConv2DOp, TestConv2DOp_v2, create_test_padding_SAME_class, create_test_padding_VALID_class, create_test_channel_last_class, create_test_cudnn_padding_SAME_class, create_test_cudnn_channel_last_class
+from test_conv2d_op import (
+    TestConv2DOp,
+    TestConv2DOp_v2,
+    create_test_channel_last_class,
+    create_test_cudnn_channel_last_class,
+    create_test_cudnn_padding_SAME_class,
+    create_test_padding_SAME_class,
+    create_test_padding_VALID_class,
+)
 
-#----------------TestDepthwiseConv -----
+import paddle.fluid.core as core
+
+# ----------------TestDepthwiseConv -----
 
 
 class TestDepthwiseConv(TestConv2DOp):
-
     def init_test_case(self):
         self.use_cuda = True
         self.pad = [1, 1]
@@ -44,7 +48,6 @@ class TestDepthwiseConv(TestConv2DOp):
 
 
 class TestDepthwiseConv2(TestConv2DOp):
-
     def init_test_case(self):
         self.use_cuda = True
         self.pad = [1, 1]
@@ -58,7 +61,6 @@ class TestDepthwiseConv2(TestConv2DOp):
 
 
 class TestDepthwiseConv3(TestConv2DOp):
-
     def init_test_case(self):
         self.use_cuda = True
         self.pad = [1, 1]
@@ -72,7 +74,6 @@ class TestDepthwiseConv3(TestConv2DOp):
 
 
 class TestDepthwiseConvWithDilation(TestConv2DOp):
-
     def init_test_case(self):
         self.use_cuda = True
         self.pad = [1, 1]
@@ -87,7 +88,6 @@ class TestDepthwiseConvWithDilation(TestConv2DOp):
 
 
 class TestDepthwiseConvWithDilation2(TestConv2DOp):
-
     def init_test_case(self):
         self.use_cuda = True
         self.pad = [1, 1]
@@ -102,7 +102,6 @@ class TestDepthwiseConvWithDilation2(TestConv2DOp):
 
 
 class TestDepthwiseConvandFuse(TestConv2DOp):
-
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.use_cuda = True
@@ -117,7 +116,6 @@ class TestDepthwiseConvandFuse(TestConv2DOp):
 
 
 class TestDepthwiseConv2andFuse(TestConv2DOp):
-
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.use_cuda = True
@@ -132,7 +130,6 @@ class TestDepthwiseConv2andFuse(TestConv2DOp):
 
 
 class TestDepthwiseConv3andFuse(TestConv2DOp):
-
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.use_cuda = True
@@ -147,7 +144,6 @@ class TestDepthwiseConv3andFuse(TestConv2DOp):
 
 
 class TestDepthwiseConvWithDilationandFuse(TestConv2DOp):
-
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.use_cuda = True
@@ -163,7 +159,6 @@ class TestDepthwiseConvWithDilationandFuse(TestConv2DOp):
 
 
 class TestDepthwiseConvWithDilation2andFuse(TestConv2DOp):
-
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.use_cuda = True
@@ -179,7 +174,6 @@ class TestDepthwiseConvWithDilation2andFuse(TestConv2DOp):
 
 
 class TestDepthwiseConv_AsyPadding(TestConv2DOp_v2):
-
     def init_test_case(self):
         self.use_cuda = True
         self.stride = [2, 2]
@@ -196,7 +190,6 @@ class TestDepthwiseConv_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConv2_AsyPadding(TestConv2DOp_v2):
-
     def init_test_case(self):
         self.use_cuda = True
         self.stride = [1, 1]
@@ -213,7 +206,6 @@ class TestDepthwiseConv2_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConv3_AsyPadding(TestConv2DOp_v2):
-
     def init_test_case(self):
         self.use_cuda = True
         self.stride = [1, 1]
@@ -230,7 +222,6 @@ class TestDepthwiseConv3_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConvWithDilation_AsyPadding(TestConv2DOp_v2):
-
     def init_test_case(self):
         self.use_cuda = True
         self.pad = [1, 1]
@@ -249,7 +240,6 @@ class TestDepthwiseConvWithDilation_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConvWithDilation2_AsyPadding(TestConv2DOp_v2):
-
     def init_test_case(self):
         self.use_cuda = True
         self.pad = [1, 1]
@@ -268,7 +258,6 @@ class TestDepthwiseConvWithDilation2_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConvandFuse_AsyPadding(TestConv2DOp_v2):
-
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.use_cuda = True
@@ -287,7 +276,6 @@ class TestDepthwiseConvandFuse_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConv2andFuse_AsyPadding(TestConv2DOp_v2):
-
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.use_cuda = True
@@ -306,7 +294,6 @@ class TestDepthwiseConv2andFuse_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConv3andFuse_AsyPadding(TestConv2DOp_v2):
-
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.use_cuda = True
@@ -325,7 +312,6 @@ class TestDepthwiseConv3andFuse_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConvWithDilationandFuse_AsyPadding(TestConv2DOp_v2):
-
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.use_cuda = True
@@ -345,7 +331,6 @@ class TestDepthwiseConvWithDilationandFuse_AsyPadding(TestConv2DOp_v2):
 
 
 class TestDepthwiseConvWithDilation2andFuse_AsyPadding(TestConv2DOp_v2):
-
     def init_test_case(self):
         self.fuse_relu_before_depthwise_conv = True
         self.use_cuda = True
@@ -387,12 +372,14 @@ create_test_channel_last_class(TestDepthwiseConvWithDilationandFuse_AsyPadding)
 if core.is_compiled_with_rocm():
     create_test_cudnn_padding_SAME_class(TestDepthwiseConv_AsyPadding)
     create_test_cudnn_padding_SAME_class(
-        TestDepthwiseConvWithDilation_AsyPadding)
+        TestDepthwiseConvWithDilation_AsyPadding
+    )
     create_test_padding_VALID_class(TestDepthwiseConv_AsyPadding)
     create_test_padding_VALID_class(TestDepthwiseConvWithDilation_AsyPadding)
     create_test_cudnn_channel_last_class(TestDepthwiseConv_AsyPadding)
     create_test_cudnn_channel_last_class(
-        TestDepthwiseConvWithDilation2_AsyPadding)
+        TestDepthwiseConvWithDilation2_AsyPadding
+    )
 
 if __name__ == '__main__':
     unittest.main()

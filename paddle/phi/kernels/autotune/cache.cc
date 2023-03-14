@@ -25,7 +25,7 @@ size_t TransposeKey(const std::vector<int64_t>& x_dims,
                     const std::vector<int32_t>& perm,
                     phi::DataType dtype) {
   const auto rank = perm.size();
-  return GetKey(x_dims, perm, rank, static_cast<int64_t>(dtype));
+  return GenKey(x_dims, perm, rank, static_cast<int64_t>(dtype));
 }
 
 std::string AlgorithmTypeString(int64_t algo_type) {
@@ -38,6 +38,17 @@ std::string AlgorithmTypeString(int64_t algo_type) {
              static_cast<int64_t>(AlgorithmType::kConvBackwardFilter)) {
     return "conv_backward_filter";
   }
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  if (algo_type == static_cast<int64_t>(AlgorithmType::kConvForwardV8)) {
+    return "conv_forward_v8";
+  } else if (algo_type ==
+             static_cast<int64_t>(AlgorithmType::kConvBackwardDataV8)) {
+    return "conv_backward_data_v8";
+  } else if (algo_type ==
+             static_cast<int64_t>(AlgorithmType::kConvBackwardFilterV8)) {
+    return "conv_backward_filter_v8";
+  }
+#endif
   return std::to_string(algo_type);
 }
 
@@ -59,7 +70,7 @@ void AutoTuneCache::UpdateStatus() {
     cache_misses += v.second.CacheMisses();
   }
 
-  for (auto& v : cudnn_auto_tune_map_) {
+  for (auto& v : conv_auto_tune_map_) {
     VLOG(4) << "AlgoType: " << std::setfill(' ') << std::setw(name_width)
             << AlgorithmTypeString(v.first)
             << " Cache Size: " << v.second.Size()
@@ -70,6 +81,20 @@ void AutoTuneCache::UpdateStatus() {
     cache_hits += v.second.CacheHits();
     cache_misses += v.second.CacheMisses();
   }
+
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  for (auto& v : cudnn_v8_auto_tune_map_) {
+    VLOG(4) << "AlgoType: " << std::setfill(' ') << std::setw(name_width)
+            << AlgorithmTypeString(v.first)
+            << " Cache Size: " << v.second.Size()
+            << " Hits: " << v.second.CacheHits()
+            << " Misses: " << v.second.CacheMisses()
+            << " Hit Rate: " << v.second.CacheHitRate();
+    size += v.second.Size();
+    cache_hits += v.second.CacheHits();
+    cache_misses += v.second.CacheMisses();
+  }
+#endif
 
   total_size_ = size;
   total_cache_hits_ = cache_hits;

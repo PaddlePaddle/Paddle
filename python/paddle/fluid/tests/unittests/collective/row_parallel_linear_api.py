@@ -12,36 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
-import argparse
-import os
-import sys
-import signal
-import time
-import socket
-from contextlib import closing
-from six import string_types
-import math
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-import paddle.fluid.unique_name as nameGen
-from paddle.fluid import core
-import paddle.distributed.fleet as fleet
-from paddle.fluid.incubate.fleet.base import role_maker
-import unittest
-from multiprocessing import Process
-import paddle.fluid.layers as layers
-from functools import reduce
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+
+import paddle
+import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
 
 class TestRowParallelLinearAPI(TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
@@ -51,19 +32,23 @@ class TestRowParallelLinearAPI(TestCollectiveAPIRunnerBase):
             np.random.seed(2020)
             np_array = np.random.rand(1000, 16)
 
-            data = paddle.static.data(name='tindata',
-                                      shape=[10, 1000],
-                                      dtype="float32")
+            data = paddle.static.data(
+                name='tindata', shape=[10, 1000], dtype="float32"
+            )
             paddle.distributed.broadcast(data, src=0)
             data = paddle.split(data, 2, axis=1)[rank]
             if rank == 0:
                 param_attr = paddle.fluid.ParamAttr(
-                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
-                        np_array[0:500, :]), )
+                    initializer=paddle.nn.initializer.Assign(
+                        np_array[0:500, :]
+                    ),
+                )
             else:
                 param_attr = paddle.fluid.ParamAttr(
-                    initializer=paddle.fluid.initializer.NumpyArrayInitializer(
-                        np_array[500:1000, :]), )
+                    initializer=paddle.nn.initializer.Assign(
+                        np_array[500:1000, :]
+                    ),
+                )
 
             linear_out = paddle.distributed.split(
                 data,

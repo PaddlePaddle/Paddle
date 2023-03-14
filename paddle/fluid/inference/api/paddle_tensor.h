@@ -14,7 +14,10 @@
 
 #pragma once
 
+#include <functional>
+#include <memory>
 #include <string>
+#include <vector>
 
 #include "paddle_infer_declare.h"  // NOLINT
 
@@ -28,6 +31,10 @@ namespace paddle_infer {
 /// \brief  Experimental.
 /// Strings for text data.
 using Strings = std::vector<std::string>;
+
+class Tensor;
+using Exp_OutputHookFunc =
+    std::function<void(const std::string&, const std::string&, const Tensor&)>;
 
 typedef void (*CallbackFunc)(void*);
 
@@ -45,13 +52,14 @@ class InternalUtils;
 
 /// \brief Paddle data type.
 enum DataType {
-  FLOAT32,
   INT64,
   INT32,
   UINT8,
   INT8,
+  FLOAT32,
   FLOAT16,
-  // TODO(Superjomn) support more data types if needed.
+  BOOL,
+  // TODO(Inference): support more data types if needed.
 };
 
 enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU, kIPU, kCUSTOM };

@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/roi_align_grad_kernel.h"
 
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -153,14 +153,11 @@ __global__ void GPURoiAlignBackward(const int nthreads,
         T diff3 = out_grad_this_bin * w3 / count;
         T diff4 = out_grad_this_bin * w4 / count;
         if (x_low >= 0 && x_high >= 0 && y_low >= 0 && y_high >= 0) {
-          paddle::platform::CudaAtomicAdd(
-              offset_input_grad + y_low * width + x_low, diff1);
-          paddle::platform::CudaAtomicAdd(
-              offset_input_grad + y_low * width + x_high, diff2);
-          paddle::platform::CudaAtomicAdd(
-              offset_input_grad + y_high * width + x_low, diff3);
-          paddle::platform::CudaAtomicAdd(
-              offset_input_grad + y_high * width + x_high, diff4);
+          phi::CudaAtomicAdd(offset_input_grad + y_low * width + x_low, diff1);
+          phi::CudaAtomicAdd(offset_input_grad + y_low * width + x_high, diff2);
+          phi::CudaAtomicAdd(offset_input_grad + y_high * width + x_low, diff3);
+          phi::CudaAtomicAdd(offset_input_grad + y_high * width + x_high,
+                             diff4);
         }
       }
     }
@@ -197,12 +194,12 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   if (boxes_num) {
     int boxes_batch_size = boxes_num->numel();
     std::vector<int> boxes_num_list(boxes_batch_size);
-    paddle::memory::Copy(cplace,
-                         boxes_num_list.data(),
-                         gplace,
-                         boxes_num->data<int>(),
-                         sizeof(int) * boxes_batch_size,
-                         0);
+    memory_utils::Copy(cplace,
+                       boxes_num_list.data(),
+                       gplace,
+                       boxes_num->data<int>(),
+                       sizeof(int) * boxes_batch_size,
+                       0);
     int start = 0;
     for (int n = 0; n < boxes_batch_size; ++n) {
       for (size_t i = start; i < start + boxes_num_list[n]; ++i) {
@@ -219,13 +216,13 @@ void RoiAlignGradKernel(const Context& dev_ctx,
       }
     }
   }
-  auto roi_ptr = paddle::memory::Alloc(
+  auto roi_ptr = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       box_batch_id_list.numel() * sizeof(int),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
   int bytes = box_batch_id_list.numel() * sizeof(int);
-  paddle::memory::Copy(
+  memory_utils::Copy(
       gplace, roi_id_data, cplace, box_batch_size, bytes, dev_ctx.stream());
   dev_ctx.template Alloc<T>(dx);
 

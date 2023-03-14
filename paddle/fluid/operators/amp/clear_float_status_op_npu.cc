@@ -21,21 +21,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename DeviceContext, typename T>
 class ClearFloatStatusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto* float_status = ctx.Input<framework::Tensor>("FloatStatus");
-    auto* float_status_out = ctx.Output<framework::Tensor>("FloatStatusOut");
+    const auto* float_status = ctx.Input<phi::DenseTensor>("FloatStatus");
+    auto* float_status_out = ctx.Output<phi::DenseTensor>("FloatStatusOut");
     // NOTE(zhiqiu): NPUClearFloatStatus modifies the input.
     PADDLE_ENFORCE_EQ(float_status_out,
                       float_status,
                       platform::errors::PreconditionNotMet(
                           "The input(FloatStatus) and Output(FloatStatusOut) "
                           "should be the same."));
-    Tensor tmp;
+    phi::DenseTensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
     const auto& runner =
         NpuOpRunner("NPUClearFloatStatus", {tmp}, {*float_status_out});

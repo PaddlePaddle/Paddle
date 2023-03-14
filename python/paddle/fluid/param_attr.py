@@ -12,13 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
-import warnings
-import sys
-
-from .initializer import Initializer, Xavier, Constant
+import paddle
 from .regularizer import WeightDecayRegularizer
 from paddle.fluid.data_feeder import check_type
 
@@ -28,7 +22,7 @@ __all__ = [
 ]
 
 
-class ParamAttr(object):
+class ParamAttr:
     """
 
     Note:
@@ -77,27 +71,34 @@ class ParamAttr(object):
             paddle.nn.Linear(3, 4, weight_attr=weight_attr)
     """
 
-    def __init__(self,
-                 name=None,
-                 initializer=None,
-                 learning_rate=1.0,
-                 regularizer=None,
-                 trainable=True,
-                 do_model_average=True,
-                 need_clip=True):
+    def __init__(
+        self,
+        name=None,
+        initializer=None,
+        learning_rate=1.0,
+        regularizer=None,
+        trainable=True,
+        do_model_average=True,
+        need_clip=True,
+    ):
 
-        if sys.version_info.major == 2:
-            check_type(name, "name", (str, type(None), unicode), "ParamAttr")
-        else:
-            check_type(name, "name", (str, type(None)), "ParamAttr")
+        check_type(name, "name", (str, type(None)), "ParamAttr")
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
         check_type(need_clip, "need_clip", (bool), "ParamAttr")
-        check_type(initializer, "initializer", (Initializer, type(None)),
-                   "ParamAttr")
-        check_type(regularizer, "regularizer",
-                   (WeightDecayRegularizer, type(None)), "ParamAttr")
+        check_type(
+            initializer,
+            "initializer",
+            (paddle.nn.initializer.Initializer, type(None)),
+            "ParamAttr",
+        )
+        check_type(
+            regularizer,
+            "regularizer",
+            (WeightDecayRegularizer, type(None)),
+            "ParamAttr",
+        )
 
         self.name = name
         if self.name == "":
@@ -141,7 +142,7 @@ class ParamAttr(object):
         Returns:
             None.
         """
-        self._set_default_initializer(Xavier())
+        self._set_default_initializer(paddle.nn.initializer.XavierUniform())
 
     def _set_default_bias_initializer(self):
         """
@@ -153,7 +154,7 @@ class ParamAttr(object):
         Returns:
             None.
         """
-        self._set_default_initializer(Constant(0.0))
+        self._set_default_initializer(paddle.nn.initializer.Constant(0.0))
 
     @staticmethod
     def _to_attr(arg):
@@ -177,9 +178,9 @@ class ParamAttr(object):
             return [ParamAttr._to_attr(a) for a in arg]
         elif isinstance(arg, ParamAttr):
             return arg
-        elif isinstance(arg, six.string_types):
+        elif isinstance(arg, str):
             return ParamAttr(name=arg)
-        elif isinstance(arg, Initializer):
+        elif isinstance(arg, paddle.nn.initializer.Initializer):
             return ParamAttr(initializer=arg)
         elif isinstance(arg, WeightDecayRegularizer):
             return ParamAttr(regularizer=arg)
@@ -200,13 +201,11 @@ class ParamAttr(object):
         """
         kwargs = {
             'name': self.name,
-            'optimize_attr': {
-                'learning_rate': self.learning_rate
-            },
+            'optimize_attr': {'learning_rate': self.learning_rate},
             'regularizer': self.regularizer,
             'trainable': self.trainable,
             'do_model_average': self.do_model_average,
-            'need_clip': self.need_clip
+            'need_clip': self.need_clip,
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
@@ -286,21 +285,24 @@ class WeightNormParamAttr(ParamAttr):
     # these paramters for inference.
     params_with_weight_norm = []
 
-    def __init__(self,
-                 dim=None,
-                 name=None,
-                 initializer=None,
-                 learning_rate=1.0,
-                 regularizer=None,
-                 trainable=True,
-                 do_model_average=False,
-                 need_clip=True):
-        super(WeightNormParamAttr,
-              self).__init__(name=name,
-                             initializer=initializer,
-                             learning_rate=learning_rate,
-                             regularizer=regularizer,
-                             trainable=trainable,
-                             do_model_average=do_model_average,
-                             need_clip=need_clip)
+    def __init__(
+        self,
+        dim=None,
+        name=None,
+        initializer=None,
+        learning_rate=1.0,
+        regularizer=None,
+        trainable=True,
+        do_model_average=False,
+        need_clip=True,
+    ):
+        super().__init__(
+            name=name,
+            initializer=initializer,
+            learning_rate=learning_rate,
+            regularizer=regularizer,
+            trainable=trainable,
+            do_model_average=do_model_average,
+            need_clip=need_clip,
+        )
         self.dim = dim

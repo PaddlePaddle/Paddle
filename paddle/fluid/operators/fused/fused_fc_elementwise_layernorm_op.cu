@@ -25,8 +25,8 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
@@ -223,13 +223,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
 
       // For layer_norm, reduce to calculate mean and std
       sum_i += static_cast<float>(tmp_3);
-#if defined(PADDLE_WITH_CUDA) && __CUDA_ARCH__ >= 530
-      square_sum_i += static_cast<float>(__hmul(tmp_3, tmp_3));
-#elif defined(PADDLE_WITH_CUDA)
       square_sum_i += static_cast<float>(tmp_3) * static_cast<float>(tmp_3);
-#else
-      square_sum_i += static_cast<float>(tmp_3 * tmp_3);
-#endif
     }
     auto pair = BlockReduce(temp_storage)
                     .Reduce(PairForLayerNorm<float>(sum_i, square_sum_i),
@@ -282,9 +276,9 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
       half tmp_0 = __hdiv(__hsub(save_ptr[save_index], mean_i), std_i);
       half tmp_1 = scale ? __hmul(scale[j], tmp_0) : tmp_0;
 #else
-      half tmp_0 = static_cast<float>(static_cast<float>(save_ptr[save_index]) +
-                                      static_cast<float>(mean_i) /
-                                          static_cast<float>(std_i));
+      half tmp_0 = static_cast<half>((static_cast<float>(save_ptr[save_index]) -
+                                      static_cast<float>(mean_i)) /
+                                     static_cast<float>(std_i));
       half tmp_1 = scale ? static_cast<half>(static_cast<float>(scale[j]) *
                                              static_cast<float>(tmp_0))
                          : tmp_0;
@@ -384,9 +378,9 @@ template <typename T>
 class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* w = ctx.Input<framework::Tensor>("W");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto w_dims = w->dims();
     int N = w_dims[1];
@@ -400,31 +394,28 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
     auto* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
-    blas.GEMM(false,
-              false,
+    blas.GEMM(CblasNoTrans,
+              CblasNoTrans,
               M,
               N,
               K,
               static_cast<T>(1.0),
               x_data,
-              K,
               w_data,
-              N,
               static_cast<T>(0.0),
-              out_data,
-              N);
-    auto* y = ctx.Input<framework::Tensor>("Y");
-    auto* bias_0 = ctx.Input<framework::Tensor>("Bias0");
-    auto* bias_1 = ctx.Input<framework::Tensor>("Bias1");
-    auto* scale = ctx.Input<framework::Tensor>("Scale");
+              out_data);
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* bias_0 = ctx.Input<phi::DenseTensor>("Bias0");
+    auto* bias_1 = ctx.Input<phi::DenseTensor>("Bias1");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
 
     const T* y_data = y->data<T>();
     const T* bias_0_data = bias_0 ? bias_0->data<T>() : nullptr;
     const T* bias_1_data = bias_1 ? bias_1->data<T>() : nullptr;
     const T* scale_data = scale ? scale->data<T>() : nullptr;
 
-    auto* mean = ctx.Output<framework::Tensor>("Mean");
-    auto* variance = ctx.Output<framework::Tensor>("Variance");
+    auto* mean = ctx.Output<phi::DenseTensor>("Mean");
+    auto* variance = ctx.Output<phi::DenseTensor>("Variance");
 
     T* mean_data =
         mean ? dev_ctx.template Alloc<T>(mean, mean->numel() * sizeof(T))

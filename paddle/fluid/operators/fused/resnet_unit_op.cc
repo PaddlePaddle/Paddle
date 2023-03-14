@@ -18,8 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 // Shape of bitmask
 static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int c = out_shape.back();
@@ -202,27 +200,24 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
     // and var tensors should be float when input tensor's dtype is float16.
     auto bn_param_type = framework::proto::VarType::FP32;
 
-    PADDLE_ENFORCE_EQ(
-        bn_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("ScaleX")->dtype()),
-        platform::errors::InvalidArgument(
-            "Scale input should be of float type"));
-    PADDLE_ENFORCE_EQ(
-        bn_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("BiasX")->dtype()),
-        platform::errors::InvalidArgument(
-            "Bias input should be of float type"));
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(
-        input_data_type, ctx.GetPlace(), layout, library);
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("ScaleX")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("BiasX")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -394,21 +389,15 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     PADDLE_ENFORCE_NOT_NULL(
         ctx.InputVar(framework::GradVarName("Y")),
         platform::errors::NotFound(
             "Can not find Y@GRAD in the execution context."));
 
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.GetPlace(),
-        layout,
-        library);
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 

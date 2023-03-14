@@ -16,12 +16,18 @@ limitations under the License. */
 
 #include <memory>
 
+#include "paddle/phi/backends/stream.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
+namespace Eigen {
+struct DefaultDevice;
+}  // namespace Eigen
+
 namespace phi {
 
-class CustomContext : public DeviceContext {
+class CustomContext : public DeviceContext,
+                      public TypeInfoTraits<DeviceContext, CustomContext> {
  public:
   explicit CustomContext(const CustomPlace&);
 
@@ -29,11 +35,27 @@ class CustomContext : public DeviceContext {
 
   const Place& GetPlace() const override;
 
-  /*! \brief  Return stream in the device context. */
+  /*! \brief  Return raw stream in the device context. */
   void* stream() const;
+
+  /*! \brief  Return stream in the device context. */
+  std::shared_ptr<phi::stream::Stream> GetStream() const;
+
+  void SetStream(std::shared_ptr<phi::stream::Stream> stream);
 
   // Wait for all operations completion in the stream.
   void Wait() const override;
+
+  template <typename Callback>
+  void AddStreamCallback(Callback&& callback) const {
+    return GetStream()->AddCallback(callback);
+  }
+
+  void WaitStreamCallback() const { return GetStream()->WaitCallback(); }
+
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+
+  static const char* name() { return "CustomContext"; }
 
  public:
   // NOTE: DeviceContext hold resources. Used in training scenarios.

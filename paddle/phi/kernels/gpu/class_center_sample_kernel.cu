@@ -29,11 +29,12 @@ namespace cub = hipcub;
 #include <iterator>
 #include <random>
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -344,8 +345,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
   std::vector<T> shard_dim_vec(nranks + 1, 0);
   shard_dim_vec[rank + 1] = num_classes;
   DenseTensor num_classes_per_device;
-  paddle::framework::TensorFromVector(
-      shard_dim_vec, dev_ctx, &num_classes_per_device);
+  phi::TensorFromVector(shard_dim_vec, dev_ctx, &num_classes_per_device);
   T* num_classes_per_device_ptr = num_classes_per_device.data<T>();
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -369,16 +369,13 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
       // use global calculate stream
       const auto calcu_stream =
           static_cast<GPUContext*>(
-              paddle::platform::DeviceContextPool::Instance().Get(
-                  dev_ctx.GetPlace()))
+              phi::DeviceContextPool::Instance().Get(dev_ctx.GetPlace()))
               ->stream();
-      PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           num_classes_per_device_ptr,
           num_classes_per_device_ptr,
           num_classes_per_device.numel(),
-          paddle::platform::ToNCCLDataType(
-              paddle::framework::TransToProtoVarType(
-                  num_classes_per_device.dtype())),
+          phi::ToNCCLDataType(num_classes_per_device.dtype()),
           ncclSum,
           comm->comm(),
           calcu_stream));
@@ -458,7 +455,7 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
                      (NumBlocks(num_classes) * kNumCUDAThreads * vec_size) +
                  1) *
                 vec_size;
-  // auto gen_cuda = paddle::framework::DefaultCUDAGenerator(device_id);
+  // auto gen_cuda = phi::DefaultCUDAGenerator(device_id);
   auto gen_cuda = dev_ctx.GetGenerator();
   if (!fix_seed) {
     auto seed_offset = gen_cuda->IncrementOffset(offset);
@@ -581,12 +578,12 @@ void ClassCenterSampleKernel(const Context& dev_ctx,
 
   T* sampled_local_class_center_ptr =
       dev_ctx.template Alloc<T>(sampled_local_class_center);
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       sampled_local_class_center_ptr,
-                       dev_ctx.GetPlace(),
-                       cub_sort_values_out_ptr,
-                       actual_num_samples * sizeof(T),
-                       nullptr);
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     sampled_local_class_center_ptr,
+                     dev_ctx.GetPlace(),
+                     cub_sort_values_out_ptr,
+                     actual_num_samples * sizeof(T),
+                     nullptr);
 }
 }  // namespace phi
 

@@ -12,22 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import sys
 import unittest
 
-import paddle.fluid as fluid
-from test_dist_base import TestDistBase
-from spawn_runner_base import TestDistSpawnRunner
 from parallel_dygraph_se_resnext import TestSeResNeXt
+from spawn_runner_base import TestDistSpawnRunner
+from test_dist_base import TestDistBase
+
+import paddle.fluid as fluid
 
 flag_name = os.path.splitext(__file__)[0]
 
 
 class TestParallelDygraphSeResNeXt(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -35,18 +32,20 @@ class TestParallelDygraphSeResNeXt(TestDistBase):
 
     def test_se_resnext(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("parallel_dygraph_se_resnext.py",
-                                  delta=0.01,
-                                  check_error_log=True,
-                                  log_name=flag_name)
+            self.check_with_place(
+                "parallel_dygraph_se_resnext.py",
+                delta=0.01,
+                check_error_log=True,
+                log_name=flag_name,
+            )
 
 
 class TestParallelDygraphSeResNeXtSpawn(TestDistSpawnRunner):
-
     def test_se_resnext_with_spawn(self):
-        if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
-            self.check_dist_result_with_spawn(test_class=TestSeResNeXt,
-                                              delta=0.01)
+        if fluid.core.is_compiled_with_cuda():
+            self.check_dist_result_with_spawn(
+                test_class=TestSeResNeXt, delta=0.01
+            )
 
 
 if __name__ == "__main__":

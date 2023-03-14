@@ -80,12 +80,11 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
                                             int ring_id,
                                             bool use_calc_stream) {
   // AllReduce(src, dst, strategy_, ring_id, use_calc_stream);
-  if (src.IsType<framework::LoDTensor>()) {
-    if (!dst->IsType<framework::LoDTensor>()) {
+  if (src.IsType<phi::DenseTensor>()) {
+    if (!dst->IsType<phi::DenseTensor>()) {
       dst->Clear();
     }
-    AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>());
+    AllReduce(src.Get<phi::DenseTensor>(), dst->GetMutable<phi::DenseTensor>());
   } else if (src.IsType<phi::SelectedRows>()) {
     if (&src != dst) {
       if (!dst->IsType<phi::SelectedRows>()) {
@@ -108,8 +107,8 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
   }
 }
 
-void GLOOParallelContext::AllReduce(const framework::Tensor &src_tensor,
-                                    framework::Tensor *dst_tensor) {
+void GLOOParallelContext::AllReduce(const phi::DenseTensor &src_tensor,
+                                    phi::DenseTensor *dst_tensor) {
   auto gloo_wrapper = framework::GlooWrapper::GetInstance();
   dst_tensor->Resize(src_tensor.dims());
   switch (framework::TransToProtoVarType(src_tensor.dtype())) {
@@ -159,9 +158,9 @@ void GLOOParallelContext::AllReduce(const phi::SelectedRows &src,
           << ", height: " << src.height();
   auto *dst_rows = dst->mutable_rows();
   dst_rows->resize(rows_num);
-  paddle::framework::MixVector<int64_t> mixv_dst_rows(dst_rows);
+  phi::MixVector<int64_t> mixv_dst_rows(dst_rows);
   auto *dst_rows_ptr = mixv_dst_rows.MutableData(place);
-  paddle::framework::MixVector<int64_t> mixv_src_rows(&src_rows);
+  phi::MixVector<int64_t> mixv_src_rows(&src_rows);
   const int64_t *src_rows_ptr = mixv_src_rows.Data(place);
 
   auto *dst_tensor = dst->mutable_value();

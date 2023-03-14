@@ -1,0 +1,19 @@
+[tool.black]
+exclude = "build"
+line-length = 80
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+line_length = 80
+known_first_party = ["paddle"]
+skip = ["build", "__init__.py"]
+extend_skip_glob = [
+    # These files do not need to be formatted,
+    # see .flake8 for more details
+    "python/paddle/fluid/[!t]**",
+    "python/paddle/fluid/tra**",
+    "python/paddle/utils/gast/**",
+    "python/paddle/fluid/tests/unittests/npu/**",
+    "python/paddle/fluid/tests/unittests/mlu/**",
+]

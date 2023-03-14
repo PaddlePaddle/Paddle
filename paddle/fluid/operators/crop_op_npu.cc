@@ -18,17 +18,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename DeviceContext, typename T>
 class CropNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
 
     std::vector<int> offset_list;
     if (ctx.HasInput("Offsets")) {
-      auto* offsets_tensor = ctx.Input<framework::Tensor>("Offsets");
+      auto* offsets_tensor = ctx.Input<phi::DenseTensor>("Offsets");
       paddle::framework::TensorToVector(
           *offsets_tensor, ctx.device_context(), &offset_list);
       if (offset_list.empty()) {
@@ -56,11 +54,11 @@ class CropNPUKernel : public framework::OpKernel<T> {
     int axis_int = 0;
     framework::NPUAttributeMap attr_input = {{"offsets", offset_list},
                                              {"axis", axis_int}};
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     if (ctx.HasInput("Y")) {
-      auto* shape = ctx.Input<framework::Tensor>("Y");
+      auto* shape = ctx.Input<phi::DenseTensor>("Y");
       PADDLE_ENFORCE_EQ(shape->dims().size(),
                         x->dims().size(),
                         platform::errors::InvalidArgument(
@@ -71,7 +69,7 @@ class CropNPUKernel : public framework::OpKernel<T> {
                             x->dims().size()));
 
       // shape memory maybe have gc.
-      Tensor tmp_shape(*shape);
+      phi::DenseTensor tmp_shape(*shape);
       tmp_shape.mutable_data<T>(ctx.GetPlace());
 
       const auto& runner =
@@ -90,7 +88,7 @@ class CropNPUKernel : public framework::OpKernel<T> {
                             "(%d) of the Input(X).",
                             shape_size.size(),
                             x->dims().size()));
-      Tensor tmp_shape(x->dtype());
+      phi::DenseTensor tmp_shape(x->dtype());
       tmp_shape.Resize(phi::make_ddim(shape_size));
       tmp_shape.mutable_data<T>(ctx.GetPlace());
       const auto& runner =

@@ -250,6 +250,9 @@ phi::SelectedRows* SetSelectedRowsKernelOutput(Tensor* out) {
 }
 
 phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type) {
+  if (!out) {
+    return nullptr;
+  }
   if (!out->initialized()) {
     if (type == TensorType::SPARSE_COO) {
       auto sparse_tensor = std::make_shared<phi::SparseCooTensor>(

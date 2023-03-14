@@ -12,106 +12,36 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/transpose_op.h"
-
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 
 namespace paddle {
 namespace operators {
-
-using framework::Tensor;
 
 class TransposeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Transpose");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Transpose");
-    auto x_dims = ctx->GetInputDim("X");
-    std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
-    size_t x_rank = x_dims.size();
-    size_t axis_size = axis.size();
-
-    PADDLE_ENFORCE_EQ(x_rank,
-                      axis_size,
-                      platform::errors::InvalidArgument(
-                          "The input tensor's dimension "
-                          "should be equal to the axis's size. "
-                          "But received input tensor's dimension is %d, "
-                          "axis's size is %d",
-                          x_rank,
-                          axis_size));
-
-    std::vector<int> count(axis_size, 0);
-    for (size_t i = 0; i < axis_size; i++) {
-      PADDLE_ENFORCE_GE(axis[i],
-                        0,
-                        platform::errors::InvalidArgument(
-                            "The axis should be greater than or equal to 0."
-                            "But received %d of axis[%d]",
-                            axis[i],
-                            i));
-
-      PADDLE_ENFORCE_EQ(
-          axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
-          true,
-          platform::errors::InvalidArgument(
-              "Each element of Attribute axis should "
-              "be a unique value range from 0 to (dims - 1), "
-              "where the dims is the axis's size, "
-              "unique value means this axis value can appear only once. "
-              "But received axis[%d] is %d, axis_size is %d, "
-              "count[axis[%d]] is %d",
-              i,
-              axis[i],
-              axis_size,
-              i,
-              count[axis[i]]));
-    }
-
-    framework::DDim out_dims(x_dims);
-#ifdef PADDLE_WITH_MKLDNN
-    // Here we need to match dims to paddle layout
-    // as we are producing non-oneDNN result
-    if (ctx->IsRunMKLDNNKernel() && (x_dims.size() >= 3) &&
-        (paddle::platform::MKLDNNDeviceContext::tls()
-             .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC)) {
-      auto dims = phi::vectorize<int>(x_dims);
-      std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
-      x_dims = x_dims.reshape(dims);
-      VLOG(3)
-          << "Rotating Shape in Transpose from: kMKLDNN to: kNHWC output_shape";
-    }
-#endif
-    for (size_t i = 0; i < axis_size; i++) {
-      out_dims[i] = x_dims[axis[i]];
-    }
-    ctx->SetOutputDim("Out", out_dims);
-  }
-
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    auto &data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
-    }
-#endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_);
+    auto &data_format = ctx.Attr<std::string>("data_format");
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
   }
 };
 
@@ -187,36 +117,15 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "TransposeOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   framework::GradVarName("Out"),
-                   "TransposeOpGrad");
-    auto x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    }
-  }
-
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-#ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
-    }
-#endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_);
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
   }
 };
 
@@ -234,7 +143,12 @@ class Transpose2Op : public TransposeOp {
       : TransposeOp(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    TransposeOp::InferShape(ctx);
+    using CompatMetaTensor = framework::CompatMetaTensor;
+    CompatMetaTensor x(ctx->GetInputVarPtrs("X")[0], ctx->IsRuntime());
+    CompatMetaTensor out(ctx->GetOutputVarPtrs("Out")[0], ctx->IsRuntime());
+    std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
+    phi::TransposeInferMeta(x, axis, &out);
+
     if (!ctx->HasOutput("XShape")) return;
     const auto &in_dims = ctx->GetInputDim("X");
     std::vector<int64_t> x_shape_dim(in_dims.size() + 1);
@@ -247,31 +161,14 @@ class Transpose2Op : public TransposeOp {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    int customized_type_value =
-        framework::OpKernelType::kDefaultCustomizedTypeValue;
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
     framework::proto::VarType::Type data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
-      using framework::proto::VarType;
-      auto input_data_type =
-          framework::TransToProtoVarType(ctx.Input<Tensor>("X")->dtype());
-      customized_type_value = (input_data_type == VarType::INT8 ||
-                               input_data_type == VarType::UINT8)
-                                  ? kTransposeMKLDNNINT8
-                                  : kTransposeMKLDNNFP32;
-    }
-#endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_, customized_type_value);
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
   }
 };
 
@@ -335,6 +232,24 @@ class Transpose2GradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class Transpose2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor xshape = this->GetSingleForwardOutput("XShape");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+    auto *dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    std::vector<int> axis =
+        static_cast<std::vector<int>>(this->Attr<std::vector<int>>("axis"));
+    VLOG(6) << "Runing transpose2_grad composite func";
+    prim::transpose_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
+    this->RecoverOutputName(dx, dx_name);
+  }
+};
+
 template <typename T>
 class Transpose2DoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -353,39 +268,16 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(
-        ctx->HasInput("XShape"), "Input", "XShape", "Transpose2OpGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   framework::GradVarName("Out"),
-                   "Transpose2OpGrad");
-    if (ctx->HasOutput(framework::GradVarName("X"))) {
-      auto xshape_dim = ctx->GetInputDim("XShape");
-      auto x_shape_dim = phi::slice_ddim(xshape_dim, 1, xshape_dim.size());
-      ctx->SetOutputDim(framework::GradVarName("X"), x_shape_dim);
-      ctx->ShareLoD("XShape", framework::GradVarName("X"));
-    }
-  }
-
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
     framework::proto::VarType::Type data_type =
         OperatorWithKernel::IndicateVarDataType(ctx,
                                                 framework::GradVarName("Out"));
-#ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
-    }
-#endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_);
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+    return phi::KernelKey(
+        ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
   }
 };
 
@@ -399,6 +291,17 @@ class TransposeGradInferVarType : public framework::VarTypeInference {
 
 }  // namespace operators
 }  // namespace paddle
+DECLARE_INFER_SHAPE_FUNCTOR(transpose,
+                            TransposeInferShapeFunctor,
+                            PD_INFER_META(phi::TransposeInferMeta));
+
+DECLARE_INFER_SHAPE_FUNCTOR(transpose_grad,
+                            TransposeGradInferShapeFunctor,
+                            PD_INFER_META(phi::TransposeGradInferMeta));
+
+DECLARE_INFER_SHAPE_FUNCTOR(transpose2_grad,
+                            Transpose2GradInferShapeFunctor,
+                            PD_INFER_META(phi::TransposeGradInferMeta));
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
@@ -406,18 +309,23 @@ REGISTER_OPERATOR(
     ops::TransposeOp,
     ops::TransposeOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
+    TransposeInferShapeFunctor);
+
 REGISTER_OPERATOR(transpose_grad,
                   ops::TransposeOpGrad,
-                  ops::TransposeGradInferVarType);
+                  ops::TransposeGradInferVarType,
+                  TransposeGradInferShapeFunctor);
 
 REGISTER_OPERATOR(transpose2,
                   ops::Transpose2Op,
                   ops::Transpose2OpMaker,
                   ops::Transpose2GradMaker<paddle::framework::OpDesc>,
-                  ops::Transpose2GradMaker<paddle::imperative::OpBase>);
+                  ops::Transpose2GradMaker<paddle::imperative::OpBase>,
+                  ops::Transpose2CompositeGradOpMaker);
 REGISTER_OPERATOR(transpose2_grad,
                   ops::Transpose2OpGrad,
                   ops::TransposeGradInferVarType,
                   ops::Transpose2DoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>);
+                  ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>,
+                  Transpose2GradInferShapeFunctor);

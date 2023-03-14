@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/kernels/funcs/lamb_functors.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace phi {
 namespace sr {
@@ -151,7 +151,7 @@ void ComputeRowImpl(const Context& dev_ctx,
                                      ? skip_update->data<bool>()
                                      : nullptr;
   if (skip_update_flag &&
-      paddle::platform::is_cpu_place(skip_update->place()) &&
+      skip_update->place().GetType() == phi::AllocationType::CPU &&
       (*skip_update_flag)) {
     return;
   }
@@ -212,7 +212,7 @@ void ComputeRowImpl(const Context& dev_ctx,
   } else {
     // merge duplicated rows if any.
     // The rows of grad_merge have been sorted inside MergeAdd functor
-    paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+    phi::funcs::scatter::MergeAdd<Context, T> merge_func;
     merge_func(dev_ctx, grad, &tmp_grad_merge, true);
     grad_merge_ptr = &tmp_grad_merge;
   }
@@ -221,10 +221,10 @@ void ComputeRowImpl(const Context& dev_ctx,
   auto& grad_tensor = grad_merge.value();
   const T* grad_data = grad_tensor.template data<T>();
   auto* grad_merge_rows = &grad_merge.rows();
-  paddle::framework::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
+  phi::MixVector<int64_t> mixv_grad_merge_rows(grad_merge_rows);
   const int64_t* rows = mixv_grad_merge_rows.Data(dev_ctx.GetPlace());
   auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
-  if (paddle::platform::is_gpu_place(dev_ctx.GetPlace()) &&
+  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU &&
       beta1_pow.place() == phi::CPUPlace() &&
       beta2_pow.place() == phi::CPUPlace()) {
     SparseLambMomentREGUpdateFunctor<T> moment_update_functor(

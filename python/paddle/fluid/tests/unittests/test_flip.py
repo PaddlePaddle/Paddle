@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
+from op_test import OpTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-from op_test import OpTest
-import gradient_checker
-from decorator_helper import prog_scope
-import paddle.fluid.layers as layers
 
 
 class TestFlipOp_API(unittest.TestCase):
@@ -44,13 +42,15 @@ class TestFlipOp_API(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(startup_program)
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
             out_np = np.array(res[0])
             out_ref = np.array([[3, 2, 1], [6, 5, 4]]).astype(np.float32)
-            self.assertTrue((out_np == out_ref).all(),
-                            msg='flip output is wrong, out =' + str(out_np))
+            self.assertTrue(
+                (out_np == out_ref).all(),
+                msg='flip output is wrong, out =' + str(out_np),
+            )
 
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
@@ -63,11 +63,11 @@ class TestFlipOp_API(unittest.TestCase):
 
             self.assertTrue(
                 (ret.numpy() == out_ref).all(),
-                msg='flip output is wrong, out =' + str(ret.numpy()))
+                msg='flip output is wrong, out =' + str(ret.numpy()),
+            )
 
 
 class TestFlipOp(OpTest):
-
     def setUp(self):
         self.op_type = 'flip'
         self.python_api = paddle.tensor.flip
@@ -99,49 +99,42 @@ class TestFlipOp(OpTest):
 
 
 class TestFlipOpAxis1(TestFlipOp):
-
     def init_test_case(self):
         self.in_shape = (2, 4, 4)
         self.axis = [0]
 
 
 class TestFlipOpAxis2(TestFlipOp):
-
     def init_test_case(self):
         self.in_shape = (4, 4, 6, 3)
         self.axis = [0, 2]
 
 
 class TestFlipOpAxis3(TestFlipOp):
-
     def init_test_case(self):
         self.in_shape = (4, 3, 1)
         self.axis = [0, 1, 2]
 
 
 class TestFlipOpAxis4(TestFlipOp):
-
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
         self.axis = [0, 1, 2, 3]
 
 
 class TestFlipOpEmptyAxis(TestFlipOp):
-
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
         self.axis = []
 
 
 class TestFlipOpNegAxis(TestFlipOp):
-
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
         self.axis = [-1]
 
 
 class TestFlipDoubleGradCheck(unittest.TestCase):
-
     def flip_wrapper(self, x):
         return paddle.flip(x[0], [0, 1])
 
@@ -151,22 +144,17 @@ class TestFlipDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 2, 2], False, dtype)
+        data = paddle.static.data('data', [3, 2, 2], dtype)
         data.persistable = True
         out = paddle.flip(data, [0, 1])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
-        gradient_checker.double_grad_check([data],
-                                           out,
-                                           x_init=[data_arr],
-                                           place=place,
-                                           eps=eps)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(self.flip_wrapper,
-                                                       [data],
-                                                       out,
-                                                       x_init=[data_arr],
-                                                       place=place)
+        gradient_checker.double_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.flip_wrapper, [data], out, x_init=[data_arr], place=place
+        )
 
     def test_grad(self):
         paddle.enable_static()
@@ -178,7 +166,6 @@ class TestFlipDoubleGradCheck(unittest.TestCase):
 
 
 class TestFlipTripleGradCheck(unittest.TestCase):
-
     def flip_wrapper(self, x):
         return paddle.flip(x[0], [0, 1])
 
@@ -188,22 +175,17 @@ class TestFlipTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float32
 
-        data = layers.data('data', [3, 2, 2], False, dtype)
+        data = paddle.static.data('data', [3, 2, 2], dtype)
         data.persistable = True
         out = paddle.flip(data, [0, 1])
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
-        gradient_checker.triple_grad_check([data],
-                                           out,
-                                           x_init=[data_arr],
-                                           place=place,
-                                           eps=eps)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.triple_grad_check_for_dygraph(self.flip_wrapper,
-                                                       [data],
-                                                       out,
-                                                       x_init=[data_arr],
-                                                       place=place)
+        gradient_checker.triple_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.flip_wrapper, [data], out, x_init=[data_arr], place=place
+        )
 
     def test_grad(self):
         paddle.enable_static()
@@ -212,6 +194,23 @@ class TestFlipTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestFlipError(unittest.TestCase):
+    def test_axis(self):
+        paddle.enable_static()
+
+        def test_axis_rank():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.flip(input, axis=[[0]])
+
+        self.assertRaises(TypeError, test_axis_rank)
+
+        def test_axis_rank2():
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.flip(input, axis=[[0, 0], [1, 1]])
+
+        self.assertRaises(TypeError, test_axis_rank2)
 
 
 if __name__ == "__main__":

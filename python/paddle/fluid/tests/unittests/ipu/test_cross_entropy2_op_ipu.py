@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -34,11 +34,11 @@ class TestBase(IPUOpTest):
         label = np.arange(3).reshape([3, 1])
         self.feed_fp32 = {
             "x": x.astype(np.float32),
-            "label": label.astype(np.int64)
+            "label": label.astype(np.int64),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
-            "label": label.astype(np.int32)
+            "label": label.astype(np.int32),
         }
 
     def set_feed_attr(self):
@@ -52,20 +52,24 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self, on_ipu):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype="float32")
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
         if on_ipu:
-            label = paddle.static.data(name=self.feed_list[1],
-                                       shape=self.feed_shape[1],
-                                       dtype='int32')
+            label = paddle.static.data(
+                name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32'
+            )
         else:
-            label = paddle.static.data(name=self.feed_list[1],
-                                       shape=self.feed_shape[1],
-                                       dtype='int64')
-        out = paddle.fluid.layers.cross_entropy(input=x,
-                                                label=label,
-                                                **self.attrs)
+            label = paddle.static.data(
+                name=self.feed_list[1], shape=self.feed_shape[1], dtype='int64'
+            )
+        out = paddle.nn.functional.cross_entropy(
+            input=x,
+            label=label,
+            reduction='none',
+            use_softmax=False,
+            **self.attrs
+        )
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -82,7 +86,6 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {
             'soft_label': False,
@@ -91,23 +94,21 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
-
     def set_data_feed(self):
         x = np.random.uniform(size=[30, 70])
         label = np.arange(30).reshape([30, 1])
         self.feed_fp32 = {
             "x": x.astype(np.float32),
-            "label": label.astype(np.int64)
+            "label": label.astype(np.int64),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
-            "label": label.astype(np.int32)
+            "label": label.astype(np.int32),
         }
 
 
 @unittest.skip("soft_label=True is not supported")
 class TestCase3(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {
             'soft_label': True,
@@ -115,32 +116,30 @@ class TestCase3(TestBase):
 
 
 class TestCase4(TestBase):
-
     def set_data_feed(self):
         x = np.random.uniform(size=[3, 5, 7])
         label = np.random.randint(0, 7, [3, 5, 1], dtype='int64')
         self.feed_fp32 = {
             "x": x.astype(np.float32),
-            "label": label.astype(np.int64)
+            "label": label.astype(np.int64),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
-            "label": label.astype(np.int32)
+            "label": label.astype(np.int32),
         }
 
 
 class TestCase5(TestBase):
-
     def set_data_feed(self):
         x = np.random.uniform(size=[3, 5, 6, 7])
         label = np.random.randint(0, 7, [3, 5, 6], dtype='int64')
         self.feed_fp32 = {
             "x": x.astype(np.float32),
-            "label": label.astype(np.int64)
+            "label": label.astype(np.int64),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
-            "label": label.astype(np.int32)
+            "label": label.astype(np.int32),
         }
 
 

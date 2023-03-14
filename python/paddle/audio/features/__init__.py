@@ -11,7 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .layers import LogMelSpectrogram
-from .layers import MelSpectrogram
-from .layers import MFCC
-from .layers import Spectrogram
+from .layers import LogMelSpectrogram  # noqa: F401
+from .layers import MelSpectrogram  # noqa: F401
+from .layers import MFCC  # noqa: F401
+from .layers import Spectrogram  # noqa: F401
+
+__all__ = [  # noqa
+    'LogMelSpectrogram',
+    'MelSpectrogram',
+    'MFCC',
+    'Spectrogram',
+]

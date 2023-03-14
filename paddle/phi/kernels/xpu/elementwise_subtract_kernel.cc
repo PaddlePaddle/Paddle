@@ -26,8 +26,16 @@ void SubtractRawKernel(const Context& dev_ctx,
                        int axis,
                        DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  phi::XPUElementwise<T, XPUType>(
-      dev_ctx, x, y, axis, out, xpu::broadcast_sub<XPUType>);
+  auto f = [](xpu::Context* ctx,
+              const XPUType* x,
+              const XPUType* y,
+              XPUType* z,
+              const std::vector<int>& xshape,
+              const std::vector<int>& yshape) {
+    return xpu::broadcast_sub<XPUType>(ctx, x, y, z, xshape, yshape);
+  };
+
+  phi::XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
 }
 
 }  // namespace phi
@@ -36,4 +44,5 @@ PD_REGISTER_KERNEL(subtract_raw,
                    ALL_LAYOUT,
                    phi::SubtractRawKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   int64_t) {}

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import os
 import unittest
+
 from test_dist_base import TestDistBase
 
-import os
 import paddle
 import paddle.fluid as fluid
 
@@ -25,7 +25,6 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestPipeline(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -42,19 +41,23 @@ class TestPipeline(TestDistBase):
             # Now pipeline only gets the loss value of the last
             # microbatch, so it is not consistable with the
             # non-pipeline one.
-            self.check_with_place("pipeline_mnist.py",
-                                  delta=1e0,
-                                  check_error_log=True,
-                                  log_name=flag_name,
-                                  need_envs=self.need_envs())
+            self.check_with_place(
+                "pipeline_mnist.py",
+                delta=1e0,
+                check_error_log=True,
+                log_name=flag_name,
+                need_envs=self.need_envs(),
+            )
 
     def test_dist_train_multi_device(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("pipeline_mnist_multi_device.py",
-                                  check_error_log=True,
-                                  delta=1e0,
-                                  log_name=flag_name,
-                                  need_envs=self.need_envs())
+            self.check_with_place(
+                "pipeline_mnist_multi_device.py",
+                check_error_log=True,
+                delta=1e0,
+                log_name=flag_name,
+                need_envs=self.need_envs(),
+            )
 
     def test_dist_train_one_device(self):
         if fluid.core.is_compiled_with_cuda():
@@ -62,7 +65,8 @@ class TestPipeline(TestDistBase):
                 "pipeline_mnist_one_device.py",
                 check_error_log=True,
                 log_name=flag_name,
-                need_envs={"PADDLE_MANUAL_PIPELINE_STAGE": "0"})
+                need_envs={"PADDLE_MANUAL_PIPELINE_STAGE": "0"},
+            )
 
 
 if __name__ == '__main__':

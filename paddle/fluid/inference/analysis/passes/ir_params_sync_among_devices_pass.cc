@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 
+#include <cstdlib>
 #include <string>
 #include <unordered_set>
 
@@ -21,13 +22,15 @@
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/data_type.h"
+
+DEFINE_bool(
+    custom_model_save_cpu,
+    false,
+    "Keep old mode for developers, the model is saved on cpu not device.");
 
 namespace paddle {
 namespace inference {
@@ -60,12 +63,11 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
         var,
         platform::errors::PreconditionNotMet("The var should not be nullptr"));
 
-    if (var->IsType<framework::LoDTensor>() ||
-        var->IsType<framework::Tensor>()) {
-      auto *t = var->GetMutable<framework::LoDTensor>();
+    if (var->IsType<phi::DenseTensor>()) {
+      auto *t = var->GetMutable<phi::DenseTensor>();
 
       platform::CPUPlace cpu_place;
-      framework::LoDTensor temp_tensor;
+      phi::DenseTensor temp_tensor;
       temp_tensor.Resize(t->dims());
       temp_tensor.mutable_data<float>(cpu_place);
 
@@ -75,9 +77,9 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
     }
   }
 }
+#endif
 
-#else
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   // The parameters are on the cpu, therefore, synchronization is not necessary.
   if (!argument->use_gpu()) return;
@@ -117,28 +119,6 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
     reserve_cpu_weights = true;
   }
 
-  int64_t params_total_bytes{0};
-  for (auto *node : paddle::framework::ir::TopologySortOperations(graph)) {
-    if (!node->IsOp()) continue;
-    if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch") continue;
-    for (auto *var_node : node->inputs) {
-      if (!var_node->Var()->Persistable()) continue;
-      auto var_name = var_node->Var()->Name();
-      auto *var = scope->FindLocalVar(var_name);
-      if (var->IsType<framework::LoDTensor>() ||
-          var->IsType<framework::Tensor>()) {
-        auto *t = var->GetMutable<framework::LoDTensor>();
-        params_total_bytes += t->numel() * experimental::SizeOf(t->dtype());
-      }
-    }
-  }
-
-  {
-    // Alloc memory in pool to store all parameters.
-    framework::Tensor ts;
-    ts.mutable_data(place, params_total_bytes);
-  }
-
   std::unordered_set<std::string> visited;
   for (auto *node : paddle::framework::ir::TopologySortOperations(graph)) {
     if (!node->IsOp()) continue;
@@ -159,50 +139,109 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
       PADDLE_ENFORCE_NOT_NULL(var,
                               platform::errors::PreconditionNotMet(
                                   "The var should not be nullptr"));
-      if (var->IsType<framework::LoDTensor>() ||
-          var->IsType<framework::Tensor>()) {
-        auto *t = var->GetMutable<framework::LoDTensor>();
+      if (var->IsType<phi::DenseTensor>()) {
+        auto *t = var->GetMutable<phi::DenseTensor>();
         auto var_data_type = var_node->Var()->GetDataType();
         VLOG(5) << "var_name is " << var_name << ", data type is "
                 << var_data_type;
-        if (var_data_type == paddle::framework::proto::VarType::FP16 &&
-            t->dtype() != paddle::experimental::DataType::FLOAT16) {
-          framework::Tensor half_tensor;
-          half_tensor.set_type(paddle::experimental::DataType::FLOAT16);
-          half_tensor.Resize(t->dims());
-          auto *half_data =
-              half_tensor.mutable_data<float16>(platform::CPUPlace());
-          for (int i = 0; i < t->numel(); i++) {
-            auto *data = t->mutable_data<float16>(platform::CPUPlace());
-            half_data[i] = static_cast<float16>(data[i]);
-          }
-          t->clear();
-          paddle::framework::TensorCopySync(half_tensor, place, t);
-        } else if (var_data_type == paddle::framework::proto::VarType::BF16) {
-          framework::Tensor bf16_tensor;
-          bf16_tensor.set_type(paddle::experimental::DataType::BFLOAT16);
-          bf16_tensor.Resize(t->dims());
-          auto *bf16_data = bf16_tensor.mutable_data<platform::bfloat16>(
-              platform::CPUPlace());
-          for (int i = 0; i < t->numel(); i++) {
-            auto *data = t->mutable_data<bfloat16>(platform::CPUPlace());
-            bf16_data[i] = static_cast<platform::bfloat16>(data[i]);
-          }
-          t->clear();
-          paddle::framework::TensorCopySync(bf16_tensor, place, t);
-        } else {
-          platform::CPUPlace cpu_place;
-          framework::LoDTensor temp_tensor;
-          temp_tensor.Resize(t->dims());
-          paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
-          t->clear();
-          paddle::framework::TensorCopySync(temp_tensor, place, t);
-        }
+        platform::CPUPlace cpu_place;
+        phi::DenseTensor temp_tensor;
+        temp_tensor.Resize(t->dims());
+        paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
+        t->clear();
+        paddle::framework::TensorCopySync(temp_tensor, place, t);
       }
     }
   }
 }
+#endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
+    Argument *argument) {
+  if (!argument->use_custom_device()) return;
+
+  // On old mode, the model is saved on cpu not device.
+  if (argument->custom_device_type() == "OpenCL") {
+    PADDLE_ENFORCE_EQ(
+        FLAGS_custom_model_save_cpu,
+        false,
+        phi::errors::InvalidArgument(
+            "'FLAGS_custom_model_save_cpu = false' is only for the developers "
+            "who have not completed custom device memory settings. Setting to "
+            "true will make "
+            "model memory reserve on the cpu, and make inference slower."));
+  }
+
+  if (FLAGS_custom_model_save_cpu) return;
+
+  auto &graph = argument->main_graph();
+  std::vector<std::string> repetitive_params;
+
+  if (graph.Has(framework::ir::kRepetitiveParamAttr))
+    repetitive_params = graph.Get<std::vector<std::string>>(
+        framework::ir::kRepetitiveParamAttr);
+
+  LOG(INFO) << "Sync params from CPU to CustomDevice"
+            << argument->custom_device_type() << "/"
+            << argument->custom_device_id();
+
+  platform::Place place = platform::CustomPlace(argument->custom_device_type(),
+                                                argument->custom_device_id());
+  auto *scope = argument->scope_ptr();
+  std::vector<std::string> all_vars = scope->LocalVarNames();
+
+  for (auto &var_name : all_vars) {
+    auto *var = scope->FindLocalVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::PreconditionNotMet("The var should not be nullptr"));
+
+    if (var->IsType<phi::DenseTensor>()) {
+      auto *t = var->GetMutable<phi::DenseTensor>();
+
+      platform::CPUPlace cpu_place;
+      phi::DenseTensor temp_tensor;
+      temp_tensor.Resize(t->dims());
+
+      paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
+      t->clear();
+      paddle::framework::TensorCopySync(temp_tensor, place, t);
+    }
+  }
+}
+#endif
+
+#ifdef PADDLE_WITH_XPU
+void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
+  if (!argument->use_xpu()) return;
+
+  PADDLE_ENFORCE_EQ(argument->xpu_device_id_valid(),
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "The xpu_device_id field should be valid"));
+
+  LOG(INFO) << "Sync params from CPU to XPU: "
+            << "xpu_device_id - " << argument->xpu_device_id();
+
+  platform::CPUPlace cpu_place;
+  platform::Place xpu_place = platform::XPUPlace(argument->xpu_device_id());
+  auto *scope = argument->scope_ptr();
+  framework::ir::Graph &graph = argument->main_graph();
+
+  for (auto *node : graph.Nodes()) {
+    if (!node->IsVar() || !node->Var()->Persistable()) continue;
+    auto *var = scope->FindVar(node->Name());
+    if (!var->IsType<phi::DenseTensor>()) continue;
+    auto *tensor = var->GetMutable<phi::DenseTensor>();
+
+    phi::DenseTensor temp_tensor;
+    temp_tensor.Resize(tensor->dims());
+    paddle::framework::TensorCopySync(*tensor, cpu_place, &temp_tensor);
+    tensor->clear();
+    paddle::framework::TensorCopySync(temp_tensor, xpu_place, tensor);
+  }
+}
 #endif
 
 void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
@@ -210,18 +249,31 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
       argument->scope_valid(),
       true,
       platform::errors::PreconditionNotMet("The scope field should be valid"));
-
 #ifdef PADDLE_WITH_ASCEND_CL
-  if (!argument->use_npu_valid()) return;
-  CopyParamsToNpu(argument);
-#else
-  if (!argument->use_gpu_valid()) return;
-  CopyParamsToGpu(argument);
+  if (argument->use_npu_valid()) {
+    CopyParamsToNpu(argument);
+  }
 #endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (argument->use_gpu_valid()) {
+    CopyParamsToGpu(argument);
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (argument->use_custom_device_valid()) {
+    CopyParamsToCustomDevice(argument);
+  }
+#endif
+#ifdef PADDLE_WITH_XPU
+  if (argument->use_xpu_valid()) {
+    CopyParamsToXpu(argument);
+  }
+#endif
+  paddle::memory::Release(platform::CPUPlace());
 }
 
 std::string IrParamsSyncAmongDevicesPass::repr() const {
-  return "ir-params-sync-among-devices-pass";
+  return "ir_params_sync_among_devices_pass";
 }
 
 }  // namespace analysis

@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/convert_utils.h"
+#include <set>
+
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -77,18 +79,14 @@ struct UniqueOpFunctor {
       const auto& index_type = index_->dtype();
       bool index_type_match =
           index_type == DataType::INT32 || index_type == DataType::INT64;
-      PADDLE_ENFORCE_EQ(
-          index_type_match,
-          true,
-          phi::errors::InvalidArgument(
-              "Index holds the wrong type, it holds %s, "
-              "but desires to be %s or %s",
-              paddle::framework::DataTypeToString(
-                  paddle::framework::TransToProtoVarType(index_type)),
-              paddle::framework::DataTypeToString(
-                  paddle::framework::TransToProtoVarType(DataType::INT32)),
-              paddle::framework::DataTypeToString(
-                  paddle::framework::TransToProtoVarType(DataType::INT64))));
+      PADDLE_ENFORCE_EQ(index_type_match,
+                        true,
+                        phi::errors::InvalidArgument(
+                            "Index holds the wrong type, it holds %s, "
+                            "but desires to be %s or %s",
+                            phi::DataTypeToString(index_type),
+                            phi::DataTypeToString(DataType::INT32),
+                            phi::DataTypeToString(DataType::INT64)));
 
       if (index_type == DataType::INT32) {
         for (auto i = 0; i < in_->numel(); ++i) {
@@ -316,15 +314,15 @@ static void UniqueDim(const Context& context,
       out_trans.dims().size(), context, out_trans, out, permute);
 
   if (return_inverse) {
-    paddle::framework::TensorFromVector(inverse_vec, context, index);
+    phi::TensorFromVector(inverse_vec, context, index);
   }
 
   if (return_counts) {
-    paddle::framework::TensorFromVector(counts_vec, context, count);
+    phi::TensorFromVector(counts_vec, context, count);
   }
 
   if (return_index) {
-    paddle::framework::TensorFromVector(indices_vec, context, indices);
+    phi::TensorFromVector(indices_vec, context, indices);
   }
 }
 

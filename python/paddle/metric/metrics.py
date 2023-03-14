@@ -12,19 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import six
 import abc
+
 import numpy as np
 
-from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import core, _varbase_creator, _non_static_mode, _in_legacy_dygraph
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
+
+from ..fluid.data_feeder import check_variable_and_dtype
+from ..fluid.framework import _non_static_mode, _varbase_creator
+from ..fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -33,8 +30,7 @@ def _is_numpy_(var):
     return isinstance(var, (np.ndarray, np.generic))
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Metric(object):
+class Metric(metaclass=abc.ABCMeta):
     r"""
     Base class for metric, encapsulates metric logic and APIs
     Usage:
@@ -122,7 +118,9 @@ class Metric(object):
         """
         raise NotImplementedError(
             "function 'reset' not implemented in {}.".format(
-                self.__class__.__name__))
+                self.__class__.__name__
+            )
+        )
 
     @abc.abstractmethod
     def update(self, *args):
@@ -138,7 +136,9 @@ class Metric(object):
         """
         raise NotImplementedError(
             "function 'update' not implemented in {}.".format(
-                self.__class__.__name__))
+                self.__class__.__name__
+            )
+        )
 
     @abc.abstractmethod
     def accumulate(self):
@@ -147,7 +147,9 @@ class Metric(object):
         """
         raise NotImplementedError(
             "function 'accumulate' not implemented in {}.".format(
-                self.__class__.__name__))
+                self.__class__.__name__
+            )
+        )
 
     @abc.abstractmethod
     def name(self):
@@ -156,7 +158,9 @@ class Metric(object):
         """
         raise NotImplementedError(
             "function 'name' not implemented in {}.".format(
-                self.__class__.__name__))
+                self.__class__.__name__
+            )
+        )
 
     def compute(self, *args):
         """
@@ -237,8 +241,8 @@ class Accuracy(Metric):
 
     """
 
-    def __init__(self, topk=(1, ), name=None, *args, **kwargs):
-        super(Accuracy, self).__init__(*args, **kwargs)
+    def __init__(self, topk=(1,), name=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.topk = topk
         self.maxk = max(topk)
         self._init_name(name)
@@ -259,13 +263,13 @@ class Accuracy(Metric):
             Tensor: Correct mask, a tensor with shape [batch_size, d0, ..., topk].
         """
         pred = paddle.argsort(pred, descending=True)
-        pred = paddle.slice(pred,
-                            axes=[len(pred.shape) - 1],
-                            starts=[0],
-                            ends=[self.maxk])
-        if (len(label.shape) == 1) or \
-           (len(label.shape) == 2 and label.shape[-1] == 1):
-            # In static mode, the real label data shape may be different
+        pred = paddle.slice(
+            pred, axes=[len(pred.shape) - 1], starts=[0], ends=[self.maxk]
+        )
+        if (len(label.shape) == 1) or (
+            len(label.shape) == 2 and label.shape[-1] == 1
+        ):
+            # In static graph mode, the real label data shape may be different
             # from shape defined by paddle.static.InputSpec in model
             # building, reshape to the right shape.
             label = paddle.reshape(label, (-1, 1))
@@ -303,7 +307,7 @@ class Accuracy(Metric):
         """
         Resets all of the metric state.
         """
-        self.total = [0.] * len(self.topk)
+        self.total = [0.0] * len(self.topk)
         self.count = [0] * len(self.topk)
 
     def accumulate(self):
@@ -312,7 +316,7 @@ class Accuracy(Metric):
         """
         res = []
         for t, c in zip(self.total, self.count):
-            r = float(t) / c if c > 0 else 0.
+            r = float(t) / c if c > 0 else 0.0
             res.append(r)
         res = res[0] if len(self.topk) == 1 else res
         return res
@@ -371,7 +375,7 @@ class Precision(Metric):
 
           class Data(paddle.io.Dataset):
               def __init__(self):
-                  super(Data, self).__init__()
+                  super().__init__()
                   self.n = 1024
                   self.x = np.random.randn(self.n, 10).astype('float32')
                   self.y = np.random.randint(2, size=(self.n, 1)).astype('float32')
@@ -398,7 +402,7 @@ class Precision(Metric):
     """
 
     def __init__(self, name='precision', *args, **kwargs):
-        super(Precision, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.tp = 0  # true positive
         self.fp = 0  # false positive
         self._name = name
@@ -452,7 +456,7 @@ class Precision(Metric):
             A scaler float: results of the calculated precision.
         """
         ap = self.tp + self.fp
-        return float(self.tp) / ap if ap != 0 else .0
+        return float(self.tp) / ap if ap != 0 else 0.0
 
     def name(self):
         """
@@ -504,7 +508,7 @@ class Recall(Metric):
 
           class Data(paddle.io.Dataset):
               def __init__(self):
-                  super(Data, self).__init__()
+                  super().__init__()
                   self.n = 1024
                   self.x = np.random.randn(self.n, 10).astype('float32')
                   self.y = np.random.randint(2, size=(self.n, 1)).astype('float32')
@@ -531,7 +535,7 @@ class Recall(Metric):
     """
 
     def __init__(self, name='recall', *args, **kwargs):
-        super(Recall, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.tp = 0  # true positive
         self.fn = 0  # false negative
         self._name = name
@@ -578,7 +582,7 @@ class Recall(Metric):
             A scaler float: results of the calculated Recall.
         """
         recall = self.tp + self.fn
-        return float(self.tp) / recall if recall != 0 else .0
+        return float(self.tp) / recall if recall != 0 else 0.0
 
     def reset(self):
         """
@@ -648,7 +652,7 @@ class Auc(Metric):
 
           class Data(paddle.io.Dataset):
               def __init__(self):
-                  super(Data, self).__init__()
+                  super().__init__()
                   self.n = 1024
                   self.x = np.random.randn(self.n, 10).astype('float32')
                   self.y = np.random.randint(2, size=(self.n, 1)).astype('int64')
@@ -676,13 +680,10 @@ class Auc(Metric):
           model.fit(data, batch_size=16)
     """
 
-    def __init__(self,
-                 curve='ROC',
-                 num_thresholds=4095,
-                 name='auc',
-                 *args,
-                 **kwargs):
-        super(Auc, self).__init__(*args, **kwargs)
+    def __init__(
+        self, curve='ROC', num_thresholds=4095, name='auc', *args, **kwargs
+    ):
+        super().__init__(*args, **kwargs)
         self._curve = curve
         self._num_thresholds = num_thresholds
 
@@ -743,11 +744,14 @@ class Auc(Metric):
             tot_neg_prev = tot_neg
             tot_pos += self._stat_pos[idx]
             tot_neg += self._stat_neg[idx]
-            auc += self.trapezoid_area(tot_neg, tot_neg_prev, tot_pos,
-                                       tot_pos_prev)
+            auc += self.trapezoid_area(
+                tot_neg, tot_neg_prev, tot_pos, tot_pos_prev
+            )
             idx -= 1
 
-        return auc / tot_pos / tot_neg if tot_pos > 0.0 and tot_neg > 0.0 else 0.0
+        return (
+            auc / tot_pos / tot_neg if tot_pos > 0.0 and tot_neg > 0.0 else 0.0
+        )
 
     def reset(self):
         """
@@ -805,29 +809,29 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             total = _varbase_creator(dtype="int32")
 
         topk_out, topk_indices = paddle.topk(input, k=k)
-        _acc, _, _ = _legacy_C_ops.accuracy(topk_out, topk_indices, label,
-                                            correct, total)
+        _acc, _, _ = _legacy_C_ops.accuracy(
+            topk_out, topk_indices, label, correct, total
+        )
 
         return _acc
 
     helper = LayerHelper("accuracy", **locals())
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'accuracy')
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64'], 'accuracy'
+    )
     topk_out, topk_indices = paddle.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
         correct = helper.create_variable_for_type_inference(dtype="int32")
     if total is None:
         total = helper.create_variable_for_type_inference(dtype="int32")
-    helper.append_op(type="accuracy",
-                     inputs={
-                         "Out": [topk_out],
-                         "Indices": [topk_indices],
-                         "Label": [label]
-                     },
-                     outputs={
-                         "Accuracy": [acc_out],
-                         "Correct": [correct],
-                         "Total": [total],
-                     })
+    helper.append_op(
+        type="accuracy",
+        inputs={"Out": [topk_out], "Indices": [topk_indices], "Label": [label]},
+        outputs={
+            "Accuracy": [acc_out],
+            "Correct": [correct],
+            "Total": [total],
+        },
+    )
     return acc_out

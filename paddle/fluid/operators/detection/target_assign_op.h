@@ -96,11 +96,11 @@ template <typename DeviceContext, typename T, typename WT>
 class TargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* match_indices = ctx.Input<framework::Tensor>("MatchIndices");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* match_indices = ctx.Input<phi::DenseTensor>("MatchIndices");
 
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    auto* out_wt = ctx.Output<framework::Tensor>("OutWeight");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out_wt = ctx.Output<phi::DenseTensor>("OutWeight");
 
     PADDLE_ENFORCE_EQ(x->lod().size(),
                       1UL,
@@ -121,7 +121,7 @@ class TargetAssignKernel : public framework::OpKernel<T> {
 
     auto x_lod = x->lod().back();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::framework::MixVector<size_t> mixv_x_lod(&x_lod);
+    phi::MixVector<size_t> mixv_x_lod(&x_lod);
     size_t* x_lod_data = mixv_x_lod.MutableData(ctx.GetPlace());
 #else
     size_t* x_lod_data = x_lod.data();
@@ -145,7 +145,7 @@ class TargetAssignKernel : public framework::OpKernel<T> {
     platform::ForRange<DeviceContext> for_range(device_ctx, n * m);
     for_range(functor);
 
-    auto* neg_indices = ctx.Input<framework::LoDTensor>("NegIndices");
+    auto* neg_indices = ctx.Input<phi::DenseTensor>("NegIndices");
     if (neg_indices) {
       PADDLE_ENFORCE_EQ(
           neg_indices->lod().size(),
@@ -155,7 +155,7 @@ class TargetAssignKernel : public framework::OpKernel<T> {
       const int* neg_idx_data = neg_indices->data<int>();
       auto neg_lod = neg_indices->lod().back();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      paddle::framework::MixVector<size_t> mixv_neg_lod(&neg_lod);
+      phi::MixVector<size_t> mixv_neg_lod(&neg_lod);
       size_t* neg_lod_data = mixv_neg_lod.MutableData(ctx.GetPlace());
 #else
       size_t* neg_lod_data = neg_lod.data();

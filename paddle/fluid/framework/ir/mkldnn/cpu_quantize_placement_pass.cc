@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_placement_pass.h"
 
 #include <unordered_set>
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 
 namespace paddle {
 namespace framework {
@@ -28,11 +29,15 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       std::unordered_set<std::string>({"concat",
                                        "conv2d",
                                        "depthwise_conv2d",
+                                       "fused_conv2d",
+                                       "fused_conv3d",
+                                       "fused_matmul",
                                        "elementwise_add",
                                        "elementwise_mul",
                                        "elementwise_sub",
                                        "fc",
                                        "matmul",
+                                       "matmul_v2",
                                        "nearest_interp",
                                        "nearest_interp_v2",
                                        "pool2d",
@@ -42,7 +47,8 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
                                        "fusion_gru",
                                        "fusion_lstm",
                                        "multi_gru",
-                                       "slice"});
+                                       "slice",
+                                       "split"});
   const auto& excluded_ids_list =
       Get<std::unordered_set<int>>("quantize_excluded_op_ids");
   const auto& op_types_list =
@@ -70,7 +76,6 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, quantize_placement_pattern);
-
     if (std::find(excluded_ids_list.begin(),
                   excluded_ids_list.end(),
                   op->id()) != excluded_ids_list.end()) {
@@ -81,6 +86,7 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
+    ConvertToFusedOp(op->Op());
     op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
   };
   gpd(graph, handler);

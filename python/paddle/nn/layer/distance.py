@@ -20,6 +20,7 @@ __all__ = []
 
 class PairwiseDistance(Layer):
     r"""
+
     It computes the pairwise distance between two vectors. The
     distance is calculated by p-oreder norm:
 
@@ -38,14 +39,14 @@ class PairwiseDistance(Layer):
             Generally, no setting is required. Default: None.
 
     Shape:
-        x: :math:`[N, D]` or :math:`[D]`, where :math:`N` is batch size, :math:`D`
-            is the dimension of the data. Available data type is float32, float64.
-        y: :math:`[N, D]` or :math:`[D]`, y have the same dtype as x.
-        output: The same dtype as input tensor.
+        - x: :math:`[N, D]` or :math:`[D]`, where :math:`N` is batch size, :math:`D`
+          is the dimension of the data. Available data type is float16, float32, float64.
+        - y: :math:`[N, D]` or :math:`[D]`, y have the same dtype as x.
+        - output: The same dtype as input tensor.
             - If :attr:`keepdim` is True, the output shape is :math:`[N, 1]` or :math:`[1]`,
-                depending on whether the input has data shaped as :math:`[N, D]`.
+              depending on whether the input has data shaped as :math:`[N, D]`.
             - If :attr:`keepdim` is False, the output shape is :math:`[N]` or :math:`[]`,
-                depending on whether the input has data shaped as :math:`[N, D]`.
+              depending on whether the input has data shaped as :math:`[N, D]`.
 
     Examples:
         .. code-block:: python
@@ -55,12 +56,14 @@ class PairwiseDistance(Layer):
             y = paddle.to_tensor([[5., 6.], [7., 8.]], dtype=paddle.float64)
             dist = paddle.nn.PairwiseDistance()
             distance = dist(x, y)
-            print(distance.numpy()) # [5. 5.]
+            print(distance)
+            # Tensor(shape=[2], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+            #        [4.99999860, 4.99999860])
 
     """
 
-    def __init__(self, p=2., epsilon=1e-6, keepdim=False, name=None):
-        super(PairwiseDistance, self).__init__()
+    def __init__(self, p=2.0, epsilon=1e-6, keepdim=False, name=None):
+        super().__init__()
         self.p = p
         self.epsilon = epsilon
         self.keepdim = keepdim
@@ -68,15 +71,16 @@ class PairwiseDistance(Layer):
 
     def forward(self, x, y):
 
-        return F.pairwise_distance(x, y, self.p, self.epsilon, self.keepdim,
-                                   self.name)
+        return F.pairwise_distance(
+            x, y, self.p, self.epsilon, self.keepdim, self.name
+        )
 
     def extra_repr(self):
         main_str = 'p={p}'
         if self.epsilon != 1e-6:
             main_str += ', epsilon={epsilon}'
-        if self.keepdim != False:
+        if self.keepdim is not False:
             main_str += ', keepdim={keepdim}'
-        if self.name != None:
+        if self.name is not None:
             main_str += ', name={name}'
         return main_str.format(**self.__dict__)

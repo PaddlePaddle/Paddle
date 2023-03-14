@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/device_context.h"
 
 namespace phi {
@@ -77,9 +78,12 @@ class DnnWorkspaceHandle {
   std::unique_ptr<std::mutex> mtx_;
 };
 
-class PADDLE_API GPUContext : public DeviceContext {
+class PADDLE_API GPUContext : public DeviceContext,
+                              public TypeInfoTraits<DeviceContext, GPUContext> {
  public:
-  explicit GPUContext(const GPUPlace& place, bool init = true);
+  explicit GPUContext(const GPUPlace& place,
+                      bool init = true,
+                      int stream_priority = 0);
 
   GPUContext(GPUContext&&);
   GPUContext& operator=(GPUContext&&);
@@ -166,6 +170,14 @@ class PADDLE_API GPUContext : public DeviceContext {
 
   void WaitStreamCallback() const;
 
+  // Several methods for adapting Dnn-specific attributes
+  bool HasDnnAttr(const std::string& attr_name) const;
+  const Attribute& GetDnnAttr(const std::string& attr_name) const;
+  void SetDnnAttr(const std::string& attr_name, Attribute attr);
+  void ClearDnnAttr();
+
+  static const char* name() { return "GPUContext"; }
+
  public:
   /*! \brief  Return nccl communicators. */
   ncclComm_t nccl_comm() const;
@@ -188,7 +200,7 @@ class PADDLE_API GPUContext : public DeviceContext {
 
   // Note that this is a trick implementation, which can be used to partially
   // initialize when the SetAllocator interface is not called.
-  void PartialInitWithoutAllocator();
+  void PartialInitWithoutAllocator(int stream_priority = 0);
   // Note that this is a trick implementation that can be used to initialize
   // resources that require an Allocator when the SetAllocator interface is
   // called.
@@ -250,10 +262,10 @@ class PADDLE_API GPUContext : public DeviceContext {
   std::unique_ptr<Impl> impl_;
 };
 
-// Note: In order to register the kernel of CUDNN, GPUDNNContext is required.
+// Note: In order to register the kernel of CUDNN, DnnContext is required.
 // Currently, CUDNN kernel directly uses GPUContext. But if the kernel function
 // has the same name, this will lead to duplicate instantiations of GPU kernel
-// and GPUDNN kernel function, so if we using GPUDNNContext = GPUContext, we
+// and Dnn kernel function, so if we using DnnContext = GPUContext, we
 // must use different function name for cudnn kernel
 using GPUDNNContext = GPUContext;
 
@@ -265,4 +277,31 @@ using GPUDNNContext = GPUContext;
 using KPSContext = GPUContext;
 #endif
 
+}  // namespace phi
+
+namespace Eigen {
+struct DefaultDevice;
+}  // namespace Eigen
+
+namespace phi {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+// Currently, GPUPinnedContext is only used to data copying.
+class GPUPinnedContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, GPUPinnedContext> {
+ public:
+  GPUPinnedContext();
+  explicit GPUPinnedContext(GPUPinnedPlace place);
+
+  const Place& GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+  static const char* name() { return "GPUPinnedContext"; }
+
+ private:
+  GPUPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+#endif
 }  // namespace phi

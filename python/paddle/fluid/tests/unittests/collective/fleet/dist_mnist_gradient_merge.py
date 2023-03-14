@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from dist_mnist import cnn_model
+from test_dist_base import TestDistRunnerBase, _insert_comm_op, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase, runtime_main
-from dist_mnist import cnn_model
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
@@ -28,36 +27,54 @@ fluid.default_main_program().random_seed = 1
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
-
-    def get_model(self, batch_size=2):
+    def get_model(self, batch_size=2, single_device=False):
         # Input data
-        images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        images = paddle.static.data(
+            name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
+        )
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         # Train program
         predict = cnn_model(images)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         # Evaluator
-        batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(input=predict,
-                                          label=label,
-                                          total=batch_size_tensor)
+        batch_size_tensor = paddle.tensor.create_tensor(dtype='int64')
+        batch_acc = paddle.static.accuracy(
+            input=predict, label=label, total=batch_size_tensor
+        )
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
-        opt = fluid.optimizer.MomentumOptimizer(learning_rate=0.001,
-                                                momentum=0.9)
+        opt = fluid.optimizer.MomentumOptimizer(
+            learning_rate=0.001, momentum=0.9
+        )
         opt = fluid.optimizer.GradientMergeOptimizer(opt, 2)
-
+        if single_device:
+            opt.minimize(avg_cost)
+        else:
+            opt._learning_rate = 0.001
+            opt._learning_rate_map = {}
+            _insert_comm_op(opt, avg_cost)
         # Reader
-        train_reader = paddle.batch(paddle.dataset.mnist.test(),
-                                    batch_size=batch_size)
-        test_reader = paddle.batch(paddle.dataset.mnist.test(),
-                                   batch_size=batch_size)
-        opt.minimize(avg_cost)
-        return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
+        train_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
+        test_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
+
+        return (
+            inference_program,
+            avg_cost,
+            train_reader,
+            test_reader,
+            batch_acc,
+            predict,
+        )
 
 
 if __name__ == "__main__":

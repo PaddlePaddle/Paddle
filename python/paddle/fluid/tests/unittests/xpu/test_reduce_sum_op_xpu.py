@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,29 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import sys
+import unittest
+
+import numpy as np
 
 sys.path.append("..")
 
-import paddle
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
+
+import paddle
 
 paddle.enable_static()
 
 
 class XPUTestReduceSumOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'reduce_sum'
 
     class XPUTestReduceSumBase(XPUOpTest):
-
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_case()
@@ -45,37 +46,73 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.attrs = {
                 'use_xpu': True,
                 'reduce_all': self.reduce_all,
-                'keep_dim': self.keep_dim
+                'keep_dim': self.keep_dim,
+                'dim': self.axis,
             }
-            self.inputs = {'X': np.random.random(self.shape).astype("float32")}
+            self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
             if self.attrs['reduce_all']:
                 self.outputs = {'Out': self.inputs['X'].sum()}
             else:
                 self.outputs = {
-                    'Out':
-                    self.inputs['X'].sum(axis=self.axis,
-                                         keepdims=self.attrs['keep_dim'])
+                    'Out': self.inputs['X'].sum(
+                        axis=self.axis, keepdims=self.attrs['keep_dim']
+                    )
                 }
 
         def init_case(self):
             self.shape = (5, 6, 10)
-            self.axis = (0, )
+            self.axis = (0,)
             self.reduce_all = False
             self.keep_dim = False
+            self.dtype = self.in_type
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            pass
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class XPUTestReduceSumCase1(XPUTestReduceSumBase):
-
         def init_case(self):
             self.shape = (5, 6, 10)
-            self.axis = (0, )
+            self.axis = (0,)
+            self.reduce_all = False
+            self.keep_dim = False
+
+    class XPUTestReduceSumCase2(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (0,)
             self.reduce_all = False
             self.keep_dim = True
+
+    class XPUTestReduceSumCase3(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (0,)
+            self.reduce_all = True
+            self.keep_dim = False
+
+    class XPUTestReduceSumCase4(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (1,)
+            self.reduce_all = False
+            self.keep_dim = False
+
+    class XPUTestReduceSumCase5(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (1,)
+            self.reduce_all = False
+            self.keep_dim = True
+
+    class XPUTestReduceSumCase6(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (1,)
+            self.reduce_all = True
+            self.keep_dim = False
 
 
 support_types = get_xpu_op_support_types('reduce_sum')

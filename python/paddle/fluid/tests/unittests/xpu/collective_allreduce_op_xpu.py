@@ -12,45 +12,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
+
+from test_collective_base_xpu import TestCollectiveRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-import paddle.fluid.layers as layers
-from test_collective_base_xpu import TestCollectiveRunnerBase, runtime_main
 
 paddle.enable_static()
 
 
 class TestCollectiveAllReduce(TestCollectiveRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program):
         ring_id = 0
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(name="tindata",
-                                  shape=[10, 1000],
-                                  dtype='float32')
+            tindata = paddle.static.data(
+                name="tindata", shape=[10, 1000], dtype='float32'
+            )
             toutdata = main_prog.current_block().create_var(
                 name="outofreduce",
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
-                stop_gradient=False)
-            main_prog.global_block().append_op(type="c_allreduce_sum",
-                                               inputs={'X': tindata},
-                                               attrs={
-                                                   'ring_id': ring_id,
-                                               },
-                                               outputs={'Out': toutdata})
-            main_prog.global_block().append_op(type="c_sync_comm_stream",
-                                               inputs={'X': toutdata},
-                                               outputs={'Out': toutdata},
-                                               attrs={'ring_id': ring_id})
+                stop_gradient=False,
+            )
+            main_prog.global_block().append_op(
+                type="c_allreduce_sum",
+                inputs={'X': tindata},
+                attrs={
+                    'ring_id': ring_id,
+                },
+                outputs={'Out': toutdata},
+            )
+            main_prog.global_block().append_op(
+                type="c_sync_comm_stream",
+                inputs={'X': toutdata},
+                outputs={'Out': toutdata},
+                attrs={'ring_id': ring_id},
+            )
             return toutdata
 
 

@@ -23,6 +23,7 @@ endif()
 # use to get_property location of static lib
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
+cmake_policy(SET CMP0079 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -47,9 +48,11 @@ find_package(CUDA QUIET)
 find_package(MKL CONFIG QUIET)
 option(WITH_ONEMKL "Compile PaddlePaddle with oneMKL" OFF)
 option(WITH_GPU "Compile PaddlePaddle with NVIDIA GPU" ${CUDA_FOUND})
+option(WITH_MPI "Compile PaddlePaddle with MPI" OFF)
 option(WITH_TENSORRT "Compile PaddlePaddle with NVIDIA TensorRT" OFF)
 option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
+option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_MLU "Compile PaddlePaddle with CAMBRICON MLU" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ASCEND "Compile PaddlePaddle with ASCEND" OFF)
@@ -71,6 +74,9 @@ if(WITH_GPU AND WITH_XPU)
 endif()
 if(WITH_GPU AND WITH_XPU_KP)
   message(FATAL_ERROR "Error when compile GPU and XPU2 at the same time")
+endif()
+if(WITH_GPU AND WITH_XPU_XFT)
+  message(FATAL_ERROR "Error when compile GPU and XPU-XFT at the same time")
 endif()
 if(WITH_GPU AND WITH_ASCEND)
   message(FATAL_ERROR "Error when compile GPU and ASCEND at the same time")
@@ -155,8 +161,14 @@ if(WIN32)
     endforeach()
   endif()
 
-  # NOTE(zhouwei): msvc max/min macro conflict with std::min/max, define NOMINMAX globally
+  # msvc max/min macro conflict with std::min/max, define NOMINMAX globally
   add_definitions("-DNOMINMAX")
+
+  # 1. windows.h define 'small' cause CUDA11.6/11.7/11.8 's cub compile error,
+  # see https://github.com/microsoft/onnxruntime/issues/11227
+  # 2. WIN32_LEAN_AND_MEAN minimize the windows include files, avoid define 'small'
+  add_definitions(-DWIN32_LEAN_AND_MEAN)
+
   # windows build turn off warnings, use parallel compiling.
   foreach(
     flag_var
@@ -267,6 +279,7 @@ option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
 option(WITH_HETERPS "Compile with heterps" OFF})
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
+option(WITH_INFERENCE_NVTX "Paddle inference with nvtx for profiler" OFF)
 option(PY_VERSION "Compile PaddlePaddle with python3 support" ${PY_VERSION})
 option(WITH_DGC "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(
@@ -301,6 +314,12 @@ option(WITH_RECORD_BUILDTIME
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 option(WITH_ARM_BRPC "Supprot Brpc in Arm" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
+option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
+option(WITH_CUDNN_FRONTEND
+       "Compile with CUDNN Frontend API support (experimental)" OFF)
+option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
+       OFF)
+option(WITH_NEWIR "Compile PaddlePaddle with NEWIR" OFF)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -323,7 +342,7 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.6)
+  set(PY_VERSION 3.7)
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
@@ -336,7 +355,7 @@ endif()
 
 if(LINUX
    AND NOT WITH_CUSTOM_DEVICE
-   AND NOT ON_INFER)
+   AND WITH_PYTHON)
   set(WITH_CUSTOM_DEVICE
       ON
       CACHE BOOL "Enable Custom Device when compiling for Linux" FORCE)
@@ -384,6 +403,16 @@ if(NOT WITH_GPU AND WITH_NCCL)
       CACHE STRING "Disable NCCL when compiling without GPU" FORCE)
 endif()
 
+if(NOT WITH_GPU AND WITH_CUDNN_DSO)
+  message(
+    WARNING
+      "Can't compile with cuDNN libraries when compiling without GPU. Force WITH_CUDNN_DSO=OFF."
+  )
+  set(WITH_CUDNN_DSO
+      OFF
+      CACHE STRING "Disable cuDNN libraries when compiling without GPU" FORCE)
+endif()
+
 # force WITH_XPU on when WITH_XPU_KP
 if(WITH_XPU_KP AND NOT WITH_XPU)
   message(
@@ -392,6 +421,15 @@ if(WITH_XPU_KP AND NOT WITH_XPU)
   set(WITH_XPU
       ON
       CACHE STRING "Enable WITH_XPU when compiling with WITH_XPU_KP" FORCE)
+endif()
+
+if(NOT WITH_XPU AND WITH_XPU_XFT)
+  message(
+    WARNING
+      "Enable WITH_XPU when compiling with WITH_XPU_XFT. Force WITH_XPU=ON.")
+  set(WITH_XPU
+      ON
+      CACHE STRING "Enable WITH_XPU when compiling with WITH_XPU_XFT" FORCE)
 endif()
 
 if(NOT WITH_XPU AND WITH_XPU_BKCL)
@@ -507,6 +545,58 @@ if(WITH_DISTRIBUTE)
           "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496"
           FORCE)
   endif()
+endif()
+
+if(WITH_RPC)
+  if(NOT LINUX)
+    message(
+      WARNING "Disable WITH_RPC when not compiled on Linux. Force WITH_RPC=OFF."
+    )
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when not compiled on Linux" FORCE)
+  endif()
+  if(NOT WITH_DISTRIBUTE AND WITH_RPC)
+    message(
+      WARNING
+        "Disable WITH_RPC when not compiled with distribute. Force WITH_RPC=OFF."
+    )
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when not compiled with distribute" FORCE)
+  endif()
+  if(WITH_ASCEND_CL AND WITH_RPC)
+    message(
+      WARNING "Disable WITH_RPC when compiling with NPU. Force WITH_RPC=OFF.")
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when compiling with NPU" FORCE)
+  endif()
+  if(WITH_ROCM AND WITH_RPC)
+    message(
+      WARNING "Disable WITH_RPC when compiling with ROCM. Force WITH_RPC=OFF.")
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when compiling with ROCM" FORCE)
+  endif()
+  if(WITH_XPU AND WITH_RPC)
+    message(
+      WARNING "Disable WITH_RPC when compiling with XPU. Force WITH_RPC=OFF.")
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when compiling with XPU" FORCE)
+  endif()
+  if(WITH_CINN AND WITH_RPC)
+    message(
+      WARNING "Disable WITH_RPC when compiling with CINN. Force WITH_RPC=OFF.")
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when compiling with CINN" FORCE)
+  endif()
+endif()
+
+if(WITH_MPI)
+  include(mpi)
 endif()
 
 include(third_party

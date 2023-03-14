@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -76,11 +74,10 @@ class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
   // Explicitly set that the data type of computation kernel of
   // teacher_student_sigmoid_loss
   // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -188,11 +185,10 @@ class TeacherStudentSigmoidLossGradientOp
   // Explicitly set that the data type of computation kernel of
   // teacher_student_sigmoid_loss
   // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -201,15 +197,17 @@ class TeacherStudentSigmoidLossOpMaker
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor, default Tensor<float>), a 2-D tensor with shape [N x 1],"
+             "(phi::DenseTensor, default phi::DenseTensor<float>), a 2-D "
+             "tensor with shape [N x 1],"
              " where N is the batch size and D is the output. "
              "This input is a probability computed by the previous operator, "
              "which is almost always the result of a softmax operator.");
     AddInput("Label",
-             "(Tensor), the ground truth which is a 2-D tensor. "
-             "Label is a Tensor<float> with shape [N x 1]. ");
+             "(phi::DenseTensor), the ground truth which is a 2-D tensor. "
+             "Label is a phi::DenseTensor<float> with shape [N x 1]. ");
     AddOutput("Y",
-              "(Tensor, default Tensor<float>), a 2-D tensor with shape "
+              "(phi::DenseTensor, default phi::DenseTensor<float>), a 2-D "
+              "tensor with shape "
               "[N x 1]. The teacher student sigmoid loss.");
     AddAttr<float>(
         "soft_max_up_bound",

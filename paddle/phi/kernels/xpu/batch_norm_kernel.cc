@@ -23,17 +23,16 @@ namespace phi {
 template <typename T, typename Context>
 void BatchNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const DenseTensor& scale,
-                     const DenseTensor& bias,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
+                     const DenseTensor& scale,
+                     const DenseTensor& bias,
+                     bool is_test,
                      float momentum,
                      float epsilon,
                      const std::string& data_layout_str,
-                     bool is_test,
                      bool use_global_stats,
                      bool trainable_statistics,
-                     bool fuse_with_relu,
                      DenseTensor* y,
                      DenseTensor* mean_out,
                      DenseTensor* variance_out,
@@ -42,8 +41,7 @@ void BatchNormKernel(const Context& dev_ctx,
                      DenseTensor* reserve_space) {
   bool test_mode = is_test && (!trainable_statistics);
   bool global_stats = test_mode || use_global_stats;
-  const auto data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const auto data_layout = phi::StringToDataLayout(data_layout_str);
   PADDLE_ENFORCE_EQ(data_layout_str == "NCHW" || data_layout_str == "NHWC",
                     true,
                     phi::errors::InvalidArgument(
@@ -66,6 +64,9 @@ void BatchNormKernel(const Context& dev_ctx,
   C = (C == 0) ? 1 : C;
   H = (H == 0) ? 1 : H;
   W = (W == 0) ? 1 : W;
+  D = (D == 0) ? 1 : D;
+
+  W = W * D;
 
   const auto* x_data = x.data<T>();
   const auto* scale_data = scale.data<float>();
@@ -77,6 +78,14 @@ void BatchNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<float>(variance_out);
   dev_ctx.template Alloc<float>(saved_mean);
   dev_ctx.template Alloc<float>(saved_variance);
+
+  PADDLE_ENFORCE_LE(
+      x_dims.size(),
+      5,
+      phi::errors::InvalidArgument(
+          "The size of input X's dimensions should be less than 6."
+          "But received: the size of input X's dimensionss is [%d]",
+          x_dims.size()));
 
   bool is_nchw = data_layout_str == "NCHW";
 

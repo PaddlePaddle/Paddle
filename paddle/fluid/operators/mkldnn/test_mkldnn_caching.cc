@@ -22,28 +22,27 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(elementwise_add);
-USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
+PD_DECLARE_KERNEL(add_raw, OneDNN, ONEDNN);
 USE_OP_ITSELF(elementwise_mul);
-USE_OP_DEVICE_KERNEL(elementwise_mul, MKLDNN);
+PD_DECLARE_KERNEL(multiply_raw, OneDNN, ONEDNN);
 USE_OP_ITSELF(relu);
-PD_DECLARE_KERNEL(relu, OneDNN, ALL_LAYOUT);
+PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(softmax);
-USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
+PD_DECLARE_KERNEL(softmax, OneDNN, ONEDNN);
 USE_OP_ITSELF(conv2d);
-USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);
+PD_DECLARE_KERNEL(conv2d, OneDNN, ONEDNN);
 
 namespace paddle {
 namespace operators {
 
 struct InputVars {
   std::string name;
-  framework::LoDTensor *tensor;
+  phi::DenseTensor *tensor;
 };
 
 class CacheTester {
@@ -51,9 +50,8 @@ class CacheTester {
   CacheTester() {
     // Clear oneDNN cache
     auto &pool = platform::DeviceContextPool::Instance();
-    platform::CPUPlace place;
-    onednn_dev_ctx_ =
-        dynamic_cast<platform::MKLDNNDeviceContext *>(pool.Get(place));
+    phi::CPUPlace place;
+    onednn_dev_ctx_ = dynamic_cast<phi::OneDNNContext *>(pool.Get(place));
     onednn_dev_ctx_->ResetBlobMap(nullptr);
   }
 
@@ -63,7 +61,7 @@ class CacheTester {
   }
 
  private:
-  platform::MKLDNNDeviceContext *onednn_dev_ctx_;
+  phi::OneDNNContext *onednn_dev_ctx_;
 };
 
 template <typename T>
@@ -85,24 +83,20 @@ void RunOperator(const platform::Place &place,
   std::string output_name = "output";
 
   std::vector<InputVars> input_names = {
-      {first_input, scope.Var(first_input)->GetMutable<framework::LoDTensor>()},
+      {first_input, scope.Var(first_input)->GetMutable<phi::DenseTensor>()},
       {"x1",
-       num_inputs[op_type] > 1
-           ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
-           : nullptr},
+       num_inputs[op_type] > 1 ? scope.Var("x1")->GetMutable<phi::DenseTensor>()
+                               : nullptr},
       {"x2",
-       num_inputs[op_type] > 2
-           ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
-           : nullptr},
+       num_inputs[op_type] > 2 ? scope.Var("x2")->GetMutable<phi::DenseTensor>()
+                               : nullptr},
       {"x3",
-       num_inputs[op_type] > 3
-           ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
-           : nullptr},
+       num_inputs[op_type] > 3 ? scope.Var("x3")->GetMutable<phi::DenseTensor>()
+                               : nullptr},
       {"x4",
-       num_inputs[op_type] > 4
-           ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
-           : nullptr}};
-  auto *y = scope.Var(output_name)->GetMutable<framework::LoDTensor>();
+       num_inputs[op_type] > 4 ? scope.Var("x4")->GetMutable<phi::DenseTensor>()
+                               : nullptr}};
+  auto *y = scope.Var(output_name)->GetMutable<phi::DenseTensor>();
 
   // Initialize input data
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
@@ -145,7 +139,7 @@ void RunOperator(const platform::Place &place,
 
 TEST(test_conv2d_reuse_cache, cpu_place) {
   framework::DDim dims({1, 16, 32, 64});
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal");
@@ -157,7 +151,7 @@ TEST(test_conv2d_reuse_cache, cpu_place) {
 
 TEST(test_conv2d_noreuse_cache, cpu_place) {
   framework::DDim dims({1, 16, 32, 64});
-  platform::CPUPlace p;
+  phi::CPUPlace p;
   CacheTester ct;
   RunOperator<float>(p, "conv2d", dims, "input_signal");
   RunOperator<float>(p, "conv2d", dims, "input_signal2");

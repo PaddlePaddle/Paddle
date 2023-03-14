@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -143,7 +143,8 @@ void FuseBatchNormActOneDNNPass::FuseBatchNormAct(
 
   gpd(graph, handler);
   AddStatis(found_bn_act_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_bn_act_count > 0))
     PrettyLogDetail("---    fused %d batch norm with relu activation",
                     found_bn_act_count);
 }

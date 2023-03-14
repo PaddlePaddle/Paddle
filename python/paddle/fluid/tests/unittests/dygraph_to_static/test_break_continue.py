@@ -12,22 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
+from paddle.jit.api import to_static
+from paddle.jit.dy2static.utils import Dygraph2StaticException
 
 SEED = 2020
 np.random.seed(SEED)
 
 
 class TestDy2staticException(unittest.TestCase):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = None
@@ -36,10 +34,10 @@ class TestDy2staticException(unittest.TestCase):
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
-                ProgramTranslator().enable(True)
-                self.assertTrue(declarative(self.dyfunc)(self.x))
-        paddle.fluid.dygraph.base._in_declarative_mode_ = False
-        ProgramTranslator().enable(False)
+                paddle.jit.enable_to_static(True)
+                self.assertTrue(to_static(self.dyfunc)(self.x))
+        paddle.fluid.dygraph.base.global_var._in_declarative_mode_ = False
+        paddle.jit.enable_to_static(False)
 
 
 def test_continue_in_for(x):
@@ -161,9 +159,7 @@ def test_for_in_else(x):
 
 
 def while_loop_class_var(x):
-
-    class Foo(object):
-
+    class Foo:
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -207,11 +203,13 @@ def test_optim_break_in_while(x):
 
 
 class TestContinueInFor(unittest.TestCase):
-
     def setUp(self):
         self.input = np.zeros((1)).astype('int64')
-        self.place = fluid.CUDAPlace(
-            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
         self.init_dygraph_func()
 
     def init_dygraph_func(self):
@@ -224,7 +222,7 @@ class TestContinueInFor(unittest.TestCase):
 
     def run_static_mode(self):
         with fluid.dygraph.guard():
-            res = declarative(self.dygraph_func)(self.input)
+            res = to_static(self.dygraph_func)(self.input)
             return res.numpy()
 
     def test_transformed_static_result(self):
@@ -235,59 +233,52 @@ class TestContinueInFor(unittest.TestCase):
             static_res,
             rtol=1e-05,
             err_msg='dygraph res is {}\nstatic_res is {}'.format(
-                dygraph_res, static_res))
+                dygraph_res, static_res
+            ),
+        )
 
 
 class TestContinueInForAtEnd(TestContinueInFor):
-
     def init_dygraph_func(self):
         self.dygraph_func = test_continue_in_for_at_end
 
 
 class TestBreakInFor(TestContinueInFor):
-
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_for
 
 
 class TestBreakInForAtEnd(TestContinueInFor):
-
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_for_at_end
 
 
 class TestBreakContinueInFor(TestContinueInFor):
-
     def init_dygraph_func(self):
         self.dygraph_func = test_break_continue_in_for
 
 
 class TestForInElse(TestContinueInFor):
-
     def init_dygraph_func(self):
         self.dygraph_func = test_for_in_else
 
 
 class TestContinueInWhile(TestContinueInFor):
-
     def init_dygraph_func(self):
         self.dygraph_func = test_continue_in_while
 
 
 class TestBreakInWhile(TestContinueInWhile):
-
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_while
 
 
 class TestWhileLoopClassVar(TestContinueInWhile):
-
     def init_dygraph_func(self):
         self.dygraph_func = while_loop_class_var
 
 
 class TestOptimBreakInFor(TestDy2staticException):
-
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = test_optim_break_in_for
@@ -295,11 +286,9 @@ class TestOptimBreakInFor(TestDy2staticException):
 
 
 class TestOptimBreakInWhile(TestContinueInWhile):
-
     def init_dygraph_func(self):
         self.dygraph_func = test_optim_break_in_while
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

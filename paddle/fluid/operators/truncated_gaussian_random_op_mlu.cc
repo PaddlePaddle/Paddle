@@ -15,9 +15,9 @@ limitations under the License. */
 #include <limits>
 #include <random>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/truncated_gaussian_random_op.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
@@ -28,10 +28,10 @@ class TruncatedGaussianRandomMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<phi::DenseTensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
-    framework::Tensor cpu_tensor(tensor->dtype());
+    phi::DenseTensor cpu_tensor(tensor->dtype());
     cpu_tensor.Resize(tensor->dims());
     T* data_cpu = cpu_tensor.mutable_data<T>(platform::CPUPlace());
 
@@ -41,7 +41,7 @@ class TruncatedGaussianRandomMLUKernel : public framework::OpKernel<T> {
     int64_t size = tensor->numel();
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    auto engine = framework::GetCPURandomEngine(seed);
+    auto engine = phi::GetCPURandomEngine(seed);
 
     for (int64_t i = 0; i < size; ++i) {
       data_cpu[i] = truncated_normal(dist(*engine));

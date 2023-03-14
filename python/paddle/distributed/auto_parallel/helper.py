@@ -12,21 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import logging
 from collections import defaultdict
 
-import paddle
-
+from paddle.jit import not_to_static, to_static
+from paddle.jit.dy2static.program_translator import StaticFunction
+from paddle.jit.dy2static.utils import as_not_paddle_func
 from paddle.nn import Layer
-from paddle.jit import to_static, not_to_static
-from paddle.fluid.framework import Operator, Parameter, _non_static_mode
-from paddle.fluid.framework import program_guard
-from paddle.fluid.executor import global_scope
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
+from paddle.static import Parameter, global_scope, program_guard
 
-from .utils import to_list
-from .utils import get_logger
 from .converter import Converter
+from .utils import get_logger, to_list
 
 
 class ProxyLayer(Layer):
@@ -37,7 +34,7 @@ class ProxyLayer(Layer):
     """
 
     def __init__(self, layer, loss_func, metrics):
-        super(ProxyLayer, self).__init__()
+        super().__init__()
         # NOTE: All verify logics are finished in Engine.Prepare
         self.inner_layer = layer
         self.loss_func = loss_func
@@ -51,6 +48,12 @@ class ProxyLayer(Layer):
         self._output_vars = defaultdict(list)
         self._loss_vars = defaultdict(list)
         self._metric_vars = defaultdict(list)
+
+        # Consider ProxyLayer as not Paddle inner function because it contains
+        # user-defined layer.
+        as_not_paddle_func(
+            inspect.getmodule(ProxyLayer).__name__ + ".ProxyLayer"
+        )
 
     def _train(self, inputs, labels):
         """
@@ -139,7 +142,7 @@ class ProxyLayer(Layer):
         """
         outs = []
         for metric in self.metrics:
-            outs.extend(metric.compute(*inputs))
+            outs.append(to_list(metric.compute(*inputs)))
 
         return outs
 
@@ -176,7 +179,6 @@ class ProxyLayer(Layer):
 
 
 class BuildInfo:
-
     def __init__(self):
         self.clear()
 
@@ -193,7 +195,7 @@ class BuildInfo:
         self.states = defaultdict(bool)
 
 
-class ProgramHelper(object):
+class ProgramHelper:
     """
     A Helper class for Engine to provides different Program IR according specified 'mode'.
     """
@@ -226,8 +228,9 @@ class ProgramHelper(object):
         # skip if we has already built program.
         if self.build_info.has_cache(mode, True):
             self._logger.info(
-                "Already build program with mode = %s, use cached program." %
-                mode)
+                "Already build program with mode = %s, use cached program."
+                % mode
+            )
             return
 
         self._logger.info("start to build program for mode = %s." % mode)
@@ -251,21 +254,24 @@ class ProgramHelper(object):
             self.lazy_init = True
             return
         for param in self.concrete_program.parameters:
-            Parameter(name=param.name,
-                      desc=param,
-                      type=param.type,
-                      shape=param.shape,
-                      dtype=param.dtype,
-                      stop_gradient=param.stop_gradient,
-                      block=self.startup_program.global_block())
+            Parameter(
+                name=param.name,
+                desc=param,
+                type=param.type,
+                shape=param.shape,
+                dtype=param.dtype,
+                stop_gradient=param.stop_gradient,
+                block=self.startup_program.global_block(),
+            )
 
     def apply_optimizer(self, optimizer):
         """
         Append backward and generate optimizer operations.
         """
         self._verify_optimizer(optimizer)
-        self._logger.info("start to apply optimizer: %s ",
-                          type(optimizer).__name__)
+        self._logger.info(
+            "start to apply optimizer: %s ", type(optimizer).__name__
+        )
         # clear optimizer parameters
         original_params = optimizer._parameter_list
         optimizer._parameter_list = None
@@ -278,13 +284,17 @@ class ProgramHelper(object):
 
     def _verify_optimizer(self, optimizer):
         assert optimizer is not None
-        assert hasattr(optimizer,
-                       "minimize"), "Optimizer must have minimize() method."
-        assert self.proxy_layer.mode == 'train', "Required mode == 'train', but received '%s'" % self.proxy_layer.mode
-        assert len(
-            self.loss_vars
-        ) == 1, "Required len(loss_vars) == 1, but received len(loss_vars) = %s" % len(
-            self.loss_vars)
+        assert hasattr(
+            optimizer, "minimize"
+        ), "Optimizer must have minimize() method."
+        assert self.proxy_layer.mode == 'train', (
+            "Required mode == 'train', but received '%s'"
+            % self.proxy_layer.mode
+        )
+        assert len(self.loss_vars) == 1, (
+            "Required len(loss_vars) == 1, but received len(loss_vars) = %s"
+            % len(self.loss_vars)
+        )
 
     def to(self, mode):
         """
@@ -293,7 +303,8 @@ class ProgramHelper(object):
         assert mode in ['train', 'eval', 'predict']
         func = getattr(self.proxy_layer, '_' + mode)
         assert isinstance(
-            func, StaticFunction), "Please call build_program(mode) firstly."
+            func, StaticFunction
+        ), "Please call build_program(mode) firstly."
         self.proxy_layer.set_mode(mode)
 
     def static_func(self):
@@ -301,7 +312,9 @@ class ProgramHelper(object):
         Return StaticFunction instance with underly target mode.
         """
         assert self.proxy_layer.mode in [
-            'train', 'eval', 'predict'
+            'train',
+            'eval',
+            'predict',
         ], "Please call build_program(mode) firstly."
         func_name = '_' + self.proxy_layer.mode
         return getattr(self.proxy_layer, func_name)
@@ -318,14 +331,15 @@ class ProgramHelper(object):
             var_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
             dist_attr = {
                 "dims_mapping": var_dist_attr.dims_mapping,
-                "process_shape": var_dist_attr.process_mesh.topology,
-                "process_group": var_dist_attr.process_mesh.processes
+                "process_shape": var_dist_attr.process_mesh.shape,
+                "process_group": var_dist_attr.process_mesh.process_ids,
             }
             # slice param_value with dist_attr
             # share sliced_param_value with param_tensor in global_scope
             param_tensor = global_scope().var(param.name).get_tensor()
             sliced_param = Converter.slice_with_dist_attr(
-                param.numpy(), dist_attr)
+                param.numpy(), dist_attr
+            )
             param_tensor.set(sliced_param, place)
 
     @property
@@ -341,6 +355,7 @@ class ProgramHelper(object):
         try:
             return self.proxy_layer.startup_program
         except Exception as err:
+            self._logger.warning("`lazy init` failed.")
             if isinstance(err, AssertionError):
                 return self.concrete_program.startup_program
             raise err

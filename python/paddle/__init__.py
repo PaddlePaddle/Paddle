@@ -14,12 +14,14 @@
 try:
     from paddle.version import full_version as __version__
     from paddle.version import commit as __git_commit__
-    from paddle.cuda_env import *
+    from paddle.cuda_env import *  # noqa: F403
 except ImportError:
     import sys
-    sys.stderr.write('''Warning with import paddle: you should not
+
+    sys.stderr.write(
+        '''Warning with import paddle: you should not
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
-                     )
+    )
 
 from .batch import batch  # noqa: F401
 from .framework import monkey_patch_variable
@@ -35,10 +37,11 @@ from .framework import set_flags  # noqa: F401
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
-from .fluid.dataset import *  # noqa: F401
+from .fluid.dataset import *  # noqa: F401, F403
 from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
+from .framework.dtype import finfo  # noqa: F401
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
@@ -52,13 +55,13 @@ from .framework.dtype import bfloat16  # noqa: F401
 from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
-if fluid.framework._in_eager_mode_:
+
+if fluid.framework.global_var._in_eager_mode_:
     Tensor = framework.core.eager.Tensor
 else:
     from .framework import VarBase as Tensor  # noqa: F401
 
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
-import paddle.compat  # noqa: F401
 import paddle.distributed  # noqa: F401
 import paddle.sysconfig  # noqa: F401
 import paddle.distribution  # noqa: F401
@@ -80,7 +83,10 @@ import paddle.onnx  # noqa: F401
 import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
+import paddle.audio  # noqa: F401
 import paddle.geometric  # noqa: F401
+import paddle.sparse  # noqa: F401
+import paddle.quantization  # noqa: F401
 
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
@@ -89,6 +95,7 @@ from .tensor.attribute import shape  # noqa: F401
 from .tensor.attribute import real  # noqa: F401
 from .tensor.attribute import imag  # noqa: F401
 from .tensor.attribute import is_floating_point  # noqa: F401
+from .tensor.creation import create_parameter  # noqa: F401
 from .tensor.creation import to_tensor  # noqa: F401
 from .tensor.creation import diag  # noqa: F401
 from .tensor.creation import diagflat  # noqa: F401
@@ -110,8 +117,8 @@ from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
 from .tensor.creation import complex  # noqa: F401
 from .tensor.creation import clone  # noqa: F401
-from .tensor.creation import tril_indices  #noqa: F401
-from .tensor.creation import triu_indices  #noqa: F401
+from .tensor.creation import tril_indices  # noqa: F401
+from .tensor.creation import triu_indices  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -225,6 +232,7 @@ from .tensor.math import sqrt  # noqa: F401
 from .tensor.math import square  # noqa: F401
 from .tensor.math import stanh  # noqa: F401
 from .tensor.math import sum  # noqa: F401
+from .tensor.math import nan_to_num  # noqa: F401
 from .tensor.math import nansum  # noqa: F401
 from .tensor.math import nanmean  # noqa: F401
 from .tensor.math import count_nonzero  # noqa: F401
@@ -286,6 +294,7 @@ from .tensor.math import heaviside  # noqa: F401
 from .tensor.math import frac  # noqa: F401
 from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
+from .tensor.math import frexp  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -319,8 +328,9 @@ from .tensor.einsum import einsum  # noqa: F401
 from .framework.random import seed  # noqa: F401
 from .framework.random import get_cuda_rng_state  # noqa: F401
 from .framework.random import set_cuda_rng_state  # noqa: F401
+from .framework.random import get_rng_state  # noqa: F401
+from .framework.random import set_rng_state  # noqa: F401
 from .framework import ParamAttr  # noqa: F401
-from .framework import create_parameter  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
 from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
@@ -331,11 +341,12 @@ from .framework import CustomPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
+from .autograd import enable_grad  # noqa:F401
 from .autograd import set_grad_enabled  # noqa: F401
 from .autograd import is_grad_enabled  # noqa: F401
 from .framework import save  # noqa: F401
 from .framework import load  # noqa: F401
-from .framework import DataParallel  # noqa: F401
+from .distributed import DataParallel  # noqa: F401
 
 from .framework import set_default_dtype  # noqa: F401
 from .framework import get_default_dtype  # noqa: F401
@@ -359,6 +370,7 @@ from .device import is_compiled_with_mlu  # noqa: F401
 from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
+from .device import is_compiled_with_custom_device  # noqa: F401
 from .device import XPUPlace  # noqa: F401
 
 # high-level api
@@ -379,6 +391,7 @@ from .tensor.random import check_shape  # noqa: F401
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
     import os
+
     package_dir = os.path.dirname(os.path.abspath(__file__))
     runtime_include_dir = os.path.join(package_dir, "libs")
     cuh_file = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")
@@ -386,9 +399,9 @@ if is_compiled_with_cinn():
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 disable_static()
-
 __all__ = [  # noqa
     'iinfo',
+    'finfo',
     'dtype',
     'uint8',
     'int8',
@@ -417,6 +430,7 @@ __all__ = [  # noqa
     'save',
     'multinomial',
     'get_cuda_rng_state',
+    'get_rng_state',
     'rank',
     'empty_like',
     'eye',
@@ -523,6 +537,7 @@ __all__ = [  # noqa
     'quantile',
     'nanquantile',
     'no_grad',
+    'enable_grad',
     'set_grad_enabled',
     'is_grad_enabled',
     'mod',
@@ -599,6 +614,7 @@ __all__ = [  # noqa
     'unique',
     'unique_consecutive',
     'set_cuda_rng_state',
+    'set_rng_state',
     'set_printoptions',
     'std',
     'flatten',
@@ -660,6 +676,7 @@ __all__ = [  # noqa
     'renorm',
     'take_along_axis',
     'put_along_axis',
+    'nan_to_num',
     'heaviside',
     'tril_indices',
     'index_add',
@@ -667,4 +684,5 @@ __all__ = [  # noqa
     'sgn',
     'triu_indices',
     'take',
+    'frexp',
 ]

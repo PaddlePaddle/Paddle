@@ -54,15 +54,12 @@ class CCommInitOp : public framework::OperatorBase {
 // TODO(wangxi): Put this in the unified header file
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     using UniqueId = ncclUniqueId;
-    using Place = platform::CUDAPlace;
     using CommContext = platform::NCCLCommContext;
 #elif defined(PADDLE_WITH_XPU_BKCL)
     using UniqueId = BKCLUniqueId;
-    using Place = platform::XPUPlace;
     using CommContext = platform::BKCLCommContext;
 #elif defined(PADDLE_WITH_CNCL)
     using UniqueId = cnclCliqueId;
-    using Place = platform::MLUPlace;
     using CommContext = platform::CNCLCommContext;
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -86,15 +83,6 @@ class CCommInitOp : public framework::OperatorBase {
 
     int nranks = Attr<int>("nranks");
     int rid = Attr<int>("ring_id");
-
-#if defined(PADDLE_WITH_XPU_BKCL)
-    PADDLE_ENFORCE_EQ(
-        rid,
-        0,
-        platform::errors::OutOfRange(
-            "Ring id must equal 0 in multi Kunlun cards training, but got %d",
-            rid));
-#endif
 
     int device_id = place.device;
     if (Attr<int>("device_id") >= 0) {

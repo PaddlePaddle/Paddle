@@ -18,8 +18,6 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 template <typename T>
 class GridSamplerMLUKernel : public framework::OpKernel<T> {
  public:
@@ -30,9 +28,9 @@ class GridSamplerMLUKernel : public framework::OpKernel<T> {
         platform::errors::Unavailable("This kernel only runs on MLU."));
 
     // input and output data
-    const Tensor* input = ctx.Input<Tensor>("X");
-    const Tensor* grid = ctx.Input<Tensor>("Grid");
-    Tensor* output = ctx.Output<Tensor>("Output");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* grid = ctx.Input<phi::DenseTensor>("Grid");
+    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Output");
 
     int n = input->dims()[0];
     int c = input->dims()[1];
@@ -47,8 +45,7 @@ class GridSamplerMLUKernel : public framework::OpKernel<T> {
     const std::string mode = ctx.Attr<std::string>("mode");
     const std::string padding_mode = ctx.Attr<std::string>("padding_mode");
     bool align_corners = ctx.Attr<bool>("align_corners");
-    const std::string data_format =
-        paddle::framework::DataLayoutToString(input->layout());
+    const std::string data_format = phi::DataLayoutToString(input->layout());
 
     PADDLE_ENFORCE_EQ(
         mode == "bilinear",
@@ -61,13 +58,13 @@ class GridSamplerMLUKernel : public framework::OpKernel<T> {
         platform::errors::Unavailable(
             "Only support zeros padding_mode in mlu grid_sample kernel."));
 
-    Tensor trans_input(input->dtype());
+    phi::DenseTensor trans_input(input->dtype());
     // transpose input from NCHW to NHWC
     const std::vector<int> perm_to_nhwc = {0, 2, 3, 1};
     TransposeFromMLUTensor<T>(
         ctx, perm_to_nhwc, input, &trans_input, true /*need_reshape_or_alloc*/);
 
-    Tensor tmp_output(output->dtype());
+    phi::DenseTensor tmp_output(output->dtype());
     tmp_output.mutable_data<T>({n, out_h, out_w, c}, ctx.GetPlace());
 
     MLUCnnlGridSampleDesc grid_sample_desc(mode, padding_mode, align_corners);

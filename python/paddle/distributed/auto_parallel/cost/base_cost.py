@@ -17,16 +17,18 @@ from functools import reduce
 
 import paddle
 
-from ..utils import _get_comm_group, _get_corresponding_rank
-from ..process_group import get_process_group
 from ..cluster import LinkType
 from ..dist_tensor import DistributedTensor
-from ..utils import _get_idx_in_axis
-from ..dist_tensor import DistributedTensor
+from ..process_group import get_process_group
+from ..utils import _get_comm_group, _get_idx_in_axis
 
 COMM_OP_TYPE = [
-    "send_v2", "recv_v2", "c_broadcast", "c_allgather", "c_allreduce_sum",
-    "c_identity"
+    "send_v2",
+    "recv_v2",
+    "c_broadcast",
+    "c_allgather",
+    "c_allreduce_sum",
+    "c_identity",
 ]
 NON_COMP_TYPE = ["while"] + COMM_OP_TYPE
 _g_op_cost_factory = {}
@@ -78,7 +80,7 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
     dist_attr = dist_op.dist_attr
     process_mesh = dist_attr.process_mesh
     assert process_mesh, "Process mesh must not be None."
-    processes = process_mesh.processes
+    processes = process_mesh.process_ids
     for process in processes:
         desc = {}
         desc["op"] = op.type
@@ -93,27 +95,44 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
             var_name_list = op.input(input_name)
             var_desc = []
             for var_name in var_name_list:
-                var = get_var_with_recursion(var_name, op.block,
-                                             op.block.program)
+                var = get_var_with_recursion(
+                    var_name, op.block, op.block.program
+                )
                 # Use op input_dims_mapping
                 dims_mapping = dist_attr.get_input_dims_mapping(var_name)
                 global_sizes = var.shape
                 # NOTE: When support uneven partition, the shard_sizes will be got from dist_attr.
                 shard_sizes = None
-                topology = process_mesh.topology
+                topology = process_mesh.shape
                 shape = DistributedTensor.get_local_sizes(
-                    global_sizes, dims_mapping, topology, processes, process,
-                    shard_sizes)
+                    global_sizes,
+                    dims_mapping,
+                    topology,
+                    processes,
+                    process,
+                    shard_sizes,
+                )
                 var_desc.append((var.dtype, shape))
 
                 # For special op such as embedding and its grad op
-                if op.type == "c_embedding" or op.type == "lookup_table_v2" or op.type == "c_embedding_grad" or op.type == "lookup_table_v2_grad":
+                if (
+                    op.type == "c_embedding"
+                    or op.type == "lookup_table_v2"
+                    or op.type == "c_embedding_grad"
+                    or op.type == "lookup_table_v2_grad"
+                ):
                     if input_name == "W":
-                        embedding_row_dim_mapping = dist_attr.get_input_dims_mapping(
-                            op.input(input_name)[0])[0]
+                        embedding_row_dim_mapping = (
+                            dist_attr.get_input_dims_mapping(
+                                op.input(input_name)[0]
+                            )[0]
+                        )
                         relative_idx = _get_idx_in_axis(
-                            processes, dist_attr.process_mesh.topology,
-                            embedding_row_dim_mapping, process)
+                            processes,
+                            dist_attr.process_mesh.shape,
+                            embedding_row_dim_mapping,
+                            process,
+                        )
                         per_part_size = shape[0]
                         relative_idx = relative_idx * per_part_size
                         desc["attrs"]["start_index"] = relative_idx
@@ -126,18 +145,24 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
             var_desc = []
             for var_name in var_name_list:
                 # Use op output_dims_mapping
-                var = get_var_with_recursion(var_name, op.block,
-                                             op.block.program)
+                var = get_var_with_recursion(
+                    var_name, op.block, op.block.program
+                )
                 dist_attr = dist_op.dist_attr
                 dims_mapping = dist_attr.get_output_dims_mapping(var_name)
                 process_mesh = dist_attr.process_mesh
                 global_sizes = var.shape
                 shard_sizes = None
-                processes = process_mesh.processes
-                topology = process_mesh.topology
+                processes = process_mesh.process_ids
+                topology = process_mesh.shape
                 shape = DistributedTensor.get_local_sizes(
-                    global_sizes, dims_mapping, topology, processes, process,
-                    shard_sizes)
+                    global_sizes,
+                    dims_mapping,
+                    topology,
+                    processes,
+                    process,
+                    shard_sizes,
+                )
                 var_desc.append((var.dtype, shape))
 
                 # For special op such as fill_constant_batch_size_like
@@ -145,13 +170,14 @@ def build_comp_desc_from_dist_op(dist_op, dist_context):
                     # Modify shape attr according to how output are partitioned
                     out_name = var_name_list[0]
                     dims_mapping = dist_attr.get_output_dims_mapping(out_name)
-                    process_mesh_shape = dist_attr.process_mesh.topology
+                    process_mesh_shape = dist_attr.process_mesh.shape
                     shape_list = op.attr("shape")
                     # Modify target shape
                     for idx, axis in enumerate(dims_mapping):
                         if axis >= 0:
-                            shape_list[idx] = shape_list[
-                                idx] // process_mesh_shape[axis]
+                            shape_list[idx] = (
+                                shape_list[idx] // process_mesh_shape[axis]
+                            )
                     desc["attrs"]["shape"] = shape_list
             output_desc[out_name] = var_desc
 
@@ -209,13 +235,15 @@ def build_comp_desc_str_for_predict(desc):
     return parse_result
 
 
-def build_comm_desc_from_dist_op(op_type,
-                                 dist_op,
-                                 ctx,
-                                 var_names,
-                                 attrs=None,
-                                 parallel_axis=None,
-                                 group_ranks=None):
+def build_comm_desc_from_dist_op(
+    op_type,
+    dist_op,
+    ctx,
+    var_names,
+    attrs=None,
+    parallel_axis=None,
+    group_ranks=None,
+):
     """Build descriptions of communication op distributed on the processes."""
     from ..reshard import get_var_with_recursion
 
@@ -225,7 +253,7 @@ def build_comm_desc_from_dist_op(op_type,
     process_mesh = dist_attr.process_mesh
     assert process_mesh, "Process mesh must not be None."
 
-    processes = process_mesh.processes
+    processes = process_mesh.process_ids
     op_descs = {}
     for process in processes:
         rank_id = process
@@ -256,19 +284,26 @@ def build_comm_desc_from_dist_op(op_type,
                             has_found = True
                             break
                 assert has_found
-                var = get_var_with_recursion(var_name, serial_op.block,
-                                             serial_op.block.program)
+                var = get_var_with_recursion(
+                    var_name, serial_op.block, serial_op.block.program
+                )
 
-                dims_mapping = dist_attr.get_input_dims_mapping(
-                    var_name
-                ) if var_name in dist_op.serial_op.input_arg_names else dist_attr.get_output_dims_mapping(
-                    var_name)
+                dims_mapping = (
+                    dist_attr.get_input_dims_mapping(var_name)
+                    if var_name in dist_op.serial_op.input_arg_names
+                    else dist_attr.get_output_dims_mapping(var_name)
+                )
                 global_sizes = var.shape
                 shard_sizes = None
-                topology = process_mesh.topology
+                topology = process_mesh.shape
                 shape = DistributedTensor.get_local_sizes(
-                    global_sizes, dims_mapping, topology, processes, process,
-                    shard_sizes)
+                    global_sizes,
+                    dims_mapping,
+                    topology,
+                    processes,
+                    process,
+                    shard_sizes,
+                )
                 input_list.append((var.dtype, shape))
 
             # NOTE: The input_name of comm ops used usually is X.
@@ -276,11 +311,14 @@ def build_comm_desc_from_dist_op(op_type,
 
             # Get comm group by parallel_axis or the given group_ranks.
             if parallel_axis is not None:
-                process_mesh_shape = process_mesh.topology
-                process_mesh_group = process_mesh.processes
-                comm_group_ranks = _get_comm_group(process_mesh_group,
-                                                   process_mesh_shape,
-                                                   parallel_axis, rank_id)
+                process_mesh_shape = process_mesh.shape
+                process_mesh_group = process_mesh.process_ids
+                comm_group_ranks = _get_comm_group(
+                    process_mesh_group,
+                    process_mesh_shape,
+                    parallel_axis,
+                    rank_id,
+                )
             elif group_ranks is not None:
                 comm_group_ranks = group_ranks
             else:
@@ -322,8 +360,9 @@ def build_comm_costs_from_descs(op_cost_class, ctx, processes, descs, cluster):
         group_ranks = desc["group_ranks"]
         if group_ranks not in group_ranks_list:
             group_ranks_list.append(group_ranks)
-            comm_op_cost = op_cost_class(op_desc=desc,
-                                         comm_context=comm_context)
+            comm_op_cost = op_cost_class(
+                op_desc=desc, comm_context=comm_context
+            )
             comm_op_cost_list.append(comm_op_cost)
     return comm_op_cost_list
 
@@ -336,15 +375,16 @@ def build_comp_costs_from_descs(op_cost_class, ctx, processes, descs, cluster):
     return costs
 
 
-def build_dp_costs(result, dist_op, ctx, var_names, attrs, parallel_axis,
-                   cluster):
+def build_dp_costs(
+    result, dist_op, ctx, var_names, attrs, parallel_axis, cluster
+):
     """DP cost contains a allreduce_sum op cost and a scale op cost"""
     # The costs will be appended in the given result.
     from ..reshard import get_var_with_recursion
 
     dist_attr = dist_op.dist_attr
     process_mesh = dist_attr.process_mesh
-    processes = process_mesh.processes
+    processes = process_mesh.process_ids
     assert len(var_names) == 1
     vars = dist_op.serial_op.block.vars
     var_name = var_names[0]
@@ -370,10 +410,15 @@ def build_dp_costs(result, dist_op, ctx, var_names, attrs, parallel_axis,
         ctx,
         var_names,
         attrs=attrs,
-        parallel_axis=parallel_axis)
+        parallel_axis=parallel_axis,
+    )
     comm_cost_list = build_comm_costs_from_descs(
-        _g_op_cost_factory["c_allreduce_sum"], ctx, processes,
-        c_allreduce_sum_descs, cluster)
+        _g_op_cost_factory["c_allreduce_sum"],
+        ctx,
+        processes,
+        c_allreduce_sum_descs,
+        cluster,
+    )
     result.append(comm_cost_list)
 
     # The scale op just on the group_ranks
@@ -386,24 +431,42 @@ def build_dp_costs(result, dist_op, ctx, var_names, attrs, parallel_axis,
             desc = {}
             desc["op"] = op_type
             desc["inputs"] = {}
-            dims_mapping = dist_attr.get_input_dims_mapping(
-                var_name) if dist_attr.get_input_dims_mapping(
-                    var_name
-                ) is not None else dist_attr.get_output_dims_mapping(var_name)
-            var = get_var_with_recursion(var_name, dist_op.serial_op.block,
-                                         dist_op.serial_op.block.program)
+            if var_name in dist_attr.inputs_dist_attrs:
+                dims_mapping = dist_attr.get_input_dims_mapping(var_name)
+            elif var_name in dist_attr.outputs_dist_attrs:
+                dims_mapping = dist_attr.get_output_dims_mapping(var_name)
+            else:
+                assert False, "cannot find dims_mapping for {} in {}".format(
+                    var_name, dist_attr
+                )
+
+            # dims_mapping = (
+            #     dist_attr.get_input_dims_mapping(var_name)
+            #     if dist_attr.get_input_dims_mapping(var_name) is not None
+            #     else dist_attr.get_output_dims_mapping(var_name)
+            # )
+            var = get_var_with_recursion(
+                var_name,
+                dist_op.serial_op.block,
+                dist_op.serial_op.block.program,
+            )
             global_sizes = var.shape
             shard_sizes = None
-            topology = process_mesh.topology
-            shape = DistributedTensor.get_local_sizes(global_sizes,
-                                                      dims_mapping, topology,
-                                                      processes, rank,
-                                                      shard_sizes)
+            topology = process_mesh.shape
+            shape = DistributedTensor.get_local_sizes(
+                global_sizes,
+                dims_mapping,
+                topology,
+                processes,
+                rank,
+                shard_sizes,
+            )
             desc["inputs"]["X"] = [(var.dtype, shape)]
             attrs = {"scale": 1.0 / dp_degree}
             desc["attrs"] = attrs
-            scale_op_cost = _g_op_cost_factory["scale"](op_desc=desc,
-                                                        cluster=cluster)
+            scale_op_cost = _g_op_cost_factory["scale"](
+                op_desc=desc, cluster=cluster
+            )
             scale_costs[rank] = scale_op_cost
         result.append(scale_costs)
 
@@ -442,7 +505,7 @@ class CommContext:
         if alpha_latency is None:
             # set default
             self.base_ring = 8.4
-            self.base_tree = 0.
+            self.base_tree = 0.0
             # self.base_inter_ring = 9.6
             # self.base_inter_tree = 28
             # NVL in default
@@ -457,7 +520,7 @@ class CommContext:
             self.base_ring = base_ring if base_ring is not None else 8.4
 
             base_tree = alpha_latency.base_tree
-            self.base_tree = base_tree if base_tree is not None else 0.
+            self.base_tree = base_tree if base_tree is not None else 0.0
 
             intra_ring = alpha_latency.intra_ring
             if intra_ring == LinkType.NVL:
@@ -521,11 +584,17 @@ class CommContext:
             for i in range(len(ranks)):
                 for j in range(i + 1, len(ranks)):
                     forward_order_beta = self.cluster.get_beta(
-                        ranks[i], ranks[j])
+                        ranks[i], ranks[j]
+                    )
                     backward_order_beta = self.cluster.get_beta(
-                        ranks[j], ranks[i])
-                    beta = forward_order_beta if forward_order_beta > backward_order_beta else backward_order_beta
-                    if max_beta == None:
+                        ranks[j], ranks[i]
+                    )
+                    beta = (
+                        forward_order_beta
+                        if forward_order_beta > backward_order_beta
+                        else backward_order_beta
+                    )
+                    if max_beta is None:
                         max_beta = beta
                     else:
                         if beta > max_beta:
@@ -547,7 +616,6 @@ class CommContext:
 
 
 class Cost:
-
     def __init__(self, time=0, memory=0, flops=0):
         self.time = time
         self.memory = memory
@@ -557,14 +625,14 @@ class Cost:
         assert val >= 0, "Time must be greater than or equal to 0."
 
     def _check_memory(self, val):
-        assert isinstance(
-            val,
-            int) and val >= 0, "Memory must be int and greater than equal to 0."
+        assert (
+            isinstance(val, int) and val >= 0
+        ), "Memory must be int and greater than equal to 0."
 
     def _check_flops(self, val):
-        assert isinstance(
-            val,
-            int) and val >= 0, "FLOPs must be int and greater than equal to 0."
+        assert (
+            isinstance(val, int) and val >= 0
+        ), "FLOPs must be int and greater than equal to 0."
 
     @property
     def time(self):
@@ -598,7 +666,7 @@ class Cost:
         time = self.time + rhs.time
         memory = self.memory + rhs.memory
         flops = self.flops + rhs.flops
-        assert (time >= 0 and memory >= 0 and flops >= 0)
+        assert time >= 0 and memory >= 0 and flops >= 0
         return Cost(time, memory, flops)
 
     def __sub__(self, rhs):
@@ -606,12 +674,11 @@ class Cost:
         time = self.time - rhs.time
         memory = self.memory - rhs.memory
         flops = self.flops - rhs.flops
-        assert (time >= 0 and memory >= 0 and flops >= 0)
+        assert time >= 0 and memory >= 0 and flops >= 0
         return Cost(time, memory, flops)
 
 
 class OpCost:
-
     def __init__(self, op=None, op_desc=None):
         self._op = op
         self._op_desc = op_desc
@@ -666,12 +733,12 @@ class OpCost:
             time = self.cost.time + rhs.cost.time
             memory = self.cost.memory + rhs.cost.memory
             flops = self.cost.flops + rhs.cost.flops
-            assert (time >= 0 and memory >= 0 and flops >= 0)
+            assert time >= 0 and memory >= 0 and flops >= 0
         elif isinstance(rhs, Cost):
             time = self.time + rhs.time
             memory = self.memory + rhs.memory
             flops = self.flops + rhs.flops
-            assert (time >= 0 and memory >= 0 and flops >= 0)
+            assert time >= 0 and memory >= 0 and flops >= 0
         return Cost(time, memory, flops)
 
     def __sub__(self, rhs):
@@ -683,12 +750,12 @@ class OpCost:
             time = self.cost.time - rhs.cost.time
             memory = self.cost.memory - rhs.cost.memory
             flops = self.cost.flops - rhs.cost.flops
-            assert (time >= 0 and memory >= 0 and flops >= 0)
+            assert time >= 0 and memory >= 0 and flops >= 0
         elif isinstance(rhs, Cost):
             time = self.time - rhs.time
             memory = self.memory - rhs.memory
             flops = self.flops - rhs.flops
-            assert (time >= 0 and memory >= 0 and flops >= 0)
+            assert time >= 0 and memory >= 0 and flops >= 0
         return Cost(time, memory, flops)
 
 
@@ -696,7 +763,7 @@ class CommOpCost(OpCost):
     OP_TYPE = "COMM"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
-        super(CommOpCost, self).__init__(op=op, op_desc=op_desc)
+        super().__init__(op=op, op_desc=op_desc)
         self._check_comm_op_type()
         self._comm_context = comm_context
         self._group_ranks = None
@@ -721,8 +788,9 @@ class CommOpCost(OpCost):
                 vars = self.op.block.vars
                 # NOTE: The tensor communicated input_name is "X" in default. Otherwise, this function should be overrided
                 var_name = self.op.input("X")[0]
-                var = get_var_with_recursion(var_name, self.op.block,
-                                             self.program)
+                var = get_var_with_recursion(
+                    var_name, self.op.block, self.program
+                )
                 dtype = var.dtype
                 shape = var.shape
             elif self.op_desc is not None:
@@ -756,7 +824,8 @@ class CommOpCost(OpCost):
         if self._machine_count is None:
             cluster = self._comm_context.cluster
             self._machine_count = cluster.get_involved_machine_count(
-                self.group_ranks)
+                self.group_ranks
+            )
         return self._machine_count
 
     @property
@@ -771,12 +840,14 @@ class CommOpCost(OpCost):
             if self.op_desc is not None:
                 self._group_ranks = self.op_desc["group_ranks"]
             elif self.op is not None:
-                ring_id = op.attrs("ring_id")
+                ring_id = self.op.attrs("ring_id")
                 process_group = get_process_group(ring_id)
                 if process_group is None:
                     raise ValueError(
-                        "There not exists process group whose ring_id is {}.".
-                        format(ring_id))
+                        "There not exists process group whose ring_id is {}.".format(
+                            ring_id
+                        )
+                    )
                 self._group_ranks = process_group.ranks
         return self._group_ranks
 
@@ -786,14 +857,16 @@ class CommOpCost(OpCost):
             if cls.OP_TYPE not in COMM_OP_TYPE:
                 raise TypeError(
                     "Please Check op type in {}, but got {}.".format(
-                        COMM_OP_TYPE, cls.OP_TYPE))
+                        COMM_OP_TYPE, cls.OP_TYPE
+                    )
+                )
 
 
 class CompOpCost(OpCost):
     OP_TYPE = "COMP"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
-        super(CompOpCost, self).__init__(op=op, op_desc=op_desc)
+        super().__init__(op=op, op_desc=op_desc)
         self._check_comp_op_type()
         self._cost = self.calc_cost()
         self.cluster = cluster
@@ -804,7 +877,9 @@ class CompOpCost(OpCost):
             if cls.OP_TYPE in NON_COMP_TYPE:
                 raise TypeError(
                     "Please Check op type not in {}, but got {}.".format(
-                        NON_COMP_TYPE, cls.OP_TYPE))
+                        NON_COMP_TYPE, cls.OP_TYPE
+                    )
+                )
 
 
 def register_op_cost(cls):
@@ -821,12 +896,12 @@ def register_op_cost(cls):
 def calc_time_by_modeling(op=None, desc=None, cluster=None):
     op_type = op.type if op is not None else desc["op"]
     if op_type in COMM_OP_TYPE:
-        op_cost = _g_op_cost_factory[op_type](op=op,
-                                              op_desc=desc,
-                                              comm_context=CommContext(cluster))
+        op_cost = _g_op_cost_factory[op_type](
+            op=op, op_desc=desc, comm_context=CommContext(cluster)
+        )
     elif op_type not in NON_COMP_TYPE:
-        op_cost = _g_op_cost_factory[op_type](op=op,
-                                              op_desc=desc,
-                                              cluster=cluster)
+        op_cost = _g_op_cost_factory[op_type](
+            op=op, op_desc=desc, cluster=cluster
+        )
     time = op_cost.calc_time()
     return time

@@ -12,32 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from op_test_xpu import XPUOpTest
+
 import paddle
 import paddle.fluid as fluid
+from paddle import _legacy_C_ops
 from paddle.fluid import Program, program_guard
-from op_test_xpu import XPUOpTest
 
 paddle.enable_static()
 
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    XPUOpTestWrapper,
+    create_test_class,
+    get_xpu_op_support_types,
+)
 
 
 class XPUTestDropoutOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'dropout'
         self.use_dynamic_create_class = False
 
     class TestDropoutOp(XPUOpTest):
-
         def setUp(self):
             self.init_inputs_shape()
             self.init_attrs()
@@ -48,11 +50,11 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                 'dropout_prob': self.dropout_prob,
                 'fix_seed': self.fix_seed,
                 'is_test': self.is_test,
-                'dropout_implementation': self.dropout_implementation
+                'dropout_implementation': self.dropout_implementation,
             }
 
             out = self.inputs['X'] * (1.0 - self.dropout_prob)
-            if self.is_test == False:
+            if not self.is_test:
                 mask = None
                 if self.dropout_prob == 0.0:
                     mask = np.ones(self.shape).astype(self.dtype)
@@ -76,19 +78,19 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
             self.check_output()
 
         def test_check_grad_normal(self):
-            if hasattr(self.__class__, "no_need_check_grad"
-                       ) and self.__class__.no_need_check_grad == True:
+            if (
+                hasattr(self.__class__, "no_need_check_grad")
+                and self.__class__.no_need_check_grad
+            ):
                 return
 
             self.check_grad(['X'], 'Out')
 
     class TestDropoutOpInput1d(TestDropoutOp):
-
         def init_inputs_shape(self):
             self.shape = [2000]
 
     class TestDropoutOp2(TestDropoutOp):
-
         def init_inputs_shape(self):
             self.shape = [32, 64]
 
@@ -99,12 +101,10 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
             self.dropout_implementation = "upscale_in_train"
 
     class TestDropoutOp3(TestDropoutOp):
-
         def init_inputs_shape(self):
             self.shape = [32, 64, 2]
 
     class TestDropoutOp4(TestDropoutOp):
-
         def init_attrs(self):
             self.__class__.no_need_check_grad = True
             self.dropout_prob = 0.35
@@ -113,7 +113,6 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
             self.dropout_implementation = "downgrade_in_infer"
 
     class TestDropoutOp5(TestDropoutOp):
-
         def init_inputs_shape(self):
             self.shape = [32, 64, 3]
 
@@ -125,31 +124,31 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
             self.dropout_implementation = "downgrade_in_infer"
 
     class TestDropoutOpError(unittest.TestCase):
-
         def test_errors(self):
             with program_guard(Program(), Program()):
 
                 def test_Variable():
                     # the input of dropout must be Variable.
-                    x1 = fluid.create_lod_tensor(np.array([-1, 3, 5,
-                                                           5]), [[1, 1, 1, 1]],
-                                                 fluid.CPUPlace())
-                    fluid.layers.dropout(x1, dropout_prob=0.5)
+                    x1 = fluid.create_lod_tensor(
+                        np.array([-1, 3, 5, 5]),
+                        [[1, 1, 1, 1]],
+                        fluid.CPUPlace(),
+                    )
+                    paddle.nn.functional.dropout(x1, p=0.5)
 
                 self.assertRaises(TypeError, test_Variable)
 
                 def test_dtype():
                     # the input dtype of dropout must be float16 or float32 or float64
                     # float16 only can be set on GPU place
-                    x2 = fluid.layers.data(name='x2',
-                                           shape=[3, 4, 5, 6],
-                                           dtype="int32")
-                    fluid.layers.dropout(x2, dropout_prob=0.5)
+                    x2 = paddle.static.data(
+                        name='x2', shape=[-1, 3, 4, 5, 6], dtype="int32"
+                    )
+                    paddle.nn.functional.dropout(x2, p=0.5)
 
                 self.assertRaises(TypeError, test_dtype)
 
     class TestDropoutCAPI(unittest.TestCase):
-
         def setUp(self):
             np.random.seed(123)
             self.places = [fluid.CPUPlace()]
@@ -161,13 +160,12 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     input_np = np.random.random([40, 40]).astype(self.in_type)
                     result_np = input_np
                     input = fluid.dygraph.to_variable(input_np)
-                    m = paddle.nn.Dropout(p=0.)
+                    m = paddle.nn.Dropout(p=0.0)
                     m.eval()
                     result = m(input)
                     np.testing.assert_allclose(result.numpy(), result_np)
 
     class TestDropoutBackward(unittest.TestCase):
-
         def setUp(self):
             np.random.seed(123)
             self.places = [fluid.CPUPlace()]
@@ -185,12 +183,15 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
 
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = core.ops.dropout(input, 'dropout_prob', 0.5)
+                    out, mask = _legacy_C_ops.dropout(
+                        input, 'dropout_prob', 0.5
+                    )
                     out.backward()
 
                     np.testing.assert_allclose(
                         input.gradient(),
-                        self.cal_grad_downscale_in_infer(mask.numpy()))
+                        self.cal_grad_downscale_in_infer(mask.numpy()),
+                    )
 
         def test_backward_upscale_train(self):
             for place in self.places:
@@ -199,14 +200,19 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     prob = 0.5
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = core.ops.dropout(input, 'dropout_prob', prob,
-                                                 "dropout_implementation",
-                                                 "upscale_in_train")
+                    out, mask = _legacy_C_ops.dropout(
+                        input,
+                        'dropout_prob',
+                        prob,
+                        "dropout_implementation",
+                        "upscale_in_train",
+                    )
                     out.backward()
 
                     np.testing.assert_allclose(
                         input.gradient(),
-                        self.cal_grad_upscale_train(mask.numpy(), prob))
+                        self.cal_grad_upscale_train(mask.numpy(), prob),
+                    )
 
         def test_backward_upscale_train_2(self):
             for place in self.places:
@@ -215,14 +221,19 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     prob = 0.3
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = core.ops.dropout(input, 'dropout_prob', prob,
-                                                 "dropout_implementation",
-                                                 "upscale_in_train")
+                    out, mask = _legacy_C_ops.dropout(
+                        input,
+                        'dropout_prob',
+                        prob,
+                        "dropout_implementation",
+                        "upscale_in_train",
+                    )
                     out.backward()
 
                     np.testing.assert_allclose(
                         input.gradient(),
-                        self.cal_grad_upscale_train(mask.numpy(), prob))
+                        self.cal_grad_upscale_train(mask.numpy(), prob),
+                    )
 
 
 support_types = get_xpu_op_support_types('dropout')

@@ -15,33 +15,25 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-#include "paddle/fluid/framework/convert_utils.h"
-
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 
 class SumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     auto x_vars_name = ctx.InputNames("X");
-
-    framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
 
     PADDLE_ENFORCE_GT(
         x_vars.size(),
@@ -53,7 +45,7 @@ class SumOp : public framework::OperatorWithKernel {
         platform::errors::NotFound("Input var[%s] should not be nullptr",
                                    x_vars_name[0]));
 
-    if (x_vars[0]->IsType<framework::LoDTensor>()) {
+    if (x_vars[0]->IsType<phi::DenseTensor>()) {
       int dtype = -1;
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
         PADDLE_ENFORCE_NOT_NULL(
@@ -80,52 +72,39 @@ class SumOp : public framework::OperatorWithKernel {
                             "Sum operator should have at least one tensor"));
 
       auto data_type = static_cast<framework::proto::VarType::Type>(dtype);
-#ifdef PADDLE_WITH_MKLDNN
-      if (library == framework::LibraryType::kPlain &&
-          this->CanMKLDNNBeUsed(ctx, data_type) &&
-          (data_type == framework::proto::VarType::FP32 ||
-           data_type == framework::proto::VarType::BF16) &&
-          ctx.OutputVar("Out")->IsType<framework::LoDTensor>()) {
-        if (std::all_of(
-                x_vars.begin(), x_vars.end(), [](const framework::Variable* v) {
-                  return v->IsType<framework::LoDTensor>();
-                })) {
-          return framework::OpKernelType(data_type,
-                                         ctx.GetPlace(),
-                                         framework::DataLayout::kMKLDNN,
-                                         framework::LibraryType::kMKLDNN);
-        }
-      }
-#endif
 
-      return framework::OpKernelType(
-          data_type, ctx.GetPlace(), layout, library);
+      // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+      if (!((data_type == framework::proto::VarType::FP32 ||
+             data_type == framework::proto::VarType::BF16) &&
+            ctx.OutputVar("Out")->IsType<phi::DenseTensor>())) {
+        this->SetDnnFallback(true);
+      } else if (!std::all_of(x_vars.begin(),
+                              x_vars.end(),
+                              [](const framework::Variable* v) {
+                                return v->IsType<phi::DenseTensor>();
+                              })) {
+        this->SetDnnFallback(true);
+      }
+      // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+      return phi::KernelKey(data_type, ctx.GetPlace());
     } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
       for (auto& var : x_vars) {
         auto& value = var->Get<phi::SelectedRows>().value();
         if (value.IsInitialized()) {
-          return framework::OpKernelType(
-              framework::TransToProtoVarType(value.dtype()),
-              ctx.device_context(),
-              layout,
-              library);
+          return phi::KernelKey(framework::TransToProtoVarType(value.dtype()),
+                                ctx.GetPlace());
         }
       }
       // if input sparse vars are not initialized, use an default kernel type.
-      return framework::OpKernelType(framework::proto::VarType::FP32,
-                                     ctx.device_context(),
-                                     layout,
-                                     library);
+      return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
       for (auto& x_var : x_vars) {
         auto& array = x_var->Get<framework::LoDTensorArray>();
         for (auto& each : array) {
           if (each.numel() != 0 && each.IsInitialized()) {
-            return framework::OpKernelType(
-                framework::TransToProtoVarType(each.dtype()),
-                ctx.device_context(),
-                layout,
-                library);
+            return phi::KernelKey(framework::TransToProtoVarType(each.dtype()),
+                                  ctx.GetPlace());
           }
         }
       }
@@ -146,11 +125,12 @@ class SumOp : public framework::OperatorWithKernel {
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "A Varaible list. The shape and data type of the list elements"
-             "should be consistent. Variable can be multi-dimensional Tensor"
-             "or LoDTensor, and data types can be: float32, float64, int32, "
-             "int64.")
+    AddInput(
+        "X",
+        "A Varaible list. The shape and data type of the list elements"
+        "should be consistent. Variable can be multi-dimensional Tensor"
+        "or phi::DenseTensor, and data types can be: float32, float64, int32, "
+        "int64.")
         .AsDuplicable();
     AddOutput("Out",
               "the sum of input :code:`x`. its shape and data types are "
@@ -163,8 +143,9 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
         .InEnum({"float32", "bfloat16"});
-    AddComment(R"DOC(This OP is used to sum one or more Tensor or LoDTensor
-                    of the input. If the input is LoDTensor, the output only
+    AddComment(
+        R"DOC(This OP is used to sum one or more Tensor or phi::DenseTensor
+                    of the input. If the input is phi::DenseTensor, the output only
                     shares LoD information with the first input.)DOC");
   }
 };

@@ -17,8 +17,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class YoloBoxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -131,10 +129,10 @@ class YoloBoxOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -239,7 +237,7 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
          .. math::
 
             score_{conf} = \begin{case}
-                             obj, \text{if } iou_aware == flase \\
+                             obj, \text{if } iou_aware == false \\
                              obj^{1 - iou_aware_factor} * iou^{iou_aware_factor}, \text{otherwise}
                            \end{case}
 

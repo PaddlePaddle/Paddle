@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
-import os
-import sys
-import requests
-from collections import OrderedDict
 import math
 import random
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph import declarative
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.jit.api import to_static
+from paddle.nn import Embedding
 
 
 def fake_text():
@@ -61,15 +56,15 @@ def build_dict(corpus, min_freq=3):
                 word_freq_dict[word] = 0
             word_freq_dict[word] += 1
 
-    word_freq_dict = sorted(word_freq_dict.items(),
-                            key=lambda x: x[1],
-                            reverse=True)
+    word_freq_dict = sorted(
+        word_freq_dict.items(), key=lambda x: x[1], reverse=True
+    )
 
     word2id_dict = dict()
     word2id_freq = dict()
     id2word_dict = dict()
 
-    word2id_freq[0] = 1.
+    word2id_freq[0] = 1.0
     word2id_dict['[oov]'] = 0
     id2word_dict[0] = '[oov]'
 
@@ -91,8 +86,10 @@ word2id_freq, word2id_dict, id2word_dict = build_dict(corpus)
 vocab_size = len(word2id_freq)
 print("there are totoally %d different words in the corpus" % vocab_size)
 for _, (word, word_id) in zip(range(50), word2id_dict.items()):
-    print("word %s, its id %d, its word freq %d" %
-          (word, word_id, word2id_freq[word_id]))
+    print(
+        "word %s, its id %d, its word freq %d"
+        % (word, word_id, word2id_freq[word_id])
+    )
 
 
 def convert_corpus_to_id(corpus, word2id_dict):
@@ -100,7 +97,9 @@ def convert_corpus_to_id(corpus, word2id_dict):
     for line in corpus:
         new_line = [
             word2id_dict[word]
-            if word in word2id_dict else word2id_dict['[oov]'] for word in line
+            if word in word2id_dict
+            else word2id_dict['[oov]']
+            for word in line
         ]
         new_corpus.append(new_line)
     return new_corpus
@@ -110,10 +109,10 @@ corpus = convert_corpus_to_id(corpus, word2id_dict)
 
 
 def subsampling(corpus, word2id_freq):
-
     def keep(word_id):
         return random.uniform(0, 1) < math.sqrt(
-            1e-4 / word2id_freq[word_id] * len(corpus))
+            1e-4 / word2id_freq[word_id] * len(corpus)
+        )
 
     new_corpus = []
     for line in corpus:
@@ -125,11 +124,13 @@ def subsampling(corpus, word2id_freq):
 corpus = subsampling(corpus, word2id_freq)
 
 
-def build_data(corpus,
-               word2id_dict,
-               word2id_freq,
-               max_window_size=3,
-               negative_sample_num=10):
+def build_data(
+    corpus,
+    word2id_dict,
+    word2id_freq,
+    max_window_size=3,
+    negative_sample_num=10,
+):
 
     dataset = []
 
@@ -138,13 +139,15 @@ def build_data(corpus,
             window_size = random.randint(1, max_window_size)
             center_word = line[center_word_idx]
 
-            positive_word_range = (max(0, center_word_idx - window_size),
-                                   min(
-                                       len(line) - 1,
-                                       center_word_idx + window_size))
+            positive_word_range = (
+                max(0, center_word_idx - window_size),
+                min(len(line) - 1, center_word_idx + window_size),
+            )
             positive_word_candidates = [
-                line[idx] for idx in range(positive_word_range[0],
-                                           positive_word_range[1] + 1)
+                line[idx]
+                for idx in range(
+                    positive_word_range[0], positive_word_range[1] + 1
+                )
                 if idx != center_word_idx and line[idx] != line[center_word_idx]
             ]
 
@@ -167,8 +170,10 @@ def build_data(corpus,
 
 dataset = build_data(corpus, word2id_dict, word2id_freq)
 for _, (center_word, target_word, label) in zip(range(50), dataset):
-    print("center_word %s, target %s, label %d" %
-          (id2word_dict[center_word], id2word_dict[target_word], label))
+    print(
+        "center_word %s, target %s, label %d"
+        % (id2word_dict[center_word], id2word_dict[target_word], label)
+    )
 
 
 def build_batch(dataset, batch_size, epoch_num):
@@ -191,9 +196,14 @@ def build_batch(dataset, batch_size, epoch_num):
 
             if len(center_word_batch) == batch_size:
                 yield np.array(center_word_batch).astype("int64"), np.array(
-                    target_word_batch).astype("int64"), np.array(
-                        label_batch).astype("float32"), np.array(
-                            eval_word_batch).astype("int64")
+                    target_word_batch
+                ).astype("int64"), np.array(label_batch).astype(
+                    "float32"
+                ), np.array(
+                    eval_word_batch
+                ).astype(
+                    "int64"
+                )
                 center_word_batch = []
                 target_word_batch = []
                 label_batch = []
@@ -201,50 +211,60 @@ def build_batch(dataset, batch_size, epoch_num):
 
     if len(center_word_batch) > 0:
         yield np.array(center_word_batch).astype("int64"), np.array(
-            target_word_batch).astype("int64"), np.array(label_batch).astype(
-                "float32"), np.array(eval_word_batch).astype("int64")
+            target_word_batch
+        ).astype("int64"), np.array(label_batch).astype("float32"), np.array(
+            eval_word_batch
+        ).astype(
+            "int64"
+        )
 
 
 class SkipGram(fluid.dygraph.Layer):
-
     def __init__(self, name_scope, vocab_size, embedding_size, init_scale=0.1):
-        super(SkipGram, self).__init__(name_scope)
+        super().__init__(name_scope)
         self.vocab_size = vocab_size
         self.embedding_size = embedding_size
 
         self.embedding = Embedding(
-            size=[self.vocab_size, self.embedding_size],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+            self.vocab_size,
+            self.embedding_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
-                    high=0.5 / self.embedding_size)))
+                    high=0.5 / self.embedding_size,
+                ),
+            ),
+        )
 
         self.embedding_out = Embedding(
-            size=[self.vocab_size, self.embedding_size],
-            dtype='float32',
-            param_attr=fluid.ParamAttr(
+            self.vocab_size,
+            self.embedding_size,
+            weight_attr=fluid.ParamAttr(
                 name='embedding_out_para',
-                initializer=fluid.initializer.UniformInitializer(
+                initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
-                    high=0.5 / self.embedding_size)))
+                    high=0.5 / self.embedding_size,
+                ),
+            ),
+        )
 
-    @declarative
+    @to_static
     def forward(self, center_words, target_words, label):
         center_words_emb = self.embedding(center_words)
         target_words_emb = self.embedding_out(target_words)
 
         # center_words_emb = [batch_size, embedding_size]
         # target_words_emb = [batch_size, embedding_size]
-        word_sim = fluid.layers.elementwise_mul(center_words_emb,
-                                                target_words_emb)
-        word_sim = fluid.layers.reduce_sum(word_sim, dim=-1)
+        word_sim = paddle.multiply(center_words_emb, target_words_emb)
+        word_sim = paddle.sum(word_sim, axis=-1)
 
-        pred = fluid.layers.sigmoid(word_sim)
+        pred = paddle.nn.functional.sigmoid(word_sim)
 
-        loss = fluid.layers.sigmoid_cross_entropy_with_logits(word_sim, label)
-        loss = fluid.layers.reduce_mean(loss)
+        loss = paddle.nn.functional.binary_cross_entropy_with_logits(
+            word_sim, label
+        )
+        loss = paddle.mean(loss)
 
         return pred, loss
 
@@ -257,33 +277,39 @@ total_steps = len(dataset) * epoch_num // batch_size
 
 
 def train(to_static):
-    program_translator = ProgramTranslator()
-    program_translator.enable(to_static)
+    paddle.jit.enable_to_static(to_static)
 
     random.seed(0)
     np.random.seed(0)
 
-    place = fluid.CUDAPlace(
-        0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+    place = (
+        fluid.CUDAPlace(0)
+        if fluid.is_compiled_with_cuda()
+        else fluid.CPUPlace()
+    )
     with fluid.dygraph.guard(place):
         fluid.default_startup_program().random_seed = 1000
         fluid.default_main_program().random_seed = 1000
 
-        skip_gram_model = SkipGram("skip_gram_model", vocab_size,
-                                   embedding_size)
+        skip_gram_model = SkipGram(
+            "skip_gram_model", vocab_size, embedding_size
+        )
         adam = fluid.optimizer.AdamOptimizer(
             learning_rate=learning_rate,
-            parameter_list=skip_gram_model.parameters())
+            parameter_list=skip_gram_model.parameters(),
+        )
 
         step = 0
         ret = []
         for center_words, target_words, label, eval_words in build_batch(
-                dataset, batch_size, epoch_num):
+            dataset, batch_size, epoch_num
+        ):
             center_words_var = fluid.dygraph.to_variable(center_words)
             target_words_var = fluid.dygraph.to_variable(target_words)
             label_var = fluid.dygraph.to_variable(label)
-            pred, loss = skip_gram_model(center_words_var, target_words_var,
-                                         label_var)
+            pred, loss = skip_gram_model(
+                center_words_var, target_words_var, label_var
+            )
 
             loss.backward()
             adam.minimize(loss)
@@ -297,7 +323,6 @@ def train(to_static):
 
 
 class TestWord2Vec(unittest.TestCase):
-
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
@@ -305,5 +330,4 @@ class TestWord2Vec(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

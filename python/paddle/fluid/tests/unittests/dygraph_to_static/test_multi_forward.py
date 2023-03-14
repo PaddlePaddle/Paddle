@@ -12,28 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
 import paddle
-import paddle.fluid as fluid
-import unittest
 
 
 class MyLayer(paddle.nn.Layer):
-
     def __init__(self):
         super().__init__()
         self.linear = paddle.nn.Linear(1, 1)
 
-    @paddle.jit.to_static(input_spec=[
-        paddle.static.InputSpec(shape=[None, None], dtype=paddle.float32)
-    ])
+    @paddle.jit.to_static(
+        input_spec=[
+            paddle.static.InputSpec(shape=[None, None], dtype=paddle.float32)
+        ]
+    )
     def forward(self, x):
         return self.linear(x)
 
 
 class TestBackward(unittest.TestCase):
-
     def test_order_0(self):
         """
         loss = 1 * w * 1 + 2 * w * 2
@@ -64,5 +62,4 @@ class TestBackward(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

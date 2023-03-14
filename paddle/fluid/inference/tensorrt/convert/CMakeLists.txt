@@ -3,6 +3,8 @@ list(
   APPEND
   CONVERT_FILES
   matmul_op.cc
+  matmul_v2_op.cc
+  bmm_op.cc
   conv2d_op.cc
   fc_op.cc
   pool2d_op.cc
@@ -16,12 +18,20 @@ list(
   group_norm_op.cc
   pad_op.cc
   split_op.cc
+  square_op.cc
   prelu_op.cc
   leaky_relu_op.cc
   gelu_op.cc
   layer_norm_op.cc
   multihead_matmul_op.cc
+  multihead_matmul_roformer_op.cc
+  flash_multihead_matmul_op.cc
+  cross_multihead_matmul_op.cc
+  grid_sampler_op.cc
   shuffle_channel_op.cc
+  fill_any_like_op.cc
+  where_op.cc
+  one_hot_op.cc
   swish_op.cc
   silu_op.cc
   instance_norm_op.cc
@@ -29,7 +39,6 @@ list(
   transpose_op.cc
   flatten_op.cc
   flatten_contiguous_range_op.cc
-  emb_eltwise_layernorm.cc
   skip_layernorm.cc
   scale_op.cc
   slice_op.cc
@@ -41,6 +50,7 @@ list(
   yolo_box_op.cc
   yolo_box_head_op.cc
   arg_max_op.cc
+  arg_min_op.cc
   roi_align_op.cc
   affine_channel_op.cc
   multiclass_nms_op.cc
@@ -56,7 +66,6 @@ list(
   bilinear_interp_v2_op.cc
   pool3d_op.cc
   deformable_conv_op.cc
-  preln_emb_eltwise_layernorm.cc
   strided_slice_op.cc
   preln_skip_layernorm.cc
   roll_op.cc
@@ -68,6 +77,7 @@ list(
   preln_residual_bias.cc
   c_allreduce_op.cc
   top_k_op.cc
+  range_op.cc
   squeeze2_op.cc
   unsqueeze2_op.cc
   rnn_op.cc
@@ -76,11 +86,36 @@ list(
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc
+  celu_op.cc
   layernorm_shift_partition_op.cc
-  generic_and_custom_plugin_creater.cc)
+  reverse_roll_op.cc
+  tanhshrink_op.cc
+  take_along_axis_op.cc
+  logsigmoid_op.cc
+  preln_layernorm_shift_partition_op.cc
+  trans_layernorm_op.cc
+  merge_layernorm_op.cc
+  skip_merge_layernorm_op.cc
+  generic_and_custom_plugin_creater.cc
+  fused_lookup_tables_op.cc
+  elementwiseadd_transpose_op.cc
+  skip_groupnorm_act_op.cc
+  preln_groupnorm_act_op.cc
+  expand_v2_op.cc
+  temporal_shift_op.cc)
+
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
+  list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
+       preln_emb_eltwise_layernorm.cc)
+endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
+endif()
+
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8 AND ${TENSORRT_MINOR_VERSION}
+                                                 GREATER_EQUAL 2)
+  list(APPEND CONVERT_FILES set_value_op.cc)
 endif()
 
 nv_library(

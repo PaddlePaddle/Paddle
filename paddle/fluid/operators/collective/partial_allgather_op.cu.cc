@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/partial_allgather_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -28,8 +28,8 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto in = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     int64_t numel = in->numel();
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
@@ -67,12 +67,7 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
-      std::vector<phi::DenseTensor> in_tensors;
-      std::vector<phi::DenseTensor> out_tensors;
-      in_tensors.push_back(*in);
-      out_tensors.push_back(*out);
-      auto task =
-          pg->AllGather_Partial(in_tensors, out_tensors, offset, send_numel);
+      auto task = pg->AllGather(out, *in, offset, send_numel, /*sync_op*/ true);
       task->Wait();
     } else {
       const T* send_buff = in->data<T>() + offset;
@@ -80,8 +75,8 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 
       gpuStream_t stream = nullptr;
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-        stream = static_cast<phi::GPUContext*>(dev_ctx)->stream();
+        // should ExecutionContext for calc stream.
+        stream = ctx.cuda_device_context().stream();
       } else {
         stream = comm->stream();
       }

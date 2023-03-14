@@ -12,24 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
-import numpy as np
-import paddle
 
 from test_collective_api_base import TestDistBase
+
+import paddle
 
 paddle.enable_static()
 
 
 class TestRowParallelLinearAPI(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_row_parallel_linear(self):
-        self.check_with_place("row_parallel_linear_api.py",
-                              "row_parallel_linear", "nccl")
+        self.check_with_place(
+            "row_parallel_linear_api.py", "row_parallel_linear", "nccl"
+        )
 
 
 if __name__ == '__main__':

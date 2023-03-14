@@ -18,6 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
@@ -75,8 +76,17 @@ void ArgsortKernel(const Context& dev_ctx,
                    DenseTensor* output,
                    DenseTensor* indices) {
   auto in_dims = input.dims();
+  auto rank = in_dims.size();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   T* out_data = dev_ctx.template Alloc<T>(output);
+
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    dev_ctx.template Alloc<int64_t>(indices);
+    phi::funcs::set_constant(dev_ctx, indices, 0);
+    return;
+  }
 
   // Do full sort
   if (axis == -1 || axis + 1 == in_dims.size()) {

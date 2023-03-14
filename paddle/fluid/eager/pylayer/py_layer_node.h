@@ -15,6 +15,10 @@
 #pragma once
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -31,27 +35,32 @@ class GradNodePyLayer : public GradNodeBase {
                   size_t bwd_out_slot_num)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
     ctx_ = ctx;
+    name_ = "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
     Py_INCREF(ctx_);
   }
 
-  ~GradNodePyLayer() override { Py_XDECREF(ctx_); };
+  GradNodePyLayer(const GradNodePyLayer& other) : GradNodeBase(other) {
+    this->ctx_ = other.ctx_;
+    Py_INCREF(this->ctx_);
+    this->forward_outputs_meta_ = other.forward_outputs_meta_;
+    this->forward_outputs_place_ = other.forward_outputs_place_;
+  }
 
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  ~GradNodePyLayer() override;
+
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) override;
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
-  std::string name() override {
-    return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
-  }
+  std::string name() override { return name_; }
 
   void SaveForwardOutputsMeta(
-      const std::vector<std::vector<paddle::experimental::Tensor*>>&
-          outputs_tensor) {
+      const std::vector<std::vector<paddle::Tensor*>>& outputs_tensor) {
     forward_outputs_meta_.resize(outputs_tensor.size());
     forward_outputs_place_.resize(outputs_tensor.size());
     for (size_t i = 0; i < outputs_tensor.size(); i++) {
@@ -77,6 +86,7 @@ class GradNodePyLayer : public GradNodeBase {
 
  private:
   PyObject* ctx_{nullptr};
+  std::string name_{""};
   std::vector<std::vector<phi::DenseTensorMeta>> forward_outputs_meta_;
   std::vector<std::vector<paddle::platform::Place>> forward_outputs_place_;
 };

@@ -16,9 +16,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -55,6 +55,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
 DECLARE_int32(paddle_num_threads);
@@ -65,16 +67,6 @@ PADDLE_DEFINE_EXPORTED_int32(
     "been dropped when you are profiling, try increasing this value.");
 
 namespace paddle {
-namespace platform {
-
-void ParseCommandLineFlags(int argc, char **argv, bool remove) {
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, remove);
-}
-
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace framework {
 
 #ifdef _WIN32
@@ -83,7 +75,7 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
-std::once_flag npu_init_flag;
+std::once_flag memory_method_init_flag;
 
 bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
@@ -107,6 +99,7 @@ bool InitGflags(std::vector<std::string> args) {
             << ", Init commandline: " << line;
 
     char **arr = argv.data();
+    ::GFLAGS_NAMESPACE::AllowCommandLineReparsing();
     ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &arr, true);
     successed = true;
 
@@ -164,61 +157,65 @@ void LoadCustomDevice(const std::string &library_dir) {
 }
 #endif
 
+static std::once_flag init_devices_flag;
+
 void InitDevices() {
-  // set name at the entry point of Paddle
-  platform::SetCurrentThreadName("MainThread");
+  std::call_once(init_devices_flag, []() {
+    // set name at the entry point of Paddle
+    platform::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
 #ifdef PADDLE_WITH_CUDA
-  InitCupti();
+    InitCupti();
 #endif
-  /*Init all available devices by default */
-  std::vector<int> devices;
+    /*Init all available devices by default */
+    std::vector<int> devices;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  try {
-    // use user specified GPUs in single-node multi-process mode.
-    devices = platform::GetSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
-  }
+    try {
+      // use user specified GPUs in single-node multi-process mode.
+      devices = platform::GetSelectedDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_XPU
-  try {
-    // use user specified XPUs in single-node multi-process mode.
-    devices = platform::GetXPUSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
-  }
+    try {
+      // use user specified XPUs in single-node multi-process mode.
+      devices = platform::GetXPUSelectedDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-  // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
-  platform::AclInstance::Instance();  // NOLINT
-  try {
-    // use user specified XPUs in single-node multi-process mode.
-    devices = platform::GetSelectedNPUDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING)
-        << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found in runtime.";
-  }
+    // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
+    platform::AclInstance::Instance();  // NOLINT
+    try {
+      // use user specified XPUs in single-node multi-process mode.
+      devices = platform::GetSelectedNPUDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found "
+                      "in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_IPU
-  try {
-    // use user specified IPUs.
-    devices = platform::GetSelectedIPUDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING)
-        << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
-  }
+    try {
+      // use user specified IPUs.
+      devices = platform::GetSelectedIPUDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING)
+          << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_MLU
-  try {
-    // use user specified MLUs in single-node multi-process mode.
-    devices = platform::GetMLUSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
-  }
+    try {
+      // use user specified MLUs in single-node multi-process mode.
+      devices = platform::GetMLUSelectedDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
+    }
 #endif
-  InitDevices(devices);
+    InitDevices(devices);
+  });
 }
 
 void InitDevices(const std::vector<int> devices) {
@@ -276,56 +273,10 @@ void InitDevices(const std::vector<int> devices) {
     }
   }
 #endif
-  platform::DeviceContextPool::Init(places);
+  platform::DeviceContextPool::Init(places, platform::EmplaceExternalContext);
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
-#endif
-
-#if !defined(_WIN32) && !defined(__APPLE__) && !defined(__OSX__)
-  if (platform::MayIUse(platform::avx)) {
-#ifndef __AVX__
-    LOG(WARNING) << "AVX is available, Please re-compile on local machine";
-#endif
-  }
-
-// Throw some informations when CPU instructions mismatch.
-#define AVX_GUIDE(compiletime, runtime)                                  \
-  PADDLE_THROW(platform::errors::Unavailable(                            \
-      "This version is compiled on higher instruction(" #compiletime     \
-      ") system, you may encounter illegal instruction error running on" \
-      " your local CPU machine. Please reinstall the " #runtime          \
-      " version or compile from source code."))
-
-#ifdef __AVX512F__
-  if (!platform::MayIUse(platform::avx512f)) {
-    if (platform::MayIUse(platform::avx2)) {
-      AVX_GUIDE(AVX512, AVX2);
-    } else if (platform::MayIUse(platform::avx)) {
-      AVX_GUIDE(AVX512, AVX);
-    } else {
-      AVX_GUIDE(AVX512, NonAVX);
-    }
-  }
-#endif
-
-#ifdef __AVX2__
-  if (!platform::MayIUse(platform::avx2)) {
-    if (platform::MayIUse(platform::avx)) {
-      AVX_GUIDE(AVX2, AVX);
-    } else {
-      AVX_GUIDE(AVX2, NonAVX);
-    }
-  }
-#endif
-
-#ifdef __AVX__
-  if (!platform::MayIUse(platform::avx)) {
-    AVX_GUIDE(AVX, NonAVX);
-  }
-#endif
-#undef AVX_GUIDE
-
 #endif
 }
 
@@ -495,6 +446,29 @@ void InitGLOG(const std::string &prog_name) {
     google::InstallFailureSignalHandler();
     google::InstallFailureWriter(&SignalHandle);
 #endif
+  });
+}
+
+void InitMemoryMethod() {
+  std::call_once(memory_method_init_flag, [&]() {
+    auto &memory_utils = phi::MemoryUtils::Instance();
+    auto memory_method = std::make_unique<phi::MemoryInterface>();
+    memory_method->alloc = paddle::memory::Alloc;
+    memory_method->alloc_with_stream = paddle::memory::Alloc;
+    memory_method->alloc_shared = paddle::memory::AllocShared;
+    memory_method->alloc_shared_with_stream = paddle::memory::AllocShared;
+    memory_method->in_same_stream = paddle::memory::InSameStream;
+    memory_method->allocation_deleter =
+        paddle::memory::allocation::Allocator::AllocationDeleter;
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_HIP)
+    memory_method->copy_with_stream =
+        paddle::memory::Copy<phi::Place, phi::Place>;
+#endif
+    memory_method->copy = paddle::memory::Copy<phi::Place, phi::Place>;
+    memory_method->device_memory_stat_current_value =
+        paddle::memory::DeviceMemoryStatCurrentValue;
+    memory_utils.Init(std::move(memory_method));
   });
 }
 

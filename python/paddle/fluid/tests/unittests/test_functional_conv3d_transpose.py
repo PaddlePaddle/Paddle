@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
-import paddle.fluid.dygraph as dg
-import paddle.fluid.initializer as I
-import paddle.nn.functional as F
 import unittest
-from paddle import fluid
-from paddle.fluid.framework import _test_eager_guard
 from unittest import TestCase
+
+import numpy as np
+
+import paddle
+import paddle.fluid.dygraph as dg
+import paddle.nn.functional as F
+from paddle import fluid
 
 
 class TestFunctionalConv3DTranspose(TestCase):
@@ -43,27 +43,34 @@ class TestFunctionalConv3DTranspose(TestCase):
 
     def prepare(self):
         if isinstance(self.filter_shape, int):
-            filter_shape = (self.filter_shape, ) * 3
+            filter_shape = (self.filter_shape,) * 3
         else:
             filter_shape = tuple(self.filter_shape)
 
         self.weight = np.random.uniform(
-            -1, 1, (self.in_channels, self.out_channels // self.groups) +
-            filter_shape).astype(self.dtype)
+            -1,
+            1,
+            (self.in_channels, self.out_channels // self.groups) + filter_shape,
+        ).astype(self.dtype)
         if not self.no_bias:
-            self.bias = np.random.uniform(-1, 1, (self.out_channels, )).astype(
-                self.dtype)
+            self.bias = np.random.uniform(-1, 1, (self.out_channels,)).astype(
+                self.dtype
+            )
 
-        self.channel_last = (self.data_format == "NDHWC")
+        self.channel_last = self.data_format == "NDHWC"
         if self.channel_last:
-            self.input_shape = (self.batch_size, ) + self.spatial_shape + (
-                self.in_channels, )
+            self.input_shape = (
+                (self.batch_size,) + self.spatial_shape + (self.in_channels,)
+            )
         else:
-            self.input_shape = (self.batch_size,
-                                self.in_channels) + self.spatial_shape
+            self.input_shape = (
+                self.batch_size,
+                self.in_channels,
+            ) + self.spatial_shape
 
-        self.input = np.random.uniform(-1, 1,
-                                       self.input_shape).astype(self.dtype)
+        self.input = np.random.uniform(-1, 1, self.input_shape).astype(
+            self.dtype
+        )
 
     def static_graph_case_1(self):
         main = fluid.Program()
@@ -71,12 +78,18 @@ class TestFunctionalConv3DTranspose(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 if self.channel_last:
-                    x = fluid.data("input", (-1, -1, -1, -1, self.in_channels),
-                                   dtype=self.dtype)
+                    x = fluid.data(
+                        "input",
+                        (-1, -1, -1, -1, self.in_channels),
+                        dtype=self.dtype,
+                    )
                 else:
-                    x = fluid.data("input", (-1, self.in_channels, -1, -1, -1),
-                                   dtype=self.dtype)
-                y = fluid.layers.conv3d_transpose(
+                    x = fluid.data(
+                        "input",
+                        (-1, self.in_channels, -1, -1, -1),
+                        dtype=self.dtype,
+                    )
+                y = paddle.static.nn.conv3d_transpose(
                     x,
                     self.out_channels,
                     output_size=self.output_size,
@@ -85,14 +98,16 @@ class TestFunctionalConv3DTranspose(TestCase):
                     padding=self.padding,
                     dilation=self.dilation,
                     groups=self.groups,
-                    param_attr=I.NumpyArrayInitializer(self.weight),
+                    param_attr=paddle.nn.initializer.Assign(self.weight),
                     bias_attr=False
-                    if self.no_bias else I.NumpyArrayInitializer(self.bias),
+                    if self.no_bias
+                    else paddle.nn.initializer.Assign(self.bias),
                     act=self.act,
-                    data_format=self.data_format)
+                    data_format=self.data_format,
+                )
         exe = fluid.Executor(self.place)
         exe.run(start)
-        out, = exe.run(main, feed={"input": self.input}, fetch_list=[y])
+        (out,) = exe.run(main, feed={"input": self.input}, fetch_list=[y])
         return out
 
     def static_graph_case_2(self):
@@ -101,26 +116,33 @@ class TestFunctionalConv3DTranspose(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 if self.channel_last:
-                    x = x = fluid.data("input",
-                                       (-1, -1, -1, -1, self.in_channels),
-                                       dtype=self.dtype)
+                    x = x = fluid.data(
+                        "input",
+                        (-1, -1, -1, -1, self.in_channels),
+                        dtype=self.dtype,
+                    )
                 else:
-                    x = fluid.data("input", (-1, self.in_channels, -1, -1, -1),
-                                   dtype=self.dtype)
-                weight = fluid.data("weight",
-                                    self.weight.shape,
-                                    dtype=self.dtype)
+                    x = fluid.data(
+                        "input",
+                        (-1, self.in_channels, -1, -1, -1),
+                        dtype=self.dtype,
+                    )
+                weight = fluid.data(
+                    "weight", self.weight.shape, dtype=self.dtype
+                )
                 if not self.no_bias:
                     bias = fluid.data("bias", self.bias.shape, dtype=self.dtype)
-                y = F.conv3d_transpose(x,
-                                       weight,
-                                       None if self.no_bias else bias,
-                                       output_size=self.output_size,
-                                       padding=self.padding,
-                                       stride=self.stride,
-                                       dilation=self.dilation,
-                                       groups=self.groups,
-                                       data_format=self.data_format)
+                y = F.conv3d_transpose(
+                    x,
+                    weight,
+                    None if self.no_bias else bias,
+                    output_size=self.output_size,
+                    padding=self.padding,
+                    stride=self.stride,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    data_format=self.data_format,
+                )
                 if self.act == 'sigmoid':
                     y = F.sigmoid(y)
         exe = fluid.Executor(self.place)
@@ -128,7 +150,7 @@ class TestFunctionalConv3DTranspose(TestCase):
         feed_dict = {"input": self.input, "weight": self.weight}
         if not self.no_bias:
             feed_dict["bias"] = self.bias
-        out, = exe.run(main, feed=feed_dict, fetch_list=[y])
+        (out,) = exe.run(main, feed=feed_dict, fetch_list=[y])
         return out
 
     def dygraph_case(self):
@@ -136,15 +158,17 @@ class TestFunctionalConv3DTranspose(TestCase):
             x = dg.to_variable(self.input)
             weight = dg.to_variable(self.weight)
             bias = None if self.no_bias else dg.to_variable(self.bias)
-            y = F.conv3d_transpose(x,
-                                   weight,
-                                   bias,
-                                   output_size=self.output_size,
-                                   padding=self.padding,
-                                   stride=self.stride,
-                                   dilation=self.dilation,
-                                   groups=self.groups,
-                                   data_format=self.data_format)
+            y = F.conv3d_transpose(
+                x,
+                weight,
+                bias,
+                output_size=self.output_size,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format,
+            )
             if self.act == 'sigmoid':
                 y = F.sigmoid(y)
             out = y.numpy()
@@ -162,21 +186,12 @@ class TestFunctionalConv3DTranspose(TestCase):
         self.place = fluid.CPUPlace()
         self._test_identity()
 
-    def test_identity_cpu_check_eager(self):
-        with _test_eager_guard():
-            self.test_identity_cpu()
-
-    @unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
+    @unittest.skipIf(
+        not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
     def test_identity_gpu(self):
         self.place = fluid.CUDAPlace(0)
         self._test_identity()
-
-    @unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
-    def test_identity_gpu_check_eager(self):
-        with _test_eager_guard():
-            self.test_identity_gpu()
 
 
 class TestFunctionalConv3DTransposeError(TestCase):
@@ -204,12 +219,14 @@ class TestFunctionalConv3DTransposeError(TestCase):
 
     def prepare(self):
         if isinstance(self.filter_shape, int):
-            filter_shape = (self.filter_shape, ) * 3
+            filter_shape = (self.filter_shape,) * 3
         else:
             filter_shape = tuple(self.filter_shape)
-        self.weight_shape = (self.in_channels,
-                             self.out_channels // self.groups) + filter_shape
-        self.bias_shape = (self.out_channels, )
+        self.weight_shape = (
+            self.in_channels,
+            self.out_channels // self.groups,
+        ) + filter_shape
+        self.bias_shape = (self.out_channels,)
 
     def static_graph_case(self):
         main = fluid.Program()
@@ -218,32 +235,38 @@ class TestFunctionalConv3DTransposeError(TestCase):
             with fluid.program_guard(main, start):
                 self.channel_last = self.data_format == "NDHWC"
                 if self.channel_last:
-                    x = x = fluid.data("input",
-                                       (-1, -1, -1, -1, self.in_channels),
-                                       dtype=self.dtype)
+                    x = x = fluid.data(
+                        "input",
+                        (-1, -1, -1, -1, self.in_channels),
+                        dtype=self.dtype,
+                    )
                 else:
-                    x = fluid.data("input", (-1, self.in_channels, -1, -1, -1),
-                                   dtype=self.dtype)
-                weight = fluid.data("weight",
-                                    self.weight_shape,
-                                    dtype=self.dtype)
+                    x = fluid.data(
+                        "input",
+                        (-1, self.in_channels, -1, -1, -1),
+                        dtype=self.dtype,
+                    )
+                weight = fluid.data(
+                    "weight", self.weight_shape, dtype=self.dtype
+                )
                 if not self.no_bias:
                     bias = fluid.data("bias", self.bias_shape, dtype=self.dtype)
-                y = F.conv3d_transpose(x,
-                                       weight,
-                                       None if self.no_bias else bias,
-                                       output_size=self.output_size,
-                                       padding=self.padding,
-                                       stride=self.stride,
-                                       dilation=self.dilation,
-                                       groups=self.groups,
-                                       data_format=self.data_format)
+                y = F.conv3d_transpose(
+                    x,
+                    weight,
+                    None if self.no_bias else bias,
+                    output_size=self.output_size,
+                    padding=self.padding,
+                    stride=self.stride,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    data_format=self.data_format,
+                )
                 if self.act == 'sigmoid':
                     y = F.sigmoid(y)
 
 
 class TestFunctionalConv3DTransposeCase2(TestFunctionalConv3DTranspose):
-
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -258,7 +281,6 @@ class TestFunctionalConv3DTransposeCase2(TestFunctionalConv3DTranspose):
 
 
 class TestFunctionalConv3DTransposeCase3(TestFunctionalConv3DTranspose):
-
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -273,7 +295,6 @@ class TestFunctionalConv3DTransposeCase3(TestFunctionalConv3DTranspose):
 
 
 class TestFunctionalConv3DTransposeCase4(TestFunctionalConv3DTranspose):
-
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -288,7 +309,6 @@ class TestFunctionalConv3DTransposeCase4(TestFunctionalConv3DTranspose):
 
 
 class TestFunctionalConv3DTransposeCase5(TestFunctionalConv3DTranspose):
-
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -303,7 +323,6 @@ class TestFunctionalConv3DTransposeCase5(TestFunctionalConv3DTranspose):
 
 
 class TestFunctionalConv3DTransposeCase6(TestFunctionalConv3DTranspose):
-
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 4
@@ -318,7 +337,6 @@ class TestFunctionalConv3DTransposeCase6(TestFunctionalConv3DTranspose):
 
 
 class TestFunctionalConv3DTransposeCase7(TestFunctionalConv3DTranspose):
-
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 4
@@ -334,7 +352,6 @@ class TestFunctionalConv3DTransposeCase7(TestFunctionalConv3DTranspose):
 
 
 class TestFunctionalConv3DTransposeCase8(TestFunctionalConv3DTranspose):
-
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -349,7 +366,6 @@ class TestFunctionalConv3DTransposeCase8(TestFunctionalConv3DTranspose):
 
 
 class TestFunctionalConv3DTransposeCase9(TestFunctionalConv3DTranspose):
-
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -364,7 +380,6 @@ class TestFunctionalConv3DTransposeCase9(TestFunctionalConv3DTranspose):
 
 
 class TestFunctionalConv3DTransposeCase10(TestFunctionalConv3DTranspose):
-
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -379,7 +394,6 @@ class TestFunctionalConv3DTransposeCase10(TestFunctionalConv3DTranspose):
 
 
 class TestFunctionalConv3DTransposeCase11(TestFunctionalConv3DTranspose):
-
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -393,9 +407,9 @@ class TestFunctionalConv3DTransposeCase11(TestFunctionalConv3DTranspose):
         self.data_format = "NCDHW"
 
 
-class TestFunctionalConv3DTransposeErrorCase2(TestFunctionalConv3DTransposeError
-                                              ):
-
+class TestFunctionalConv3DTransposeErrorCase2(
+    TestFunctionalConv3DTransposeError
+):
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -409,9 +423,9 @@ class TestFunctionalConv3DTransposeErrorCase2(TestFunctionalConv3DTransposeError
         self.data_format = "NDHWC"
 
 
-class TestFunctionalConv3DTransposeErrorCase3(TestFunctionalConv3DTransposeError
-                                              ):
-
+class TestFunctionalConv3DTransposeErrorCase3(
+    TestFunctionalConv3DTransposeError
+):
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -425,9 +439,9 @@ class TestFunctionalConv3DTransposeErrorCase3(TestFunctionalConv3DTransposeError
         self.data_format = "NDHWC"
 
 
-class TestFunctionalConv3DTransposeErrorCase4(TestFunctionalConv3DTransposeError
-                                              ):
-
+class TestFunctionalConv3DTransposeErrorCase4(
+    TestFunctionalConv3DTransposeError
+):
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -441,9 +455,9 @@ class TestFunctionalConv3DTransposeErrorCase4(TestFunctionalConv3DTransposeError
         self.data_format = "NCDHW"
 
 
-class TestFunctionalConv3DTransposeErrorCase5(TestFunctionalConv3DTransposeError
-                                              ):
-
+class TestFunctionalConv3DTransposeErrorCase5(
+    TestFunctionalConv3DTransposeError
+):
     def setUp(self):
         self.in_channels = -2
         self.out_channels = 5
@@ -457,9 +471,9 @@ class TestFunctionalConv3DTransposeErrorCase5(TestFunctionalConv3DTransposeError
         self.data_format = "NCDHW"
 
 
-class TestFunctionalConv3DTransposeErrorCase7(TestFunctionalConv3DTransposeError
-                                              ):
-
+class TestFunctionalConv3DTransposeErrorCase7(
+    TestFunctionalConv3DTransposeError
+):
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 5
@@ -474,9 +488,9 @@ class TestFunctionalConv3DTransposeErrorCase7(TestFunctionalConv3DTransposeError
         self.data_format = "NCDHW"
 
 
-class TestFunctionalConv3DTransposeErrorCase8(TestFunctionalConv3DTransposeError
-                                              ):
-
+class TestFunctionalConv3DTransposeErrorCase8(
+    TestFunctionalConv3DTransposeError
+):
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 5
@@ -490,9 +504,9 @@ class TestFunctionalConv3DTransposeErrorCase8(TestFunctionalConv3DTransposeError
         self.data_format = "not_valid"
 
 
-class TestFunctionalConv3DTransposeErrorCase9(TestFunctionalConv3DTransposeError
-                                              ):
-
+class TestFunctionalConv3DTransposeErrorCase9(
+    TestFunctionalConv3DTransposeError
+):
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 4
@@ -507,7 +521,6 @@ class TestFunctionalConv3DTransposeErrorCase9(TestFunctionalConv3DTransposeError
 
 
 class TestFunctionalConv3DTransposeErrorCase10(TestCase):
-
     def setUp(self):
         self.input = np.array([])
         self.filter = np.array([])
@@ -526,7 +539,7 @@ class TestFunctionalConv3DTransposeErrorCase10(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 x = fluid.data("input", self.input.shape, dtype=paddle.float32)
-                y = fluid.layers.conv3d_transpose(
+                y = paddle.static.nn.conv3d_transpose(
                     x,
                     self.num_filters,
                     self.filter_size,
@@ -534,38 +547,41 @@ class TestFunctionalConv3DTransposeErrorCase10(TestCase):
                     padding=self.padding,
                     dilation=self.dilation,
                     groups=self.groups,
-                    param_attr=I.NumpyArrayInitializer(self.filter),
-                    bias_attr=False if self.bias is None else
-                    I.NumpyArrayInitializer(self.bias),
+                    param_attr=paddle.nn.initializer.Assign(self.filter),
+                    bias_attr=False
+                    if self.bias is None
+                    else paddle.nn.initializer.Assign(self.bias),
                     act=None,
-                    data_format=self.data_format)
+                    data_format=self.data_format,
+                )
         exe = fluid.Executor()
         exe.run(start)
-        out, = exe.run(main, feed={"input": self.input}, fetch_list=[y])
+        (out,) = exe.run(main, feed={"input": self.input}, fetch_list=[y])
         return out
 
     def dygraph_case(self):
         with dg.guard():
             x = dg.to_variable(self.input, dtype=paddle.float32)
             w = dg.to_variable(self.filter, dtype=paddle.float32)
-            b = None if self.bias is None else dg.to_variable(
-                self.bias, dtype=paddle.float32)
-            y = F.conv3d_transpose(x,
-                                   w,
-                                   b,
-                                   padding=self.padding,
-                                   stride=self.stride,
-                                   dilation=self.dilation,
-                                   groups=self.groups,
-                                   data_format=self.data_format)
+            b = (
+                None
+                if self.bias is None
+                else dg.to_variable(self.bias, dtype=paddle.float32)
+            )
+            y = F.conv3d_transpose(
+                x,
+                w,
+                b,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format,
+            )
 
     def test_dygraph_exception(self):
         with self.assertRaises(ValueError):
             self.dygraph_case()
-
-    def test_dygraph_exception_check_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph_exception()
 
     def test_static_exception(self):
         with self.assertRaises(ValueError):
@@ -573,8 +589,8 @@ class TestFunctionalConv3DTransposeErrorCase10(TestCase):
 
 
 class TestFunctionalConv3DTransposeErrorCase11(
-        TestFunctionalConv3DTransposeErrorCase10):
-
+    TestFunctionalConv3DTransposeErrorCase10
+):
     def setUp(self):
         self.input = np.random.randn(1, 3, 3, 3, 3)
         self.filter = np.random.randn(3, 3, 1, 1, 1)

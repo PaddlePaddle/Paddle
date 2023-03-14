@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/coalesce_kernel.h"
 
+#include <thrust/sort.h>
+#include <thrust/unique.h>
+
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -27,9 +30,9 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename IntT>
-void CoalesceGPUKernel(const GPUContext& dev_ctx,
-                       const SparseCooTensor& x,
-                       SparseCooTensor* out) {
+void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
+                          const SparseCooTensor& x,
+                          SparseCooTensor* out) {
   const DenseTensor& x_indices = x.indices();
   const DenseTensor& x_values = x.values();
   DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x_indices);
@@ -169,23 +172,25 @@ void CoalesceGPUKernel(const GPUContext& dev_ctx,
       indexs_ptr, const_dims, out_nnz, sparse_dim, out_indices.data<IntT>());
 
   out->SetMember(out_indices, out_values, x.dims(), true);
+  out->SetIndicesDict(x.GetIndicesDict());
 }
 
 template <typename T, typename Context>
-void CoalesceKernel(const Context& dev_ctx,
-                    const SparseCooTensor& x,
-                    SparseCooTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "CoalesceGPUKernel", ([&] {
-                                 CoalesceGPUKernel<T, data_t>(dev_ctx, x, out);
-                               }));
+void CoalesceCooKernel(const Context& dev_ctx,
+                       const SparseCooTensor& x,
+                       SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "CoalesceCooGPUKernel", ([&] {
+        CoalesceCooGPUKernel<T, data_t>(dev_ctx, x, out);
+      }));
 }
 }  // namespace sparse
 }  // namespace phi
 
-PD_REGISTER_KERNEL(coalesce,
+PD_REGISTER_KERNEL(coalesce_coo,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::CoalesceKernel,
+                   phi::sparse::CoalesceCooKernel,
                    float,
                    double,
                    phi::dtype::float16,

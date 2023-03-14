@@ -24,9 +24,9 @@ template <typename DeviceContext, typename T>
 class MinusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* left_tensor = context.Input<framework::Tensor>("X");
-    auto* right_tensor = context.Input<framework::Tensor>("Y");
-    auto* out_tensor = context.Output<framework::Tensor>("Out");
+    auto* left_tensor = context.Input<phi::DenseTensor>("X");
+    auto* right_tensor = context.Input<phi::DenseTensor>("Y");
+    auto* out_tensor = context.Output<phi::DenseTensor>("Out");
 
     out_tensor->mutable_data<T>(context.GetPlace());
     auto& dev =

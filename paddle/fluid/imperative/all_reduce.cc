@@ -38,8 +38,8 @@ namespace paddle {
 namespace imperative {
 
 static const platform::Place &GetVarPlace(const framework::Variable &src) {
-  if (src.IsType<framework::LoDTensor>()) {
-    return src.Get<framework::LoDTensor>().place();
+  if (src.IsType<phi::DenseTensor>()) {
+    return src.Get<phi::DenseTensor>().place();
 #if NCCL_VERSION_CODE >= 2212
   } else if (src.IsType<phi::SelectedRows>()) {
     return src.Get<phi::SelectedRows>().value().place();
@@ -53,8 +53,8 @@ static const platform::Place &GetVarPlace(const framework::Variable &src) {
   }
 }
 
-static void AllReduce(const framework::Tensor &src,
-                      framework::Tensor *dst,
+static void AllReduce(const phi::DenseTensor &src,
+                      phi::DenseTensor *dst,
                       const gpuStream_t stream,
                       const platform::NCCLComm *comm) {
   const auto &place = src.place();
@@ -104,10 +104,10 @@ static void AllReduce(const phi::SelectedRows &src,
   // 1. Gather rows number from all workers. Here use ncclAllGather to do this,
   // but we can use other ways to implement is in the future
   const auto &src_rows = src.rows();
-  framework::Vector<int64_t> rows_num_vector(strategy.nranks_);
+  phi::Vector<int64_t> rows_num_vector(strategy.nranks_);
   rows_num_vector[strategy.local_rank_] = static_cast<int64_t>(src_rows.size());
   // CUDAMutableData use CalStream
-  paddle::framework::MixVector<int64_t> mixv_rows_num_vector(&rows_num_vector);
+  phi::MixVector<int64_t> mixv_rows_num_vector(&rows_num_vector);
   auto *gpu_rows_num_ptr = mixv_rows_num_vector.CUDAMutableData(place);
   VLOG(4) << "start dev_ctx->wait";
   if (!use_calc_stream) {
@@ -138,9 +138,9 @@ static void AllReduce(const phi::SelectedRows &src,
 
   auto *dst_rows = dst->mutable_rows();
   dst_rows->resize(rows_num);
-  paddle::framework::MixVector<int64_t> mixv_dst_rows(dst_rows);
+  phi::MixVector<int64_t> mixv_dst_rows(dst_rows);
   auto *dst_rows_ptr = mixv_dst_rows.CUDAMutableData(place);
-  paddle::framework::MixVector<int64_t> mixv_src_rows(&src_rows);
+  phi::MixVector<int64_t> mixv_src_rows(&src_rows);
   const auto *src_rows_ptr = mixv_src_rows.CUDAData(place);
 
   auto *dst_tensor = dst->mutable_value();
@@ -226,12 +226,12 @@ void AllReduce(const framework::Variable &src,
       platform::NCCLCommContext::Instance().Get(ring_id, place);
   gpuStream_t stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());
 
-  if (src.IsType<framework::LoDTensor>()) {
-    if (!dst->IsType<framework::LoDTensor>()) {
+  if (src.IsType<phi::DenseTensor>()) {
+    if (!dst->IsType<phi::DenseTensor>()) {
       dst->Clear();
     }
-    AllReduce(src.Get<framework::LoDTensor>(),
-              dst->GetMutable<framework::LoDTensor>(),
+    AllReduce(src.Get<phi::DenseTensor>(),
+              dst->GetMutable<phi::DenseTensor>(),
               stream,
               comm);
 #if NCCL_VERSION_CODE >= 2212

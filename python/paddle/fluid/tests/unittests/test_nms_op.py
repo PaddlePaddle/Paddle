@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
 
 
 def iou(box_a, box_b):
-    """Apply intersection-over-union overlap between box_a and box_b
-    """
+    """Apply intersection-over-union overlap between box_a and box_b"""
     xmin_a = min(box_a[0], box_a[2])
     ymin_a = min(box_a[1], box_a[3])
     xmax_a = max(box_a[0], box_a[2])
@@ -69,7 +70,6 @@ def nms(boxes, nms_threshold):
 
 
 class TestNMSOp(OpTest):
-
     def setUp(self):
         self.op_type = 'nms'
         self.python_api = paddle.vision.ops.nms

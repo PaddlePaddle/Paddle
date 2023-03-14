@@ -14,7 +14,8 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_mkldnn_pass.h"
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -35,19 +36,17 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   Init("fc_mkldnn_pass", graph);
 
   GraphPatternDetector gpd;
-  auto* x = gpd.mutable_pattern()
-                ->NewNode("fc_mkldnn_pass/x")
-                ->AsInput()
-                ->assert_is_op_input("fc", "Input");
   patterns::FCMKLDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
-  fc_pattern(x, true /*with bias*/);
+  // searching for fc+residual  doesn't make sense at this stage
+  fc_pattern(false /*with_residual*/);
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "Handle FC MKL-DNN pass";
     if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn"))) {
-      VLOG(3) << "do not perform fc fuse";
+      VLOG(3) << "do not enable FC MKL-DNN because it doesn't have use_mkldnn "
+                 "attribute.";
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
@@ -77,6 +76,13 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 
   AddStatis(found_fc_count);
+
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_fc_count > 0)) {
+    std::string msg_ss = "---    enabled FC MKL-DNN for " +
+                         std::to_string(found_fc_count) + " fc ops ";
+    string::PrettyLogDetail(msg_ss.c_str());
+  }
 }
 
 }  // namespace ir

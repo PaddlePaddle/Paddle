@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-from __future__ import division
-
 import numpy as np
 import math
 
@@ -40,20 +37,20 @@ class BatchSampler(Sampler):
 
 
     Args:
-        dataset(Dataset): this could be a :code:`paddle.io.Dataset`
-                implement or other python object which implemented
+        dataset(Dataset, optional): this should be an instance of a subclass of :ref:`api_paddle_io_Dataset` or
+                :ref:`api_paddle_io_IterableDataset` or other python object which implemented
                 :code:`__len__` for BatchSampler to get indices as the
-                range of :attr:`dataset` length. Default None.
-        sampler (Sampler): this could be a :code:`paddle.io.Dataset`
-                instance which implemented :code:`__iter__` to yield
+                range of :attr:`dataset` length. Default None, disabled.
+        sampler (Sampler, optional): this should be a :ref:`api_paddle_io_Sample`
+                instance which implemented :code:`__iter__` to generate
                 sample indices. :attr:`sampler` and :attr:`dataset`
                 can not be set in the same time.  If :attr:`sampler`
-                is set, :attr:`shuffle` should not be set. Default None.
-        shuffle(bool): whether to shuffle indices order before genrating
-                batch indices. Default False.
-        batch_size(int): sample indice number in a mini-batch indices.
-        drop_last(bool): whether drop the last incomplete batch dataset size
-            is not divisible by the batch size. Default False
+                is set, :attr:`dataset` should not be set. Default None, disabled.
+        shuffle(bool, optional): whether to shuffle indices order before generating
+                batch indices. Default False, don't shuffle indices before generating batch indices.
+        batch_size(int, optional): sample indice number in a mini-batch indices. default 1, each mini-batch includes 1 sample.
+        drop_last(bool, optional): whether drop the last incomplete (less than 1 mini-batch) batch dataset. Default False, keep it.
+    see :ref:`api_paddle_io_DataLoader`
 
     Returns:
         BatchSampler: an iterable object for indices iterating
@@ -95,40 +92,54 @@ class BatchSampler(Sampler):
                 print(batch_indices)
 
 
-    see `paddle.io.DataLoader`
 
     """
 
-    def __init__(self,
-                 dataset=None,
-                 sampler=None,
-                 shuffle=False,
-                 batch_size=1,
-                 drop_last=False):
+    def __init__(
+        self,
+        dataset=None,
+        sampler=None,
+        shuffle=False,
+        batch_size=1,
+        drop_last=False,
+    ):
         if dataset is None:
-            assert sampler is not None, \
-                "either dataset or sampler should be set"
-            assert isinstance(sampler, Sampler), \
-                "sampler should be a paddle.io.Sampler, but got {}".format(type(sampler))
+            assert (
+                sampler is not None
+            ), "either dataset or sampler should be set"
+            assert isinstance(
+                sampler, Sampler
+            ), "sampler should be a paddle.io.Sampler, but got {}".format(
+                type(sampler)
+            )
             assert not shuffle, "shuffle should be False when sampler is set"
             self.sampler = sampler
         else:
-            assert not isinstance(dataset, IterableDataset), \
-                "dataset should not be a paddle.io.IterableDataset"
-            assert sampler is None, \
-                "should not set both dataset and sampler"
-            assert isinstance(shuffle, bool), \
-                "shuffle should be a boolean value, but got {}".format(type(shuffle))
+            assert not isinstance(
+                dataset, IterableDataset
+            ), "dataset should not be a paddle.io.IterableDataset"
+            assert sampler is None, "should not set both dataset and sampler"
+            assert isinstance(
+                shuffle, bool
+            ), "shuffle should be a boolean value, but got {}".format(
+                type(shuffle)
+            )
             if shuffle:
                 self.sampler = RandomSampler(dataset)
             else:
                 self.sampler = SequenceSampler(dataset)
 
-        assert isinstance(batch_size, int) and batch_size > 0, \
-            "batch_size should be a positive integer, but got {}".format(batch_size)
+        assert (
+            isinstance(batch_size, int) and batch_size > 0
+        ), "batch_size should be a positive integer, but got {}".format(
+            batch_size
+        )
         self.batch_size = batch_size
-        assert isinstance(drop_last, bool), \
-            "drop_last should be a boolean value, but got {}".format(type(drop_last))
+        assert isinstance(
+            drop_last, bool
+        ), "drop_last should be a boolean value, but got {}".format(
+            type(drop_last)
+        )
         self.drop_last = drop_last
 
     def __iter__(self):
@@ -147,8 +158,7 @@ class BatchSampler(Sampler):
         return num_samples // self.batch_size
 
 
-class _InfiniteIterableSampler(object):
-
+class _InfiniteIterableSampler:
     def __init__(self, dataset, batch_size=1):
         assert isinstance(
             dataset, IterableDataset
@@ -172,22 +182,24 @@ class DistributedBatchSampler(BatchSampler):
         Dataset is assumed to be of constant size.
 
     Args:
-        dataset(paddle.io.Dataset): this could be a `paddle.io.Dataset` implement
+        dataset(Dataset): this could be an instance of subclass of :ref:`api_paddle_io_Dataset`
                      or other python object which implemented
-                     `__len__` for BatchSampler to get sample
-                     number of data source.
-        batch_size(int): sample indice number in a mini-batch indices.
+                     `__len__` for BatchSampler to get indices of samples.
+        batch_size(int): sample size of each mini-batch.
         num_replicas(int, optional): porcess number in distributed training.
             If :attr:`num_replicas` is None, :attr:`num_replicas` will be
-            retrieved from :code:`paddle.distributed.ParallenEnv`.
+            retrieved from :ref:`api_paddle_distributed_ParallelEnv` .
             Default None.
         rank(int, optional): the rank of the current process among :attr:`num_replicas`
             processes. If :attr:`rank` is None, :attr:`rank` is retrieved from
-            :code:`paddle.distributed.ParallenEnv`. Default None.
-        shuffle(bool): whther to shuffle indices order before genrating
+            :ref:`api_paddle_distributed_ParallelEnv`. Default None.
+        shuffle(bool, optional): whther to shuffle indices order before genrating
             batch indices. Default False.
-        drop_last(bool): whether drop the last incomplete batch dataset size
-            is not divisible by the batch size. Default False
+        drop_last(bool, optional): whether drop the last incomplete(less than a mini-batch) batch dataset size.
+            Default False.
+
+    Returns:
+        DistributedBatchSampler, return an iterable object for indices iterating.
 
     Examples:
         .. code-block:: python
@@ -217,36 +229,41 @@ class DistributedBatchSampler(BatchSampler):
                 break
     """
 
-    def __init__(self,
-                 dataset,
-                 batch_size,
-                 num_replicas=None,
-                 rank=None,
-                 shuffle=False,
-                 drop_last=False):
+    def __init__(
+        self,
+        dataset,
+        batch_size,
+        num_replicas=None,
+        rank=None,
+        shuffle=False,
+        drop_last=False,
+    ):
         self.dataset = dataset
 
-        assert isinstance(batch_size, int) and batch_size > 0, \
-                "batch_size should be a positive integer"
+        assert (
+            isinstance(batch_size, int) and batch_size > 0
+        ), "batch_size should be a positive integer"
         self.batch_size = batch_size
-        assert isinstance(shuffle, bool), \
-                "shuffle should be a boolean value"
+        assert isinstance(shuffle, bool), "shuffle should be a boolean value"
         self.shuffle = shuffle
-        assert isinstance(drop_last, bool), \
-                "drop_last should be a boolean number"
+        assert isinstance(
+            drop_last, bool
+        ), "drop_last should be a boolean number"
 
-        from paddle.fluid.dygraph.parallel import ParallelEnv
+        from paddle.distributed import ParallelEnv
 
         if num_replicas is not None:
-            assert isinstance(num_replicas, int) and num_replicas > 0, \
-                    "num_replicas should be a positive integer"
+            assert (
+                isinstance(num_replicas, int) and num_replicas > 0
+            ), "num_replicas should be a positive integer"
             self.nranks = num_replicas
         else:
             self.nranks = ParallelEnv().nranks
 
         if rank is not None:
-            assert isinstance(rank, int) and rank >= 0, \
-                    "rank should be a non-negative integer"
+            assert (
+                isinstance(rank, int) and rank >= 0
+            ), "rank should be a non-negative integer"
             self.local_rank = rank
         else:
             self.local_rank = ParallelEnv().local_rank
@@ -259,7 +276,7 @@ class DistributedBatchSampler(BatchSampler):
     def __iter__(self):
         num_samples = len(self.dataset)
         indices = np.arange(num_samples).tolist()
-        indices += indices[:(self.total_size - len(indices))]
+        indices += indices[: (self.total_size - len(indices))]
         assert len(indices) == self.total_size
         if self.shuffle:
             np.random.RandomState(self.epoch).shuffle(indices)
@@ -272,16 +289,21 @@ class DistributedBatchSampler(BatchSampler):
             assert last_batch_size % self.nranks == 0
             last_local_batch_size = last_batch_size // self.nranks
 
-            for i in range(self.local_rank * self.batch_size,
-                           len(indices) - last_batch_size,
-                           self.batch_size * self.nranks):
-                subsampled_indices.extend(indices[i:i + self.batch_size])
+            for i in range(
+                self.local_rank * self.batch_size,
+                len(indices) - last_batch_size,
+                self.batch_size * self.nranks,
+            ):
+                subsampled_indices.extend(indices[i : i + self.batch_size])
 
-            indices = indices[len(indices) - last_batch_size:]
+            indices = indices[len(indices) - last_batch_size :]
             subsampled_indices.extend(
-                indices[self.local_rank *
-                        last_local_batch_size:(self.local_rank + 1) *
-                        last_local_batch_size])
+                indices[
+                    self.local_rank
+                    * last_local_batch_size : (self.local_rank + 1)
+                    * last_local_batch_size
+                ]
+            )
             return subsampled_indices
 
         if self.nranks > 1:

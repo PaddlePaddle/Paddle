@@ -18,8 +18,6 @@
 
 #include <vector>
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
@@ -163,7 +161,7 @@ void AdamDenseKernel(const Context& dev_ctx,
         errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
-    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    phi::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
     skip_update_ = skip_update_vec[0];
   }
   // skip_update=true, just copy input to output, and TensorCopy will call
@@ -254,7 +252,7 @@ void AdamDenseKernel(const Context& dev_ctx,
         param.numel());
     if (!use_global_beta_pow) {
       // Update with gpu
-      UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+      UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
           beta1_,
           beta2_,
           beta1_pow.data<MPDType>(),
@@ -353,7 +351,7 @@ void MergedAdamKernel(
           param[idx]->numel());
       if (!use_global_beta_pow) {
         // Update with gpu
-        UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
+        UpdateBetaPow<MPDType><<<1, 1, 0, dev_ctx.stream()>>>(
             beta1_,
             beta2_,
             beta1_pow[idx]->data<MPDType>(),
@@ -373,7 +371,8 @@ PD_REGISTER_KERNEL(adam,
                    phi::AdamDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
@@ -386,7 +385,8 @@ PD_REGISTER_KERNEL(merged_adam,
                    phi::MergedAdamKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   // Skip beta1_pow, beta2_pow data transform
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);

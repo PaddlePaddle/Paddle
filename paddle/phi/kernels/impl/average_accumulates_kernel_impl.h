@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -48,17 +49,17 @@ void AverageAccumulatesKernel(const Context& dev_ctx,
   // int64_t old_num_accumulates = 0;
 
   auto num_updates_cpu =
-      paddle::memory::Alloc(phi::CPUPlace(), sizeof(int64_t));
+      phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t));
   int64_t* num_updates_cpu_ptr =
       reinterpret_cast<int64_t*>(num_updates_cpu->ptr());
 
   auto num_accumulates_cpu =
-      paddle::memory::Alloc(phi::CPUPlace(), sizeof(int64_t));
+      phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t));
   int64_t* num_accumulates_cpu_ptr =
       reinterpret_cast<int64_t*>(num_accumulates_cpu->ptr());
 
   auto old_num_accumulates_cpu =
-      paddle::memory::Alloc(phi::CPUPlace(), sizeof(int64_t));
+      phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t));
   int64_t* old_num_accumulates_cpu_ptr =
       reinterpret_cast<int64_t*>(old_num_accumulates_cpu->ptr());
 
@@ -84,19 +85,19 @@ void AverageAccumulatesKernel(const Context& dev_ctx,
           max_average_window));
 
   // Get inputs
-  // auto* param = ctx.Input<Tensor>("param");
-  // auto* in_sum_1 = ctx.Input<Tensor>("in_sum_1");
-  // auto* in_sum_2 = ctx.Input<Tensor>("in_sum_2");
-  // auto* in_sum_3 = ctx.Input<Tensor>("in_sum_3");
+  // auto* param = ctx.Input<phi::DenseTensor>("param");
+  // auto* in_sum_1 = ctx.Input<phi::DenseTensor>("in_sum_1");
+  // auto* in_sum_2 = ctx.Input<phi::DenseTensor>("in_sum_2");
+  // auto* in_sum_3 = ctx.Input<phi::DenseTensor>("in_sum_3");
   auto param_tensor = EigenVector<T>::Flatten(param);
   auto in_sum_1_tensor = EigenVector<T>::Flatten(in_sum_1);
   auto in_sum_2_tensor = EigenVector<T>::Flatten(in_sum_2);
   auto in_sum_3_tensor = EigenVector<T>::Flatten(in_sum_3);
 
   // Get outputs
-  // auto* out_sum_1 = ctx.Output<Tensor>("out_sum_1");
-  // auto* out_sum_2 = ctx.Output<Tensor>("out_sum_2");
-  // auto* out_sum_3 = ctx.Output<Tensor>("out_sum_3");
+  // auto* out_sum_1 = ctx.Output<phi::DenseTensor>("out_sum_1");
+  // auto* out_sum_2 = ctx.Output<phi::DenseTensor>("out_sum_2");
+  // auto* out_sum_3 = ctx.Output<phi::DenseTensor>("out_sum_3");
   dev_ctx.template Alloc<T>(out_sum_1);
   dev_ctx.template Alloc<T>(out_sum_2);
   dev_ctx.template Alloc<T>(out_sum_3);

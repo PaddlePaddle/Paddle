@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/linspace_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -39,19 +39,6 @@ __global__ void LinspaceKernelInner(
 template <typename T>
 __global__ void LinspaceSpecialKernel(T start, T* out) {
   out[0] = static_cast<T>(start);
-}
-
-template <typename T, typename Context>
-T GetValue(const Context& ctx, const DenseTensor& x) {
-  T value = static_cast<T>(0);
-  if (x.place() != CPUPlace()) {
-    DenseTensor cpu_x;
-    Copy(ctx, x, CPUPlace(), true, &cpu_x);
-    value = cpu_x.data<T>()[0];
-  } else {
-    value = x.data<T>()[0];
-  }
-  return value;
 }
 
 template <typename T, typename Context>

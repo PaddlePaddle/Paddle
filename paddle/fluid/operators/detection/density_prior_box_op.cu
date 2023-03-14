@@ -87,10 +87,10 @@ template <typename T>
 class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
-    auto* image = ctx.Input<paddle::framework::Tensor>("Image");
-    auto* boxes = ctx.Output<paddle::framework::Tensor>("Boxes");
-    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* image = ctx.Input<phi::DenseTensor>("Image");
+    auto* boxes = ctx.Output<phi::DenseTensor>("Boxes");
+    auto* vars = ctx.Output<phi::DenseTensor>("Variances");
 
     auto variances = ctx.Attr<std::vector<float>>("variances");
     auto is_clip = ctx.Attr<bool>("clip");
@@ -124,7 +124,7 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     }
     int step_average = static_cast<int>((step_width + step_height) * 0.5);
 
-    framework::Tensor h_temp;
+    phi::DenseTensor h_temp;
     T* tdata = h_temp.mutable_data<T>({num_priors * 4}, platform::CPUPlace());
     int idx = 0;
     for (size_t s = 0; s < fixed_sizes.size(); ++s) {
@@ -152,7 +152,7 @@ class DensityPriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     boxes->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
 
-    framework::Tensor d_temp;
+    phi::DenseTensor d_temp;
     framework::TensorCopy(h_temp, ctx.GetPlace(), &d_temp);
 
     // At least use 32 threads, at most 512 threads.

@@ -12,22 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
 
 class TestTruncOp(OpTest):
-
     def setUp(self):
         self.op_type = "trunc"
         self.python_api = paddle.trunc
@@ -47,7 +42,6 @@ class TestTruncOp(OpTest):
 
 
 class TestFloatTruncOp(TestTruncOp):
-
     def init_dtype_type(self):
         self.dtype = np.float32
         self.__class__.exist_fp64_check_grad = True
@@ -57,7 +51,6 @@ class TestFloatTruncOp(TestTruncOp):
 
 
 class TestIntTruncOp(TestTruncOp):
-
     def init_dtype_type(self):
         self.dtype = np.int32
         self.__class__.exist_fp64_check_grad = True
@@ -67,7 +60,6 @@ class TestIntTruncOp(TestTruncOp):
 
 
 class TestTruncAPI(unittest.TestCase):
-
     def setUp(self):
         self.shape = [20, 20]
         self.x = np.random.random((20, 20)).astype(np.float32)
@@ -91,20 +83,6 @@ class TestTruncAPI(unittest.TestCase):
         out_ref = np.trunc(self.x)
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         paddle.enable_static()
-
-    def test_api_eager(self):
-        paddle.disable_static(self.place)
-
-        with _test_eager_guard():
-            x_tensor = paddle.to_tensor(self.x)
-            out = paddle.trunc(x_tensor)
-        out_ref = np.trunc(self.x)
-        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
-        paddle.enable_static()
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_api_dygraph()
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):

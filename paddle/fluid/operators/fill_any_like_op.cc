@@ -31,23 +31,24 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     const auto &data_type = ctx.Attr<int>("dtype");
     if (data_type >= 0) {
-      kt.data_type_ = static_cast<framework::proto::VarType::Type>(data_type);
+      kt.set_dtype(phi::TransToPhiDataType(
+          static_cast<framework::proto::VarType::Type>(data_type)));
     }
     return kt;
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
+  phi::KernelKey GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   tensor.layout());
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 

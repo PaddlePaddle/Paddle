@@ -17,7 +17,8 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -47,9 +48,9 @@ template <typename T>
 class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
-    auto* anchors = ctx.Output<paddle::framework::Tensor>("Anchors");
-    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* anchors = ctx.Output<phi::DenseTensor>("Anchors");
+    auto* vars = ctx.Output<phi::DenseTensor>("Variances");
 
     auto anchor_sizes = ctx.Attr<std::vector<float>>("anchor_sizes");
     auto aspect_ratios = ctx.Attr<std::vector<float>>("aspect_ratios");
@@ -70,7 +71,7 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
     anchors->mutable_data<T>(ctx.GetPlace());
     vars->mutable_data<T>(ctx.GetPlace());
 
-    auto e_anchors = framework::EigenTensor<T, 4>::From(*anchors);
+    auto e_anchors = phi::EigenTensor<T, 4>::From(*anchors);
     for (int h_idx = 0; h_idx < feature_height; ++h_idx) {
       for (int w_idx = 0; w_idx < feature_width; ++w_idx) {
         T x_ctr = (w_idx * stride_width) + offset * (stride_width - 1);
@@ -106,11 +107,11 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    framework::Tensor var_t;
+    phi::DenseTensor var_t;
     var_t.mutable_data<T>(
         phi::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
-    auto var_et = framework::EigenTensor<T, 2>::From(var_t);
+    auto var_et = phi::EigenTensor<T, 2>::From(var_t);
     for (size_t i = 0; i < variances.size(); ++i) {
       var_et(0, i) = variances[i];
     }
@@ -119,7 +120,7 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
     auto var_dim = vars->dims();
     vars->Resize({anchor_num, static_cast<int>(variances.size())});
 
-    auto e_vars = framework::EigenMatrix<T, Eigen::RowMajor>::From(*vars);
+    auto e_vars = phi::EigenMatrix<T, Eigen::RowMajor>::From(*vars);
     e_vars = var_et.broadcast(Eigen::DSizes<int, 2>(anchor_num, 1));
 
     vars->Resize(var_dim);

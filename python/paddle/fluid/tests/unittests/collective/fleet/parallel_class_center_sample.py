@@ -12,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
+import random
 import unittest
 
-import paddle
 import numpy as np
-import random
+
+import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-from paddle import framework
 
 
 def set_random_seed(seed):
@@ -42,10 +38,13 @@ def class_center_sample_numpy(label, classes_list, num_samples):
     unique_label_per_device = []
 
     for i in range(nranks):
-        index = np.logical_and(unique_label >= class_interval[i],
-                               unique_label < class_interval[i + 1])
-        pos_class_center_per_device.append(unique_label[index] -
-                                           class_interval[i])
+        index = np.logical_and(
+            unique_label >= class_interval[i],
+            unique_label < class_interval[i + 1],
+        )
+        pos_class_center_per_device.append(
+            unique_label[index] - class_interval[i]
+        )
         unique_label_per_device.append(unique_label[index])
 
     num_samples_per_device = []
@@ -55,8 +54,9 @@ def class_center_sample_numpy(label, classes_list, num_samples):
 
     remapped_dict = {}
     for i in range(nranks):
-        for idx, v in enumerate(unique_label_per_device[i],
-                                sampled_class_interval[i]):
+        for idx, v in enumerate(
+            unique_label_per_device[i], sampled_class_interval[i]
+        ):
             remapped_dict[v] = idx
 
     remapped_label = []
@@ -67,7 +67,6 @@ def class_center_sample_numpy(label, classes_list, num_samples):
 
 
 class TestParallelClassCenterSampleOp(unittest.TestCase):
-
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         fleet.init(is_collective=True, strategy=strategy)
@@ -88,24 +87,35 @@ class TestParallelClassCenterSampleOp(unittest.TestCase):
 
         for dtype in ('int32', 'int64'):
             for _ in range(5):
-                classes_list = np.random.randint(10, 15, (nranks, ))
+                classes_list = np.random.randint(10, 15, (nranks,))
                 num_class = np.sum(classes_list)
 
-                np_label = np.random.randint(0,
-                                             num_class, (batch_size, ),
-                                             dtype=dtype)
+                np_label = np.random.randint(
+                    0, num_class, (batch_size,), dtype=dtype
+                )
                 label = paddle.to_tensor(np_label, dtype=dtype)
-                np_remapped_label, np_sampled_class_center_per_device = class_center_sample_numpy(
-                    np_label, classes_list, num_samples)
-                remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
-                    label, classes_list[rank_id], num_samples)
-                np.testing.assert_allclose(remapped_label.numpy(),
-                                           np_remapped_label)
-                np_sampled_class_index = np_sampled_class_center_per_device[
-                    rank_id]
+                (
+                    np_remapped_label,
+                    np_sampled_class_center_per_device,
+                ) = class_center_sample_numpy(
+                    np_label, classes_list, num_samples
+                )
+                (
+                    remapped_label,
+                    sampled_class_index,
+                ) = paddle.nn.functional.class_center_sample(
+                    label, classes_list[rank_id], num_samples
+                )
                 np.testing.assert_allclose(
-                    sampled_class_index.numpy()[:len(np_sampled_class_index)],
-                    np_sampled_class_index)
+                    remapped_label.numpy(), np_remapped_label
+                )
+                np_sampled_class_index = np_sampled_class_center_per_device[
+                    rank_id
+                ]
+                np.testing.assert_allclose(
+                    sampled_class_index.numpy()[: len(np_sampled_class_index)],
+                    np_sampled_class_index,
+                )
 
 
 if __name__ == '__main__':

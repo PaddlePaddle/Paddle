@@ -14,14 +14,14 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 template <typename T>
@@ -45,8 +45,8 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<LoDTensor>("X");
-    auto* offset = ctx.Input<Tensor>("Offset");
-    auto* length = ctx.Input<Tensor>("Length");
+    auto* offset = ctx.Input<phi::DenseTensor>("Offset");
+    auto* length = ctx.Input<phi::DenseTensor>("Length");
     auto* out = ctx.Output<LoDTensor>("Out");
 
     auto lod = in->lod();
@@ -85,8 +85,8 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     const int64_t* offset_data = offset->data<int64_t>();
     const int64_t* length_data = length->data<int64_t>();
-    framework::Tensor offset_cpu;
-    framework::Tensor length_cpu;
+    phi::DenseTensor offset_cpu;
+    phi::DenseTensor length_cpu;
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
@@ -140,12 +140,12 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
           static_cast<int>(lod[0][i] + offset_data[i]),
           static_cast<int>(lod[0][i] + offset_data[i] + length_data[i]));
 
-      StridedMemcpy<T>(ctx.device_context(),
-                       in_t.data<T>(),
-                       in_stride,
-                       in_t.dims(),
-                       out_stride,
-                       out->data<T>() + out_offset);
+      phi::funcs::StridedMemcpy<T>(ctx.device_context(),
+                                   in_t.data<T>(),
+                                   in_stride,
+                                   in_t.dims(),
+                                   out_stride,
+                                   out->data<T>() + out_offset);
       out_offset += length_data[i] * in_stride[0];
     }
   }
@@ -156,17 +156,15 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<LoDTensor>("X");
-    auto* offset = ctx.Input<Tensor>("Offset");
-    auto* length = ctx.Input<Tensor>("Length");
-    auto* out_grad =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* offset = ctx.Input<phi::DenseTensor>("Offset");
+    auto* length = ctx.Input<phi::DenseTensor>("Length");
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     const int64_t* offset_data = offset->data<int64_t>();
     const int64_t* length_data = length->data<int64_t>();
-    framework::Tensor offset_cpu;
-    framework::Tensor length_cpu;
+    phi::DenseTensor offset_cpu;
+    phi::DenseTensor length_cpu;
 
     if (platform::is_gpu_place(ctx.GetPlace())) {
       offset_cpu.mutable_data<T>(offset->dims(), platform::CPUPlace());
@@ -203,12 +201,12 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
             static_cast<int>(lod[0][i] + offset_data[i]),
             static_cast<int>(lod[0][i] + offset_data[i] + length_data[i]));
 
-        StridedMemcpy<T>(ctx.device_context(),
-                         out_grad_t.data<T>(),
-                         out_grad_stride,
-                         out_grad_t.dims(),
-                         x_grad_stride,
-                         x_grad_t.data<T>());
+        phi::funcs::StridedMemcpy<T>(ctx.device_context(),
+                                     out_grad_t.data<T>(),
+                                     out_grad_stride,
+                                     out_grad_t.dims(),
+                                     x_grad_stride,
+                                     x_grad_t.data<T>());
       }
     }
   }

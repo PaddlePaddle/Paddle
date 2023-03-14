@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/deformable_conv_grad_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/deformable_conv_grad_kernel_impl.h"
 
@@ -107,8 +107,8 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
                                            height,
                                            width);
 
-          paddle::platform::CudaAtomicAdd(grad_im + cur_bottom_grad_pos,
-                                          weight * cur_top_grad);
+          phi::CudaAtomicAdd(grad_im + cur_bottom_grad_pos,
+                             weight * cur_top_grad);
         }
       }
     }

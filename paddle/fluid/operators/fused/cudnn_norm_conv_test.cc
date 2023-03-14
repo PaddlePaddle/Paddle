@@ -28,7 +28,6 @@ limitations under the License. */
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace op = paddle::operators;
-using Tensor = paddle::framework::Tensor;
 
 USE_OP_ITSELF(conv2d);
 USE_OP_ITSELF(conv2d_grad);
@@ -37,7 +36,7 @@ PD_DECLARE_KERNEL(conv2d_grad, GPUDNN, ALL_LAYOUT);
 
 template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,
-                      framework::Tensor *cpu_out) {
+                      phi::DenseTensor *cpu_out) {
   T *cpu_out_ptr =
       cpu_out->mutable_data<T>(phi::make_ddim(dims), platform::CPUPlace());
 
@@ -49,8 +48,8 @@ void InitRandomTensor(const std::vector<int64_t> &dims,
 }
 
 template <typename T>
-void TransposeNchwToNhwc(const framework::Tensor &cpu_in,
-                         framework::Tensor *cpu_out) {
+void TransposeNchwToNhwc(const phi::DenseTensor &cpu_in,
+                         phi::DenseTensor *cpu_out) {
   const auto &in_dims = cpu_in.dims();
   EXPECT_EQ(cpu_in.dims().size(), 4);
 
@@ -73,8 +72,8 @@ void TransposeNchwToNhwc(const framework::Tensor &cpu_in,
 }
 
 template <typename T>
-void CheckOutput(const framework::Tensor &cpu_res,
-                 const framework::Tensor &cpu_base,
+void CheckOutput(const phi::DenseTensor &cpu_res,
+                 const phi::DenseTensor &cpu_base,
                  float diff,
                  bool is_relative_atol = false) {
   EXPECT_EQ(cpu_res.dims(), cpu_base.dims());
@@ -95,15 +94,15 @@ void CheckOutput(const framework::Tensor &cpu_res,
 
 // Use Paddle conv2d op results as baseline
 void ComputeConv2DForward(const phi::GPUContext &ctx,
-                          const Tensor &cpu_input,
-                          const Tensor &cpu_filter,
-                          Tensor *cpu_output,
+                          const phi::DenseTensor &cpu_input,
+                          const phi::DenseTensor &cpu_filter,
+                          phi::DenseTensor *cpu_output,
                           int stride,
                           int padding) {
   framework::Scope scope;
-  auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
-  auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
-  auto *output = scope.Var("Output")->GetMutable<framework::LoDTensor>();
+  auto *input = scope.Var("Input")->GetMutable<phi::DenseTensor>();
+  auto *filter = scope.Var("Filter")->GetMutable<phi::DenseTensor>();
+  auto *output = scope.Var("Output")->GetMutable<phi::DenseTensor>();
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorCopySync(cpu_input, place, input);
@@ -131,23 +130,20 @@ void ComputeConv2DForward(const phi::GPUContext &ctx,
 
 // Use Paddle conv2d_grad op results as baseline
 void ComputeConv2DBackward(const phi::GPUContext &ctx,
-                           const Tensor &cpu_input,
-                           const Tensor &cpu_filter,
-                           const Tensor &cpu_output_grad,
-                           framework::Tensor *cpu_input_grad,
-                           framework::Tensor *cpu_filter_grad,
+                           const phi::DenseTensor &cpu_input,
+                           const phi::DenseTensor &cpu_filter,
+                           const phi::DenseTensor &cpu_output_grad,
+                           phi::DenseTensor *cpu_input_grad,
+                           phi::DenseTensor *cpu_filter_grad,
                            int stride,
                            int padding,
                            int dilation) {
   framework::Scope scope;
-  auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
-  auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
-  auto *output_grad =
-      scope.Var("Output@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *input_grad =
-      scope.Var("Input@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *filter_grad =
-      scope.Var("Filter@GRAD")->GetMutable<framework::LoDTensor>();
+  auto *input = scope.Var("Input")->GetMutable<phi::DenseTensor>();
+  auto *filter = scope.Var("Filter")->GetMutable<phi::DenseTensor>();
+  auto *output_grad = scope.Var("Output@GRAD")->GetMutable<phi::DenseTensor>();
+  auto *input_grad = scope.Var("Input@GRAD")->GetMutable<phi::DenseTensor>();
+  auto *filter_grad = scope.Var("Filter@GRAD")->GetMutable<phi::DenseTensor>();
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorCopySync(cpu_input, place, input);
@@ -191,9 +187,9 @@ void ComputeConv2DBackward(const phi::GPUContext &ctx,
 }
 
 template <typename T>
-void ComputeSumAndSquareSum(const framework::Tensor &cpu_out,
-                            framework::Tensor *cpu_sum,
-                            framework::Tensor *cpu_sum_of_square) {
+void ComputeSumAndSquareSum(const phi::DenseTensor &cpu_out,
+                            phi::DenseTensor *cpu_sum,
+                            phi::DenseTensor *cpu_sum_of_square) {
   const auto &dims = cpu_out.dims();
   int64_t c = dims[3];
 
@@ -245,15 +241,15 @@ class CudnnNormConvolutionTester {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-    framework::Tensor cpu_output_base;
-    framework::Tensor cpu_sum_base;
-    framework::Tensor cpu_sum_of_square_base;
+    phi::DenseTensor cpu_output_base;
+    phi::DenseTensor cpu_sum_base;
+    phi::DenseTensor cpu_sum_of_square_base;
     BaselineForward(
         *ctx, &cpu_output_base, &cpu_sum_base, &cpu_sum_of_square_base);
 
-    framework::Tensor cpu_output;
-    framework::Tensor cpu_sum;
-    framework::Tensor cpu_sum_of_square;
+    phi::DenseTensor cpu_output;
+    phi::DenseTensor cpu_sum;
+    phi::DenseTensor cpu_sum_of_square;
     FusedForward(*ctx, &cpu_output, &cpu_sum, &cpu_sum_of_square);
 
     // Check forward correctness between baseline and results of normconv.
@@ -267,15 +263,15 @@ class CudnnNormConvolutionTester {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-    framework::Tensor cpu_input_grad_base;
-    framework::Tensor cpu_filter_nchw_grad_base;
-    framework::Tensor cpu_filter_nhwc_grad_base;
+    phi::DenseTensor cpu_input_grad_base;
+    phi::DenseTensor cpu_filter_nchw_grad_base;
+    phi::DenseTensor cpu_filter_nhwc_grad_base;
     BaselineBackward(*ctx, &cpu_input_grad_base, &cpu_filter_nchw_grad_base);
     TransposeNchwToNhwc<T>(cpu_filter_nchw_grad_base,
                            &cpu_filter_nhwc_grad_base);
 
-    framework::Tensor cpu_input_grad;
-    framework::Tensor cpu_filter_nhwc_grad;
+    phi::DenseTensor cpu_input_grad;
+    phi::DenseTensor cpu_filter_nhwc_grad;
     FusedBackward(*ctx, &cpu_input_grad, &cpu_filter_nhwc_grad);
 
     // Check backward correctness between baseline and results of normconv.
@@ -301,9 +297,9 @@ class CudnnNormConvolutionTester {
   }
 
   void BaselineForward(const phi::GPUContext &ctx,
-                       framework::Tensor *cpu_output_base,
-                       framework::Tensor *cpu_sum_base,
-                       framework::Tensor *cpu_sum_of_square_base) {
+                       phi::DenseTensor *cpu_output_base,
+                       phi::DenseTensor *cpu_sum_base,
+                       phi::DenseTensor *cpu_sum_of_square_base) {
     ComputeConv2DForward(
         ctx, cpu_input_, cpu_filter_nchw_, cpu_output_base, stride_, padding_);
     ComputeSumAndSquareSum<T>(
@@ -311,8 +307,8 @@ class CudnnNormConvolutionTester {
   }
 
   void BaselineBackward(const phi::GPUContext &ctx,
-                        framework::Tensor *cpu_input_grad_base,
-                        framework::Tensor *cpu_filter_grad_base) {
+                        phi::DenseTensor *cpu_input_grad_base,
+                        phi::DenseTensor *cpu_filter_grad_base) {
     ComputeConv2DBackward(ctx,
                           cpu_input_,
                           cpu_filter_nchw_,
@@ -326,14 +322,14 @@ class CudnnNormConvolutionTester {
 
   // get forward results of cudnn_norm_conv
   void FusedForward(const phi::GPUContext &ctx,
-                    framework::Tensor *cpu_output,
-                    framework::Tensor *cpu_sum,
-                    framework::Tensor *cpu_sum_of_square) {
-    framework::Tensor input;
-    framework::Tensor filter_nhwc;
-    framework::Tensor output;
-    framework::Tensor sum;
-    framework::Tensor sum_of_square;
+                    phi::DenseTensor *cpu_output,
+                    phi::DenseTensor *cpu_sum,
+                    phi::DenseTensor *cpu_sum_of_square) {
+    phi::DenseTensor input;
+    phi::DenseTensor filter_nhwc;
+    phi::DenseTensor output;
+    phi::DenseTensor sum;
+    phi::DenseTensor sum_of_square;
 
     auto place = ctx.GetPlace();
     paddle::framework::TensorCopySync(cpu_input_, place, &input);
@@ -364,13 +360,13 @@ class CudnnNormConvolutionTester {
   }
 
   void FusedBackward(const phi::GPUContext &ctx,
-                     framework::Tensor *cpu_input_grad,
-                     framework::Tensor *cpu_filter_grad) {
-    framework::Tensor input;
-    framework::Tensor filter_nhwc;
-    framework::Tensor output_grad;
-    framework::Tensor input_grad;
-    framework::Tensor filter_grad;
+                     phi::DenseTensor *cpu_input_grad,
+                     phi::DenseTensor *cpu_filter_grad) {
+    phi::DenseTensor input;
+    phi::DenseTensor filter_nhwc;
+    phi::DenseTensor output_grad;
+    phi::DenseTensor input_grad;
+    phi::DenseTensor filter_grad;
 
     auto place = ctx.GetPlace();
     paddle::framework::TensorCopySync(cpu_input_, place, &input);
@@ -415,12 +411,12 @@ class CudnnNormConvolutionTester {
   const int group_ = 1;
 
   // Forward input
-  framework::Tensor cpu_input_;
-  framework::Tensor cpu_filter_nchw_;
-  framework::Tensor cpu_filter_nhwc_;
+  phi::DenseTensor cpu_input_;
+  phi::DenseTensor cpu_filter_nchw_;
+  phi::DenseTensor cpu_filter_nhwc_;
 
   // Backward input
-  framework::Tensor cpu_output_grad_;
+  phi::DenseTensor cpu_output_grad_;
 };
 
 // test for fp16, kernel = 1, output_channels = input_channels
@@ -442,7 +438,7 @@ TEST(CudnnNormConvFp16, K1S1) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() < 70) {
+  if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -472,7 +468,7 @@ TEST(CudnnNormConvFp16, K3S1) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() < 70) {
+  if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -502,7 +498,7 @@ TEST(CudnnNormConvFp16, K1S1O4) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() < 70) {
+  if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3, true),
@@ -532,7 +528,7 @@ TEST(CudnnNormConvFp16, K1S2O4) {
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
       platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
 
-  if (ctx->GetComputeCapability() <= 70) {
+  if (ctx->GetComputeCapability() <= 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
                  paddle::platform::EnforceNotMet);
     ASSERT_THROW(test.CheckBackward(1e-3), paddle::platform::EnforceNotMet);

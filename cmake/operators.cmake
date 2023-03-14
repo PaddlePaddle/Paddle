@@ -26,6 +26,31 @@ function(find_register FILENAME PATTERN OUTPUT)
       PARENT_SCOPE)
 endfunction()
 
+function(find_phi_register FILENAME ADD_PATH PATTERN)
+  # set op_name to OUTPUT
+  file(READ ${FILENAME} CONTENT)
+  string(
+    REGEX
+      MATCH
+      "${PATTERN}\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z]*,[ \\\t\r\n]*[A-Z_]*"
+      register
+      "${CONTENT}")
+  if(NOT register STREQUAL "")
+    string(REPLACE "${PATTERN}(" "" register "${register}")
+    string(REPLACE "," ";" register "${register}")
+    string(REGEX REPLACE "[ \\\t\r\n]+" "" register "${register}")
+    string(REGEX REPLACE "//cuda_only" "" register "${register}")
+    list(GET register 0 kernel_name)
+    list(GET register 1 kernel_backend)
+    list(GET register 2 kernel_layout)
+
+    file(
+      APPEND ${ADD_PATH}
+      "PD_DECLARE_KERNEL(${kernel_name}, ${kernel_backend}, ${kernel_layout});\n"
+    )
+  endif()
+endfunction()
+
 function(op_library TARGET)
   # op_library is a function to create op library. The interface is same as
   # cc_library. But it handle split GPU/CPU code and link some common library
@@ -371,7 +396,22 @@ function(op_library TARGET)
   foreach(cc_src ${cc_srcs})
     # pybind USE_OP_ITSELF
     set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${cc_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
     find_register(${cc_src} "REGISTER_OPERATOR" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
+      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
+      set(TARGET ${op_name})
+      set(pybind_flag 1)
+    endif()
+
+    # pybind USE_OP_ITSELF
+    set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_register(${cc_src} "REGISTER_ACTIVATION_OP" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
       # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
@@ -408,6 +448,10 @@ function(op_library TARGET)
   # message("cu_srcs ${cu_srcs}")
   foreach(cu_src ${cu_srcs})
     set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${cu_src} ${pybind_file} "PD_REGISTER_GENERAL_KERNEL")
     find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
@@ -510,28 +554,7 @@ function(op_library TARGET)
   if(WITH_MKLDNN AND ${mkldnn_cc_srcs_len} GREATER 0)
     # Append first implemented MKLDNN activation operator
     if(${MKLDNN_FILE} STREQUAL "activation_mkldnn_op")
-      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(gelu, MKLDNN);\n")
-    elseif(${MKLDNN_FILE} STREQUAL "conv_mkldnn_op")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, S8);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, U8);\n")
-    elseif(${MKLDNN_FILE} STREQUAL "transpose_mkldnn_op")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, FP32);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, S8);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, U8);\n")
-    elseif(${MKLDNN_FILE} STREQUAL "fc_mkldnn_op")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, FP32);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, S8);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, U8);\n")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(softplus, MKLDNN);\n")
     else()
       foreach(mkldnn_src ${mkldnn_cc_srcs})
         set(op_name "")
@@ -610,4 +633,59 @@ function(register_operators)
       finish_unity_target(cu)
     endif()
   endif()
+endfunction()
+
+function(prune_pybind_h)
+  set(op_list ${OP_LIST})
+
+  list(APPEND op_list "load_combine")
+  list(APPEND op_list "tensorrt_engine")
+
+  # add fused_op in op_list
+  list(APPEND op_list "fc")
+  list(APPEND op_list "conv2d_fusion")
+  list(APPEND op_list "fusion_seqconv_eltadd_relu")
+  list(APPEND op_list "fusion_seqpool_cvm_concat")
+  list(APPEND op_list "fusion_gru")
+  list(APPEND op_list "fusion_seqexpand_concat_fc")
+  list(APPEND op_list "fusion_repeated_fc_relu")
+  list(APPEND op_list "fusion_squared_mat_sub")
+
+  # add plugin_op in op_list
+  list(APPEND op_list "anchor_generator")
+
+  file(STRINGS ${pybind_file} op_registry_list)
+
+  file(WRITE ${pybind_file_prune} "")
+  file(
+    APPEND ${pybind_file_prune}
+    "// Generated by the paddle/fluid/operators/CMakeLists.txt.  DO NOT EDIT!\n"
+  )
+
+  # add USE_OP_ITSELF for all op in op_list
+  foreach(op_name IN LISTS op_list)
+    file(APPEND ${pybind_file_prune} "USE_OP_ITSELF(${op_name});\n")
+  endforeach()
+
+  foreach(op_registry IN LISTS op_registry_list)
+    if(NOT ${op_registry} EQUAL "")
+      foreach(op_name IN LISTS op_list)
+        string(FIND ${op_registry} "(${op_name})" index1)
+        string(FIND ${op_registry} "(${op_name}," index2)
+        string(FIND ${op_registry} "USE_OP_ITSELF" index3)
+        if(((NOT ${index1} EQUAL "-1") OR (NOT ${index2} EQUAL "-1"))
+           AND (${index3} EQUAL "-1"))
+          file(APPEND ${pybind_file_prune} "${op_registry}\n")
+        endif()
+      endforeach()
+    endif()
+  endforeach()
+
+  file(WRITE ${pybind_file} "")
+  file(STRINGS ${pybind_file_prune} op_registry_list_tmp)
+  foreach(op_name IN LISTS op_registry_list_tmp)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "${op_name}\n")
+    endif()
+  endforeach()
 endfunction()

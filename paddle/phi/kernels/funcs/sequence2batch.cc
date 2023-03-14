@@ -21,9 +21,9 @@ template <typename T>
 class CopyMatrixRowsFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
-                  const paddle::framework::Tensor& src,
-                  paddle::framework::Vector<size_t> index_lod,
-                  paddle::framework::Tensor* dst,
+                  const phi::DenseTensor& src,
+                  phi::Vector<size_t> index_lod,
+                  phi::DenseTensor* dst,
                   bool is_src_index) {
     size_t* index = index_lod.data();
     auto src_dims = src.dims();

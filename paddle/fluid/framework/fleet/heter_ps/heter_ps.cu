@@ -27,12 +27,12 @@ HeterPsBase* HeterPsBase::get_instance(
     std::unordered_map<std::string, float> fleet_config,
     std::string accessor_type,
     int optimizer_type) {
+  auto* accessor_wrapper_ptr =
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
+  CommonFeatureValueAccessor* gpu_accessor =
+      ((AccessorWrapper<CommonFeatureValueAccessor>*)accessor_wrapper_ptr)
+          ->AccessorPtr();
   if (accessor_type == "CtrDymfAccessor") {
-    auto* accessor_wrapper_ptr =
-        GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
-    CommonFeatureValueAccessor* gpu_accessor =
-        ((AccessorWrapper<CommonFeatureValueAccessor>*)accessor_wrapper_ptr)
-            ->AccessorPtr();
     if (optimizer_type == 1) {
       return new HeterPs<CommonFeatureValueAccessor, SparseAdagradOptimizer>(
           capacity, resource, *gpu_accessor);
@@ -43,9 +43,20 @@ HeterPsBase* HeterPsBase::get_instance(
       return new HeterPs<CommonFeatureValueAccessor, SparseAdamSharedOptimizer>(
           capacity, resource, *gpu_accessor);
     }
+  } else if (accessor_type == "DownpourCtrDymfAccessor" ||
+             accessor_type == "DownpourCtrDoubleDymfAccessor") {
+    if (optimizer_type == 1) {  // adagrad
+      return new HeterPs<CommonFeatureValueAccessor, SparseAdagradOptimizer>(
+          capacity, resource, *gpu_accessor);
+    } else if (optimizer_type == 2) {  // std_adagrad
+      return new HeterPs<CommonFeatureValueAccessor, StdAdagradOptimizer>(
+          capacity, resource, *gpu_accessor);
+    }
   } else {
-    VLOG(0) << " HeterPsBase get_instance Warning: now only support "
-               "CtrDymfAccessor, but get "
+    VLOG(0) << "HeterPsBase get_instance Warning: now only support "
+               "CtrDymfAccessor, DownpourCtrDymfAccessor or "
+               "DownpourCtrDoubleDymfAccessor, "
+               "but get "
             << accessor_type;
   }
 }
@@ -54,7 +65,7 @@ template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 HeterPs<GPUAccessor, GPUOptimizer>::HeterPs(
     size_t capacity,
     std::shared_ptr<HeterPsResource> resource,
-    GPUAccessor& gpu_accessor) {
+    GPUAccessor& gpu_accessor) {  // NOLINT
   comm_ = std::make_shared<HeterComm<FeatureKey, float*, float*, GPUAccessor>>(
       capacity, resource, gpu_accessor);
   opt_ = GPUOptimizer<GPUAccessor>(gpu_accessor);
@@ -122,8 +133,9 @@ template <typename GPUAccessor, template <typename T> class GPUOptimizer>
 void HeterPs<GPUAccessor, GPUOptimizer>::set_nccl_comm_and_size(
     const std::vector<ncclComm_t>& inner_comms,
     const std::vector<ncclComm_t>& inter_comms,
-    int comm_size) {
-  comm_->set_nccl_comm_and_size(inner_comms, inter_comms, comm_size);
+    int comm_size,
+    int rank_id) {
+  comm_->set_nccl_comm_and_size(inner_comms, inter_comms, comm_size, rank_id);
 }
 
 template <typename GPUAccessor, template <typename T> class GPUOptimizer>

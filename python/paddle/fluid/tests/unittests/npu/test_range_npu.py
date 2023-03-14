@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -26,7 +24,6 @@ paddle.enable_static()
 
 
 class TestRangeOp(OpTest):
-
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
@@ -38,13 +35,13 @@ class TestRangeOp(OpTest):
         self.inputs = {
             'Start': np.array([self.case[0]]).astype(self.dtype),
             'End': np.array([self.case[1]]).astype(self.dtype),
-            'Step': np.array([self.case[2]]).astype(self.dtype)
+            'Step': np.array([self.case[2]]).astype(self.dtype),
         }
 
         self.outputs = {
-            'Out':
-            np.arange(self.case[0], self.case[1],
-                      self.case[2]).astype(self.dtype)
+            'Out': np.arange(self.case[0], self.case[1], self.case[2]).astype(
+                self.dtype
+            )
         }
 
     def init_config(self):
@@ -56,49 +53,42 @@ class TestRangeOp(OpTest):
 
 
 class TestFloatRangeOpCase0(TestRangeOp):
-
     def init_config(self):
         self.dtype = np.float32
         self.case = (0, 5, 1)
 
 
 class TestInt32RangeOpCase0(TestRangeOp):
-
     def init_config(self):
         self.dtype = np.int32
         self.case = (0, 5, 2)
 
 
 class TestInt32RangeOpCase1(TestRangeOp):
-
     def init_config(self):
         self.dtype = np.int32
         self.case = (10, 1, -2)
 
 
 class TestInt32RangeOpCase2(TestRangeOp):
-
     def init_config(self):
         self.dtype = np.int32
         self.case = (-1, -10, -2)
 
 
 class TestInt64RangeOpCase0(TestRangeOp):
-
     def init_config(self):
         self.dtype = np.int64
         self.case = (0, 5, 2)
 
 
 class TestInt64RangeOpCase1(TestRangeOp):
-
     def init_config(self):
         self.dtype = np.int64
         self.case = (10, 1, -2)
 
 
 class TestInt64RangeOpCase2(TestRangeOp):
-
     def init_config(self):
         self.dtype = np.int64
         self.case = (-1, -10, -2)

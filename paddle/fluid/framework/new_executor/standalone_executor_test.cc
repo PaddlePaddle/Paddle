@@ -63,8 +63,8 @@ USE_OP_ITSELF(memcpy_d2h);
 USE_OP_ITSELF(fetch_v2);
 
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(uniform_random_raw, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(uniform_random, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(uniform_raw, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(uniform, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(transpose, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(reshape, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(split, GPU, ALL_LAYOUT);
@@ -140,29 +140,31 @@ ProgramDesc GetLmMainProgram() {
   return main_prog;
 }
 
-// TEST(StandaloneExecutor, run) {
-//   auto place = platform::CUDAPlace(0);
-//   ProgramDesc test_prog = load_from_file("lm_startup_program");
-//   ProgramDesc main_prog = GetLmMainProgram();
+TEST(StandaloneExecutor, run) {
+  auto place = platform::CUDAPlace(0);
+  ProgramDesc startup_prog = load_from_file("lm_startup_program");
+  ProgramDesc main_prog = GetLmMainProgram();
 
-//   Scope scope;
-//   StandaloneExecutor exec(place, test_prog, main_prog, &scope);
-//   exec.Run({}, {}, {});
-//   auto start = std::chrono::steady_clock::now();
+  Scope scope;
+  StandaloneExecutor startup_exec(place, startup_prog);
+  startup_exec.Run(&scope, {}, {});
+  StandaloneExecutor exec(place, main_prog);
+  exec.Run(&scope, {}, {});
+  auto start = std::chrono::steady_clock::now();
 
-//   for (size_t i = 0; i < 10; ++i) {
-//     if (i % 200 == 0) {
-//       std::cout << i << std::endl;
-//     }
+  for (size_t i = 0; i < 10; ++i) {
+    if (i % 200 == 0) {
+      std::cout << i << std::endl;
+    }
 
-//     exec.Run({}, {}, {});
-//   }
+    exec.Run(&scope, {}, {});
+  }
 
-//   auto end = std::chrono::steady_clock::now();
-//   std::chrono::duration<double> diff = end - start;
+  auto end = std::chrono::steady_clock::now();
+  std::chrono::duration<double> diff = end - start;
 
-//   std::cout << "time cost " << diff.count() << std::endl;
-// }
+  std::cout << "time cost " << diff.count() << std::endl;
+}
 
 TEST(InterpreterCore, skip_gc_vars) {
   auto place = platform::CUDAPlace(0);
@@ -186,8 +188,11 @@ TEST(InterpreterCore, skip_gc_vars) {
                                    "elementwise_add_0.tmp_0",
                                    "tmp_0"};
 
-  std::shared_ptr<InterpreterCore> main_core =
-      CreateInterpreterCore(place, main_prog, &scope, {}, skip_gc_vars);
+  interpreter::ExecutionConfig execution_config;
+  execution_config.skip_gc_vars = skip_gc_vars;
+
+  std::shared_ptr<InterpreterCore> main_core = CreateInterpreterCore(
+      place, main_prog, &scope, /*fetch_names=*/{}, execution_config);
 
   auto check_gc_result =
       [](Scope& scope, std::set<std::string>& vars, bool is_skip_gc) {
@@ -197,7 +202,7 @@ TEST(InterpreterCore, skip_gc_vars) {
         auto* local_scope = scope.kids().back();
         for (const std::string& var_name : vars) {
           ASSERT_EQ(local_scope->FindVar(var_name)
-                        ->GetMutable<LoDTensor>()
+                        ->GetMutable<phi::DenseTensor>()
                         ->IsInitialized(),
                     is_skip_gc);
         }
@@ -214,7 +219,7 @@ TEST(InterpreterCore, skip_gc_vars) {
 
 void TestShareWorkQueue(const ProgramDesc& prog,
                         const std::vector<std::string>& feed_names,
-                        const std::vector<LoDTensor>& feed_tensors,
+                        const std::vector<phi::DenseTensor>& feed_tensors,
                         const std::vector<std::string>& fetch_names,
                         const std::vector<float>& fetch_results) {
   const platform::CPUPlace place = platform::CPUPlace();
@@ -231,7 +236,7 @@ void TestShareWorkQueue(const ProgramDesc& prog,
     FetchList fetch_list = core->Run(feed_names, feed_tensors);
     for (size_t i = 0; i < fetch_list.size(); ++i) {
       const float* fetch_data =
-          PADDLE_GET_CONST(LoDTensor, fetch_list[i]).data<float>();
+          PADDLE_GET_CONST(phi::DenseTensor, fetch_list[i]).data<float>();
       ASSERT_FLOAT_EQ(*fetch_data, fetch_results.at(i));
     }
   };
@@ -264,8 +269,8 @@ TEST(InterpreterCore, workqueue_multiplexing) {
   phi::DDim dims = phi::make_ddim({2, 2});
   const platform::CPUPlace place = platform::CPUPlace();
 
-  LoDTensor tensor_a = LoDTensor();
-  LoDTensor tensor_b = LoDTensor();
+  phi::DenseTensor tensor_a = phi::DenseTensor();
+  phi::DenseTensor tensor_b = phi::DenseTensor();
 
   std::copy_n(data_a, 4, tensor_a.mutable_data<float>(dims, place));
   std::copy_n(data_b, 4, tensor_b.mutable_data<float>(dims, place));

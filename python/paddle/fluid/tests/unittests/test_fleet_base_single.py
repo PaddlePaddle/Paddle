@@ -12,26 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import os
+
+import numpy as np
 
 cuda_visible_devices = os.getenv('CUDA_VISIBLE_DEVICES')
 if cuda_visible_devices is None or cuda_visible_devices == "":
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 else:
     os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices.split(',')[0]
+import unittest
+
 import paddle
 import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
-import unittest
 import paddle.nn as nn
 
 
 class LinearNet(nn.Layer):
-
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear1 = nn.Linear(10, 10)
         self._linear2 = nn.Linear(10, 1)
 
@@ -40,7 +40,6 @@ class LinearNet(nn.Layer):
 
 
 class TestFleetDygraphSingle(unittest.TestCase):
-
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
@@ -53,8 +52,9 @@ class TestFleetDygraphSingle(unittest.TestCase):
 
         layer = LinearNet()
         loss_fn = nn.MSELoss()
-        adam = paddle.optimizer.Adam(learning_rate=0.001,
-                                     parameters=layer.parameters())
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=layer.parameters()
+        )
 
         adam = fleet.distributed_optimizer(adam)
         dp_layer = fleet.distributed_model(layer)
@@ -69,14 +69,13 @@ class TestFleetDygraphSingle(unittest.TestCase):
 
 
 class TestFleetBaseSingleRunCollective(unittest.TestCase):
-
     def setUp(self):
         pass
 
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
-            "y": np.random.randint(2, size=(128, 1)).astype('int64')
+            "y": np.random.randint(2, size=(128, 1)).astype('int64'),
         }
 
     def test_single_run_collective_minimize(self):
@@ -84,9 +83,11 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
         input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-        fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
-        prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
-        cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+        fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+        prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=input_y, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         fleet.init(is_collective=True)
@@ -94,8 +95,11 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(avg_cost)
 
-        place = fluid.CUDAPlace(
-            0) if paddle.fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        place = (
+            fluid.CUDAPlace(0)
+            if paddle.fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
 
         exe = fluid.Executor(place)
         exe.run(paddle.static.default_startup_program())
@@ -106,14 +110,13 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
 
 
 class TestFleetBaseSingleRunPS(unittest.TestCase):
-
     def setUp(self):
         pass
 
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
-            "y": np.random.randint(2, size=(128, 1)).astype('int64')
+            "y": np.random.randint(2, size=(128, 1)).astype('int64'),
         }
 
     def test_single_run_ps_minimize(self):
@@ -121,9 +124,11 @@ class TestFleetBaseSingleRunPS(unittest.TestCase):
         input_x = paddle.static.data(name="x", shape=[-1, 32], dtype='float32')
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-        fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
-        prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
-        cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+        fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+        prediction = paddle.static.nn.fc(x=fc_1, size=2, activation='softmax')
+        cost = paddle.nn.functional.cross_entropy(
+            input=prediction, label=input_y, reduction='none', use_softmax=False
+        )
         avg_cost = paddle.mean(x=cost)
 
         fleet.init()
@@ -140,11 +145,15 @@ class TestFleetBaseSingleRunPS(unittest.TestCase):
             exe.run(paddle.static.default_startup_program())
             step = 10
             for i in range(step):
-                cost_val = exe.run(program=fluid.default_main_program(),
-                                   feed=self.gen_data(),
-                                   fetch_list=[avg_cost.name])
-                print("worker_index: %d, step%d cost = %f" %
-                      (fleet.worker_index(), i, cost_val[0]))
+                cost_val = exe.run(
+                    program=fluid.default_main_program(),
+                    feed=self.gen_data(),
+                    fetch_list=[avg_cost.name],
+                )
+                print(
+                    "worker_index: %d, step%d cost = %f"
+                    % (fleet.worker_index(), i, cost_val[0])
+                )
 
 
 if __name__ == "__main__":

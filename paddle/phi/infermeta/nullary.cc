@@ -32,7 +32,7 @@ void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
           0,
           phi::errors::InvalidArgument(
               "Each value of attribute 'shape' is expected to be no less "
-              "than 0. But recieved: shape[%u] = %d; shape = [%s].",
+              "than 0. But received: shape[%u] = %d; shape = [%s].",
               i,
               data[i],
               phi::make_ddim(data)));
@@ -73,12 +73,12 @@ void EyeInferMeta(const Scalar& num_rows,
   out->set_dtype(dtype);
 }
 
-void GaussianRandomInferMeta(const IntArray& shape,
-                             float mean,
-                             float std,
-                             int seed,
-                             DataType dtype,
-                             MetaTensor* out) {
+void GaussianInferMeta(const IntArray& shape,
+                       float mean,
+                       float std,
+                       int seed,
+                       DataType dtype,
+                       MetaTensor* out) {
   auto out_dims = phi::make_ddim(shape.GetData());
   out->set_dims(out_dims);
   out->set_dtype(dtype);
@@ -112,11 +112,6 @@ void RandintInferMeta(
                               high));
 
   auto& shape_vector = shape.GetData();
-  PADDLE_ENFORCE_EQ(
-      shape_vector.empty(),
-      false,
-      errors::InvalidArgument("The shape information should not be empty, it "
-                              "must be set by Attr(shape)."));
 
   std::vector<int64_t> tensor_shape;
   tensor_shape.reserve(shape_vector.size());

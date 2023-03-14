@@ -13,7 +13,7 @@
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
-#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
@@ -28,8 +28,8 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& fetch_names) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
-
   auto core = GetInterpreterCore(scope, prog_, feed_names, fetch_names, false);
+
   VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
   return core->Run(feed_names);
 }
@@ -37,7 +37,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 framework::interpreter::CostInfo StandaloneExecutor::DryRun(
     Scope* scope,
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors) {
+    const std::vector<phi::DenseTensor>& feed_tensors) {
   auto core = GetInterpreterCore(scope, prog_, feed_names, {}, true);
 
   return core->DryRun(feed_names, feed_tensors);
@@ -71,11 +71,7 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
     if (add_fetch_op) {
       core = CreateInterpreterCore(place_, prog, scope, fetch_names);
     } else {
-      core = std::make_shared<InterpreterCore>(
-          place_,
-          prog.Block(0),
-          /*skip_gc_vars=*/std::set<std::string>(),
-          scope);
+      core = std::make_shared<InterpreterCore>(place_, prog.Block(0), scope);
     }
     interpretercores_.emplace(oss.str(), core);
     return core;

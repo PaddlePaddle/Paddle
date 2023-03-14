@@ -15,12 +15,10 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_as_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
-
-using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 static __global__ void sequence_expand_as_kernel(const T *in_data,
@@ -67,11 +65,10 @@ static __global__ void sequence_expand_as_grad_kernel(
 
 template <typename T>
 struct SequenceExpandAsFunctor<phi::GPUContext, T> {
-  void operator()(
-      const phi::GPUContext &context,
-      const LoDTensor &x,
-      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
-      LoDTensor *out) {
+  void operator()(const phi::GPUContext &context,
+                  const phi::DenseTensor &x,
+                  const phi::Vector<size_t> &ref_lod, /*expand referenced lod*/
+                  phi::DenseTensor *out) {
     int height = x.dims()[0];
     int width = phi::product(x.dims()) / height;
 
@@ -86,7 +83,7 @@ struct SequenceExpandAsFunctor<phi::GPUContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(block_x);
-    paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
+    phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
     sequence_expand_as_kernel<<<grid_size, block_size, 0, context.stream()>>>(
         x.data<T>(),
         mixv_ref_lod.CUDAData(context.GetPlace()),
@@ -99,9 +96,9 @@ struct SequenceExpandAsFunctor<phi::GPUContext, T> {
 template <typename T>
 struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext &context,
-                  const LoDTensor &dout,
-                  const framework::Vector<size_t> &ref_lod, /*expand based lod*/
-                  LoDTensor *dx) {
+                  const phi::DenseTensor &dout,
+                  const phi::Vector<size_t> &ref_lod, /*expand based lod*/
+                  phi::DenseTensor *dx) {
     int height = dx->dims()[0];
     int width = phi::product(dx->dims()) / height;
 
@@ -116,7 +113,7 @@ struct SequenceExpandAsGradFunctor<phi::GPUContext, T> {
 
     dim3 block_size(thread_x);
     dim3 grid_size(block_x);
-    paddle::framework::MixVector<size_t> mixv_ref_lod(&ref_lod);
+    phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
     sequence_expand_as_grad_kernel<<<grid_size,
                                      block_size,
                                      0,

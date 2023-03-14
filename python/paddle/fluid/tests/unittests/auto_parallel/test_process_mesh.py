@@ -13,16 +13,21 @@
 # limitations under the License
 
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
 import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.static as static
-from paddle.distributed.fleet import auto
-from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
-from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.auto_parallel.dist_context import (
+    get_default_distributed_context,
+)
+from paddle.distributed.auto_parallel.process_mesh import (
+    ProcessMesh,
+    compute_compatible_process_mesh,
+    merge_process_meshes,
+)
 
 paddle.enable_static()
 
@@ -33,29 +38,33 @@ sequence_len = 512
 
 
 class MLPLayer(nn.Layer):
-
-    def __init__(self,
-                 hidden_size=1024,
-                 intermediate_size=4 * 1024,
-                 dropout_ratio=0.1,
-                 initializer_range=0.02):
-        super(MLPLayer, self).__init__()
+    def __init__(
+        self,
+        hidden_size=1024,
+        intermediate_size=4 * 1024,
+        dropout_ratio=0.1,
+        initializer_range=0.02,
+    ):
+        super().__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
-        param_initializer = nn.initializer.Normal(mean=0.0,
-                                                  std=initializer_range)
+        param_initializer = nn.initializer.Normal(
+            mean=0.0, std=initializer_range
+        )
 
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.linear0 = nn.Linear(
             d_model,
             dim_feedforward,
             weight_attr=paddle.ParamAttr(initializer=param_initializer),
-            bias_attr=None)
+            bias_attr=None,
+        )
         self.linear1 = nn.Linear(
             dim_feedforward,
             d_model,
             weight_attr=paddle.ParamAttr(initializer=param_initializer),
-            bias_attr=None)
+            bias_attr=None,
+        )
 
     def forward(self, input):
         out = self.norm(input)
@@ -66,7 +75,6 @@ class MLPLayer(nn.Layer):
 
 
 class TestProcessMesh(unittest.TestCase):
-
     def test_construction(self):
         mesh = [[0, 1, 2], [3, 4, 5]]
         process_mesh = ProcessMesh(mesh, dim_names=["x", "y"])
@@ -101,21 +109,31 @@ class TestProcessMesh(unittest.TestCase):
         self.assertEqual(sub_process_mesh4.dim_names, ["d0"])
         self.assertEqual(sub_process_mesh4.ndim, 1)
 
+        sub_process_mesh5 = sub_process_mesh3[0]
+        self.assertEqual(sub_process_mesh5.shape, [1])
+        self.assertEqual(sub_process_mesh5.process_ids, [1])
+        self.assertEqual(sub_process_mesh5.dim_names, ["d0"])
+        self.assertEqual(sub_process_mesh5.ndim, 1)
+
     def test_context_manager(self):
         mesh = np.array([1, 2, 3, 4])
-        input = static.data(name="input",
-                            shape=[batch_size, sequence_len, hidden_size],
-                            dtype='float32')
-        label = static.data(name="label",
-                            shape=[batch_size, sequence_len, 1],
-                            dtype='float32')
+        input = static.data(
+            name="input",
+            shape=[batch_size, sequence_len, hidden_size],
+            dtype='float32',
+        )
+        label = static.data(
+            name="label", shape=[batch_size, sequence_len, 1], dtype='float32'
+        )
 
-        mlp = MLPLayer(hidden_size=hidden_size,
-                       intermediate_size=4 * hidden_size,
-                       dropout_ratio=0.1,
-                       initializer_range=0.02)
+        mlp = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            dropout_ratio=0.1,
+            initializer_range=0.02,
+        )
 
-        with ProcessMesh(mesh, "d"):
+        with ProcessMesh(mesh, ["d"]):
             out = mlp(input)
 
         default_program = paddle.fluid.default_main_program()
@@ -124,15 +142,88 @@ class TestProcessMesh(unittest.TestCase):
         for block in default_program.blocks:
             for tensor in block.vars.values():
                 dist_tensor = default_dist_context.get_dist_tensor_for_program(
-                    tensor)
+                    tensor
+                )
                 if dist_tensor is not None:
-                    self.assertEqual(dist_tensor.dist_attr.process_mesh,
-                                     ProcessMesh(mesh))
+                    self.assertEqual(
+                        dist_tensor.dist_attr.process_mesh, ProcessMesh(mesh)
+                    )
             for op in block.ops:
                 dist_op = default_dist_context.get_dist_op_for_program(op)
                 if dist_op is not None:
-                    self.assertEqual(dist_op.dist_attr.process_mesh,
-                                     ProcessMesh(mesh))
+                    self.assertEqual(
+                        dist_op.dist_attr.process_mesh, ProcessMesh(mesh)
+                    )
+
+    def test_compute_compatible_process_mesh(self):
+        process_mesh1 = ProcessMesh(
+            [[0, 1, 2], [3, 4, 5]], dim_names=["x", "y"]
+        )
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [process_mesh1, None]
+        )
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [None, process_mesh1]
+        )
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+
+        process_mesh2 = ProcessMesh([[0, 1, 2], [3, 4, 5]])
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+        self.assertEqual(compatible_process_mesh, process_mesh2)
+
+        process_mesh2 = ProcessMesh([[0, 1, 2, 3, 4, 5]])
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+
+        process_mesh2 = ProcessMesh([[0, 1, 2]])
+        compatible_process_mesh = compute_compatible_process_mesh(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(compatible_process_mesh, process_mesh1)
+
+    def test_merge_process_meshes(self):
+        process_mesh1 = ProcessMesh(
+            [[0, 1, 2], [3, 4, 5]], dim_names=["x", "y"]
+        )
+        merged_process_mesh = merge_process_meshes([process_mesh1, None])
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+        merged_process_mesh = merge_process_meshes([None, process_mesh1])
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+
+        merged_process_mesh = merge_process_meshes(
+            [process_mesh1, paddle.fluid.core.ProcessMesh()]
+        )
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+        merged_process_mesh = merge_process_meshes(
+            [paddle.fluid.core.ProcessMesh(), process_mesh1]
+        )
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+
+        process_mesh2 = ProcessMesh([[0, 1, 2], [3, 4, 5]])
+        merged_process_mesh = merge_process_meshes(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+
+        process_mesh2 = ProcessMesh([[0, 1, 2]])
+        merged_process_mesh = merge_process_meshes(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
+
+        process_mesh2 = ProcessMesh([[6, 7]])
+        merged_process_mesh = merge_process_meshes(
+            [process_mesh1, process_mesh2]
+        )
+        self.assertEqual(
+            merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5, 6, 7])
+        )
 
 
 if __name__ == "__main__":
