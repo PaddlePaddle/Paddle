@@ -432,7 +432,9 @@ class PartialProgramLayer:
         return _param_grad_names(self._train_program.desc, self._params)
 
     def get_forward_end_op_idx(self, program):
-        return self._forward_end_index_map[_hash_with_id(program, self)]
+        return self._forward_end_index_map[
+            paddle.utils._hash_with_id(program, self)
+        ]
 
     @LazyInitialized
     def _out_grad_names(self):
@@ -649,11 +651,12 @@ class PartialProgramLayer:
                 program, start_idx = self._hooker.after_append_backward(
                     program, start_idx
                 )
-
-            self.prepare_gradient_aggregation(start_idx, main_program, program)
+            self.prepare_gradient_aggregation(
+                start_idx + 1, main_program, program
+            )
 
         self._forward_end_index_map[
-            _hash_with_id(program, self)
+            paddle.utils._hash_with_id(program, self)
         ] = start_idx - len(self._outputs.tolist())
         return program
 
@@ -1156,5 +1159,4 @@ def add_build_strategy_for(
         builded_program = paddle.static.Program()
         for var in program.block(0).vars.values():
             builded_program.block(0)._clone_variable(var, False)
-
     return builded_program

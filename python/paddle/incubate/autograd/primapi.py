@@ -246,7 +246,6 @@ def to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
         raise TypeError(
             f"Expect block or sequence of blocks, but got {type(blocks)}."
         )
-
     if not isinstance(blacklist, (set, frozenset)):
         raise TypeError(
             f'Expected type of blacklisst is set|frozenset, but got {type(blacklist)}.'
@@ -270,6 +269,5 @@ def to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
         else:
             filter_ = lambda x: True
         primx._lower_composite(blocks, filter_)
-
         replace_ops = prim_config["composite_ops_record"]
         print(f"Lowering composite forward ops finish: {replace_ops}")
