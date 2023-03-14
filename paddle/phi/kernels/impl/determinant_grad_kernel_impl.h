@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
@@ -24,7 +25,6 @@
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
-
 namespace phi {
 namespace detail {
 
@@ -33,11 +33,12 @@ struct FoundZeroFunctor {
   FoundZeroFunctor(const T* x, int64_t numel, bool* res)
       : x_(x), numel_(numel), res_(res) {}
   HOSTDEVICE void operator()(size_t idx) const {
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     if (*res_ || idx >= static_cast<size_t>(numel_)) {
       // founded zero number
       return;
     }
-    *res_ = (x_[idx] == static_cast<T>(0));
+    *res_ = (x_[idx] == static_cast<T>(static_cast<MPType>(0));
   }
   const T* x_;
   int64_t numel_;
