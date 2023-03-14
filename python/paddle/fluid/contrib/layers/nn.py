@@ -632,8 +632,9 @@ def partial_sum(input, start_index=0, length=-1):
         import numpy as np
         import paddle
         paddle.enable_static()
-        x = paddle.randn(name="x", shape=[2, 3], dtype="float32")
-        y = paddle.randn(name="y", shape=[2, 3], dtype="float32")
+
+        x = paddle.static(name="x", shape=[2, 3], dtype="float32")
+        y = paddle.static(name="y", shape=[2, 3], dtype="float32")
         sum = fluid.contrib.layers.partial_sum([x,y], start_index=0, length=2)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
