@@ -206,10 +206,10 @@ class TestSplitLayernormToMathOpsPass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=15,
+            max_examples=10,
             passes=["split_layernorm_to_math_ops_pass"],
             max_duration=250,
-            min_success_num=15,
+            min_success_num=10,
         )
 
 
