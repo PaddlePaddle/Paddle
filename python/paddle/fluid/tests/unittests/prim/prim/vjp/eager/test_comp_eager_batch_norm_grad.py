@@ -22,28 +22,9 @@ from paddle.fluid import core
 
 np.random.seed(2023)
 
-SUB_TOLERANCE = {
-    "float16": {
-        "forward": {"rtol": 1e-2, "atol": 1e-2},
-        "backward": {"rtol": 1e-2, "atol": 1e-2},
-        "prim_backward": {"rtol": 1e-2, "atol": 1e-2},
-    },
-    "float32": {
-        "forward": {"rtol": 1e-5, "atol": 1e-5},
-        "backward": {"rtol": 1e-5, "atol": 1e-5},
-        "prim_backward": {"rtol": 1e-5, "atol": 1e-5},
-    },
-    "float64": {
-        "forward": {"rtol": 1e-13, "atol": 1e-13},
-        "backward": {"rtol": 1e-13, "atol": 1e-13},
-        "prim_backward": {"rtol": 1e-13, "atol": 1e-13},
-    },
-}
-
 
 class Arg:
     dout = None
-    mode = "all"
 
 
 def generate_data(shape, dtype="float32"):
@@ -88,14 +69,6 @@ class Attr:
     def set_use_global_stats(self, use_global_stats) -> None:
         self.use_global_stats = use_global_stats
         return
-
-    def get_rtol(self, flag):
-        rtol = SUB_TOLERANCE[self.dtype][flag].get("rtol")
-        return rtol
-
-    def get_atol(self, flag):
-        atol = SUB_TOLERANCE[self.dtype][flag].get("atol")
-        return atol
 
 
 attrs = Attr()
@@ -262,8 +235,8 @@ class TestCompositeBatchNorm(unittest.TestCase):
         np.testing.assert_allclose(
             expect,
             actual,
-            rtol=attrs.get_rtol("backward"),
-            atol=attrs.get_atol("backward"),
+            rtol=1e-5,
+            atol=1e-5,
         )
 
     def test_backward_prim_dygraph_vjp(self):
