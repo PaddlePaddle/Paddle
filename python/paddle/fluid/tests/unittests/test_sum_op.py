@@ -352,7 +352,7 @@ class TestSumBF16Op(OpTest):
 
     def test_check_output(self):
         # new dynamic graph mode does not support unit16 type
-        self.check_output(check_dygraph=False, atol=0.1)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         # new dynamic graph mode does not support unit16 type
