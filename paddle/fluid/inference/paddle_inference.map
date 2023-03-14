@@ -68,6 +68,7 @@
 			*paddle::framework::InterpreterCore*;
 			*paddle::framework::Executor*;
 			*paddle::framework::proto*;
+			*paddle::framework::InitExtension*;
 		};
 
 		/* The following symbols need to reconsider. */
