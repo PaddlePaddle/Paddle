@@ -752,6 +752,7 @@
     param: [x, y]
   kernel :
     func : maximum_grad
+  composite : maximum_grad(x, y, out_grad, axis, x_grad, y_grad)
 
 - backward_op : mean_all_grad
   forward : mean_all(Tensor x) -> Tensor(out)
@@ -1159,12 +1160,14 @@
   args : (Tensor[] out_grad, Scalar axis = -1)
   output : Tensor(x_grad)
   invoke : concat( out_grad, axis)
+  composite : split_grad(out_grad, axis, x_grad)
 
 - backward_op : split_with_num_grad
   forward : split_with_num (Tensor x, int num, Scalar axis) -> Tensor[](out)
   args : (Tensor[] out_grad, Scalar axis = -1)
   output : Tensor(x_grad)
   invoke : concat( out_grad, axis)
+  composite : split_grad(out_grad, axis, x_grad)
 
 - backward_op : squared_l2_norm_grad
   forward : squared_l2_norm(Tensor x) -> Tensor(out)

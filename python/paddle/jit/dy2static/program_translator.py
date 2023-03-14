@@ -19,7 +19,7 @@ import threading
 import warnings
 import weakref
 
-from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+from paddle.amp.auto_cast import _in_amp_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import layers
@@ -39,7 +39,7 @@ from .origin_info import (
     create_and_update_origin_info_map,
     update_op_callstack_with_origin_info,
 )
-from .partial_program import partial_program_from
+from .partial_program import PartialProgramLayerHook, partial_program_from
 from .utils import (
     ALREADY_D2S,
     ast_to_func,
@@ -194,7 +194,7 @@ class CacheKey:
         input_args_with_spec,
         input_kwargs_with_spec,
         class_instance,
-        **kwargs
+        **kwargs,
     ):
         """
         Initializes a cache key.
@@ -568,7 +568,7 @@ class StaticFunction:
             self._class_instance,
             **self._kwargs,
             with_hook=with_hook,
-            is_train=is_train
+            is_train=is_train,
         )
 
         # 3. check whether hit the cache or build a new program for the input arguments
@@ -674,7 +674,7 @@ class StaticFunction:
                 concrete_program, _ = self.get_concrete_program(
                     *desired_input_spec,
                     with_hook=with_hook,
-                    is_train=self._is_train_mode()
+                    is_train=self._is_train_mode(),
                 )
                 return concrete_program
             else:
@@ -946,7 +946,7 @@ class ConcreteProgram:
         function,
         main_program,
         startup_program=None,
-        **kwargs
+        **kwargs,
     ):
         self.inputs = inputs
         self.outputs = outputs
@@ -955,13 +955,6 @@ class ConcreteProgram:
         self.parameters = parameters
         self.function = function
         self.kwargs = kwargs
-
-    @switch_to_static_graph
-    def _to_prim(self):
-        # TODO(Aurelius84): Fix this cycle import problem
-        from paddle.incubate.autograd.primapi import to_prim
-
-        to_prim(self.main_program.blocks)
 
     @staticmethod
     @switch_to_static_graph
@@ -1056,7 +1049,7 @@ class ConcreteProgram:
             function=dygraph_function,
             main_program=main_program,
             startup_program=startup_program,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -1159,7 +1152,7 @@ class ProgramCache:
                 input_spec=cache_key.input_args_with_spec,
                 input_kwargs_spec=cache_key.input_kwargs_with_spec,
                 class_instance=cache_key.class_instance,
-                **cache_key.kwargs
+                **cache_key.kwargs,
             )
         except Exception as e:
             if enable_fallback:
@@ -1188,10 +1181,13 @@ class ProgramCache:
                             var.name, var.shape
                         )
                     )
-        if not _in_amp_guard() and not _in_pure_fp16_guard():
-            concrete_program._to_prim()
 
-        return concrete_program, partial_program_from(concrete_program)
+        partial_program = partial_program_from(concrete_program)
+        if core._is_fwd_prim_enabled() and not _in_amp_guard():
+            partial_program.set_hooker(
+                PrimHooker(concrete_program.main_program)
+            )
+        return concrete_program, partial_program
 
     def __getitem__(self, item):
         if not isinstance(item, CacheKey):
@@ -1244,6 +1240,38 @@ class ProgramCache:
 
     def clear(self):
         self._caches = collections.OrderedDict()
+
+
+class PrimHooker(PartialProgramLayerHook):
+    def __init__(self, original_program):
+        if len(original_program.blocks) > 1:
+            raise ValueError(
+                'The primitive mode only support one block currently.'
+            )
+        self.custom_vjps = set()
+        if core._is_all_prim_enabled():
+            self.custom_vjps = {
+                op.type
+                for op in original_program.block(0).ops
+                if core.has_comp_grad_op_maker(op.type)
+            }
+
+    def before_append_backward(self, forward_program):
+        if core._is_fwd_prim_enabled():
+            _to_prim(forward_program.blocks, blacklist=self.custom_vjps)
+        return forward_program
+
+    def after_append_backward(self, whole_program, backward_start_idx):
+        backward_length = len(whole_program.block(0).ops) - backward_start_idx
+        if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+            _to_prim(whole_program.blocks, whitelist=self.custom_vjps)
+        new_start_index = len(whole_program.block(0).ops) - backward_length
+        return whole_program, new_start_index
+
+    def after_infer(self, infer_program):
+        if core._is_fwd_prim_enabled():
+            _to_prim(infer_program.block(0))
+        return infer_program
 
 
 class ProgramTranslator:
@@ -1660,3 +1688,12 @@ def enable_to_static(enable_to_static_bool):
     )
     _program_trans = ProgramTranslator()
     _program_trans.enable(enable_to_static_bool)
+
+
+@switch_to_static_graph
+def _to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
+    """Swith to static graph and call to_prim."""
+    # TODO(Aurelius84): Fix this cycle import problem
+    from paddle.incubate.autograd import primapi
+
+    primapi.to_prim(blocks, blacklist=blacklist, whitelist=whitelist)
