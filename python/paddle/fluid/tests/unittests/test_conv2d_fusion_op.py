@@ -15,10 +15,9 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_conv2d_op import conv2d_forward_naive
 
-import paddle
 import paddle.fluid.core as core
 
 
@@ -68,48 +67,9 @@ def create_test_cudnn_channel_last_class(parent):
     globals()[cls_name] = TestCudnnChannelLastCase
 
 
-def warpper_conv2d_fusion_cutlass(
-    Input,
-    Filter,
-    Bias=None,
-    ResidualData=None,
-    strides=1,
-    paddings=0,
-    padding_algorithm="EXIPLICIT",
-    dilations=1,
-    groups=1,
-    data_format="NCDHW",
-    activation="relu",
-    fuse_alpha=0.0,
-):
-    return paddle._legacy_C_ops.conv2d_fusion_cutlass(
-        Input,
-        Filter,
-        Bias,
-        ResidualData,
-        "strides",
-        strides,
-        "paddings",
-        paddings,
-        "padding_algorithm",
-        padding_algorithm,
-        "groups",
-        groups,
-        "dilations",
-        dilations,
-        "data_format",
-        data_format,
-        "activation",
-        activation,
-        "fuse_alpha",
-        fuse_alpha,
-    )
-
-
 class TestConv2DFusionOp(OpTest):
     def setUp(self):
         self.op_type = "conv2d_fusion"
-        self.python_api = warpper_conv2d_fusion_cutlass
         self.exhaustive_search = False
         self.data_format = "NCHW"
         self.dtype = np.float32
