@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
-from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
 
@@ -99,12 +99,18 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         ]:
             for input_size in [[32, 32]]:
                 for kernel_sizes in [[3, 3]]:
-                    for strides in [[2, 2]]:
-                        for paddings in [[0, 2]]:
+                    for strides in [[1, 1], [2, 2]]:
+                        for paddings in [[1, 1], [0, 2]]:
                             for groups in [
                                 1,
                             ]:
-                                for dilations in [[2, 2]]:
+                                for dilations in [[1, 1], [2, 2]]:
+                                    self.input_size = input_size
+                                    self.kernel_sizes = kernel_sizes
+                                    self.strides = strides
+                                    self.paddings = paddings
+                                    self.groups = groups
+                                    self.dilations = dilations
                                     dics = [
                                         {
                                             "strides": strides,
@@ -184,7 +190,6 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            # The input.dims[1] must be equal to the weight's length.
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 3, 32, 32],
                 "offset_data": [1, 18, 14, 16],
@@ -223,34 +228,19 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
-
-        # for dynamic_shape
-        generate_dynamic_shape(attrs)
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-5, 1e-5)
-        generate_dynamic_shape(attrs)
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-3, 1e-3)
-
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.trt_param.precision == paddle_infer.PrecisionType.Half:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1,
-            SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in fp16 mode.",
-        )
+        if (
+            self.strides == [2, 2]
+            and self.paddings == [0, 2]
+            and self.dilations == [2, 2]
+        ):
+            generate_dynamic_shape(attrs)
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            yield self.create_inference_config(), generate_trt_nodes_num(
+                attrs, True
+            ), (1e-5, 1e-5)
 
     def test(self):
         self.trt_param.workspace_size = 1 << 28
-        self.add_skip_trt_case()
         self.run_test()
 
 
