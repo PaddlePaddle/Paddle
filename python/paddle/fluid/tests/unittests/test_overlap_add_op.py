@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 
@@ -154,6 +154,67 @@ class TestCase5(TestOverlapAddOp):
             'axis': 0,
         }
         return input_shape, input_type, attrs
+
+
+class TestOverlapAddFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "overlap_add"
+        self.python_api = paddle.signal.overlap_add
+        self.shape, self.type, self.attrs = self.initTestCase()
+        self.inputs = {
+            'X': np.random.random(size=self.shape).astype(self.type)
+        }
+
+        self.outputs = {'Out': overlap_add(x=self.inputs['X'], **self.attrs).astype(self.type)}
+
+    def initTestCase(self):
+        input_shape = (50, 3)
+        input_type = 'float16'
+        attrs = {
+            'hop_length': 4,
+            'axis': -1,
+        }
+        return input_shape, input_type, attrs
+
+    def test_check_output(self):
+        paddle.enable_static()
+        self.check_output(check_eager=True,atol=1e-3, rtol=1e-3)
+        paddle.disable_static()
+
+    def test_check_grad_normal(self):
+        paddle.enable_static()
+        self.check_grad(['X'], 'Out', check_eager=True,atol=1e-3, rtol=1e-3)
+        paddle.disable_static()
+
+
+class TestOverlapAddBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = "overlap_add"
+        self.python_api = paddle.signal.overlap_add
+        self.shape, self.type, self.attrs = self.initTestCase()
+        self.inputs = {
+            'X': convert_float_to_uint16(np.random.random(size=self.shape).astype(self.type)),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(overlap_add(x=self.inputs['X'], **self.attrs))}
+
+    def initTestCase(self):
+        input_shape = (50, 3)
+        input_type = 'float64'
+        attrs = {
+            'hop_length': 4,
+            'axis': -1,
+        }
+        return input_shape, input_type, attrs
+
+    def test_check_output(self):
+        paddle.enable_static()
+        self.check_output(check_eager=True)
+        paddle.disable_static()
+
+    def test_check_grad_normal(self):
+        paddle.enable_static()
+        self.check_grad(['X'], 'Out', check_eager=True)
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

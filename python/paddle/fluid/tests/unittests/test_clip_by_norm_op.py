@@ -103,7 +103,7 @@ class TestClipByNormOpFp16Case3(TestClipByNormOpFp16):
         self.shape = (4, 8, 16)
         self.max_norm = 1.0
 
-class TestClipByNormOp(OpTest):
+class TestClipByNormOpBf16(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
         self.python_api = clip.clip_by_norm

@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -333,6 +333,130 @@ class TestMultinomialTensorNumSamples(UnittestBase):
             # Test for Inference Predictor
             infer_outs = self.infer_prog()
             np.testing.assert_equal(infer_outs[1].shape, (3, 3))
+
+
+class TestMultinomialFP16OP(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.op_type = "multinomial"
+        self.init_data()
+        self.inputs = {"X": self.input_np}
+
+    def init_data(self):
+        # input probability is a vector, and replacement is True
+        self.input_np = np.random.rand(4)
+        self.outputs = {"Out": np.zeros(100000).astype("float16")}
+        self.attrs = {"num_samples": 100000, "replacement": True}
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def sample_output(self, out):
+        return sample_output_one_dimension(out, 4)
+
+    def verify_output(self, outs):
+        # normalize the input to get the probability
+        prob = self.input_np / self.input_np.sum(axis=-1, keepdims=True)
+        sample_prob = self.sample_output(np.array(outs[0]))
+        np.testing.assert_allclose(
+            sample_prob,
+            prob,
+            rtol=0,
+            atol=0.01,
+            err_msg='sample_prob: ' + str(sample_prob) + '\nprob: ' + str(prob),
+        )
+
+
+class TestMultinomialFP16OP2(TestMultinomialFP16OP):
+    def init_data(self):
+        # input probability is a matrix
+        self.input_np = np.random.rand(3, 4)
+        self.outputs = {"Out": np.zeros((3, 100000)).astype("float16")}
+        self.attrs = {"num_samples": 100000, "replacement": True}
+
+    def sample_output(self, out):
+        return sample_output_two_dimension(out, [3, 4])
+
+
+class TestMultinomialFP16OP3(TestMultinomialFP16OP):
+    def init_data(self):
+        # replacement is False. number of samples must be less than number of categories.
+        self.input_np = np.random.rand(1000)
+        self.outputs = {"Out": np.zeros(100).astype("float16")}
+        self.attrs = {"num_samples": 100, "replacement": False}
+
+
+    def verify_output(self, outs):
+        out = np.array(outs[0])
+        unique_out = np.unique(out)
+        self.assertEqual(
+            len(unique_out),
+            100,
+            "replacement is False. categories can't be sampled repeatedly",
+        )
+
+
+class TestMultinomialBF16OP(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.op_type = "multinomial"
+        self.init_data()
+        self.inputs = {"X": self.input_np}
+
+    def init_data(self):
+        # input probability is a vector, and replacement is True
+        self.input_np = np.random.rand(4)
+        self.input_np = (self.input_np * 65535).astype('uint16')
+        self.input_np = np.clip(self.input_np, 0, 65535)
+        self.outputs = {"Out": np.zeros(100000).astype("uint16")}
+        self.attrs = {"num_samples": 100000, "replacement": True}
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def sample_output(self, out):
+        return sample_output_one_dimension(out, 4)
+
+    def verify_output(self, outs):
+        # normalize the input to get the probability
+        prob = self.input_np / self.input_np.sum(axis=-1, keepdims=True)
+        sample_prob = self.sample_output(np.array(outs[0]).astype("uint16"))
+        np.testing.assert_allclose(
+            sample_prob,
+            prob,
+            rtol=0,
+            atol=0.01,
+            err_msg='sample_prob: ' + str(sample_prob) + '\nprob: ' + str(prob),
+        )
+
+
+class TestMultinomialBF16OP2(TestMultinomialBF16OP):
+    def init_data(self):
+        # input probability is a matrix
+        self.input_np = (np.random.rand(3, 4)*65535).astype("uint16")
+        self.outputs = {"Out": np.zeros((3, 100000)).astype("uint16")}
+        self.attrs = {"num_samples": 100000, "replacement": True}
+
+    def sample_output(self, out):
+        return sample_output_two_dimension(out, [3, 4])
+
+
+class TestMultinomialBF16OP3(TestMultinomialBF16OP):
+    def init_data(self):
+        # replacement is False. number of samples must be less than number of categories.
+        self.input_np = (np.random.rand(1000)*65535).astype("uint16")
+        self.outputs = {"Out": np.zeros(100).astype("uint16")}
+        self.attrs = {"num_samples": 100, "replacement": False}
+
+    def verify_output(self, outs):
+        out = np.array(outs[0])
+        unique_out = np.unique(out)
+        self.assertEqual(
+            len(unique_out),
+            100,
+            "replacement is False. categories can't be sampled repeatedly",
+        )
+
 
 
 if __name__ == "__main__":

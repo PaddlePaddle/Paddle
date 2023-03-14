@@ -671,6 +671,159 @@ class API_TestEmptySplit(unittest.TestCase):
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
 
+class TestSplitFP16OP(OpTest):
+    def setUp(self):
+        self.python_api = paddle.split
+        self.python_out_sig = ['out0', 'out1', 'out2']
+        self._set_op_type()
+        self.dtype = self.get_dtype()
+        axis = 1
+        if self.dtype == np.uint16:
+            x = np.random.random((4, 5, 6)).astype(np.float32)
+            out = np.split(x, [2, 3], axis)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+            self.outputs = {
+                'Out': [
+                    ('out%d' % i, convert_float_to_uint16(out[i]))
+                    for i in range(len(out))
+                ]
+            }
+        else:
+            x = np.random.random((4, 5, 6)).astype(self.dtype)
+            out = np.split(x, [2, 3], axis)
+            self.inputs = {'X': x}
+            self.outputs = {
+                'Out': [('out%d' % i, out[i]) for i in range(len(out))]
+            }
+        self.attrs = {'axis': axis, 'sections': [2, 1, 2]}
+
+    def get_dtype(self):
+        return "float16"
+
+    def _set_op_type(self):
+        self.op_type = "split"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+
+
+# test with attr(num)
+class TestSplitFP16OP_2(OpTest):
+    def setUp(self):
+        self.python_api = paddle.split
+        self.python_out_sig = ['out0', 'out1', 'out2']
+        self._set_op_type()
+        self.dtype = self.get_dtype()
+        self.init_data()
+        self.inputs = {'X': self.x}
+        self.attrs = {
+            'axis': self.axis,
+            'sections': self.sections,
+            'num': self.num,
+        }
+
+        out = np.split(self.x, self.indices_or_sections, self.axis)
+        self.outputs = {'Out': [('out%d' % i, out[i]) for i in range(len(out))]}
+
+    def init_data(self):
+        self.x = np.random.random((4, 5, 6)).astype(self.dtype)
+        self.axis = 2
+        self.sections = []
+        self.num = 3
+        self.indices_or_sections = 3
+
+    def get_dtype(self):
+        return "float16"
+
+    def _set_op_type(self):
+        self.op_type = "split"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+
+class TestSplitBF16OP(OpTest):
+    def setUp(self):
+        self.python_api = paddle.split
+        self.python_out_sig = ['out0', 'out1', 'out2']
+        self._set_op_type()
+        self.dtype = self.get_dtype()
+        axis = 1
+        if self.dtype == np.uint16:
+            x = np.random.random((4, 5, 6)).astype(np.float32)
+            out = np.split(x, [2, 3], axis)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+            self.outputs = {
+                'Out': [
+                    ('out%d' % i, convert_float_to_uint16(out[i]))
+                    for i in range(len(out))
+                ]
+            }
+        else:
+            x = np.random.random((4, 5, 6)).astype(self.dtype)
+            out = np.split(x, [2, 3], axis)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+            self.outputs = {
+                'Out': convert_float_to_uint16([('out%d' % i, out[i]) for i in range(len(out))])
+            }
+        self.attrs = {'axis': axis, 'sections': [2, 1, 2]}
+
+    def get_dtype(self):
+        return "float64"
+
+    def _set_op_type(self):
+        self.op_type = "split"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+
+
+# test with attr(num)
+class TestSplitBF16OP_2(OpTest):
+    def setUp(self):
+        self.python_api = paddle.split
+        self.python_out_sig = ['out0', 'out1', 'out2']
+        self._set_op_type()
+        self.dtype = self.get_dtype()
+        self.init_data()
+        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.attrs = {
+            'axis': self.axis,
+            'sections': self.sections,
+            'num': self.num,
+        }
+
+        out = np.split(self.x, self.indices_or_sections, self.axis)
+        self.outputs = {'Out': convert_float_to_uint16([('out%d' % i, out[i]) for i in range(len(out))])}
+
+    def init_data(self):
+        self.x = np.random.random((4, 5, 6)).astype(self.dtype)
+        self.axis = 2
+        self.sections = []
+        self.num = 3
+        self.indices_or_sections = 3
+
+    def get_dtype(self):
+        return "float64"
+
+    def _set_op_type(self):
+        self.op_type = "split"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from numpy.linalg import multi_dot
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 
@@ -285,6 +285,54 @@ class APITestMultiDot(unittest.TestCase):
         out = paddle.linalg.multi_dot([data1, data2])
         expected_result = np.linalg.multi_dot([input_array1, input_array2])
         np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
+
+
+class TestMultiDotFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "multi_dot"
+        self.python_api = paddle.linalg.multi_dot
+        self.dtype = self.get_dtype()
+        self.get_inputs_and_outputs()
+
+    def get_dtype(self):
+        return "float16"
+
+    def get_inputs_and_outputs(self):
+        self.A = np.random.random((2, 8)).astype(self.dtype)
+        self.B = np.random.random((8, 4)).astype(self.dtype)
+        self.inputs = {'X': [('x0', self.A), ('x1', self.B)]}
+        self.outputs = {'Out': multi_dot([self.A, self.B])}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
+
+
+class TestMultiDotBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = "multi_dot"
+        self.python_api = paddle.linalg.multi_dot
+        self.dtype = self.get_dtype()
+        self.get_inputs_and_outputs()
+
+    def get_dtype(self):
+        return "float32"
+
+    def get_inputs_and_outputs(self):
+        self.A = np.random.random((2, 8)).astype(self.dtype)
+        self.B = np.random.random((8, 4)).astype(self.dtype)
+        self.inputs = {'X': convert_float_to_uint16([('x0', self.A), ('x1', self.B)])}
+        self.outputs = {'Out': convert_float_to_uint16(multi_dot([self.A, self.B]))}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_eager=True)
+        self.check_grad(['x1'], 'Out', check_eager=True)
 
 
 if __name__ == "__main__":
