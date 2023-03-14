@@ -41,3 +41,5 @@
 - greater_than
 - less_equal
 - where
+- reshape
+- split
