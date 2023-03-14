@@ -689,7 +689,7 @@ void _sliceCompute(const phi::DenseTensor *in,
                    const std::vector<int> &axes,
                    const std::vector<int> &starts) {
   auto &eigen_place = *ctx.eigen_device();
-  auto out_dims = out->dims();
+  auto out_dims = phi::vectorize<int>(out->dims());
   auto in_dims = in->dims();
 
   auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
