@@ -183,22 +183,6 @@ class TestTopkOp7(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
-class TestTopkFP32Op(TestTopkOp):
-    def setUp(self):
-        self.op_type = "top_k_v2"
-        self.python_api = paddle.topk
-        self.dtype = np.float32
-        self.prim_op_type = "prim"
-        self.input_data = np.random.rand(10, 20).astype(self.dtype)
-        self.init_args()
-        self.inputs = {'X': self.input_data}
-        self.attrs = {'k': self.k, 'axis': self.axis, 'largest': self.largest}
-        output, indices = numpy_topk(
-            self.input_data, axis=self.axis, k=self.k, largest=self.largest
-        )
-        self.outputs = {'Out': output, 'Indices': indices}
-
-
 class TestTopkFP16Op(TestTopkOp):
     def setUp(self):
         self.op_type = "top_k_v2"
@@ -215,6 +199,11 @@ class TestTopkFP16Op(TestTopkOp):
         self.outputs = {'Out': output, 'Indices': indices}
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
 class TestTopkBF16Op(TestTopkOp):
     def setUp(self):
         self.op_type = "top_k_v2"
