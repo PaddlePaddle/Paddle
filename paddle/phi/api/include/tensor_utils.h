@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
-namespace experimental {
 
 using Deleter = std::function<void(void*)>;
 
@@ -32,21 +31,23 @@ using Deleter = std::function<void(void*)>;
  * @param data The pointer to the memory buffer.
  * @param shape The dims of the tensor.
  * @param dtype The data type of the tensor, should correspond to data type of
- *              `data`. See PD_FOR_EACH_DATA_TYPE in phi/common/data_type.h
+ *              `data`. See PD_FOR_EACH_DATA_TYPE in `phi/common/data_type.h`
  * @param layout The data layout of the tensor.
  * @param place The place where the tensor is located, should correspond to
  *              place of `data`.
+ *              If `place` use the default value, it will be inferred from
+ * `data`， However，the feature is only supported on CPU or GPU. So make sure
+ *              that `place` is equal to the place of `data` on other devices.
  * @param deleter A function or function object that will be called to free the
  *                memory buffer.
  *
  * @return A Tensor object constructed from the buffer
  */
 PADDLE_API Tensor from_blob(void* data,
-                            const phi::DDim& shape,
+                            const phi::IntArray& shape,
                             phi::DataType dtype,
                             phi::DataLayout layout = phi::DataLayout::NCHW,
                             const phi::Place& place = phi::Place(),
                             const Deleter& deleter = nullptr);
 
-}  // namespace experimental
 }  // namespace paddle
