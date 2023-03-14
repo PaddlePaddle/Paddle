@@ -211,7 +211,7 @@ void GradNodeBase::SetGradInMeta(
 void GradNodeBase::SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
                                   size_t slot_rank) {
   auto* fwd_in_meta = egr::EagerUtils::nullable_autograd_meta(fwd_in);
-  VLOG(1) << "DEBUG Tensor name begin" << fwd_in.name() << " numeric "
+  VLOG(1) << "DEBUG Tensor name begin " << fwd_in.name() << " numeric "
           << fwd_in_meta->NumericStopGradient();
   PADDLE_ENFORCE_LE(
       (slot_rank + 1),

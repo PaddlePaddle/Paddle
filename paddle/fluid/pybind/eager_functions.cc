@@ -582,7 +582,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                         require_any_grad);
           // Bump Inplace Version
           ctx.MutableInputAt(start_idx + j)->bump_inplace_version();
-          VLOG(3) << "Tensor(" << ctx.InputAt(start_idx + j).name()
+          VLOG(3) << "Custom operator: Tensor("
+                  << ctx.InputAt(start_idx + j).name()
                   << ") uses Inplace Strategy.";
         }
       }
@@ -594,6 +595,11 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
         egr::EagerUtils::PassStopGradient(false, &(outs_auto_grad_metas[i]));
       }
+      // Note(HongyuJia): In dygraph eager mode, CheckInplace makes sure leaf
+      // nodes set stop_gradient=True. However, dygraph mode can also outputs
+      // lead nodes' gradients (For example, we can get x.grad after x.add_(y)).
+      // To be consistent with dygraph mode, we have to PassStopGradient for all
+      // inplaced ins_auto_grad_metas.
       std::unordered_map<size_t, size_t> inplace_tensor_map =
           ctx.GetInplaceTensorMap();
       for (auto pair : inplace_tensor_map) {

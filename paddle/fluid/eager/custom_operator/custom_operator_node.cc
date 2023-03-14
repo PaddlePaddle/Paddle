@@ -188,12 +188,10 @@ RunCustomOpNode::operator()(
   VLOG(7) << " Prepare Backward inputs of grads with size: " << grads.size()
           << ", whose grad_inputs_name size is: " << grad_inputs_name.size();
   auto hooked_grads = ApplyGradientHooks(grads);
-  std::unordered_map<size_t, size_t> reverse_ins_grad_map;
   for (size_t i = 0; i < hooked_grads.size(); i++) {
     if (map[0][1].find(i) != map[0][1].end()) {
       VLOG(7) << "Insert grad: " << i << " to grad_inputs: " << map[0][1][i];
       tmp_ins[map[0][1][i]] = hooked_grads[i];
-      reverse_ins_grad_map[map[0][1][i]] = i;
     }
   }
 
@@ -251,8 +249,8 @@ RunCustomOpNode::operator()(
   (*paddle::framework::OpMetaInfoHelper::GetKernelFn(
       kernel_map.at(op_type_)[1]))(&ctx);
   if (!grad_inplace_map.empty()) {
-    // The same as `ctx.AssignInplaceOutputs();`, but checks whether the
-    // gradient is inplace
+    // Similar with `ctx.AssignInplaceOutputs()`, but we use HandleView here to
+    // follow dygraph eager mode.
     std::unordered_map<size_t, size_t> inplace_tensor_map =
         ctx.GetInplaceTensorMap();
     for (auto pair : inplace_tensor_map) {
@@ -267,17 +265,8 @@ RunCustomOpNode::operator()(
       size_t match_size = tmp_ins[pair.first].size();
       VLOG(1) << "DEBUG inplace pair " << pair.first << " --> " << pair.second;
       for (size_t i = 0; i < match_size; ++i) {
-        auto& grad_out = tmp_ins[pair.first][i];
-        if (grad_out.impl().use_count() == 2 ||
-            (grad_out.impl().use_count() == 3 &&
-             grad_out.impl().get() ==
-                 grads[reverse_ins_grad_map[pair.first]][i].impl().get())) {
-          egr::EagerUtils::HandleViewBetweenInputAndOutput(
-              tmp_ins[pair.first][i], &(outs[pair.second][i]));
-        } else {
-          // else copy tmp_ins[pair.first][i] to outs[pair.second][i]. How to
-          // decided for memory sharing here?
-        }
+        egr::EagerUtils::HandleViewBetweenInputAndOutput(
+            tmp_ins[pair.first][i], &(outs[pair.second][i]));
       }
     }
   }
