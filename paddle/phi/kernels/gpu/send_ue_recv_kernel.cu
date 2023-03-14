@@ -332,4 +332,6 @@ PD_REGISTER_KERNEL(send_ue_recv,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+}

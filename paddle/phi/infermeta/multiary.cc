@@ -2489,6 +2489,15 @@ void SgdInferMeta(const MetaTensor& param,
 
   param_out->set_dims(param.dims());
   param_out->set_dtype(param.dtype());
+  if (multi_precision) {
+    master_param_out->set_dims(master_param.dims());
+    if (DataType::FLOAT16 == master_param.dtype() ||
+        DataType::BFLOAT16 == master_param.dtype()) {
+      master_param_out->set_dtype(DataType::FLOAT32);
+    } else {
+      master_param_out->set_dtype(master_param.dtype());
+    }
+  }
 }
 
 void SendUERecvInferMeta(const MetaTensor& x,
