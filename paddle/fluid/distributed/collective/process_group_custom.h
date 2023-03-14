@@ -46,10 +46,11 @@ class ProcessGroupCustom : public ProcessGroupWithoutStream {
                CommType CommType,
                const std::vector<phi::DenseTensor>& inputs);
 
-    bool IsCompleted();
+    bool IsCompleted() override;
     void SynchronizeStreams();
-    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
-    void Synchronize();
+    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout) override;
+    void Synchronize() override;
+    void UpdateWaitChain(const phi::DeviceContext& ctx) override;
     void SetOutputs(std::vector<phi::DenseTensor>& outputs);  // NOLINT
     virtual ~CustomTask();
 
