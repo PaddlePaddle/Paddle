@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ DenseTensorMeta::DenseTensorMeta() { use_gpudnn = true; }
 DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
     : dims(dims), dtype(dtype) {
   use_gpudnn = true;
+  is_scalar = dims.size() == 0;
 }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
@@ -29,6 +30,7 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  size_t offset)
     : dims(dims), dtype(dtype), layout(layout), offset(offset) {
   use_gpudnn = true;
+  is_scalar = dims.size() == 0;
 }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
@@ -38,6 +40,7 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  size_t offset)
     : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {
   use_gpudnn = true;
+  is_scalar = dims.size() == 0;
 }
 
 bool DenseTensorMeta::valid() const noexcept {
@@ -48,7 +51,9 @@ bool DenseTensorMeta::valid() const noexcept {
   return valid;
 }
 
-StringTensorMeta::StringTensorMeta(const DDim& dims) : dims(dims) {}
+StringTensorMeta::StringTensorMeta(const DDim& dims) : dims(dims) {
+  is_scalar = dims.size() == 0;
+}
 
 bool StringTensorMeta::valid() const noexcept {
   bool valid{true};
