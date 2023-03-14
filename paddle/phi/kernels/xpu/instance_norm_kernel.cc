@@ -61,7 +61,4 @@ void InstanceNormKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    instance_norm, XPU, ALL_LAYOUT, phi::InstanceNormKernel, float) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
-  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
-}
+    instance_norm, XPU, ALL_LAYOUT, phi::InstanceNormKernel, float) {}

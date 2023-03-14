@@ -581,5 +581,5 @@ void GenerateProposalsKernel(const Context &ctx,
 
 PD_REGISTER_KERNEL(
     generate_proposals, GPU, ALL_LAYOUT, phi::GenerateProposalsKernel, float) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
 }
