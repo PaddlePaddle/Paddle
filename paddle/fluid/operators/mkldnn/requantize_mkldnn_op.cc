@@ -81,9 +81,10 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
                      dev_ctx.GetEngine(),
                      phi::funcs::to_void_cast<float>(&reorder_scale));
 
-    uint8_t reorder_shift =
-        with_shift ? clip_to_uint8(shift_out - 1.0f / reorder_scale * shift_in)
-                   : 0;
+    uint32_t reorder_shift =
+        with_shift
+            ? clip_to_uint8(shift_out - (1.0f / reorder_scale) * shift_in)
+            : 0;
 
     if (with_shift) {
       attrs.set_zero_points_mask(DNNL_ARG_DST, mask);
