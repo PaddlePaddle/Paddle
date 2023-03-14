@@ -23,7 +23,7 @@ from paddle.fluid.tests.unittests.test_elementwise_mul_op import (
 )
 
 
-class TestMKLDNNElementwiseMulOp(ElementwiseMulOp):
+class TestOneDNNElementwiseMulOp(ElementwiseMulOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -31,21 +31,21 @@ class TestMKLDNNElementwiseMulOp(ElementwiseMulOp):
         self.dtype = np.float32
 
 
-class TestMKLDNNElementwiseMulOp2(TestMKLDNNElementwiseMulOp):
+class TestOneDNNElementwiseMulOp2(TestOneDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.random((100,)).astype(self.dtype)
         self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
 
-class TestMKLDNNElementwiseMulOp3(TestMKLDNNElementwiseMulOp):
+class TestOneDNNElementwiseMulOp3(TestOneDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
 
-class TestMKLDNNElementwiseMulOp4(TestMKLDNNElementwiseMulOp):
+class TestOneDNNElementwiseMulOp4(TestOneDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
@@ -59,7 +59,7 @@ class TestMKLDNNElementwiseMulOp4(TestMKLDNNElementwiseMulOp):
         pass
 
 
-class TestMKLDNNElementwiseMulOp5(TestMKLDNNElementwiseMulOp):
+class TestOneDNNElementwiseMulOp5(TestOneDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
@@ -96,9 +96,9 @@ class TestInt8(ElementwiseMulOp):
         self.out = np.multiply(self.x, self.y)
 
     def init_scales(self):
-        self.attrs['Scale_x'] = 1.0
-        self.attrs['Scale_y'] = 1.0
-        self.attrs['Scale_out'] = 1.0
+        self.attrs['scale_x'] = 1.0
+        self.attrs['scale_y'] = 1.0
+        self.attrs['scale_out'] = 1.0
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -132,9 +132,9 @@ class TestInt8Scales(TestInt8):
         self.scale_o, self.out = self.quantize(self.out_f)
 
     def init_scales(self):
-        self.attrs['Scale_x'] = self.scale_x
-        self.attrs['Scale_y'] = self.scale_y
-        self.attrs['Scale_out'] = self.scale_o
+        self.attrs['scale_x'] = self.scale_x
+        self.attrs['scale_y'] = self.scale_y
+        self.attrs['scale_out'] = self.scale_o
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode

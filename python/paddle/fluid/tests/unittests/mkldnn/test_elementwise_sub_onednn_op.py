@@ -30,7 +30,7 @@ from paddle.fluid.tests.unittests.op_test import (
     not (isinstance(_current_expected_place(), core.CPUPlace)),
     "GPU is not supported",
 )
-class TestMKLDNNElementwiseSubOp(OpTest):
+class TestOneDNNElementwiseSubOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.init_dtype()
@@ -71,49 +71,49 @@ class TestMKLDNNElementwiseSubOp(OpTest):
         self.check_output()
 
 
-class TestMKLDNNElementwiseSubOp2(TestMKLDNNElementwiseSubOp):
+class TestOneDNNElementwiseSubOp2(TestOneDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.random((100,)).astype(self.dtype)
         self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
 
-class TestMKLDNNElementwiseSubOp3(TestMKLDNNElementwiseSubOp):
+class TestOneDNNElementwiseSubOp3(TestOneDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
 
-class TestMKLDNNElementwiseSubOp4(TestMKLDNNElementwiseSubOp):
+class TestOneDNNElementwiseSubOp4(TestOneDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
 
-class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
+class TestOneDNNElementwiseSubOp5(TestOneDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
 
-class TestMKLDNNElementwiseSubOp6(TestMKLDNNElementwiseSubOp):
+class TestOneDNNElementwiseSubOp6(TestOneDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 2, [180, 1]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [1, 256]).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
 
-class TestMKLDNNElementwiseSubOp7(TestMKLDNNElementwiseSubOp):
+class TestOneDNNElementwiseSubOp7(TestOneDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 2, [1, 180]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [256, 1]).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
 
-class TestMKLDNNElementwiseSubOp_broadcast(TestMKLDNNElementwiseSubOp):
+class TestOneDNNElementwiseSubOp_broadcast(TestOneDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -123,7 +123,7 @@ class TestMKLDNNElementwiseSubOp_broadcast(TestMKLDNNElementwiseSubOp):
         self.axis = 1
 
 
-class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
+class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestOneDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(10, 12).astype(self.dtype)
         self.y = np.random.rand(2, 2, 10, 12).astype(self.dtype)
@@ -134,7 +134,7 @@ class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
-class TestBf16(TestMKLDNNElementwiseSubOp):
+class TestBf16(TestOneDNNElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.init_dtype()
@@ -223,7 +223,7 @@ class TestBf16Broadcasting(TestBf16):
         )
 
 
-class TestInt8(TestMKLDNNElementwiseSubOp):
+class TestInt8(TestOneDNNElementwiseSubOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self._cpu_only = True
@@ -237,9 +237,9 @@ class TestInt8(TestMKLDNNElementwiseSubOp):
         self.out = np.subtract(self.x, self.y)
 
     def init_scales(self):
-        self.attrs['Scale_x'] = 1.0
-        self.attrs['Scale_y'] = 1.0
-        self.attrs['Scale_out'] = 1.0
+        self.attrs['scale_x'] = 1.0
+        self.attrs['scale_y'] = 1.0
+        self.attrs['scale_out'] = 1.0
 
     def test_check_output(self):
         self.init_scales()
