@@ -105,6 +105,6 @@ PD_REGISTER_KERNEL(eig,
                    double,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
 }
