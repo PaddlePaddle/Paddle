@@ -98,6 +98,7 @@ class TestFillFP16OP(OpTest):
     def setUp(self):
         self.op_type = "fill"
         self.dtype = np.float16
+        self.__class__.op_type = self.op_type
         val = np.random.random(size=[100, 200]).astype(self.dtype)
         self.inputs = {}
         self.attrs = {
@@ -122,6 +123,7 @@ class TestFillBF16(OpTest):
     def setUp(self):
         self.op_type = "fill"
         self.dtype = np.uint16
+        self.__class__.op_type = self.op_type
         val = np.random.random(size=[100, 200]).astype(np.float32)
         self.inputs = {}
         self.attrs = {
