@@ -12,20 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/builtin_dialect.h"
-#include "paddle/ir/builtin_attribute.h"
-#include "paddle/ir/builtin_type.h"
+#include "paddle/ir/attribute.h"
+#include "paddle/ir/dialect.h"
 
 namespace ir {
-BuiltinDialect::BuiltinDialect(ir::IrContext *context)
-    : ir::Dialect(name(), context, ir::TypeId::get<BuiltinDialect>()) {
-  initialize();
-}
-
-void BuiltinDialect::initialize() {
-  // Register all built-in types defined in builtin_type.h.
-  RegisterTypes<GET_BUILT_IN_TYPE_LIST>();
-  RegisterAttributes<GET_BUILT_IN_ATTRIBUTE_LIST>();
-}
+IrContext *Attribute::ir_context() const { return dialect().ir_context(); }
 
 }  // namespace ir

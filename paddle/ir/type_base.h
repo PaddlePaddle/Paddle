@@ -24,9 +24,9 @@ class Dialect;
 ///
 /// \brief Abstract the properties and behaviors common to all Type classes into
 /// an AbstractType class. There are two types in Type system:
-/// on-parameter/parameterless type and parameter-type. The common attributes of
-/// all types is TypeId (and possibly others). Therefore, construct a class with
-/// TypeId as its member.
+/// non-parameter/parameterless type and parameteric-type. The common attributes
+/// of all types is TypeId (and possibly others). Therefore, construct a class
+/// with TypeId as its member.
 ///
 class AbstractType {
  public:
@@ -95,10 +95,10 @@ struct TypeManager;
 ///
 /// \brief TypeStorage is used to store all information of a Type. A Type object
 /// contains a TypeStorage. For non-parameter type, the information includes:
-/// TypeId, so TypeStorage only needs to include AbstractType; For parameter
-/// type, in addition to AbstractType/TypeId, parameter information needs to be
-/// included. So that, non-parameter type can be constructed by TypeStorage
-/// directly but parameter type should be constructed by Derived TypeStorage.
+/// TypeId, so TypeStorage only needs to include AbstractType; For parameteric
+/// type, in addition to AbstractType/TypeId, parameteric information needs to
+/// be included. So that, non-parameteric type can be constructed by TypeStorage
+/// directly but parameteric type should be constructed by Derived TypeStorage.
 ///
 class TypeStorage : public StorageManager::StorageBase {
   friend StorageManager;
@@ -172,7 +172,7 @@ struct TypeManager {
   static std::
       enable_if_t<!std::is_same<typename T::StorageType, TypeStorage>::value, T>
       get(IrContext *ctx, TypeId type_id, Args &&...args) {
-    return ctx->storage_manager()
+    return ctx->type_storage_manager()
         .GetParametricStorageType<typename T::StorageType>(
             [&, type_id](TypeStorage *storage) {
               storage->initialize(AbstractType::lookup(type_id, ctx));
@@ -193,7 +193,7 @@ struct TypeManager {
   static std::
       enable_if_t<std::is_same<typename T::StorageType, TypeStorage>::value, T>
       get(IrContext *ctx, TypeId type_id) {
-    return ctx->storage_manager()
+    return ctx->type_storage_manager()
         .GetParameterlessStorageType<typename T::StorageType>(type_id);
   }
 
@@ -204,8 +204,7 @@ struct TypeManager {
   ///
   template <typename T>
   static void RegisterType(IrContext *ctx) {
-    RegisterType<T>(ctx,
-                    ir::TypeId::get<T>());  // class Type需要提供type_id接口
+    RegisterType<T>(ctx, ir::TypeId::get<T>());
   }
 
   ///
@@ -218,7 +217,7 @@ struct TypeManager {
   static std::enable_if_t<
       !std::is_same<typename T::StorageType, TypeStorage>::value>
   RegisterType(IrContext *ctx, TypeId type_id) {
-    ctx->storage_manager()
+    ctx->type_storage_manager()
         .RegisterParametricStorageType<typename T::StorageType>(type_id);
   }
 
@@ -232,7 +231,7 @@ struct TypeManager {
   static std::enable_if_t<
       std::is_same<typename T::StorageType, TypeStorage>::value>
   RegisterType(IrContext *ctx, TypeId type_id) {
-    ctx->storage_manager().RegisterParameterlessStorageType<TypeStorage>(
+    ctx->type_storage_manager().RegisterParameterlessStorageType<TypeStorage>(
         type_id, [&ctx, type_id](TypeStorage *storage) {
           storage->initialize(AbstractType::lookup(type_id, ctx));
         });
