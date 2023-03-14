@@ -1836,6 +1836,7 @@ class Executor:
 
         program._compile(scope, self.place)
         if program._is_inference:
+            raise Exception("no inference")
             return self._run_inference(program._executor, feed)
         else:
             return self._run_parallel(
