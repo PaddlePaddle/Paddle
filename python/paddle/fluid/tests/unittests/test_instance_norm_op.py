@@ -97,6 +97,7 @@ class TestInstanceNormOp(OpTest):
         self.op_type = "instance_norm"
         self.prim_op_type = "comp"
         self.python_api = instance_norm_wrapper
+        self.python_out_sig = ['Y']
         self.fw_comp_rtol = 1e-05
         self.fw_comp_atol = 1e-05
         self.rev_comp_rtol = 1e-05
