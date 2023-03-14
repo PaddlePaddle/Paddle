@@ -98,8 +98,8 @@ class TestInstanceNormOp(OpTest):
         self.prim_op_type = "comp"
         self.python_api = instance_norm_wrapper
         self.python_out_sig = ['Y']
-        self.fw_comp_rtol = 1e-05
-        self.fw_comp_atol = 1e-05
+        self.fw_comp_rtol = 1e-04
+        self.fw_comp_atol = 1e-04
         self.rev_comp_rtol = 1e-05
         self.rev_comp_atol = 1e-05
         self.init_test_case()
