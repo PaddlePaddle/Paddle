@@ -2122,7 +2122,7 @@ class OpTest(unittest.TestCase):
     ):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
             # Used by float16&bfloat16 for now to solve precision problem
-            if self.is_float16_op or self.is_bfloat16_op():
+            if self.is_float16_op() or self.is_bfloat16_op():
                 if a.size == 0:
                     self.assertTrue(b.size == 0)
                 np.testing.assert_allclose(
