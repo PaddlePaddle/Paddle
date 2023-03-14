@@ -1264,7 +1264,6 @@ class TestRsqrt(TestActivation):
             ['X'],
             'Out',
             max_relative_error=0.0005,
-            check_eager=True,
             check_prim=True,
         )
 
