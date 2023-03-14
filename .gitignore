@@ -33,7 +33,6 @@ paddle/fluid/prim/api/generated_prim/*.h
 build/
 dist/
 build_doc/
-env_dict.py
 *.user
 *.tmp
 *.pyc
