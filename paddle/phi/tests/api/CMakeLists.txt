@@ -8,11 +8,15 @@ if(WITH_GPU)
   nv_test(
     test_allocator
     SRCS test_allocator.cu
-    DEPS memory place device_context context_pool)
+    DEPS place device_context context_pool)
   nv_test(
     test_cuda_stream
     SRCS test_cuda_stream.cu
     DEPS context_pool)
+  nv_test(
+    test_from_blob
+    SRCS test_from_blob.cc
+    DEPS phi_backends ${COMMON_API_TEST_DEPS})
 elseif(WITH_ROCM)
   hip_test(
     test_phi_tensor
@@ -21,16 +25,24 @@ elseif(WITH_ROCM)
   hip_test(
     test_allocator
     SRCS test_allocator.cu
-    DEPS memory place device_context context_pool)
+    DEPS place device_context context_pool)
   hip_test(
     test_cuda_stream
     SRCS test_cuda_stream.cu
     DEPS context_pool)
+  hip_test(
+    test_from_blob
+    SRCS test_from_blob.cc
+    DEPS phi_backends ${COMMON_API_TEST_DEPS})
 else()
   cc_test(
     test_phi_tensor
     SRCS test_phi_tensor.cc
     DEPS glog selected_rows ${COMMON_API_TEST_DEPS})
+  cc_test(
+    test_from_blob
+    SRCS test_from_blob.cc
+    DEPS phi_backends ${COMMON_API_TEST_DEPS})
 endif()
 
 cc_test(

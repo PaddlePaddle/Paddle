@@ -50,6 +50,17 @@ from white_list import (
     op_threshold_white_list,
 )
 
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+
+
+@signature_safe_contextmanager
+def paddle_static_guard():
+    try:
+        paddle.enable_static()
+        yield
+    finally:
+        paddle.disable_static()
+
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     """
@@ -66,37 +77,39 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
         check_out_dtype(fluid.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
 
     """
-    paddle.enable_static()
-    for i, expect_dtype in enumerate(expect_dtypes):
-        with paddle.static.program_guard(paddle.static.Program()):
-            input_t = []
-            for index, spec in enumerate(in_specs):
-                if len(spec) == 1:
-                    shape = spec[0]
-                    dtype = expect_dtype if target_index == index else 'float32'
-                elif len(spec) == 2:
-                    shape, dtype = spec
-                else:
-                    raise ValueError(
-                        "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
-                            index
+    with paddle_static_guard():
+        for i, expect_dtype in enumerate(expect_dtypes):
+            with paddle.static.program_guard(paddle.static.Program()):
+                input_t = []
+                for index, spec in enumerate(in_specs):
+                    if len(spec) == 1:
+                        shape = spec[0]
+                        dtype = (
+                            expect_dtype if target_index == index else 'float32'
+                        )
+                    elif len(spec) == 2:
+                        shape, dtype = spec
+                    else:
+                        raise ValueError(
+                            "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
+                                index
+                            )
+                        )
+                    input_t.append(
+                        paddle.static.data(
+                            name='data_%s' % index, shape=shape, dtype=dtype
                         )
                     )
-                input_t.append(
-                    paddle.static.data(
-                        name='data_%s' % index, shape=shape, dtype=dtype
-                    )
-                )
 
-            out = api_fn(*input_t, **configs)
-            out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
+                out = api_fn(*input_t, **configs)
+                out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
 
-            if out_dtype != expect_dtype:
-                raise ValueError(
-                    "Expected out.dtype is {}, but got {} from {}.".format(
-                        expect_dtype, out_dtype, api_fn.__name__
+                if out_dtype != expect_dtype:
+                    raise ValueError(
+                        "Expected out.dtype is {}, but got {} from {}.".format(
+                            expect_dtype, out_dtype, api_fn.__name__
+                        )
                     )
-                )
 
 
 def _set_use_system_allocator(value=None):
@@ -446,6 +459,26 @@ class OpTest(unittest.TestCase):
             )
         )
 
+    def is_float16_op(self):
+        # self.dtype is the dtype of inputs, and is set in infer_dtype_from_inputs_outputs.
+        # Make sure this function is called after calling infer_dtype_from_inputs_outputs.
+        return (
+            self.dtype == np.float16
+            or (
+                hasattr(self, 'output_dtype')
+                and self.output_dtype == np.float16
+            )
+            or (
+                hasattr(self, 'mkldnn_data_type')
+                and getattr(self, 'mkldnn_data_type') == "float16"
+            )
+            or (
+                hasattr(self, 'attrs')
+                and 'mkldnn_data_type' in self.attrs
+                and self.attrs['mkldnn_data_type'] == 'float16'
+            )
+        )
+
     def is_mkldnn_op(self):
         return (hasattr(self, "use_mkldnn") and self.use_mkldnn) or (
             hasattr(self, "attrs")
@@ -703,11 +736,9 @@ class OpTest(unittest.TestCase):
 
             if is_input:
                 v = self._create_var_from_numpy(np_value_temp)
-
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
-                    if hasattr(v, "retain_grads"):
-                        v.retain_grads()
+                    v.retain_grads()
 
                 if has_lod:
                     v.value().get_tensor().set_recursive_sequence_lengths(
@@ -867,6 +898,8 @@ class OpTest(unittest.TestCase):
             )
             if not kernel_sig:
                 return None
+            if not hasattr(self, "python_api"):
+                print(kernel_sig)
             assert hasattr(self, "python_api"), (
                 "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
                 % self.op_type
@@ -1868,67 +1901,94 @@ class OpTest(unittest.TestCase):
         names,
         max_relative_error,
         msg_prefix,
+        atol=1e-5,
     ):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
-            # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
-            # max_relative_error is 1e-7. According to the value of np.abs(a), we
-            # change np.abs(a) to achieve dynamic threshold. For example, if
-            # the value of np.abs(a) is between 1e-10 and 1e-8, we set np.abs(a)*=1e4.
-            # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
-            # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
-            abs_a = np.abs(a)
-            if abs_a.ndim > 0:
-                if (
-                    self.dtype == np.float64
-                    and self.op_type
-                    not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
-                ):
-                    abs_a[abs_a < 1e-10] = 1e-3
-                    abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
-                    abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
-                elif self.is_bfloat16_op():
-                    abs_a[abs_a < 1e-2] = 1
-                else:
-                    abs_a[abs_a < 1e-3] = 1
-            elif abs_a.ndim == 0:
-                if (
-                    self.dtype == np.float64
-                    and self.op_type
-                    not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
-                ):
-                    if abs_a < 1e-10:
-                        abs_a = 1e-3
-                    elif abs_a > 1e-10 and abs_a <= 1e-8:
-                        abs_a = abs_a * 1e4
-                    elif abs_a > 1e-8 and abs_a <= 1e-6:
-                        abs_a = abs_a * 1e2
-                elif self.is_bfloat16_op():
-                    abs_a = 1 if abs_a < 1e-2 else abs_a
-                else:
-                    abs_a = 1 if abs_a < 1e-3 else abs_a
-
-            diff_mat = np.abs(a - b) / abs_a
-            max_diff = np.max(diff_mat)
-
-            def err_msg():
-                offset = np.argmax(diff_mat > max_relative_error)
-                return (
-                    "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
-                    "the first error element is %d, expected %e, but got %e."
-                ) % (
-                    self.op_type,
-                    msg_prefix,
-                    name,
-                    str(a.shape),
-                    self.dtype,
-                    max_diff,
-                    max_relative_error,
-                    offset,
-                    a.flatten()[offset],
-                    b.flatten()[offset],
+            # Used by bfloat16 for now to solve precision problem
+            if self.is_bfloat16_op():
+                if a.size == 0:
+                    self.assertTrue(b.size == 0)
+                np.testing.assert_allclose(
+                    b,
+                    a,
+                    rtol=max_relative_error,
+                    atol=atol,
+                    equal_nan=False,
+                    err_msg=(
+                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff over limit"
+                    )
+                    % (
+                        self.op_type,
+                        msg_prefix,
+                        name,
+                        str(a.shape),
+                        self.dtype,
+                    ),
                 )
+            else:
+                # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
+                # max_relative_error is 1e-7. According to the value of np.abs(a), we
+                # change np.abs(a) to achieve dynamic threshold. For example, if
+                # the value of np.abs(a) is between 1e-10 and 1e-8, we set np.abs(a)*=1e4.
+                # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
+                # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
+                abs_a = np.abs(a)
+                if abs_a.ndim > 0:
+                    if (
+                        self.dtype == np.float64
+                        and self.op_type
+                        not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+                    ):
+                        abs_a[abs_a < 1e-10] = 1e-3
+                        abs_a[
+                            np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)
+                        ] *= 1e4
+                        abs_a[
+                            np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)
+                        ] *= 1e2
+                    elif self.is_bfloat16_op():
+                        abs_a[abs_a < 1e-2] = 1
+                    else:
+                        abs_a[abs_a < 1e-3] = 1
+                elif abs_a.ndim == 0:
+                    if (
+                        self.dtype == np.float64
+                        and self.op_type
+                        not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
+                    ):
+                        if abs_a < 1e-10:
+                            abs_a = 1e-3
+                        elif abs_a > 1e-10 and abs_a <= 1e-8:
+                            abs_a = abs_a * 1e4
+                        elif abs_a > 1e-8 and abs_a <= 1e-6:
+                            abs_a = abs_a * 1e2
+                    elif self.is_bfloat16_op():
+                        abs_a = 1 if abs_a < 1e-2 else abs_a
+                    else:
+                        abs_a = 1 if abs_a < 1e-3 else abs_a
 
-            self.assertLessEqual(max_diff, max_relative_error, err_msg())
+                diff_mat = np.abs(a - b) / abs_a
+                max_diff = np.max(diff_mat)
+
+                def err_msg():
+                    offset = np.argmax(diff_mat > max_relative_error)
+                    return (
+                        "Operator %s error, %s variable %s (shape: %s, dtype: %s) max gradient diff %e over limit %e, "
+                        "the first error element is %d, expected %e, but got %e."
+                    ) % (
+                        self.op_type,
+                        msg_prefix,
+                        name,
+                        str(a.shape),
+                        self.dtype,
+                        max_diff,
+                        max_relative_error,
+                        offset,
+                        a.flatten()[offset],
+                        b.flatten()[offset],
+                    )
+
+                self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
     def _check_grad_helper(self):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -1950,6 +2010,7 @@ class OpTest(unittest.TestCase):
         check_dygraph=True,
         check_prim=False,
         only_check_prim=False,
+        atol=1e-5,
     ):
         self._check_grad_helper()
         places = self._get_places()
@@ -1967,6 +2028,7 @@ class OpTest(unittest.TestCase):
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
                 only_check_prim=only_check_prim,
+                atol=atol,
             )
 
     def check_grad_with_place(
@@ -1984,6 +2046,7 @@ class OpTest(unittest.TestCase):
         check_prim=False,
         only_check_prim=False,
         numeric_place=None,
+        atol=1e-5,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2008,8 +2071,15 @@ class OpTest(unittest.TestCase):
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
 
         self._check_grad_helper()
-        if self.is_bfloat16_op() and self.is_mkldnn_op():
-            check_dygraph = False
+        if self.is_bfloat16_op():
+            if self.is_mkldnn_op():
+                check_dygraph = False
+                atol = 1e-2 if atol < 1e-2 else atol
+            else:
+                atol = 1e-1 if atol < 1e-1 else atol
+
+        if self.is_float16_op():
+            atol = 1e-3 if atol < 1e-3 else atol
 
         if (
             self.dtype == np.float64
@@ -2122,6 +2192,7 @@ class OpTest(unittest.TestCase):
             inputs_to_check,
             max_relative_error,
             "Gradient Check On %s" % str(place),
+            atol=atol,
         )
 
         if check_dygraph:
@@ -2151,6 +2222,7 @@ class OpTest(unittest.TestCase):
                     inputs_to_check,
                     max_relative_error,
                     "Gradient Check On %s" % str(place),
+                    atol=atol,
                 )
 
     def _find_var_in_dygraph(self, output_vars, name):
@@ -2197,6 +2269,10 @@ class OpTest(unittest.TestCase):
                 dygraph_outputs = self._calc_python_api_output(
                     place, inputs, outputs
                 )
+                if dygraph_outputs is None:
+                    # missing KernelSignature, fall back to eager middle output.
+                    dygraph_outs = self._calc_dygraph_output(place)
+
             # if outputs is None, kernel sig is empty or other error is happens.
             if not check_dygraph or dygraph_outputs is None:
                 block.append_op(
