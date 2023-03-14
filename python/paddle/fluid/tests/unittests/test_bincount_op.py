@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -150,7 +150,7 @@ class TestBincountOp(OpTest):
         self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
 
 class TestCase1(TestBincountOp):

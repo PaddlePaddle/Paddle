@@ -1623,6 +1623,47 @@ class PoolingOneDNNHandler
   }
 };
 
+template <typename T>
+class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
+ public:
+  SoftplusOneDNNHandler(const OneDNNContext& dev_ctx,
+                        const phi::DenseTensor* x,
+                        const float beta,
+                        const std::string& fuse_activation = "",
+                        const float fuse_alpha = 0.0f,
+                        const float fuse_beta = 0.0f)
+      : OneDNNHandlerNoCachingT<T, dnnl::binary>(dev_ctx.GetEngine(),
+                                                 dev_ctx.GetPlace()) {
+    dnnl::post_ops post_ops;
+    post_ops.append_eltwise(
+        1.0f, dnnl::algorithm::eltwise_soft_relu, 0.0f, 0.0f);
+    if (beta != 1.0f) {
+      post_ops.append_eltwise(
+          1.0f, dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
+    }
+    AppendActivation(
+        dev_ctx, post_ops, 1.0f, fuse_activation, fuse_alpha, fuse_beta);
+    dnnl::primitive_attr attrs;
+    attrs.set_post_ops(post_ops);
+
+    auto x_tz = phi::vectorize(x->dims());
+    auto beta_tz = std::vector<int64_t>(x_tz.size(), 1);
+    auto beta_md = dnnl::memory::desc(
+        beta_tz, OneDNNGetDataType<T>(), GetPlainOneDNNFormat(x_tz.size()));
+
+    this->AcquireForwardPrimitiveDescriptor(attrs,
+                                            dnnl::algorithm::binary_mul,
+                                            x->mem_desc(),
+                                            beta_md,
+                                            x->mem_desc());
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireBetaMemory(const float* beta) {
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->src1_desc(),
+                                            to_void_cast<float>(beta));
+  }
+};
+
 static void SetOutMemDescWithUnsqueeze2FuseSupport(
     const std::vector<int> fused_unsqueeze2_axes,
     phi::DenseTensor* out,
