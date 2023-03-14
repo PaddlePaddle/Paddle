@@ -32,7 +32,6 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
 
-<<<<<<< HEAD
 PHI_DECLARE_bool(graph_load_in_parallel);
 PHI_DECLARE_bool(graph_get_neighbor_id);
 PHI_DECLARE_int32(gpugraph_storage_mode);

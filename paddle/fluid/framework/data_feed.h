@@ -980,6 +980,7 @@ class GraphDataGenerator {
     }
   }
   void ResetEpochFinish() { epoch_finish_ = false; }
+  void reset_pass_end() { pass_end_ = 0; }
   void ClearSampleState();
   void DumpWalkPath(std::string dump_path, size_t dump_rate);
   void SetDeviceKeys(std::vector<uint64_t>* device_keys UNUSED,
@@ -1016,6 +1017,7 @@ class GraphDataGenerator {
                   std::shared_ptr<phi::Allocation> d_uniq_node_num);
   std::vector<uint64_t>& GetHostVec() { return host_vec_; }
   bool get_epoch_finish() { return epoch_finish_; }
+  int get_pass_end() { return pass_end_; }
   void clear_gpu_mem();
 
  protected:
@@ -1109,6 +1111,7 @@ class GraphDataGenerator {
   bool sage_mode_;
   std::vector<int> samples_;
   bool epoch_finish_;
+  int pass_end_ = 0;
   std::vector<uint64_t> host_vec_;
   std::vector<uint64_t> h_device_keys_len_;
   uint64_t h_train_metapath_keys_len_;
@@ -1123,6 +1126,7 @@ class GraphDataGenerator {
   bool get_degree_;
   bool weighted_sample_;
   bool return_weight_;
+  bool is_multi_node_;
 };
 
 class DataFeed {
@@ -1246,6 +1250,14 @@ class DataFeed {
 
   virtual bool get_epoch_finish() {
     return gpu_graph_data_generator_.get_epoch_finish();
+  }
+
+  virtual int get_pass_end() {
+    return gpu_graph_data_generator_.get_pass_end();
+  }
+
+  virtual void reset_pass_end() {
+    gpu_graph_data_generator_.reset_pass_end();
   }
 
   virtual void ResetPathNum() { gpu_graph_data_generator_.ResetPathNum(); }
