@@ -424,4 +424,4 @@ cc_library(
 cc_test(
   init_extension_test
   SRCS init_extension_test.cc
-  DEPS init_extension)
+  DEPS init_extension phi)
