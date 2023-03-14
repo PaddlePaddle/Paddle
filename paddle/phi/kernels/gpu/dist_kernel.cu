@@ -28,7 +28,9 @@ template <typename T>
 struct ZeroOrderFunctor {
  public:
   __device__ T operator()(const T& x, const T& y) const {
-    return static_cast<T>((x - y) != 0);
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    return static_cast<T>((static_cast<MPType>(x) - static_cast<MPType>(y)) !=
+                          0);
   }
 };
 
@@ -36,7 +38,10 @@ template <typename T>
 struct OtherOrderFunctor {
   explicit OtherOrderFunctor(const T& p_order) : p_order_(p_order) {}
   __device__ T operator()(const T& x, const T& y) const {
-    return static_cast<T>(pow(abs(x - y), p_order_));
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    MPType mptx = static_cast<MPType>(x);
+    MPType mpty = static_cast<MPType>(y);
+    return static_cast<T>(pow(abs(static_cast<T>(mptx - mpty)), p_order_));
   }
 
  private:
@@ -47,7 +52,9 @@ template <typename T>
 struct PowFunctor {
   explicit PowFunctor(const T& p_order) : p_order_(p_order) {}
   HOSTDEVICE inline T operator()(const T x) const {
-    return static_cast<T>(pow(x, p_order_));
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    MPType mptx = static_cast<MPType>(x);
+    return static_cast<T>(pow(static_cast<T>(mptx), p_order_));
   }
   T p_order_;
 };
@@ -110,6 +117,7 @@ void DistKernel(const Context& dev_ctx,
                 const DenseTensor& y,
                 float p,
                 DenseTensor* out) {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   DenseTensor intermediate;
   const T* x_ptr = x.data<T>();
   const T* y_ptr = y.data<T>();
@@ -150,7 +158,7 @@ void DistKernel(const Context& dev_ctx,
           dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else {
-      T p_order = static_cast<T>(p);
+      T p_order = static_cast<T>(static_cast<MPType>(p));
       ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T>(p_order));
@@ -160,7 +168,7 @@ void DistKernel(const Context& dev_ctx,
       const DenseTensor* tmp_norm = out;
       std::vector<const DenseTensor*> ins = {tmp_norm};
       std::vector<DenseTensor*> outs = {out};
-      T p_order_ = static_cast<T>(1. / p_order);
+      T p_order_ = static_cast<T>(static_cast<MPType>(1.) / p_order);
       phi::funcs::ElementwiseKernel<T>(
           dev_ctx, ins, &outs, PowFunctor<T>(p_order_));
     }
