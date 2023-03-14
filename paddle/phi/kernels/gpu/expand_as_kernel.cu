@@ -33,27 +33,12 @@ void ExpandAsKernel(const Context& ctx,
   int rank = x.dims().size();
   int target_rank = static_cast<int>(target_shape.size());
   auto vec_in_dims = phi::vectorize<int>(x.dims());
-  PADDLE_ENFORCE_GE(target_rank,
-                    rank,
-                    errors::InvalidArgument(
-                        "The rank (%d) of the input 'target_tensor' for "
-                        "expand_as_v2 op must be greater than or equal to "
-                        "the rank (%d) of the input 'x'.",
-                        target_rank,
-                        rank));
   PADDLE_ENFORCE_GE(
       rank,
       1,
       errors::InvalidArgument("The rank (%d) of the input 'x' for "
                               "expand_as_v2 op must be positive.",
                               rank));
-  PADDLE_ENFORCE_LE(target_rank,
-                    MAX_RANK_SUPPORTED,
-                    errors::InvalidArgument(
-                        "The rank (%d) of the input 'target_tensor' for "
-                        "expand_as_v2 op must be less than or equal to %d.",
-                        target_rank,
-                        MAX_RANK_SUPPORTED));
 
   unsigned int diff = target_rank - rank;
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
