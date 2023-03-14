@@ -270,6 +270,7 @@ class TestNotToConvert2(TestRecursiveCall2):
 
 
 # Situation 3 : test to_static for paddle api
+@paddle.jit.not_to_static
 def forward(self, x):
     if x.shape[0] > 1:
         x = x + 1

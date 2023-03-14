@@ -21,6 +21,7 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.fluid import core, framework
+from paddle.incubate.autograd import primapi
 from paddle.nn import BatchNorm
 from paddle.tensor import ones  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
@@ -183,7 +184,7 @@ class TestCompositeBatchNorm(unittest.TestCase):
                 attrs.use_global_stats,
             )
             blocks = main_program.blocks
-            paddle.incubate.autograd.to_prim(blocks)
+            primapi.to_prim(blocks)
 
         exe = paddle.static.Executor()
         exe.run(startup_program)

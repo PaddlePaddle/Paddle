@@ -1622,8 +1622,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false, str fuse_activation_type = "", float fuse_activation_alpha = 0.0f,
-             float fuse_activation_beta = 0.0f, float fuse_activation_scale = 1.0f]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : softshrink
   backward : softshrink_grad

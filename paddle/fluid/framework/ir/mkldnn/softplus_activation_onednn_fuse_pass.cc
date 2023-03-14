@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/softplus_activation_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/softplus_activation_onednn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -58,6 +59,7 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     GET_IR_NODE_FROM_SUBGRAPH(
         activation, activation, softplus_activation_pattern);
 
+    ConvertToFusedOp(softplus->Op());
     SetActivationAttrs(softplus->Op(), activation->Op(), act_type);
     softplus->Op()->SetOutput("Out", {activation_out->Name()});
 
@@ -78,9 +80,9 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(softplus_activation_mkldnn_fuse_pass,
+REGISTER_PASS(softplus_activation_onednn_fuse_pass,
               paddle::framework::ir::SoftplusActivationOneDNNPass);
-REGISTER_PASS_CAPABILITY(softplus_activation_mkldnn_fuse_pass)
+REGISTER_PASS_CAPABILITY(softplus_activation_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("softplus", 1)
