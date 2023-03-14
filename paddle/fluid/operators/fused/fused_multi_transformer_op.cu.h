@@ -19,29 +19,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <cuda_fp16.h>
-#include <float.h>
-
-#include <cub/cub.cuh>
-
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/fused/attention_layer_norm.h"
-#include "paddle/fluid/operators/fused/attn_gemm.h"
-#include "paddle/fluid/operators/fused/fmha_ref.h"
-#include "paddle/fluid/operators/fused/fused_dropout_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/fluid/platform/dynload/cublasLt.h"
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/backends/gpu/gpu_device_function.h"
-#include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#endif
+#include "paddle/fluid/operators/fused/mmha_util.cu.h"
 
 DECLARE_bool(gemm_use_half_precision_compute_type);
 
@@ -91,9 +69,6 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
 
 namespace {  // NOLINT
 
-namespace plat = paddle::platform;
-using float16 = plat::float16;
-
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT
 #define MMHA_USE_FP32_ACUM_FOR_FMA
@@ -112,6 +87,12 @@ template <>
 class PDDataTypeTraits<float16> {
  public:
   typedef half DataType;
+};
+
+template <>
+class PDDataTypeTraits<bfloat16> {
+ public:
+  typedef __nv_bfloat16 DataType;
 };
 
 template <typename T>
@@ -147,441 +128,50 @@ struct Masked_multihead_attention_params {
   float inv_sqrt_dh;
 };
 
-struct Float8_ {
-  float2 x;
-  float2 y;
-  float2 z;
-  float2 w;
-};
-
-// clang-format off
-
-template <typename T, int Dh> struct Qk_vec_ {};
-template <> struct Qk_vec_<float,    32> { using Type = float;    };
-template <> struct Qk_vec_<float,    64> { using Type = float2;   };
-template <> struct Qk_vec_<float,   128> { using Type = float4;   };
-template <> struct Qk_vec_<float,   256> { using Type = float4;   };
-template <> struct Qk_vec_<float16,  32> { using Type = uint32_t; };
-template <> struct Qk_vec_<float16,  64> { using Type = uint32_t; };
-template <> struct Qk_vec_<float16, 128> { using Type = uint2;    };
-template <> struct Qk_vec_<float16, 256> { using Type = uint4;    };
-
-template <typename T, int THREADS_PER_KEY> struct K_vec_ {};
-template <> struct K_vec_<float,   4> { using Type = float;    };
-template <> struct K_vec_<float,   2> { using Type = float2;   };
-template <> struct K_vec_<float,   1> { using Type = float4;   };
-template <> struct K_vec_<float16, 4> { using Type = uint32_t; };
-template <> struct K_vec_<float16, 2> { using Type = uint2;    };
-template <> struct K_vec_<float16, 1> { using Type = uint4;    };
-
-template <typename T, int V_VEC_SIZE> struct V_vec_ {};
-template <> struct V_vec_<float,   1> { using Type = float;    };
-template <> struct V_vec_<float,   2> { using Type = float2;   };
-template <> struct V_vec_<float,   4> { using Type = float4;   };
-template <> struct V_vec_<float16, 2> { using Type = uint32_t; };
-template <> struct V_vec_<float16, 4> { using Type = uint2;    };
-template <> struct V_vec_<float16, 8> { using Type = uint4;    };
-
 #ifdef MMHA_USE_FP32_ACUM_FOR_FMA
-template<typename T>
-struct K_vec_acum_fp32_ {
-};
+template <typename T>
+struct K_vec_acum_fp32_ {};
 
-template<>
+template <>
 struct K_vec_acum_fp32_<uint32_t> {
-    using Type = float2;
+  using Type = float2;
 };
 #endif
 
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
-template <typename T> struct V_vec_acum_fp32_ {};
+template <typename T>
+struct V_vec_acum_fp32_ {};
 // template <> struct V_vec_acum_fp32_<float>  { using Type = float;  };
 // template <> struct V_vec_acum_fp32_<float2> { using Type = float2; };
-template <> struct V_vec_acum_fp32_<float4> { using Type = float4; };
+template <>
+struct V_vec_acum_fp32_<float4> {
+  using Type = float4;
+};
 // template <> struct V_vec_acum_fp32_<uint32_t> { using Type = float2;   };
 // template <> struct V_vec_acum_fp32_<uint2   > { using Type = Float4_;  };
-template <> struct V_vec_acum_fp32_<uint4> { using Type = Float8_; };
+template <>
+struct V_vec_acum_fp32_<uint4> {
+  using Type = Float8_;
+};
+
+template <>
+struct V_vec_acum_fp32_<__nv_bfloat162> {
+  using Type = float2;
+};
+template <>
+struct V_vec_acum_fp32_<bf16_4_t> {
+  using Type = Float4_;
+};
+template <>
+struct V_vec_acum_fp32_<bf16_8_t> {
+  using Type = Float8_;
+};
+
 #endif
 
 // clang-format on
 
-inline __device__ float half_to_float(uint16_t h) {
-  float f;
-  asm volatile("cvt.f32.f16 %0, %1;\n" : "=f"(f) : "h"(h));
-  return f;
-}
-
-inline __device__ float2 half2_to_float2(uint32_t v) {
-  uint16_t lo, hi;
-  asm volatile("mov.b32 {%0, %1}, %2;\n" : "=h"(lo), "=h"(hi) : "r"(v));
-  return make_float2(half_to_float(lo), half_to_float(hi));
-}
-
-inline __device__ uint32_t float2_to_half2(float2 f) {
-  union {
-    uint32_t u32;
-    uint16_t u16[2];
-  } tmp;
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
-  asm volatile("cvt.rn.f16x2.f32 %0, %1, %2;\n"
-               : "=r"(tmp.u32)
-               : "f"(f.y), "f"(f.x));
-#else
-  asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[0]) : "f"(f.x));
-  asm volatile("cvt.rn.f16.f32 %0, %1;\n" : "=h"(tmp.u16[1]) : "f"(f.y));
-#endif
-  return tmp.u32;
-}
-
-inline __device__ float add(float a, float b) { return a + b; }
-
-inline __device__ float2 add(float2 a, float2 b) {
-  float2 c;
-  c.x = add(a.x, b.x);
-  c.y = add(a.y, b.y);
-  return c;
-}
-
-inline __device__ float4 add(float4 a, float4 b) {
-  float4 c;
-  c.x = add(a.x, b.x);
-  c.y = add(a.y, b.y);
-  c.z = add(a.z, b.z);
-  c.w = add(a.w, b.w);
-  return c;
-}
-
-inline __device__ uint16_t add(uint16_t a, uint16_t b) {
-  uint16_t c;
-  asm volatile("add.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
-  return c;
-}
-
-inline __device__ uint32_t add(uint32_t a, uint32_t b) {
-  uint32_t c;
-  asm volatile("add.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
-  return c;
-}
-
-inline __device__ uint2 add(uint2 a, uint2 b) {
-  uint2 c;
-  c.x = add(a.x, b.x);
-  c.y = add(a.y, b.y);
-  return c;
-}
-
-inline __device__ uint4 add(uint4 a, uint4 b) {
-  uint4 c;
-  c.x = add(a.x, b.x);
-  c.y = add(a.y, b.y);
-  c.z = add(a.z, b.z);
-  c.w = add(a.w, b.w);
-  return c;
-}
-
-inline __device__ float2 add(uint32_t a, float2 fb) {
-  float2 fa = half2_to_float2(a);
-  return add(fa, fb);
-}
-
-inline __device__ Float8_ add(uint4 a, Float8_ fb) {
-  Float8_ fc;
-  fc.x = add(a.x, fb.x);
-  fc.y = add(a.y, fb.y);
-  fc.z = add(a.z, fb.z);
-  fc.w = add(a.w, fb.w);
-  return fc;
-}
-
-template <typename Acc, typename A, typename B>
-inline __device__ Acc mul(A a, B b);
-
-template <>
-inline __device__ float mul<float, float>(float a, float b) {
-  return a * b;
-}
-
-template <>
-inline __device__ float2 mul(float2 a, float2 b) {
-  float2 c;
-  c.x = a.x * b.x;
-  c.y = a.y * b.y;
-  return c;
-}
-
-template <>
-inline __device__ float4 mul(float4 a, float4 b) {
-  float4 c;
-  c.x = a.x * b.x;
-  c.y = a.y * b.y;
-  c.z = a.z * b.z;
-  c.w = a.w * b.w;
-  return c;
-}
-
-template <>
-inline __device__ uint16_t mul(uint16_t a, uint16_t b) {
-  uint16_t c;
-  asm volatile("mul.f16 %0, %1, %2;\n" : "=h"(c) : "h"(a), "h"(b));
-  return c;
-}
-
-template <>
-inline __device__ uint32_t mul(uint32_t a, uint32_t b) {
-  uint32_t c;
-  asm volatile("mul.f16x2 %0, %1, %2;\n" : "=r"(c) : "r"(a), "r"(b));
-  return c;
-}
-
-template <>
-inline __device__ uint2 mul(uint2 a, uint2 b) {
-  uint2 c;
-  c.x = mul<uint32_t, uint32_t, uint32_t>(a.x, b.x);
-  c.y = mul<uint32_t, uint32_t, uint32_t>(a.y, b.y);
-  return c;
-}
-
-template <>
-inline __device__ uint4 mul(uint4 a, uint4 b) {
-  uint4 c;
-  c.x = mul<uint32_t, uint32_t, uint32_t>(a.x, b.x);
-  c.y = mul<uint32_t, uint32_t, uint32_t>(a.y, b.y);
-  c.z = mul<uint32_t, uint32_t, uint32_t>(a.z, b.z);
-  c.w = mul<uint32_t, uint32_t, uint32_t>(a.w, b.w);
-  return c;
-}
-
-template <>
-inline __device__ uint32_t mul(uint32_t a, float b) {
-  float2 tmp = half2_to_float2(a);
-  float2 tmp_res;
-  tmp_res.x = tmp.x * b;
-  tmp_res.y = tmp.y * b;
-  uint32_t res = float2_to_half2(tmp_res);
-  return res;
-}
-
-template <>
-inline __device__ float2 mul(uint32_t a, float b) {
-  float2 tmp = half2_to_float2(a);
-  float2 res;
-  res.x = tmp.x * b;
-  res.y = tmp.y * b;
-  return res;
-}
-
-template <>
-inline __device__ uint2 mul(uint2 a, float b) {
-  uint2 res;
-  res.x = mul<uint32_t, uint32_t, float>(a.x, b);
-  res.y = mul<uint32_t, uint32_t, float>(a.y, b);
-  return res;
-}
-
-template <>
-inline __device__ uint4 mul(uint4 a, float b) {
-  uint4 res;
-  res.x = mul<uint32_t, uint32_t, float>(a.x, b);
-  res.y = mul<uint32_t, uint32_t, float>(a.y, b);
-  res.z = mul<uint32_t, uint32_t, float>(a.z, b);
-  res.w = mul<uint32_t, uint32_t, float>(a.w, b);
-  return res;
-}
-
-template <>
-inline __device__ float2 mul(float2 a, float b) {
-  float2 res;
-  res.x = a.x * b;
-  res.y = a.y * b;
-  return res;
-}
-
-template <>
-inline __device__ float2 mul(float2 a, uint32_t b) {
-  float2 tmp_b = half2_to_float2(b);
-  float2 res;
-  res.x = a.x * tmp_b.x;
-  res.y = a.y * tmp_b.y;
-  return res;
-}
-
-template <>
-inline __device__ float4 mul(float4 a, float b) {
-  float4 res;
-  res.x = a.x * b;
-  res.y = a.y * b;
-  res.z = a.z * b;
-  res.w = a.w * b;
-  return res;
-}
-
-template <typename Qk_vec>
-inline __device__ Qk_vec apply_rotary_emb(Qk_vec input_left,
-                                          Qk_vec input_right,
-                                          Qk_vec cos_emb,
-                                          Qk_vec sin_emb,
-                                          float alpha) {
-  Qk_vec res1 = mul<Qk_vec, Qk_vec, Qk_vec>(input_left, cos_emb);
-  Qk_vec res2 = mul<Qk_vec, Qk_vec, Qk_vec>(input_right, sin_emb);
-  res2 = mul<Qk_vec, Qk_vec, float>(res2, alpha);
-  return add(res1, res2);
-}
-
-inline __device__ float sum(float v) { return v; }
-inline __device__ float sum(float2 v) { return v.x + v.y; }
-inline __device__ float sum(float4 v) { return v.x + v.y + v.z + v.w; }
-inline __device__ float sum(uint16_t v) { return half_to_float(v); }
-inline __device__ float sum(uint32_t v) {
-  float2 tmp = half2_to_float2(v);
-  return tmp.x + tmp.y;
-}
-
-inline __device__ float sum(uint2 v) {
-  uint32_t c = add(v.x, v.y);
-  return sum(c);
-}
-
-inline __device__ float sum(uint4 v) {
-  uint32_t c = add(v.x, v.y);
-  c = add(c, v.z);
-  c = add(c, v.w);
-  return sum(c);
-}
-
-template <typename T>
-inline __device__ float dot(T a, T b) {
-  return sum(mul<T, T, T>(a, b));
-}
-
-template <typename A, typename T>
-inline __device__ float dot(T a, T b) {
-  return sum(mul<A, T, T>(a, b));
-}
-
-inline __device__ constexpr uint32_t shfl_mask(int threads) {
-  return threads == 32 ? uint32_t(-1) : (1u << threads) - 1u;
-}
-
-template <typename T>
-inline __device__ __host__ T div_up(T m, T n) {
-  return (m + n - 1) / n;
-}
-
-inline __device__ float fma(float a, float b, float c) { return a * b + c; }
-
-inline __device__ float2 fma(float2 a, float2 b, float2 c) {
-  float2 d;
-  d.x = fma(a.x, b.x, c.x);
-  d.y = fma(a.y, b.y, c.y);
-  return d;
-}
-
-inline __device__ float2 fma(float2 a, uint32_t b, float2 c) {
-  float2 tmp_b = half2_to_float2(b);
-  float2 d = fma(a, tmp_b, c);
-  return d;
-}
-
-inline __device__ float4 fma(float4 a, float4 b, float4 c) {
-  float4 d;
-  d.x = fma(a.x, b.x, c.x);
-  d.y = fma(a.y, b.y, c.y);
-  d.z = fma(a.z, b.z, c.z);
-  d.w = fma(a.w, b.w, c.w);
-  return d;
-}
-
-inline __device__ uint32_t fma(uint32_t a, uint32_t b, uint32_t c) {
-  uint32_t d;
-  asm volatile("fma.rn.f16x2 %0, %1, %2, %3;\n"
-               : "=r"(d)
-               : "r"(a), "r"(b), "r"(c));
-  return d;
-}
-
-inline __device__ uint2 fma(uint2 a, uint2 b, uint2 c) {
-  uint2 d;
-  d.x = fma(a.x, b.x, c.x);
-  d.y = fma(a.y, b.y, c.y);
-  return d;
-}
-
-inline __device__ uint4 fma(uint4 a, uint4 b, uint4 c) {
-  uint4 d;
-  d.x = fma(a.x, b.x, c.x);
-  d.y = fma(a.y, b.y, c.y);
-  d.z = fma(a.z, b.z, c.z);
-  d.w = fma(a.w, b.w, c.w);
-  return d;
-}
-
-inline __device__ float2 fma(float a, float2 b, float2 c) {
-  float2 d;
-  d.x = fma(a, b.x, c.x);
-  d.y = fma(a, b.y, c.y);
-  return d;
-}
-
-inline __device__ float4 fma(float a, float4 b, float4 c) {
-  float4 d;
-  d.x = fma(a, b.x, c.x);
-  d.y = fma(a, b.y, c.y);
-  d.z = fma(a, b.z, c.z);
-  d.w = fma(a, b.w, c.w);
-  return d;
-}
-
-inline __device__ Float8_ fma(float a, Float8_ b, Float8_ c) {
-  Float8_ d;
-  d.x = fma(a, b.x, c.x);
-  d.y = fma(a, b.y, c.y);
-  d.z = fma(a, b.z, c.z);
-  d.w = fma(a, b.w, c.w);
-  return d;
-}
-
-inline __device__ uint32_t h0_h0(uint16_t a) {
-  uint32_t b;
-  asm volatile("mov.b32 %0, {%1, %1};" : "=r"(b) : "h"(a));
-  return b;
-}
-
-inline __device__ uint32_t fma(uint16_t a, uint32_t b, uint32_t c) {
-  return fma(h0_h0(a), b, c);
-}
-
-inline __device__ uint2 fma(uint16_t a, uint2 b, uint2 c) {
-  uint32_t s = h0_h0(a);
-  uint2 d;
-  d.x = fma(s, b.x, c.x);
-  d.y = fma(s, b.y, c.y);
-  return d;
-}
-
-inline __device__ uint4 fma(uint16_t a, uint4 b, uint4 c) {
-  uint32_t s = h0_h0(a);
-  uint4 d;
-  d.x = fma(s, b.x, c.x);
-  d.y = fma(s, b.y, c.y);
-  d.z = fma(s, b.z, c.z);
-  d.w = fma(s, b.w, c.w);
-  return d;
-}
-
-inline __device__ float cast_to_float(float u) { return u; }
-
-inline __device__ float2 cast_to_float(float2 u) { return u; }
-
-inline __device__ float4 cast_to_float(float4 u) { return u; }
-
-inline __device__ Float8_ cast_to_float(uint4 u) {
-  Float8_ tmp;
-  tmp.x = half2_to_float2(u.x);
-  tmp.y = half2_to_float2(u.y);
-  tmp.z = half2_to_float2(u.z);
-  tmp.w = half2_to_float2(u.w);
-  return tmp;
-}
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <int THREADS_PER_KEY, typename K_vec, int N>
 inline __device__ float qk_dot_(const K_vec (&q)[N],
@@ -718,6 +308,54 @@ inline __device__ void convert_from_float(uint4 &dst, Float8_ src) {  // NOLINT
   dst.z = float2_to_half2(src.z);
   dst.w = float2_to_half2(src.w);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef ENABLE_BF16
+inline __device__ void convert_from_float(__nv_bfloat16 &dst, float src) {
+  dst = __float2bfloat16(src);
+}
+
+inline __device__ void convert_from_float(__nv_bfloat162 &dst, float2 src) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  dst = __float22bfloat162_rn(src);
+#else
+  dst = __floats2bfloat162_rn(src.x, src.y);
+#endif
+}
+
+inline __device__ void convert_from_float(bf16_4_t &dst, Float4_ src) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  dst.x = __float22bfloat162_rn(src.x);
+  dst.y = __float22bfloat162_rn(src.y);
+#else
+  dst.x = __floats2bfloat162_rn(src.x.x, src.x.y);
+  dst.y = __floats2bfloat162_rn(src.y.x, src.y.y);
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline __device__ void convert_from_float(bf16_4_t &dst, float4 src) {
+  convert_from_float(
+      dst, Float4_{make_float2(src.x, src.y), make_float2(src.z, src.w)});
+}
+
+inline __device__ void convert_from_float(bf16_8_t &dst, Float8_ src) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  dst.x = __float22bfloat162_rn(src.x);
+  dst.y = __float22bfloat162_rn(src.y);
+  dst.z = __float22bfloat162_rn(src.z);
+  dst.w = __float22bfloat162_rn(src.w);
+#else
+  dst.x = __floats2bfloat162_rn(src.x.x, src.x.y);
+  dst.y = __floats2bfloat162_rn(src.y.x, src.y.y);
+  dst.z = __floats2bfloat162_rn(src.z.x, src.z.y);
+  dst.w = __floats2bfloat162_rn(src.w.x, src.w.y);
+#endif
+}
+#endif  // ENABLE_BF16
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 inline __device__ void zero(uint16_t &dst) { dst = uint16_t(0); }  // NOLINT
 
@@ -929,12 +567,12 @@ __global__ void masked_multihead_attention_kernel(
   __syncthreads();
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  if (bi == 0 && hi == 0 && tid == 0) {
-    printf("=======q_out=======\n");
-    for (int i = 0; i < Dh; ++i) printf("%f ", static_cast<float>(q_smem[i]));
-    printf("\n");
-  }
-  __syncthreads();
+  // if (bi == 0 && hi == 0 && tid == 0) {
+  //   printf("=======q_out=======\n");
+  //   for (int i = 0; i < Dh; ++i) printf("%f ", static_cast<float>(q_smem[i]));
+  //   printf("\n");
+  // }
+  // __syncthreads();
 #endif
 
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
@@ -1015,12 +653,12 @@ __global__ void masked_multihead_attention_kernel(
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  if (bi == 0 && hi == 0 && tid == 0) {
-    printf("=======qk_out=======\n");
-    for (int i = 0; i <= params.timestep; ++i) printf("%f ", qk_smem[i]);
-    printf("qk_max=%f\n", qk_max);
-  }
-  __syncthreads();
+  // if (bi == 0 && hi == 0 && tid == 0) {
+  //   printf("=======qk_out=======\n");
+  //   for (int i = 0; i <= params.timestep; ++i) printf("%f ", qk_smem[i]);
+  //   printf("qk_max=%f\n", qk_max);
+  // }
+  // __syncthreads();
 #endif
 
   float sum = 0.f;
@@ -1076,12 +714,12 @@ __global__ void masked_multihead_attention_kernel(
   }
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  if (bi == 0 && hi == 0 && tid == 0) {
-    printf("======logits_out=====\n");
-    for (int i = 0; i <= params.timestep; ++i) printf("%f ", logits_smem[i]);
-    printf("\n");
-  }
-  __syncthreads();
+  // if (bi == 0 && hi == 0 && tid == 0) {
+  //   printf("======logits_out=====\n");
+  //   for (int i = 0; i <= params.timestep; ++i) printf("%f ", logits_smem[i]);
+  //   printf("\n");
+  // }
+  // __syncthreads();
 #endif
 
   V_vec v_bias;
@@ -1137,13 +775,13 @@ __global__ void masked_multihead_attention_kernel(
   }
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-  __syncthreads();
-  if (bi == 0 && hi == 0 && tid == 0) {
-    printf("======fmha_out=====\n");
-    for (int i = 0; i < Dh; ++i)
-      printf("%f ", static_cast<float>(params.out[i]));
-    printf("\n");
-  }
+  // __syncthreads();
+  // if (bi == 0 && hi == 0 && tid == 0) {
+  //   printf("======fmha_out=====\n");
+  //   for (int i = 0; i < Dh; ++i)
+  //     printf("%f ", static_cast<float>(params.out[i]));
+  //   printf("\n");
+  // }
 #endif
 #else
   assert(false);

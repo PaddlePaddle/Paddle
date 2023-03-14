@@ -1247,6 +1247,9 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
         } else if (self->tensor.dtype() == phi::DataType::FLOAT16) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<float>()};
+        } else if (self->tensor.dtype() == phi::DataType::BFLOAT16) {
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
           attrs["values"] = std::vector<paddle::experimental::Scalar>{
               value_obj_tmp.cast<std::complex<float>>()};
