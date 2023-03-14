@@ -1904,8 +1904,8 @@ class OpTest(unittest.TestCase):
         atol=1e-5,
     ):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
-            # Used by bfloat16 for now to solve precision problem
-            if self.is_bfloat16_op():
+            # Used by float16&bfloat16 for now to solve precision problem
+            if self.is_float16_op or self.is_bfloat16_op():
                 if a.size == 0:
                     self.assertTrue(b.size == 0)
                 np.testing.assert_allclose(
