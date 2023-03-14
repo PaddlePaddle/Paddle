@@ -174,9 +174,7 @@ class CompiledProgram:
         self._place = None
         self._executor = None
         self._compiled = False
-        self._is_data_parallel = False
         self._is_inference = False
-        self._loss_name = None
         self._share_vars_from = None
         self._places = None
         self._build_strategy = build_strategy
@@ -190,9 +188,6 @@ class CompiledProgram:
         Returns:
             self
         """
-        assert (
-            not self._is_data_parallel
-        ), "Cannot compile with both data parallel and inference"
         assert (
             not self._is_inference
         ), "Already compiled with inference, cannot be recompiled."
@@ -216,11 +211,6 @@ class CompiledProgram:
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
-            if not self._share_vars_from._is_data_parallel:
-                raise ValueError(
-                    "The shared Program is not data parallel, cannot "
-                    "share variables from it."
-                )
             if self._share_vars_from._executor is None:
                 raise ValueError(
                     "The shared Program is not compiled and executed, so there is no "
@@ -340,7 +330,7 @@ class CompiledProgram:
         return core.ParallelExecutor(
             places,
             self._persistable_vars,
-            self._loss_name if self._loss_name else '',
+            '',
             self._scope,
             self._local_scopes,
             self._exec_strategy,
@@ -376,10 +366,7 @@ class CompiledProgram:
         if self._is_inference:
             self._executor = self._compile_inference()
         else:
-            if self._is_data_parallel:
-                self._places = self._get_places(self._place, self._places)
-            else:
-                self._places = [self._place]
+            self._places = [self._place]
 
             if isinstance(self._place, core.CUDAPlace):
                 use_device = DeviceType.CUDA
