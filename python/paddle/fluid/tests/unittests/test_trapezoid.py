@@ -60,7 +60,7 @@ class TestTrapezoid(unittest.TestCase):
                 self.y3, self.x3
             )  # y and x contain inf or nan values
         with self.assertRaises(ValueError):
-            paddle.trapezoid(self.y2, self.x2, dx=-1)  # dx is not positive
+            paddle.trapezoid(self.y2, self.x2, dx=0)  # dx is not positive
 
 
 if __name__ == "__main__":
