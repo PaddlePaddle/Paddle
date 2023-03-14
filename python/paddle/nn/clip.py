@@ -374,7 +374,7 @@ class ClipGradByValue(ClipGradBase):
     Args:
         max (float): The maximum value to clip by.
         min (float, optional): The minimum value to clip by. if not set by user, it will be set to ``-max``
-            automatically. In this case, ``max`` must be greater than 0.
+            automatically. In this case, ``max`` must be greater than :math:`0`.
 
     Examples:
         .. code-block:: python

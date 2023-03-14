@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -605,7 +604,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
 
 
 class TestCondBackward(unittest.TestCase):
-    def backward_value_helper(self, cond_func, use_cuda, use_parallel_exe):
+    def backward_value_helper(self, cond_func, use_cuda):
         """
         Helper function that compares calculated backward value is close to dy/dx
         """
@@ -626,14 +625,6 @@ class TestCondBackward(unittest.TestCase):
         exe.run(startup_program)
 
         num_devices = 1
-        if use_parallel_exe:
-            os.environ['CPU_NUM'] = str(2)
-            exe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
-                main_program=main_program,
-                loss_name=loss.name,
-            )
-            num_devices = exe.device_count
 
         delta = 0.005
         for feed_i in range(0, 10):
@@ -641,65 +632,37 @@ class TestCondBackward(unittest.TestCase):
             feed_label = np.random.randint(
                 low=0, high=10, size=[1, 1], dtype=np.int64
             )
-            if use_parallel_exe:
-                img_grad, loss_value = exe.run(
-                    feed={
-                        'i': np.full((num_devices), feed_i, np.int32),
-                        'image': np.repeat(feed_img, num_devices, axis=0),
-                        'label': np.repeat(feed_label, num_devices, axis=0),
-                    },
-                    fetch_list=[img.grad_name, loss.name],
-                )
-            else:
-                img_grad, loss_value = exe.run(
-                    main_program,
-                    feed={
-                        'i': np.full((1), feed_i, np.int32),
-                        'image': feed_img,
-                        'label': feed_label,
-                    },
-                    fetch_list=[img.grad_name, loss.name],
-                )
+
+            img_grad, loss_value = exe.run(
+                main_program,
+                feed={
+                    'i': np.full((1), feed_i, np.int32),
+                    'image': feed_img,
+                    'label': feed_label,
+                },
+                fetch_list=[img.grad_name, loss.name],
+            )
 
             numerical_grad = np.zeros(shape=[num_devices, 9], dtype=np.float32)
             feed_img_delta = np.copy(feed_img)
             for j in range(9):
                 feed_img_delta[0][j] = feed_img[0][j] + delta
-                if use_parallel_exe:
-                    loss_delta = exe.run(
-                        feed={
-                            'i': np.full((num_devices), feed_i, np.int32),
-                            'image': np.repeat(
-                                feed_img_delta, num_devices, axis=0
-                            ),
-                            'label': np.repeat(feed_label, num_devices, axis=0),
-                        },
-                        fetch_list=[loss.name],
-                    )
-                    multi_device_grad = (
-                        (loss_delta[0] - loss_value[0]) / delta / num_devices
-                    )
-                    for d in range(num_devices):
-                        numerical_grad[d][j] = multi_device_grad[d]
-                else:
-                    loss_delta = exe.run(
-                        main_program,
-                        feed={
-                            'i': np.full((1), feed_i, np.int32),
-                            'image': feed_img_delta,
-                            'label': feed_label,
-                        },
-                        fetch_list=[loss.name],
-                    )
-                    numerical_grad[0][j] = (
-                        loss_delta[0] - loss_value[0]
-                    ) / delta
+                loss_delta = exe.run(
+                    main_program,
+                    feed={
+                        'i': np.full((1), feed_i, np.int32),
+                        'image': feed_img_delta,
+                        'label': feed_label,
+                    },
+                    fetch_list=[loss.name],
+                )
+                numerical_grad[0][j] = (loss_delta[0] - loss_value[0]) / delta
                 feed_img_delta[0][j] = feed_img[0][j]
             np.testing.assert_allclose(
                 img_grad, numerical_grad, rtol=0.05, atol=0.05
             )
 
-    def add_optimizer_helper(self, cond_func, use_cuda, use_parallel_exe):
+    def add_optimizer_helper(self, cond_func, use_cuda):
         """
         Test that program is runnable when add optimizer
         """
@@ -716,39 +679,21 @@ class TestCondBackward(unittest.TestCase):
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_program)
-        if use_parallel_exe:
-            os.environ['CPU_NUM'] = str(2)
-            exe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
-                main_program=main_program,
-                loss_name=loss.name,
-            )
-            num_devices = exe.device_count
 
         for feed_i in range(0, 10):
             feed_img = np.random.random(size=[16, 784]).astype(np.float32)
             feed_label = np.random.randint(
                 low=0, high=10, size=[16, 1], dtype=np.int64
             )
-            if use_parallel_exe:
-                exe.run(
-                    feed={
-                        'i': np.full((num_devices), feed_i, np.int32),
-                        'image': np.repeat(feed_img, num_devices, axis=0),
-                        'label': np.repeat(feed_label, num_devices, axis=0),
-                    },
-                    fetch_list=[loss.name],
-                )
-            else:
-                exe.run(
-                    main_program,
-                    feed={
-                        'i': np.full((1), feed_i, np.int32),
-                        'image': feed_img,
-                        'label': feed_label,
-                    },
-                    fetch_list=[loss],
-                )
+            exe.run(
+                main_program,
+                feed={
+                    'i': np.full((1), feed_i, np.int32),
+                    'image': feed_img,
+                    'label': feed_label,
+                },
+                fetch_list=[loss],
+            )
 
     def test_cond_backward(self):
 
@@ -762,19 +707,8 @@ class TestCondBackward(unittest.TestCase):
                 lambda: batchnorm_fc_with_inputs(img, label, class_num=10),
             )
 
-        for use_parallel_exe in [False, True]:
-            if use_parallel_exe and os.name == "nt":
-                print(
-                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
-                )
-                continue
-
-            self.backward_value_helper(
-                cond_func, core.is_compiled_with_cuda(), use_parallel_exe
-            )
-            self.add_optimizer_helper(
-                cond_func, core.is_compiled_with_cuda(), use_parallel_exe
-            )
+        self.backward_value_helper(cond_func, core.is_compiled_with_cuda())
+        self.add_optimizer_helper(cond_func, core.is_compiled_with_cuda())
 
     def test_half_nested_cond_backward(self):
         paddle.enable_static()
@@ -796,33 +730,22 @@ class TestCondBackward(unittest.TestCase):
                 i < 5, lambda: paddle.mean(img), lambda: branch(i, img, label)
             )
 
-        for use_parallel_exe in [False, True]:
-            if use_parallel_exe and os.name == "nt":
-                print(
-                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
-                )
-                continue
-
-            self.backward_value_helper(
-                cond_func_simple_net_at_true,
-                core.is_compiled_with_cuda(),
-                use_parallel_exe,
-            )
-            self.add_optimizer_helper(
-                cond_func_simple_net_at_true,
-                core.is_compiled_with_cuda(),
-                use_parallel_exe,
-            )
-            self.backward_value_helper(
-                cond_func_simple_net_at_false,
-                core.is_compiled_with_cuda(),
-                use_parallel_exe,
-            )
-            self.add_optimizer_helper(
-                cond_func_simple_net_at_false,
-                core.is_compiled_with_cuda(),
-                use_parallel_exe,
-            )
+        self.backward_value_helper(
+            cond_func_simple_net_at_true,
+            core.is_compiled_with_cuda(),
+        )
+        self.add_optimizer_helper(
+            cond_func_simple_net_at_true,
+            core.is_compiled_with_cuda(),
+        )
+        self.backward_value_helper(
+            cond_func_simple_net_at_false,
+            core.is_compiled_with_cuda(),
+        )
+        self.add_optimizer_helper(
+            cond_func_simple_net_at_false,
+            core.is_compiled_with_cuda(),
+        )
 
     def test_nested_cond_backward(self):
         paddle.enable_static()
@@ -845,18 +768,8 @@ class TestCondBackward(unittest.TestCase):
                 lambda: branch(i, img, label, False),
             )
 
-        for use_parallel_exe in [False, True]:
-            if use_parallel_exe and os.name == "nt":
-                print(
-                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
-                )
-                continue
-            self.backward_value_helper(
-                cond_func, core.is_compiled_with_cuda(), use_parallel_exe
-            )
-            self.add_optimizer_helper(
-                cond_func, core.is_compiled_with_cuda(), use_parallel_exe
-            )
+        self.backward_value_helper(cond_func, core.is_compiled_with_cuda())
+        self.add_optimizer_helper(cond_func, core.is_compiled_with_cuda())
 
 
 class TestCondWithError(unittest.TestCase):
