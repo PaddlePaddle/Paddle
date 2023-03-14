@@ -31,6 +31,7 @@ PsGraphClient::PsGraphClient() {
              paddle::framework::BinaryArchive &iar) {
         request_handler(head, iar);
       });
+  VLOG(0) << "PsGraphClient rank id=" << _rank_id << ", rank num=" << _rank_num;
 }
 PsGraphClient::~PsGraphClient() {}
 int32_t PsGraphClient::Initialize() {
@@ -169,6 +170,7 @@ void PsGraphClient::request_handler(const simple::RpcMessageHead &head,
     int total_ref = info.shard_num * (_rank_num - 1);
     pass_refered->wg.add(total_ref);
     pass_refered->values = new SparseShardValues;
+    pass_refered->shard_mutex = new std::mutex[info.shard_num];
     pass_refered->values->resize(info.shard_num);
     info.refered_feas[id].reset(pass_refered);
     VLOG(0) << "add request_handler table id=" << table_id
@@ -177,8 +179,11 @@ void PsGraphClient::request_handler(const simple::RpcMessageHead &head,
   } else {
     pass_refered = it->second.get();
   }
+  info.pass_mutex.unlock();
 
   auto &shard_values = (*pass_refered->values)[shard_id];
+  auto &shard_mutex = pass_refered->shard_mutex[shard_id];
+  shard_mutex.lock();
   size_t shard_size = shard_values.keys.size();
   shard_values.offsets.push_back(shard_size);
   if (num > 0) {
@@ -186,26 +191,46 @@ void PsGraphClient::request_handler(const simple::RpcMessageHead &head,
     iar.Read(&shard_values.keys[shard_size], num * sizeof(uint64_t));
     shard_values.values.resize(num + shard_size);
   }
-  info.pass_mutex.unlock();
+  shard_mutex.unlock();
 
   if (num > 0) {
     auto f = _thread_pools[shard_id]->Run(
         [this, table_id, id, shard_id, num, shard_size, pass_refered](void) {
+          thread_local std::vector<uint64_t> pull_keys;
+          thread_local std::vector<char *> pull_vals;
+
+          pull_keys.resize(num);
+          pull_vals.resize(num);
+
+          auto &shard_values = (*pass_refered->values)[shard_id];
+          auto &shard_mutex = pass_refered->shard_mutex[shard_id];
+          shard_mutex.lock();
+          uint64_t *keys = &shard_values.keys[shard_size];
+          for (size_t i = 0; i < num; ++i) {
+            pull_keys[i] = keys[i];
+          }
+          shard_mutex.unlock();
+
           platform::Timer timeline;
           timeline.Start();
-          auto &shard_values = (*pass_refered->values)[shard_id];
           auto *table_ptr = GetTable(table_id);
           TableContext table_context;
           table_context.value_type = Sparse;
-          table_context.pull_context.keys = &shard_values.keys[shard_size];
-          table_context.pull_context.ptr_values =
-              &shard_values.values[shard_size];
+          table_context.pull_context.keys = &pull_keys[0];
+          table_context.pull_context.ptr_values = &pull_vals[0];
           table_context.use_ptr = true;
           table_context.num = num;
           table_context.shard_id = shard_id;
           table_context.pass_id = GET_PASS_ID(id);
           table_ptr->Pull(table_context);
           timeline.Pause();
+
+          shard_mutex.lock();
+          char** valsptr = &shard_values.values[shard_size];
+          for (size_t i = 0; i < num; ++i) {
+            valsptr[i] = pull_vals[i];
+          }
+          shard_mutex.unlock();
 
           VLOG(3) << "end pull remote table id=" << table_id
                   << ", pass id=" << GET_PASS_ID(id)
@@ -254,6 +279,8 @@ std::shared_ptr<SparseShardValues> PsGraphClient::TakePassSparseReferedValues(
   std::shared_ptr<SparseShardValues> shard_ptr;
   shard_ptr.reset(pass_refered->values);
   pass_refered->values = nullptr;
+  // free shard mutex lock
+  delete [] pass_refered->shard_mutex;
 
   info.pass_mutex.lock();
   info.refered_feas.erase(id);
