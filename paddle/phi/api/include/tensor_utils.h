@@ -36,8 +36,9 @@ using Deleter = std::function<void(void*)>;
  * @param place The place where the tensor is located, should correspond to
  *              place of `data`.
  *              If `place` use the default value, it will be inferred from
- * `data`， However，the feature is only supported on CPU or GPU. So make sure
- *              that `place` is equal to the place of `data` on other devices.
+ *              `data`， However，the feature is only supported on CPU or GPU.
+ *              So make sure that `place` is equal to the place of `data` when
+ *              using other devices.
  * @param deleter A function or function object that will be called to free the
  *                memory buffer.
  *

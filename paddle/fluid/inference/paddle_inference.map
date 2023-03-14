@@ -42,6 +42,7 @@
 			*paddle::OpMetaInfoBuilder*;
 			*paddle::CustomOpKernelContext*;
 			*paddle::RegisterSymbolsFor*;
+			*paddle::from_blob*;
 
 			/* ut needs the following symbol, we need to modify all the ut to hidden such symbols */
 
