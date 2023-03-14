@@ -31,6 +31,7 @@ void DropoutRawKernel(const Context& dev_ctx,
                       bool fix_seed,
                       DenseTensor* out,
                       DenseTensor* mask) {
+  std::cout << "DropoutRawKernel" << std::endl;
   bool upscale_in_train = (mode == "upscale_in_train");
   dev_ctx.template Alloc<T>(out);
   if (mask) {
@@ -61,6 +62,7 @@ void DropoutNdKernel(const Context& dev_ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out,
                      DenseTensor* mask) {
+  std::cout << "DropoutNdKernel" << std::endl;
   bool upscale_in_train = (mode == "upscale_in_train");
   dev_ctx.template Alloc<T>(out);
   if (mask) {
