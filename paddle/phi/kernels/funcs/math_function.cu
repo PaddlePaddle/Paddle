@@ -219,8 +219,12 @@ void BatchTransposeFp16(
 template <typename T>
 void BatchTranspose(T* output, const T* input, int batch, int m, int n) {
   if (std::is_same<T, phi::dtype::float16>::value) {
-    // BatchTransposeFp16((half*)output, (half*)input, batch, m, n);
-    // return;
+    BatchTransposeFp16(reinterpret_cast<half*> output,
+                       reinterpret_cast<half*> input,
+                       batch,
+                       m,
+                       n);
+    return;
   }
   dim3 grid((n + 31) / 32, (m + 31) / 32, batch);
   dim3 block(32, 8);
