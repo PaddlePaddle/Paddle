@@ -177,18 +177,34 @@ class MatmulAutoTuner
   }
 };
 
-template <typename T, typename ReturnType, typename... Args>
+template <bool TransposeA,
+          bool TransposeB,
+          typename T,
+          typename ReturnType,
+          typename... Args>
 class GatherGemmScatterAutoTuner
     : public AutoTuneBase<T, KernelCallback<T, ReturnType, T, T, Args...>> {
  public:
-  static GatherGemmScatterAutoTuner<T, ReturnType, Args...>* Instance(
-      ReturnType (*func)(T, T, Args...)) {
+  static GatherGemmScatterAutoTuner<TransposeA,
+                                    TransposeB,
+                                    T,
+                                    ReturnType,
+                                    Args...>*
+  Instance(ReturnType (*func)(T, T, Args...)) {
     static std::once_flag gather_gemm_scatter_init_flag;
-    static std::unique_ptr<GatherGemmScatterAutoTuner<T, ReturnType, Args...>>
+    static std::unique_ptr<GatherGemmScatterAutoTuner<TransposeA,
+                                                      TransposeB,
+                                                      T,
+                                                      ReturnType,
+                                                      Args...>>
         instance;
     std::call_once(gather_gemm_scatter_init_flag, [&] {
       auto obj = MakeCallback<T>(func);
-      instance.reset(new GatherGemmScatterAutoTuner<T, ReturnType, Args...>);
+      instance.reset(new GatherGemmScatterAutoTuner<TransposeA,
+                                                    TransposeB,
+                                                    T,
+                                                    ReturnType,
+                                                    Args...>);
       instance->AddCallBack(func);
     });
     return instance.get();
@@ -201,7 +217,8 @@ class GatherGemmScatterAutoTuner
            Args... args) {
     this->is_init_ = true;
     this->CheckKernelSize();
-    auto& cache = AutoTuneCache::Instance().GetGatherGemmScatter<T>();
+    auto& cache = AutoTuneCache::Instance()
+                      .GetGatherGemmScatter<T, TransposeA, TransposeB>();
 
     if (cache.Find(key)) {
       auto best_idx = cache.Get(key);
@@ -250,10 +267,22 @@ class GatherGemmScatterAutoTuner
     return best_idx;
   }
 };
-template <typename T, typename ReturnType, typename... Args>
-static GatherGemmScatterAutoTuner<T, ReturnType, Args...>*
+template <bool TransposeA,
+          bool TransposeB,
+          typename T,
+          typename ReturnType,
+          typename... Args>
+static GatherGemmScatterAutoTuner<TransposeA,
+                                  TransposeB,
+                                  T,
+                                  ReturnType,
+                                  Args...>*
 MakeGatherGemmScatterTuner(ReturnType (*func)(T, T, Args...)) {
-  return GatherGemmScatterAutoTuner<T, ReturnType, Args...>::Instance(func);
+  return GatherGemmScatterAutoTuner<TransposeA,
+                                    TransposeB,
+                                    T,
+                                    ReturnType,
+                                    Args...>::Instance(func);
 }
 
 // Define the auto_tuner inital object.

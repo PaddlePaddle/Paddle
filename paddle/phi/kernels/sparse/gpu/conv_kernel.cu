@@ -154,19 +154,20 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
       const IntT* scatter_indices =
           rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-      GatherGemmScatterDriver(dev_ctx,
-                              x.non_zero_elements().data<T>(),
-                              tmp_kernel_ptr,
-                              out_values_ptr,
-                              out_values_ptr,
-                              M,
-                              N,
-                              K,
-                              gather_indices,
-                              static_cast<const IntT*>(nullptr),
-                              scatter_indices,
-                              static_cast<T>(1.0),
-                              static_cast<T>(1.0));
+      GatherGemmScatterDriver<T, IntT, false, false>(
+          dev_ctx,
+          x.non_zero_elements().data<T>(),
+          tmp_kernel_ptr,
+          out_values_ptr,
+          out_values_ptr,
+          M,
+          N,
+          K,
+          gather_indices,
+          static_cast<const IntT*>(nullptr),
+          scatter_indices,
+          static_cast<T>(1.0),
+          static_cast<T>(1.0));
     }
   } else {
 #endif

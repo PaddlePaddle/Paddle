@@ -46,8 +46,6 @@ namespace sparse {
       throw std::runtime_error(cutlassGetStatusString(error)); \
     }                                                          \
   }
-#define GET_STRIDE(layout, cols, rows) \
-  std::is_same<layout, cutlass::layout::RowMajor>::value ? cols : rows
 #define DEFINE_LAUNCH_KERNEL(dtype, cutlass_type)                          \
   template <typename Gemm>                                                 \
   void launchKernel(dtype const alpha,                                     \
