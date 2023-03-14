@@ -248,28 +248,7 @@ RunCustomOpNode::operator()(
   ctx.MapPlainOutputs(grad_inputs_name, grad_outputs_names, grad_inplace_map);
   (*paddle::framework::OpMetaInfoHelper::GetKernelFn(
       kernel_map.at(op_type_)[1]))(&ctx);
-  if (!grad_inplace_map.empty()) {
-    // Similar with `ctx.AssignInplaceOutputs()`, but we use HandleView here to
-    // follow dygraph eager mode.
-    std::unordered_map<size_t, size_t> inplace_tensor_map =
-        ctx.GetInplaceTensorMap();
-    for (auto pair : inplace_tensor_map) {
-      PADDLE_ENFORCE_EQ(tmp_ins[pair.first].size(),
-                        outs[pair.second].size(),
-                        paddle::platform::errors::Unavailable(
-                            "Your custom operator inputs incorrect inplace "
-                            "vector size. Input tensor size %d is not equal to "
-                            "inplaced output tensor size %d",
-                            tmp_ins[pair.first].size(),
-                            outs[pair.second].size()));
-      size_t match_size = tmp_ins[pair.first].size();
-      VLOG(1) << "DEBUG inplace pair " << pair.first << " --> " << pair.second;
-      for (size_t i = 0; i < match_size; ++i) {
-        egr::EagerUtils::HandleViewBetweenInputAndOutput(
-            tmp_ins[pair.first][i], &(outs[pair.second][i]));
-      }
-    }
-  }
+  ctx.AssignInplaceOutputs();
 
   VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
   std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;

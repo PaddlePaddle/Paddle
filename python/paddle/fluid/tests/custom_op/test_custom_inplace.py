@@ -49,9 +49,28 @@ def inplace_dynamic(phi_func, device, dtype, np_x, np_y):
         out = custom_inplace.custom_add(x, y)
     else:
         out = x.add_(y)
-    out.backward()
 
+    out.backward()
     return x.numpy(), y.numpy(), out.numpy(), x.grad.numpy(), y.grad.numpy()
+
+
+def inplace_dynamic_relu(phi_func, device, dtype, np_x, np_y, np_z):
+    paddle.set_device(device)
+    x = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
+    y = paddle.to_tensor(np_y, dtype=dtype, stop_gradient=False)
+    z = paddle.to_tensor(np_z, dtype=dtype, stop_gradient=False)
+    out_xy = x + y
+    if phi_func:
+        out_xy = custom_inplace.custom_relu(out_xy)
+        out_xyz = out_xy + z
+        out = custom_inplace.custom_relu(out_xyz)
+    else:
+        out_xy = paddle.nn.functional.relu_(out_xy)
+        out_xyz = out_xy + z
+        out = paddle.nn.functional.relu_(out_xyz)
+
+    out.backward()
+    return x.numpy(), out.numpy(), x.grad.numpy()
 
 
 def inplace_static(func, device, dtype, np_x, np_y):
@@ -94,6 +113,7 @@ class TestCustomInplaceJit(unittest.TestCase):
         self.devices = ['cpu']
         self.np_x = np.random.random((3, 2)).astype("float32")
         self.np_y = np.random.random((3, 2)).astype("float32")
+        self.np_z = np.random.random((3, 2)).astype("float32")
 
     def check_output(self, out, pd_out, name):
         np.testing.assert_array_equal(
@@ -175,6 +195,31 @@ class TestCustomInplaceJit(unittest.TestCase):
                 self.check_output(phi_out, pd_out, "out")
                 self.check_output(phi_x_grad, pd_x_grad, "x_grad")
                 self.check_output(phi_y_grad, pd_y_grad, "y_grad")
+
+    def test_dynamic_multiple_inplace_relu(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                (pd_x, pd_out, pd_x_grad) = inplace_dynamic_relu(
+                    False,
+                    device,
+                    dtype,
+                    self.np_x,
+                    self.np_y,
+                    self.np_z,
+                )
+                (phi_x, phi_out, phi_x_grad) = inplace_dynamic_relu(
+                    True,
+                    device,
+                    dtype,
+                    self.np_x,
+                    self.np_y,
+                    self.np_z,
+                )
+
+                self.check_output(phi_x, pd_x, "x")
+                self.check_output(phi_out, pd_out, "out")
+                self.check_output(phi_x_grad, pd_x_grad, "x_grad")
+                # self.check_output(phi_out_out, pd_out_out, "out_out")
 
 
 if __name__ == "__main__":

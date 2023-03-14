@@ -967,7 +967,6 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
     bool is_double_grad = (i == 2);
 
     // GradOpDescMaker
-    // NOTE: Consider how to handle inplace
     info.grad_op_maker_ =
         [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
             const OpDesc& fwd_op,
@@ -986,7 +985,6 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         };
 
     // GradOpBaseMaker
-    // NOTE: Consider how to handle inplace
     info.dygraph_grad_op_maker_ =
         [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
             const std::string& type,

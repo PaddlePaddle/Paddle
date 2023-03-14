@@ -34,6 +34,23 @@ void add_backward_kernel(data_t* y_grad_data,
   }
 }
 
+template <typename data_t>
+void relu_forward_kernel(data_t* x_data, int64_t numel) {
+  for (size_t i = 0; i < numel; ++i) {
+    x_data[i] = x_data[i] > 0 ? x_data[i] : 0;
+  }
+}
+
+template <typename data_t>
+void relu_backward_kernel(const data_t* out_data,
+                          data_t* grad_out_data,
+                          int64_t out_numel) {
+  for (int64_t i = 0; i < out_numel; ++i) {
+    grad_out_data[i] =
+        grad_out_data[i] * (out_data[i] > static_cast<data_t>(0) ? 1. : 0.);
+  }
+}
+
 void AddForward(paddle::Tensor* x, const paddle::Tensor& y) {
   PD_CHECK(x->place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
 
@@ -83,3 +100,34 @@ PD_BUILD_GRAD_OP(custom_add)
     .Outputs({paddle::Grad("X"), paddle::Grad("Y")})
     .Inplace({{paddle::Grad("Out"), paddle::Grad("X")}})
     .SetKernelFn(PD_KERNEL(AddBackward));
+
+void ReluForwardOut(paddle::Tensor* x) {
+  PD_CHECK(x->place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+
+  PD_DISPATCH_FLOATING_TYPES(x->type(), "ReluForward", ([&] {
+                               relu_forward_kernel<data_t>(x->data<data_t>(),
+                                                           x->size());
+                             }));
+}
+
+void ReluBackwardOut(const paddle::Tensor& out, paddle::Tensor* grad_out) {
+  PD_CHECK(out.place() == paddle::PlaceType::kCPU, "x must be a CPU Tensor.");
+
+  PD_DISPATCH_FLOATING_TYPES(
+      grad_out->type(), "ReluBackward", ([&] {
+        relu_backward_kernel<data_t>(
+            out.data<data_t>(), grad_out->data<data_t>(), grad_out->size());
+      }));
+}
+
+PD_BUILD_OP(custom_relu)
+    .Inputs({"X"})
+    .Outputs({"Out"})
+    .Inplace({{"X", "Out"}})
+    .SetKernelFn(PD_KERNEL(ReluForwardOut));
+
+PD_BUILD_GRAD_OP(custom_relu)
+    .Inputs({"Out", paddle::Grad("Out")})
+    .Outputs({paddle::Grad("X")})
+    .Inplace({{paddle::Grad("Out"), paddle::Grad("X")}})
+    .SetKernelFn(PD_KERNEL(ReluBackwardOut));
