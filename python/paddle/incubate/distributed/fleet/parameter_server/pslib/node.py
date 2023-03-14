@@ -197,7 +197,6 @@ class DownpourServer(Server):
             if (
                 accessor_class == 'DownpourFeatureValueAccessor'
                 or accessor_class == 'DownpourCtrAccessor'
-                or accessor_class == 'DownpourCtrDymfAccessor'
                 or accessor_class == 'DownpourCtrDoubleAccessor'
             ):
                 table.accessor.sparse_sgd_param.learning_rate = strategy.get(
@@ -350,6 +349,7 @@ class DownpourServer(Server):
             elif (
                 accessor_class == 'DownpourUnitAccessor'
                 or accessor_class == 'DownpourDoubleUnitAccessor'
+                or accessor_class == 'DownpourCtrDymfAccessor'
             ):
                 self.add_sparse_table_common_config(table, strategy)
                 self.add_sparse_optimizer(

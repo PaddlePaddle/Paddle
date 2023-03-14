@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.layers import utils
 
 paddle.enable_static()
 
@@ -49,9 +48,10 @@ class TestGetInputsOutputsInBlock(unittest.TestCase):
             i = paddle.static.nn.while_loop(while_cond, while_body, [i])
 
         sub_block = main_program.block(1)
-        inner_inputs, inner_outputs = utils.get_inputs_outputs_in_block(
-            sub_block
-        )
+        (
+            inner_inputs,
+            inner_outputs,
+        ) = paddle.utils.get_inputs_outputs_in_block(sub_block)
         # 'assign_0.tmp_0', 'assign_1.tmp_0' are name of i and ten in program
         self.assertTrue(inner_inputs == {'assign_0.tmp_0', 'assign_1.tmp_0'})
         # 'tmp_0', 'assign_0.tmp_0' are name of i < ten and i in program
@@ -67,9 +67,10 @@ class TestGetInputsOutputsInBlock(unittest.TestCase):
             out = paddle.static.nn.cond(a < b, lambda: a + c, lambda: b * b)
 
         sub_block = main_program.block(1)
-        inner_inputs, inner_outputs = utils.get_inputs_outputs_in_block(
-            sub_block
-        )
+        (
+            inner_inputs,
+            inner_outputs,
+        ) = paddle.utils.get_inputs_outputs_in_block(sub_block)
         # 'fill_constant_1.tmp_0', 'tmp_3' are names of a, c
         self.assertTrue(inner_inputs == {'fill_constant_1.tmp_0', 'tmp_3'})
         # '_generated_var_1', is name of a + c
