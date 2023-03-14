@@ -79,7 +79,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "nanmedian",
     "rnn",
     "search_sort",
-    "select",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
