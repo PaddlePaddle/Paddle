@@ -403,15 +403,15 @@ def _run_paddle_cond(
             "Unsupported return type of true_fn and false_fn in cond", str(e)
         ):
             raise Dygraph2StaticException(
-                "Your if/else have different return type. TODO: add link to modifty. {}".format(
-                    str(e)
-                )
+                "{}\n\nYour if/else have different return type.You can refer"
+                " `https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/guides/jit/limitations_cn.html#bianliangzaibutongfenzhileixingxubaochiyizhi`"
+                " for advises.".format(str(e))
             )
         if re.search("Incompatible return values of", str(e)):
             raise Dygraph2StaticException(
-                "Your if/else have different number of return value. TODO: add link to modifty. {}".format(
-                    str(e)
-                )
+                "{}\n\nYour if/else have different return type.You can refer"
+                " `https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/guides/jit/limitations_cn.html#if-else`"
+                " for advises.".format(str(e))
             )
         raise e
     get_args = lambda: helper.get(return_name_ids)
@@ -550,7 +550,7 @@ def convert_zip(*args):
     return zip(*args)
 
 
-# TODO(xiongkun): delete when list<variable> is ready.
+# TODO(xiongkun): delete this class when list<variable> is ready.
 class VariableTuple:
     """
     this class will cause enumerate can't be wrapped by other iterator change function.
