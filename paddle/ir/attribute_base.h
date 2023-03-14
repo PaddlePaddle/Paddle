@@ -172,11 +172,11 @@ struct AttributeManager {
   ///
   template <typename T, typename... Args>
   static std::enable_if_t<
-      !std::is_same<typename T::StorageType, AttributeStorage>::value,
+      !std::is_same<typename T::Storage, AttributeStorage>::value,
       T>
   get(IrContext *ctx, TypeId type_id, Args &&...args) {
     return ctx->attribute_storage_manager()
-        .GetParametricStorageType<typename T::StorageType>(
+        .GetParametricStorage<typename T::Storage>(
             [&, type_id](AttributeStorage *storage) {
               storage->initialize(AbstractAttribute::lookup(type_id, ctx));
             },
@@ -193,12 +193,11 @@ struct AttributeManager {
   /// \return The unique instance of Attribute T from IrContext.
   ///
   template <typename T>
-  static std::enable_if_t<
-      std::is_same<typename T::StorageType, AttributeStorage>::value,
-      T>
-  get(IrContext *ctx, TypeId type_id) {
+  static std::
+      enable_if_t<std::is_same<typename T::Storage, AttributeStorage>::value, T>
+      get(IrContext *ctx, TypeId type_id) {
     return ctx->attribute_storage_manager()
-        .GetParameterlessStorageType<typename T::StorageType>(type_id);
+        .GetParameterlessStorage<typename T::Storage>(type_id);
   }
 
   ///
@@ -219,10 +218,10 @@ struct AttributeManager {
   ///
   template <typename T>
   static std::enable_if_t<
-      !std::is_same<typename T::StorageType, AttributeStorage>::value>
+      !std::is_same<typename T::Storage, AttributeStorage>::value>
   RegisterAttribute(IrContext *ctx, TypeId type_id) {
     ctx->attribute_storage_manager()
-        .RegisterParametricStorageType<typename T::StorageType>(type_id);
+        .RegisterParametricStorage<typename T::Storage>(type_id);
   }
 
   ///
@@ -234,10 +233,10 @@ struct AttributeManager {
   ///
   template <typename T>
   static std::enable_if_t<
-      std::is_same<typename T::StorageType, AttributeStorage>::value>
+      std::is_same<typename T::Storage, AttributeStorage>::value>
   RegisterAttribute(IrContext *ctx, TypeId type_id) {
     ctx->attribute_storage_manager()
-        .RegisterParameterlessStorageType<AttributeStorage>(
+        .RegisterParameterlessStorage<AttributeStorage>(
             type_id, [&ctx, type_id](AttributeStorage *storage) {
               storage->initialize(AbstractAttribute::lookup(type_id, ctx));
             });
@@ -248,26 +247,24 @@ struct AttributeManager {
 /// \brief This macro definition is used to add some necessary functions to the
 /// custom Attribute class.
 ///
-#define DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(concrete_attribute, storage_type) \
-  using StorageType = storage_type;                                         \
-                                                                            \
-  StorageType *storage() const {                                            \
-    return static_cast<StorageType *>(this->storage_);                      \
-  }                                                                         \
-                                                                            \
-  static ir::TypeId type_id() {                                             \
-    return ir::TypeId::get<concrete_attribute>();                           \
-  }                                                                         \
-                                                                            \
-  template <typename T>                                                     \
-  static bool classof(T val) {                                              \
-    return val.type_id() == type_id();                                      \
-  }                                                                         \
-                                                                            \
-  template <typename... Args>                                               \
-  static concrete_attribute get(ir::IrContext *ctx, Args... args) {         \
-    return ir::AttributeManager::template get<concrete_attribute>(ctx,      \
-                                                                  args...); \
+#define DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(concrete_attribute, storage_type)   \
+  using Storage = storage_type;                                               \
+                                                                              \
+  Storage *storage() const { return static_cast<Storage *>(this->storage_); } \
+                                                                              \
+  static ir::TypeId type_id() {                                               \
+    return ir::TypeId::get<concrete_attribute>();                             \
+  }                                                                           \
+                                                                              \
+  template <typename T>                                                       \
+  static bool classof(T val) {                                                \
+    return val.type_id() == type_id();                                        \
+  }                                                                           \
+                                                                              \
+  template <typename... Args>                                                 \
+  static concrete_attribute get(ir::IrContext *ctx, Args... args) {           \
+    return ir::AttributeManager::template get<concrete_attribute>(ctx,        \
+                                                                  args...);   \
   }
 
 ///

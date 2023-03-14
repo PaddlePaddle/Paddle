@@ -24,12 +24,12 @@ namespace ir {
 ///
 class Attribute {
  public:
-  using StorageType = AttributeStorage;
+  using Storage = AttributeStorage;
 
   constexpr Attribute() = default;
 
-  Attribute(const StorageType *storage)  // NOLINT
-      : storage_(const_cast<StorageType *>(storage)) {}
+  Attribute(const Storage *storage)  // NOLINT
+      : storage_(const_cast<Storage *>(storage)) {}
 
   Attribute(const Attribute &other) = default;
 
@@ -55,7 +55,7 @@ class Attribute {
     return storage_->abstract_attribute();
   }
 
-  StorageType *storage() const { return storage_; }
+  Storage *storage() const { return storage_; }
 
   const Dialect &dialect() const {
     return storage_->abstract_attribute().dialect();
@@ -84,7 +84,7 @@ class Attribute {
   friend struct std::hash<Attribute>;
 
  protected:
-  StorageType *storage_{nullptr};
+  Storage *storage_{nullptr};
 };
 
 }  // namespace ir
@@ -96,7 +96,7 @@ namespace std {
 template <>
 struct hash<ir::Attribute> {
   std::size_t operator()(const ir::Attribute &obj) const {
-    return std::hash<ir::Attribute::StorageType *>()(obj.storage_);
+    return std::hash<ir::Attribute::Storage *>()(obj.storage_);
   }
 };
 }  // namespace std

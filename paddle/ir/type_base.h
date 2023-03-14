@@ -170,10 +170,10 @@ struct TypeManager {
   ///
   template <typename T, typename... Args>
   static std::
-      enable_if_t<!std::is_same<typename T::StorageType, TypeStorage>::value, T>
+      enable_if_t<!std::is_same<typename T::Storage, TypeStorage>::value, T>
       get(IrContext *ctx, TypeId type_id, Args &&...args) {
     return ctx->type_storage_manager()
-        .GetParametricStorageType<typename T::StorageType>(
+        .GetParametricStorage<typename T::Storage>(
             [&, type_id](TypeStorage *storage) {
               storage->initialize(AbstractType::lookup(type_id, ctx));
             },
@@ -190,11 +190,11 @@ struct TypeManager {
   /// \return The unique instance of Type T from IrContext.
   ///
   template <typename T>
-  static std::
-      enable_if_t<std::is_same<typename T::StorageType, TypeStorage>::value, T>
-      get(IrContext *ctx, TypeId type_id) {
+  static std::enable_if_t<std::is_same<typename T::Storage, TypeStorage>::value,
+                          T>
+  get(IrContext *ctx, TypeId type_id) {
     return ctx->type_storage_manager()
-        .GetParameterlessStorageType<typename T::StorageType>(type_id);
+        .GetParameterlessStorage<typename T::Storage>(type_id);
   }
 
   ///
@@ -215,10 +215,10 @@ struct TypeManager {
   ///
   template <typename T>
   static std::enable_if_t<
-      !std::is_same<typename T::StorageType, TypeStorage>::value>
+      !std::is_same<typename T::Storage, TypeStorage>::value>
   RegisterType(IrContext *ctx, TypeId type_id) {
-    ctx->type_storage_manager()
-        .RegisterParametricStorageType<typename T::StorageType>(type_id);
+    ctx->type_storage_manager().RegisterParametricStorage<typename T::Storage>(
+        type_id);
   }
 
   ///
@@ -228,10 +228,9 @@ struct TypeManager {
   /// \param type_id The type id of the Type T.
   ///
   template <typename T>
-  static std::enable_if_t<
-      std::is_same<typename T::StorageType, TypeStorage>::value>
+  static std::enable_if_t<std::is_same<typename T::Storage, TypeStorage>::value>
   RegisterType(IrContext *ctx, TypeId type_id) {
-    ctx->type_storage_manager().RegisterParameterlessStorageType<TypeStorage>(
+    ctx->type_storage_manager().RegisterParameterlessStorage<TypeStorage>(
         type_id, [&ctx, type_id](TypeStorage *storage) {
           storage->initialize(AbstractType::lookup(type_id, ctx));
         });
@@ -242,23 +241,21 @@ struct TypeManager {
 /// \brief This macro definition is used to add some necessary functions to the
 /// custom Type class.
 ///
-#define DECLARE_TYPE_UTILITY_FUNCTOR(concrete_type, storage_type)          \
-  using StorageType = storage_type;                                        \
-                                                                           \
-  StorageType *storage() const {                                           \
-    return static_cast<StorageType *>(this->storage_);                     \
-  }                                                                        \
-                                                                           \
-  static ir::TypeId type_id() { return ir::TypeId::get<concrete_type>(); } \
-                                                                           \
-  template <typename T>                                                    \
-  static bool classof(T val) {                                             \
-    return val.type_id() == type_id();                                     \
-  }                                                                        \
-                                                                           \
-  template <typename... Args>                                              \
-  static concrete_type get(ir::IrContext *ctx, Args... args) {             \
-    return ir::TypeManager::template get<concrete_type>(ctx, args...);     \
+#define DECLARE_TYPE_UTILITY_FUNCTOR(concrete_type, storage_type)             \
+  using Storage = storage_type;                                               \
+                                                                              \
+  Storage *storage() const { return static_cast<Storage *>(this->storage_); } \
+                                                                              \
+  static ir::TypeId type_id() { return ir::TypeId::get<concrete_type>(); }    \
+                                                                              \
+  template <typename T>                                                       \
+  static bool classof(T val) {                                                \
+    return val.type_id() == type_id();                                        \
+  }                                                                           \
+                                                                              \
+  template <typename... Args>                                                 \
+  static concrete_type get(ir::IrContext *ctx, Args... args) {                \
+    return ir::TypeManager::template get<concrete_type>(ctx, args...);        \
   }
 
 ///

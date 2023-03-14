@@ -64,9 +64,9 @@ class StorageManager {
   /// \return A uniqued instance of Storage.
   ///
   template <typename Storage, typename... Args>
-  Storage *GetParametricStorageType(std::function<void(Storage *)> init_func,
-                                    TypeId type_id,
-                                    Args &&...args) {
+  Storage *GetParametricStorage(std::function<void(Storage *)> init_func,
+                                TypeId type_id,
+                                Args &&...args) {
     typename Storage::ParamKey param =
         typename Storage::ParamKey(std::forward<Args>(args)...);
     std::size_t hash_value = Storage::HashValue(param);
@@ -78,8 +78,8 @@ class StorageManager {
       if (init_func) init_func(storage);
       return storage;
     };
-    return static_cast<Storage *>(GetParametricStorageTypeImpl(
-        type_id, hash_value, equal_func, constructor));
+    return static_cast<Storage *>(
+        GetParametricStorageImpl(type_id, hash_value, equal_func, constructor));
   }
 
   ///
@@ -89,8 +89,8 @@ class StorageManager {
   /// \return A uniqued instance of Storage.
   ///
   template <typename Storage>
-  Storage *GetParameterlessStorageType(TypeId type_id) {
-    return static_cast<Storage *>(GetParameterlessStorageTypeImpl(type_id));
+  Storage *GetParameterlessStorage(TypeId type_id) {
+    return static_cast<Storage *>(GetParameterlessStorageImpl(type_id));
   }
 
   ///
@@ -99,8 +99,8 @@ class StorageManager {
   /// \param type_id The type id of the AbstractType.
   ///
   template <typename Storage>
-  void RegisterParametricStorageType(TypeId type_id) {
-    return RegisterParametricStorageTypeImpl(type_id);
+  void RegisterParametricStorage(TypeId type_id) {
+    return RegisterParametricStorageImpl(type_id);
   }
 
   ///
@@ -110,28 +110,28 @@ class StorageManager {
   /// \param init_func Used to initialize a newly inserted storage instance.
   ///
   template <typename Storage>
-  void RegisterParameterlessStorageType(
-      TypeId type_id, std::function<void(Storage *)> init_func) {
+  void RegisterParameterlessStorage(TypeId type_id,
+                                    std::function<void(Storage *)> init_func) {
     auto constructor = [&]() {
       auto *storage = new Storage();
       if (init_func) init_func(storage);
       return storage;
     };
-    RegisterParameterlessStorageTypeImpl(type_id, constructor);
+    RegisterParameterlessStorageImpl(type_id, constructor);
   }
 
  private:
-  StorageBase *GetParametricStorageTypeImpl(
+  StorageBase *GetParametricStorageImpl(
       TypeId type_id,
       std::size_t hash_value,
       std::function<bool(const StorageBase *)> equal_func,
       std::function<StorageBase *()> constructor);
 
-  StorageBase *GetParameterlessStorageTypeImpl(TypeId type_id);
+  StorageBase *GetParameterlessStorageImpl(TypeId type_id);
 
-  void RegisterParametricStorageTypeImpl(TypeId type_id);
+  void RegisterParametricStorageImpl(TypeId type_id);
 
-  void RegisterParameterlessStorageTypeImpl(
+  void RegisterParameterlessStorageImpl(
       TypeId type_id, std::function<StorageBase *()> constructor);
 
   // This map is a mapping between type id and parameteric type storage.
