@@ -70,7 +70,7 @@ class TestFusedFCElementwiseLayerNormOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=2e-3)
+        self.check_output_with_place(place, atol=2e-3, check_dygraph=False)
 
 
 class TestFusedFCElementwiseLayerNormOp2(TestFusedFCElementwiseLayerNormOp):

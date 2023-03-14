@@ -63,6 +63,7 @@ class TestEigOp(OpTest):
         paddle.enable_static()
         paddle.device.set_device("cpu")
         self.op_type = "eig"
+        self.python_api = paddle.linalg.eig
         self.__class__.op_type = self.op_type
         self.init_input()
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
