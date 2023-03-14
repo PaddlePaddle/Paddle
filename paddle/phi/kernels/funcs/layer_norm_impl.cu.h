@@ -2129,7 +2129,16 @@ static void LayerNormBackward(
           int data_per_warp = BDIMX * real_vec;
           uint32_t warp_num =
               feature_size < data_per_warp ? 1 : (feature_size / data_per_warp);
+#if defined(__clang__) || defined(__GNUC__)
           int block_dim_y = std::min(8, 1 << (31 - __builtin_clz(warp_num)));
+#else
+        int block_dim_y = 1;
+        while (warp_num != 0) {
+          warp_num = warp_num >> 1;
+          block_dim_y <<= 1;
+        }
+        block_dim_y = std::min(8, (block_dim_y / 2));
+#endif  // __GNUCC__
 
           dim3 threads1(BDIMX, block_dim_y, 1);
 #define IMPL_BACKWARD_FOR_INPUT(num)                                       \
@@ -2148,6 +2157,8 @@ static void LayerNormBackward(
               IMPL_BACKWARD_FOR_INPUT(1);
             }
           }
+#undef IMPL_BACKWARD_FOR_INPUT
+
         } else {
           constexpr int BDIMY3 = 4;
           dim3 threads1(BDIMX, BDIMY3, 1);
