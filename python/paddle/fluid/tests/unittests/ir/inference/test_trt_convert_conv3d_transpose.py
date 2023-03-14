@@ -121,32 +121,19 @@ class TrtConvertConv3dTransposeTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        if os.name == "nt":
-            # for static_shape
-            clear_dynamic_shape()
-            self.trt_param.precision = paddle_infer.PrecisionType.Float32
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False
-            ), 1e-1
-            # for dynamic_shape
-            generate_dynamic_shape(attrs)
-            self.trt_param.precision = paddle_infer.PrecisionType.Float32
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, True
-            ), 1e-1
-        else:
-            # for static_shape
-            clear_dynamic_shape()
-            self.trt_param.precision = paddle_infer.PrecisionType.Float32
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False
-            ), 1e-3
-            # for dynamic_shape
-            generate_dynamic_shape(attrs)
-            self.trt_param.precision = paddle_infer.PrecisionType.Float32
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, True
-            ), 1e-3
+        atol = 1e-1 if os.name == "nt" else 1e-3
+        # for static_shape
+        clear_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False
+        ), atol
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), atol
 
     def add_skip_trt_case(self):
         pass
