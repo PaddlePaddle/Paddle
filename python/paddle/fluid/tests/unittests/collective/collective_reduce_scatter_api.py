@@ -27,7 +27,14 @@ class TestCollectiveReduceScatterAPI(TestCollectiveAPIRunnerBase):
     def get_model(self, main_prog, startup_program, rank):
         pass
 
-    def get_model_new(self, main_prog, startup_program, rank, dtype='float32'):
+    def get_model_new(
+        self,
+        main_prog,
+        startup_program,
+        rank,
+        dtype='float32',
+        reduce_type=None,
+    ):
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
                 name="tindata", shape=[10, 1000], dtype=dtype

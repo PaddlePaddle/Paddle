@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/send_v3_kernel.h"
 
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || \
