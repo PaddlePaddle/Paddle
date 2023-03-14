@@ -517,6 +517,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
       "delete_dropout_op_pass",
       "identity_scale_op_clean_pass",
+      "fused_multi_transformer_cachekv_layout_trans_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
