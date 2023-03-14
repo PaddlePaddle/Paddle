@@ -342,32 +342,14 @@ def squeeze2_composite(x, axis):
     otherwise, remove dims equal to 1 in axis
     """
 
-    # def canonicalize_dim(rank, idx):
-    #     assert rank > 0
-    #     if idx >= 0 and idx < rank:
-    #         return idx
-    #     if idx < 0:
-    #         _idx = idx + rank
-    #     else:
-    #         _idx = idx
-    #     assert _idx >= 0 and _idx < rank
-    #     return _idx
-
-    # def canonicalize_dims(rank, indices):
-    #     if isinstance(indices, int):
-    #         return canonicalize_dim(rank, indices)
-    #     return tuple(canonicalize_dim(rank, idx) for idx in indices)
-
     if len(axis) == 0:
         dims = range(len(x.shape))
     else:
-        # dim = canonicalize_dims(len(x.shape), axis)
         rank = len(x.shape)
         if isinstance(axis, int):
             dims = set((axis + rank) % rank)
         else:
             dims = set([(ax + rank) % rank for ax in axis])
-        # dims = set(dims) #set((dim,) if not isinstance(dim, tuple) else dim)
     new_shape = []
     for d, s in enumerate(x.shape):
         if not (s == 1 and (d in dims)):
