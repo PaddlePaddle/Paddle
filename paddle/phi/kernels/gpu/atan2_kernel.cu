@@ -25,5 +25,5 @@ PD_REGISTER_KERNEL(atan2,
                    phi::dtype::float16,
                    int,
                    int64_t) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
