@@ -1753,6 +1753,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       VLOG(3) << "pad3d is not supported when TensorRT < 8.2";
       return false;
 #endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "pad3d is not supported static shape";
+        return false;
+      }
       if (!desc.HasAttr("paddings") && !desc.HasInput("Paddings")) {
         return false;
       }
