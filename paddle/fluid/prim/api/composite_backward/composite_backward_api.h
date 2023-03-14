@@ -888,6 +888,52 @@ void gather_nd_grad(const Tensor& x,
 }
 
 template <typename T>
+void max_grad(const Tensor& x,
+              const Tensor& out,
+              const Tensor& out_grad,
+              const IntArray& axis,
+              bool keepdim,
+              bool reduce_all,
+              Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+  auto zero_tensor = full<T>(phi::vectorize(x.dims()), 0.0, x.dtype());
+  std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
+  int64_t axis_size = axis.size();
+  int64_t x_dim_size = x_dim.size();
+  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+    reduce_all = true;
+  } else {
+    reduce_all = false;
+  }
+  auto x_grad_tmp = Tensor();
+  if (x_dim_size == 1 || keepdim) {
+    auto mask = equal<T>(x, out);
+    x_grad_tmp = where<T>(mask, out_grad, zero_tensor);
+  } else {
+    auto axis_ = std::vector<int64_t>();
+    if (reduce_all) {
+      for (int64_t i = 1; i < x_dim_size; i++) {
+        axis_.push_back(i);
+      }
+    } else {
+      axis_ = axis.GetData();
+      for (int64_t i = 0; i < axis_size; i++) {
+        if (axis[i] < 0) {
+          axis_[i] = axis[i] + x_dim_size;
+        }
+      }
+    }
+    auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+    auto out_grad_tmp = out_grad_.expand(IntArray(x_dim));
+    auto mask = equal<T>(x, out);
+    x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
+  }
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
 void erf_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto m_2_sqrt_pi = full<T>(phi::vectorize(x.dims()), M_2_SQRTPI, x.dtype());
