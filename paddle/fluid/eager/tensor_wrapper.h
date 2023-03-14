@@ -37,7 +37,7 @@ namespace egr {
 class TensorWrapper {
  public:
   TensorWrapper() = default;
-  explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
+  explicit TensorWrapper(const paddle::Tensor& tensor,
                          bool no_need_buffer = false) {
     // set inplace_version_snapshot_ according to tensor's current inplace
     // version.
@@ -133,12 +133,12 @@ class TensorWrapper {
   }
 #endif
 
-  paddle::experimental::Tensor recover() {
+  paddle::Tensor recover() {
     VLOG(6) << "Recover tensor: " << intermidiate_tensor_.name()
             << " for wrapper";
     if (!intermidiate_tensor_.defined()) {
       VLOG(6) << "Return NULL tensor Here. ";
-      return paddle::experimental::Tensor();
+      return paddle::Tensor();
     }
 #ifndef PADDLE_NO_PYTHON
     if (packed_value_ && unpack_hook_) {
@@ -154,7 +154,7 @@ class TensorWrapper {
     }
 #endif
 
-    paddle::experimental::Tensor recovered_tensor = intermidiate_tensor_;
+    paddle::Tensor recovered_tensor = intermidiate_tensor_;
 
     std::shared_ptr<GradNodeBase> new_grad_node = weak_grad_node_.lock();
     if (new_grad_node) {
@@ -178,9 +178,7 @@ class TensorWrapper {
     return recovered_tensor;
   }
 
-  paddle::experimental::Tensor get_intermidiate_tensor() {
-    return intermidiate_tensor_;
-  }
+  paddle::Tensor get_intermidiate_tensor() { return intermidiate_tensor_; }
 
   void clear() { intermidiate_tensor_.reset(); }
 
@@ -223,7 +221,7 @@ class TensorWrapper {
 
  private:
   bool no_need_buffer_ = false;
-  paddle::experimental::Tensor intermidiate_tensor_;
+  paddle::Tensor intermidiate_tensor_;
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
 #ifndef PADDLE_NO_PYTHON

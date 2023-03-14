@@ -89,7 +89,16 @@ class TestPrimForward(unittest.TestCase):
     def check_prim(self, net, use_prim):
         if not use_prim:
             return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+        # Please use PartialProgramLayer(second output parameter of get_concrete_program) rather than
+        # main_program here, as main_program is original program before to_prim.
+        fwd_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(self.x, self.w, self.b)[
+                1
+            ]
+            .train_program.block(0)
+            .ops
+        ]
         # Ensure that layer_norm is splitted into small ops
         self.assertTrue('layer_norm' not in fwd_ops)
 
@@ -150,7 +159,14 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def check_prim(self, net, use_prim):
         if not use_prim:
             return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+        fwd_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(self.x, self.w, self.b)[
+                1
+            ]
+            .train_program.block(0)
+            .ops
+        ]
         # Ensure that layer_norm is splitted into small ops
         self.assertTrue('layer_norm' not in fwd_ops)
 

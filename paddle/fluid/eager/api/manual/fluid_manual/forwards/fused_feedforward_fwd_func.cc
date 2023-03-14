@@ -19,29 +19,29 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-std::tuple<paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor,
-           paddle::experimental::Tensor>
+std::tuple<paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor,
+           paddle::Tensor>
 fused_feedforward_dygraph_function(
-    const paddle::experimental::Tensor& X,
-    const paddle::experimental::Tensor& Dropout1Seed,
-    const paddle::experimental::Tensor& Dropout2Seed,
-    const paddle::experimental::Tensor& Linear1Weight,
-    const paddle::experimental::Tensor& Linear1Bias,
-    const paddle::experimental::Tensor& Linear2Weight,
-    const paddle::experimental::Tensor& Linear2Bias,
-    const paddle::experimental::Tensor& Ln1Scale,
-    const paddle::experimental::Tensor& Ln1Bias,
-    const paddle::experimental::Tensor& Ln2Scale,
-    const paddle::experimental::Tensor& Ln2Bias,
+    const paddle::Tensor& X,
+    const paddle::Tensor& Dropout1Seed,
+    const paddle::Tensor& Dropout2Seed,
+    const paddle::Tensor& Linear1Weight,
+    const paddle::Tensor& Linear1Bias,
+    const paddle::Tensor& Linear2Weight,
+    const paddle::Tensor& Linear2Bias,
+    const paddle::Tensor& Ln1Scale,
+    const paddle::Tensor& Ln1Bias,
+    const paddle::Tensor& Ln2Scale,
+    const paddle::Tensor& Ln2Bias,
     const paddle::framework::AttributeMap& attr_map) {
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "fused_feedforward dygraph",
@@ -54,8 +54,7 @@ fused_feedforward_dygraph_function(
       paddle::imperative::AmpLevel::O0) {
     VLOG(5) << "Check and Prepare For AMP";
 
-    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                         egr::kSlotSmallVectorSize>
+    paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
         amp_tensors_vector = {{X}, {Linear1Weight}, {Linear2Weight}};
     if (Dropout1Seed.initialized())
       amp_tensors_vector.push_back({Dropout1Seed});
@@ -247,27 +246,27 @@ fused_feedforward_dygraph_function(
       true,
       {});
 
-  paddle::experimental::Tensor Out;
+  paddle::Tensor Out;
   egr::EagerUtils::GetOutput(outs["Out"][0], &Out);
-  paddle::experimental::Tensor Dropout1Mask;
+  paddle::Tensor Dropout1Mask;
   egr::EagerUtils::GetOutput(outs["Dropout1Mask"][0], &Dropout1Mask);
-  paddle::experimental::Tensor Dropout2Mask;
+  paddle::Tensor Dropout2Mask;
   egr::EagerUtils::GetOutput(outs["Dropout2Mask"][0], &Dropout2Mask);
-  paddle::experimental::Tensor Ln1Mean;
+  paddle::Tensor Ln1Mean;
   egr::EagerUtils::GetOutput(outs["Ln1Mean"][0], &Ln1Mean);
-  paddle::experimental::Tensor Ln1Variance;
+  paddle::Tensor Ln1Variance;
   egr::EagerUtils::GetOutput(outs["Ln1Variance"][0], &Ln1Variance);
-  paddle::experimental::Tensor Ln2Mean;
+  paddle::Tensor Ln2Mean;
   egr::EagerUtils::GetOutput(outs["Ln2Mean"][0], &Ln2Mean);
-  paddle::experimental::Tensor Ln2Variance;
+  paddle::Tensor Ln2Variance;
   egr::EagerUtils::GetOutput(outs["Ln2Variance"][0], &Ln2Variance);
-  paddle::experimental::Tensor Linear1Out;
+  paddle::Tensor Linear1Out;
   egr::EagerUtils::GetOutput(outs["Linear1Out"][0], &Linear1Out);
-  paddle::experimental::Tensor Ln1Out;
+  paddle::Tensor Ln1Out;
   egr::EagerUtils::GetOutput(outs["Ln1Out"][0], &Ln1Out);
-  paddle::experimental::Tensor Dropout1Out;
+  paddle::Tensor Dropout1Out;
   egr::EagerUtils::GetOutput(outs["Dropout1Out"][0], &Dropout1Out);
-  paddle::experimental::Tensor Dropout2Out;
+  paddle::Tensor Dropout2Out;
   egr::EagerUtils::GetOutput(outs["Dropout2Out"][0], &Dropout2Out);
 
   {

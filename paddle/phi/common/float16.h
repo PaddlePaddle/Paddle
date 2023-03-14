@@ -1064,7 +1064,7 @@ struct numeric_limits<phi::dtype::float16> {
     return phi::dtype::raw_uint16_to_float16(0x7bff);
   }
   HOSTDEVICE static phi::dtype::float16 epsilon() {
-    return phi::dtype::raw_uint16_to_float16(0x0800);
+    return phi::dtype::raw_uint16_to_float16(0x1400);
   }
   HOSTDEVICE static phi::dtype::float16 round_error() {
     return phi::dtype::float16(0.5);
