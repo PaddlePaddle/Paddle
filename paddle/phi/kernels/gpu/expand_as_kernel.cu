@@ -20,8 +20,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
-#define MAX_RANK_SUPPORTED 6
-
 namespace phi {
 
 template <typename T, typename Context>
