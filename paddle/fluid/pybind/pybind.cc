@@ -1474,6 +1474,9 @@ All parameter, weight, gradient are variables in Paddle.
               [](std::unique_ptr<OpDesc> &p) { return p.release(); });
           return std::make_pair(grad_op_desc_ptrs, grad_to_var);
         });
+  m.def("has_comp_grad_op_maker", [](const std::string op_type) {
+    return framework::OpInfoMap::Instance().Get(op_type).HasCompGradOpMaker();
+  });
   m.def("has_grad_op_maker", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasGradOpMaker();
   });

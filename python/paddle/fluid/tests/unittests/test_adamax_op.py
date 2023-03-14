@@ -27,6 +27,7 @@ def adamx_wrapper(
     moment,
     inf_norm,
     beta1_pow=None,
+    master_weight=None,
     beta1=0.78,
     beta2=0.899,
     epsilon=1e-5,
@@ -38,12 +39,11 @@ def adamx_wrapper(
         moment,
         inf_norm,
         beta1_pow,
+        master_weight,
         beta1,
         beta2,
         epsilon,
     )
-
-import paddle
 
 
 class TestAdamaxOp1(OpTest):
