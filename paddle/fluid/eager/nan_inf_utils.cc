@@ -15,6 +15,7 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
@@ -84,6 +85,11 @@ bool CheckOp(const std::string& api_name) {
 void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
   auto op_name = phi::TransToFluidOpName(api_name);
   if (tensor.initialized() && CheckOp(op_name)) {
+    if (tensor.is_custom_device()) {
+      paddle::experimental::isfinite(tensor);
+      return;
+    }
+
     auto& tensor_name = tensor.name();
     const phi::DenseTensor* dense_tensor{nullptr};
     if (tensor.is_dense_tensor()) {
