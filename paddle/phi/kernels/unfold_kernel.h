@@ -29,3 +29,5 @@ void UnfoldKernel(const Context& ctx,
                   DenseTensor* out);
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(unfold, GPU, ALL_LAYOUT, phi::UnfoldKernel, float, double, phi::dtype::float16, phi::dtype::bfloat16) {}

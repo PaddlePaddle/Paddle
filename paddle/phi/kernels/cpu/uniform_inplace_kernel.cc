@@ -51,4 +51,6 @@ PD_REGISTER_KERNEL(uniform_inplace,
                    ALL_LAYOUT,
                    phi::UniformInplaceKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

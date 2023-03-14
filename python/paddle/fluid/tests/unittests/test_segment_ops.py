@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest,convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -121,7 +121,83 @@ class TestSegmentOps(OpTest):
     def test_check_grad(self):
         self.check_grad(["X"], "Out", check_eager=True)
 
+class TestSegmentFP16Op(OpTest):
+    def set_data(self):
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
+        return x, segment_ids
 
+    def set_segment(self, origin_len, reduce_len):
+        segment = np.zeros(reduce_len, dtype='np.float16')
+        segment = np.random.randint(0, reduce_len, size=[origin_len])
+        segment = np.sort(segment)
+        return segment.astype('np.float16')
+
+    def compute(self, x, segment_ids):
+        return compute_segment_sum(x, segment_ids)
+
+    def prepare(self):
+        self.op_type = "segment_pool"
+        self.python_api = segment_pool_split
+        self.python_out_sig = ["Out"]
+        self.dtype = np.float16
+        self.shape = [30, 15]
+        self.attrs = {"pooltype": "SUM"}
+
+    def setUp(self):
+        self.prepare()
+        x, segment_ids = self.set_data()
+        result = self.compute(x, segment_ids)
+        self.inputs = {
+            'X': x.astype(self.dtype),
+            'SegmentIds': segment_ids.astype(np.float16),
+        }
+        self.outputs = {'Out': result.astype(self.dtype)}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", check_eager=True)
+
+class TestSegmentBF16(OpTest):
+    def set_data(self):
+        x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
+        segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
+        return x, segment_ids
+
+    def set_segment(self, origin_len, reduce_len):
+        segment = np.zeros(reduce_len, dtype=np.float32)
+        segment = np.random.randint(0, reduce_len, size=[origin_len])
+        segment = np.sort(segment)
+        return segment.astype(np.float32)
+
+    def compute(self, x, segment_ids):
+        return compute_segment_sum(x, segment_ids)
+
+    def prepare(self):
+        self.op_type = "segment_pool"
+        self.python_api = segment_pool_split
+        self.python_out_sig = ["Out"]
+        self.dtype = np.uint16
+        self.shape = [30, 15]
+        self.attrs = {"pooltype": "SUM"}
+
+    def setUp(self):
+        self.prepare()
+        x, segment_ids = self.set_data()
+        result = self.compute(x, segment_ids)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'SegmentIds': convert_float_to_uint16(segment_ids),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(result)}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", check_eager=True)
 class TestSegmentSum2(TestSegmentOps):
     def prepare(self):
         super().prepare()

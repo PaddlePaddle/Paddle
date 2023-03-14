@@ -15,14 +15,60 @@
 import unittest
 
 import numpy as np
-from op_test import check_out_dtype
+from op_test import check_out_dtype,convert_float_to_uint16
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
 import paddle.fluid.core as core
 from paddle import fluid
 
+class TestminOP(OpTest):
+    def setUp(self):
+        self.op_type = "min"
+        self.dtype = np.float32
+        x = np.random.rand(3,4).astype(self.dtype)
+        out = np.min(self.inputs["X"], axis=1, keepdims=True)
 
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", check_eager=True)
+
+class TestminFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "min"
+        self.dtype = np.float16
+        x = np.random.rand(3,4).astype(self.dtype)
+        out = np.min(self.inputs["X"], axis=1, keepdims=True)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", check_eager=True)
+
+class TestminBF16(OpTest):
+    def setUp(self):
+        self.op_type = "min"
+        self.dtype = np.uint16
+        x = np.random.rand(3,4).astype(np.float32)
+        out = np.min(self.inputs["X"], axis=1, keepdims=True)
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", check_eager=True)
 class ApiMinTest(unittest.TestCase):
     def setUp(self):
         if core.is_compiled_with_cuda():

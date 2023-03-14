@@ -27,6 +27,10 @@ void UniformInplaceKernel(const Context& ctx,
                           int diag_num,
                           int diag_step,
                           float diag_val,
-                          DenseTensor* out);
+                          DenseTensor* out,
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16);
 
 }  // namespace phi
+
+PD_REGISTER_KERNEL(unfold, GPU, ALL_LAYOUT, phi::UniformInplaceKernel, float, double, phi::dtype::float16, phi::dtype::bfloat16) {}

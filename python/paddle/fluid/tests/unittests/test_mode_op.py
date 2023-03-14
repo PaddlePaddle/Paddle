@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest,convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -80,7 +80,53 @@ class TestModeOp(OpTest):
         paddle.enable_static()
         self.check_grad(set(['X']), 'Out', check_eager=True)
 
+class TestModeFP16Op(OpTest):
+    def init_args(self):
+        self.axis = 1
 
+    def setUp(self):
+        self.op_type = "mode"
+        self.python_api = paddle.mode
+        self.dtype = np.float16
+        np.random.seed(666)
+        self.input_data = np.random.rand(2, 64, 1).astype(self.dtype)
+        self.init_args()
+        self.inputs = {'X': self.input_data}
+        self.attrs = {'axis': self.axis}
+        output, indices = cal_mode(self.input_data, axis=self.axis)
+        self.outputs = {'Out': output, 'Indices': indices}
+
+    def test_check_output(self):
+        paddle.enable_static()
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        paddle.enable_static()
+        self.check_grad(set(['X']), 'Out', check_eager=True)
+
+class TestModeBF16(OpTest):
+    def init_args(self):
+        self.axis = 1
+
+    def setUp(self):
+        self.op_type = "mode"
+        self.python_api = paddle.mode
+        self.dtype = np.float16
+        np.random.seed(666)
+        self.input_data = np.random.rand(2, 64, 1).astype(np.float32)
+        self.init_args()
+        self.inputs = {'X': convert_float_to_uint16(self.input_data)}
+        self.attrs = {'axis': self.axis}
+        output, indices = cal_mode(self.input_data, axis=self.axis)
+        self.outputs = {'Out': convert_float_to_uint16(output), 'Indices': convert_float_to_uint16(indices)}
+
+    def test_check_output(self):
+        paddle.enable_static()
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        paddle.enable_static()
+        self.check_grad(set(['X']), 'Out', check_eager=True)
 class TestModeOpLastdim(OpTest):
     def init_args(self):
         self.axis = -1

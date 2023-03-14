@@ -37,22 +37,22 @@ void MinKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    min, CPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t) {}
+    min, CPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t, phi::dtype::float16, phi::dtype::bfloat16) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(
-    min, GPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t) {}
+    min, GPU, ALL_LAYOUT, phi::MinKernel, float, double, int, int64_t, phi::dtype::float16, phi::dtype::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(min, KPS, ALL_LAYOUT, phi::MinKernel, float) {}
+PD_REGISTER_KERNEL(min, KPS, ALL_LAYOUT, phi::MinKernel, float, phi::dtype::float16, phi::dtype::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_MKLDNN)
 PD_REGISTER_KERNEL(
-    min, OneDNN, ONEDNN, phi::MinKernel, float, phi::dtype::bfloat16) {}
+    min, OneDNN, ONEDNN, phi::MinKernel, float, phi::dtype::bfloat16, phi::dtype::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(min, XPU, ALL_LAYOUT, phi::MinKernel, float) {}
+PD_REGISTER_KERNEL(min, XPU, ALL_LAYOUT, phi::MinKernel, float, phi::dtype::float16, phi::dtype::bfloat16) {}
 #endif

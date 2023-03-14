@@ -17,7 +17,7 @@ import unittest
 import warnings
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 from scipy.special import erf, expit
 
 import paddle
@@ -392,6 +392,7 @@ class TestLogSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "logsigmoid"
         self.python_api = paddle.nn.functional.log_sigmoid
+        self.dtype = np.float32
         self.init_dtype()
         self.init_shape()
 
@@ -407,7 +408,48 @@ class TestLogSigmoid(TestActivation):
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
+class TestLogSigmoidFP16OP(TestActivation):
+    def setUp(self):
+        self.op_type = "logsigmoid"
+        self.init_dtype()
+        self.init_shape()
 
+        np.random.seed(2048)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out = np.log(1 / (1 + np.exp(-x)))
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        self.decr_ratio = 0.8
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2)
+
+class TestLogSigmoidBF16(TestActivation):
+    def setUp(self):
+        self.op_type = "logsigmoid"
+        self.init_dtype()
+        self.init_shape()
+
+        np.random.seed(2048)
+        x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
+        out = np.log(1 / (1 + np.exp(-x)))
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_grad(self):
+        if self.dtype == np.uint16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2)
 class TestLogSigmoid_ZeroDim(TestLogSigmoid):
     def init_shape(self):
         self.shape = []

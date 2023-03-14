@@ -20,6 +20,9 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 namespace phi {
 
@@ -85,4 +88,6 @@ PD_REGISTER_KERNEL(uniform_inplace,
                    ALL_LAYOUT,
                    phi::UniformInplaceKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

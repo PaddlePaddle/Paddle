@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest,convert_float_to_uint16
 
 import paddle.fluid as fluid
 import paddle.static.amp.amp_nn as amp_nn
@@ -96,6 +96,101 @@ class TestUpdateLossScalingOp(OpTest):
     def test_check_output(self):
         self.check_output(no_check_set=['Out'], check_eager=True)
 
+class TestUpdateLossScalingFP16Op(OpTest):
+    def setUp(self):
+        self.op_type = "update_loss_scaling"
+        self.init()
+        self.python_api = update_loss_scaling_wrapper
+        self.python_out_sig = [
+            "out0",
+            "LossScaling",
+            "OutGoodSteps",
+            "OutBadSteps",
+        ]
+        found_inf = np.array([False], dtype=np.bool_)
+        x = np.random.random((1024, 1024)).astype(self.dtype)
+
+        self.inputs = {
+            'X': [('x0', x)],
+            'FoundInfinite': found_inf,
+            'PrevLossScaling': self.prev_loss_scaling,
+            'InGoodSteps': self.num_good_steps,
+            'InBadSteps': self.num_bad_steps,
+        }
+
+        self.outputs = {
+            'Out': [('out0', x)],
+            'LossScaling': self.prev_loss_scaling * self.incr_ratio,
+            'OutGoodSteps': self.zero_steps,
+            'OutBadSteps': self.zero_steps,
+        }
+
+    def init(self):
+        self.incr_ratio = 2.0
+        self.decr_ratio = 0.8
+        self.dtype = np.float16
+        self.prev_loss_scaling = np.array([2048]).astype(self.dtype)
+        self.num_good_steps = np.array([999], dtype=np.float16)
+        self.num_bad_steps = np.array([1], dtype=np.float16)
+        self.zero_steps = np.array([0], dtype=np.float16)
+        self.stop_update = np.array([False], dtype=np.bool_)
+        self.attrs = {
+            'incr_every_n_steps': 1000,
+            'decr_every_n_nan_or_inf': 2,
+            'incr_ratio': self.incr_ratio,
+            'decr_ratio': self.decr_ratio,
+        }
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['Out'], check_eager=True)
+
+class TestUpdateLossScalingBF16(OpTest):
+    def setUp(self):
+        self.op_type = "update_loss_scaling"
+        self.init()
+        self.python_api = update_loss_scaling_wrapper
+        self.python_out_sig = [
+            "out0",
+            "LossScaling",
+            "OutGoodSteps",
+            "OutBadSteps",
+        ]
+        found_inf = np.array([False], dtype=np.bool_)
+        x = np.random.random((1024, 1024)).astype(np.float32)
+
+        self.inputs = {
+            'X': [('x0', convert_float_to_uint16(x))],
+            'FoundInfinite': found_inf,
+            'PrevLossScaling': self.prev_loss_scaling,
+            'InGoodSteps': self.num_good_steps,
+            'InBadSteps': self.num_bad_steps,
+        }
+
+        self.outputs = {
+            'Out': [('Out', convert_float_to_uint16(x))],
+            'LossScaling': self.prev_loss_scaling * self.incr_ratio,
+            'OutGoodSteps': self.zero_steps,
+            'OutBadSteps': self.zero_steps,
+        }
+
+    def init(self):
+        self.incr_ratio = 2.0
+        self.decr_ratio = 0.8
+        self.dtype = np.uint16
+        self.prev_loss_scaling = np.array([2048]).astype(self.dtype)
+        self.num_good_steps = np.array([999], dtype=np.int32)
+        self.num_bad_steps = np.array([1], dtype=np.int32)
+        self.zero_steps = np.array([0], dtype=np.int32)
+        self.stop_update = np.array([False], dtype=np.bool_)
+        self.attrs = {
+            'incr_every_n_steps': 1000,
+            'decr_every_n_nan_or_inf': 2,
+            'incr_ratio': self.incr_ratio,
+            'decr_ratio': self.decr_ratio,
+        }
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['Out'], check_eager=True)
 
 class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
     def setUp(self):
