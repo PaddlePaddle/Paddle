@@ -41,7 +41,7 @@ custom_inplace = load(
 )
 
 
-def inplace_dynamic(phi_func, device, dtype, np_x, np_y):
+def inplace_dynamic_add(phi_func, device, dtype, np_x, np_y):
     paddle.set_device(device)
     x = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=True)
     y = paddle.to_tensor(np_y, dtype=dtype, stop_gradient=False)
@@ -54,26 +54,7 @@ def inplace_dynamic(phi_func, device, dtype, np_x, np_y):
     return x.numpy(), y.numpy(), out.numpy(), x.grad.numpy(), y.grad.numpy()
 
 
-def inplace_dynamic_relu(phi_func, device, dtype, np_x, np_y, np_z):
-    paddle.set_device(device)
-    x = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
-    y = paddle.to_tensor(np_y, dtype=dtype, stop_gradient=False)
-    z = paddle.to_tensor(np_z, dtype=dtype, stop_gradient=False)
-    out_xy = x + y
-    if phi_func:
-        out_xy = custom_inplace.custom_relu(out_xy)
-        out_xyz = out_xy + z
-        out = custom_inplace.custom_relu(out_xyz)
-    else:
-        out_xy = paddle.nn.functional.relu_(out_xy)
-        out_xyz = out_xy + z
-        out = paddle.nn.functional.relu_(out_xyz)
-
-    out.backward()
-    return x.numpy(), out.numpy(), x.grad.numpy()
-
-
-def inplace_static(func, device, dtype, np_x, np_y):
+def inplace_static_add(func, device, dtype, np_x, np_y):
     paddle.enable_static()
     paddle.set_device(device)
     with static.scope_guard(static.Scope()):
@@ -107,6 +88,65 @@ def inplace_static(func, device, dtype, np_x, np_y):
     return x_v, out_v, x_grad_v, y_grad_v, out_grad_v
 
 
+def inplace_dynamic_relu(phi_func, device, dtype, np_x, np_y, np_z):
+    paddle.set_device(device)
+    x = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=False)
+    y = paddle.to_tensor(np_y, dtype=dtype, stop_gradient=False)
+    z = paddle.to_tensor(np_z, dtype=dtype, stop_gradient=False)
+    out_xy = x + y
+    if phi_func:
+        out_xy = custom_inplace.custom_relu_inplace(out_xy)
+        out_xyz = out_xy + z
+        out = custom_inplace.custom_relu_inplace(out_xyz)
+    else:
+        out_xy = paddle.nn.functional.relu_(out_xy)
+        out_xyz = out_xy + z
+        out = paddle.nn.functional.relu_(out_xyz)
+
+    out.backward()
+    return x.numpy(), y.numpy(), out.numpy(), x.grad.numpy(), y.grad.numpy()
+
+
+def inplace_static_relu(func, device, dtype, np_x, np_y, np_z):
+    paddle.enable_static()
+    paddle.set_device(device)
+    with static.scope_guard(static.Scope()):
+        with static.program_guard(static.Program()):
+            x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
+            y = static.data(name="y", shape=[None, np_y.shape[1]], dtype=dtype)
+            z = static.data(name="z", shape=[None, np_z.shape[1]], dtype=dtype)
+            x.stop_gradient = False
+            y.stop_gradient = False
+            z.stop_gradient = False
+            out_xy = x + y
+            out_xy = func(out_xy)
+            out_xyz = out_xy + z
+            out = func(out_xyz)
+            mean_out = paddle.mean(out)
+            static.append_backward(mean_out)
+
+            exe = static.Executor()
+            exe.run(static.default_startup_program())
+
+            x_v, y_v, out_v, x_grad_v, y_grad_v = exe.run(
+                static.default_main_program(),
+                feed={
+                    "x": np_x.astype(dtype),
+                    "y": np_y.astype(dtype),
+                    "z": np_z.astype(dtype),
+                },
+                fetch_list=[
+                    x.name,
+                    y.name,
+                    out.name,
+                    x.name + "@GRAD",
+                    y.name + "@GRAD",
+                ],
+            )
+    paddle.disable_static()
+    return x_v, y_v, out_v, x_grad_v, y_grad_v
+
+
 class TestCustomInplaceJit(unittest.TestCase):
     def setUp(self):
         self.dtypes = ['float32', 'float64']
@@ -124,7 +164,18 @@ class TestCustomInplaceJit(unittest.TestCase):
             ),
         )
 
-    def test_static(self):
+    def check_output_allclose(self, out, pd_out, name):
+        np.testing.assert_allclose(
+            out,
+            pd_out,
+            rtol=5e-5,
+            atol=1e-2,
+            err_msg='custom op {}: {},\n paddle api {}: {}'.format(
+                name, out, name, pd_out
+            ),
+        )
+
+    def test_static_add(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 (
@@ -133,7 +184,7 @@ class TestCustomInplaceJit(unittest.TestCase):
                     pd_x_grad,
                     pd_y_grad,
                     pd_out_grad,
-                ) = inplace_static(
+                ) = inplace_static_add(
                     paddle.add,
                     device,
                     dtype,
@@ -146,7 +197,7 @@ class TestCustomInplaceJit(unittest.TestCase):
                     phi_x_grad,
                     phi_y_grad,
                     phi_out_grad,
-                ) = inplace_static(
+                ) = inplace_static_add(
                     custom_inplace.custom_add,
                     device,
                     dtype,
@@ -163,10 +214,16 @@ class TestCustomInplaceJit(unittest.TestCase):
                 self.check_output(phi_y_grad, pd_y_grad, "y_grad")
                 self.check_output(phi_out_grad, pd_out_grad, "out_grad")
 
-    def test_dynamic(self):
+    def test_dynamic_add(self):
         for device in self.devices:
             for dtype in self.dtypes:
-                (pd_x, pd_y, pd_out, pd_x_grad, pd_y_grad,) = inplace_dynamic(
+                (
+                    pd_x,
+                    pd_y,
+                    pd_out,
+                    pd_x_grad,
+                    pd_y_grad,
+                ) = inplace_dynamic_add(
                     False,
                     device,
                     dtype,
@@ -179,7 +236,7 @@ class TestCustomInplaceJit(unittest.TestCase):
                     phi_out,
                     phi_x_grad,
                     phi_y_grad,
-                ) = inplace_dynamic(
+                ) = inplace_dynamic_add(
                     True,
                     device,
                     dtype,
@@ -196,10 +253,53 @@ class TestCustomInplaceJit(unittest.TestCase):
                 self.check_output(phi_x_grad, pd_x_grad, "x_grad")
                 self.check_output(phi_y_grad, pd_y_grad, "y_grad")
 
+    def test_static_multiple_inplace_relu(self):
+        for device in self.devices:
+            for dtype in self.dtypes:
+                (
+                    pd_x,
+                    pd_y,
+                    pd_out,
+                    pd_x_grad,
+                    pd_y_grad,
+                ) = inplace_static_relu(
+                    paddle.nn.functional.relu,
+                    device,
+                    dtype,
+                    self.np_x,
+                    self.np_y,
+                    self.np_z,
+                )
+                (
+                    phi_x,
+                    phi_y,
+                    phi_out,
+                    phi_x_grad,
+                    phi_y_grad,
+                ) = inplace_static_relu(
+                    custom_inplace.custom_relu_inplace,
+                    device,
+                    dtype,
+                    self.np_x,
+                    self.np_y,
+                    self.np_z,
+                )
+                self.check_output_allclose(phi_x, pd_x, "x")
+                self.check_output_allclose(phi_y, pd_y, "y")
+                self.check_output_allclose(phi_out, pd_out, "out")
+                self.check_output_allclose(phi_x_grad, pd_x_grad, "x_grad")
+                self.check_output_allclose(phi_y_grad, pd_y_grad, "y_grad")
+
     def test_dynamic_multiple_inplace_relu(self):
         for device in self.devices:
             for dtype in self.dtypes:
-                (pd_x, pd_out, pd_x_grad) = inplace_dynamic_relu(
+                (
+                    pd_x,
+                    pd_y,
+                    pd_out,
+                    pd_x_grad,
+                    pd_y_grad,
+                ) = inplace_dynamic_relu(
                     False,
                     device,
                     dtype,
@@ -207,7 +307,13 @@ class TestCustomInplaceJit(unittest.TestCase):
                     self.np_y,
                     self.np_z,
                 )
-                (phi_x, phi_out, phi_x_grad) = inplace_dynamic_relu(
+                (
+                    phi_x,
+                    phi_y,
+                    phi_out,
+                    phi_x_grad,
+                    phi_y_grad,
+                ) = inplace_dynamic_relu(
                     True,
                     device,
                     dtype,
@@ -217,9 +323,10 @@ class TestCustomInplaceJit(unittest.TestCase):
                 )
 
                 self.check_output(phi_x, pd_x, "x")
+                self.check_output(phi_y, pd_y, "y")
                 self.check_output(phi_out, pd_out, "out")
                 self.check_output(phi_x_grad, pd_x_grad, "x_grad")
-                # self.check_output(phi_out_out, pd_out_out, "out_out")
+                self.check_output(phi_y_grad, pd_y_grad, "y_grad")
 
 
 if __name__ == "__main__":

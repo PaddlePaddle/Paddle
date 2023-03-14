@@ -94,16 +94,8 @@ std::vector<Tensor> CustomOpKernelContext::InputsBetween(size_t start,
   return rlt;
 }
 
-Tensor* CustomOpKernelContext::MutableInputAt(size_t idx) {
-  return &(inputs_.at(idx));
-}
-std::vector<Tensor*> CustomOpKernelContext::MutableInputBetweeen(size_t start,
-                                                                 size_t end) {
-  std::vector<Tensor*> rlt;
-  for (size_t i = start; i < end; ++i) {
-    rlt.emplace_back(&(inputs_.at(i)));
-  }
-  return rlt;
+Tensor& CustomOpKernelContext::MutableInputAt(size_t idx) {
+  return inputs_.at(idx);
 }
 
 Tensor* CustomOpKernelContext::MutableOutputAt(size_t idx) {
@@ -194,6 +186,8 @@ void CustomOpKernelContext::AssignInplaceOutputs() {
     for (size_t i = 0; i < assign_tensor_size; ++i) {
       AssignTensorImpl(inputs_[in_start_idx + i], &outputs_[out_start_idx + i]);
     }
+    VLOG(4)
+        << "Custom opertor update inplace input-output tensor successfully.";
   }
 }
 std::vector<Tensor*>* CustomOpKernelContext::AllMutablePlainOutput() {

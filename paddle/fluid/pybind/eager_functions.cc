@@ -581,7 +581,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                                         ins_auto_grad_metas[i][j],
                                         require_any_grad);
           // Bump Inplace Version
-          ctx.MutableInputAt(start_idx + j)->bump_inplace_version();
+          ctx.MutableInputAt(start_idx + j).bump_inplace_version();
           VLOG(3) << "Custom operator: Tensor("
                   << ctx.InputAt(start_idx + j).name()
                   << ") uses Inplace Strategy.";
@@ -608,8 +608,6 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       }
       auto grad_node = std::make_shared<egr::RunCustomOpNode>(
           outs_auto_grad_metas.size(), ins_auto_grad_metas.size(), op_type);
-      VLOG(1) << "DEBUG ins_auto_grad_metas.size " << ins_auto_grad_metas.size()
-              << " outs_auto_grad_metas.size " << outs_auto_grad_metas.size();
       auto slot_map =
           egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type);
       // Prepare Grad outputs
@@ -620,11 +618,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
                               ctx.InputRangeAt(i).second);
 
         if (slot_map[0][0].find(i) != slot_map[0][0].end()) {
-          VLOG(1) << "DEBUG find(i) idx " << slot_map[0][0][i];
           grad_node->SetGradOutMeta(in_tensors, slot_map[0][0][i]);
         } else {
-          VLOG(1) << "DEBUG ins_auto_grad_metas.size() - 1 - no_grad_cnt idx "
-                  << ins_auto_grad_metas.size() - 1 - no_grad_cnt;
           grad_node->SetGradOutMeta(
               in_tensors, ins_auto_grad_metas.size() - 1 - no_grad_cnt);
           no_grad_cnt++;

@@ -108,8 +108,7 @@ class PADDLE_API CustomOpKernelContext {
 
   const Tensor& InputAt(size_t idx) const;
   std::vector<Tensor> InputsBetween(size_t start, size_t end) const;
-  Tensor* MutableInputAt(size_t idx);
-  std::vector<Tensor*> MutableInputBetweeen(size_t start, size_t end);
+  Tensor& MutableInputAt(size_t idx);
   const std::vector<paddle::any>& Attrs() const { return attrs_; }
   const std::vector<std::pair<size_t, size_t>>& InputRange() {
     return input_range_;
@@ -162,8 +161,7 @@ using KernelFunc = void (*)(CustomOpKernelContext*);
   template <typename... Tail>                                                  \
   struct ComputeCallHelper<attr_type, Tail...> {                               \
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
-    static void Compute(CustomOpKernelContext* ctx,                            \
-                        const PreviousArgs&... pargs) {                        \
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {  \
       attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                        \
       ComputeCallHelper<                                                       \
           Tail...>::template Compute<in_idx, attr_idx + 1, out_idx>(ctx,       \
@@ -191,10 +189,9 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename... Tail>
   struct ComputeCallHelper<const Tensor&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx,
-                        const PreviousArgs&... pargs) {
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
-      auto& arg = ctx->InputAt(range.first);
+      auto& arg = ctx->MutableInputAt(range.first);
       ComputeCallHelper<
           Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
                                                                     pargs...,
@@ -205,8 +202,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename... Tail>
   struct ComputeCallHelper<const std::vector<Tensor>&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx,
-                        const PreviousArgs&... pargs) {
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
       auto arg = ctx->InputsBetween(range.first, range.second);
       ComputeCallHelper<
@@ -246,27 +242,45 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_ComputeCallHelper(std::vector<int64_t>);
   PD_SPECIALIZE_ComputeCallHelper(std::vector<std::string>);
 
+  // Used to be compatible with 2.3 released internal inplace interface, not
+  // recommended
   template <typename... Tail>
   struct ComputeCallHelper<Tensor*, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx,
-                        const PreviousArgs&... pargs) {
-      auto& range = ctx->InputRangeAt(in_idx);
-      auto* arg = ctx->MutableInputAt(range.first);
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->OutputRangeAt(out_idx);
+      auto* arg = ctx->MutableOutputAt(range.first);
       ComputeCallHelper<
-          Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
+          Tail...>::template Compute<in_idx, attr_idx, out_idx + 1>(ctx,
                                                                     pargs...,
                                                                     arg);
     }
   };
 
+  // Used to be compatible with 2.3 released internal inplace interface, not
+  // recommended
+  // TODO(chenweihang): What is the appropriate output form?
+  // std::vector<Tensor>*? or std::vector<Tensor*>? or std::vector<Tensor*>*
   template <typename... Tail>
   struct ComputeCallHelper<std::vector<Tensor*>, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx,
-                        const PreviousArgs&... pargs) {
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
+      auto& range = ctx->OutputRangeAt(out_idx);
+      auto arg = ctx->MutableOutputBetweeen(range.first, range.second);
+      ComputeCallHelper<
+          Tail...>::template Compute<in_idx, attr_idx, out_idx + 1>(ctx,
+                                                                    pargs...,
+                                                                    arg);
+    }
+  };
+
+  // Handle Tensor& for inplace case
+  template <typename... Tail>
+  struct ComputeCallHelper<Tensor&, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
-      auto arg = ctx->MutableInputBetweeen(range.first, range.second);
+      auto& arg = ctx->MutableInputAt(range.first);
       ComputeCallHelper<
           Tail...>::template Compute<in_idx + 1, attr_idx, out_idx>(ctx,
                                                                     pargs...,
@@ -280,7 +294,10 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   // For compatibility with the original custom op form
   template <int out_idx>
   struct ComputeReturnHelper<out_idx, std::vector<Tensor>> {
-    static void Compute(CustomOpKernelContext* ctx, const Args&... args) {
+    static void Compute(CustomOpKernelContext* ctx, Args&... args) {
+      static_assert(out_idx == 0,
+                    "If return std::vector<Tensor> in Custom OpKernel, "
+                    "you cannot pass output by kernel function argument.");
       auto outs = impl_fn(args...);
       auto* orig_outs = ctx->AllMutablePlainOutput();
       PD_CHECK(orig_outs->size() == outs.size(),
@@ -298,9 +315,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
 
   template <int out_idx>
   struct ComputeReturnHelper<out_idx, void> {
-    static void Compute(CustomOpKernelContext* ctx, const Args&... args) {
-      static_assert(out_idx == 0,
-                    "ComputeReturnHelper should receives out_idx = 0");
+    static void Compute(CustomOpKernelContext* ctx, Args&... args) {
       impl_fn(args...);
     }
   };
@@ -309,8 +324,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename T>
   struct ComputeCallHelper<TypeTag<T>> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
-    static void Compute(CustomOpKernelContext* ctx,
-                        const PreviousArgs&... pargs) {
+    static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       ComputeReturnHelper<out_idx, Return>::Compute(ctx, pargs...);
     }
   };
