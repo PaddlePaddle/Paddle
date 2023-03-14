@@ -109,12 +109,8 @@ set(SHARED_INFERENCE_SRCS
     ${PADDLE_CUSTOM_OP_SRCS})
 
 # shared inference library deps
-message("JZZ deps list")
-message("${fluid_modules}")
 list(REMOVE_ITEM fluid_modules standalone_executor
      interpretercore_garbage_collector)
-message("JZZ deps list")
-message("${fluid_modules}")
 set(SHARED_INFERENCE_DEPS ${fluid_modules} phi analysis_predictor
                           ${utils_modules})
 
