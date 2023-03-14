@@ -21,6 +21,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
+np.random.seed(1024)
+
 
 class TestIndexSelectOp(OpTest):
     def setUp(self):
@@ -137,10 +139,11 @@ class TestIndexSelectAPI(unittest.TestCase):
                 [5.0, 6.0, 7.0, 8.0],
                 [9.0, 10.0, 11.0, 12.0],
             ]
-        )
+        ).astype("float32")
         self.data_index = np.array([0, 1, 1]).astype('int32')
 
     def test_index_select_api(self):
+        paddle.enable_static()
         self.input_data()
 
         # case 1:
@@ -176,6 +179,7 @@ class TestIndexSelectAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
+        paddle.enable_static()
         self.input_data()
         # case 1:
         with fluid.dygraph.guard():
