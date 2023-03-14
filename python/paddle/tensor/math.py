@@ -5114,9 +5114,9 @@ def _trapezoid(y, x=None, dx=None, axis=-1, sum_mode='sum'):
     Integrate along the given axis using the composite trapezoidal rule.
 
     Args:
-        y (Tensor): Input array to integrate. It's data type should be float32, float64.
+        y (Tensor): Input array to integrate. It's data type should be float16(GPU), float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
-            It's data type should be float32, float64.If :attr:`x` is None,
+            It's data type should be float16(GPU), float32, float64. If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
             default is None.
         dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1
@@ -5133,9 +5133,9 @@ def _trapezoid(y, x=None, dx=None, axis=-1, sum_mode='sum'):
 
     if not (x is None or dx is None):
         raise ValueError("Not permitted to specify both x and dx input args.")
-    if y.dtype not in [paddle.float32, paddle.float64]:
+    if y.dtype not in [paddle.float16, paddle.float32, paddle.float64]:
         raise TypeError(
-            "The data type of input must be Tensor, and dtype should be one of ['paddle.float32', 'paddle.float64'], but got {}".format(
+            "The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {}".format(
                 y.dtype
             )
         )
@@ -5151,13 +5151,13 @@ def _trapezoid(y, x=None, dx=None, axis=-1, sum_mode='sum'):
         if dx.dim() > 1:
             raise ValueError('Expected dx to be a scalar, got dx={}'.format(dx))
     else:
-        if x.dtype not in [paddle.float32, paddle.float64]:
+        if x.dtype not in [paddle.float16, paddle.float32, paddle.float64]:
             raise TypeError(
-                "The data type of input must be Tensor, and dtype should be one of ['paddle.float32', 'paddle.float64'], but got {}".format(
+                "The data type of input must be Tensor, and dtype should be one of ['paddle.float16', 'paddle.float32', 'paddle.float64'], but got {}".format(
                     x.dtype
                 )
             )
-
+        # Reshape to correct shape
         if x.dim() == 1:
             dx = paddle.diff(x)
             shape = [1] * y.dim()
@@ -5180,9 +5180,9 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
     Integrate along the given axis using the composite trapezoidal rule. Use the sum method.
 
     Args:
-        y (Tensor): Input array to integrate. It's data type should be float32, float64.
+        y (Tensor): Input array to integrate. It's data type should be float16(GPU), float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
-            It's data type should be float32, float64.If :attr:`x` is None,
+            It's data type should be float16(GPU), float32, float64. If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
             default is None.
         dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1
@@ -5215,11 +5215,11 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
             #        [10.])
 
 
-            y = paddle.to_tensor([1, 2, 3], dtype='float32')
-            x = paddle.to_tensor([8, 6, 4], dtype='float32')
+            y = paddle.to_tensor([1, 2, 3], dtype='float64')
+            x = paddle.to_tensor([8, 6, 4], dtype='float64')
 
             print(paddle.trapezoid(y, x))
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            # Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             #        [-8.])
 
             y = paddle.arange(6).reshape((2, 3)).astype('float32')
@@ -5239,9 +5239,9 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
     Integrate along the given axis using the composite trapezoidal rule. Use the cumsum method
 
     Args:
-        y (Tensor): Input array to integrate. It's data type should be float32, float64.
+        y (Tensor): Input array to integrate. It's data type should be float16(GPU), float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
-            It's data type should be float32, float64.If :attr:`x` is None,
+            It's data type should be float16(GPU), float32, float64.If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
             default is None.
         dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1
@@ -5274,11 +5274,11 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
             # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [4.50000000, 10.       ])
 
-            y = paddle.to_tensor([1, 2, 3], dtype='float32')
-            x = paddle.to_tensor([8, 6, 4], dtype='float32')
+            y = paddle.to_tensor([1, 2, 3], dtype='float64')
+            x = paddle.to_tensor([8, 6, 4], dtype='float64')
 
             print(paddle.cumulative_trapezoid(y, x))
-            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            # Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             #        [-3., -8.])
 
             y = paddle.arange(6).reshape((2, 3)).astype('float32')

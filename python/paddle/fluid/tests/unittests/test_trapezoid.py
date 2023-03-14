@@ -227,6 +227,55 @@ class TestTrapezoidError(unittest.TestCase):
             self.assertRaises(ValueError, test_xwithdx)
 
 
+class Testfp16Trapezoid(TestTrapezoidAPI):
+    #     def test_fp16_with_gpu(self):
+    #         paddle.enable_static()
+    #         if paddle.fluid.core.is_compiled_with_cuda():
+    #             place = paddle.CUDAPlace(0)
+    #             with paddle.static.program_guard(
+    #                 paddle.static.Program(), paddle.static.Program()
+    #             ):
+    #                 input_y = np.random.random([4, 4]).astype("float16")
+    #                 y = paddle.static.data(
+    #                     name="y", shape=[4, 4], dtype="float16"
+    #                 )
+
+    #                 input_x = np.random.random([4, 4]).astype("float16")
+    #                 x = paddle.static.data(
+    #                     name="x", shape=[4, 4], dtype="float16"
+    #                 )
+
+    #                 exe = paddle.static.Executor(place)
+    #                 out = self.paddle_api(y=y, x=x, dx=self.dx, axis=self.axis)
+    #                 res = exe.run(
+    #                     paddle.static.default_main_program(),
+    #                     feed={
+    #                         "y": input_y,
+    #                         "x": input_x,
+    #                         "dx": self.dx,
+    #                         "axis": self.axis
+    #                     },
+    #                     fetch_list=[out],
+    #                 )
+    def set_api(self):
+        self.paddle_api = paddle.trapezoid
+        self.ref_api = np.trapz
+
+    def test_fp16_func_dygraph(self):
+        place = paddle.CUDAPlace(0)
+        paddle.disable_static()
+        input_y = np.random.random([4, 4])
+        y = paddle.to_tensor(input_y, dtype='float16', place=place)
+        input_x = np.random.random([4, 4])
+        x = paddle.to_tensor(input_x, dtype='float16', place=place)
+        out = self.paddle_api(y=y, x=x)
+
+    def test_fp16_dygraph(self):
+        with _test_eager_guard():
+            self.func_dygraph()
+        self.func_dygraph()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
