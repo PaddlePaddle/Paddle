@@ -236,22 +236,14 @@ class GlooWrapper {
   std::vector<T> AllGather(T& input) {  // NOLINT
     CHECK_EQ(is_initialized_, true);
     std::vector<T> ret(size_, T());
-    std::vector<std::pair<int, T>> ranks_ret(size_);
-    // add rank id
-    std::pair<int, T> ins = std::make_pair(rank_, input);
 #ifdef PADDLE_WITH_GLOO
     gloo::AllgatherOptions opts(context_);
-    opts.setInput(&ins, 1);
-    opts.setOutput(ranks_ret.data(), size_);
+    opts.setInput(&input, 1);
+    opts.setOutput(ret.data(), size_);
     gloo::allgather(opts);
 #else
     LOG(WARNING) << "AllGather does nothing when WITH_GLOO=OFF";
 #endif
-    // rank order output
-    for (int i = 0; i < size_; ++i) {
-      std::pair<int, T> &out = ranks_ret[i];
-      ret[out.first] = out.second;
-    }
     return ret;
   }
 
