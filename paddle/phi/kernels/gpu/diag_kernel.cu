@@ -18,6 +18,7 @@
 #include <tuple>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -135,6 +136,7 @@ PD_REGISTER_KERNEL(diag,
                    ALL_LAYOUT,
                    phi::DiagKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t,
                    float,

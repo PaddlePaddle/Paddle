@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
 
@@ -296,6 +297,86 @@ class TestDiagV2API(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             self.run_static(use_gpu=True)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
+class TestDiagV2FP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "diag_v2"
+        self.python_api = paddle.diag
+        self.dtype = np.float16
+        self.__class__.op_type = self.op_type
+        x = np.random.rand(10, 10).astype(np.float32)
+        offset = 0
+        padding_value = 0.0
+        out = np.diag(x, offset)
+
+        self.init_config()
+        self.inputs = {'X': x.astype(self.dtype)}
+        self.attrs = {
+            'offset': offset,
+            'padding_value': padding_value,
+        }
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3, check_eager=False)
+
+    def test_check_grad(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', max_relative_error=1e-2, check_eager=False
+        )
+
+    def init_config(self):
+        pass
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestDiagV2BF16(OpTest):
+    def setUp(self):
+        self.op_type = "diag_v2"
+        self.python_api = paddle.diag
+        self.dtype = np.uint16
+        self.__class__.op_type = self.op_type
+        x = np.random.rand(10, 10).astype(np.float32)
+        offset = 0
+        padding_value = 0.0
+        out = np.diag(x, offset)
+
+        self.init_config()
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.attrs = {
+            'offset': offset,
+            'padding_value': padding_value,
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3, check_eager=False)
+
+    def test_check_grad(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', max_relative_error=1e-2, check_eager=False
+        )
+
+    def init_config(self):
+        pass
 
 
 if __name__ == "__main__":
