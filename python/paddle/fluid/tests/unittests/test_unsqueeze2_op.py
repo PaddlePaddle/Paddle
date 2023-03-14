@@ -36,9 +36,12 @@ class TestUnsqueezeOp(OpTest):
             "Out": self.inputs["X"].reshape(self.new_shape),
             "XShape": np.random.random(self.ori_shape).astype("float64"),
         }
+        self.prim_op_type = "comp"
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_eager=True)
+        self.check_output(
+            no_check_set=["XShape"], check_eager=True, check_prim=True
+        )
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", check_eager=True)
@@ -89,6 +92,7 @@ class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):
         self.ori_shape = ()
         self.axes = (-1,)
         self.new_shape = 1
+        self.enable_cinn = False
 
 
 class TestUnsqueezeOp_ZeroDim2(TestUnsqueezeOp):
@@ -96,6 +100,7 @@ class TestUnsqueezeOp_ZeroDim2(TestUnsqueezeOp):
         self.ori_shape = ()
         self.axes = (-1, 1)
         self.new_shape = (1, 1)
+        self.enable_cinn = False
 
 
 class TestUnsqueezeOp_ZeroDim3(TestUnsqueezeOp):
@@ -103,6 +108,7 @@ class TestUnsqueezeOp_ZeroDim3(TestUnsqueezeOp):
         self.ori_shape = ()
         self.axes = (0, 1, 2)
         self.new_shape = (1, 1, 1)
+        self.enable_cinn = False
 
 
 # axes is a list(with tensor)

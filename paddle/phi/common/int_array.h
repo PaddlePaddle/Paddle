@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
+class Tensor;
 namespace experimental {
 
 template <typename T>
@@ -105,8 +106,7 @@ class IntArrayBase {
   bool is_from_tensor_{false};
 };
 
-class Tensor;
-using IntArray = paddle::experimental::IntArrayBase<Tensor>;
+using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 
 }  // namespace experimental
 }  // namespace paddle

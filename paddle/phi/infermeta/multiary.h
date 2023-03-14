@@ -43,11 +43,14 @@ void AdadeltaInferMeta(const MetaTensor& param,
                        const MetaTensor& grad,
                        const MetaTensor& avg_squared_grad,
                        const MetaTensor& avg_squared_update,
+                       const MetaTensor& master_param,
                        float rho,
                        float epsilon,
+                       bool multi_precision,
                        MetaTensor* param_out,
                        MetaTensor* avg_squared_grad_out,
-                       MetaTensor* avg_squared_update_out);
+                       MetaTensor* avg_squared_update_out,
+                       MetaTensor* master_param_outs);
 
 void AdagradInferMeta(const MetaTensor& param,
                       const MetaTensor& grad,
@@ -66,12 +69,15 @@ void AdamaxInferMeta(const MetaTensor& param,
                      const MetaTensor& moment,
                      const MetaTensor& inf_norm,
                      const MetaTensor& beta1_pow,
+                     const MetaTensor& master_param,
                      float beta1,
                      float beta2,
                      float epsilon,
+                     bool multi_precision,
                      MetaTensor* param_out,
                      MetaTensor* moment_out,
-                     MetaTensor* inf_norm_out);
+                     MetaTensor* inf_norm_out,
+                     MetaTensor* master_param_outs);
 
 void AdamInferMeta(const MetaTensor& param,
                    const MetaTensor& grad,

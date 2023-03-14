@@ -996,9 +996,28 @@ struct SimpleOpTypeSetTeller : public Teller {
         axes = PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
       }
       if (axes.size() == 0) {
-        VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
-                   "missing.";
-        return false;
+        auto* block = desc.Block();
+        if (block) {
+          auto input_var_name = desc.Input("X")[0];
+          auto* input_var_desc = block->FindVar(input_var_name);
+          const auto input_shape = input_var_desc->GetShape();
+          for (int s : input_shape) {
+            if (s == -1) {
+              VLOG(3) << "The necessary attributes of the squeeze2 operator "
+                         "axes is "
+                         "missing. ss ==== -1";
+              return false;
+            } else if (s == 1) {
+              axes.push_back(s);
+            }
+          }
+        }
+        if (axes.size() == 0) {
+          VLOG(3)
+              << "The necessary attributes of the squeeze2 operator axes is "
+                 "missing.";
+          return false;
+        }
       }
       if (!with_dynamic_shape) {
         if (std::find(axes.begin(), axes.end(), 0) != axes.end()) {
@@ -1079,7 +1098,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       if (split_inputs.find("SectionsTensorList") != split_inputs.end()) {
         if (desc.Input("SectionsTensorList").size() >= 1) {
-          return false;
+          if (!with_dynamic_shape) {
+            return false;
+          }
         }
       }
       if (!desc.HasAttr("axis")) {
@@ -1087,9 +1108,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
 
-      if (axis == 0) {
+      if (!with_dynamic_shape && axis == 0) {
         VLOG(3) << "Invalid split axis. Split on batch is not supported in "
-                   "TensorRT";
+                   "TensorRT with static shape";
         return false;
       }
       auto* block = desc.Block();
@@ -1418,7 +1439,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
         op_type == "elementwise_pow" || op_type == "elementwise_min" ||
-        op_type == "elementwise_max" || op_type == "elementwise_floordiv") {
+        op_type == "elementwise_max" || op_type == "elementwise_floordiv" ||
+        op_type == "elementwise_mod") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1453,12 +1475,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
           op_type == "elementwise_sub" || op_type == "elementwise_div" ||
           op_type == "elementwise_pow" || op_type == "elementwise_min" ||
-          op_type == "elementwise_max" || op_type == "elementwise_floordiv") {
+          op_type == "elementwise_max" || op_type == "elementwise_floordiv" ||
+          op_type == "elementwise_mod") {
         if (x_var_desc->GetDataType() ==
             paddle::framework::proto::VarType_Type::VarType_Type_BOOL) {
-          VLOG(3) << "These operations "
-                     "(elementwise_add/mul/sub/div/pow/min/max/floordiv) do "
-                     "not support boolean datatype.";
+          VLOG(3)
+              << "These operations "
+                 "(elementwise_add/mul/sub/div/pow/min/max/floordiv/mod) do "
+                 "not support boolean datatype.";
           return false;
         }
       }
@@ -2579,6 +2603,42 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
 
+    if (op_type == "temporal_shift") {
+#if !IS_TRT_VERSION_GE(8200)
+      VLOG(3) << "temporal_shift is not supported when TensorRT < 8.2";
+      return false;
+#endif
+
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the temporal shift does not support "
+                   "static shape yet";
+        return false;
+      }
+
+      if (!desc.HasAttr("shift_ratio") || !desc.HasAttr("seg_num")) {
+        VLOG(3) << "temporal shift need attributes : shift_ratio and seg_num";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+
+      auto input_name = desc.Input("X")[0];
+      auto* input_desc = block->FindVar(input_name);
+      const auto input_shape = input_desc->GetShape();
+
+      if (input_shape.size() != 4) {
+        VLOG(3) << "The input and grid tensors must be shape tensors of rank 4 "
+                   "using TRT TemporalShift layer.";
+        return false;
+      }
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2643,6 +2703,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_min",
       "elementwise_max",
       "elementwise_floordiv",
+      "elementwise_mod",
       "equal",
       "not_equal",
       "less_than",
@@ -2739,6 +2800,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act",
+      "temporal_shift",
       "grid_sampler"};
 
   std::unordered_set<std::string> teller_set{
@@ -2796,6 +2858,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_min",
       "elementwise_max",
       "elementwise_floordiv",
+      "elementwise_mod",
       "equal",
       "not_equal",
       "less_than",
@@ -2892,6 +2955,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fuse_eleadd_transpose",
       "skip_groupnorm_act",
       "preln_groupnorm_act",
+      "temporal_shift",
       "grid_sampler"};
 };
 

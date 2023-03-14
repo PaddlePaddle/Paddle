@@ -99,7 +99,7 @@ cc_test(
 cc_test(
   strided_memcpy_test
   SRCS strided_memcpy_test.cc
-  DEPS device_context memory)
+  DEPS phi_backends memory)
 
 cc_test(
   sequence_padding_test
