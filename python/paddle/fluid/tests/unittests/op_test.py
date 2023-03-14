@@ -973,7 +973,10 @@ class OpTest(unittest.TestCase):
                 % self.op_type
             )
             args = OpTestUtils.prepare_python_api_arguments(
-                self.python_api, eager_tensor_inputs, attrs_outputs, kernel_sig
+                self.python_api,
+                eager_tensor_inputs,
+                attrs_outputs,
+                kernel_sig,
             )
             """ we directly return the cal_python_api value because the value is already tensor.
             """

@@ -25,8 +25,7 @@ from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
 
 from . import logging_utils
-from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
-from .utils import _out_grad_names, _param_grad_names
+from .utils import RETURN_NO_VALUE_MAGIC_NUM, _out_grad_names, _param_grad_names
 
 __all__ = []
 
@@ -652,7 +651,9 @@ class PartialProgramLayer:
                 program, start_idx = self._hooker.after_append_backward(
                     program, start_idx
                 )
-            self.prepare_gradient_aggregation(start_idx, main_program, program)
+            self.prepare_gradient_aggregation(
+                start_idx + 1, main_program, program
+            )
 
         self._forward_end_index_map[
             paddle.utils._hash_with_id(program, self)
