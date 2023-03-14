@@ -2000,13 +2000,13 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     Note:
         If the number of the positive class centers is greater than the input num_samples, it keeps all the positive
         class centers and the shape of sampled_class_center will be [num_positive_class_centers].
-        
+
         The API supports CPU, single GPU and multi GPU.
-        
+
         For data parallel mode, set ``group=False``.
-        
+
         For model parallel mode, set ``group=None`` or the group instance return by paddle.distributed.new_group.
-    
+
     Args:
         label (Tensor): 1-D tensor with shape [N], each label in [0, num_classes)
         num_classes (int): A positive integer to specify the number of classes at local rank.
