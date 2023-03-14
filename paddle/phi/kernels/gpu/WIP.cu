@@ -14,6 +14,7 @@
 
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/slice.h"
@@ -28,10 +29,9 @@ __global__ void ViewSliceHelper(T* data,
                                 int stride,
                                 int in_last_dim,
                                 int out_second_dim) {
-  T max_value = std::numeric_limits<T>::max();
   CUDA_KERNEL_LOOP_TYPE(i, stride * in_last_dim, int64_t) {
     if (i % in_last_dim >= out_second_dim) {
-      *(data + i) = max_value;
+      *(data + i) = std::numeric_limits<T>::max();
     }
   }
 }
