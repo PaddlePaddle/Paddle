@@ -64,12 +64,11 @@ class TrtConvertExpandASV2Test(TrtLayerAutoScanTest):
                     },
                 ]
                 self.dims = dims
-                dics_intput = [{"X": ["expand_v2_input"]}]
 
                 ops_config = [
                     {
                         "op_type": "expand_as_v2",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": {"X": ["expand_v2_input"]},
                         "op_outputs": {"Out": ["expand_v2_out"]},
                         "op_attrs": dics[0],
                     }
@@ -206,15 +205,13 @@ class TrtConvertExpandASV2Test2(TrtLayerAutoScanTest):
                     },
                 ]
                 self.dims = dims
-                dics_intput = [
-                    {"X": ["expand_v2_input"]},
-                    {"Y": ["expand_shape"]},
-                ]
-
                 ops_config = [
                     {
                         "op_type": "expand_as_v2",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": {
+                            "X": ["expand_v2_input"],
+                            "Y": ["expand_shape"],
+                        },
                         "op_outputs": {"Out": ["expand_v2_out"]},
                         "op_attrs": dics[0],
                     }
