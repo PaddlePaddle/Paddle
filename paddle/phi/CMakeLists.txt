@@ -59,3 +59,36 @@ generate_unify_header(backends EXCLUDES context_pool_utils.h)
 generate_unify_header(core EXCLUDES cuda_stream.h)
 generate_unify_header(infermeta)
 generate_unify_header(kernels SKIP_SUFFIX grad_kernel)
+
+file(
+  GLOB
+  PHI_SRCS
+  "./api/lib/api*.cc"
+  "./api/lib/context_pool.cc"
+  "./api/lib/data_transform.cc"
+  "./api/lib/dygraph_api.cc"
+  "./api/lib/int_array.cc"
+  "./api/lib/kernel_dispatch.cc"
+  "./api/lib/op*.cc"
+  "./api/lib/scalar.cc"
+  "./api/lib/sparse_api.cc"
+  "./api/lib/strings_api.cc"
+  "./api/lib/tensor*.cc"
+  "./backends/*.cc"
+  "./backends/cpu/*.cc"
+  "./backends/onednn/*.cc"
+  "./common/*.cc"
+  "./core/*.cc"
+  "./kernels/*.cc"
+  "./kernels/cpu/*.cc"
+  "./kernels/funcs/*.cc"
+  "./kernels/fusion/onednn/*.cc"
+  "./kernels/onednn/*.cc"
+  "./kernels/selected_rows/*.cc"
+  "./kernels/sparse/*.cc"
+  "./kernels/sparse/cpu/*.cc"
+  "./kernels/strings/*.cc"
+  "./kernels/strings/cpu/*.cc")
+
+cc_library(phi_shared SHARED SRCS ${PHI_SRCS})
+set_target_properties(phi_shared PROPERTIES OUTPUT_NAME phi)
