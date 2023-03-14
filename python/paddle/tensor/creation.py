@@ -35,7 +35,6 @@ from ..fluid.framework import (
     _in_eager_without_dygraph_check,
     device_guard,
 )
-from ..fluid.layers import utils
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,
@@ -1234,7 +1233,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64', 'int32', 'int64', 'float16', 'uint16'],
             'range/arange',
         )
         helper = LayerHelper('range', **locals())
@@ -1735,7 +1734,7 @@ def empty(shape, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of the output Tensor
-            which can be bool, float16, float32, float64, int32, int64, if dytpe is `None`, the data
+            which can be bool, float16, float32, float64, int32, int64, complex64, complex128 if dytpe is `None`, the data
             type of created Tensor use global default dtype (see ``get_default_dtype``
             for details).
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1775,7 +1774,7 @@ def empty(shape, dtype=None, name=None):
     dtype = convert_dtype(dtype)
 
     if in_dygraph_mode():
-        shape = utils.convert_shape_to_list(shape)
+        shape = paddle.utils.convert_shape_to_list(shape)
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
         )
@@ -1788,7 +1787,16 @@ def empty(shape, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'empty',
         )
         check_type(shape, 'shape', (Variable, list, tuple), 'empty')
@@ -1797,7 +1805,7 @@ def empty(shape, dtype=None, name=None):
             check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'empty')
 
         attrs = {}
-        utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='empty'
         )
 
@@ -1874,7 +1882,7 @@ def empty_like(x, dtype=None, name=None):
         attrs = {}
         attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
         shape = paddle.shape(x)
-        utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='empty_like'
         )
 
