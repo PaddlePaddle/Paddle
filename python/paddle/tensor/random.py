@@ -655,7 +655,9 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         )
     else:
         check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
-        check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform/rand')
+        check_dtype(
+            dtype, 'dtype', ('float16', 'float32', 'float64'), 'uniform/rand'
+        )
         check_type(min, 'min', (float, int, Variable), 'uniform/rand')
         check_type(max, 'max', (float, int, Variable), 'uniform/rand')
 
