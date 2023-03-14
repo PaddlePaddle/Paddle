@@ -38,8 +38,8 @@ void SyncDefaultStream(
   for (size_t i = 0; i < places.size(); ++i) {
     auto* default_ctx = static_cast<platform::CustomDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(places[i]));
-    cclEvents[i].Record(*dev_ctx[i]);
-    cclEvents[i].Block(*default_ctx);
+    cclEvents[i].Record(*default_ctx);
+    cclEvents[i].Block(*dev_ctx[i]);
   }
 }
 
