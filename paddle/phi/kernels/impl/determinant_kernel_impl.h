@@ -69,6 +69,7 @@ struct DeterminantFunctor {
                   int64_t rank,
                   int64_t batch_count,
                   DenseTensor* output) {
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     std::vector<T> input_vec;
     std::vector<T> output_vec;
     phi::TensorToVector(input, dev_ctx, &input_vec);
@@ -80,10 +81,10 @@ struct DeterminantFunctor {
       typename detail::EigenMatrix<T>::MatrixType matrix(rank, rank);
       for (int64_t i = 0; i < rank; ++i) {
         for (int64_t j = 0; j < rank; ++j) {
-          matrix(i, j) = sub_vec[rank * i + j];
+          matrix(i, j) = static_cast<MPType>(sub_vec[rank * i + j]);
         }
       }
-      output_vec.push_back(matrix.determinant());
+      output_vec.push_back(static_cast<T>(matrix).determinant());
     }
     phi::TensorFromVector(output_vec, dev_ctx, output);
   }
