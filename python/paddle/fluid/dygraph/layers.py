@@ -1918,3 +1918,15 @@ class Layer:
     # [aliases] Compatible with old method names
     set_dict = set_state_dict
     load_dict = set_state_dict
+
+    def float(self):
+        """For all floating point parameters and buffers, cast it to ``float`` datatype."""
+        return self._to_impl(dtype=paddle.float32, floating_only=True)
+
+    def half(self):
+        """For all floating point parameters and buffers, cast it to ``half`` datatype."""
+        return self._to_impl(dtype=paddle.float16, floating_only=True)
+
+    def bfloat16(self):
+        """For all floating point parameters and buffers, cast it to ``bfloat16`` datatype."""
+        return self._to_impl(dtype=paddle.bfloat16, floating_only=True)
