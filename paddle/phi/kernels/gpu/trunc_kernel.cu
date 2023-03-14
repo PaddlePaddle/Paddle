@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -78,5 +79,13 @@ void TruncKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    trunc, GPU, ALL_LAYOUT, phi::TruncKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(trunc,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::TruncKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
