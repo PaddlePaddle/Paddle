@@ -663,10 +663,9 @@ void SetUVATensorFromPyArray(
 }
 
 template <typename T>
-void SetUVATensorFromPyArray(
-    const std::shared_ptr<paddle::experimental::Tensor> &self,
-    const py::array_t<T> &array,
-    int device_id) {
+void SetUVATensorFromPyArray(const std::shared_ptr<paddle::Tensor> &self,
+                             const py::array_t<T> &array,
+                             int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for Phi::Tensor.";
   phi::DenseTensorMeta meta =
@@ -728,13 +727,14 @@ void _concatCompute(const std::vector<phi::DenseTensor> &ins,
     for (auto &in : ins) {
       auto in_stride = phi::stride_numel(in.dims());
       auto out_stride = phi::stride_numel(out->dims());
-      phi::funcs::StridedNumelCopyWithAxis<T>(ctx,
-                                              axis,
-                                              out->data<T>() + output_offset,
-                                              out_stride,
-                                              in.data<T>(),
-                                              in_stride,
-                                              in_stride[axis]);
+      phi::funcs::StridedNumelCopyWithAxis<T, phi::CPUContext>(
+          ctx,
+          axis,
+          out->data<T>() + output_offset,
+          out_stride,
+          in.data<T>(),
+          in_stride,
+          in_stride[axis]);
       output_offset += in_stride[axis];
     }
   } else {
@@ -1174,11 +1174,9 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 
     // TODO(qili93): temporary for ascned npu performance to be removed along
     // with npu_identity op
-    paddle::experimental::Tensor tensor_out(
-        std::make_shared<phi::DenseTensor>());
+    paddle::Tensor tensor_out(std::make_shared<phi::DenseTensor>());
     if (tensor.storage_properties_initialized()) {
-      paddle::experimental::Tensor tensor_in(
-          std::make_shared<phi::DenseTensor>(tensor));
+      paddle::Tensor tensor_in(std::make_shared<phi::DenseTensor>(tensor));
       tensor_out = npu_identity_ad_func(tensor_in, -1);
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(tensor_out.impl());

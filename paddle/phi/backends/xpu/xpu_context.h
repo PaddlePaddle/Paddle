@@ -19,10 +19,14 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/phi/backends/xpu/forwards.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
-#include "xpu/runtime.h"
+
+namespace Eigen {
+struct DefaultDevice;
+}  // namespace Eigen
 
 namespace xpu = baidu::xpu::api;
 
@@ -42,6 +46,10 @@ class XPUContext : public DeviceContext,
   backends::xpu::XPUVersion xpu_version() const;
 
   xpu::Context* x_context() const;
+
+  // For multi-thread dataloader,
+  // check if the current thread is Dataloader thread
+  bool IsDataloader() const;
 
   // Return bkcl context.
   xpu::BKCLContext_t bkcl_context() const;
@@ -64,6 +72,8 @@ class XPUContext : public DeviceContext,
   void SetXContext(xpu::Context*);
 
   void SetL3Cache(int l3_size = 14155776);
+
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
 
   XPUStream stream() const;
 

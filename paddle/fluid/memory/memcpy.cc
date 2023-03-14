@@ -257,6 +257,7 @@ void Copy<phi::Place, phi::XPUPlace>(phi::Place dst_place,
     return Copy(place_dst, dst, src_place, src, num);
   }
 }
+
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL

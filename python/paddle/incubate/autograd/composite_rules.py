@@ -20,7 +20,6 @@
 import functools
 import operator
 
-import paddle.framework.dtype as dtypes
 from paddle.fluid import core
 
 from .primitives import *  # noqa: F403
@@ -192,6 +191,54 @@ def mean_composite(x, axis, keepdim):
     return divide(sum_x, norm)
 
 
+@REGISTER_COMPOSITE('expand_v2')
+def expand_v2_composite(x, shape):
+    """
+    define composite rule of op expnad_v2, expand_v2->expand
+    repeat_times = shape / x.shape
+    out = tile(x, repeat_times = repeat_times)
+    """
+    shape_in = x.shape
+    dim_out = len(shape)
+    dim_in = len(shape_in)
+    assert dim_in <= dim_out and dim_out >= 0
+    repeat_times = []
+    for i in range(dim_out):
+        offset = dim_out - i
+        dim = dim_in - offset
+        size_in = shape_in[dim] if dim >= 0 else 1
+        size_out = shape[i]
+        if size_out == -1:
+            assert dim >= 0
+            repeat = 1
+        else:
+            assert size_out % size_in == 0
+            repeat = int(size_out / size_in)
+        repeat_times.append(repeat)
+    if dim_in < dim_out:
+        shape_in_expand = []
+        for i in range(dim_out - dim_in):
+            shape_in_expand.append(1)
+        shape_in_expand.extend(shape_in)
+        x_reshape = reshape(x, shape_in_expand)
+        return tile(x_reshape, repeat_times=repeat_times)
+    return tile(x, repeat_times=repeat_times)
+
+
+@REGISTER_COMPOSITE('stack')
+def stack_composite(x, axis):
+    """
+    define composite rule of op stack
+    unsqueeze each dimension of the input (use reshape), and then concat
+    """
+    x_shape = x[0].shape
+    if axis < 0:
+        axis += len(x_shape) + 1
+    out_shape = x_shape[:axis] + (1,) + x_shape[axis:]
+    out = concat([reshape(item, out_shape) for item in x], axis)
+    return out
+
+
 @REGISTER_COMPOSITE('flatten_contiguous_range')
 def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     """
@@ -286,6 +333,17 @@ def hard_swish_composite(x):
     return res
 
 
+@REGISTER_COMPOSITE('sigmoid')
+def sigmoid_composite(x):
+    """
+    define composite rule of op sigmoid
+    res = 1 / (1 + exp(-x))
+    """
+    sum_temp = 1 + exp(-x)
+    res = 1 / sum_temp
+    return res
+
+
 @REGISTER_COMPOSITE('silu')
 def silu_composite(x):
     """
@@ -302,6 +360,32 @@ def fill_any_like(x, fill_value, dtype, place=None):
     """define composite rule of op full_like."""
     """op name: full_like  op type name: fill_any_like."""
     """arg place is not used, add it here to keep same as python api."""
-    dtype = dtypes.dtype(dtype)
     val = full(x.shape, fill_value, dtype)
     return val
+
+
+@REGISTER_COMPOSITE('relu')
+def relu_composite(x):
+    """define composite rule of op relu."""
+    # relu(x) = max(x, 0)
+    return maximum(x, zeros_like(x))
+
+
+@REGISTER_COMPOSITE('unsqueeze2')
+def unsqueeze_composite(x, axis):
+    """define composite rule of op unsqueeze"""
+    """using reshape to implement unsqueeze op"""
+    x_shape = list(x.shape)
+    axis_list = list(axis)
+    for i in axis_list:
+        if i < 0:
+            i += len(x_shape) + 1
+        x_shape = (
+            x_shape[:i]
+            + [
+                1,
+            ]
+            + x_shape[i:]
+        )
+    out = reshape(x, x_shape)
+    return [out, None]

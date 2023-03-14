@@ -62,7 +62,8 @@ def assign_configs_value(msg, config):
                 # LABEL_REPEATED = 3
                 # LABEL_REQUIRED = 2
                 if f.label == 3:
-                    getattr(msg, f.name).extend(config[f.name])
+                    if config[f.name] is not None:
+                        getattr(msg, f.name).extend(config[f.name])
                 elif f.label == 1 or f.label == 2:
                     setattr(msg, f.name, config[f.name])
 

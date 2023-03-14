@@ -148,6 +148,9 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
   const int stream_priority = op_func_node.stream_priority_;
   ContextManager& ctx_manager = ContextManager::Instance();
 
+  auto dev_ctx = ctx_manager.Get(op_type, place_, stream_priority).get().get();
+  SetDeviceCommContext(op.get(), dev_ctx);
+
   // only gpu/npu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
   if (platform::is_gpu_place(place_) || platform::is_npu_place(place_) ||

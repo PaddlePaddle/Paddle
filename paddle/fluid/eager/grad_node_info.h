@@ -178,13 +178,13 @@ class GradNodeBase {
    * vector of Tensor which contains grads input of current operator
    *
    * Note: why we need backward inputs and outputs construct as vector of vector
-   * of paddle::experimental::Tensor?
+   * of paddle::Tensor?
    * Since all of paddle op composite in form of {"Slot name ", vector<Var>},
    * so, vector of vector is better choice to fit this format.
    * **/
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>
-  operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,
                                   kSlotSmallVectorSize>& grads,  // NOLINT
              bool create_graph = false,
              bool is_new_grad = false) = 0;
@@ -216,18 +216,15 @@ class GradNodeBase {
    * Set bwd ins and outs info with forward vars
    * **/
 
-  void SetGradInMeta(const std::vector<paddle::experimental::Tensor>& fwd_out,
+  void SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
                      size_t slot_rank);
-  void SetGradInMeta(const paddle::experimental::Tensor& fwd_out,
-                     size_t slot_rank);
+  void SetGradInMeta(const paddle::Tensor& fwd_out, size_t slot_rank);
 
-  void SetGradOutMeta(const std::vector<paddle::experimental::Tensor>& fwd_in,
+  void SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
                       size_t slot_rank);
-  void SetGradOutMeta(
-      const std::vector<const paddle::experimental::Tensor*>& fwd_in,
-      size_t slot_rank);
-  void SetGradOutMeta(const paddle::experimental::Tensor& fwd_in,
+  void SetGradOutMeta(const std::vector<const paddle::Tensor*>& fwd_in,
                       size_t slot_rank);
+  void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
   /**
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
@@ -269,18 +266,16 @@ class GradNodeBase {
     gradient_hooks_ = hooks;
   }
 
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
-  ApplyGradientHooks(
-      const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                                 kSlotSmallVectorSize>& tensors);
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
+  ApplyGradientHooks(const paddle::small_vector<std::vector<paddle::Tensor>,
+                                                kSlotSmallVectorSize>& tensors);
 
   /**
    * Handle Complex - Real Type Promotion
    * **/
   void HandleComplexGradToRealGrad(
-      paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                           kSlotSmallVectorSize>* out_grads);
+      paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>*
+          out_grads);
   bool NeedComplexToRealConversion() { return need_complex_to_real_; }
 
   virtual std::string name() { return "GradNodeBase"; }

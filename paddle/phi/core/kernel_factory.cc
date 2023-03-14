@@ -93,6 +93,14 @@ const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
         kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
     kernel_iter = iter->second.find(any_layout_kernel_key);
   }
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+    kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                     phi::DataLayout::ALL_LAYOUT,
+                                     kernel_key.dtype()});
+  }
+#endif
 
   if (kernel_iter == iter->second.end()) {
     return empty_kernel;
@@ -138,11 +146,11 @@ void KernelFactory::AddToLowPrecisionKernelList(
       auto count = OpCount();
       low_precision_kernels_[op_name] = count;
     }
-    if (kernel_key_type == paddle::experimental::DataType::FLOAT16) {
+    if (kernel_key_type == phi::DataType::FLOAT16) {
       low_precision_kernels_[op_name].fp16_called_ += 1;
-    } else if (kernel_key_type == paddle::experimental::DataType::BFLOAT16) {
+    } else if (kernel_key_type == phi::DataType::BFLOAT16) {
       low_precision_kernels_[op_name].bf16_called_ += 1;
-    } else if (kernel_key_type == paddle::experimental::DataType::FLOAT32) {
+    } else if (kernel_key_type == phi::DataType::FLOAT32) {
       low_precision_kernels_[op_name].fp32_called_ += 1;
     } else {
       low_precision_kernels_[op_name].other_called_ += 1;
@@ -220,6 +228,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
                                              kernel_key.dtype())
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+    kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                     phi::DataLayout::ALL_LAYOUT,
+                                     kernel_key.dtype()});
+  }
   if (FLAGS_enable_api_kernel_fallback &&
       (kernel_iter == iter->second.end() ||
        phi::backends::custom_device::is_in_custom_black_list(

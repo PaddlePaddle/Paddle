@@ -66,8 +66,10 @@ void CustomContext::SetStream(std::shared_ptr<phi::stream::Stream> stream) {
 void CustomContext::Wait() const { return impl_->Wait(); }
 
 CustomContext::CustomContext(const CustomPlace& place)
-    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {}
+    : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
+  impl_->Init();
+}
 
-CustomContext::~CustomContext() {}
+CustomContext::~CustomContext() { impl_->Init(); }
 
 }  // namespace phi

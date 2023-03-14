@@ -19,6 +19,8 @@
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 
+#include "paddle/phi/api/profiler/trace_event_collector.h"
+
 namespace paddle {
 namespace platform {
 class TraceEventCollector;
@@ -243,25 +245,24 @@ class DeviceInterface {  // Driver / Runtime
                          void* y);
 
   // profiler
-  virtual void ProfilerInitialize(
-      paddle::platform::TraceEventCollector* collector, void** user_data);
+  virtual void ProfilerInitialize(phi::TraceEventCollector* collector,
+                                  void** user_data);
 
-  virtual void ProfilerFinalize(
-      paddle::platform::TraceEventCollector* collector, void* user_data);
+  virtual void ProfilerFinalize(phi::TraceEventCollector* collector,
+                                void* user_data);
 
-  virtual void ProfilerPrepareTracing(
-      paddle::platform::TraceEventCollector* collector, void* user_data);
+  virtual void ProfilerPrepareTracing(phi::TraceEventCollector* collector,
+                                      void* user_data);
 
-  virtual void ProfilerStartTracing(
-      paddle::platform::TraceEventCollector* collector, void* user_data);
+  virtual void ProfilerStartTracing(phi::TraceEventCollector* collector,
+                                    void* user_data);
 
-  virtual void ProfilerStopTracing(
-      paddle::platform::TraceEventCollector* collector, void* user_data);
+  virtual void ProfilerStopTracing(phi::TraceEventCollector* collector,
+                                   void* user_data);
 
-  virtual void ProfilerCollectTraceData(
-      paddle::platform::TraceEventCollector* collector,
-      uint64_t start_ns,
-      void* user_data);
+  virtual void ProfilerCollectTraceData(phi::TraceEventCollector* collector,
+                                        uint64_t start_ns,
+                                        void* user_data);
 
  private:
   const std::string type_;
