@@ -255,6 +255,18 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
   output_box->set_dtype(target_box.dtype());
 }
 
+void FlashAttnInferMeta(const MetaTensor& q,
+                        const MetaTensor& k,
+                        const MetaTensor& v,
+                        MetaTensor* out,
+                        MetaTensor* softmax_lse,
+                        MetaTensor* softmax,
+                        MetaTensor* seed_offset) {
+  out->set_dims(q.dims());
+  out->set_dtype(q.dtype());
+  out->set_layout(q.layout());
+}
+
 void ArangeInferMeta(const MetaTensor& start,
                      const MetaTensor& end,
                      const MetaTensor& step,

@@ -15,7 +15,7 @@
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
 DECLARE_bool(new_executor_use_cuda_graph);

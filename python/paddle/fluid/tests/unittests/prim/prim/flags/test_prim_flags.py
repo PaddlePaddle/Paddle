@@ -58,6 +58,9 @@ class TestPrimFlags(unittest.TestCase):
         core.check_and_set_prim_all_enabled()
         self.assertFalse(core._is_fwd_prim_enabled())
 
+        core.set_prim_eager_enabled(True)
+        self.assertTrue(core._is_eager_prim_enabled())
+
         with self.assertRaises(TypeError):
             core._test_use_sync("aaaa")
 

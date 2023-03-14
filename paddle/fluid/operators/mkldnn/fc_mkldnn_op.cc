@@ -16,19 +16,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fc_op.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
 
-using dnnl::inner_product_forward;
-using dnnl::memory;
-using dnnl::primitive;
-using dnnl::prop_kind;
-using dnnl::stream;
-using framework::DDim;
 using framework::ExecutionContext;
 using phi::OneDNNContext;
 using phi::funcs::OneDNNGetDataType;
@@ -46,7 +39,7 @@ class FCMKLDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<T_in,
                                                  dnnl::inner_product_forward> {
  public:
-  FCMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
+  FCMKLDNNHandler(const ExecutionContext& ctx,
                   const OneDNNContext& dev_ctx,
                   const phi::DenseTensor* x,
                   const phi::DenseTensor* weights,
@@ -92,7 +85,7 @@ class FCMKLDNNHandler
     const auto attrs = CreateFCAttrs(ctx);
 
     this->AcquireForwardPrimitiveDescriptor(attrs,
-                                            prop_kind::forward_inference,
+                                            dnnl::prop_kind::forward_inference,
                                             src_md,
                                             weights_md,
                                             bias_md,
@@ -138,7 +131,7 @@ class FCMKLDNNHandler
 
   // Compute the bias scales so that its values correspond to the
   // scale of data being an output of weights and input multiplication
-  std::vector<float> GetBiasScales(const framework::ExecutionContext& ctx) {
+  std::vector<float> GetBiasScales(const ExecutionContext& ctx) {
     if (ctx.HasAttr("Bias_scales")) {
       return ctx.Attr<std::vector<float>>("Bias_scales");
     } else {
@@ -230,10 +223,8 @@ class FCMKLDNNHandler
     }
   }
 
-  // Computing MKL-DNN's scaling mask which determines along which dimension
-  // slice should the scaling be applied. For more data plase refer to:
-  // https://intel.github.io/mkl-dnn/group__c__api__attributes.html
-  // Section dnnl_status_t DNNL_API dnnl_primitive_attr_set_output_scales
+  // Computing oneDNN's scaling mask which determines along which dimension
+  // slice should the scaling be applied.
   int CreateMask(int slice_dimension, bool is_multi_channel_quantizied) {
     return is_multi_channel_quantizied ? 1 << slice_dimension : 0;
   }
@@ -287,7 +278,7 @@ class FCMKLDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
-      const framework::ExecutionContext& ctx, const phi::DenseTensor* bias) {
+      const ExecutionContext& ctx, const phi::DenseTensor* bias) {
     const float* bias_data = bias->data<float>();
 
     if (phi::funcs::is_int8<T_w>() == false) {
@@ -366,7 +357,7 @@ class FCMKLDNNHandler
       PADDLE_ENFORCE_EQ(
           out->dims(),
           residual_param->dims(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Output and elementwise parameter need to have the "
               "same dimension sizes, but got output's dimension = %d"
               " and residual param's dimension =%d .",
@@ -391,7 +382,7 @@ class FCMKLDNNHandler
 template <typename T_in>
 class FCMKLDNNKernel : public framework::OpKernel<T_in> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(const ExecutionContext& ctx) const override {
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
 
@@ -410,7 +401,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
                              }));
   }
 
-  void PrepareSrcMem(const std::shared_ptr<inner_product_forward>& fc_p,
+  void PrepareSrcMem(const std::shared_ptr<dnnl::inner_product_forward>& fc_p,
                      const std::shared_ptr<dnnl::memory>& src_mem,
                      const phi::DenseTensor* x,
                      const dnnl::engine& engine) const {
@@ -427,74 +418,8 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     }
   }
 
-  void SetOutMemDescWithUnsqueeze2FuseSupport(
-      const framework::ExecutionContext& ctx,
-      phi::DenseTensor* out,
-      const dnnl::memory::desc& out_md) const {
-    const std::vector<int>& fused_unsqueeze2_axes =
-        ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes");
-    const std::vector<int64_t>& op_tz = out_md.dims();
-    std::vector<int64_t> unsqueezed_op_tz(
-        op_tz.size() + fused_unsqueeze2_axes.size(), 0);
-
-    for (const auto& axis : fused_unsqueeze2_axes) {
-      int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
-      unsqueezed_op_tz[positive_axis] = 1;
-    }
-
-    int j = 0;
-    for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
-      if (unsqueezed_op_tz[i] == 0) {
-        unsqueezed_op_tz[i] = op_tz[j++];
-      }
-    }
-    out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
-    out->Resize(phi::make_ddim(unsqueezed_op_tz));
-  }
-
-  void SetOutMemDescWithReshape2FuseSupport(
-      const framework::ExecutionContext& ctx,
-      phi::DenseTensor* out,
-      const dnnl::memory::desc& out_md) const {
-    std::vector<int64_t> fused_reshape2_shape(
-        ctx.Attr<std::vector<int>>("fused_reshape2_shape").begin(),
-        ctx.Attr<std::vector<int>>("fused_reshape2_shape").end());
-
-    const int out_shape_numel = out->numel();
-    const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
-                                                fused_reshape2_shape.end(),
-                                                1,
-                                                std::multiplies<int64_t>());
-
-    for (size_t i = 0; i < fused_reshape2_shape.size(); ++i) {
-      if (fused_reshape2_shape[i] == -1) {
-        fused_reshape2_shape[i] = -out_shape_numel / new_shape_numel;
-        break;
-      }
-    }
-
-    out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
-    out->Resize(phi::make_ddim(fused_reshape2_shape));
-  }
-
-  void SetOutMemDescWithLogicalLayoutFusesSupport(
-      const framework::ExecutionContext& ctx,
-      phi::DenseTensor* out,
-      const dnnl::memory::desc& out_md) const {
-    if (ctx.HasAttr("fused_unsqueeze2_axes")) {
-      SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
-    } else if (ctx.HasAttr("fused_reshape2_shape")) {
-      SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
-    } else if (ctx.HasAttr("fused_squeeze2_axes")) {
-      out->set_mem_desc(out_md);
-      out->Resize(phi::make_ddim(out_md.dims()));
-    } else {
-      out->set_mem_desc(out_md);
-    }
-  }
-
   template <typename T_out, typename T_w>
-  void RunKernel(const framework::ExecutionContext& ctx) const {
+  void RunKernel(const ExecutionContext& ctx) const {
     const auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
@@ -601,10 +526,15 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       dev_ctx.SetBlob(cache_key, ip_cache);
     }
 
-    SetOutMemDescWithLogicalLayoutFusesSupport(
-        ctx,
-        out,
-        dst_memory_p->get_desc().reshape(phi::vectorize(out->dims())));
+    const auto out_md =
+        dst_memory_p->get_desc().reshape(phi::vectorize(out->dims()));
+
+    if (ctx.HasAttr("fused_reshape2_shape")) {
+      phi::funcs::SetOutMemDescWithReshape2FuseSupport(
+          ctx.Attr<std::vector<int>>("fused_reshape2_shape"), out, out_md);
+    } else {
+      out->set_mem_desc(out_md);
+    }
   }
 
   void RecomputeOutputDims(const ExecutionContext& ctx,
@@ -615,8 +545,8 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     bool padding_weights = ctx.Attr<bool>("padding_weights");
     PADDLE_ENFORCE_EQ(padding_weights,
                       false,
-                      platform::errors::PermissionDenied(
-                          "Weight padding in fc can not be used in MKLDNN."));
+                      phi::errors::PermissionDenied(
+                          "Weight padding in fc can not be used in oneDNN."));
     std::vector<int64_t> output_dims;
     FCOutputSize(x->dims(),
                  weights->dims(),

@@ -32,6 +32,8 @@ class TestConcatOp(OpTest):
     def setUp(self):
         self.op_type = "concat"
         self.python_api = paddle.concat
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_test_data()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
@@ -61,13 +63,13 @@ class TestConcatOp(OpTest):
     def test_check_grad(self):
         if self.dtype == np.uint16:
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['x0'], 'Out')
-            self.check_grad_with_place(place, ['x1'], 'Out')
-            self.check_grad_with_place(place, ['x2'], 'Out')
+            self.check_grad_with_place(place, ['x0'], 'Out', check_prim=True)
+            self.check_grad_with_place(place, ['x1'], 'Out', check_prim=True)
+            self.check_grad_with_place(place, ['x2'], 'Out', check_prim=True)
         else:
-            self.check_grad(['x0'], 'Out', check_eager=True)
-            self.check_grad(['x1'], 'Out', check_eager=True)
-            self.check_grad(['x2'], 'Out', check_eager=True)
+            self.check_grad(['x0'], 'Out', check_eager=True, check_prim=True)
+            self.check_grad(['x1'], 'Out', check_eager=True, check_prim=True)
+            self.check_grad(['x2'], 'Out', check_eager=True, check_prim=True)
 
     def init_test_data(self):
         if self.dtype == np.uint16:
@@ -133,6 +135,8 @@ class TestConcatOp6(TestConcatOp):
         self.op_type = "concat"
         self.dtype = self.get_dtype()
         self.python_api = paddle.concat
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         self.init_test_data()
         self.lod = [[20, 80]]
         self.out_lod = [[20, 80, 20, 80, 20, 80]]
@@ -167,6 +171,54 @@ class TestConcatOp6(TestConcatOp):
         self.axis = 0
 
 
+class TestConcatOp7(TestConcatOp):
+    def setUp(self):
+        self.op_type = "concat"
+        self.python_api = paddle.concat
+        self.prim_op_type = "prim"
+        self.enable_cinn = True
+        self.dtype = self.get_dtype()
+        self.init_test_data()
+        self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
+        self.attrs = {'axis': self.axis}
+        if self.axis < 0:
+            self.actual_axis = self.axis + len(self.x0.shape)
+            self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+        else:
+            self.actual_axis = self.axis
+
+        self.outputs = {
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.actual_axis
+            )
+        }
+
+    def get_dtype(self):
+        return "float64"
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['x1'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['x2'], 'Out', check_eager=True, check_prim=True)
+
+    def init_test_data(self):
+        if self.dtype == np.uint16:
+            x0 = np.random.random((5, 1, 4, 5)).astype(np.float32)
+            self.x0 = convert_float_to_uint16(x0)
+            x1 = np.random.random((5, 2, 4, 5)).astype(np.float32)
+            self.x1 = convert_float_to_uint16(x1)
+            x2 = np.random.random((5, 3, 4, 5)).astype(np.float32)
+            self.x2 = convert_float_to_uint16(x2)
+        else:
+            self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
+            self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
+            self.x2 = np.random.random((5, 3, 4, 5)).astype(self.dtype)
+        self.axis = 1
+
+
 def create_test_AxisTensor(parent):
     class TestConcatAxisTensor(parent):
         def setUp(self):
@@ -175,6 +227,8 @@ def create_test_AxisTensor(parent):
             self.dtype = self.get_dtype()
             self.init_test_data()
 
+            self.prim_op_type = "prim"
+            self.enable_cinn = False
             self.inputs = {
                 'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)],
                 'AxisTensor': np.array([self.axis]).astype("int32"),

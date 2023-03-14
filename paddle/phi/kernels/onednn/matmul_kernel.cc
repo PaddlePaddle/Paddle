@@ -16,7 +16,7 @@
 
 #include "paddle/phi/kernels/matmul_kernel.h"
 
-#include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/backends/onednn/matmul_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 using dnnl::engine;

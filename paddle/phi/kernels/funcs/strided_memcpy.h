@@ -104,39 +104,39 @@ inline void StridedNumelCopyWithAxis(const phi::DeviceContext& ctx,
   for (int64_t i = 0; i < before; ++i) {
     if (place.GetType() == phi::AllocationType::CPU) {
       auto& cpu_place = place;
-      paddle::memory::Copy(cpu_place,
-                           dst + i * dst_after,
-                           cpu_place,
-                           src + i * src_after,
-                           sizeof(T) * size);
+      memory_utils::Copy(cpu_place,
+                         dst + i * dst_after,
+                         cpu_place,
+                         src + i * src_after,
+                         sizeof(T) * size);
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto& gpu_place = place;
       auto& cuda_ctx = reinterpret_cast<const phi::GPUContext&>(ctx);
-      paddle::memory::Copy(gpu_place,
-                           dst + i * dst_after,
-                           gpu_place,
-                           src + i * src_after,
-                           sizeof(T) * size,
-                           cuda_ctx.stream());
+      memory_utils::Copy(gpu_place,
+                         dst + i * dst_after,
+                         gpu_place,
+                         src + i * src_after,
+                         sizeof(T) * size,
+                         cuda_ctx.stream());
 #elif defined(PADDLE_WITH_ASCEND_CL)
       auto& npu_place = place;
       auto& npu_ctx = reinterpret_cast<const platform::NPUDeviceContext&>(ctx);
-      paddle::memory::Copy(npu_place,
-                           dst + i * dst_after,
-                           npu_place,
-                           src + i * src_after,
-                           sizeof(T) * size,
-                           npu_ctx.stream());
+      memory_utils::Copy(npu_place,
+                         dst + i * dst_after,
+                         npu_place,
+                         src + i * src_after,
+                         sizeof(T) * size,
+                         npu_ctx.stream());
 #elif defined(PADDLE_WITH_MLU)
       auto& mlu_place = place;
       auto& mlu_ctx = reinterpret_cast<const platform::MLUDeviceContext&>(ctx);
-      paddle::memory::Copy(mlu_place,
-                           dst + i * dst_after,
-                           mlu_place,
-                           src + i * src_after,
-                           sizeof(T) * size,
-                           mlu_ctx.stream());
+      memory_utils::Copy(mlu_place,
+                         dst + i * dst_after,
+                         mlu_place,
+                         src + i * src_after,
+                         sizeof(T) * size,
+                         mlu_ctx.stream());
 #else
       PADDLE_THROW(
           phi::errors::PreconditionNotMet("Paddle is not compiled with GPU."));
