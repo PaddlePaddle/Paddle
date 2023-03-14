@@ -424,17 +424,12 @@ class TestLinearInterpOpBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-2, check_eager=True)
+        self.check_output_with_place(place, atol=1e-2)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-            in_place=True,
-            check_eager=True,
-            max_relative_error=1e-2,
+            place, ['X'], 'Out', in_place=True, max_relative_error=1e-2
         )
 
     def init_test_case(self):
