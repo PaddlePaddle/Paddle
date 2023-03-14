@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -213,6 +213,76 @@ class TestSearchSortedError(unittest.TestCase):
                 out = paddle.searchsorted(sorted_sequence, values)
 
         self.assertRaises(TypeError, test_sortedsequence_values_type_error)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
+class TestSearchSortedFP16OP(OpTest):
+    def setUp(self):
+        self.python_api = paddle.searchsorted
+        self.op_type = "searchsorted"
+        self.__class__.op_type = self.op_type
+        self.dtype = np.float16
+        self.init_test_case()
+
+        sorted_sequence = self.sorted_sequence
+        values = self.values
+        out = np.searchsorted(self.sorted_sequence, self.values, side=self.side)
+
+        self.inputs = {
+            'SortedSequence': sorted_sequence.astype(self.dtype),
+            'Values': values.astype(self.dtype),
+        }
+        self.attrs = {"out_int32": False, "right": False}
+        self.attrs["right"] = True if self.side == 'right' else False
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3, check_eager=True)
+
+    def init_test_case(self):
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype(np.float32)
+        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype(np.float32)
+        self.side = "left"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestSearchSortedBF16(OpTest):
+    def setUp(self):
+        self.python_api = paddle.searchsorted
+        self.op_type = "searchsorted"
+        self.__class__.op_type = self.op_type
+        self.dtype = np.uint16
+        self.init_test_case()
+
+        sorted_sequence = self.sorted_sequence
+        values = self.values
+        out = np.searchsorted(self.sorted_sequence, self.values, side=self.side)
+
+        self.inputs = {
+            'SortedSequence': convert_float_to_uint16(sorted_sequence),
+            'Values': convert_float_to_uint16(values),
+        }
+        self.attrs = {"out_int32": False, "right": False}
+        self.attrs["right"] = True if self.side == 'right' else False
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3, check_eager=True)
+
+    def init_test_case(self):
+        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype(np.float32)
+        self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype(np.float32)
+        self.side = "left"
 
 
 if __name__ == '__main__':
