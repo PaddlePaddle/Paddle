@@ -133,6 +133,54 @@ class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
         self.axis = 2
 
 
+class TestMKLDNNElementwiseSubOpZeroDim(TestMKLDNNElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.random.random((100,)).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
+class TestMKLDNNElementwiseSubOpZeroDim2(TestMKLDNNElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.random.random((100,)).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
+class TestMKLDNNElementwiseSubOpZeroDim3(TestMKLDNNElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestBf16(TestMKLDNNElementwiseSubOp):
     def setUp(self):

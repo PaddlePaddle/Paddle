@@ -111,6 +111,45 @@ class TestMKLDNNElementwiseDivOp5(TestMKLDNNElementwiseDivOp):
         pass
 
 
+class TestMKLDNNElementwiseDivOpZeroDim(TestMKLDNNElementwiseDivOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.divide(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+
+class TestMKLDNNElementwiseDivOpZeroDim2(TestMKLDNNElementwiseDivOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
+        self.out = np.divide(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+
+class TestMKLDNNElementwiseDivOpZeroDim3(TestMKLDNNElementwiseDivOp):
+    def init_input_output(self):
+        self.x = np.array(3.0).astype(self.dtype)
+        self.y = np.array(3.0).astype(self.dtype)
+        self.out = np.divide(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestBf16(TestMKLDNNElementwiseDivOp):
     def setUp(self):
