@@ -497,12 +497,12 @@ def parse_keep_signature(
     op_fluid_list: list, fw_op_dict: dict, bw_op_dict: dict
 ):
     for op_comp_map in op_fluid_list:
-        if 'keep_signature' in op_comp_map:
-            for op_name in op_comp_map['keep_signature']:
+        if 'manual_signature' in op_comp_map:
+            for op_name in op_comp_map['manual_signature']:
                 if op_name in fw_op_dict:
-                    fw_op_dict[op_name]["keep_signature"] = True
+                    fw_op_dict[op_name]["manual_signature"] = True
                 elif op_name in bw_op_dict:
-                    bw_op_dict[op_name]["keep_signature"] = True
+                    bw_op_dict[op_name]["manual_signature"] = True
 
 
 def split_ops_list(ops, backward_op_dict, split_num):

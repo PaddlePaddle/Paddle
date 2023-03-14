@@ -6,14 +6,14 @@
 namespace phi {
 
 {% for op in ops %}
-  {% if "keep_signature" not in op %}
+  {% if "manual_signature" not in op %}
     {% if op is base_op %}
 {{name_map(op)}}
     {% endif %}
   {% endif %}
 {% endfor %}
 {% for op in backward_ops %}
-  {% if "keep_signature" not in op %}
+  {% if "manual_signature" not in op %}
     {% if op is base_op %}
 {{name_map(op)}}
     {% endif %}
@@ -22,7 +22,7 @@ namespace phi {
 }  // namespace phi
 
 {% for op in ops + backward_ops %}
-  {% if "keep_signature" not in op %}
+  {% if "manual_signature" not in op %}
     {% if op["name"] != op["op_name"] %}
 {{register_base_kernel_name(op)}}
     {% endif %}

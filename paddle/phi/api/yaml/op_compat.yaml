@@ -71,7 +71,7 @@
     axis :
       data_type : int
       support_tensor : true
-  keep_signature : [all]
+  manual_signature : [all]
   extra :
     attrs : [bool use_mkldnn = false]
 
