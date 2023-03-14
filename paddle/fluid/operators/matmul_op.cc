@@ -342,6 +342,18 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 };
 
+phi::DDim GetDimForInput(const framework::InferShapeContext &ctx,
+                         std::string input_name) {
+  auto dim = ctx.GetInputDim(input_name);
+  PADDLE_ENFORCE_GT(dim.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(%s) has not been initialized properly. The "
+                        "shape of Input(%s) = [%s].",
+                        dim));
+  return dim;
+}
+
 template <typename DeviceContext, typename T>
 class MatMulDoubleGradKernel : public framework::OpKernel<T> {
  public:
@@ -556,8 +568,8 @@ class MatMulOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
     OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "matmul");
 
-    auto dim_x = context->GetInputDim("X");
-    auto dim_y = context->GetInputDim("Y");
+    auto dim_x = GetDimForInput(*context, "X");
+    auto dim_y = GetDimForInput(*context, "Y");
 
 #ifdef PADDLE_WITH_MKLDNN
     // For NHWC execution output shape needs to be

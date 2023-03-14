@@ -93,16 +93,19 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     auto y_md = memory::desc(y_dims, OneDNNGetDataType<YT>(), y_strides);
     auto out_md = memory::desc(out_ddims, OneDNNGetDataType<OT>(), out_strides);
 
+    const auto matmul_attrs = CreateMatmulAttrs(dev_ctx);
+    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
+  }
+
+  dnnl::primitive_attr CreateMatmulAttrs(const OneDNNContext& dev_ctx) {
+    dnnl::primitive_attr matmul_attrs;
     float scale_out = dev_ctx.HasDnnAttr("alpha")
                           ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("alpha"))
                           : 1.0f;
-
-    dnnl::primitive_attr matmul_attrs;
     if (scale_out != 1.0f) {
       matmul_attrs.set_output_scales(0, {scale_out});
     }
-
-    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
+    return matmul_attrs;
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const DenseTensor* input) {

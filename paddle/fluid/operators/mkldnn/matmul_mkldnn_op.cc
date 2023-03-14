@@ -136,14 +136,9 @@ class MatMulV1OneDNNHandler
     auto out_md = memory::desc(
         out_ddims, phi::funcs::OneDNNGetDataType<OT>(), out_strides);
 
-    const float scale_out = ComputeOutputScale(ctx);
-    if (scale_out == 1.0f) {
-      this->AcquireForwardPrimitiveDescriptor(x_md, y_md, out_md);
-    } else {
-      dnnl::primitive_attr matmul_attrs;
-      matmul_attrs.set_output_scales(0, {scale_out});
-      this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
-    }
+    const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
+
+    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
   }
 
   float ComputeOutputScale(const ExecutionContext &ctx) {
@@ -159,6 +154,15 @@ class MatMulV1OneDNNHandler
       alpha *= scale_out / (scale_x * scale_y);
     }
     return alpha;
+  }
+
+  dnnl::primitive_attr CreateMatmulAttrs(const ExecutionContext &ctx) {
+    dnnl::primitive_attr matmul_attrs;
+    float scale_out = ComputeOutputScale(ctx);
+    if (scale_out != 1.0f) {
+      matmul_attrs.set_output_scales(0, {scale_out});
+    }
+    return matmul_attrs;
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor *input) {
