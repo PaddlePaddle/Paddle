@@ -20,14 +20,11 @@ import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
-from paddle.fluid.layers.utils import _hash_with_id, flatten, pack_sequence_as
 
 from . import logging_utils
-from .return_transformer import RETURN_NO_VALUE_MAGIC_NUM
-from .utils import _out_grad_names, _param_grad_names
+from .utils import RETURN_NO_VALUE_MAGIC_NUM, _out_grad_names, _param_grad_names
 
 __all__ = []
 
@@ -48,14 +45,14 @@ class NestSequence:
         """
         Flattens the nested sequences into single list.
         """
-        return flatten(self.__raw_input)
+        return paddle.utils.flatten(self.__raw_input)
 
     def restore(self, value_list):
         """
         Restores the nested sequence from value list.
         """
         assert len(self.__input_list) == len(value_list)
-        return pack_sequence_as(self.__raw_input, value_list)
+        return paddle.utils.pack_sequence_as(self.__raw_input, value_list)
 
     def _get_var_ids(self):
         var_ids = []
@@ -145,6 +142,17 @@ class ProgramInfo:
         return self.programs[key], self.op_size[key]
 
 
+class PartialProgramLayerHook:
+    def before_append_backward(self, forward_program):
+        ...
+
+    def after_append_backward(self, whole_program, backward_start_idx):
+        ...
+
+    def after_infer(self, infer_program):
+        ...
+
+
 class PartialProgramLayer:
     """
     PartialProgramLayer wraps all the ops from layers decorated by `@to_static`
@@ -184,6 +192,7 @@ class PartialProgramLayer:
         # Set default mode to train
         self.training = True
         self._infer_info = ProgramInfo()
+        self._forward_end_index_map = {}
 
         custom_white_list, custom_black_list = None, None
         tracer = framework._dygraph_tracer()
@@ -197,6 +206,7 @@ class PartialProgramLayer:
 
         # program_id -> list(scope)
         self._scope_cache = {}
+        self._hooker = None
 
     def __call__(self, inputs):
         """
@@ -219,6 +229,9 @@ class PartialProgramLayer:
         )
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
+
+    def set_hooker(self, hooker):
+        self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
         if use_scope_cache:
@@ -245,7 +258,12 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
         if is_infer_mode:
-            return self._origin_main_program.clone(for_test=is_infer_mode)
+            infer_program = self._origin_main_program.clone(
+                for_test=is_infer_mode
+            )
+            if self._hooker:
+                infer_program = self._hooker.after_infer(infer_program)
+            return infer_program
         else:
             train_program = self._append_backward_desc(
                 self._origin_main_program
@@ -278,11 +296,9 @@ class PartialProgramLayer:
                 pure_fp16_program, self._amp_list, use_fp16_guard=False
             )
 
-        core.check_and_set_prim_all_enabled()
-        from paddle.incubate.autograd.primapi import to_prim
-
-        to_prim(pure_fp16_program.blocks)
         if is_infer_mode:
+            if self._hooker:
+                pure_fp16_program = self._hooker.after_infer(pure_fp16_program)
             return pure_fp16_program
         else:
             train_pure_fp16_program = self._append_backward_desc(
@@ -294,12 +310,12 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_program(self):
         whole_program = self._train_program
-        _, forward_end_op_index = self._infer_info('fp32', self._create_program)
+        forward_end_op_index = self.get_forward_end_op_idx(whole_program)
         assert forward_end_op_index >= 0
 
         # TODO: wait for the PR: https://github.com/PaddlePaddle/Paddle/pull/50885
         return self._get_forward_backward_program_form(
-            whole_program, 9
+            whole_program, forward_end_op_index
         )
 
     @switch_to_static_graph
@@ -376,7 +392,7 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _train_program_id(self):
-        program_id = _hash_with_id(self._train_program, self)
+        program_id = paddle.utils._hash_with_id(self._train_program, self)
         core._set_cached_executor_build_strategy(
             program_id, self._build_strategy
         )
@@ -384,11 +400,11 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_program_id(self):
-        return _hash_with_id(self._infer_program, self)
+        return paddle.utils._hash_with_id(self._infer_program, self)
 
     @LazyInitialized
     def _train_amp_program_id(self):
-        program_id = _hash_with_id(self._train_amp_program, self)
+        program_id = paddle.utils._hash_with_id(self._train_amp_program, self)
         core._set_cached_executor_build_strategy(
             program_id, self._build_strategy
         )
@@ -396,11 +412,13 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_amp_program_id(self):
-        return _hash_with_id(self._infer_amp_program, self)
+        return paddle.utils._hash_with_id(self._infer_amp_program, self)
 
     @LazyInitialized
     def _train_pure_fp16_program_id(self):
-        program_id = _hash_with_id(self._train_pure_fp16_program, self)
+        program_id = paddle.utils._hash_with_id(
+            self._train_pure_fp16_program, self
+        )
         core._set_cached_executor_build_strategy(
             program_id, self._build_strategy
         )
@@ -408,17 +426,22 @@ class PartialProgramLayer:
 
     @LazyInitialized
     def _infer_pure_fp16_program_id(self):
-        return _hash_with_id(self._infer_pure_fp16_program, self)
+        return paddle.utils._hash_with_id(self._infer_pure_fp16_program, self)
 
     @LazyInitialized
     def _param_grad_names(self):
         return _param_grad_names(self._train_program.desc, self._params)
 
+    def get_forward_end_op_idx(self, program):
+        return self._forward_end_index_map[
+            paddle.utils._hash_with_id(program, self)
+        ]
+
     @LazyInitialized
     def _out_grad_names(self):
         return _out_grad_names(
             self._train_program.desc,
-            self._create_program(is_infer_mode=True).desc.block(0).op_size(),
+            self.get_forward_end_op_idx(self._train_program),
             len(self._outputs.var_ids),
         )
 
@@ -611,20 +634,31 @@ class PartialProgramLayer:
     def _append_backward_desc(self, main_program):
         # make sure all status of is_test are False in train mode.
         program = _change_is_test_status(main_program.clone(), is_test=False)
+        if self._hooker:
+            program = self._hooker.before_append_backward(program)
         targets = []
         for out in self._outputs.tolist():
             if isinstance(out, framework.Variable):
                 targets.append(program.global_block().var(out.name))
 
+        start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
         if targets:
             # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
             core.check_and_set_prim_all_enabled()
+            start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
             backward.gradients(targets=targets, inputs=[])
 
-        start_idx = len(main_program.block(0).ops) + len(self._outputs.tolist())
+            if self._hooker:
+                program, start_idx = self._hooker.after_append_backward(
+                    program, start_idx
+                )
+            self.prepare_gradient_aggregation(
+                start_idx + 1, main_program, program
+            )
 
-        self.prepare_gradient_aggregation(start_idx, main_program, program)
-
+        self._forward_end_index_map[
+            paddle.utils._hash_with_id(program, self)
+        ] = start_idx - len(self._outputs.tolist())
         return program
 
     def _prune_unused_params(self, program):
@@ -677,6 +711,7 @@ class PartialProgramLayer:
             'program_id',
             self.program_id,
         ]
+
         if self.training:
             # NOTE: In the case of higher-order gradient, the names of the parameter grads may be like
             # `grad/grad/grad/linear_0.w_0@GRAD` instead of simply `linear_0.w_0@GRAD`, so we get
@@ -830,7 +865,7 @@ class PartialProgramLayer:
         """
         assert isinstance(inputs, (tuple, list))
         # Flatten inputs with nested structure into single list.
-        flatten_inputs = flatten(inputs)
+        flatten_inputs = paddle.utils.flatten(inputs)
         # Convert variable into VarBase and feed in training data.
         input_vars = []
         expected_place = framework._current_expected_place()
@@ -1095,5 +1130,8 @@ def add_build_strategy_for(
         if hasattr(compiled_program._program, 'lr_sheduler'):
             builded_program.lr_sheduler = compiled_program._program.lr_sheduler
     else:
-        builded_program = program
+        # can't just create a new program, we need copy the vardesc.
+        builded_program = paddle.static.Program()
+        for var in program.block(0).vars.values():
+            builded_program.block(0)._clone_variable(var, False)
     return builded_program
