@@ -443,6 +443,12 @@
   outputs :
     out : Out
 
+- op : dirichlet
+  inputs :
+    alpha : Alpha
+  outputs :
+    out : Out
+
 - op : dist
   inputs :
     {x : X, y : Y}

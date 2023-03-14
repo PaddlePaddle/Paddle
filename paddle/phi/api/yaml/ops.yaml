@@ -368,8 +368,8 @@
   backward : digamma_grad
 
 - op : dirichlet
-  args: (Tensor Alpha)
-  output: Tensor(Out)
+  args: (Tensor alpha)
+  output: Tensor(out)
   infer_meta:
     func: DirichletInferMeta
   kernel:
