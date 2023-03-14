@@ -73,12 +73,12 @@ class HybridParallelClipGrad:
 
             if not_shared_enable:
                 if p.is_distributed:
-                    if p.dtype == paddle.float16:
+                    if p.dtype == paddle.float16 or p.dtype == paddle.bfloat16:
                         sum_square_dist_fp16.append(sum_square)
                     elif p.dtype == paddle.float32:
                         sum_square_dist_fp32.append(sum_square)
                 else:
-                    if p.dtype == paddle.float16:
+                    if p.dtype == paddle.float16 or p.dtype == paddle.bfloat16:
                         sum_square_not_dist_fp16.append(sum_square)
                     elif p.dtype == paddle.float32:
                         sum_square_not_dist_fp32.append(sum_square)
@@ -158,20 +158,18 @@ class HybridParallelClipGrad:
             dtype=global_norm_var_fp32.dtype,
             fill_value=self.clip_norm,
         )
-        clip_var = paddle.divide(
-            x=max_global_norm,
-            y=paddle.maximum(x=global_norm_var_fp32, y=max_global_norm),
-        )
-        clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
+
+        global_norm_var_fp32 = global_norm_var_fp32.item()
+        if global_norm_var_fp32 <= max_global_norm:
+            return
+
+        scale = max_global_norm / global_norm_var_fp32
         for p, g in params_grads:
             if g is None:
                 continue
             if getattr(p, 'need_clip', True) is False:
                 continue
-            if p.dtype == paddle.float16:
-                g.scale_(clip_var_fp16)
-            else:
-                g.scale_(clip_var)
+            g.scale_(scale)
             p._reset_grad_inplace_version(True)
 
         return params_grads
