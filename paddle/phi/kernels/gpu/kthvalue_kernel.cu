@@ -43,7 +43,6 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                   const int k,
                   DenseTensor* out_tensor,
                   DenseTensor* indices_tensor) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   auto cu_stream = dev_ctx.stream();
   DenseTensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
@@ -117,7 +116,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                                                  segment_offsets_t,
                                                  segment_offsets_t + 1,
                                                  0,
-                                                 sizeof(MT) * 8,
+                                                 sizeof(T) * 8,
                                                  cu_stream);
 #ifdef __HIPCC__
   if (err != hipSuccess) {
@@ -161,7 +160,6 @@ void KthvalueKernel(const Context& dev_ctx,
                     bool keepdim,
                     DenseTensor* output,
                     DenseTensor* indices) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
   auto out_dims = output->dims();
