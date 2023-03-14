@@ -471,11 +471,11 @@ void RReluGradInferMeta(const MetaTensor& out_grad,
                         const MetaTensor& noise,
                         MetaTensor* x_grad);
 
-void SendV3InferMeta(const MetaTensor& x, int peer);
+void PSendInferMeta(const MetaTensor& x, int peer);
 
-void SendV3ArrayInferMeta(const std::vector<const MetaTensor*>& x,
-                          int peer,
-                          MetaTensor* out);
+void PSendArrayInferMeta(const std::vector<const MetaTensor*>& x,
+                         int peer,
+                         MetaTensor* out);
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 

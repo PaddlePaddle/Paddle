@@ -23,7 +23,7 @@ paddle.enable_static()
 
 
 def send_new(tensor, dst, group=None, sync_op=True):
-    op_type = 'send_v3'
+    op_type = 'p_send'
     data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',
@@ -55,7 +55,7 @@ def send_new(tensor, dst, group=None, sync_op=True):
 
 
 def recv_new(tensor, src, group=None, sync_op=True, dtype='float32'):
-    op_type = 'recv_v3'
+    op_type = 'p_recv'
     data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',

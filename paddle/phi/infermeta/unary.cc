@@ -3336,23 +3336,23 @@ void RReluGradInferMeta(const MetaTensor& out_grad,
   x_grad->share_lod(out_grad);
 }
 
-void SendV3InferMeta(const MetaTensor& x, int peer) {
+void PSendInferMeta(const MetaTensor& x, int peer) {
   LOG(INFO) << "SendBaseInferMeta begin";
   PADDLE_ENFORCE_GE(
       peer,
       0,
       errors::InvalidArgument(
-          "The peer (%d) for send_v3 op must be non-negative.", peer));
+          "The peer (%d) for p_send op must be non-negative.", peer));
 }
 
-void SendV3ArrayInferMeta(const std::vector<const MetaTensor*>& x,
-                          int peer,
-                          MetaTensor* out) {
+void PSendArrayInferMeta(const std::vector<const MetaTensor*>& x,
+                         int peer,
+                         MetaTensor* out) {
   PADDLE_ENFORCE_GE(
       peer,
       0,
       errors::InvalidArgument(
-          "The peer (%d) for send_v3 op must be non-negative.", peer));
+          "The peer (%d) for p_send op must be non-negative.", peer));
 }
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out) {

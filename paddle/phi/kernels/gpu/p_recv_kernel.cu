@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/send_v3_kernel.h"
+#include "paddle/phi/kernels/p_recv_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || \
@@ -26,11 +27,11 @@
 namespace phi {
 
 template <typename Context>
-void send_shape_info(const Context& dev_ctx,
-                     const DenseTensor& x,
+DDim recv_shape_info(const Context& dev_ctx,
+                     phi::DenseTensor* out,
                      distributed::NCCLCommContext* comm_ctx,
-                     int peer,
-                     gpuStream_t stream) {
+                     int peer) {
+  gpuStream_t stream = dev_ctx.stream();
   PADDLE_ENFORCE_EQ((stream != nullptr && comm_ctx != nullptr),
                     true,
                     errors::InvalidArgument(
@@ -38,48 +39,58 @@ void send_shape_info(const Context& dev_ctx,
                         "to send the shape info."));
   paddle::experimental::DataType shape_dtype =
       paddle::experimental::DataType::INT32;
-  ncclDataType_t nccl_dtype = ToNCCLDataType(x.type());
-  auto dims = x.dims();
-  int shape_size = dims.size();
+  ncclDataType_t nccl_dtype = ToNCCLDataType(shape_dtype);
 
-  // step1: send the shape size
-  std::vector<int> cpu_shape_size_tensor(1);
-  cpu_shape_size_tensor[0] = shape_size;
-
-  // copy the shape size tensor to gpu and send
+  // phi::DenseTensor gpu_shape_size_tensor(shape_dtype);
   phi::DenseTensor* gpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
   gpu_shape_size_tensor->Resize({1});
   dev_ctx.Alloc(gpu_shape_size_tensor, shape_dtype);
-  const auto& cpu_place = phi::CPUPlace();
-  memory_utils::Copy(dev_ctx.GetPlace(),
-                     gpu_shape_size_tensor,
-                     cpu_place,
-                     cpu_shape_size_tensor.data(),
-                     cpu_shape_size_tensor.size() * sizeof(int),
+
+  comm_ctx->Recv(gpu_shape_size_tensor, peer, stream);
+  // copy the shape size tensor to cpu
+  phi::DenseTensor* cpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
+  cpu_shape_size_tensor->Resize({1});
+  dev_ctx.Alloc(cpu_shape_size_tensor, shape_dtype);
+
+  memory_utils::Copy(phi::CPUPlace(),
+                     cpu_shape_size_tensor,
+                     dev_ctx.GetPlace(),
+                     gpu_shape_size_tensor->data(),
+                     gpu_shape_size_tensor->numel() * sizeof(int),
                      stream);
 
-  comm_ctx->Send(*gpu_shape_size_tensor, peer, stream);
-  VLOG(3) << "send the shape size: " << shape_size << " to peer";
+  auto* cpu_data = cpu_shape_size_tensor->data<int>();
+  int shape_size = cpu_data[0];
+  VLOG(3) << "recv the shape size: " << shape_size << " from peer: " << peer;
 
   // step2: send the shape
-  std::vector<int> cpu_shape_tensor;
-  cpu_shape_tensor.resize(shape_size);
-  for (int i = 0; i < shape_size; ++i) {
-    cpu_shape_tensor[i] = dims[i];
-  }
-
-  // copy the shape tensor to gpu and send
+  // phi::DenseTensor gpu_shape_tensor(shape_dtype);
   phi::DenseTensor* gpu_shape_tensor = new phi::DenseTensor(shape_dtype);
   gpu_shape_tensor->Resize({shape_size});
   dev_ctx.Alloc(gpu_shape_tensor, shape_dtype);
-  memory_utils::Copy(dev_ctx.GetPlace(),
-                     gpu_shape_tensor,
-                     cpu_place,
-                     cpu_shape_tensor.data(),
-                     cpu_shape_tensor.size() * sizeof(int),
+  comm_ctx->Recv(gpu_shape_tensor, peer, stream);
+
+  // copy the shape tensor to cpu
+  phi::DenseTensor* cpu_shape_tensor = new phi::DenseTensor(shape_dtype);
+  cpu_shape_tensor->Resize({shape_size});
+  dev_ctx.Alloc(cpu_shape_tensor, shape_dtype);
+
+  memory_utils::Copy(phi::CPUPlace(),
+                     cpu_shape_tensor,
+                     dev_ctx.GetPlace(),
+                     gpu_shape_tensor->data(),
+                     gpu_shape_tensor->numel() * sizeof(int),
                      stream);
-  comm_ctx->Send(*gpu_shape_tensor, peer, stream);
-  VLOG(3) << "send the shape: (" << dims << ") to peer";
+  auto* cpu_shape_data = cpu_shape_tensor->data<int>();
+  std::vector<int> all_shape;
+  for (int i = 0; i < shape_size; ++i) {
+    all_shape.emplace_back(cpu_shape_data[i]);
+  }
+  DDim new_dim;
+  new_dim = new_dim.reshape(all_shape);
+  VLOG(3) << "recv the shape: (" << new_dim << ") from peer";
+
+  return new_dim;
 }
 
 template <typename Context>
@@ -109,20 +120,24 @@ distributed::NCCLCommContext* GetCommContext(const Context& dev_ctx, int peer) {
 }
 
 template <typename T, typename Context>
-void SendV3Kernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int peer,
-                  bool dynamic_shape) {
+void PRecvKernel(const Context& dev_ctx,
+                 int peer,
+                 DataType dtype,
+                 bool dynamic_shape,
+                 DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || \
     defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
 
   auto comm_ctx = GetCommContext(dev_ctx, peer);
   gpuStream_t stream = dev_ctx.stream();
-  if (dynamic_shape) {
-    send_shape_info<Context>(dev_ctx, x, comm_ctx, peer, stream);
-  }
 
-  comm_ctx->Send(x, peer, stream);
+  // auto data_type = phi::TransToPhiDataType(dtype);
+  if (dynamic_shape) {
+    DDim new_dim = recv_shape_info<Context>(dev_ctx, out, comm_ctx, peer);
+    out->Resize(new_dim);
+  }
+  dev_ctx.Alloc(out, dtype);
+  comm_ctx->Recv(out, peer, stream);
 #else
   PADDLE_THROW(
       errors::PreconditionNotMet("PaddlePaddle should compile with GPU."
@@ -131,23 +146,24 @@ void SendV3Kernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SendV3ArrayKernel(const Context& dev_ctx,
-                       const TensorArray& x_array,
-                       int peer,
-                       DenseTensor* out) {
+void PRecvArrayKernel(const Context& dev_ctx,
+                      int peer,
+                      DataType dtype,
+                      const std::vector<int>& out_shape,
+                      TensorArray* out_array) {
 #if defined(PADDLE_WITH_NCCL) || \
     defined(PADDLE_WITH_RCCL) && NCCL_VERSION_CODE >= 2703
 
   auto comm_ctx = GetCommContext(dev_ctx, peer);
   gpuStream_t stream = dev_ctx.stream();
-  for (size_t idx = 0; idx < x_array.size(); idx++) {
+  for (size_t idx = 0; idx < out_shape.size(); ++idx) {
     VLOG(3) << "LodTensorArray: idx(" << idx << ")";
-    auto x = x_array.at(idx);
-    int numel = x.numel();
-    ncclDataType_t dtype = ToNCCLDataType(x.type());
-    comm_ctx->Send(x, peer, stream);
-    VLOG(3) << "rank " << comm_ctx->GetRank() << " send "
-            << phi::product(x.dims()) << " to " << peer;
+    auto out = out_array->at(idx);
+    auto out_dims = out.dims();
+    dev_ctx.Alloc(&out, dtype);
+    comm_ctx->Recv(&out, peer, stream);
+    VLOG(3) << "rank " << comm_ctx->GetRank() << " recv "
+            << phi::product(out_dims) << " from " << peer;
   }
 #else
   PADDLE_THROW(
@@ -159,10 +175,10 @@ void SendV3ArrayKernel(const Context& dev_ctx,
 }  // namespace phi
 
 #if NCCL_VERSION_CODE >= 21000
-PD_REGISTER_KERNEL(send_v3,
+PD_REGISTER_KERNEL(p_recv,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SendV3Kernel,
+                   phi::PRecvKernel,
                    float,
                    double,
                    int,
@@ -173,10 +189,10 @@ PD_REGISTER_KERNEL(send_v3,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(send_array_v3,
+PD_REGISTER_KERNEL(p_recv_array,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SendV3ArrayKernel,
+                   phi::PRecvArrayKernel,
                    float,
                    double,
                    int,
@@ -187,10 +203,10 @@ PD_REGISTER_KERNEL(send_array_v3,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
 #else
-PD_REGISTER_KERNEL(send_v3,
+PD_REGISTER_KERNEL(p_recv,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SendV3Kernel,
+                   phi::PRecvKernel,
                    float,
                    double,
                    int,
@@ -200,10 +216,10 @@ PD_REGISTER_KERNEL(send_v3,
                    int64_t,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(send_v3_array,
+PD_REGISTER_KERNEL(p_recv_array,
                    GPU,
                    ALL_LAYOUT,
-                   phi::SendV3ArrayKernel,
+                   phi::PRecvArrayKernel,
                    float,
                    double,
                    int,

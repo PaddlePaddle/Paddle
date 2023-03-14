@@ -122,25 +122,25 @@ void RandintInferMeta(
   out->set_dtype(dtype);
 }
 
-void RecvV3InferMeta(int peer, DataType dtype, MetaTensor* out) {
+void PRecvInferMeta(int peer, DataType dtype, MetaTensor* out) {
   PADDLE_ENFORCE_GE(
       peer,
       0,
       errors::InvalidArgument(
-          "The peer (%d) for recv_v3 op must be non-negative.", peer));
+          "The peer (%d) for p_recv op must be non-negative.", peer));
   // auto data_type = phi::TransToPhiDataType(dtype);
   out->set_dtype(dtype);
 }
 
-void RecvV3ArrayInferMeta(int peer,
-                          DataType dtype,
-                          const std::vector<int>& out_shape,
-                          MetaTensor* out) {
+void PRecvArrayInferMeta(int peer,
+                         DataType dtype,
+                         const std::vector<int>& out_shape,
+                         MetaTensor* out) {
   PADDLE_ENFORCE_GE(
       peer,
       0,
       errors::InvalidArgument(
-          "The peer (%d) for recv_v3 op must be non-negative.", peer));
+          "The peer (%d) for p_recv op must be non-negative.", peer));
 
   PADDLE_ENFORCE_GE(out_shape.size(),
                     1,

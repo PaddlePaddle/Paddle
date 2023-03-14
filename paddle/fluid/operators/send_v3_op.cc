@@ -20,14 +20,14 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-class SendV3Op : public framework::OperatorWithKernel {
+class PSendOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
 };
 
-class SendV3OpMaker : public framework::OpProtoAndCheckerMaker {
+class PSendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor), input 0 of send op.");
@@ -41,24 +41,24 @@ class SendV3OpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class SendV3ArrayOp : public framework::OperatorWithKernel {
+class PSendArrayOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
 };
 
-class SendV3ArrayOpMaker : public framework::OpProtoAndCheckerMaker {
+class PSendArrayOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor[]), input 0 of send_v3_array op.").AsDuplicable();
-    AddOutput("out", "(Tensor), output 0 of send_v3_array op.");
-    AddAttr<int>("ring_id", "(int), attribute 0 for send_v3_array op.")
+    AddInput("X", "(Tensor[]), input 0 of p_send_array op.").AsDuplicable();
+    AddOutput("out", "(Tensor), output 0 of p_send_array op.");
+    AddAttr<int>("ring_id", "(int), attribute 0 for p_send_array op.")
         .SetDefault(0);
-    AddAttr<int>("peer", "(int), attribute 1 for send_v3_array op.")
+    AddAttr<int>("peer", "(int), attribute 1 for p_send_array op.")
         .SetDefault(0);
     AddComment(R"DOC(
-    TODO: Documentation of send_v3_array op.
+    TODO: Documentation of p_send_array op.
     )DOC");
   }
 };
@@ -68,26 +68,26 @@ class SendV3ArrayOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-DECLARE_INFER_SHAPE_FUNCTOR(send_v3,
-                            SendV3InferShapeFunctor,
-                            PD_INFER_META(phi::SendV3InferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(p_send,
+                            PSendInferShapeFunctor,
+                            PD_INFER_META(phi::PSendInferMeta));
 
-DECLARE_INFER_SHAPE_FUNCTOR(send_v3_array,
-                            SendV3ArrayInferShapeFunctor,
-                            PD_INFER_META(phi::SendV3ArrayInferMeta));
-
-REGISTER_OPERATOR(
-    send_v3,
-    ops::SendV3Op,
-    ops::SendV3OpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    SendV3InferShapeFunctor);
+DECLARE_INFER_SHAPE_FUNCTOR(p_send_array,
+                            PSendArrayInferShapeFunctor,
+                            PD_INFER_META(phi::PSendArrayInferMeta));
 
 REGISTER_OPERATOR(
-    send_v3_array,
-    ops::SendV3ArrayOp,
-    ops::SendV3ArrayOpMaker,
+    p_send,
+    ops::PSendOp,
+    ops::PSendOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    SendV3ArrayInferShapeFunctor);
+    PSendInferShapeFunctor);
+
+REGISTER_OPERATOR(
+    p_send_array,
+    ops::PSendArrayOp,
+    ops::PSendArrayOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    PSendArrayInferShapeFunctor);

@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/recv_v3_kernel.h"
+#include "paddle/phi/kernels/p_send_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_GLOO)
@@ -24,30 +24,29 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RecvV3Kernel(const Context& dev_ctx,
-                  int peer,
-                  DataType dtype,
-                  bool dynamic_shape,
-                  DenseTensor* out) {
-  PADDLE_THROW(errors::Unavailable("Do not support recv for cpu kernel now."));
+void PSendKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 int peer,
+                 bool dynamic_shape) {
+  PADDLE_THROW(errors::Unavailable("Do not support send for cpu kernel now."));
 }
 
 template <typename T, typename Context>
-void RecvV3ArrayKernel(const Context& dev_ctx,
-                       int peer,
-                       DataType dtype,
-                       const std::vector<int>& out_shape,
-                       TensorArray* out_array) {
+void PSendArrayKernel(const Context& dev_ctx,
+                      const TensorArray& x,
+                      int peer,
+                      bool dynamic_shape,
+                      DenseTensor* out) {
   PADDLE_THROW(
-      errors::Unavailable("Do not support recv array for cpu kernel now."));
+      errors::Unavailable("Do not support send array for cpu kernel now."));
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(recv_v3,
+PD_REGISTER_KERNEL(p_send,
                    CPU,
                    ALL_LAYOUT,
-                   phi::RecvV3Kernel,
+                   phi::PSendKernel,
                    float,
                    double,
                    int,
@@ -57,10 +56,10 @@ PD_REGISTER_KERNEL(recv_v3,
                    int64_t,
                    phi::dtype::float16) {}
 
-PD_REGISTER_KERNEL(recv_v3_array,
+PD_REGISTER_KERNEL(p_send_array,
                    CPU,
                    ALL_LAYOUT,
-                   phi::RecvV3ArrayKernel,
+                   phi::PSendArrayKernel,
                    float,
                    double,
                    int,

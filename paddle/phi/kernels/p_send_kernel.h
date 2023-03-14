@@ -20,16 +20,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RecvV3Kernel(const Context& dev_ctx,
-                  int peer,
-                  DataType dtype,
-                  bool dynamic_shape,
-                  DenseTensor* out);
+void PSendKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 int peer,
+                 bool dynamic_shape);
 
 template <typename T, typename Context>
-void RecvV3ArrayKernel(const Context& dev_ctx,
+void SendArrayV3Kernel(const Context& dev_ctx,
+                       const TensorArray& x,
                        int peer,
-                       DataType dtype,
-                       const std::vector<int>& out_shape,
-                       TensorArray* out);
+                       DenseTensor* out);
 }  // namespace phi

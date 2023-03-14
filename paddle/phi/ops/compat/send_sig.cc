@@ -16,16 +16,15 @@
 
 namespace phi {
 
-KernelSignature SendV3OpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("send_v3", {"X"}, {"peer", "dynamic_shape"}, {});
+KernelSignature PSendOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("p_send", {"X"}, {"peer", "dynamic_shape"}, {});
 }
 
-KernelSignature SendV3ArrayOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("send_v3_array", {"X"}, {"peer"}, {});
+KernelSignature PSendArrayOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("p_send_array", {"X"}, {"peer"}, {});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(send_v3, phi::SendV3OpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(send_v3_array_v3, phi::SendV3ArrayOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(p_send, phi::PSendOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(p_send_array_v3, phi::PSendArrayOpArgumentMapping);
