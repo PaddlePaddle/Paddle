@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -30,7 +30,7 @@ class TestDiagEmbedOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def init_config(self):
         self.case = np.random.randn(2, 3).astype('float32')
