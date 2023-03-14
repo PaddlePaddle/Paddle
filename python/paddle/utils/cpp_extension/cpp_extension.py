@@ -804,9 +804,9 @@ def load(
     extra_cuda_cflags=None,
     extra_ldflags=None,
     extra_include_paths=None,
+    extra_library_paths=None,
     build_directory=None,
     verbose=False,
-    extra_library_paths=None,
 ):
     """
     An Interface to automatically compile C++/CUDA source files Just-In-Time
@@ -880,13 +880,13 @@ def load(
         extra_include_paths(list[str], optional): Specify additional include path used to search header files. By default
                                 all basic headers are included implicitly from ``site-package/paddle/include`` .
                                 Default is None.
+        extra_library_paths(list[str], optional): Specify additional library path used to search library files. By default
+                                all basic libraries are included implicitly from ``site-packages/paddle/libs`` .
+                                Default is None.
         build_directory(str, optional): Specify root directory path to put shared library file. If set None,
                             it will use ``PADDLE_EXTENSION_DIR`` from os.environ. Use
                             ``paddle.utils.cpp_extension.get_build_directory()`` to see the location. Default is None.
         verbose(bool, optional): whether to verbose compiled log information. Default is False.
-        extra_library_paths(list[str], optional): Specify additional library path used to search library files. By default
-                                all basic libraries are included implicitly from ``site-packages/paddle/libs`` .
-                                Default is None.
 
     Returns:
         Module: A callable python module contains all CustomOp Layer APIs.
