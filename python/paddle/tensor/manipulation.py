@@ -1716,7 +1716,7 @@ def roll(x, shifts, axis=None, name=None):
             [
                 'float16',
                 'float32',
-                'bfloat16',
+                'uint16',
                 'float64',
                 'int32',
                 'int64',

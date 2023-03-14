@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 
 
@@ -76,20 +77,44 @@ class TestRollFP16OpCase2(TestRollOp):
         self.axis = [-1, -2]
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestRollBF16OP(TestRollOp):
     def init_dtype_type(self):
         self.dtype = np.uint16
         self.x_shape = (10, 4, 5)
         self.shifts = [101, -1]
         self.axis = [0, -2]
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_eager=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out', check_eager=True)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestRollBF16OpCase2(TestRollOp):
     def init_dtype_type(self):
         self.dtype = np.uint16
         self.x_shape = (10, 5, 5)
         self.shifts = [8, -1]
         self.axis = [-1, -2]
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_eager=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out', check_eager=True)
 
 
 class TestRollAPI(unittest.TestCase):
