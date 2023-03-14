@@ -55,24 +55,50 @@ class TestOne(TestUniqueOp):
         }
 
 
-class TestFP16(TestUniqueOp):
+class TestFP16OP(TestUniqueOp):
     def compute(self, x):
         np_unique, np_index, reverse_index = np.unique(x, True, True)
         np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
         np_tuple.sort(key=lambda x: x[1])
         target_out = np.array([i[0] for i in np_tuple], dtype=self.dtype)
         target_index = np.array(
-            [list(target_out).index(i) for i in self.inputs['X']],
-            dtype=self.dtype,
+            [list(target_out).index(i) for i in x],
+            dtype=np.int32,
         )
         return {'Out': target_out, 'Index': target_index}
 
     def init_config(self):
+        self.op_type = "fetch_v2"
         self.dtype = np.float16
-        x = np.array([2, 3, 3, 1, 5, 3], dtype=self.dtype)
+        x = np.random.randint(0, 100, (150,)).astype(self.dtype)
         self.inputs = {'X': x}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
         self.outputs = self.compute(x)
+
+
+# @unittest.skipIf(
+#     not core.is_compiled_with_cuda()
+#     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+#     "core is not complied with CUDA and not support the bfloat16",
+# )
+# class TestBF16OP(OpTest):
+#     def setUp(self):
+#         self.op_type = "unique_with_counts"
+#         self.init_config()
+
+#     def test_check_output(self):
+#         self.check_output()
+#         # paddle.disable_static()
+
+#     def init_config(self):
+#         self.inputs = {
+#             'X': np.array([2, 3, 3, 1, 5, 3], dtype='uint16'),
+#         }
+#         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32), 'col': int(0)}
+#         self.outputs = {
+#             'Out': np.array([2, 3, 1, 5], dtype='uint16'),
+#             'Index': np.array([0, 1, 1, 2, 3, 1], dtype='int32'),
+#         }
 
 
 class TestRandom(TestUniqueOp):
