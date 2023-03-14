@@ -372,17 +372,13 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-            import os
             import paddle
             import paddle.static as static
 
             paddle.enable_static()
 
-            os.environ['CPU_NUM'] = str(2)
-            places = static.cpu_places()
-
             data = static.data(name="x", shape=[None, 1], dtype="float32")
-            hidden = static.nn.fc(input=data, size=10)
+            hidden = static.nn.fc(data, size=10)
             loss = paddle.mean(hidden)
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
