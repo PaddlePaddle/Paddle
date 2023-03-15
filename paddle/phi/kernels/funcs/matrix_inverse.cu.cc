@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/matrix_inverse.h"
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
@@ -39,12 +39,12 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
         dev_ctx.GetPlace(),
         a.numel() * sizeof(T),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-    paddle::memory::Copy(dev_ctx.GetPlace(),
-                         tmp_gpu_mat_data->ptr(),
-                         dev_ctx.GetPlace(),
-                         a.data(),
-                         a.numel() * sizeof(T),
-                         dev_ctx.stream());
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       tmp_gpu_mat_data->ptr(),
+                       dev_ctx.GetPlace(),
+                       a.data(),
+                       a.numel() * sizeof(T),
+                       dev_ctx.stream());
     gpu_mat = reinterpret_cast<const T*>(tmp_gpu_mat_data->ptr());
   }
 
@@ -62,12 +62,12 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
       dev_ctx.GetPlace(),
       total_bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       tmp_gpu_ptrs_data->ptr(),
-                       phi::CPUPlace(),
-                       static_cast<void*>(cpu_ptrs.data()),
-                       cpu_ptrs.size() * sizeof(T*),
-                       dev_ctx.stream());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     tmp_gpu_ptrs_data->ptr(),
+                     phi::CPUPlace(),
+                     static_cast<void*>(cpu_ptrs.data()),
+                     cpu_ptrs.size() * sizeof(T*),
+                     dev_ctx.stream());
   T** gpu_inv_pivot_info = reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr());
   T** gpu_inv_ptrs = gpu_inv_pivot_info + batch_size;
   int* gpu_info_ptr =
@@ -107,12 +107,12 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
                       gpu_info_ptr,
                       batch_size);
   }
-  paddle::memory::Copy(phi::CPUPlace(),
-                       info.data(),
-                       dev_ctx.GetPlace(),
-                       gpu_info_ptr,
-                       sizeof(int) * batch_size,
-                       dev_ctx.stream());
+  memory_utils::Copy(phi::CPUPlace(),
+                     info.data(),
+                     dev_ctx.GetPlace(),
+                     gpu_info_ptr,
+                     sizeof(int) * batch_size,
+                     dev_ctx.stream());
   for (int i = 0; i < batch_size; ++i) {
     PADDLE_ENFORCE_EQ(info[i],
                       0,

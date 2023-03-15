@@ -57,4 +57,5 @@ PD_REGISTER_KERNEL(sum_raw,
                    float,
                    phi::dtype::float16,
                    int8_t,
+                   int,
                    int64_t) {}

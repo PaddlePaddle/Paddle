@@ -104,10 +104,9 @@ class TestParallelExecutorBase(unittest.TestCase):
         )
 
         if use_parallel_executor:
-            binary = compiler.CompiledProgram(main).with_data_parallel(
-                loss_name=loss.name,
+            binary = compiler.CompiledProgram(
+                main,
                 build_strategy=build_strategy,
-                exec_strategy=exec_strategy,
             )
         else:
             binary = main
@@ -204,10 +203,9 @@ class TestParallelExecutorBase(unittest.TestCase):
             use_device,
         )
 
-        binary = compiler.CompiledProgram(main).with_data_parallel(
-            loss_name=loss.name,
+        binary = compiler.CompiledProgram(
+            main,
             build_strategy=build_strategy,
-            exec_strategy=exec_strategy,
         )
 
         exe.run(binary, feed=feed_dict, fetch_list=[loss.name])

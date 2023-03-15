@@ -1033,7 +1033,6 @@ void CPUQuantizePass::QuantizeElementwise(
     auto input_x_scale = GetScaleValueForNode(elementwise_x, &is_x_unsigned);
     auto input_y_scale = GetScaleValueForNode(elementwise_y, &is_y_unsigned);
 
-    // TODO(sfraczek): add support for different signness
     if (is_x_unsigned != is_y_unsigned) {
       MarkAndLogCannotQuantizeOp(
           elementwise_op, "Elementwise inputs must be of the same type.");
