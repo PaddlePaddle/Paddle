@@ -570,9 +570,8 @@ class TestUniformDtype(unittest.TestCase):
 
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.uniform([2, 3])
-
-        self.assertRaises(TypeError, test_default_fp16)
+            out = paddle.tensor.random.uniform([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -592,6 +591,13 @@ class TestUniformDtype(unittest.TestCase):
             out = paddle.uniform([2, 3], dtype=paddle.float16)
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
+        if (
+            core.is_compiled_with_cuda()
+            and paddle.device.get_device() == "gpu:0"
+        ):
+            test_default_fp16()
+        else:
+            self.assertRaises(TypeError, test_default_fp16)
         test_default_fp64()
         test_default_fp32()
         test_dygraph_fp16()

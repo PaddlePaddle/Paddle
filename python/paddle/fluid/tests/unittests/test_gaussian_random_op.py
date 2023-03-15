@@ -292,9 +292,8 @@ class TestGaussianRandomAPI(unittest.TestCase):
 
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.gaussian([2, 3])
-
-        self.assertRaises(TypeError, test_default_fp16)
+            out = paddle.tensor.random.gaussian([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -306,6 +305,13 @@ class TestGaussianRandomAPI(unittest.TestCase):
             out = paddle.tensor.random.gaussian([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
+        if (
+            core.is_compiled_with_cuda()
+            and paddle.device.get_device() == "gpu:0"
+        ):
+            test_default_fp16()
+        else:
+            self.assertRaises(TypeError, test_default_fp16)
         test_default_fp64()
         test_default_fp32()
 
@@ -318,9 +324,8 @@ class TestStandardNormalDtype(unittest.TestCase):
 
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.standard_normal([2, 3])
-
-        self.assertRaises(TypeError, test_default_fp16)
+            out = paddle.tensor.random.standard_normal([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -332,6 +337,13 @@ class TestStandardNormalDtype(unittest.TestCase):
             out = paddle.tensor.random.standard_normal([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
+        if (
+            core.is_compiled_with_cuda()
+            and paddle.device.get_device() == "gpu:0"
+        ):
+            test_default_fp16()
+        else:
+            self.assertRaises(TypeError, test_default_fp16)
         test_default_fp64()
         test_default_fp32()
 
