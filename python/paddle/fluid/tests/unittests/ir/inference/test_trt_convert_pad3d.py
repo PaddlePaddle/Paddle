@@ -25,6 +25,12 @@ import paddle.inference as paddle_infer
 
 class TrtConvertPad3dTensorPadding(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        valid_version = (8, 2, 0)
+        compile_version = paddle_infer.get_trt_compile_version()
+        runtime_version = paddle_infer.get_trt_runtime_version()
+        self.assertTrue(compile_version == runtime_version)
+        if compile_version < valid_version:
+            return False
         return True
 
     def sample_program_configs(self):
@@ -104,12 +110,6 @@ class TrtConvertPad3dTensorPadding(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            valid_version = (8, 2, 0)
-            compile_version = paddle_infer.get_trt_compile_version()
-            runtime_version = paddle_infer.get_trt_runtime_version()
-            self.assertTrue(compile_version == runtime_version)
-            if compile_version < valid_version:
-                return 0, 3
             if dynamic_shape:
                 return 1, 2
             return 0, 3
@@ -145,6 +145,12 @@ class TrtConvertPad3dTensorPadding(TrtLayerAutoScanTest):
 
 class TrtConvertPad3dListPadding(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        valid_version = (8, 2, 0)
+        compile_version = paddle_infer.get_trt_compile_version()
+        runtime_version = paddle_infer.get_trt_runtime_version()
+        self.assertTrue(compile_version == runtime_version)
+        if compile_version < valid_version:
+            return False
         return True
 
     def sample_program_configs(self):
@@ -214,12 +220,6 @@ class TrtConvertPad3dListPadding(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            valid_version = (8, 2, 0)
-            compile_version = paddle_infer.get_trt_compile_version()
-            runtime_version = paddle_infer.get_trt_runtime_version()
-            self.assertTrue(compile_version == runtime_version)
-            if compile_version < valid_version:
-                return 0, 3
             if dynamic_shape:
                 return 1, 2
             return 0, 3
