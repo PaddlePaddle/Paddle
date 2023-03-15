@@ -160,6 +160,57 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
         self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
 
 
+class TestScatterNdAddWithEmptyIndexFP16(TestScatterNdAddWithEmptyIndex):
+    """
+    Index has empty element
+    """
+
+    def setUp(self):
+        self.op_type = "scatter_nd_add"
+        self.python_api = paddle.scatter_nd_add
+        self.dtype = np.float16
+        ref_np = np.random.random((10, 10)).astype("float16")
+        index_np = np.array([[], []]).astype("int32")
+        updates_np = np.random.random((2, 10, 10)).astype("float16")
+        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': expect_np}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
+    """
+    Index has empty element
+    """
+
+    def setUp(self):
+        self.op_type = "scatter_nd_add"
+        self.python_api = paddle.scatter_nd_add
+        self.dtype = np.uint16
+        ref_np = np.random.random((10, 10)).astype("float32")
+        index_np = np.array([[], []]).astype("int32")
+        updates_np = np.random.random((2, 10, 10)).astype("float32")
+        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+        ref_np = convert_float_to_uint16(ref_np)
+        updates_np = convert_float_to_uint16(updates_np)
+        expect_np = convert_float_to_uint16(expect_np)
+        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': expect_np}
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['X', 'Updates'], 'Out', check_eager=True
+        )
+
+
 class TestScatterNdAddWithHighRankSame(OpTest):
     """
     Both Index and X have high rank, and Rank(Index) = Rank(X)
@@ -187,6 +238,66 @@ class TestScatterNdAddWithHighRankSame(OpTest):
         self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
 
 
+class TestScatterNdAddWithHighRankSameFP16(TestScatterNdAddWithHighRankSame):
+    """
+    Both Index and X have high rank, and Rank(Index) = Rank(X)
+    """
+
+    def setUp(self):
+        self.op_type = "scatter_nd_add"
+        self.python_api = paddle.scatter_nd_add
+        self.dtype = np.float16
+        shape = (3, 2, 2, 1, 10)
+        ref_np = np.random.rand(*shape).astype("float16")
+        index_np = np.vstack(
+            [np.random.randint(0, s, size=100) for s in shape]
+        ).T.astype("int32")
+        update_shape = judge_update_shape(ref_np, index_np)
+        updates_np = np.random.rand(*update_shape).astype("float16")
+        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+
+        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': expect_np}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterNdAddWithHighRankSameBF16(TestScatterNdAddWithHighRankSame):
+    """
+    Both Index and X have high rank, and Rank(Index) = Rank(X)
+    """
+
+    def setUp(self):
+        self.op_type = "scatter_nd_add"
+        self.python_api = paddle.scatter_nd_add
+        self.dtype = np.uint16
+        shape = (3, 2, 2, 1, 10)
+        ref_np = np.random.rand(*shape).astype("float32")
+        index_np = np.vstack(
+            [np.random.randint(0, s, size=100) for s in shape]
+        ).T.astype("int32")
+        update_shape = judge_update_shape(ref_np, index_np)
+        updates_np = np.random.rand(*update_shape).astype("float32")
+        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+        ref_np = convert_float_to_uint16(ref_np)
+        updates_np = convert_float_to_uint16(updates_np)
+        expect_np = convert_float_to_uint16(expect_np)
+        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': expect_np}
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['X', 'Updates'], 'Out', check_eager=True
+        )
+
+
 class TestScatterNdAddWithHighRankDiff(OpTest):
     """
     Both Index and X have high rank, and Rank(Index) < Rank(X)
@@ -211,6 +322,64 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X', 'Updates'], 'Out', check_eager=True)
+
+
+class TestScatterNdAddWithHighRankDiffFP16(TestScatterNdAddWithHighRankDiff):
+    """
+    Both Index and X have high rank, and Rank(Index) < Rank(X)
+    """
+
+    def setUp(self):
+        self.op_type = "scatter_nd_add"
+        self.python_api = paddle.scatter_nd_add
+        self.dtype = np.float16
+        shape = (8, 2, 2, 1, 10)
+        ref_np = np.random.rand(*shape).astype("float16")
+        index = np.vstack([np.random.randint(0, s, size=500) for s in shape]).T
+        index_np = index.reshape([10, 5, 10, 5]).astype("int64")
+        update_shape = judge_update_shape(ref_np, index_np)
+        updates_np = np.random.rand(*update_shape).astype("float16")
+        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+
+        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': expect_np}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestScatterNdAddWithHighRankDiffBF16(TestScatterNdAddWithHighRankDiff):
+    """
+    Both Index and X have high rank, and Rank(Index) < Rank(X)
+    """
+
+    def setUp(self):
+        self.op_type = "scatter_nd_add"
+        self.python_api = paddle.scatter_nd_add
+        self.dtype = np.uint16
+        shape = (8, 2, 2, 1, 10)
+        ref_np = np.random.rand(*shape).astype("float32")
+        index = np.vstack([np.random.randint(0, s, size=500) for s in shape]).T
+        index_np = index.reshape([10, 5, 10, 5]).astype("int64")
+        update_shape = judge_update_shape(ref_np, index_np)
+        updates_np = np.random.rand(*update_shape).astype("float32")
+        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+        ref_np = convert_float_to_uint16(ref_np)
+        updates_np = convert_float_to_uint16(updates_np)
+        expect_np = convert_float_to_uint16(expect_np)
+        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': expect_np}
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_eager=True)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['X', 'Updates'], 'Out', check_eager=True
+        )
 
 
 # Test Python API
