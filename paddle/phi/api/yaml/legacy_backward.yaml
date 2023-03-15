@@ -94,6 +94,7 @@
   forward : assign (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
+  composite: assign_grad(out_grad, x_grad)
   invoke : assign(out_grad)
 
 - backward_op : assign_out__grad
@@ -1145,6 +1146,7 @@
     param : [out]
   kernel :
     func : softmax_grad
+  composite : softmax_grad(out, out_grad, axis, x_grad)
 
 - backward_op : spectral_norm_grad
   forward : spectral_norm (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps) -> Tensor(out)

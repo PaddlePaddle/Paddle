@@ -19,8 +19,7 @@ from utils import TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core, framework
-from paddle.incubate.autograd import primapi
+from paddle.fluid import core
 
 
 def generate_data(shape, dtype="float32"):
@@ -62,17 +61,22 @@ def fn(x):
     return F.softmax(x, axis=attrs.axis, dtype=attrs.dtype)
 
 
-def expect_forward(inputs):
-    return fn(inputs)
+def expect_grad(inputs):
+    paddle.disable_static()
+    inputs.stop_gradient = False
+    res = fn(inputs)
+
+    gradients = paddle.grad(res, inputs)
+    return gradients
 
 
 class TestCompositeSoftmax(unittest.TestCase):
     def setUp(self):
         self.dtypes = ["float32", "float64"]
-        self.shapes = [[], [2, 3, 4], [2, 3]]
+        self.shapes = [[2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
-    def cal_composite(self, inputs):
+    def cal_composite_grad(self, inputs):
         paddle.enable_static()
         core._set_prim_forward_enabled(True)
         startup_program = paddle.static.Program()
@@ -81,6 +85,7 @@ class TestCompositeSoftmax(unittest.TestCase):
             x = paddle.static.data(
                 'x', shape=inputs.shape, dtype=str(inputs.dtype)
             )
+            x.stop_gradient = False
             y = fn(x)
             blocks = main_program.blocks
 
@@ -88,118 +93,107 @@ class TestCompositeSoftmax(unittest.TestCase):
             # Ensure that softmax in original block
             self.assertTrue('softmax' in fwd_ops)
 
-            primapi.to_prim(blocks)
+            paddle.incubate.autograd.primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
             # Ensure that softmax is splitted into small ops
             self.assertTrue('softmax' not in fwd_ops_new)
 
+            z = paddle.static.gradients([y], x)
+            fwd_ops_grad = [op.type for op in blocks[0].ops]
+            # Ensure that softmax_grad not in grad block
+
+            self.assertTrue('softmax_grad' not in fwd_ops_grad)
+
         exe = paddle.static.Executor()
         exe.run(startup_program)
-        res = exe.run(main_program, feed={'x': inputs}, fetch_list=[y])
+        res = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
         paddle.disable_static()
         core._set_prim_forward_enabled(False)
         return res
 
-    def compare_forward(self):
-        if not attrs.shape and attrs.axis not in [-1, 0]:
-            # op softmax does not support both case
-            return
+    def compare_backward(self):
         np_data = generate_data(attrs.shape)
         tensor_data = paddle.to_tensor(np_data)
 
-        expect = expect_forward(tensor_data).numpy()
-        actual = self.cal_composite(np_data)[0]
+        expect = expect_grad(tensor_data)[0].numpy()
+        actual = self.cal_composite_grad(np_data)[0]
 
         assert expect.dtype == actual.dtype
         np.testing.assert_allclose(
             expect,
             actual,
-            rtol=attrs.get_rtol("forward"),
-            atol=attrs.get_atol("forward"),
+            rtol=attrs.get_rtol("backward"),
+            atol=attrs.get_atol("backward"),
         )
 
-    def test_forward(self):
+    def test_backward(self):
         for i in self.axes:
             for j in self.dtypes:
                 for t in self.shapes:
                     attrs.set_axis(i)
                     attrs.set_dtype(j)
                     attrs.set_shape(t)
-                    self.compare_forward()
+                    self.compare_backward()
 
 
-def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=False)
-
-
-class PrimeNet(paddle.nn.Layer):
-    def __init__(self):
-        super(PrimeNet, self).__init__()
-        self.sf = F.softmax
-
-    def forward(self, x, current_axis):
-        out = self.sf(x, axis=current_axis)
-        return out
-
-
-class TestPrimForwardAndBackward(unittest.TestCase):
-    """
-    Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
-    """
+class TestCompositeSoftmaxPrimBackward(unittest.TestCase):
+    "test composite softmax and prim backward"
 
     def setUp(self):
-        paddle.seed(2022)
+        core._set_prim_backward_enabled(True)
+        self.dtypes = ["float32", "float64"]
         self.shapes = [[], [2, 3, 4], [2, 3]]
         self.axes = [-1, 0, 1]
 
-    def train(self, use_prim):
-        self.x = paddle.randn(attrs.shape, dtype="float32")
-        self.x.stop_gradient = False
-        core._set_prim_all_enabled(use_prim)
-        paddle.seed(2022)
-        net = PrimeNet()
-        sgd = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=net.parameters()
-        )
+    def cal_composite_grad(self, inputs):
+        paddle.enable_static()
+        core._set_prim_all_enabled(True)
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(
+                'x', shape=inputs.shape, dtype=str(inputs.dtype)
+            )
+            x.stop_gradient = False
+            y = fn(x)
+            blocks = main_program.blocks
+            z = paddle.static.gradients([y], x)
+            paddle.incubate.autograd.primapi.to_prim(blocks)
 
-        net = paddle.amp.decorate(models=net, level='O2')
+        exe = paddle.static.Executor()
+        exe.run(startup_program)
+        res = exe.run(main_program, feed={'x': inputs}, fetch_list=[z])
+        paddle.disable_static()
+        core._set_prim_all_enabled(False)
+        return res
 
-        net = apply_to_static(net, False)
-        with paddle.amp.auto_cast(level='O2'):
-            out = net(self.x, attrs.axis)
-            loss = paddle.mean(out)
-            grad = paddle.grad(loss, self.x)
-            return loss, grad
-
-    def compare_forward(self):
+    def compare_backward(self):
         if not attrs.shape and attrs.axis not in [-1, 0]:
             # op softmax does not support both case
             return
-        if not isinstance(framework._current_expected_place(), core.CPUPlace):
-            expected = self.train(False)
-            actual = self.train(True)
-            np.testing.assert_allclose(
-                expected[0],
-                actual[0],
-                rtol=1e-3,
-                atol=1e-3,
-            )
-            np.testing.assert_allclose(
-                expected[1],
-                actual[1],
-                rtol=1e-3,
-                atol=1e-3,
-            )
+        np_data = generate_data(attrs.shape)
+        tensor_data = paddle.to_tensor(np_data)
 
-    def test_forward(self):
+        expect = expect_grad(tensor_data)[0].numpy()
+        actual = self.cal_composite_grad(np_data)[0]
+
+        assert expect.dtype == actual.dtype
+        np.testing.assert_allclose(
+            expect,
+            actual,
+            rtol=attrs.get_rtol("prim_backward"),
+            atol=attrs.get_rtol("prim_backward"),
+        )
+
+    def test_prim_backward(self):
         for i in self.axes:
-            for t in self.shapes:
-                attrs.set_axis(i)
-                attrs.set_shape(t)
-                self.compare_forward()
+            for j in self.dtypes:
+                for t in self.shapes:
+                    attrs.set_axis(i)
+                    attrs.set_dtype(j)
+                    attrs.set_shape(t)
+                    self.compare_backward()
 
 
 if __name__ == '__main__':
