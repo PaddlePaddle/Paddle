@@ -39,7 +39,7 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(amp.custom_black_list, [])
         self.assertEqual(amp.custom_white_list, [])
         self.assertEqual(amp.custom_black_varnames, [])
-        self.assertEqual(amp.use_fp16_guard, True)
+        self.assertEqual(amp.use_fp16_guard, False)
         self.assertEqual(amp.use_optimizer_fp16, False)
         self.assertEqual(amp.custom_bf16_list, [])
         self.assertEqual(amp.custom_fp32_list, [])
