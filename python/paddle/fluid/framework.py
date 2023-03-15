@@ -1713,7 +1713,7 @@ class Variable(metaclass=VariableMetaClass):
                     # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
                     # there is no one need gradient on it.
                     tmp.stop_gradient=False
-                    INPUTS.APPEND(TMP)
+                    inputs.append(tmp)
                 ret = paddle.add_n(inputs)
                 loss = paddle.sum(ret)
                 loss.backward()
