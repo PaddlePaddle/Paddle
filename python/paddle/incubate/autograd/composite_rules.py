@@ -341,13 +341,12 @@ def squeeze2_composite(x, axis):
     if axis not specified, remove all dims equal to 1
     otherwise, remove dims equal to 1 in axis
     """
-
-    if len(axis) == 0:
-        dims = range(len(x.shape))
+    rank = len(x.shape)
+    if isinstance(axis, int):
+        dims = set((axis + rank) % rank)
     else:
-        rank = len(x.shape)
-        if isinstance(axis, int):
-            dims = set((axis + rank) % rank)
+        if len(axis) == 0:
+            dims = set(range(len(x.shape)))
         else:
             dims = set([(ax + rank) % rank for ax in axis])
     new_shape = []
