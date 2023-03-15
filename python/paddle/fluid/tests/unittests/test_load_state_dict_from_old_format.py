@@ -21,11 +21,12 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.tests.unittests.nets as nets
 from paddle.fluid import core
 
 
 def convolutional_neural_network(img):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
         num_filters=20,
@@ -34,7 +35,7 @@ def convolutional_neural_network(img):
         act="relu",
     )
     conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,

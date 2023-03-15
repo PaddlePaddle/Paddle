@@ -20,6 +20,7 @@ import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
+import paddle.fluid.tests.unittests.nets as nets
 
 paddle.enable_static()
 
@@ -32,7 +33,7 @@ fluid.default_main_program().random_seed = 1
 
 
 def cnn_model(data):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=data,
         filter_size=5,
         num_filters=20,
@@ -43,7 +44,7 @@ def cnn_model(data):
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,

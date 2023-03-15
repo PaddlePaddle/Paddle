@@ -21,6 +21,7 @@ from simple_nets import init_data
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid.tests.unittests.nets as nets
 
 batch_size = 12
 img_shape = [1, 28, 28]
@@ -41,7 +42,7 @@ def conv_net(use_feed):
     )
     label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
         num_filters=20,
@@ -52,7 +53,7 @@ def conv_net(use_feed):
     conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
 
     conv_pool_1 = paddle.cast(conv_pool_1, np.float32)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,

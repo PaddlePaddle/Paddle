@@ -20,6 +20,7 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.tests.unittests.nets as nets
 
 BATCH_SIZE = 64
 
@@ -40,7 +41,7 @@ def convolutional_neural_network(use_py_reader):
                 use_double_buffer=False,
             )
 
-        conv_pool_1 = fluid.nets.simple_img_conv_pool(
+        conv_pool_1 = nets.simple_img_conv_pool(
             input=img,
             filter_size=5,
             num_filters=20,
@@ -49,7 +50,7 @@ def convolutional_neural_network(use_py_reader):
             act="relu",
         )
         conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
-        conv_pool_2 = fluid.nets.simple_img_conv_pool(
+        conv_pool_2 = nets.simple_img_conv_pool(
             input=conv_pool_1,
             filter_size=5,
             num_filters=50,

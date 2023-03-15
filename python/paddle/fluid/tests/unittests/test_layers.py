@@ -23,7 +23,7 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle.fluid.nets as nets
+import paddle.fluid.tests.unittests.nets as nets
 import paddle.nn.functional as F
 from paddle.fluid import core
 from paddle.fluid.dygraph import base, to_variable
