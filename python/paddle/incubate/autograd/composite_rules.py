@@ -37,6 +37,7 @@ def softmax_composite(x, axis):
     is_amp = False
     from paddle.fluid.data_feeder import convert_dtype
 
+    # Softmax need fp32 compute since it has sum op in
     if convert_dtype(x.dtype) == "float16":
         is_amp = True
         x = cast(x, "float32")

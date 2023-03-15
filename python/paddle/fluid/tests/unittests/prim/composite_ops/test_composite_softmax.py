@@ -119,7 +119,7 @@ class TestCompositeSoftmax(unittest.TestCase):
             atol=attrs.get_atol("forward"),
         )
 
-    def _test_forward(self):
+    def test_forward(self):
         for i in self.axes:
             for j in self.dtypes:
                 for t in self.shapes:
