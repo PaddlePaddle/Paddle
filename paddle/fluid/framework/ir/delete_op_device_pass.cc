@@ -39,14 +39,14 @@ class DeleteOpDevicePass : public Pass {
 void DeleteOpDevicePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
-  int found_subgraph_count = 0;
+  int delete_counts = 0;
   for (auto* node : graph->Nodes()) {
     if (!node->IsOp() || !node->Op()->HasAttr("op_device")) continue;
     node->Op()->RemoveAttr("op_device");
-    found_subgraph_count++;
+    delete_counts++;
   }
-  if (found_subgraph_count > 0) {
-    LOG(INFO) << "---  detected " << found_subgraph_count << " subgraphs";
+  if (delete_counts > 0) {
+    LOG(INFO) << "---  delete " << delete_counts << " op_device attr";
   }
 }
 

@@ -27,7 +27,6 @@ import paddle.utils as utils
 from paddle import static
 from paddle.distributed import fleet
 from paddle.fluid.executor import _to_name_str
-from paddle.fluid.layers.utils import flatten
 from paddle.framework import IrGraph
 from paddle.framework import _current_expected_place as _get_device
 from paddle.framework import core, in_dygraph_mode
@@ -602,7 +601,7 @@ class Engine:
         feed_vars = {"inputs": self._inputs, "labels": self._labels}
 
         fetch_vars = {
-            "outputs": flatten(outputs),
+            "outputs": paddle.utils.flatten(outputs),
             "loss": self._losses,
             "metrics": metrics,
         }

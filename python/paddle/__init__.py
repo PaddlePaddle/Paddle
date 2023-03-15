@@ -41,6 +41,7 @@ from .fluid.dataset import *  # noqa: F401, F403
 from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
+from .framework.dtype import finfo  # noqa: F401
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
@@ -402,6 +403,7 @@ if is_compiled_with_cinn():
 disable_static()
 __all__ = [  # noqa
     'iinfo',
+    'finfo',
     'dtype',
     'uint8',
     'int8',

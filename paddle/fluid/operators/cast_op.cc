@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace paddle {
 namespace operators {
@@ -73,14 +74,13 @@ class CastCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
   void Apply() override {
-    paddle::experimental::Tensor out_grad = paddle::experimental::Tensor(
+    paddle::Tensor out_grad = paddle::Tensor(
         std::make_shared<prim::DescTensor>(this->SingleOutputGrad("Out")));
-    paddle::experimental::Tensor x_grad = paddle::experimental::Tensor(
+    paddle::Tensor x_grad = paddle::Tensor(
         std::make_shared<prim::DescTensor>(this->SingleInputGrad("X")));
     auto dx_ptr = this->GetOutputPtr(&x_grad);
     std::string dx_name = this->GetOutputName(x_grad);
-    auto dtype = static_cast<paddle::experimental::DataType>(
-        this->Attr<int>("in_dtype"));
+    auto dtype = phi::TransToPhiDataType((this->Attr<int>("in_dtype")));
     prim::cast_grad<prim::DescTensor>(out_grad, dtype, dx_ptr);
     this->RecoverOutputName(x_grad, dx_name);
   }
