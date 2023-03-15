@@ -176,7 +176,7 @@ class TestTrapezoidError(unittest.TestCase):
                 y = paddle.static.data(
                     name='y',
                     shape=[4, 4],
-                    dtype="float16",
+                    dtype="int64",
                 )
                 x = paddle.static.data(name='x', shape=[4, 4], dtype="float32")
                 dx = None
@@ -190,9 +190,7 @@ class TestTrapezoidError(unittest.TestCase):
                     shape=[4, 4],
                     dtype="float32",
                 )
-                x1 = paddle.static.data(
-                    name='x1', shape=[4, 4], dtype="float16"
-                )
+                x1 = paddle.static.data(name='x1', shape=[4, 4], dtype="int64")
                 dx1 = None
                 self.paddle_api(y1, x1, dx1)
 
