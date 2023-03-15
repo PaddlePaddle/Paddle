@@ -1,0 +1,189 @@
+import random
+import unittest
+from functools import partial
+
+import numpy as np
+
+import paddle
+from paddle.vision.models import resnet18
+
+# paddle.set_device('cpu')
+
+
+def reset_seed():
+    paddle.seed(1010)
+    np.random.seed(1010)
+    random.seed(1010)
+
+
+def loss_fn_tiny_model(x):
+    return x.mean()
+
+
+def train_step_tiny_model(net, x, loss_fn, opt):
+    out = net(x)
+    loss = loss_fn(out)
+    loss.backward()
+    opt.step()
+    opt.clear_grad()
+    return loss
+
+
+class TinyModel(paddle.nn.Layer):
+    def __init__(self):
+        super(TinyModel, self).__init__()
+        self.layer1 = paddle.nn.Linear(10, 10)
+
+    def forward(self, data):
+        return self.layer1(data)
+
+
+class TestTrainStepTinyModel(unittest.TestCase):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.optimizer_creator = partial(paddle.optimizer.SGD, 0.001)
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 5
+
+    def get_train_step_losses(self, func, steps):
+        losses = []
+        net = self.net_creator()
+        optimizer = self.optimizer_creator(parameters=net.parameters())
+        for _ in range(steps):
+            out = func(net, self.input, self.loss_fn, optimizer)
+            losses.append(out)
+        return losses
+
+    def test_train_step(self):
+        reset_seed()
+        dygraph_losses = self.get_train_step_losses(
+            self.train_step_func, self.steps
+        )
+        reset_seed()
+        static_losses = self.get_train_step_losses(
+            paddle.jit.to_static(self.train_step_func), self.steps
+        )
+        print(dygraph_losses, static_losses)
+        self.assertEqual(len(dygraph_losses), len(static_losses))
+        for dygraph_loss, static_loss in zip(dygraph_losses, static_losses):
+            dygraph_loss = dygraph_loss.numpy()
+            static_loss = static_loss.numpy()
+            np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-5)
+
+
+class TestTrainStepTinyModelAdadelta(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.optimizer_creator = partial(paddle.optimizer.Adadelta, 0.001)
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 5
+
+
+class TestTrainStepTinyModelAdadelta(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.optimizer_creator = partial(paddle.optimizer.Adadelta, 0.001)
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 5
+
+
+class TestTrainStepTinyModelAdagrad(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.optimizer_creator = partial(paddle.optimizer.Adagrad, 0.001)
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 5
+
+
+class TestTrainStepTinyModelAdam(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.optimizer_creator = partial(paddle.optimizer.Adam, 0.001)
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 5
+
+
+class TestTrainStepTinyModelAdamax(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.optimizer_creator = partial(paddle.optimizer.Adamax, 0.001)
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 5
+
+
+class TestTrainStepTinyModelAdamW(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.optimizer_creator = partial(paddle.optimizer.AdamW, 0.001)
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 5
+
+
+class TestTrainStepTinyModelLamb(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.optimizer_creator = partial(
+            paddle.optimizer.Lamb, learning_rate=0.001, lamb_weight_decay=0.01
+        )
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 5
+
+
+class TestTrainStepTinyModelMomentum(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.optimizer_creator = partial(paddle.optimizer.Momentum, 0.001)
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 5
+
+
+class TestTrainStepTinyModelRMSProp(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.optimizer_creator = partial(paddle.optimizer.RMSProp, 0.001)
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 5
+
+
+# class TestTrainStepResNet18Sgd(TestTrainStepTinyModel):
+#     def setUp(self):
+#         self.input = paddle.randn([64, 3, 224, 224])
+#         self.net_creator = resnet18
+#         self.optimizer_creator = partial(paddle.optimizer.SGD, 0.001)
+#         self.loss_fn = loss_fn_tiny_model
+#         self.train_step_func = train_step_tiny_model
+#         self.steps = 5
+
+
+# class TestTrainStepResNet18Adam(TestTrainStepTinyModel):
+#     def setUp(self):
+#         self.input = paddle.randn([64, 3, 224, 224])
+#         self.net_creator = resnet18
+#         self.optimizer_creator = partial(paddle.optimizer.Adam, 0.001)
+#         self.loss_fn = loss_fn_tiny_model
+#         self.train_step_func = train_step_tiny_model
+#         self.steps = 5
+
+
+if __name__ == "__main__":
+    unittest.main()

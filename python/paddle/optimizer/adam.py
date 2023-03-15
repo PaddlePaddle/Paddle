@@ -389,7 +389,7 @@ class Adam(Optimizer):
             return adam_op
 
     @imperative_base.no_grad
-    @framework._non_static_only_
+    @framework.non_static_only
     def step(self):
         """
         Execute the optimizer and update parameters once.
