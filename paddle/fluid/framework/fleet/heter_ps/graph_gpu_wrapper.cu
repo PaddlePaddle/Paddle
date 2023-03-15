@@ -33,7 +33,8 @@ void GraphGpuWrapper::set_device(std::vector<int> ids) {
 
 void GraphGpuWrapper::init_conf(const std::string &first_node_type,
                                 const std::string &meta_path,
-                                const std::string &excluded_train_pair) {
+                                const std::string &excluded_train_pair,
+                                const std::string &pair_label) {
   static std::mutex mutex;
   {
     std::lock_guard<std::mutex> lock(mutex);
@@ -90,6 +91,37 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type,
                               "(%s) is not found in edge_to_id.", node));
         VLOG(2) << "edge_to_id[" << node << "] = " << iter->second;
         excluded_train_pair_.push_back(iter->second);
+      }
+    }
+
+    if (pair_label != "") {
+      pair_label_conf_.assign(id_to_feature.size() * id_to_feature.size(), 0);
+      auto items = paddle::string::split_string<std::string>(pair_label, ",");
+      VLOG(2) << "pair_label[" << pair_label << "] id_to_feature.size() = " << id_to_feature.size();
+      for (auto &item : items) {
+        auto sub_items = paddle::string::split_string<std::string>(item, ":");
+        int label = std::stoi(sub_items[1]);
+        auto nodes = get_ntype_from_etype(sub_items[0]);
+        auto &edge_src = nodes[0];
+        auto src_iter = node_to_id.find(edge_src);
+        PADDLE_ENFORCE_NE(src_iter, edge_to_id.end(),
+                platform::errors::NotFound(
+                    "(%s) is not found in edge_to_id.", edge_src));
+        auto &edge_dst = nodes[1];
+        auto dst_iter = node_to_id.find(edge_dst);
+        PADDLE_ENFORCE_NE(dst_iter, edge_to_id.end(),
+                platform::errors::NotFound(
+                    "(%s) is not found in edge_to_id.", edge_dst));
+        VLOG(2) << "pair_label_conf[" << src_iter->second << "][" << dst_iter->second << "] = " << label;
+        pair_label_conf_[src_iter->second * id_to_feature.size() + dst_iter->second] = label;
+        pair_label_conf_[dst_iter->second * id_to_feature.size() + src_iter->second] = label;
+      }
+      for (int i = 0; i < id_to_feature.size(); ++i) {
+        std::stringstream buf;
+        for (int j = 0; j < id_to_feature.size(); ++j) {
+          buf << (int)pair_label_conf_[i * id_to_feature.size() + j] << " ";
+        }
+        VLOG(2) << "pair_label_conf[" << i << "]: " << buf.str();
       }
     }
 

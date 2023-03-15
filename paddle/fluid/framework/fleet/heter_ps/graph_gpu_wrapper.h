@@ -45,7 +45,8 @@ class GraphGpuWrapper {
   static std::shared_ptr<GraphGpuWrapper> s_instance_;
   void init_conf(const std::string& first_node_type,
                  const std::string& meta_path,
-                 const std::string& excluded_train_pair);
+                 const std::string& excluded_train_pair,
+                 const std::string &pair_label);
   void initialize();
   void finalize();
   void set_device(std::vector<int> ids);
@@ -203,6 +204,7 @@ class GraphGpuWrapper {
   bool type_keys_initialized_ = false;
   std::vector<int> first_node_type_;
   std::vector<uint8_t> excluded_train_pair_;
+  std::vector<int32_t> pair_label_conf_;
   std::vector<std::vector<int>> meta_path_;
 
   std::vector<std::set<int>> finish_node_type_;

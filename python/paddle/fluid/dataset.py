@@ -1142,6 +1142,9 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.graph_config.return_weight = config.get(
             "return_weight", False
         )
+        self.proto_desc.graph_config.pair_label = config.get(
+            "pair_label", ""
+        )
         self.dataset.set_gpu_graph_mode(True)
 
     def set_pass_id(self, pass_id):

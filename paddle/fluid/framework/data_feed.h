@@ -1000,6 +1000,7 @@ class GraphDataGenerator {
   int64_t* show_tensor_ptr_;
   int64_t* clk_tensor_ptr_;
   int* degree_tensor_ptr_;
+  int32_t* pair_label_ptr_;
 
   cudaStream_t train_stream_;
   cudaStream_t sample_stream_;
@@ -1029,6 +1030,8 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_sample_keys_;
   int sample_keys_len_;
 
+  std::shared_ptr<phi::Allocation> d_pair_label_buf_;
+  std::shared_ptr<phi::Allocation> d_pair_label_conf_;
   std::shared_ptr<phi::Allocation> d_ins_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_list_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_prefixsum_buf_;
@@ -1059,6 +1062,10 @@ class GraphDataGenerator {
   int sage_batch_count_;
   int sage_batch_num_;
   int ins_buf_pair_len_;
+  bool enable_pair_label_;
+  int node_type_num_;
+  bool need_walk_ntype_;
+  int id_offset_of_feed_vec_;
 
   // size of a d_walk buf
   size_t buf_size_;
