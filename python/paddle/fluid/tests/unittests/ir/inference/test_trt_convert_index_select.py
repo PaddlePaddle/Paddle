@@ -18,7 +18,7 @@ from typing import List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
-from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
 
@@ -186,29 +186,8 @@ class TrtConvertIndexSelectTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-3
 
-    def add_skip_trt_case(self):
-        ver = paddle_infer.get_trt_compile_version()
-        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 7000:
-
-            def teller1(program_config, predictor_config):
-                if len(self.dynamic_shape.min_input_shape) != 0:
-                    inputs = program_config.inputs
-                    if (
-                        len(inputs['input_data'].shape) == 1
-                        or len(inputs['index_data'].shape) == 1
-                    ):
-                        return True
-                return False
-
-            self.add_skip_case(
-                teller1,
-                SkipReasons.TRT_NOT_SUPPORT,
-                "Need to repair the case: trt reshape out failed for dynamic shape mode when inputs' dims==1. under trt7.0 ",
-            )
-
     def test(self):
         self.trt_param.workspace_size = 1 << 60
-        self.add_skip_trt_case()
         self.run_test()
 
 

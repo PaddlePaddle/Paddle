@@ -680,15 +680,6 @@ struct SimpleOpTypeSetTeller : public Teller {
               << "Index select op Index input data type must be int32 or int64";
           return false;
         }
-#if !IS_TRT_VERSION_GE(7000)
-        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-        const auto x_shape = x_var_desc->GetShape();
-        if (x_shape.size() == 1) {
-          VLOG(3) << "Index select does not support 1-dimensional input in "
-                     "tensorrt";
-          return false;
-        }
-#endif
       }
     }
     if (op_type == "take_along_axis") {
