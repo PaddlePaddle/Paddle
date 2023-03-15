@@ -296,21 +296,47 @@ def is_paddle_api(node):
     return is_api_in_module(node, PADDLE_MODULE_PREFIX)
 
 
-def is_paddle_func(func):
+# NOTE(Aurelius84): Consider the following paddle inner API as common case to
+# apply @to_static code transformation as usual. Because they contains
+# user-defined layer, like paddle.distributed.auto_parallel.helper.ProxyLayer.
+AS_NOT_INNER_FUNC_LIST = set()
+
+
+def as_not_paddle_func(path):
+    """
+    Append API or class as ignored case for is_paddle_func, and they
+    will be retured False while calling is_paddle_func(func).
+    """
+    global INNER_FUNC_WHITE_LIST
+    AS_NOT_INNER_FUNC_LIST.add(path)
+
+
+def is_paddle_func(func, ignore_white_list=True):
+    """
+    Return True if function is defined in Paddle module.
+    Skip to check APIs in white list if specifying ignore_white_list as True.
+    """
+
+    def in_white_list(module, func_name):
+        if func_name is None:
+            return False
+        return (module.__name__ + '.' + func_name) in AS_NOT_INNER_FUNC_LIST
+
     try:
         if isinstance(func, functools.partial):
             func = func.func
 
-        # In case of dynamically monkey patch customised function
-        # into paddle class obj, so we consider its class module
-        # path as prefix.
-        if hasattr(func, "__self__"):
-            func = func.__self__
-        elif inspect.ismethod(func):
+        func_name = getattr(func, '__name__', None)
+        if inspect.ismethod(func):
+            func_name = func.__self__.__class__.__name__
             func = func.__func__
 
         m = inspect.getmodule(func)
-        return m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
+        flag = m is not None and m.__name__.startswith(PADDLE_MODULE_PREFIX)
+        if ignore_white_list:
+            flag = flag and not in_white_list(m, func_name)
+
+        return flag
     except Exception:
         return False
 

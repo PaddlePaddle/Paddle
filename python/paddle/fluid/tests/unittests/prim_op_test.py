@@ -22,6 +22,7 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
+from paddle.incubate.autograd import primapi
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
 
@@ -588,7 +589,7 @@ class PrimForwardChecker:
                 args, len(inputs_sig)
             )
             ret = flatten(_as_list(self.python_api(*args)))
-            paddle.incubate.autograd.to_prim(main_program.blocks)
+            primapi.to_prim(main_program.blocks)
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
         ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -1018,7 +1019,7 @@ class PrimGradChecker(PrimForwardChecker):
             outputs_dict = self.get_output_dict(
                 self.outputs, fw_outs, outputs_sig
             )
-            paddle.incubate.autograd.to_prim(main_program.blocks)
+            primapi.to_prim(main_program.blocks)
             ys = []
             if isinstance(self.output_names, list):
                 for output_name in self.output_names:
