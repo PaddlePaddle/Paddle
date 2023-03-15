@@ -585,7 +585,9 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                      tensor_backend == phi::Backend::XPU) &&
                    !(def_backend == phi::Backend::ONEDNN &&
                      tensor_backend == phi::Backend::CPU)) ||
-                  tensor_in->place().GetType() == AllocationType::GPUPINNED) {
+                  tensor_in->place().GetType() == AllocationType::GPUPINNED ||
+                  (platform::is_xpu_place(expected_kernel_key.place_) &&
+                   def_backend == tensor_backend)) {
                 expected_kernel_key_for_argument_def =
                     std::make_unique<phi::KernelKey>(
                         def_backend,
