@@ -159,11 +159,8 @@ void PRecvArrayInferMeta(int peer,
                                 "set to True for both send_v2 and recv_v2.",
                                 i,
                                 out_shape[i]));
-    // out->at(i)->set_dtype(dtype);
-    // out->at(i)->set_dims(phi::make_ddim({out_shape[i]}));
   }
   out->set_dtype(dtype);
-  out->set_dims(phi::make_ddim(out_shape));
 }
 
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,

@@ -52,8 +52,8 @@ void ReduceScatterKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   comm_context->ReduceScatter(out, x, stream);
 #else
-  PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "PaddlePaddle should compile with GPU."));
+  PADDLE_THROW(
+      errors::PreconditionNotMet("PaddlePaddle should compile with GPU."));
 #endif
 }
 

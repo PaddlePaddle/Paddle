@@ -3345,9 +3345,7 @@ void PSendInferMeta(const MetaTensor& x, int peer) {
           "The peer (%d) for p_send op must be non-negative.", peer));
 }
 
-void PSendArrayInferMeta(const std::vector<const MetaTensor*>& x,
-                         int peer,
-                         MetaTensor* out) {
+void PSendArrayInferMeta(const MetaTensor& x, int peer) {
   PADDLE_ENFORCE_GE(
       peer,
       0,

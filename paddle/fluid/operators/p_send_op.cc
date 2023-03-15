@@ -52,7 +52,6 @@ class PSendArrayOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor[]), input 0 of p_send_array op.").AsDuplicable();
-    AddOutput("out", "(Tensor), output 0 of p_send_array op.");
     AddAttr<int>("ring_id", "(int), attribute 0 for p_send_array op.")
         .SetDefault(0);
     AddAttr<int>("peer", "(int), attribute 1 for p_send_array op.")

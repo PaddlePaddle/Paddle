@@ -26,6 +26,8 @@
 
 namespace phi {
 
+#if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
+    NCCL_VERSION_CODE >= 2703
 template <typename Context>
 DDim recv_shape_info(const Context& dev_ctx,
                      phi::DenseTensor* out,
@@ -39,21 +41,21 @@ DDim recv_shape_info(const Context& dev_ctx,
                         "to send the shape info."));
   paddle::experimental::DataType shape_dtype =
       paddle::experimental::DataType::INT32;
-  ncclDataType_t nccl_dtype = ToNCCLDataType(shape_dtype);
+  ncclDataType_t nccl_dtype = ncclInt;
 
   // phi::DenseTensor gpu_shape_size_tensor(shape_dtype);
   phi::DenseTensor* gpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
   gpu_shape_size_tensor->Resize({1});
   dev_ctx.Alloc(gpu_shape_size_tensor, shape_dtype);
-
   comm_ctx->Recv(gpu_shape_size_tensor, peer, stream);
+
   // copy the shape size tensor to cpu
   phi::DenseTensor* cpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
   cpu_shape_size_tensor->Resize({1});
-  dev_ctx.Alloc(cpu_shape_size_tensor, shape_dtype);
+  cpu_shape_size_tensor->mutable_data(phi::CPUPlace(), shape_dtype);
 
   memory_utils::Copy(phi::CPUPlace(),
-                     cpu_shape_size_tensor,
+                     cpu_shape_size_tensor->data(),
                      dev_ctx.GetPlace(),
                      gpu_shape_size_tensor->data(),
                      gpu_shape_size_tensor->numel() * sizeof(int),
@@ -73,10 +75,10 @@ DDim recv_shape_info(const Context& dev_ctx,
   // copy the shape tensor to cpu
   phi::DenseTensor* cpu_shape_tensor = new phi::DenseTensor(shape_dtype);
   cpu_shape_tensor->Resize({shape_size});
-  dev_ctx.Alloc(cpu_shape_tensor, shape_dtype);
+  cpu_shape_tensor->mutable_data(phi::CPUPlace(), shape_dtype);
 
   memory_utils::Copy(phi::CPUPlace(),
-                     cpu_shape_tensor,
+                     cpu_shape_tensor->data(),
                      dev_ctx.GetPlace(),
                      gpu_shape_tensor->data(),
                      gpu_shape_tensor->numel() * sizeof(int),
@@ -118,6 +120,7 @@ distributed::NCCLCommContext* GetCommContext(const Context& dev_ctx, int peer) {
                               comm_ctx->GetSize()));
   return comm_ctx;
 }
+#endif
 
 template <typename T, typename Context>
 void PRecvKernel(const Context& dev_ctx,

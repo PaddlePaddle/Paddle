@@ -26,8 +26,5 @@ void PSendKernel(const Context& dev_ctx,
                  bool dynamic_shape);
 
 template <typename T, typename Context>
-void SendArrayV3Kernel(const Context& dev_ctx,
-                       const TensorArray& x,
-                       int peer,
-                       DenseTensor* out);
+void SendArrayV3Kernel(const Context& dev_ctx, const TensorArray& x, int peer);
 }  // namespace phi

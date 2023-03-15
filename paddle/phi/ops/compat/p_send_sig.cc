@@ -27,4 +27,4 @@ KernelSignature PSendArrayOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(p_send, phi::PSendOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(p_send_array_v3, phi::PSendArrayOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(p_send_array, phi::PSendArrayOpArgumentMapping);
