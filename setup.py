@@ -1365,7 +1365,6 @@ def get_setup_parameters():
         'paddle.io',
         'paddle.optimizer',
         'paddle.nn',
-        'paddle.nn.common',
         'paddle.nn.functional',
         'paddle.nn.layer',
         'paddle.nn.quant',

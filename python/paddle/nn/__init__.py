@@ -14,7 +14,7 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
-from .common.layers import Layer  # noqa: F401
+from .layer.layers import Layer  # noqa: F401
 from .layer.container import LayerList  # noqa: F401
 from .layer.container import ParameterList  # noqa: F401
 from .layer.container import Sequential  # noqa: F401

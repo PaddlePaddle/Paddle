@@ -74,6 +74,8 @@ def _build_saved_state_dict(state_dict):
 
 def _load_state_dict_from_save_inference_model(model_path, config):
     # 1. load program desc & construct _ProgramHolder
+    # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
+    # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
     from paddle.jit.translated_layer import (
         _construct_params_and_buffers,
         _construct_program_holders,
@@ -166,6 +168,8 @@ def _load_state_dict_from_save_params(model_path):
 def _build_load_path_and_config(path, config):
     # NOTE(chenweihang): If both [prefix save format] and [directory save format] exist,
     # raise error, avoid confusing behavior
+    # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
+    # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
     from paddle.jit.translated_layer import (
         INFER_MODEL_SUFFIX,
         INFER_PARAMS_SUFFIX,
@@ -236,6 +240,8 @@ def _parse_load_config(configs):
             )
 
     # construct inner config
+    # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
+    # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
     from paddle.jit.api import _SaveLoadConfig
 
     inner_config = _SaveLoadConfig()
@@ -259,6 +265,8 @@ def _parse_save_config(configs):
             )
 
     # construct inner config
+    # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
+    # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
     from paddle.jit.api import _SaveLoadConfig
 
     inner_config = _SaveLoadConfig()

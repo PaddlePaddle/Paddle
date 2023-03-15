@@ -47,7 +47,7 @@ from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.framework import ParamBase, _set_expected_place
 from paddle.framework import base as imperative_base
 from paddle.framework import core, in_dygraph_mode, to_variable
-from paddle.nn.common import layers
+from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
 from . import parallel_helper

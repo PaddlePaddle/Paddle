@@ -30,7 +30,7 @@ from paddle.jit.dy2static.partial_program import (
     LazyInitialized,
     add_build_strategy_for,
 )
-from paddle.nn.common import layers
+from paddle.nn.layer import layers
 
 from .dy2static.utils import _out_grad_names, _param_grad_names
 
