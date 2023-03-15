@@ -17,12 +17,7 @@
 namespace phi {
 
 KernelSignature RandpermOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  int seed = paddle::any_cast<int>(ctx.Attr("seed"));
-  if (seed) {
-    return KernelSignature("randperm", {}, {"n", "dtype", "seed"}, {"Out"});
-  } else {
-    return KernelSignature("randperm", {}, {"n", "dtype"}, {"Out"});
-  }
+  return KernelSignature("randperm", {}, {"n", "dtype"}, {"Out"});
 }
 
 }  // namespace phi

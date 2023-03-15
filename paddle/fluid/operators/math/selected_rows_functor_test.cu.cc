@@ -15,13 +15,18 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 #include "gtest/gtest.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 TEST(selected_rows_functor, gpu_add) {
-  paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
   phi::GPUContext& ctx = *reinterpret_cast<phi::GPUContext*>(
-      paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
+      phi::DeviceContextPool::Instance().Get(gpu_place));
   phi::funcs::SetConstant<phi::GPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -37,12 +42,12 @@ TEST(selected_rows_functor, gpu_add) {
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(hipDeviceSynchronize(),
                     0,
-                    paddle::platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "The all synchronization on the cuda is error!"));
 #else
   PADDLE_ENFORCE_EQ(cudaDeviceSynchronize(),
                     0,
-                    paddle::platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "The all synchronization on the cuda is error!"));
 #endif
 
@@ -80,8 +85,7 @@ TEST(selected_rows_functor, gpu_add) {
   EXPECT_EQ(out_rows[6], 9);
 
   phi::DenseTensor out_cpu;
-  paddle::framework::TensorCopy(*out_value, cpu_place, ctx, &out_cpu);
-  ctx.Wait();
+  phi::Copy(ctx, *out_value, cpu_place, true, &out_cpu);
 
   auto* out_cpu_data = out_cpu.data<float>();
   // input1 value
@@ -107,8 +111,7 @@ TEST(selected_rows_functor, gpu_add) {
   add_tensor_functor(ctx, *output, *tensor1, tensor2.get());
 
   phi::DenseTensor tensor2_cpu;
-  paddle::framework::TensorCopy(*tensor2, cpu_place, ctx, &tensor2_cpu);
-  ctx.Wait();
+  phi::Copy(ctx, *tensor2, cpu_place, true, &tensor2_cpu);
 
   auto* tensor2_cpu_data = tensor2_cpu.data<float>();
   // row0: 1.0 + 2.0 + 3.0
@@ -128,10 +131,10 @@ TEST(selected_rows_functor, gpu_add) {
 }
 
 TEST(selected_rows_functor, gpu_add_to) {
-  paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
   phi::GPUContext& ctx = *reinterpret_cast<phi::GPUContext*>(
-      paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
+      phi::DeviceContextPool::Instance().Get(gpu_place));
   phi::funcs::SetConstant<phi::GPUContext, float> functor;
   int64_t height = 10;
   int64_t row_numel = 10;
@@ -181,8 +184,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   EXPECT_EQ(out_rows[6], 9);
 
   phi::DenseTensor out_cpu;
-  paddle::framework::TensorCopy(*out_value, cpu_place, ctx, &out_cpu);
-  ctx.Wait();
+  phi::Copy(ctx, *out_value, cpu_place, true, &out_cpu);
 
   auto* out_cpu_data = out_cpu.data<float>();
   // input1 value
@@ -206,8 +208,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   add_to_tensor_functor(ctx, *output, tensor1.get());
 
   phi::DenseTensor tensor1_cpu;
-  paddle::framework::TensorCopy(*tensor1, cpu_place, ctx, &tensor1_cpu);
-  ctx.Wait();
+  phi::Copy(ctx, *tensor1, cpu_place, true, &tensor1_cpu);
 
   auto* tensor1_cpu_data = tensor1_cpu.data<float>();
   // row0: 1.0 + 2.0 + 3.0
@@ -227,10 +228,10 @@ TEST(selected_rows_functor, gpu_add_to) {
 }
 
 TEST(selected_rows_functor, gpu_merge_add) {
-  paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
   phi::GPUContext& ctx = *reinterpret_cast<phi::GPUContext*>(
-      paddle::platform::DeviceContextPool::Instance().Get(gpu_place));
+      phi::DeviceContextPool::Instance().Get(gpu_place));
   phi::funcs::SetConstant<phi::GPUContext, float> set_const;
 
   int64_t height = 10;
@@ -264,8 +265,7 @@ TEST(selected_rows_functor, gpu_merge_add) {
   merge_add_functor(ctx, inputs, output.get());
 
   phi::DenseTensor output_cpu;
-  paddle::framework::TensorCopy(output->value(), cpu_place, ctx, &output_cpu);
-  ctx.Wait();
+  phi::Copy(ctx, output->value(), cpu_place, true, &output_cpu);
 
   EXPECT_EQ(output->height(), height);
   EXPECT_EQ(output->value().dims(), phi::make_ddim({3, row_numel}));
