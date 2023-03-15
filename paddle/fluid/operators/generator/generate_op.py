@@ -101,18 +101,12 @@ def process_scalar(op_item, scalar_configs):
                     and scalar_config['support_tensor']
                     else False
                 )
-                if attr_item['is_support_tensor']:
-                    attr_item['typename'] = (
-                        scalar_config['data_type']
-                        if 'data_type' in scalar_config
-                        else scalar_map[attr_type]
-                    )
-                else:
-                    attr_item['data_type'] = (
-                        scalar_config['data_type']
-                        if 'data_type' in scalar_config
-                        else scalar_map[attr_type]
-                    )
+                attr_item['data_type'] = (
+                    scalar_config['data_type']
+                    if 'data_type' in scalar_config
+                    else scalar_map[attr_type]
+                )
+                if attr_item['is_support_tensor'] is False:
                     attr_item['tensor_name'] = scalar_config['tensor_name']
 
 
@@ -136,19 +130,12 @@ def process_int_array(op_item, int_array_configs):
                     and int_array_config['support_tensor']
                     else False
                 )
-                if attr_item['is_support_tensor']:
-                    attr_item['typename'] = (
-                        'int[]'
-                        if 'data_type' in int_array_config
-                        and int_array_config['data_type'] == 'int'
-                        else 'int64_t[]'
-                    )
-                else:
-                    attr_item['data_type'] = (
-                        data_type_map[int_array_config['data_type']]
-                        if 'data_type' in int_array_config
-                        else 'std::vector<int64_t>'
-                    )
+                attr_item['data_type'] = (
+                    data_type_map[int_array_config['data_type']]
+                    if 'data_type' in int_array_config
+                    else 'std::vector<int64_t>'
+                )
+                if attr_item['is_support_tensor'] is False:
                     attr_item['manual_flag'] = True
                     if 'tensor_name' in int_array_config:
                         attr_item['tensor_name'] = int_array_config[
@@ -479,6 +466,44 @@ def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
                         ] = False
 
 
+def parse_get_expected_kerneltype(
+    op_fluid_list: list, fw_op_dict: dict, bw_op_dict: dict
+):
+    for op_op in op_fluid_list:
+        if 'get_expected_kerneltype' in op_op:
+            if 'fw_invoke' in op_op['get_expected_kerneltype']:
+                fw_name = op_op['op'].split('(')[0].strip()
+                # static_ops.yaml and ops.yaml use the common op_compat.yaml
+                if fw_name in fw_op_dict:
+                    fw_op_dict[fw_name]["get_expected_kerneltype"] = op_op[
+                        'get_expected_kerneltype'
+                    ]['fw_invoke']
+            bw_names = [
+                bw_name.split('(')[0].strip()
+                for bw_name in op_op['backward'].split(',')
+            ]
+            for index, bw_name in enumerate(bw_names):
+                # static_ops.yaml and ops.yaml use the common op_compat.yaml
+                if bw_name in bw_op_dict:
+                    bw_invoke_level = 'bw_invoke' + str(index)
+                    if bw_invoke_level in op_op['get_expected_kerneltype']:
+                        bw_op_dict[bw_name]["get_expected_kerneltype"] = op_op[
+                            'get_expected_kerneltype'
+                        ][bw_invoke_level]
+
+
+def parse_keep_signature(
+    op_fluid_list: list, fw_op_dict: dict, bw_op_dict: dict
+):
+    for op_op in op_fluid_list:
+        if 'keep_signature' in op_op:
+            for op_name in op_op['keep_signature']:
+                if op_name in fw_op_dict:
+                    fw_op_dict[op_name]["keep_signature"] = True
+                elif op_name in bw_op_dict:
+                    bw_op_dict[op_name]["keep_signature"] = True
+
+
 def split_ops_list(ops, backward_op_dict, split_num):
     new_ops_list = []
     new_bw_ops_list = []
@@ -546,6 +571,12 @@ def main(
 
     # deal the drop_empty_grad of bw_op by op_compat.yaml
     parse_drop_empty_grad(op_fluid_map_list, backward_op_dict)
+
+    parse_get_expected_kerneltype(
+        op_fluid_map_list, forward_op_dict, backward_op_dict
+    )
+
+    parse_keep_signature(op_fluid_map_list, forward_op_dict, backward_op_dict)
 
     add_composite_info(ops, backward_ops, backward_op_dict)
 
