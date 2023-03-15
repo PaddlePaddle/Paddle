@@ -23,7 +23,7 @@ limitations under the License. */
 
 namespace phi {
 
-using FP16BlasWrapper=BlasW
+
 
 template <typename T,
           size_t D,
