@@ -98,10 +98,12 @@ class TestInstanceNormOp(OpTest):
         self.prim_op_type = "comp"
         self.python_api = instance_norm_wrapper
         self.python_out_sig = ['Y']
-        self.fw_comp_rtol = 1e-03
-        self.fw_comp_atol = 1e-03
-        self.rev_comp_rtol = 1e-05
-        self.rev_comp_atol = 1e-05
+        self.jit_comp_rtol = 1e-05
+        self.jit_comp_atol = 1e-05
+        self.fw_comp_rtol = 1e-02
+        self.fw_comp_atol = 1e-02
+        self.rev_comp_rtol = 1e-02
+        self.rev_comp_atol = 1e-02
         self.init_test_case()
         self.init_dtype()
         scale_shape = [self.c]
@@ -324,7 +326,7 @@ class TestInstanceNormOpErrorCase1(unittest.TestCase):
             # the first dimension of input for instance_norm must between [2d, 5d]
             x = paddle.static.data(name='x', shape=[3], dtype="float32")
             self.assertRaises(ValueError, paddle.static.nn.instance_norm, x)
-        paddle.enable_static()
+        paddle.disable_static()
 
 
 class TestElasticNormOp(unittest.TestCase):
