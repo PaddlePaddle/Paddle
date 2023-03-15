@@ -47,7 +47,12 @@ class StringAttribute : public ir::Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(StringAttribute, StringAttributeStorage);
 
-  const std::string &data() const;
+  static StringAttribute get(ir::IrContext *ctx, const std::string &data) {
+    return ir::AttributeManager::template get<StringAttribute>(
+        ctx, const_cast<char *>(data.c_str()), data.size());
+  }
+
+  std::string data() const;
 
   const uint32_t &size() const;
 };

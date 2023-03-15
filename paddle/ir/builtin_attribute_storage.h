@@ -30,17 +30,22 @@ struct StringAttributeStorage : public ir::AttributeStorage {
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
-  using ParamKey = std::tuple<std::string, uint32_t>;
+  using ParamKey = std::tuple<char *, uint32_t>;
 
-  StringAttributeStorage(std::string data, uint32_t size)
+  StringAttributeStorage(char *data, uint32_t size)
       : data_(data), size_(size) {}
+
+  ~StringAttributeStorage() { free(data_); }
 
   ///
   /// \brief Each derived AttributeStorage must define a Construc method, which
   /// StorageManager uses to construct a derived AttributeStorage.
   ///
   static StringAttributeStorage *Construct(ParamKey key) {
-    return new StringAttributeStorage(std::get<0>(key), std::get<1>(key));
+    uint32_t size = std::get<1>(key);
+    char *data = reinterpret_cast<char *>(malloc(size));
+    memcpy(data, std::get<0>(key), size);
+    return new StringAttributeStorage(data, size);
   }
 
   ///
@@ -48,12 +53,9 @@ struct StringAttributeStorage : public ir::AttributeStorage {
   ///
   static std::size_t HashValue(const ParamKey &key) {
     std::size_t hash_value = 0;
-    // hash data
-    hash_value =
-        hash_combine(hash_value, std::hash<std::string>()(std::get<0>(key)));
-    // hash size
-    hash_value =
-        hash_combine(hash_value, std::hash<uint32_t>()(std::get<1>(key)));
+    hash_value = hash_combine(hash_value,
+                              std::hash<std::string>()(std::string(
+                                  std::get<0>(key), std::get<1>(key))));
     return hash_value;
   }
 
@@ -61,7 +63,8 @@ struct StringAttributeStorage : public ir::AttributeStorage {
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
   bool operator==(const ParamKey &key) const {
-    return ParamKey(data_, size_) == key;
+    return std::string(std::get<0>(key), std::get<1>(key)) ==
+           std::string(data_, size_);
   }
 
   ParamKey GetAsKey() const { return ParamKey(data_, size_); }
@@ -70,7 +73,7 @@ struct StringAttributeStorage : public ir::AttributeStorage {
   /// \brief StringAttributeStorage include two parameters: data, size,
   /// layout, lod, offset.
   ///
-  std::string data_;
+  char *data_;
   uint32_t size_;
 
  private:

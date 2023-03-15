@@ -15,7 +15,7 @@
 #include "paddle/ir/builtin_attribute.h"
 
 namespace ir {
-const std::string& StringAttribute::data() const { return storage()->data_; }
+std::string StringAttribute::data() const { return storage()->data_; }
 
 const uint32_t& StringAttribute::size() const { return storage()->size_; }
 }  // namespace ir

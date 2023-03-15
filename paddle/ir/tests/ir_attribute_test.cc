@@ -55,9 +55,12 @@ TEST(attribute_test, built_in_attribute) {
   ir::IrContext *ctx = ir::IrContext::Instance();
 
   // Test 1: Test the parameteric built-in attribute of IrContext.
-  ir::Attribute string_attr_1 = ir::StringAttribute::get(ctx, "string_a", 8);
-  ir::Attribute string_attr_2 = ir::StringAttribute::get(ctx, "string_a", 8);
-  ir::Attribute string_attr_3 = ir::StringAttribute::get(ctx, "string_b", 8);
+  std::string str_tmp = "string_a";
+  ir::Attribute string_attr_1 = ir::StringAttribute::get(ctx, str_tmp);
+  ir::Attribute string_attr_2 = ir::StringAttribute::get(ctx, str_tmp);
+  const char *temp = "abcd";
+  ir::Attribute string_attr_3 =
+      ir::StringAttribute::get(ctx, const_cast<char *>(temp), 4);
 
   EXPECT_EQ(string_attr_1, string_attr_2);
   EXPECT_NE(string_attr_1, string_attr_3);

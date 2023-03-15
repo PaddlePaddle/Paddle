@@ -155,7 +155,7 @@ struct AttributeManager {
   /// \return The unique instance of Attribute T from IrContext.
   ///
   template <typename T, typename... Args>
-  static T get(IrContext *ctx, Args &&...args) {
+  static T get(IrContext *ctx, Args... args) {
     return get<T, Args...>(
         ctx, ir::TypeId::get<T>(), std::forward<Args>(args)...);
   }
@@ -174,7 +174,7 @@ struct AttributeManager {
   static std::enable_if_t<
       !std::is_same<typename T::Storage, AttributeStorage>::value,
       T>
-  get(IrContext *ctx, TypeId type_id, Args &&...args) {
+  get(IrContext *ctx, TypeId type_id, Args... args) {
     return ctx->attribute_storage_manager()
         .GetParametricStorage<typename T::Storage>(
             [&, type_id](AttributeStorage *storage) {
