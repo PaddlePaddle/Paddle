@@ -115,29 +115,29 @@ void MultiEncoderXPUInferMeta(
 }
 
 void FusedMultiTransformerXpuInferMeta(
-    const MetaTensor& X,
-    const std::vector<const MetaTensor*>& LnScale,
-    const std::vector<const MetaTensor*>& LnBias,
-    const std::vector<const MetaTensor*>& QKVW,
-    const std::vector<const MetaTensor*>& QKVWMax,
-    const std::vector<const MetaTensor*>& QKVBias,
-    const std::vector<const MetaTensor*>& OutLinearW,
-    const std::vector<const MetaTensor*>& OutLinearWMax,
-    const std::vector<const MetaTensor*>& OutLinearBias,
-    const std::vector<const MetaTensor*>& FFNLnScale,
-    const std::vector<const MetaTensor*>& FFNLnBias,
-    const std::vector<const MetaTensor*>& FFN1Weight,
-    const std::vector<const MetaTensor*>& FFN1WeightMax,
-    const std::vector<const MetaTensor*>& FFN1Bias,
-    const std::vector<const MetaTensor*>& FFN2Weight,
-    const std::vector<const MetaTensor*>& FFN2WeightMax,
-    const std::vector<const MetaTensor*>& FFN2Bias,
-    const std::vector<const MetaTensor*>& CacheKV,
-    const std::vector<const MetaTensor*>& PreCaches,
-    const std::vector<const MetaTensor*>& RotaryPosEmb,
-    const std::vector<const MetaTensor*>& TimeStep,
-    const std::vector<const MetaTensor*>& SeqLengths,
-    const std::vector<const MetaTensor*>& SrcMask,
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& ln_scale,
+    const std::vector<const MetaTensor*>& ln_bias,
+    const std::vector<const MetaTensor*>& qkvw,
+    const std::vector<const MetaTensor*>& qkvw_max,
+    const std::vector<const MetaTensor*>& qkv_bias,
+    const std::vector<const MetaTensor*>& out_linear_w,
+    const std::vector<const MetaTensor*>& out_linear_wmax,
+    const std::vector<const MetaTensor*>& out_linear_bias,
+    const std::vector<const MetaTensor*>& ffn_ln_scale,
+    const std::vector<const MetaTensor*>& ffn_ln_bias,
+    const std::vector<const MetaTensor*>& ffn1_weight,
+    const std::vector<const MetaTensor*>& ffn1_weight_max,
+    const std::vector<const MetaTensor*>& ffn1_bias,
+    const std::vector<const MetaTensor*>& ffn2_weight,
+    const std::vector<const MetaTensor*>& ffn2_weight_max,
+    const std::vector<const MetaTensor*>& ffn2_bias,
+    const std::vector<const MetaTensor*>& cache_kv,
+    const std::vector<const MetaTensor*>& pre_caches,
+    const std::vector<const MetaTensor*>& rotary_pos_emb,
+    const std::vector<const MetaTensor*>& time_step,
+    const std::vector<const MetaTensor*>& seq_lengths,
+    const std::vector<const MetaTensor*>& src_mask,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -147,10 +147,10 @@ void FusedMultiTransformerXpuInferMeta(
     const std::string& act_method,
     bool trans_qkvw,
     int ring_id,
-    MetaTensor* Out,
-    std::vector<MetaTensor*> CacheKVOut) {
-  auto x_dim = X.dims();
-  auto y_dim = QKVW[0]->dims();
+    MetaTensor* out,
+    std::vector<MetaTensor*> cache_kv_out) {
+  auto x_dim = x.dims();
+  auto y_dim = qkvw[0]->dims();
   PADDLE_ENFORCE_EQ(
       x_dim.size(),
       3,
@@ -178,8 +178,8 @@ void FusedMultiTransformerXpuInferMeta(
           "input qkv_weight = [%s]",
           x_dim,
           y_dim));
-  if (CacheKV.size() > 0) {
-    const auto& c_dim = CacheKV[0]->dims();
+  if (cache_kv.size() > 0) {
+    const auto& c_dim = cache_kv[0]->dims();
     PADDLE_ENFORCE_EQ(
         c_dim.size(),
         5,
@@ -213,9 +213,9 @@ void FusedMultiTransformerXpuInferMeta(
                           c_dim[4]));  // head_size
   }
 
-  Out->set_dims(x_dim);
-  Out->set_dtype(X.dtype());
-  Out->set_layout(X.layout());
+  out->set_dims(x_dim);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 }  // namespace phi

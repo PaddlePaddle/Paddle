@@ -26,29 +26,29 @@ namespace fusion {
 template <typename T, typename Context>
 void FusedMultiTransformerXpuKernel(
     const Context& ctx,
-    const DenseTensor& X,
-    const std::vector<const DenseTensor*>& LnScale,
-    const std::vector<const DenseTensor*>& LnBias,
-    const std::vector<const DenseTensor*>& QKVW,
-    const std::vector<const DenseTensor*>& QKVWMax,
-    const std::vector<const DenseTensor*>& QKVBias,
-    const std::vector<const DenseTensor*>& OutLinearW,
-    const std::vector<const DenseTensor*>& OutLinearWMax,
-    const std::vector<const DenseTensor*>& OutLinearBias,
-    const std::vector<const DenseTensor*>& FFNLnScale,
-    const std::vector<const DenseTensor*>& FFNLnBias,
-    const std::vector<const DenseTensor*>& FFN1Weight,
-    const std::vector<const DenseTensor*>& FFN1WeightMax,
-    const std::vector<const DenseTensor*>& FFN1Bias,
-    const std::vector<const DenseTensor*>& FFN2Weight,
-    const std::vector<const DenseTensor*>& FFN2WeightMax,
-    const std::vector<const DenseTensor*>& FFN2Bias,
-    const paddle::optional<std::vector<const DenseTensor*>>& CacheKV,
-    const paddle::optional<std::vector<const DenseTensor*>>& PreCaches,
-    const paddle::optional<DenseTensor>& RotaryPosEmb,
-    const paddle::optional<DenseTensor>& TimeStep,
-    const paddle::optional<DenseTensor>& SeqLengths,
-    const paddle::optional<DenseTensor>& SrcMask,
+    const DenseTensor& xx,
+    const std::vector<const DenseTensor*>& ln_scale,
+    const std::vector<const DenseTensor*>& ln_bias,
+    const std::vector<const DenseTensor*>& qkvw,
+    const std::vector<const DenseTensor*>& qkvw_max,
+    const std::vector<const DenseTensor*>& qkv_bias,
+    const std::vector<const DenseTensor*>& out_linear_w,
+    const std::vector<const DenseTensor*>& out_linear_wmax,
+    const std::vector<const DenseTensor*>& out_linear_bias,
+    const std::vector<const DenseTensor*>& ffn_ln_scale,
+    const std::vector<const DenseTensor*>& ffn_ln_bias,
+    const std::vector<const DenseTensor*>& ffn1_weight,
+    const std::vector<const DenseTensor*>& ffn1_weight_max,
+    const std::vector<const DenseTensor*>& ffn1_bias,
+    const std::vector<const DenseTensor*>& ffn2_weight,
+    const std::vector<const DenseTensor*>& ffn2_weight_max,
+    const std::vector<const DenseTensor*>& ffn2_bias,
+    const paddle::optional<std::vector<const DenseTensor*>>& cache_kv,
+    const paddle::optional<std::vector<const DenseTensor*>>& pre_caches,
+    const paddle::optional<DenseTensor>& rotary_pos_emb,
+    const paddle::optional<DenseTensor>& time_step,
+    const paddle::optional<DenseTensor>& seq_lengths,
+    const paddle::optional<DenseTensor>& src_mask,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -58,8 +58,8 @@ void FusedMultiTransformerXpuKernel(
     const std::string& act_method,
     bool trans_qkvw,
     int ring_id,
-    DenseTensor* Out,
-    std::vector<DenseTensor*> CacheKVOut) {
+    DenseTensor* out,
+    std::vector<DenseTensor*> cache_kv_out) {
 #ifdef PADDLE_WITH_XPU_XFT
   using XPUTypeT = typename XPUTypeTrait<T>::Type;
 
@@ -68,40 +68,40 @@ void FusedMultiTransformerXpuKernel(
                     phi::errors::PreconditionNotMet(
                         "Only support pre_layer_norm = true at now."));
   PADDLE_ENFORCE_EQ(
-      SeqLengths.get_ptr(),
+      seq_lengths.get_ptr(),
       nullptr,
-      phi::errors::PreconditionNotMet("SeqLengths not support at now."));
+      phi::errors::PreconditionNotMet("seq_lengths not support at now."));
   PADDLE_ENFORCE_EQ(
-      RotaryPosEmb.get_ptr(),
+      rotary_pos_emb.get_ptr(),
       nullptr,
-      phi::errors::PreconditionNotMet("RotaryPosEmb not support at now."));
+      phi::errors::PreconditionNotMet("rotary_pos_emb not support at now."));
   PADDLE_ENFORCE_EQ(
-      PreCaches.get_ptr(),
+      pre_caches.get_ptr(),
       nullptr,
-      phi::errors::PreconditionNotMet("PreCaches not support at now."));
+      phi::errors::PreconditionNotMet("pre_caches not support at now."));
   PADDLE_ENFORCE_NE(
-      SrcMask.get_ptr(),
+      src_mask.get_ptr(),
       nullptr,
-      phi::errors::PreconditionNotMet("SrcMask should not be nullptr."));
+      phi::errors::PreconditionNotMet("src_mask should not be nullptr."));
   PADDLE_ENFORCE_EQ(trans_qkvw,
                     true,
                     phi::errors::PreconditionNotMet(
                         "Only support trans_qkvw == true at now."));
 
-  const auto x_dims = X.dims();
+  const auto x_dims = xx.dims();
   int seq_len = x_dims[1];
-  const auto qkv_w_dims = QKVW[0]->dims();
+  const auto qkv_w_dims = qkvw[0]->dims();
   int num_head = trans_qkvw ? qkv_w_dims[1] : qkv_w_dims[2];
   int dim_head = trans_qkvw ? qkv_w_dims[2] : qkv_w_dims[3];
 
   int time_step_value = -1;
-  if (TimeStep) {
-    PADDLE_ENFORCE_EQ(TimeStep.get_ptr()->place(),
+  if (time_step) {
+    PADDLE_ENFORCE_EQ(time_step.get_ptr()->place(),
                       phi::CPUPlace(),
                       phi::errors::PreconditionNotMet(
-                          "The place of input(TimeStep) must be CPUPlace."));
+                          "The place of input(time_step) must be CPUPlace."));
     // cache_seq_len
-    time_step_value = TimeStep.get_ptr()->data<int>()[0];
+    time_step_value = time_step.get_ptr()->data<int>()[0];
     PADDLE_ENFORCE_GT(
         time_step_value,
         0,
@@ -115,111 +115,111 @@ void FusedMultiTransformerXpuKernel(
             seq_len));
   }
 
-  XPUTypeT* x_data = reinterpret_cast<XPUTypeT*>(const_cast<T*>(X.data<T>()));
-  XPUTypeT* src_mask_data =
-      reinterpret_cast<XPUTypeT*>(const_cast<T*>(SrcMask.get_ptr()->data<T>()));
-  auto* out_data = reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(Out));
-  auto src_mask_dims = SrcMask.get_ptr()->dims();
-  auto out_dims = Out->dims();
-  auto x = xft::xftTensor<XPUTypeT, 3>(
+  XPUTypeT* x_data = reinterpret_cast<XPUTypeT*>(const_cast<T*>(xx.data<T>()));
+  XPUTypeT* src_mask_data = reinterpret_cast<XPUTypeT*>(
+      const_cast<T*>(src_mask.get_ptr()->data<T>()));
+  auto* out_data = reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(out));
+  auto src_mask_dims = src_mask.get_ptr()->dims();
+  auto out_dims = out->dims();
+  auto X = xft::xftTensor<XPUTypeT, 3>(
       x_data, std::array<int64_t, 3>{x_dims[0], x_dims[1], x_dims[2]});
   // TODO(mayang02): xft support mask.dtype = float16
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
   float* src_mask_fp32_data =
-      RAII_GUARD.alloc<float>(SrcMask.get_ptr()->numel());
+      RAII_GUARD.alloc<float>(src_mask.get_ptr()->numel());
   int r = xpu::cast<XPUTypeT, float>(ctx.x_context(),
                                      src_mask_data,
                                      src_mask_fp32_data,
-                                     SrcMask.get_ptr()->numel());
+                                     src_mask.get_ptr()->numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::cast");
-  auto src_mask =
+  auto SrcMask =
       xft::xftTensor<float, 4>(src_mask_fp32_data,
                                std::array<int64_t, 4>{src_mask_dims[0],
                                                       src_mask_dims[1],
                                                       src_mask_dims[2],
                                                       src_mask_dims[3]});
-  auto out = xft::xftTensor<XPUTypeT, 3>(
+  auto Out = xft::xftTensor<XPUTypeT, 3>(
       out_data, std::array<int64_t, 3>{out_dims[0], out_dims[1], out_dims[2]});
 
   typedef int16_t TW;
-  std::vector<xft::xftVec<float>> ln_scale;
-  std::vector<xft::xftVec<float>> ln_bias;
-  std::vector<xft::xftMat<TW>> qkvw;
-  std::vector<xft::xftVec<float>> qkv_bias;
-  std::vector<xft::xftMat<TW>> out_linear_w;
-  std::vector<xft::xftVec<float>> out_linear_bias;
-  std::vector<xft::xftVec<float>> ffn_ln_scale;
-  std::vector<xft::xftVec<float>> ffn_ln_bias;
-  std::vector<xft::xftMat<TW>> ffn1_weight;
-  std::vector<xft::xftVec<float>> ffn1_bias;
-  std::vector<xft::xftMat<TW>> ffn2_weight;
-  std::vector<xft::xftVec<float>> ffn2_bias;
-  std::vector<xft::xftTensor<XPUTypeT, 5>> cache_kv_in;
-  std::vector<xft::xftTensor<XPUTypeT, 5>> cache_kv_out;
+  std::vector<xft::xftVec<float>> LnScale;
+  std::vector<xft::xftVec<float>> LnBias;
+  std::vector<xft::xftMat<TW>> QKVW;
+  std::vector<xft::xftVec<float>> QKVBias;
+  std::vector<xft::xftMat<TW>> OutLinearW;
+  std::vector<xft::xftVec<float>> OutLinearBias;
+  std::vector<xft::xftVec<float>> FFNLnScale;
+  std::vector<xft::xftVec<float>> FFNLnBias;
+  std::vector<xft::xftMat<TW>> FFN1Weight;
+  std::vector<xft::xftVec<float>> FFN1Bias;
+  std::vector<xft::xftMat<TW>> FFN2Weight;
+  std::vector<xft::xftVec<float>> FFN2Bias;
+  std::vector<xft::xftTensor<XPUTypeT, 5>> CacheKVIn;
+  std::vector<xft::xftTensor<XPUTypeT, 5>> CacheKVOut;
 
-  int layers = QKVW.size();
+  int layers = qkvw.size();
   for (int i = 0; i < layers; ++i) {
     // step1. layer_norm
-    ln_scale.emplace_back(const_cast<float*>(LnScale[i]->data<float>()),
-                          std::array<int64_t, 1>{LnScale[i]->dims()[0]});
-    ln_bias.emplace_back(const_cast<float*>(LnBias[i]->data<float>()),
-                         std::array<int64_t, 1>{LnBias[i]->dims()[0]});
+    LnScale.emplace_back(const_cast<float*>(ln_scale[i]->data<float>()),
+                         std::array<int64_t, 1>{ln_scale[i]->dims()[0]});
+    LnBias.emplace_back(const_cast<float*>(ln_bias[i]->data<float>()),
+                        std::array<int64_t, 1>{ln_bias[i]->dims()[0]});
     // step2. qkv
-    auto qkvw_dims = QKVW[i]->dims();
-    qkvw.emplace_back(
-        const_cast<TW*>(QKVW[i]->data<TW>()),
-        const_cast<float*>(QKVWMax[i]->data<float>()),
+    auto qkvw_dims = qkvw[i]->dims();
+    QKVW.emplace_back(
+        const_cast<TW*>(qkvw[i]->data<TW>()),
+        const_cast<float*>(qkvw_max[i]->data<float>()),
         std::array<int64_t, 2>{qkvw_dims[0] * qkvw_dims[1] * qkvw_dims[2],
                                qkvw_dims[3]});
-    auto qkvb_dims = QKVBias[i]->dims();
-    qkv_bias.emplace_back(
-        const_cast<float*>(QKVBias[i]->data<float>()),
+    auto qkvb_dims = qkv_bias[i]->dims();
+    QKVBias.emplace_back(
+        const_cast<float*>(qkv_bias[i]->data<float>()),
         std::array<int64_t, 1>{qkvb_dims[0] * qkvb_dims[1] * qkvb_dims[2]});
     // attn out
-    auto outw_dims = OutLinearW[i]->dims();
-    out_linear_w.emplace_back(
-        const_cast<TW*>(OutLinearW[i]->data<TW>()),
-        const_cast<float*>(OutLinearWMax[i]->data<float>()),
+    auto outw_dims = out_linear_w[i]->dims();
+    OutLinearW.emplace_back(
+        const_cast<TW*>(out_linear_w[i]->data<TW>()),
+        const_cast<float*>(out_linear_wmax[i]->data<float>()),
         std::array<int64_t, 2>{outw_dims[0], outw_dims[1]});
-    out_linear_bias.emplace_back(
-        const_cast<float*>(OutLinearBias[i]->data<float>()),
-        std::array<int64_t, 1>{OutLinearBias[i]->dims()[0]});
+    OutLinearBias.emplace_back(
+        const_cast<float*>(out_linear_bias[i]->data<float>()),
+        std::array<int64_t, 1>{out_linear_bias[i]->dims()[0]});
     // ffn ln
-    ffn_ln_scale.emplace_back(const_cast<float*>(FFNLnScale[i]->data<float>()),
-                              std::array<int64_t, 1>{FFNLnScale[i]->dims()[0]});
-    ffn_ln_bias.emplace_back(const_cast<float*>(FFNLnBias[i]->data<float>()),
-                             std::array<int64_t, 1>{FFNLnBias[i]->dims()[0]});
+    FFNLnScale.emplace_back(const_cast<float*>(ffn_ln_scale[i]->data<float>()),
+                            std::array<int64_t, 1>{ffn_ln_scale[i]->dims()[0]});
+    FFNLnBias.emplace_back(const_cast<float*>(ffn_ln_bias[i]->data<float>()),
+                           std::array<int64_t, 1>{ffn_ln_bias[i]->dims()[0]});
     // ffn1
-    auto ffn1w_dims = FFN1Weight[i]->dims();
-    ffn1_weight.emplace_back(
-        const_cast<TW*>(FFN1Weight[i]->data<TW>()),
-        const_cast<float*>(FFN1WeightMax[i]->data<float>()),
+    auto ffn1w_dims = ffn1_weight[i]->dims();
+    FFN1Weight.emplace_back(
+        const_cast<TW*>(ffn1_weight[i]->data<TW>()),
+        const_cast<float*>(ffn1_weight_max[i]->data<float>()),
         std::array<int64_t, 2>{ffn1w_dims[0], ffn1w_dims[1]});
-    ffn1_bias.emplace_back(const_cast<float*>(FFN1Bias[i]->data<float>()),
-                           std::array<int64_t, 1>{FFN1Bias[i]->dims()[0]});
+    FFN1Bias.emplace_back(const_cast<float*>(ffn1_bias[i]->data<float>()),
+                          std::array<int64_t, 1>{ffn1_bias[i]->dims()[0]});
     // ffn2
-    auto ffn2w_dims = FFN2Weight[i]->dims();
-    ffn2_weight.emplace_back(
-        const_cast<TW*>(FFN2Weight[i]->data<TW>()),
-        const_cast<float*>(FFN2WeightMax[i]->data<float>()),
+    auto ffn2w_dims = ffn2_weight[i]->dims();
+    FFN2Weight.emplace_back(
+        const_cast<TW*>(ffn2_weight[i]->data<TW>()),
+        const_cast<float*>(ffn2_weight_max[i]->data<float>()),
         std::array<int64_t, 2>{ffn2w_dims[0], ffn2w_dims[1]});
-    ffn2_bias.emplace_back(const_cast<float*>(FFN2Bias[i]->data<float>()),
-                           std::array<int64_t, 1>{FFN2Bias[i]->dims()[0]});
+    FFN2Bias.emplace_back(const_cast<float*>(ffn2_bias[i]->data<float>()),
+                          std::array<int64_t, 1>{ffn2_bias[i]->dims()[0]});
     // cache kv in
     if (time_step_value > 0) {
-      auto cachekv_dims = CacheKV.get_ptr()->at(i)->dims();
-      cache_kv_in.emplace_back(reinterpret_cast<XPUTypeT*>(const_cast<T*>(
-                                   CacheKV.get_ptr()->at(i)->data<T>())),
-                               std::array<int64_t, 5>{cachekv_dims[0],
-                                                      cachekv_dims[1],
-                                                      cachekv_dims[2],
-                                                      cachekv_dims[3],
-                                                      cachekv_dims[4]});
+      auto cachekv_dims = cache_kv.get_ptr()->at(i)->dims();
+      CacheKVIn.emplace_back(reinterpret_cast<XPUTypeT*>(const_cast<T*>(
+                                 cache_kv.get_ptr()->at(i)->data<T>())),
+                             std::array<int64_t, 5>{cachekv_dims[0],
+                                                    cachekv_dims[1],
+                                                    cachekv_dims[2],
+                                                    cachekv_dims[3],
+                                                    cachekv_dims[4]});
     }
     // cache kv out
-    auto cachekv_out_dims = CacheKVOut[i]->dims();
-    cache_kv_out.emplace_back(
-        reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(CacheKVOut[i])),
+    auto cachekv_out_dims = cache_kv_out[i]->dims();
+    CacheKVOut.emplace_back(
+        reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(cache_kv_out[i])),
         std::array<int64_t, 5>{cachekv_out_dims[0],
                                cachekv_out_dims[1],
                                cachekv_out_dims[2],
@@ -234,28 +234,28 @@ void FusedMultiTransformerXpuKernel(
   param.hidden_act = act_method;
   param.is_fuse_qkv = true;
   r = xft::fused_multi_transformer<XPUTypeT, TW, int16_t>(ctx.x_context(),
-                                                          x,
-                                                          cache_kv_in,
-                                                          src_mask,
-                                                          ln_scale,
-                                                          ln_bias,
-                                                          qkvw,
-                                                          qkv_bias,
-                                                          out_linear_w,
-                                                          out_linear_bias,
-                                                          ffn_ln_scale,
-                                                          ffn_ln_bias,
-                                                          ffn1_weight,
-                                                          ffn1_bias,
-                                                          ffn2_weight,
-                                                          ffn2_bias,
+                                                          X,
+                                                          CacheKVIn,
+                                                          SrcMask,
+                                                          LnScale,
+                                                          LnBias,
+                                                          QKVW,
+                                                          QKVBias,
+                                                          OutLinearW,
+                                                          OutLinearBias,
+                                                          FFNLnScale,
+                                                          FFNLnBias,
+                                                          FFN1Weight,
+                                                          FFN1Bias,
+                                                          FFN2Weight,
+                                                          FFN2Bias,
                                                           param,
                                                           time_step_value,
-                                                          &out,
-                                                          cache_kv_out);
+                                                          &Out,
+                                                          CacheKVOut);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "xft::fused_multi_transformer");
 #else
-  PADDLE_THROW(platform::errors::PermissionDenied(
+  PADDLE_THROW(paddle::platform::errors::PermissionDenied(
       "fused_multi_transformer_xpu is not supported since it's not compiled "
       "with XPU_XFT"));
 #endif

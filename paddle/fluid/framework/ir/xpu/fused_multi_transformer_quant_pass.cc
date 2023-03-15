@@ -468,42 +468,97 @@ int FusedMultiTransformerQuantPass::ApplyImpl(ir::Graph* graph,
     cast_tofp32_func("FFN1Bias");
     cast_tofp32_func("FFN2Bias");
 
-    // catch other nodes
-    std::vector<Node*> optional_nodes;
-    std::vector<Node*> cache_kv_out_nodes;
-    auto get_nodes_func = [&](const std::string& in_name,
-                              std::vector<Node*>* nodes) {
-      std::vector<std::string> names;
-      if (fused_mt->Op()->HasOutput(in_name)) {
-        names = fused_mt->Op()->Output(in_name);
-      } else {
-        names = fused_mt->Op()->Input(in_name);
-      }
-      for (auto name : names) {
-        Node* curr_node = FindNodeWithName(graph, name);
-        nodes->push_back(curr_node);
-      }
-    };
-    if (cache_kv) {
-      get_nodes_func("CacheKV", &optional_nodes);
-    }
-    if (pre_caches) {
-      get_nodes_func("PreCaches", &optional_nodes);
-    }
-    get_nodes_func("CacheKVOut", &cache_kv_out_nodes);
-
     // Generate fused_multi_transformer_xpu op inplace
     fused_mt->RenameOp("fused_multi_transformer_xpu");
     framework::OpDesc* fused_mt_xpu_op_desc = fused_mt->Op();
     fused_mt_xpu_op_desc->SetType("fused_multi_transformer_xpu");
-    fused_mt_xpu_op_desc->SetInput("QKVW", w_int16_names_vec[0]);
-    fused_mt_xpu_op_desc->SetInput("QKVWMax", w_max_names_vec[0]);
-    fused_mt_xpu_op_desc->SetInput("OutLinearW", w_int16_names_vec[1]);
-    fused_mt_xpu_op_desc->SetInput("OutLinearWMax", w_max_names_vec[1]);
-    fused_mt_xpu_op_desc->SetInput("FFN1Weight", w_int16_names_vec[2]);
-    fused_mt_xpu_op_desc->SetInput("FFN1WeightMax", w_max_names_vec[2]);
-    fused_mt_xpu_op_desc->SetInput("FFN2Weight", w_int16_names_vec[3]);
-    fused_mt_xpu_op_desc->SetInput("FFN2WeightMax", w_max_names_vec[3]);
+    fused_mt_xpu_op_desc->SetInput("x", fused_mt_xpu_op_desc->Input("X"));
+    fused_mt_xpu_op_desc->SetInput("ln_scale",
+                                   fused_mt_xpu_op_desc->Input("LnScale"));
+    fused_mt_xpu_op_desc->SetInput("ln_bias",
+                                   fused_mt_xpu_op_desc->Input("LnBias"));
+    fused_mt_xpu_op_desc->SetInput("qkv_bias",
+                                   fused_mt_xpu_op_desc->Input("QKVBias"));
+    if (cache_kv) {
+      fused_mt_xpu_op_desc->SetInput("cache_kv",
+                                     fused_mt_xpu_op_desc->Input("CacheKV"));
+    }
+    if (pre_caches) {
+      fused_mt_xpu_op_desc->SetInput("pre_caches",
+                                     fused_mt_xpu_op_desc->Input("PreCaches"));
+    }
+    if (rotary_pos_emb) {
+      fused_mt_xpu_op_desc->SetInput(
+          "rotary_pos_emb", fused_mt_xpu_op_desc->Input("RotaryPosEmb"));
+    }
+    if (time_step) {
+      fused_mt_xpu_op_desc->SetInput("time_step",
+                                     fused_mt_xpu_op_desc->Input("TimeStep"));
+    }
+    if (seq_lengths) {
+      fused_mt_xpu_op_desc->SetInput("seq_lengths",
+                                     fused_mt_xpu_op_desc->Input("SeqLengths"));
+    }
+    if (src_mask) {
+      fused_mt_xpu_op_desc->SetInput("src_mask",
+                                     fused_mt_xpu_op_desc->Input("SrcMask"));
+    }
+    fused_mt_xpu_op_desc->SetInput(
+        "out_linear_bias", fused_mt_xpu_op_desc->Input("OutLinearBias"));
+    fused_mt_xpu_op_desc->SetInput("ffn_ln_scale",
+                                   fused_mt_xpu_op_desc->Input("FFNLnScale"));
+    fused_mt_xpu_op_desc->SetInput("ffn_ln_bias",
+                                   fused_mt_xpu_op_desc->Input("FFNLnBias"));
+    fused_mt_xpu_op_desc->SetInput("ffn1_bias",
+                                   fused_mt_xpu_op_desc->Input("FFN1Bias"));
+    fused_mt_xpu_op_desc->SetInput("ffn2_bias",
+                                   fused_mt_xpu_op_desc->Input("FFN2Bias"));
+    fused_mt_xpu_op_desc->SetOutput("cache_kv_out",
+                                    fused_mt_xpu_op_desc->Output("CacheKVOut"));
+    fused_mt_xpu_op_desc->SetOutput("out", fused_mt_xpu_op_desc->Output("Out"));
+
+    fused_mt_xpu_op_desc->RemoveInput("X");
+    fused_mt_xpu_op_desc->RemoveInput("LnScale");
+    fused_mt_xpu_op_desc->RemoveInput("LnBias");
+    fused_mt_xpu_op_desc->RemoveInput("QKVW");
+    fused_mt_xpu_op_desc->RemoveInput("QKVBias");
+    if (cache_kv) {
+      fused_mt_xpu_op_desc->RemoveInput("CacheKV");
+    }
+    if (pre_caches) {
+      fused_mt_xpu_op_desc->RemoveInput("PreCaches");
+    }
+    if (rotary_pos_emb) {
+      fused_mt_xpu_op_desc->RemoveInput("RotaryPosEmb");
+    }
+    if (time_step) {
+      fused_mt_xpu_op_desc->RemoveInput("TimeStep");
+    }
+    if (seq_lengths) {
+      fused_mt_xpu_op_desc->RemoveInput("SeqLengths");
+    }
+    if (src_mask) {
+      fused_mt_xpu_op_desc->RemoveInput("SrcMask");
+    }
+    fused_mt_xpu_op_desc->RemoveInput("OutLinearW");
+    fused_mt_xpu_op_desc->RemoveInput("OutLinearBias");
+    fused_mt_xpu_op_desc->RemoveInput("FFNLnScale");
+    fused_mt_xpu_op_desc->RemoveInput("FFNLnBias");
+    fused_mt_xpu_op_desc->RemoveInput("FFN1Weight");
+    fused_mt_xpu_op_desc->RemoveInput("FFN1Bias");
+    fused_mt_xpu_op_desc->RemoveInput("FFN2Weight");
+    fused_mt_xpu_op_desc->RemoveInput("FFN2Bias");
+    fused_mt_xpu_op_desc->RemoveOutput("CacheKVOut");
+    fused_mt_xpu_op_desc->RemoveOutput("Out");
+
+    fused_mt_xpu_op_desc->SetInput("qkvw", w_int16_names_vec[0]);
+    fused_mt_xpu_op_desc->SetInput("qkvw_max", w_max_names_vec[0]);
+    fused_mt_xpu_op_desc->SetInput("out_linear_w", w_int16_names_vec[1]);
+    fused_mt_xpu_op_desc->SetInput("out_linear_wmax", w_max_names_vec[1]);
+    fused_mt_xpu_op_desc->SetInput("ffn1_weight", w_int16_names_vec[2]);
+    fused_mt_xpu_op_desc->SetInput("ffn1_weight_max", w_max_names_vec[2]);
+    fused_mt_xpu_op_desc->SetInput("ffn2_weight", w_int16_names_vec[3]);
+    fused_mt_xpu_op_desc->SetInput("ffn2_weight_max", w_max_names_vec[3]);
     if (!fused_mt_xpu_op_desc->HasAttr("rotary_emb_dims")) {
       fused_mt_xpu_op_desc->SetAttr("rotary_emb_dims", 0);
     }
