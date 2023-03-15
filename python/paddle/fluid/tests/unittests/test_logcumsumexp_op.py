@@ -318,9 +318,8 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.dtype = np.uint16
         self.python_api = paddle.logcumsumexp
         self.axis = None
-        self.__class__.op_type = self.op_type
-        x = np.random.random([10, 12]).astype(np.float32)
-        output = np_logcumsumexp(x, axis=self.axis, dtype='float32')
+        x = np.arange(12, dtype=np.float32).reshape(3, 4)
+        output = np_logcumsumexp(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 

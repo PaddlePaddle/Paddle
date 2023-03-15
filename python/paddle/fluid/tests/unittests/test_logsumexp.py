@@ -190,28 +190,32 @@ class TestLogsumexp_FP16(TestLogsumexp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestLogsumexpBF16Op(OpTest):
+class TestLogsumexpBF16Op(TestLogsumexp):
     def setUp(self):
-        self.op_type = 'logsumexp'
         self.dtype = np.uint16
-        self.shape = [2, 3, 4, 5]
-        self.axis = [-1]
-        self.keepdim = False
-        self.reduce_all = False
-        self.__class__.op_type = self.op_type
-        self.python_api = paddle.logsumexp_wrapper
-        x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
-        output = ref_logsumexp(x)
+        x = np.random.uniform(-1, 1, self.shape).astype(np.float64)
+        out = ref_logsumexp(x, self.axis, self.keepdim, self.reduce_all)
         self.inputs = {'X': convert_float_to_uint16(x)}
-        self.outputs = {'Out': convert_float_to_uint16(output)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            user_defined_grads=self.user_defined_grads,
+            user_defined_grad_outputs=self.user_defined_grad_outputs,
+            check_eager=True,
+        )
+
+    def calc_grad(self):
+        dy = np.ones(1, dtype=self.dtype)
+        x = self.inputs['X']
+        y = self.outputs['Out']
+        return dy * np.exp(x - y)
 
 
 class TestLogsumexpError(unittest.TestCase):
