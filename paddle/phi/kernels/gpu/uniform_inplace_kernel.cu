@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/core/device_context.h"
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace phi {
 
@@ -90,4 +89,7 @@ PD_REGISTER_KERNEL(uniform_inplace,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+                   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED
+                   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED
+                   }

@@ -53,4 +53,7 @@ PD_REGISTER_KERNEL(uniform_inplace,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(1).SetDataType(paddle::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(paddle::DataType::UNDEFINED);
+}

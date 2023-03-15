@@ -18,4 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/unfold_kernel_impl.h"
 
-PD_REGISTER_KERNEL(unfold, CPU, ALL_LAYOUT, phi::UnfoldKernel, float, double, phi::dtype::float16, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(unfold, CPU, ALL_LAYOUT, phi::UnfoldKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(paddle::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(paddle::DataType::UNDEFINED);
+}
