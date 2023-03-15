@@ -17,6 +17,7 @@
 			*paddle_infer::LayoutConvert*;
 
 			*paddle::experimental*;
+			*paddle::Tensor*;
 			*paddle::internal*;
 			*paddle::get_version*;
 			*paddle::LiteNNAdapterConfig*;
@@ -64,6 +65,9 @@
 			/* *paddle::platform::GetExportedFlagInfoMap*; */
 
 			/* *paddle::framework*; */
+			*paddle::framework::InitDevices*;
+			*paddle::framework::InitMemoryMethod*;
+                        
 			*paddle::framework::InterpreterCore*;
 			*paddle::framework::Executor*;
 			*paddle::framework::proto*;
@@ -73,6 +77,7 @@
 		*Pass*;
 		*profile*;
 		*phi*;
+		PD_*;
 		*cinn*;
 	local:
 		*;

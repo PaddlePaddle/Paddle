@@ -36,7 +36,9 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
-namespace experimental {
+
+using DeviceContextPool = experimental::DeviceContextPool;
+using DefaultAllocator = experimental::DefaultAllocator;
 
 /////// Tensor Methods ////////
 
@@ -149,18 +151,24 @@ const Place &Tensor::place() const {
   return impl_->place();
 }
 
-bool Tensor::is_cpu() const { return paddle::platform::is_cpu_place(place()); }
-
-bool Tensor::is_gpu() const { return paddle::platform::is_gpu_place(place()); }
-
-bool Tensor::is_gpu_pinned() const {
-  return paddle::platform::is_cuda_pinned_place(place());
+bool Tensor::is_cpu() const {
+  return place().GetType() == phi::AllocationType::CPU;
 }
 
-bool Tensor::is_xpu() const { return paddle::platform::is_xpu_place(place()); }
+bool Tensor::is_gpu() const {
+  return place().GetType() == phi::AllocationType::GPU;
+}
+
+bool Tensor::is_gpu_pinned() const {
+  return place().GetType() == phi::AllocationType::GPUPINNED;
+}
+
+bool Tensor::is_xpu() const {
+  return place().GetType() == phi::AllocationType::XPU;
+}
 
 bool Tensor::is_custom_device() const {
-  return paddle::platform::is_custom_place(place());
+  return place().GetType() == phi::AllocationType::CUSTOM;
 }
 
 /* Part 4: Data Access methods */
@@ -433,5 +441,4 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
   }
 }
 
-}  // namespace experimental
 }  // namespace paddle

@@ -34,8 +34,12 @@ class TestCloudRoleMaker(unittest.TestCase):
     def test_pslib_1(self):
         """Test cases for pslib."""
         import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
-        from paddle.incubate.fleet.parameter_server.pslib import fleet
+        from paddle.incubate.distributed.fleet.parameter_server.pslib import (
+            fleet,
+        )
+        from paddle.incubate.distributed.fleet.role_maker import (
+            GeneralRoleMaker,
+        )
 
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -78,7 +82,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             print("do not support pslib test, skip")
             return
 
-        from paddle.fluid.incubate.fleet.base.role_maker import MockBarrier
+        from paddle.incubate.distributed.fleet.role_maker import MockBarrier
 
         mb = MockBarrier()
         mb.barrier()

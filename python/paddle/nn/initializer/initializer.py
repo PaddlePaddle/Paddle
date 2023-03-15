@@ -58,9 +58,9 @@ class Initializer:
                 forward(new_var, block)
 
         # Add hook function for initializing param in dygraph mode
-        param.set_init_func(functools.partial(self.forward, param, block))
+        param.set_init_func(functools.partial(self.forward))
         param._init_op_creator = functools.partial(
-            init_op_creator, self.forward, param
+            init_op_creator, self.forward
         )
 
         return param

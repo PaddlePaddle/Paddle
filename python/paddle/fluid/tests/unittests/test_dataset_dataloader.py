@@ -106,13 +106,13 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataset._set_batch_size(BATCH_SIZE)
 
         if isinstance(place, fluid.CPUPlace):
-            file_num = 10
+            file_num = 1
             os.environ['CPU_NUM'] = str(file_num)
-            places = fluid.cpu_places()
+            places = [fluid.CPUPlace()]
             use_cuda = False
         else:
-            file_num = fluid.core.get_cuda_device_count()
-            places = fluid.cuda_places()
+            file_num = 1
+            places = [fluid.CUDAPlace(0)]
             use_cuda = True
 
         filelist = []
@@ -145,7 +145,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
         dataloader = fluid.io.DataLoader.from_dataset(
             dataset=dataset, places=places, drop_last=self.drop_last
         )
-        prog = fluid.CompiledProgram(main_prog).with_data_parallel()
+        prog = fluid.CompiledProgram(main_prog)
         exe = fluid.Executor(place)
 
         exe.run(startup_prog)

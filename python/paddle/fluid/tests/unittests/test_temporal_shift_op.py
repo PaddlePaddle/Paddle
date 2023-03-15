@@ -139,6 +139,31 @@ class TestTemporalShiftAPI(unittest.TestCase):
                 x=input, seg_num=2, shift_ratio=0.2
             )
 
+    def test_static_fp16_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([4, 4, 112, 112]).astype("float16")
+
+                x = paddle.static.data(
+                    name="x", shape=[4, 4, 112, 112], dtype="float16"
+                )
+
+                y = paddle.nn.functional.temporal_shift(
+                    x=x, seg_num=2, shift_ratio=0.2
+                )
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
     def test_error(self):
         def attr_data_format():
             input = paddle.randn([6, 4, 2, 2])

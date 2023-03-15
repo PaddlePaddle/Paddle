@@ -25,8 +25,10 @@ class TestFlattenOp(OpTest):
         self.python_api = paddle.flatten
         self.python_out_sig = ["Out"]
         self.op_type = "flatten_contiguous_range"
+        self.prim_op_type = "comp"
         self.start_axis = 0
         self.stop_axis = -1
+        self.skip_cinn()
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.in_shape).astype("float64")}
         self.init_attrs()
@@ -35,11 +37,16 @@ class TestFlattenOp(OpTest):
             "XShape": np.random.random(self.in_shape).astype("float32"),
         }
 
+    def skip_cinn(self):
+        self.enable_cinn = True
+
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_eager=True)
+        self.check_output(
+            no_check_set=["XShape"], check_eager=True, check_prim=True
+        )
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out", check_eager=True, check_prim=True)
 
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
@@ -130,6 +137,9 @@ class TestFlattenOp_6(TestFlattenOp):
         self.start_axis = 0
         self.stop_axis = -1
         self.new_shape = (1,)
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
     def init_attrs(self):
         self.attrs = {

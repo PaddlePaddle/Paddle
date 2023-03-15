@@ -176,9 +176,13 @@ def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:
         'layout': None,
         'data_type': None,
         'dispatch': {},
+        'force_backend': None,
     }
     if 'param' in kernel_config:
         kernel['param'] = kernel_config['param']
+
+    if 'force_backend' in kernel_config:
+        kernel['force_backend'] = kernel_config["force_backend"]
 
     if 'backend' in kernel_config:
         kernel['backend'] = parse_candidates(kernel_config["backend"])
@@ -328,7 +332,14 @@ def check_op_config(op_entry, op_name):
         'composite',
     )
     infer_meta_key_set = ('func', 'param')
-    kernel_key_set = ('func', 'param', 'data_type', 'layout', 'backend')
+    kernel_key_set = (
+        'func',
+        'param',
+        'data_type',
+        'layout',
+        'backend',
+        'force_backend',
+    )
     for key in op_entry.keys():
         assert (
             key in base_key_set

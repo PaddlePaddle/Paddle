@@ -224,6 +224,33 @@ class TestTensordotAPI(unittest.TestCase):
                     np_res = tensordot_np(self.x, self.y, axes)
                     np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
 
+    def test_fp16_with_gpu(self):
+        paddle.enable_static()
+        if paddle.fluid.core.is_compiled_with_cuda():
+            for axes in self.all_axes:
+                place = paddle.CUDAPlace(0)
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    input_x = np.random.random([5, 5, 5, 5]).astype("float16")
+                    x = paddle.static.data(
+                        name="x", shape=[5, 5, 5, 5], dtype="float16"
+                    )
+
+                    input_y = np.random.random([5, 5, 5, 5]).astype("float16")
+                    y = paddle.static.data(
+                        name="y", shape=[5, 5, 5, 5], dtype="float16"
+                    )
+
+                    z = paddle.tensordot(x, y, axes)
+                    exe = paddle.static.Executor(place)
+
+                    paddle_res = exe.run(
+                        feed={'x': input_x, 'y': input_y}, fetch_list=[z]
+                    )
+                    np_res = tensordot_np(input_x, input_y, axes)
+                    np.testing.assert_allclose(paddle_res[0], np_res, rtol=1)
+
 
 class TestTensordotAPIFloat64(TestTensordotAPI):
     def set_dtype(self):

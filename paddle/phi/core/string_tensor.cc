@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/string_tensor.h"
 
-#include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/pstring.h"
 
 namespace phi {
@@ -190,7 +190,7 @@ dtype::pstring* StringTensor::mutable_data(const phi::Place& place,
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset) {
     holder_.reset();
-    holder_ = paddle::memory::AllocShared(place, size);
+    holder_ = memory_utils::AllocShared(place, size);
     // Initialize the allocated bytes
     init_holder();
     meta_.offset = 0;

@@ -53,5 +53,18 @@ class TestFallback(unittest.TestCase):
         np.testing.assert_allclose(output_dy.numpy(), output_st.numpy())
 
 
+class TestLoad2(unittest.TestCase):
+    def test_name_load_nograd(self):
+        @paddle.no_grad()
+        def func(x):
+            x = paddle.shape(x)
+            return x
+
+        x = paddle.to_tensor([[3, 3], [1, 1]])
+        output_st = paddle.jit.to_static(func)(x)
+        output_dy = func(x)
+        np.testing.assert_allclose(output_dy.numpy(), output_st.numpy())
+
+
 if __name__ == "__main__":
     unittest.main()

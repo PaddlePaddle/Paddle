@@ -33,8 +33,8 @@ void ClipKernel(const Context& dev_ctx,
                        x_data,
                        out_data,
                        x.numel(),
-                       min.to<float>(),
-                       max.to<float>());
+                       min.to<XPUDataType>(),
+                       max.to<XPUDataType>());
 
   PADDLE_ENFORCE_EQ(r,
                     XPU_SUCCESS,
@@ -46,4 +46,5 @@ void ClipKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(clip, XPU, ALL_LAYOUT, phi::ClipKernel, float) {}
+PD_REGISTER_KERNEL(
+    clip, XPU, ALL_LAYOUT, phi::ClipKernel, float, int64_t, int) {}

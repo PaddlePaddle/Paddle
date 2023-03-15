@@ -38,10 +38,6 @@ PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
                             false,
                             "Enable rpc profiler or not.");
 
-DEFINE_bool(enable_record_op_info,
-            false,
-            "enable operator supplement info recorder");
-
 DEFINE_bool(enable_record_memory, false, "enable memory recorder");
 
 namespace paddle {
@@ -109,25 +105,6 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
       PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
 }
-
-RecordOpInfoSupplement::RecordOpInfoSupplement(
-    const std::string &type,
-    const std::vector<std::pair<const char *, std::vector<framework::DDim>>>
-        &input_shapes,
-    const framework::AttributeMap &attrs) {
-  if (FLAGS_enable_host_event_recorder_hook == false) {
-    return;
-  }
-  if (IsEnabled() == false) {
-    return;
-  }
-  std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
-  uint64_t op_id = 0;
-  HostEventRecorder<OperatorSupplementOriginEvent>::GetInstance().RecordEvent(
-      PosixInNsec(), type, input_shapes, dtypes, attrs, op_id);
-}
-
-bool RecordOpInfoSupplement::IsEnabled() { return FLAGS_enable_record_op_info; }
 
 bool RecordMemEvent::IsEnabled() { return FLAGS_enable_record_memory; }
 
@@ -872,10 +849,6 @@ void EnableHostEventRecorder() { FLAGS_enable_host_event_recorder_hook = true; }
 void DisableHostEventRecorder() {
   FLAGS_enable_host_event_recorder_hook = false;
 }
-
-void EnableOpInfoRecorder() { FLAGS_enable_record_op_info = true; }
-
-void DisableOpInfoRecorder() { FLAGS_enable_record_op_info = false; }
 
 void EnableMemoryRecorder() { FLAGS_enable_record_memory = true; }
 

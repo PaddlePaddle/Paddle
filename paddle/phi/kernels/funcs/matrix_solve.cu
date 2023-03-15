@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/matrix_solve.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -79,28 +80,26 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   }
 
   // Copy the addresses of A and tmp_b from host to device.
-  paddle::memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
-      paddle::memory::Alloc(
-          context.GetPlace(),
-          cpu_ptrs.size() * sizeof(T*),
-          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
-  paddle::memory::Copy(context.GetPlace(),
-                       tmp_gpu_ptrs_data->ptr(),
-                       phi::CPUPlace(),
-                       static_cast<void*>(cpu_ptrs.data()),
-                       cpu_ptrs.size() * sizeof(T*),
-                       context.stream());
+  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data = phi::memory_utils::Alloc(
+      context.GetPlace(),
+      cpu_ptrs.size() * sizeof(T*),
+      phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+  memory_utils::Copy(context.GetPlace(),
+                     tmp_gpu_ptrs_data->ptr(),
+                     phi::CPUPlace(),
+                     static_cast<void*>(cpu_ptrs.data()),
+                     cpu_ptrs.size() * sizeof(T*),
+                     context.stream());
 
   T** gpu_tmp_b_ptrs =
       reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()) + batch_size;
 
   // Allocate device memory for BatchedGETRF's info and pivots.
   int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
-  paddle::memory::allocation::AllocationPtr tmp_gpu_info_data =
-      paddle::memory::Alloc(
-          context.GetPlace(),
-          num_ints * sizeof(int),
-          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+  phi::Allocator::AllocationPtr tmp_gpu_info_data = phi::memory_utils::Alloc(
+      context.GetPlace(),
+      num_ints * sizeof(int),
+      phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
   int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
   auto blas = phi::funcs::GetBlas<Context, T>(context);
@@ -122,12 +121,12 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
                     batch_size);
 
   // check whether BatchedGETRF is executed successfully or not
-  paddle::memory::Copy(phi::CPUPlace(),
-                       info.data(),
-                       context.GetPlace(),
-                       gpu_info_ptr,
-                       sizeof(int) * batch_size,
-                       context.stream());
+  memory_utils::Copy(phi::CPUPlace(),
+                     info.data(),
+                     context.GetPlace(),
+                     gpu_info_ptr,
+                     sizeof(int) * batch_size,
+                     context.stream());
   for (int i = 0; i < batch_size; ++i) {
     PADDLE_ENFORCE_EQ(info[i],
                       0,

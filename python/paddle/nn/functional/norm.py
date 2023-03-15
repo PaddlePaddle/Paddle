@@ -238,8 +238,11 @@ def batch_norm(
         }
 
         helper = LayerHelper('batch_norm', **locals())
+        from paddle.fluid.data_feeder import convert_dtype
 
-        param_dtype = x.dtype if x.dtype != 'float16' else 'float32'
+        param_dtype = (
+            x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
+        )
         saved_mean = helper.create_variable_for_type_inference(
             dtype=param_dtype, stop_gradient=True
         )
@@ -348,15 +351,18 @@ def layer_norm(
 
         # create output
         helper = LayerHelper('layer_norm', **locals())
+        from paddle.fluid.data_feeder import convert_dtype
 
-        dtype = x.dtype
+        param_dtype = (
+            x.dtype if convert_dtype(x.dtype) != 'float16' else 'float32'
+        )
         mean_out = helper.create_variable_for_type_inference(
-            dtype=dtype, stop_gradient=True
+            dtype=param_dtype, stop_gradient=True
         )
         variance_out = helper.create_variable_for_type_inference(
-            dtype=dtype, stop_gradient=True
+            dtype=param_dtype, stop_gradient=True
         )
-        layer_norm_out = helper.create_variable_for_type_inference(dtype)
+        layer_norm_out = helper.create_variable_for_type_inference(x.dtype)
 
         helper.append_op(
             type="layer_norm",
@@ -478,7 +484,7 @@ def local_response_norm(
 
 
     Args:
-        x (Tensor): The input 3-D/4-D/5-D tensor. The data type is float32.
+        x (Tensor): The input 3-D/4-D/5-D tensor. The data type is float16 or float32.
         size (int): The number of channels to sum over.
         alpha (float, optional): The scaling parameter, positive. Default:1e-4
         beta (float, optional): The exponent, positive. Default:0.75
@@ -509,7 +515,9 @@ def local_response_norm(
         print(y.shape)  # [3, 3, 112, 112]
     """
     if not in_dynamic_mode():
-        check_variable_and_dtype(x, 'x', ['float32'], 'local_response_norm')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32'], 'local_response_norm'
+        )
     if data_format not in ['NCL', 'NLC', 'NCHW', 'NHWC', 'NCDHW', 'NDHWC']:
         raise ValueError(
             "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "

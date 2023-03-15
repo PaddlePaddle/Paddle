@@ -1,12 +1,33 @@
+- op : embedding_with_eltwise_add_xpu
+  args : (Tensor[] ids, Tensor[] tables, int64_t padding_idx)
+  output: Tensor
+  infer_meta :
+    func: EmbeddingWithEltwiseAddXPUInferMeta
+  kernel:
+    func: embedding_with_eltwise_add_xpu
+    data_type: tables
+
+- op : equal
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : equal_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
+
 - op : fc_xpu
-  args : (Tensor x, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha)
-  output : Tensor
+  args : (Tensor x, Tensor x_max, Tensor w, Tensor w_max, Tensor bias, int in_num_col_dims, bool transpose_x, float alpha, float beta, int act_type, float act_alpha)
+  output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : FcXPUInferMeta
   kernel :
     func : fc_xpu
     data_type : x
-  optional : bias
+  optional : bias, x_max
 
 - op : generate_sequence_xpu
   args : (Tensor x, DataType dtype)
@@ -17,6 +38,54 @@
     func : generate_sequence_xpu
     data_type : dtype
 
+- op : greater_equal
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : greater_equal_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
+
+- op : greater_than
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : greater_than_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
+
+- op : less_equal
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : less_equal_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
+
+- op : less_than
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : less_than_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
+
 - op : multi_encoder_xpu
   args : (Tensor x, Tensor[] fc_weight, Tensor[] fc_weight_max, Tensor[] fc_bias, Tensor[] ln_scale, Tensor[] ln_bias, Tensor mask, int layer_num, bool norm_before, int hidden_dim, int head_num, int size_per_head, int ffn_hidden_dim_scale, int act_type, int relative_type, int slice_idx)
   output : Tensor(out), Tensor(x_fp16), Tensor(out_fp16)
@@ -26,6 +95,18 @@
     func : multi_encoder_xpu
     data_type : x
   optional : mask, x_fp16, out_fp16
+
+- op : not_equal
+  args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
+  output : Tensor(out)
+  infer_meta :
+    func : CompareRawInferMeta
+    param : [x, y, axis]
+  kernel :
+    func : not_equal_raw
+    param : [x, y, axis]
+    backend : x
+    force_backend : force_cpu
 
 - op : share_buffer
   args : (Tensor[] x, bool[] share_dims_and_dtype={})

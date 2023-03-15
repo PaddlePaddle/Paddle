@@ -119,7 +119,7 @@ def train_network(
         )
 
     # embedding
-    q_emb = fluid.embedding(
+    q_emb = paddle.static.nn.embedding(
         input=q,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
@@ -147,7 +147,7 @@ def train_network(
     )
 
     # embedding
-    pt_emb = fluid.embedding(
+    pt_emb = paddle.static.nn.embedding(
         input=pt,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
@@ -176,7 +176,7 @@ def train_network(
     )
 
     # embedding
-    nt_emb = fluid.embedding(
+    nt_emb = paddle.static.nn.embedding(
         input=nt,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],

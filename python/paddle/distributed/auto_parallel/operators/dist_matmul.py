@@ -377,7 +377,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
 
     # assert len(
     #     Y_var_dim_mapping
-    # ) == 2, "dist matmual only support Y operand with 2 dims now but Y({})'s dim is [{}]".format(
+    # ) == 2, "dist matmul only support Y operand with 2 dims now but Y({})'s dim is [{}]".format(
     #     Y_var.name, Y_var_dim_mapping)
     Y_var_partitioned = False
     for dim in Y_var_dim_mapping:

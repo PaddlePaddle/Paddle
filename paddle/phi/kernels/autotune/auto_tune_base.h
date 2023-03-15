@@ -141,7 +141,43 @@ class AutoTuneBase {
   }
 };
 
-// To init the auto_tuner object.
+template <typename T, typename ReturnType, typename... Args>
+class MatmulAutoTuner
+    : public AutoTuneBase<T, KernelCallback<T, ReturnType, Args...>> {
+ public:
+  static MatmulAutoTuner<T, ReturnType, Args...>* Instance(
+      ReturnType (*func)(Args...)) {
+    static std::once_flag matmul_init_flag;
+    static std::unique_ptr<MatmulAutoTuner<T, ReturnType, Args...>> instance;
+    std::call_once(matmul_init_flag, [&] {
+      auto obj = MakeCallback<T>(func);
+      instance.reset(new MatmulAutoTuner<T, ReturnType, Args...>);
+      instance->AddCallBack(func);
+    });
+    return instance.get();
+  }
+
+  template <typename Context>
+  void Run(const Context& ctx, const size_t key, Args... args) {
+    this->is_init_ = true;
+    this->CheckKernelSize();
+    auto& cache = AutoTuneCache::Instance().GetMatmul();
+    if (cache.Find(key)) {
+      auto best_idx = cache.Get(key);
+      this->kernels_[best_idx].Run(args...);
+    } else {
+      bool use_autotune = AutoTuneStatus::Instance().UseAutoTune();
+      if (use_autotune) {
+        auto best_idx = this->PickBestKernel(ctx, args...);
+        cache.Set(key, best_idx);
+      } else {
+        this->kernels_[0].Run(args...);
+      }
+    }
+  }
+};
+
+// Define the auto_tuner inital object.
 #define DEFINE_AUTOTUNER_COMMON_OBJ(name)                                \
   template <typename T, typename ReturnType, typename... Args>           \
   class name##AutoTuner                                                  \
@@ -161,7 +197,7 @@ class AutoTuneBase {
     }                                                                    \
   };
 
-// To init auto_tuner inital function.
+// Define the auto_tuner inital function.
 #define DEFINE_AUTOTUNER_FN(name)                                    \
   template <typename T, typename ReturnType, typename... Args>       \
   static name##AutoTuner<T, ReturnType, Args...>* Make##name##Tuner( \
@@ -169,10 +205,12 @@ class AutoTuneBase {
     return name##AutoTuner<T, ReturnType, Args...>::Instance(func);  \
   }
 
-#define DEFINE_AUTOTUNER(name) \
-  DEFINE_AUTOTUNER_COMMON_OBJ(name) DEFINE_AUTOTUNER_FN(name)
+#define DEFINE_AUTOTUNER(name)      \
+  DEFINE_AUTOTUNER_COMMON_OBJ(name) \
+  DEFINE_AUTOTUNER_FN(name)
 
 DEFINE_AUTOTUNER(Transpose)
+DEFINE_AUTOTUNER_FN(Matmul)
 
 #undef DEFINE_AUTOTUNER_COMMON_OBJECT
 #undef DEFINE_AUTOTUNER_FN

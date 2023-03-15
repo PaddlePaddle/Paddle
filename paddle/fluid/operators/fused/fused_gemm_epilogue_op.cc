@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -391,7 +390,7 @@ class FusedGemmEpilogueOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
     if (act_type != "none") {
-      op->SetInput("ReserveSpace", this->Input("ReserveSpace"));
+      op->SetInput("ReserveSpace", this->Output("ReserveSpace"));
     }
     op->SetInput("DOut", this->OutputGrad("Out"));
 

@@ -30,9 +30,20 @@ void CumsumGradKernel(const Context& dev_ctx,
                       bool exclusive,
                       bool reverse,
                       DenseTensor* x_grad) {
-  x_grad->Resize(x.dims());
+  auto x_dims = x.dims();
+  // If the attribute of flatten is `True`, the cumsum kernel is compose of the
+  // operation of flatten and cumsum, need to flatten the tensor of input
+  // gradient, and last step need to unflatten the tensor
+  if (flatten) {
+    x_grad->Resize(out_grad.dims());
+  } else {
+    x_grad->Resize(x_dims);
+  }
   CumsumKernel<T, Context>(
       dev_ctx, out_grad, axis, flatten, exclusive, !reverse, x_grad);
+  if (flatten) {
+    x_grad->Resize(x_dims);
+  }
 }
 
 }  // namespace phi

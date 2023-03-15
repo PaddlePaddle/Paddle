@@ -470,9 +470,11 @@ def recompute_sequential(ctx, functions, *args, **kwargs):
 
     Examples:
         .. code-block:: python
-
-            model = paddle.nn.Sequential(...)
-            input = recompute_sequential({'segments' : 1}, model, input)
+            import paddle
+            from paddle.incubate.distributed.fleet import recompute_sequential
+            input = paddle.ones(shape=[8, 10])
+            model = paddle.nn.Sequential(paddle.nn.Linear(10, 10), paddle.nn.Linear(10, 2))
+            output = recompute_sequential({'segments' : 1}, model, input)
     """
     segments = ctx.get('segments', 1)
     preserve_rng_state = ctx.get('preserve_rng_state', True)
