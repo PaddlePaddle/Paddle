@@ -439,6 +439,8 @@ def pow_composite(x, y):
     """
     if isinstance(y, (int, float)):
         y = full([1], y, x.dtype)
+    res = pow(x, y)
+    return res
 
 
 @REGISTER_COMPOSITE('relu')
