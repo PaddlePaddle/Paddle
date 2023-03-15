@@ -94,6 +94,7 @@
   forward : assign (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
+  composite: assign_grad(out_grad, x_grad)
   invoke : assign(out_grad)
 
 - backward_op : assign_out__grad
