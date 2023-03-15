@@ -190,6 +190,12 @@ class TestDistAPI(unittest.TestCase):
             np.testing.assert_allclose(dist(x_i, y_i, p), out[0], rtol=1e-05)
 
 
+class TestDistFP16OP(TestDistOp):
+    def init_data_type(self):
+        if core.is_compiled_with_rocm():
+            self.data_type = np.float16
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

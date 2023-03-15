@@ -168,7 +168,8 @@ void DistKernel(const Context& dev_ctx,
       const DenseTensor* tmp_norm = out;
       std::vector<const DenseTensor*> ins = {tmp_norm};
       std::vector<DenseTensor*> outs = {out};
-      T p_order_ = static_cast<T>(static_cast<MPType>(1.) / p_order);
+      T p_order_ = static_cast<T>(static_cast<MPType>(1.) /
+                                  static_cast<MPType>(p_order));
       phi::funcs::ElementwiseKernel<T>(
           dev_ctx, ins, &outs, PowFunctor<T>(p_order_));
     }
