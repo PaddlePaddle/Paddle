@@ -200,8 +200,8 @@ inline void CheckVar(const std::shared_ptr<VariableWrapper>& pre,
             "The dtype of tensor(%s) before(%s) and after(%s) hook are not "
             "consistent",
             pre->Name(),
-            phi::DataTypeToString(pre->DataType()),
-            phi::DataTypeToString(post->DataType())));
+            framework::DataTypeToString(pre->DataType()),
+            framework::DataTypeToString(post->DataType())));
     PADDLE_ENFORCE_EQ(pre->Place(),
                       post->Place(),
                       platform::errors::PermissionDenied(

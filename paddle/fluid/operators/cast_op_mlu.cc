@@ -35,12 +35,12 @@ class CastMLUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(
-        MLUSupportsCast(src_type, dst_type),
-        true,
-        platform::errors::InvalidArgument("MLU not support cast [%d] to [%d]",
-                                          phi::DataTypeToString(src_type),
-                                          phi::DataTypeToString(dst_type)));
+    PADDLE_ENFORCE_EQ(MLUSupportsCast(src_type, dst_type),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "MLU not support cast [%d] to [%d]",
+                          framework::DataTypeToString(src_type),
+                          framework::DataTypeToString(dst_type)));
 
     output->mutable_data(place, framework::TransToPhiDataType(dst_type));
 

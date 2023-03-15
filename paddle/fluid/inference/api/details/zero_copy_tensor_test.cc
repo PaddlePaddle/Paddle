@@ -80,7 +80,7 @@ bool FillRandomDataAndCheck(PlaceType place,
   auto tensor = CreateTensor(place, &scope, name);
   tensor->CopyFromCpu<T>(data_in.data());
   if (tensor->type() != paddle::inference::ConvertToPaddleDType(
-                            phi::DataTypeTrait<T>::DataType())) {
+                            paddle::framework::DataTypeTrait<T>::DataType())) {
     return false;
   }
   std::vector<T> data_out(length);

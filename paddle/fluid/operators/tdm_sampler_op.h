@@ -268,15 +268,16 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
         framework::TransToProtoVarType(input_tensor.dtype());
     bool input_type_match = input_type == framework::proto::VarType::INT32 ||
                             input_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(
-        input_type_match,
-        true,
-        platform::errors::InvalidArgument(
-            "Input(X) holds the wrong type, it holds %s, but "
-            "desires to be %s or %s",
-            phi::DataTypeToString(input_type),
-            phi::DataTypeToString(framework::proto::VarType::INT32),
-            phi::DataTypeToString(framework::proto::VarType::INT64)));
+    PADDLE_ENFORCE_EQ(input_type_match,
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) holds the wrong type, it holds %s, but "
+                          "desires to be %s or %s",
+                          paddle::framework::DataTypeToString(input_type),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT32),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT64)));
 
     const auto &travel_type =
         framework::TransToProtoVarType(travel_lod_tensor.dtype());
@@ -288,31 +289,34 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "Input(Travel) holds the wrong type, it holds %s, but "
             "desires to be %s or %s",
-            phi::DataTypeToString(travel_type),
-            phi::DataTypeToString(framework::proto::VarType::INT32),
-            phi::DataTypeToString(framework::proto::VarType::INT64)));
+            paddle::framework::DataTypeToString(travel_type),
+            paddle::framework::DataTypeToString(
+                framework::proto::VarType::INT32),
+            paddle::framework::DataTypeToString(
+                framework::proto::VarType::INT64)));
 
     const auto &layer_type =
         framework::TransToProtoVarType(layer_lod_tensor.dtype());
     bool layer_type_match = layer_type == framework::proto::VarType::INT32 ||
                             layer_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(
-        layer_type_match,
-        true,
-        platform::errors::InvalidArgument(
-            "Input(Layer) holds the wrong type, it holds %s, but "
-            "desires to be %s or %s",
-            phi::DataTypeToString(layer_type),
-            phi::DataTypeToString(framework::proto::VarType::INT32),
-            phi::DataTypeToString(framework::proto::VarType::INT64)));
+    PADDLE_ENFORCE_EQ(layer_type_match,
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Input(Layer) holds the wrong type, it holds %s, but "
+                          "desires to be %s or %s",
+                          paddle::framework::DataTypeToString(layer_type),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT32),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT64)));
     PADDLE_ENFORCE_EQ(
         travel_type,
         layer_type,
         platform::errors::InvalidArgument(
             "Input(Travel) must holds the same type with "
             "Input(Layer), but Travel holds %s, and Layer holds %s",
-            phi::DataTypeToString(travel_type),
-            phi::DataTypeToString(layer_type)));
+            paddle::framework::DataTypeToString(travel_type),
+            paddle::framework::DataTypeToString(layer_type)));
 
     auto *out_var = context.OutputVar("Out");
     auto *label_var = context.OutputVar("Labels");

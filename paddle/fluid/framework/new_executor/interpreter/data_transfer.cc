@@ -809,8 +809,9 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
       }
 
       // 3. cast complex grad to real grad inplacely
-      VLOG(3) << "Transform " << phi::DataTypeToString(src_type) << " var `"
-              << var_name << "` to " << phi::DataTypeToString(dst_type)
+      VLOG(3) << "Transform " << framework::DataTypeToString(src_type)
+              << " var `" << var_name << "` to "
+              << framework::DataTypeToString(dst_type)
               << " real var in static graph.";
 
       // NOTE(Aurelius84): Consider to define a complex2real op to deal this

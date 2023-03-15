@@ -127,8 +127,8 @@ class CastOp : public framework::OperatorWithKernel {
                             tensor_place);
     } else {
       VLOG(3) << "MLU not support cast type: "
-              << phi::DataTypeToString(src_type)
-              << " to type: " << phi::DataTypeToString(dst_type)
+              << framework::DataTypeToString(src_type)
+              << " to type: " << framework::DataTypeToString(dst_type)
               << ", fallbacking to CPU one!";
       return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
                             platform::CPUPlace());

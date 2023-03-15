@@ -165,7 +165,7 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
             op.place(), framework::TransToPhiDataType(var->ForwardDataType()));
         VLOG(6) << "Set ungenerated Grad: " << var->Name()
                 << " as zero with dtype "
-                << phi::DataTypeToString(var->ForwardDataType());
+                << framework::DataTypeToString(var->ForwardDataType());
         phi::funcs::set_constant(*dev_ctx, tensor, 0.0);
       }
     }

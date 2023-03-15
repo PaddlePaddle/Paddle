@@ -50,7 +50,7 @@ void SetForwardDataTypeOfGradVar<VariableWrapper>(
   if (var->HasGradVar()) {
     auto grad_var = var->GetGradVar();
     VLOG(6) << "Set grad var (" << grad_var->Name() << ")'s forward dtype to ("
-            << phi::DataTypeToString(var->DataType()) << ").";
+            << framework::DataTypeToString(var->DataType()) << ").";
     grad_var->SetForwardDataType(var->DataType());
   }
 }

@@ -91,9 +91,9 @@ void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
       }
       const auto* tensor = GetTensorFromVar(var->Var());
       if (tensor && tensor->IsInitialized()) {
-        VLOG(6) << "Transform " << phi::DataTypeToString(var->DataType())
+        VLOG(6) << "Transform " << framework::DataTypeToString(var->DataType())
                 << " var `" << var->Name() << "` to "
-                << phi::DataTypeToString(var->ForwardDataType())
+                << framework::DataTypeToString(var->ForwardDataType())
                 << " real var in dynamic graph.";
         phi::DenseTensor out;
         framework::TransComplexToReal(

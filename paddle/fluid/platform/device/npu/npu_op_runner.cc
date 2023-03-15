@@ -57,7 +57,7 @@ aclDataType ConvertToNpuDtype(framework::proto::VarType::Type dtype) {
                     DTYPE_2_ACL_DTYPE.end(),
                     platform::errors::NotFound(
                         "The data type (%s) can not convert to ACL data type.",
-                        phi::DataTypeToString(dtype)));
+                        framework::DataTypeToString(dtype)));
   return iter->second;
 }
 

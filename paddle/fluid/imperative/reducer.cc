@@ -135,7 +135,7 @@ static void ConcatTensorsWithType(
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
           "allreduce.",
-          phi::DataTypeToString(type)));
+          framework::DataTypeToString(type)));
   }
 }
 
@@ -162,7 +162,7 @@ static void SplitTensorsWithType(const DeviceContext &context,
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors for "
           "allreduce.",
-          phi::DataTypeToString(type)));
+          framework::DataTypeToString(type)));
   }
 }
 
@@ -204,7 +204,7 @@ void ConcatTensorsWithType<platform::XPUDeviceContext>(
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
           "allreduce.",
-          phi::DataTypeToString(type)));
+          framework::DataTypeToString(type)));
   }
 }
 
@@ -224,7 +224,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors for "
           "allreduce.",
-          phi::DataTypeToString(type)));
+          framework::DataTypeToString(type)));
   }
 }
 #endif
@@ -250,7 +250,7 @@ void ConcatTensorsWithType<platform::MLUDeviceContext>(
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
           "allreduce.",
-          phi::DataTypeToString(type)));
+          framework::DataTypeToString(type)));
   }
 }
 
@@ -274,7 +274,7 @@ void SplitTensorsWithType<platform::MLUDeviceContext>(
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors for "
           "allreduce.",
-          phi::DataTypeToString(type)));
+          framework::DataTypeToString(type)));
   }
 }
 #endif
@@ -492,8 +492,8 @@ void Reducer::InitializeDenseGroups(
               "Tensor %s has different dtype. Expected dtype is %s, but actual "
               "dtype is %s",
               var_name,
-              phi::DataTypeToString(p_group->dtype_),
-              phi::DataTypeToString(dtype)));
+              framework::DataTypeToString(p_group->dtype_),
+              framework::DataTypeToString(dtype)));
       PADDLE_ENFORCE_EQ(place,
                         place_,
                         platform::errors::PreconditionNotMet(
@@ -1205,7 +1205,7 @@ std::vector<std::vector<size_t>> AssignGroupBySize(
     }
 
     const auto &var_dtype = var->DataType();
-    const auto var_dtype_str = phi::DataTypeToString(var_dtype);
+    const auto var_dtype_str = framework::DataTypeToString(var_dtype);
     VLOG(3) << "var[" << var->GradVarName() << "] 's type is "
             << var->DataType();
     auto &group_info = next_group[var_dtype_str];

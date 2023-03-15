@@ -197,14 +197,15 @@ phi::KernelKey ConvOp::GetExpectedKernelType(
       input_data_type != framework::proto::VarType::BF16) {
     auto filter_data_type = framework::TransToProtoVarType(
         ctx.Input<phi::DenseTensor>("Filter")->dtype());
-    PADDLE_ENFORCE_EQ(input_data_type,
-                      filter_data_type,
-                      platform::errors::InvalidArgument(
-                          "input and filter data type should be consistent, "
-                          "but received input data type is %s and filter type "
-                          "is %s",
-                          phi::DataTypeToString(input_data_type),
-                          phi::DataTypeToString(filter_data_type)));
+    PADDLE_ENFORCE_EQ(
+        input_data_type,
+        filter_data_type,
+        platform::errors::InvalidArgument(
+            "input and filter data type should be consistent, "
+            "but received input data type is %s and filter type "
+            "is %s",
+            paddle::framework::DataTypeToString(input_data_type),
+            paddle::framework::DataTypeToString(filter_data_type)));
   }
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
