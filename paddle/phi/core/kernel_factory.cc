@@ -18,6 +18,7 @@
 #include "paddle/phi/core/enforce.h"
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
