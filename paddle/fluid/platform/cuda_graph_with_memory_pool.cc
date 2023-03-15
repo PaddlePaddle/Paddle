@@ -133,9 +133,8 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
       auto* capturing_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
       auto capturing_stream = capturing_dev_ctx->stream();
       capturing_dev_ctx->SetCUDAGraphAllocator(
-          memory::allocation::AllocatorFacade::Instance()
-              .GetAllocator(place, capturing_stream)
-              .get());
+          memory::allocation::AllocatorFacade::Instance().GetAllocator(
+              place, capturing_stream));
       VLOG(4) << "set CUDAGraphAllocator for dev_ctx: " << capturing_dev_ctx
               << " with stream: " << capturing_stream;
       cuda_graph_event->Wait(platform::kCUDA, capturing_dev_ctx);
