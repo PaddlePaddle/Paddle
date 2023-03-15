@@ -325,14 +325,10 @@ class TestSumOpExclusiveFP16(OpTest):
             self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_output()
+        self.check_output()
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def init_dtype(self):
         self.dtype = np.float16
@@ -380,9 +376,6 @@ class TestSumOpReverseExclusive(OpTest):
 
 
 def create_test_fp16_class(parent, max_relative_error=1e-2):
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
     class TestCumsumFP16Op(parent):
         def init_dtype(self):
             self.dtype = self.dtype_ = np.float16
@@ -391,19 +384,14 @@ def create_test_fp16_class(parent, max_relative_error=1e-2):
             self.enable_cinn = False
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output()
+            self.check_output()
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_grad(
-                    ['X'],
-                    'Out',
-                    check_prim=True,
-                    max_relative_error=max_relative_error,
-                )
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+            )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
     TestCumsumFP16Op.__name__ = cls_name
@@ -424,7 +412,7 @@ create_test_fp16_class(TestSumOpExclusive5)
 create_test_fp16_class(TestSumOpReverseExclusive)
 
 
-def create_test_bf16_class(parent, atol=1e-2, max_relative_error=1e-2):
+def create_test_bf16_class(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
         or not core.is_bfloat16_supported(core.CUDAPlace(0)),
@@ -439,10 +427,12 @@ def create_test_bf16_class(parent, atol=1e-2, max_relative_error=1e-2):
             self.enable_cinn = False
 
         def test_check_output(self):
-            self.check_output(atol=atol)
+            place = paddle.CUDAPlace(0)
+            self.check_output_with_place(place, check_prim=True)
 
         def test_check_grad(self):
-            self.check_grad(["X"], "Out", max_relative_error=max_relative_error)
+            place = paddle.CUDAPlace(0)
+            self.check_grad_with_place(place, ["X"], "Out", check_prim=True)
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")
     TestCumsumBF16Op.__name__ = cls_name
