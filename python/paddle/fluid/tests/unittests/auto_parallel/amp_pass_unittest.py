@@ -102,19 +102,19 @@ class TestAMPPass(unittest.TestCase):
         amp_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o1_losses)
 
-        # # mp2 amp-o2 training
-        # amp_o2_engine = self.get_engine(True, "o2")
-        # history = amp_o2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        # amp_o2_losses = np.array(history.history["loss"])
-        # amp_o2_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
-        # # self.check_results(mp_losses, amp_o2_losses)
+        # mp2 amp-o2 training
+        amp_o2_engine = self.get_engine(True, "o2")
+        history = amp_o2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o2_losses = np.array(history.history["loss"])
+        amp_o2_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
+        # self.check_results(mp_losses, amp_o2_losses)
 
-        # # mp2 amp-o3 training
-        # amp_o3_engine = self.get_engine(True, "o3")
-        # history = amp_o3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        # amp_o3_losses = np.array(history.history["loss"])
-        # amp_o3_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
-        # # self.check_results(mp_losses, amp_o3_losses)
+        # mp2 amp-o3 training
+        amp_o3_engine = self.get_engine(True, "o3")
+        history = amp_o3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o3_losses = np.array(history.history["loss"])
+        amp_o3_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
+        # self.check_results(mp_losses, amp_o3_losses)
 
 
 if __name__ == "__main__":
