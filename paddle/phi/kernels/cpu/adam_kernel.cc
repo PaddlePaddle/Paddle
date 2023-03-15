@@ -270,7 +270,6 @@ void MergedAdamKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(adam, CPU, ALL_LAYOUT, phi::AdamDenseKernel, float, double) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
 PD_REGISTER_KERNEL(
