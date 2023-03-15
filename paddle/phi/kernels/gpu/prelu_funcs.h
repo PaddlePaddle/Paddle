@@ -47,7 +47,7 @@ struct PReluChannelFirstWiseCUDAFunctor {
         plane_size_(plane_size) {}
 
   HOSTDEVICE inline T operator()(const unsigned int n) const {
-    constexpr T zero = static_cast<T>(0);
+    T zero = static_cast<T>(0);
     size_t temp = n / plane_size_;
     size_t channel_index = temp % channel_num_;
     T scale = alpha_[channel_index];
@@ -68,7 +68,7 @@ struct PReluChannelLastWiseCUDAFunctor {
       : x_(x), alpha_(alpha), channel_num_(channel_num) {}
 
   HOSTDEVICE inline T operator()(const unsigned int n) const {
-    constexpr T zero = static_cast<T>(0);
+    T zero = static_cast<T>(0);
     size_t channel_index = n % channel_num_;
     T scale = alpha_[channel_index];
     T x = x_[n];
@@ -88,7 +88,7 @@ struct PreluElementWiseDirectCUDAFunctor {
       : x_(x), alpha_(alpha), spatial_size_(spatial_size) {}
 
   HOSTDEVICE inline T operator()(const unsigned int n) const {
-    constexpr T zero = static_cast<T>(0);
+    T zero = static_cast<T>(0);
     size_t element_index = n % spatial_size_;
     T scale = alpha_[element_index];
     T x = x_[n];
@@ -102,7 +102,7 @@ struct PreluScalarDirectCUDAFunctor {
   HOSTDEVICE inline PreluScalarDirectCUDAFunctor(const T* scalar)
       : scalar_(scalar) {}
   HOSTDEVICE inline T operator()(const T x) const {
-    constexpr T zero = static_cast<T>(0);
+    T zero = static_cast<T>(0);
     return (x > zero) ? x : scalar_[0] * x;
   }
 };
