@@ -18,6 +18,20 @@
 
 namespace phi {
 
+/**
+ * @brief Binary min functor using min
+ */
+template <typename T>
+struct CudaFastMinFunctor {
+  inline T initial() {
+    return static_cast<T>(std::numeric_limits<T>::lowest());
+  }
+
+  __device__ __forceinline__ T operator()(const T a, const T b) const {
+    return min(a, b);
+  }
+};
+
 template <typename T, typename Context>
 void MinRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
@@ -27,7 +41,7 @@ void MinRawKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
-  phi::Reduce<T, kps::MinFunctor, kps::IdentityFunctor>(
+  phi::Reduce<T, CudaFastMinFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 }
 

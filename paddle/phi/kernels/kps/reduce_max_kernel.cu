@@ -18,6 +18,20 @@
 
 namespace phi {
 
+/**
+ * @brief Binary max functor using std::max
+ */
+template <typename T>
+struct CudaFastMaxFunctor {
+  inline T initial() {
+    return static_cast<T>(std::numeric_limits<T>::lowest());
+  }
+
+  __device__ __forceinline__ T operator()(const T a, const T b) const {
+    return max(a, b);
+  }
+};
+
 template <typename T, typename Context>
 void MaxRawKernel(const Context& dev_ctx,
                   const DenseTensor& x,
@@ -27,7 +41,7 @@ void MaxRawKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
-  phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
+  phi::Reduce<T, CudaFastMaxFunctor, kps::IdentityFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 }
 

@@ -613,7 +613,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
     input_idx = block.BlockIdY() * block.BlockDimX() * reduce_num_per_thread;
     left_idx = block.BlockIdX() * block.BlockDimY() * block.GetLoopSize() +
                THREAD_ID_Y;
-    stride = block.BlockDimX();
+    stride = block.BlockDimX() * REDUCE_VEC_SIZE;
     block_size = block.BlockDimX();
     need_store = (THREAD_ID_X == 0) && (left_idx < left_num);
     // store_offset = block.BlockIdY() * left_num + left_idx;
@@ -626,7 +626,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
     input_idx = block.BlockIdY() * block.BlockDimY() * reduce_num_per_thread;
     left_idx = block.BlockIdX() * block.BlockDimX() * block.GetLoopSize() +
                THREAD_ID_X;
-    stride = block.BlockDimY();
+    stride = block.BlockDimY() * REDUCE_VEC_SIZE;
     block_size = block.BlockDimY();
     need_store = (THREAD_ID_Y == 0) && (left_idx < left_num);
     loop_left = min(block.GetLoopSize(), left_num - left_idx);
@@ -646,9 +646,10 @@ __global__ void ReduceAnyKernel(const Tx* x,
     MPType reduce_var = init;
     // load REDUCE_VEC_SIZE data once, and then compute
     input_idx = input_idx_tmp;
-    int bound = min(input_idx_tmp + reduce_num_per_thread * stride, reduce_num);
-    for (; input_idx + REDUCE_VEC_SIZE * block_size < bound;
-         input_idx += REDUCE_VEC_SIZE * stride) {
+    int bound =
+        min(input_idx_tmp + reduce_num_per_thread * block_size, reduce_num);
+    for (; input_idx + block_size * REDUCE_VEC_SIZE < bound;
+         input_idx += stride) {
       kps::ReadDataReduce<Tx,
                           Tx,
                           1,
@@ -663,7 +664,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
                                  1,
                                  reduce_num,
                                  1,
-                                 stride,
+                                 block_size,
                                  kps::IdentityFunctor<Tx>(),
                                  reduce_last_dim);
       kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, TransformOp>(
@@ -691,7 +692,7 @@ __global__ void ReduceAnyKernel(const Tx* x,
                               1,
                               bound - input_idx,
                               1,
-                              stride,
+                              block_size,
                               transformer,
                               reduce_last_dim);
     kps::Reduce<MPType,
