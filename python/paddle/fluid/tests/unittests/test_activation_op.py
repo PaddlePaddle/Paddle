@@ -1940,7 +1940,7 @@ class TestGeluApproximate(TestActivation):
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = gelu(x, approximate)
-        self.enable_cinn = False
+        self.enable_cinn = True
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
@@ -1973,7 +1973,7 @@ class TestGelu(TestActivation):
         self.attrs = {"approximate": approximate}
 
     def if_enable_cinn(self):
-        self.enable_cinn = False
+        self.enable_cinn = True
 
     def test_check_output(self):
         self.check_output(check_prim=True)

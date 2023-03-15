@@ -64,7 +64,7 @@ class TestGatherNdOpWithLowIndex(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
-        self.enable_cinn = False
+        self.enable_cinn = True
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1], [2]]).astype("int64")
 
@@ -118,7 +118,7 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
         self.op_type = "gather_nd"
         self.prim_op_type = "prim"
         self.python_api = paddle.gather_nd
-        self.enable_cinn = False
+        self.enable_cinn = True
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1, 1], [2, 1]]).astype("int64")
 

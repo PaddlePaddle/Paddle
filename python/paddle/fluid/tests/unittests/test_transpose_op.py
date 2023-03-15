@@ -124,7 +124,7 @@ class TestCase10(TestTransposeOp):
         self.initTestCase()
         self.python_api = paddle.transpose
         self.prim_op_type = "prim"
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
