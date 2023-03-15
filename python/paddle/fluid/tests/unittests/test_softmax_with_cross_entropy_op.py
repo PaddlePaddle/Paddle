@@ -29,7 +29,7 @@ def cross_entropy(softmax, label, soft_label, axis, ignore_index=-1):
     axis %= len(shape)
     n = int(np.prod(shape[:axis]))
     axis_dim = shape[axis]
-    remain = int(np.prod(shape[axis + 1:]))
+    remain = int(np.prod(shape[axis + 1 :]))
     softmax_reshape = softmax.reshape((n, axis_dim, remain))
     label_reshape = label.reshape((n, 1, remain))
     result = np.zeros_like(label_reshape, dtype=softmax.dtype)
@@ -930,11 +930,14 @@ class TestSoftmaxWithCrossEntropyOpDivideZero(unittest.TestCase):
         def divide_zero_case():
             array = np.array([], dtype=np.float32)
             logits = paddle.to_tensor(
-                np.reshape(array, [1, 0]), dtype='float32')
+                np.reshape(array, [1, 0]), dtype='float32'
+            )
             array = np.array([1], dtype=np.float32)
             label = paddle.to_tensor(np.reshape(array, [1]), dtype='float32')
             paddle.nn.functional.softmax_with_cross_entropy(
-                logits, label, soft_label=True, numeric_stable_mode=True, axis=0)
+                logits, label, soft_label=True, numeric_stable_mode=True, axis=0
+            )
+
         self.assertRaises(ValueError, divide_zero_case)
 
 
