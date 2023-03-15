@@ -4842,8 +4842,8 @@ def heaviside(x, y, name=None):
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
-        x (Tensor): The input tensor of Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
-        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be float16, float32, float64, int32 or int64.
+        x (Tensor): The input tensor of Heaviside step function, it's data type should be bfloat16, float16, float32, float64, int32 or int64.
+        y (Tensor): The tensor that determines a Heaviside step function, it's data type should be bfloat16, float16, float32, float64, int32 or int64.
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
