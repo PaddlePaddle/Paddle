@@ -397,9 +397,15 @@ class LayerHelperBase:
                         "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16'] type. Set default_initializer to fit the parameter dtype!"
                     )
             else:
-                if dtype not in ['float16', 'float32', 'float64', 'bfloat16']:
+                if dtype not in [
+                    'float16',
+                    'float32',
+                    'float64',
+                    'bfloat16',
+                    'float',
+                ]:
                     raise TypeError(
-                        "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16'] type. Set default_initializer to fit the parameter dtype!"
+                        "Can not create parameter with default initializer when dtype is not ['float16', 'float32', 'float64', 'bfloat16', 'float'] type. Set default_initializer to fit the parameter dtype!"
                     )
             if is_bias:
                 attr._set_default_bias_initializer()
