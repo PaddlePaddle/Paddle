@@ -465,7 +465,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   auto static_path = Get<std::string>("static_path");
   auto predictor_id = Get<int>("predictor_id");
-  if (!static_path.empty() and
+  if (!static_path.empty() &&
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global().Has(
           static_path)) {
     VLOG(3) << "TensorRT engine " << static_path
