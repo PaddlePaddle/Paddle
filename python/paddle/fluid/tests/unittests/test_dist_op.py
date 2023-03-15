@@ -192,8 +192,7 @@ class TestDistAPI(unittest.TestCase):
 
 class TestDistFP16OP(TestDistOp):
     def init_data_type(self):
-        if core.is_compiled_with_rocm():
-            self.data_type = np.float16
+        self.data_type = np.float16
 
 
 if __name__ == '__main__':
