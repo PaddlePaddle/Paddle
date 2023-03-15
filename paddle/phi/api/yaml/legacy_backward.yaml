@@ -1144,6 +1144,7 @@
     param : [out]
   kernel :
     func : softmax_grad
+  composite : softmax_grad(out, out_grad, axis, x_grad)
 
 - backward_op : spectral_norm_grad
   forward : spectral_norm (Tensor weight, Tensor u, Tensor v, int dim, int power_iters, float eps) -> Tensor(out)
