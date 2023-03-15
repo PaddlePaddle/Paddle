@@ -982,7 +982,7 @@ set_tests_properties(test_matmul_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nearest_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_gather_op PROPERTIES TIMEOUT 180)
+set_tests_properties(test_gather_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_static_save_load PROPERTIES TIMEOUT 250)
 set_tests_properties(test_pylayer_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_paddle_save_load_binary PROPERTIES TIMEOUT 120)
@@ -1217,7 +1217,8 @@ set(TEST_CINN_OPS
     test_transpose_op
     test_reshape_op
     test_mean_op
-    test_unsqueeze2_op)
+    test_unsqueeze2_op
+    test_gather_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)

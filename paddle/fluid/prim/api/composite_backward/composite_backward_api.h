@@ -59,7 +59,11 @@ void gather_grad(const Tensor& x,
   std::vector<int> reverse_perm(tmp_perm);
   // make origin ranks
   for (int i = 0; i < static_cast<int>(tmp_perm.size()); ++i) {
-    reverse_perm[tmp_perm[i]] = i;
+    if (tmp_perm[i] >= 0) {
+      reverse_perm[tmp_perm[i]] = i;
+    } else {
+      reverse_perm[tmp_perm[i] + tmp_perm.size()] = i;
+    }
   }
 
   // transpose out_grad and zero grad to target rank.
