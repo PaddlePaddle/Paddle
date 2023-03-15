@@ -424,4 +424,4 @@ cc_library(
 cc_test(
   init_extension_test
   SRCS init_extension_test.cc
-  DEPS init_extension phi)
+  DEPS phi_tensor init_extension)
