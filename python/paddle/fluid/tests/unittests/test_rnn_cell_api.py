@@ -22,7 +22,6 @@ from rnn.rnn_numpy import rnn as numpy_rnn
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers.utils as utils
 from paddle.fluid import framework
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
@@ -226,11 +225,11 @@ class TestRnnUtil(unittest.TestCase):
     def test_case(self):
         inputs = {"key1": 1, "key2": 2}
         func = lambda x: x + 1
-        outputs = utils.map_structure(func, inputs)
-        utils.assert_same_structure(inputs, outputs)
+        outputs = paddle.utils.map_structure(func, inputs)
+        paddle.utils.assert_same_structure(inputs, outputs)
         try:
             inputs["key3"] = 3
-            utils.assert_same_structure(inputs, outputs)
+            paddle.utils.assert_same_structure(inputs, outputs)
         except ValueError as identifier:
             pass
 
