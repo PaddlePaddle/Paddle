@@ -1,3 +1,17 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import random
 import unittest
 from functools import partial
@@ -5,7 +19,6 @@ from functools import partial
 import numpy as np
 
 import paddle
-from paddle.vision.models import resnet18
 
 # paddle.set_device('cpu')
 
@@ -71,16 +84,6 @@ class TestTrainStepTinyModel(unittest.TestCase):
             dygraph_loss = dygraph_loss.numpy()
             static_loss = static_loss.numpy()
             np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-5)
-
-
-class TestTrainStepTinyModelAdadelta(TestTrainStepTinyModel):
-    def setUp(self):
-        self.input = paddle.randn([10000, 10])
-        self.net_creator = TinyModel
-        self.optimizer_creator = partial(paddle.optimizer.Adadelta, 0.001)
-        self.loss_fn = loss_fn_tiny_model
-        self.train_step_func = train_step_tiny_model
-        self.steps = 5
 
 
 class TestTrainStepTinyModelAdadelta(TestTrainStepTinyModel):

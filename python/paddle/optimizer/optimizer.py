@@ -469,7 +469,7 @@ class Optimizer:
                         framework.default_main_program()
                     ] = paddle.static.create_global_var(
                         name=unique_name.generate("learning_rate"),
-                        shape=[],
+                        shape=[1],
                         value=float(self._learning_rate),
                         dtype=_lr_dtype,
                         persistable=True,
