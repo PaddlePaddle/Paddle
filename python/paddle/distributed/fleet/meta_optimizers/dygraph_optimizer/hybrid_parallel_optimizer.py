@@ -81,10 +81,6 @@ class HybridParallelClipGrad:
                         sum_square_dist_bf16.append(sum_square)
                     elif g.dtype == paddle.float32:
                         sum_square_dist_fp32.append(sum_square)
-                    else:
-                        raise TypeError(
-                            "Only fp32/fp16/bf16 are supported as dtype of gradients for HybridParallelClipGrad"
-                        )
                 else:
                     if g.dtype == paddle.float16:
                         sum_square_not_dist_fp16.append(sum_square)
@@ -92,10 +88,6 @@ class HybridParallelClipGrad:
                         sum_square_not_dist_bf16.append(sum_square)
                     elif g.dtype == paddle.float32:
                         sum_square_not_dist_fp32.append(sum_square)
-                    else:
-                        raise TypeError(
-                            "Only fp32/fp16/bf16 are supported as dtype of gradients for HybridParallelClipGrad"
-                        )
 
         # global norm of distributed FP16 params_and_grads
         if len(sum_square_dist_fp16) == 0:
