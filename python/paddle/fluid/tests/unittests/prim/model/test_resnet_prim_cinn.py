@@ -142,10 +142,10 @@ class TestResnet(unittest.TestCase):
     def test_prim(self):
         # todo: to be removed after adjust of rtol
         core._set_prim_forward_blacklist("batch_norm")
+        core._add_skip_comp_ops("batch_norm")
         dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
         # NOTE: Now dy2st is equal to dy2st_prim. With the splitting of kernels, the threshold here may need to be adjusted
-        np.testing.assert_allclose(self.dy2st[0:2], dy2st_prim[0:2], rtol=1e-5)
-        np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-1)
+        np.testing.assert_allclose(self.dy2st, dy2st_prim, rtol=1e-6)
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
