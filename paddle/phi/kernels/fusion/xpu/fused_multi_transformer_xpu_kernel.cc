@@ -255,9 +255,8 @@ void FusedMultiTransformerXpuKernel(
                                                           CacheKVOut);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "xft::fused_multi_transformer");
 #else
-  PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-      "fused_multi_transformer_xpu is not supported since it's not compiled "
-      "with XPU_XFT"));
+  LOG(FATAL) << "fused_multi_transformer_xpu is not supported since it's not "
+                "compiled with XPU_XFT";
 #endif
 }
 
