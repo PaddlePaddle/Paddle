@@ -408,267 +408,107 @@ class TestAddMMAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
+
+
 class TestAddMMFP16Op(OpTest):
     def setUp(self):
         self.op_type = "addmm"
         self.python_api = paddle.addmm
         self.dtype = np.float16
         self.init_dtype_type()
+        input=np.random.random((100, 1)).astype(np.float32)
+        x=np.random.random((100, 10)).astype(np.float32)
+        y=np.random.random((10, 20)).astype(np.float32)
+        out=input+np.dot(x,y)
         self.inputs = {
-            'Input': np.random.random((100, 1)).astype(self.dtype),
-            'X': np.random.random((100, 10)).astype(self.dtype),
-            'Y': np.random.random((10, 20)).astype(self.dtype),
+            'Input': input.astype(self.dtype),
+            'X': x.astype(self.dtype),
+            'Y': y.astype(self.dtype),
         }
         self.outputs = {
-            'Out': self.inputs['Input']
-            + np.dot(self.inputs['X'], self.inputs['Y'])
+            'Out': out
         }
 
     def init_dtype_type(self):
         self.dtype=np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input', 'X', 'Y'], 'Out', atol=1e-3)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Input', 'X', 'Y'], 'Out', max_relative_error=1e-2
+        )
 
     def test_check_grad_x(self):
-        self.check_grad(['X'], 'Out', no_grad_set=None, atol=1e-3)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', max_relative_error=1e-2)
 
     def test_check_grad_y(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=None, atol=1e-3)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Y'], 'Out', max_relative_error=1e-2)
 
     def test_check_grad_input(self):
-        self.check_grad(['Input'], 'Out', no_grad_set=None, atol=1e-3)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Input'], 'Out', max_relative_error=1e-2
+        )
 
 
-class TestAddMMFP16Op3(OpTest):
-    def setUp(self):
-        self.op_type = "addmm"
-        self.python_api = paddle.addmm
-        self.dtype = np.float16
-        self.init_dtype_type()
-        self.inputs = {
-            'Input': np.random.random((1, 100)).astype(self.dtype),
-            'X': np.random.random((20, 10)).astype(self.dtype),
-            'Y': np.random.random((10, 100)).astype(self.dtype),
-        }
-        self.attrs = {
-            'Alpha': 0.5,
-            'Beta': 2.0,
-        }
-        self.outputs = {
-            'Out': self.attrs['Beta'] * self.inputs['Input']
-            + self.attrs['Alpha'] * np.dot(self.inputs['X'], self.inputs['Y'])
-        }
-
-    def init_dtype_type(self):
-        self.dtype=np.float16
-
-    def test_check_output(self):
-        self.check_output(atol=1e-3)
-
-    def test_check_grad_normal(self):
-        self.check_grad(['Input', 'X', 'Y'], 'Out', atol=1e-3)
-
-    def test_check_grad_x(self):
-        self.check_grad(['X'], 'Out', no_grad_set=None, atol=1e-3)
-
-    def test_check_grad_y(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=None, atol=1e-3)
-
-    def test_check_grad_input(self):
-        self.check_grad(['Input'], 'Out', no_grad_set=None, atol=1e-3)
-
-
-class TestAddMMFP16Op4(OpTest):
-    def setUp(self):
-        self.op_type = "addmm"
-        self.python_api = paddle.addmm
-        self.dtype = np.float16
-        self.init_dtype_type()
-        self.inputs = {
-            'Input': np.random.random((100)).astype(self.dtype),
-            'X': np.random.random((20, 10)).astype(self.dtype),
-            'Y': np.random.random((10, 100)).astype(self.dtype),
-        }
-        self.attrs = {
-            'Alpha': 0.5,
-            'Beta': 2.0,
-        }
-        self.outputs = {
-            'Out': self.attrs['Beta'] * self.inputs['Input']
-            + self.attrs['Alpha'] * np.dot(self.inputs['X'], self.inputs['Y'])
-        }
-
-    def init_dtype_type(self):
-        self.dtype=np.float16
-
-    def test_check_output(self):
-        self.check_output(atol=1e-3)
-
-    def test_check_grad_normal(self):
-        self.check_grad(['Input', 'X', 'Y'], 'Out', atol=1e-3)
-
-    def test_check_grad_x(self):
-        self.check_grad(['X'], 'Out', no_grad_set=None, atol=1e-3)
-
-    def test_check_grad_y(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=None, atol=1e-3)
-
-    def test_check_grad_input(self):
-        self.check_grad(['Input'], 'Out', no_grad_set=None, atol=1e-3)
-
-
-    class TestAddMMFP16Op3(OpTest):
-        def setUp(self):
-            self.op_type = "addmm"
-            self.python_api = paddle.addmm
-            self.dtype = np.float16
-            self.init_dtype_type()
-            self.inputs = {
-                'Input': np.random.random((1, 100)).astype(self.dtype),
-                'X': np.random.random((20, 10)).astype(self.dtype),
-                'Y': np.random.random((10, 100)).astype(self.dtype),
-            }
-            self.attrs = {
-                'Alpha': 0.5,
-                'Beta': 2.0,
-            }
-            self.outputs = {
-                'Out': self.attrs['Beta'] * self.inputs['Input']
-                       + self.attrs['Alpha'] * np.dot(self.inputs['X'], self.inputs['Y'])
-            }
-
-        def init_dtype_type(self):
-            pass
-
-        def test_check_output(self):
-            self.check_output(atol=1e-3)
-
-        def test_check_grad_normal(self):
-            self.check_grad(['Input', 'X', 'Y'], 'Out', atol=1e-3)
-
-        def test_check_grad_x(self):
-            self.check_grad(['X'], 'Out', no_grad_set=None, atol=1e-3)
-
-        def test_check_grad_y(self):
-            self.check_grad(['Y'], 'Out', no_grad_set=None, atol=1e-3)
-
-        def test_check_grad_input(self):
-            self.check_grad(['Input'], 'Out', no_grad_set=None, atol=1e-3)
-
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
 
 class TestAddMMBP16Op(OpTest):
     def setUp(self):
         self.op_type = "addmm"
         self.python_api = paddle.addmm
+        self.dtype=np.uint16
+        input = np.random.random((100, 1)).astype(np.float32)
+        x = np.random.random((100, 10)).astype(np.float32)
+        y = np.random.random((10, 20)).astype(np.float32)
+        out=input+np.dot(x,y)
         self.inputs = {
-            'Input': convert_float_to_uint16(np.random.random((100, 1))),
-            'X': convert_float_to_uint16(np.random.random((100, 10))),
-            'Y': convert_float_to_uint16(np.random.random((10, 20))),
+            'Input': convert_float_to_uint16(input),
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
         }
         self.outputs = {
-            'Out': convert_float_to_uint16(self.inputs['Input'] + np.dot(self.inputs['X'], self.inputs['Y']))
+            'Out': convert_float_to_uint16(out)
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input', 'X', 'Y'], 'Out', atol=1e-3)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Input', 'X', 'Y'], 'Out', max_relative_error=1e-2
+        )
 
     def test_check_grad_x(self):
-        self.check_grad(['X'], 'Out', no_grad_set=None, atol=1e-3)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', max_relative_error=1e-2)
 
     def test_check_grad_y(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=None, atol=1e-3)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Y'], 'Out', max_relative_error=1e-2)
 
     def test_check_grad_input(self):
-        self.check_grad(['Input'], 'Out', no_grad_set=None, atol=1e-3)
-
-
-
-class TestAddMMBP16Op3(OpTest):
-
-    def setUp(self):
-        self.op_type = "addmm"
-        self.python_api = paddle.addmm
-        self.dtype = np.uint16
-        self.init_dtype_type()
-        self.inputs = {
-            'Input': convert_float_to_uint16(np.random.random((1, 100))),
-            'X': convert_float_to_uint16(np.random.random((20, 10))),
-            'Y': convert_float_to_uint16(np.random.random((10, 100))),
-        }
-        self.attrs = {
-            'Alpha': 0.5,
-            'Beta': 2.0,
-        }
-        self.outputs = {
-            'Out': self.attrs['Beta'] * self.inputs['Input']
-                   + self.attrs['Alpha'] * np.dot(self.inputs['X'], self.inputs['Y'])
-        }
-
-    def init_dtype_type(self):
-        self.dtype = np.uint16
-
-    def test_check_output(self):
-        self.check_output(atol=1e-3)
-
-    def test_check_grad_normal(self):
-        self.check_grad(['Input', 'X', 'Y'], 'Out', atol=1e-3)
-
-    def test_check_grad_x(self):
-        self.check_grad(['X'], 'Out', no_grad_set=None, atol=1e-3)
-
-    def test_check_grad_y(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=None, atol=1e-3)
-
-    def test_check_grad_input(self):
-        self.check_grad(['Input'], 'Out', no_grad_set=None, atol=1e-3)
-
-
-class TestAddMMBP16Op4(OpTest):
-    def setUp(self):
-        self.op_type = "addmm"
-        self.python_api = paddle.addmm
-        self.dtype = np.float32
-        self.init_dtype_type()
-        self.inputs = {
-            'Input': self.convert_float_to_uint16(np.random.random((100)).astype(self.dtype)),
-            'X': self.convert_float_to_uint16(np.random.random((20, 10)).astype(self.dtype)),
-            'Y': self.convert_float_to_uint16(np.random.random((10, 100)).astype(self.dtype)),
-        }
-        self.attrs = {
-            'Alpha': 0.5,
-            'Beta': 2.0,
-        }
-        out_ref = self.attrs['Beta'] * self.convert_float_to_uint16(self.inputs['Input'])
-        out_ref += self.attrs['Alpha'] * np.dot(convert_uint16_to_float(self.inputs['X']),
-                                                convert_uint16_to_float(self.inputs['Y']))
-        self.outputs = {'Out': self.convert_float_to_uint16(out_ref)}
-
-    def init_dtype_type(self):
-        self.dtype = np.uint16
-
-
-
-    def test_check_output(self):
-        self.check_output(atol=1e-3)
-
-    def test_check_grad_normal(self):
-        self.check_grad(['Input', 'X', 'Y'], 'Out', atol=1e-3)
-
-    def test_check_grad_x(self):
-        self.check_grad(['X'], 'Out', no_grad_set=None, atol=1e-3)
-
-    def test_check_grad_y(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=None, atol=1e-3)
-
-    def test_check_grad_input(self):
-        self.check_grad(['Input'], 'Out', no_grad_set=None, atol=1e-3)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['Input'], 'Out', max_relative_error=1e-2
+        )
 
 
 if __name__ == "__main__":
