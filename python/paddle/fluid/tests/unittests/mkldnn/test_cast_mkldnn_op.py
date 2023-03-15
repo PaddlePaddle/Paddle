@@ -58,9 +58,10 @@ class TestCastBF16ToFP32MKLDNNOp(OpTest):
             user_defined_grads=[self.inputs['X']],
             user_defined_grad_outputs=[self.outputs['Out']],
         )
-    
+
     def init_shape(self):
         self.shape = [10, 10]
+
 
 class TestCastFP32ToBF16MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
     def init_data(self):
@@ -79,9 +80,11 @@ class TestCastFP32ToFP32MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
         self.x = np.random.random(size=[7, 15]).astype("float32")
         self.out = self.x
 
+
 class TestCastBF16ToFP32MKLDNNOp_ZeroDim(TestCastBF16ToFP32MKLDNNOp):
     def init_shape(self):
         self.shape = []
+
 
 if __name__ == '__main__':
     paddle.enable_static()

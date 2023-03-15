@@ -31,7 +31,7 @@ class TestScaleOp(OpTest):
             'Out': (self.inputs['X'] * self.attrs['scale']) + self.attrs['bias']
         }
 
-    def init_shape(self):  
+    def init_shape(self):
         self.shape = [10, 10]
 
     def test_check_output(self):
@@ -40,9 +40,11 @@ class TestScaleOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
+
 class TestScaleOp_ZeroDim(TestScaleOp):
-    def init_shape(self):  
+    def init_shape(self):
         self.shape = []
+
 
 class TestScaleOpBiasNotAfterScale(OpTest):
     def setUp(self):

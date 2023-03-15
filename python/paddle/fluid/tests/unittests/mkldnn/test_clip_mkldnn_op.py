@@ -51,7 +51,9 @@ class TestClipOneDNNOp(OpTest):
         self.shape = [10, 10]
 
     def set_inputs(self):
-        self.inputs = {'X': np.array(np.random.random(self.shape).astype(np.float32) * 25)}
+        self.inputs = {
+            'X': np.array(np.random.random(self.shape).astype(np.float32) * 25)
+        }
         self.x_fp32 = self.inputs['X']
 
     def set_additional_inputs(self):
@@ -69,9 +71,11 @@ class TestClipOneDNNOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
+
 class TestClipOneDNNOp_ZeroDim(TestClipOneDNNOp):
     def init_shape(self):
         self.shape = []
+
 
 class TestClipMinAsInputOneDNNOp(TestClipOneDNNOp):
     def set_additional_inputs(self):
