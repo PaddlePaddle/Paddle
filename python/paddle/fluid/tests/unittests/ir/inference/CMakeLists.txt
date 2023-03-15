@@ -42,6 +42,7 @@ if(WIN32)
        "test_trt_convert_elementwiseadd_transpose")
   list(REMOVE_ITEM TEST_TRT_CONVERTER
        "test_trt_convert_elementwiseadd_transpose")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_split_layernorm_to_math_ops_pass")
 endif()
 
 # Only for cpu(mkl + openblas)
@@ -253,8 +254,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
       set_tests_properties(test_map_matmul_v2_to_mul_pass PROPERTIES TIMEOUT
                                                                      360)
       set_tests_properties(test_map_matmul_to_mul_pass PROPERTIES TIMEOUT 360)
-      set_tests_properties(test_split_layernorm_to_math_ops_pass
-                           PROPERTIES TIMEOUT 360)
       set_tests_properties(test_layernorm_shift_partition_pass
                            PROPERTIES TIMEOUT 360)
     else()

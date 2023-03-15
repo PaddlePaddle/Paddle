@@ -110,7 +110,9 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "vit_attention_fuse_pass",                      //
       "layernorm_shift_partition_fuse_pass",          //
       "merge_layernorm_fuse_pass",                    //
-      "split_layernorm_to_math_ops_pass",             //
+#if !_WIN32
+      "split_layernorm_to_math_ops_pass",  //
+#endif
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
       "trt_skip_layernorm_fuse_pass",          //
