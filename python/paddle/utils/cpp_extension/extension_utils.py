@@ -545,7 +545,6 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     include_dirs.extend(compile_include_dirs)
     include_dirs.extend(find_paddle_includes(use_cuda))
     include_dirs.extend(find_python_includes())
-    print("DEBUG include_dirs", include_dirs)
 
     kwargs['include_dirs'] = include_dirs
 
@@ -798,9 +797,9 @@ def find_python_includes():
     python_include_path = sysconfig.get_path(
         'include', scheme='nt' if IS_WINDOWS else 'posix_prefix'
     )
-    print("DEBUG python_include_path", python_include_path)
     if python_include_path is not None:
-        return python_include_path
+        assert isinstance(python_include_path, str)
+        return [python_include_path]
     return []
 
 
