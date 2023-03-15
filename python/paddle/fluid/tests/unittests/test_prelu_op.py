@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -172,7 +172,6 @@ class PReluTest(OpTest):
     def setUp(self):
         self.init_dtype()
         self.init_input_shape()
-        self.eager_mode = True
         self.init_attr()
         self.op_type = "prelu"
         self.python_api = prelu_api_wrapper
@@ -193,8 +192,6 @@ class PReluTest(OpTest):
             alpha_np = np.random.uniform(-1, -0.5, [1, 1, 1, self.x_shape[-1]])
         else:
             alpha_np = np.random.uniform(-1, -0.5, [1] + self.x_shape[1:])
-            # eager check don't support mode = 'all'
-            self.eager_mode = False
         alpha_np = alpha_np.astype(self.dtype)
 
         self.inputs = {'X': x_np, 'Alpha': alpha_np}
@@ -227,10 +224,10 @@ class PReluTest(OpTest):
         self.attrs = {'mode': "channel", "data_format": "NCHW"}
 
     def test_check_output(self):
-        self.check_output(check_eager=self.eager_mode)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Alpha'], 'Out', check_eager=self.eager_mode)
+        self.check_grad(['X', 'Alpha'], 'Out')
 
 
 @skip_check_grad_ci(
@@ -393,9 +390,7 @@ def create_test_fp16_class(
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(
-                        place, atol=atol, check_eager=self.eager_mode
-                    )
+                    self.check_output_with_place(place, atol=atol)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -405,7 +400,6 @@ def create_test_fp16_class(
                     ['X', 'Alpha'],
                     'Out',
                     max_relative_error=max_relative_error,
-                    check_eager=self.eager_mode,
                 )
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")

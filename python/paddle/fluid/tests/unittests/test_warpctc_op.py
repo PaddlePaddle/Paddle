@@ -16,7 +16,7 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_softmax_op import stable_softmax
 
 import paddle
@@ -381,7 +381,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -502,11 +502,11 @@ class TestWarpCTCOpFp64(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss", check_eager=False)
+        self.check_grad(["Logits"], "Loss")
 
 
 class TestWarpCTCOpError(unittest.TestCase):

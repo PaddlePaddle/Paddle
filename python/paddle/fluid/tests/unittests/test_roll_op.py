@@ -91,10 +91,10 @@ class TestRollBF16OP(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=True)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 @unittest.skipIf(
@@ -111,10 +111,10 @@ class TestRollBF16OpCase2(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_eager=True)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestRollAPI(unittest.TestCase):

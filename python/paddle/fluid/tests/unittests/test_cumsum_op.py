@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -536,6 +536,288 @@ class TestCumSumOpFp16(unittest.TestCase):
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[y1, y2, y3, y4])
         paddle.disable_static()
+
+
+def cumsum_wapper(x, axis=-1, flatten=False, exclusive=False, reverse=False):
+    return paddle._C_ops.cumsum(x, axis, flatten, exclusive, reverse)
+
+
+class TestSumOp1ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.attrs = {'axis': 2}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].cumsum(axis=2)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOp2ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.attrs = {'axis': -1, 'reverse': True}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
+        self.outputs = {
+            'Out': np.flip(
+                np.flip(self.inputs['X'], axis=2).cumsum(axis=2), axis=2
+            )
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOp3ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.attrs = {'axis': 1}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOp4ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.attrs = {'axis': 0}
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOp5ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.inputs = {'X': np.random.random((5, 20)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOp6ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.attrs = {'axis': -1, 'flatten': True}
+        self.inputs = {'X': np.random.random((5, 6, 5)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].cumsum()}
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOp7ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.inputs = {'X': np.random.random((100)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOpExclusive1ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 20)).astype("float64")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (
+                    np.zeros((4, 5, 1), dtype=np.float64),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOpExclusive2ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((1, 1, 100)).astype("float64")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (
+                    np.zeros((1, 1, 1), dtype=np.float64),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOpExclusive3ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 20)).astype("float64")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (
+                    np.zeros((4, 5, 1), dtype=np.float64),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOpExclusive4ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((1, 1, 100)).astype("float64")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (
+                    np.zeros((1, 1, 1), dtype=np.float64),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOpExclusive5ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 40)).astype("float64")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (
+                    np.zeros((4, 5, 1), dtype=np.float64),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOpExclusiveFP16ForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.enable_cinn = False
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 20)).astype("float16")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (
+                    np.zeros((4, 5, 1), dtype=np.float16),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOpReverseExclusiveForEager(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.python_api = cumsum_wapper
+        self.attrs = {'axis': 2, 'reverse': True, "exclusive": True}
+        a = np.random.random((4, 5, 6)).astype("float64")
+        self.inputs = {'X': a}
+        a = np.flip(a, axis=2)
+        self.outputs = {
+            'Out': np.concatenate(
+                (
+                    np.flip(a[:, :, :-1].cumsum(axis=2), axis=2),
+                    np.zeros((4, 5, 1), dtype=np.float64),
+                ),
+                axis=2,
+            )
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 if __name__ == '__main__':

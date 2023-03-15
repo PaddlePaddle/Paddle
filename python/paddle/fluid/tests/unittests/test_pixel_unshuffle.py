@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -68,6 +68,12 @@ def pixel_unshuffle_np(x, down_factor, data_format="NCHW"):
         return npresult
 
 
+def pixel_unshuffle_warpper(x, downscale_factor, data_format):
+    return paddle._legacy_C_ops.pixel_unshuffle(
+        x, "downscale_factor", downscale_factor, "data_format", data_format
+    )
+
+
 class TestPixelUnshuffleOp(OpTest):
     '''TestPixelUnshuffleOp'''
 
@@ -75,6 +81,7 @@ class TestPixelUnshuffleOp(OpTest):
         '''setUp'''
 
         self.op_type = "pixel_unshuffle"
+        self.python_api = pixel_unshuffle_warpper
         self.init_data_format()
         n, c, h, w = 2, 1, 12, 12
 
