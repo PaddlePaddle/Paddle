@@ -203,7 +203,7 @@ class TestScatterBF16Op1(TestScatterOp1):
         self.python_api = paddle.scatter
         self.dtype = np.uint16
         ref_np = np.ones((3, 3)).astype("float32")
-        zeros_np = np.zeros([2, 3]).astype('uint16')
+        zeros_np = np.zeros([2, 3]).astype("float32")
         index_np = np.array([1, 1]).astype("int32")
         updates_np = np.random.uniform(0, 0.1, (2, 3)).astype("float32")
         output_np = np.copy(ref_np)
@@ -356,7 +356,7 @@ class TestScatterBF16Op3(TestScatterOp3):
         self.python_api = paddle.scatter
         self.dtype = np.uint16
         ref_np = np.ones((3, 3)).astype("float32")
-        zeros_np = np.zeros([2, 3]).astype('uint16')
+        zeros_np = np.zeros([2, 3]).astype("float32")
         index_np = np.array([1, 1]).astype("int32")
         updates_np = np.random.uniform(0, 0.1, (2, 3)).astype("float32")
         output_np = np.copy(ref_np)
