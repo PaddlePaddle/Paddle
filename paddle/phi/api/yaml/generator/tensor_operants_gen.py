@@ -144,6 +144,30 @@ Tensor Tensor::subtract(const Scalar& y) const {
   return paddle::OperantsManager::Instance().subtract(static_cast<const Tensor &>(*this), y);
 }
 
+Tensor Tensor::operator<(const Tensor &other) const {
+  return less_than(other);
+}
+
+Tensor Tensor::operator<=(const Tensor &other) const {
+  return less_equal(other);
+}
+
+Tensor Tensor::operator==(const Tensor &other) const {
+  return equal(other);
+}
+
+Tensor Tensor::operator!=(const Tensor &other) const {
+  return not_equal(other);
+}
+
+Tensor Tensor::operator>(const Tensor &other) const {
+  return greater_than(other);
+}
+
+Tensor Tensor::operator>=(const Tensor &other) const {
+  return greater_equal(other);
+}
+
 Tensor Tensor::operator-() const {
   return scale(-1.0, 0.0, true);
 }
