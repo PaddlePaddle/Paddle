@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
+import paddle.fluid.tests.unittests.nets as nets
 from paddle.fluid import Program, program_guard
 
 
@@ -33,25 +34,19 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
 
             def test_queries_Variable():
                 queries_data = np.random.rand(3, 5, 9).astype("float32")
-                fluid.nets.scaled_dot_product_attention(
-                    queries_data, keys, values
-                )
+                nets.scaled_dot_product_attention(queries_data, keys, values)
 
             self.assertRaises(TypeError, test_queries_Variable)
 
             def test_keys_Variable():
                 keys_data = np.random.rand(3, 6, 9).astype("float32")
-                fluid.nets.scaled_dot_product_attention(
-                    queries, keys_data, values
-                )
+                nets.scaled_dot_product_attention(queries, keys_data, values)
 
             self.assertRaises(TypeError, test_keys_Variable)
 
             def test_values_Variable():
                 values_data = np.random.rand(3, 6, 10).astype("float32")
-                fluid.nets.scaled_dot_product_attention(
-                    queries, keys, values_data
-                )
+                nets.scaled_dot_product_attention(queries, keys, values_data)
 
             self.assertRaises(TypeError, test_values_Variable)
 
@@ -62,7 +57,7 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
                 values_error = fluid.data(
                     name="values_error", shape=[3, 6, 10], dtype="float64"
                 )
-                fluid.nets.scaled_dot_product_attention(
+                nets.scaled_dot_product_attention(
                     queries, keys_error, values_error
                 )
 
@@ -75,7 +70,7 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
                 values_error_dim = fluid.data(
                     name="values_error_dim", shape=[3], dtype="float32"
                 )
-                fluid.nets.scaled_dot_product_attention(
+                nets.scaled_dot_product_attention(
                     queries, keys_error_dim, values_error_dim
                 )
 
@@ -88,7 +83,7 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
                 keys_error_hs = fluid.data(
                     name="keys_error_hs", shape=[3, 6, 10], dtype="float32"
                 )
-                fluid.nets.scaled_dot_product_attention(
+                nets.scaled_dot_product_attention(
                     queries_error_hs, keys_error_hs, values
                 )
 
@@ -101,7 +96,7 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
                 values_error_len = fluid.data(
                     name="values_error_len", shape=[3, 6, 10], dtype="float32"
                 )
-                fluid.nets.scaled_dot_product_attention(
+                nets.scaled_dot_product_attention(
                     queries, keys_error_len, values_error_len
                 )
 

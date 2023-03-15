@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid.tests.unittests.nets as nets
 
 
 class TestMultiheadAttention(unittest.TestCase):
@@ -44,7 +45,7 @@ class TestMultiheadAttention(unittest.TestCase):
         )
         keys.stop_gradient = False
 
-        contexts = fluid.nets.scaled_dot_product_attention(
+        contexts = nets.scaled_dot_product_attention(
             queries=queries,
             keys=keys,
             values=keys,
