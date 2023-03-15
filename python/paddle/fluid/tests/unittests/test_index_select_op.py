@@ -179,7 +179,7 @@ class TestIndexSelectAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
-        paddle.enable_static()
+        paddle.disable_static()
         self.input_data()
         # case 1:
         with fluid.dygraph.guard():
