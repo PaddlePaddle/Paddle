@@ -60,6 +60,11 @@ black_ops_list = [
 ]
 
 
+# white ops list whose kernel can be deleted after performance analysis
+# original kernel can be deleted when composite_grad kernel performs same to it
+prim_white_list = ["matmul_double_grad"]
+
+
 #########
 # Utils #
 #########
@@ -2255,13 +2260,33 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   """
         # TODO(Ruting):using composite only when we don't have backward kernel in the future.
         elif is_composite_grad_api:
-            grad_function_call_str = f"""
-  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+            if composite_grad_api_name in prim_white_list:
+                grad_function_call_str = f"""
+{indent}bool tmp_grad = egr::Controller::Instance().HasGrad();
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(false);
+    }}
   {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
   VLOG(4) << "Composite api {composite_grad_api_name} is called ";
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(tmp_grad);
+    }}
+  """
+            else:
+                grad_function_call_str = f"""
+  if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+{indent}bool tmp_grad = egr::Controller::Instance().HasGrad();
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(false);
+    }}
+  {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
+  {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called ";
+{indent}if(!create_graph){{
+{indent}{indent}egr::Controller::Instance().SetHasGrad(tmp_grad);
+    }}
   }}else{{
   {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});
-  VLOG(4) << "Fused api {backward_api_name} is called ";
+  {indent}VLOG(4) << "Fused api {backward_api_name} is called ";
   }}
   """
         else:
