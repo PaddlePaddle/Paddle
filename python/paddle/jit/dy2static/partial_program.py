@@ -111,7 +111,7 @@ def _change_is_test_status(program, is_test):
     for block in program.blocks:
         for op in block.ops:
             if op.has_attr('is_test'):
-                op._set_attr('is_test', is_test)
+                op.desc._set_bool_attr('is_test', is_test)
     return program
 
 
