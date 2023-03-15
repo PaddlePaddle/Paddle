@@ -23,7 +23,7 @@ namespace ir {
 /// file. The built-in Dialect will use this macro to quickly register all
 /// built-in attributes.
 ///
-#define GET_BUILT_IN_ATTRIBUTE_LIST ir::StringAttribute
+#define GET_BUILT_IN_ATTRIBUTE_LIST ir::StrAttribute
 
 ///
 /// \brief Define built-in parameterless attributes. Please add the necessary
@@ -33,22 +33,22 @@ namespace ir {
 /// NOTE(zhangbo9674): If you need to directly
 /// cache the object of this built-in attribute in IrContext, please overload
 /// the get method, and construct and cache the object in IrContext. For the
-/// specific implementation method, please refer to StringAttribute.
+/// specific implementation method, please refer to StrAttribute.
 ///
 /// The built-in attribute object get method is as follows:
 /// \code{cpp}
 ///   ir::IrContext *ctx = ir::IrContext::Instance();
-///   Attribute bool_attr = StringAttribute::get(ctx);
+///   Attribute bool_attr = StrAttribute::get(ctx);
 /// \endcode
 ///
-class StringAttribute : public ir::Attribute {
+class StrAttribute : public ir::Attribute {
  public:
   using Attribute::Attribute;
 
-  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(StringAttribute, StringAttributeStorage);
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(StrAttribute, StrAttributeStorage);
 
-  static StringAttribute get(ir::IrContext *ctx, const std::string &data) {
-    return ir::AttributeManager::template get<StringAttribute>(
+  static StrAttribute get(ir::IrContext *ctx, const std::string &data) {
+    return ir::AttributeManager::template get<StrAttribute>(
         ctx, const_cast<char *>(data.c_str()), data.size());
   }
 

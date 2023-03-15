@@ -56,22 +56,22 @@ TEST(attribute_test, built_in_attribute) {
 
   // Test 1: Test the parameteric built-in attribute of IrContext.
   std::string str_tmp = "string_a";
-  ir::Attribute string_attr_1 = ir::StringAttribute::get(ctx, str_tmp);
-  ir::Attribute string_attr_2 = ir::StringAttribute::get(ctx, str_tmp);
+  ir::Attribute string_attr_1 = ir::StrAttribute::get(ctx, str_tmp);
+  ir::Attribute string_attr_2 = ir::StrAttribute::get(ctx, str_tmp);
   const char *temp = "abcd";
   ir::Attribute string_attr_3 =
-      ir::StringAttribute::get(ctx, const_cast<char *>(temp), 4);
+      ir::StrAttribute::get(ctx, const_cast<char *>(temp), 4);
 
   EXPECT_EQ(string_attr_1, string_attr_2);
   EXPECT_NE(string_attr_1, string_attr_3);
   EXPECT_EQ(string_attr_1.type_id(), string_attr_2.type_id());
-  EXPECT_EQ(ir::StringAttribute::classof(string_attr_1), 1);
+  EXPECT_EQ(ir::StrAttribute::classof(string_attr_1), 1);
 
   // Test 2: Test isa and dyn_cast.
-  EXPECT_EQ(string_attr_1.isa<ir::StringAttribute>(), true);
+  EXPECT_EQ(string_attr_1.isa<ir::StrAttribute>(), true);
 
-  ir::StringAttribute string_attr_cast_1 =
-      string_attr_1.dyn_cast<ir::StringAttribute>();
-  EXPECT_EQ(string_attr_cast_1.isa<ir::StringAttribute>(), true);
+  ir::StrAttribute string_attr_cast_1 =
+      string_attr_1.dyn_cast<ir::StrAttribute>();
+  EXPECT_EQ(string_attr_cast_1.isa<ir::StrAttribute>(), true);
   EXPECT_EQ(string_attr_cast_1.size() == 8, 1);
 }

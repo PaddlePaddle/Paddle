@@ -20,32 +20,31 @@
 
 namespace ir {
 ///
-/// \brief Define Parameteric AttributeStorage for StringAttribute.
+/// \brief Define Parameteric AttributeStorage for StrAttribute.
 ///
 /// NOTE(zhangbo9674): The derived AttributeStorage class needs to implement the
 /// following methods: (1)declare ParamKey, (2)define Construction method,
 /// (3)define HashValue method, (4)overload operator==.
 ///
-struct StringAttributeStorage : public ir::AttributeStorage {
+struct StrAttributeStorage : public ir::AttributeStorage {
   ///
   /// \brief Declare ParamKey according to parameter type.
   ///
   using ParamKey = std::tuple<char *, uint32_t>;
 
-  StringAttributeStorage(char *data, uint32_t size)
-      : data_(data), size_(size) {}
+  StrAttributeStorage(char *data, uint32_t size) : data_(data), size_(size) {}
 
-  ~StringAttributeStorage() { free(data_); }
+  ~StrAttributeStorage() { free(data_); }
 
   ///
   /// \brief Each derived AttributeStorage must define a Construc method, which
   /// StorageManager uses to construct a derived AttributeStorage.
   ///
-  static StringAttributeStorage *Construct(ParamKey key) {
+  static StrAttributeStorage *Construct(ParamKey key) {
     uint32_t size = std::get<1>(key);
     char *data = reinterpret_cast<char *>(malloc(size));
     memcpy(data, std::get<0>(key), size);
-    return new StringAttributeStorage(data, size);
+    return new StrAttributeStorage(data, size);
   }
 
   ///
@@ -70,7 +69,7 @@ struct StringAttributeStorage : public ir::AttributeStorage {
   ParamKey GetAsKey() const { return ParamKey(data_, size_); }
 
   ///
-  /// \brief StringAttributeStorage include two parameters: data, size,
+  /// \brief StrAttributeStorage include two parameters: data, size,
   /// layout, lod, offset.
   ///
   char *data_;
