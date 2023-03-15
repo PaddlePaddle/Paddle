@@ -14,6 +14,12 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
+#include <algorithm>
+#include <map>
+#include <set>
+#include <vector>
+
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/mixed_vector.h"
 
 #ifdef PADDLE_WITH_XPU
@@ -93,18 +99,18 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
 
     auto* out_data = out_value->data<T>();
     auto* in1_data = in1_value.data<T>();
-    paddle::memory::Copy(out_place,
-                         out_data,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T));
+    memory_utils::Copy(out_place,
+                       out_data,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T));
 
     auto* in2_data = in2_value.data<T>();
-    paddle::memory::Copy(out_place,
-                         out_data + in1_value.numel(),
-                         in2_place,
-                         in2_data,
-                         in2_value.numel() * sizeof(T));
+    memory_utils::Copy(out_place,
+                       out_data + in1_value.numel(),
+                       in2_place,
+                       in2_data,
+                       in2_value.numel() * sizeof(T));
   }
 };
 
@@ -219,11 +225,11 @@ struct SelectedRowsAddTo<phi::CPUContext, T> {
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    paddle::memory::Copy(in2_place,
-                         in2_data + input2_offset,
-                         in1_place,
-                         in1_data,
-                         in1_value.numel() * sizeof(T));
+    memory_utils::Copy(in2_place,
+                       in2_data + input2_offset,
+                       in1_place,
+                       in1_data,
+                       in1_value.numel() * sizeof(T));
   }
 };
 
@@ -566,11 +572,11 @@ struct MergeAddImpl {
       for (auto* in : inputs) {
         auto* in_data = in->value().data<T>();
         auto in_numel = in->rows().size() * input_width;
-        paddle::memory::Copy(out_place,
-                             out_data + copied_numel,
-                             in_place,
-                             in_data,
-                             in_numel * sizeof(T));
+        memory_utils::Copy(out_place,
+                           out_data + copied_numel,
+                           in_place,
+                           in_data,
+                           in_numel * sizeof(T));
         copied_numel += in_numel;
       }
     } else {
@@ -680,16 +686,16 @@ struct MergeAdd<phi::XPUContext, T> {
     xpu::ctx_guard RAII_GUARD(context.x_context());
     int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
     int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-    paddle::memory::Copy(context.GetPlace(),
-                         y_rows_data,
-                         phi::CPUPlace(),
-                         merge_rows.data(),
-                         ym * sizeof(int64_t));
-    paddle::memory::Copy(context.GetPlace(),
-                         x_rows_data,
-                         phi::CPUPlace(),
-                         input_rows.data(),
-                         xm * sizeof(int64_t));
+    memory_utils::Copy(context.GetPlace(),
+                       y_rows_data,
+                       phi::CPUPlace(),
+                       merge_rows.data(),
+                       ym * sizeof(int64_t));
+    memory_utils::Copy(context.GetPlace(),
+                       x_rows_data,
+                       phi::CPUPlace(),
+                       input_rows.data(),
+                       xm * sizeof(int64_t));
     int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
                                             x_data,
                                             y_data,
@@ -778,16 +784,16 @@ struct MergeAdd<phi::XPUContext, T> {
       xpu::ctx_guard RAII_GUARD(context.x_context());
       int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
       int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-      paddle::memory::Copy(context.GetPlace(),
-                           y_rows_data,
-                           phi::CPUPlace(),
-                           merge_rows.data(),
-                           ym * sizeof(int64_t));
-      paddle::memory::Copy(context.GetPlace(),
-                           x_rows_data,
-                           phi::CPUPlace(),
-                           input_rows.data(),
-                           xm * sizeof(int64_t));
+      memory_utils::Copy(context.GetPlace(),
+                         y_rows_data,
+                         phi::CPUPlace(),
+                         merge_rows.data(),
+                         ym * sizeof(int64_t));
+      memory_utils::Copy(context.GetPlace(),
+                         x_rows_data,
+                         phi::CPUPlace(),
+                         input_rows.data(),
+                         xm * sizeof(int64_t));
       int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
                                               x_data,
                                               y_data,

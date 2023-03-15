@@ -31,7 +31,7 @@ from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
 
-from paddle.fluid.transpiler.distribute_transpiler import (
+from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
 )
 
@@ -40,6 +40,9 @@ from paddle.incubate.distributed.fleet.base import Mode
 from paddle.incubate.distributed.fleet.role_maker import MPISymetricRoleMaker
 
 from paddle.incubate.distributed.fleet.parameter_server import version
+from paddle.incubate.distributed.fleet.parameter_server.pslib.optimizer_factory import (
+    DistributedAdam,
+)
 from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
     get_sparse_tablenames,
 )
@@ -78,7 +81,7 @@ from paddle.incubate.distributed.fleet.parameter_server.ir import (
 
 class FleetTranspiler(Fleet):
     """
-    A subclass for compatibility with fluid.transpiler.DistributeTranspiler.
+    A subclass for compatibility with distributed.transpiler.DistributeTranspiler.
     """
 
     def __init__(self):

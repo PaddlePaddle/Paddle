@@ -34,7 +34,6 @@ from paddle.fluid.compiler import (
     ExecutionStrategy,
 )
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.layers.utils import flatten, pack_sequence_as
 from paddle.fluid.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
@@ -73,6 +72,7 @@ from paddle.fluid.framework import (
 )
 from paddle.fluid.framework import dygraph_only, _non_static_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
+from paddle.fluid.io import save_inference_model
 
 
 def create_program_from_desc(program_desc):
@@ -508,7 +508,9 @@ def _get_input_var_names(inputs, input_spec):
     )
     result_list = []
     input_var_names = [
-        var.name for var in flatten(inputs) if isinstance(var, Variable)
+        var.name
+        for var in paddle.utils.flatten(inputs)
+        if isinstance(var, Variable)
     ]
     if input_spec is None:
         # no prune
@@ -561,7 +563,7 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
         )
     result_list = []
     output_vars_dict = OrderedDict()
-    for var in flatten(outputs):
+    for var in paddle.utils.flatten(outputs):
         if isinstance(var, Variable):
             output_vars_dict[var.name] = var
     if output_spec is None:
@@ -969,7 +971,7 @@ def save(layer, path, input_spec=None, **configs):
                 % type(input_spec)
             )
         inner_input_spec = []
-        for var in flatten(input_spec):
+        for var in paddle.utils.flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
             elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
@@ -1033,7 +1035,7 @@ def save(layer, path, input_spec=None, **configs):
                 # inner_input_spec is list[InputSpec], it should be packed with same structure
                 # as original input_spec here.
                 if inner_input_spec:
-                    inner_input_spec = pack_sequence_as(
+                    inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec
                     )
                 static_forward = to_static(
@@ -1066,7 +1068,7 @@ def save(layer, path, input_spec=None, **configs):
                 )
             else:
                 if inner_input_spec:
-                    inner_input_spec = pack_sequence_as(
+                    inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec
                     )
                 static_function = to_static(
@@ -1159,8 +1161,6 @@ def save(layer, path, input_spec=None, **configs):
         )
 
         # 5. save inference model
-        from paddle.fluid.io import save_inference_model
-
         # construct new save_inference_model arguments
         model_path = dirname
         # NOTE(chenweihang): because prefix contains model and params filename,
@@ -1209,7 +1209,11 @@ def save(layer, path, input_spec=None, **configs):
             paddle.static.save_vars(
                 Executor(_current_expected_place()),
                 dirname=model_path,
-                vars=list(filter(paddle.fluid.io.is_persistable, ordered_vars)),
+                vars=list(
+                    filter(
+                        paddle.framework.io_utils.is_persistable, ordered_vars
+                    )
+                ),
                 filename=params_filename,
             )
         # save property
@@ -1678,11 +1682,8 @@ class TracedLayer:
     @switch_to_static_graph
     def _compile(self):
         self._compiled_program = CompiledProgram(
-            self._program
-        ).with_data_parallel(
+            self._program,
             build_strategy=self._build_strategy,
-            exec_strategy=self._exec_strategy,
-            places=self._place,
         )
 
     def _build_feed(self, inputs):
@@ -1815,8 +1816,6 @@ class TracedLayer:
         dirname = os.path.dirname(path)
         if dirname and not os.path.exists(dirname):
             os.makedirs(dirname)
-
-        from paddle.fluid.io import save_inference_model
 
         def get_feed_fetch(all_vars, partial_vars):
             if partial_vars is None:

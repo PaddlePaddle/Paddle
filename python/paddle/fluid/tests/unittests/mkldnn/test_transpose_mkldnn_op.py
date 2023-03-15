@@ -16,10 +16,10 @@ import unittest
 
 import numpy as np
 
-from paddle.fluid.tests.unittests.test_transpose_op import TestTransposeOp
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 
-class TestTransposeMKLDNN(TestTransposeOp):
+class TestTransposeMKLDNN(OpTest):
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -85,6 +85,12 @@ class TestCase4(TestTransposeMKLDNN):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
+
+
+class TestCase_ZeroDim(TestTransposeMKLDNN):
+    def initTestCase(self):
+        self.shape = ()
+        self.axis = ()
 
 
 if __name__ == '__main__':

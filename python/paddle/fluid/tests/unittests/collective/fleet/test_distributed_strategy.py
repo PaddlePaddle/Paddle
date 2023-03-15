@@ -18,7 +18,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.incubate.distributed.fleet.role_maker as role_maker
-from paddle.fluid.transpiler.distribute_transpiler import (
+from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,
 )

@@ -17,7 +17,6 @@ import os
 
 import paddle
 from paddle.fluid import compiler
-from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.ir import apply_build_strategy
 from paddle.fluid.wrapped_decorator import wrap_decorator
@@ -236,6 +235,7 @@ class Fleet:
                 fleet.init(log_level = "DEBUG")
 
         """
+        from paddle.distributed import parallel_helper
 
         set_log_level(log_level)
 
@@ -1367,18 +1367,10 @@ class Fleet:
                     copy_user_defined_strategy,
                 )
                 can_not_apply_optimizer_list.append(meta_optimizer)
-                from .meta_optimizers import ParameterServerGraphOptimizer
 
-                graph_optimizer = ParameterServerGraphOptimizer(
-                    self.user_defined_optimizer
-                )
-                graph_optimizer._set_basic_info(
-                    loss,
-                    self._role_maker,
-                    self.user_defined_optimizer,
-                    copy_user_defined_strategy,
-                )
-                can_not_apply_optimizer_list.append(graph_optimizer)
+                # meaningless, just for compatibility with other code
+                graph_optimizer = None
+
             else:
                 # compile time
                 distributed_optimizer_list = (
@@ -1465,7 +1457,7 @@ class Fleet:
 
                 compiled_program = compiler.CompiledProgram(
                     self.origin_main_program
-                ).with_data_parallel(loss_name=loss.name, share_vars_from=None)
+                )
                 loss.block.program._graph = compiled_program
                 return self.user_defined_optimizer.minimize(
                     loss,

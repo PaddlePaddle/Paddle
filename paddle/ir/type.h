@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/ir/cast_utils.h"
 #include "paddle/ir/type_base.h"
 
 namespace ir {
@@ -37,20 +38,43 @@ class Type {
   Type &operator=(const Type &other) = default;
 
   ///
-  /// \brief Comparison operations.
+  /// \brief Some operators are overloaded.
   ///
   bool operator==(Type other) const { return storage_ == other.storage_; }
+
   bool operator!=(Type other) const { return storage_ != other.storage_; }
 
   explicit operator bool() const { return storage_; }
 
   bool operator!() const { return storage_ == nullptr; }
 
+  ///
+  /// \brief Some type attribute acquisition interfaces.
+  ///
   TypeId type_id() { return storage_->abstract_type().type_id(); }
 
   const AbstractType &abstract_type() { return storage_->abstract_type(); }
 
   StorageType *storage() const { return storage_; }
+
+  const Dialect &dialect() const { return storage_->abstract_type().dialect(); }
+
+  IrContext *ir_context() const;
+
+  ///
+  /// \brief Methods for type judgment and cast.
+  ///
+  static bool classof(Type) { return true; }
+
+  template <typename T>
+  bool isa() const {
+    return ir::isa<T>(*this);
+  }
+
+  template <typename U>
+  U dyn_cast() const {
+    return ir::dyn_cast<U>(*this);
+  }
 
   ///
   /// \brief Enable hashing Type.
