@@ -14,16 +14,8 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/distributed/reduce_helper.h"
-
 namespace phi {
-
-template <typename T, typename Context>
-void ReduceKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int root_id,
-                  int reduce_type,
-                  DenseTensor* out);
-
+namespace distributed {
+enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd };
+}
 }  // namespace phi

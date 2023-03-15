@@ -45,16 +45,16 @@ void AllReduceKernel(const Context& dev_ctx,
 
   ncclRedOp_t red_type = ncclSum;
   switch (reduce_type) {
-    case kRedSum:
+    case distributed::kRedSum:
       red_type = ncclSum;
       break;
-    case kRedMax:
+    case distributed::kRedMax:
       red_type = ncclMax;
       break;
-    case kRedMin:
+    case distributed::kRedMin:
       red_type = ncclMin;
       break;
-    case kRedProd:
+    case distributed::kRedProd:
       red_type = ncclProd;
       break;
   }

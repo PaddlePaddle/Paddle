@@ -24,11 +24,10 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/reduce_helper.h"
 
 namespace phi {
 namespace distributed {
-
-enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd };
 
 // data preparation
 #ifdef _WIN32
@@ -127,9 +126,7 @@ void SetReduceFunc(P* opts, int reduce_type) {
               &gloo::product<T>));
       break;
     default:
-      PADDLE_ENFORCE_EQ(
-          true,
-          false,
+      PADDLE_THROW(
           errors::InvalidArgument("Invalid reduce type: %d.", reduce_type));
   }
 }

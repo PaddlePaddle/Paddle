@@ -39,23 +39,6 @@ void AllReduceKernel(const Context& dev_ctx,
       nullptr,
       errors::Unavailable("NCCLCommContext is nullptr, collective op should "
                           "has ring_id attr."));
-  /*
-  ReduceType red_type = kRedSum;
-  switch (reduce_type) {
-    case kRedSum:
-      red_type = kRedSum;
-      break;
-    case kRedMax:
-      red_type = kRedMax;
-      break;
-    case kRedMin:
-      red_type = kRedMin;
-      break;
-    case kRedProd:
-      red_type = kRedProd;
-      break;
-  }
-  */
   comm_ctx->AllReduce(out, x, reduce_type);
 
 #else

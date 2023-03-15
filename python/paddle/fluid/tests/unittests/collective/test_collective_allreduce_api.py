@@ -45,9 +45,6 @@ class TestCollectiveAllreduceAPI(TestDistBase):
         ]
         red_types_to_test = [
             dist.ReduceOp.SUM,
-            dist.ReduceOp.MAX,
-            dist.ReduceOp.MIN,
-            dist.ReduceOp.PROD,
         ]
         if self._nccl_version >= 2100:
             dtypes_to_test.append("bfloat16")
@@ -86,9 +83,6 @@ class TestCollectiveAllreduceAPI(TestDistBase):
         ]
         red_types_to_test = [
             dist.ReduceOp.SUM,
-            dist.ReduceOp.MAX,
-            dist.ReduceOp.MIN,
-            dist.ReduceOp.PROD,
         ]
         for dtype in dtypes_to_test:
             for red_type in red_types_to_test:

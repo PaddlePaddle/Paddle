@@ -15,10 +15,9 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/reduce_helper.h"
 
 namespace phi {
-
-enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd };
 
 template <typename T, typename Context>
 void AllReduceKernel(const Context& dev_ctx,

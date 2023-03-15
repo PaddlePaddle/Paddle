@@ -877,7 +877,7 @@ namespace ops = paddle::operators;
   };                                                                          \
   REGISTER_OPERATOR(                                                          \
       op_name,                                                                \
-      ops::ReduceBaseOp,                                                          \
+      ops::ReduceBaseOp,                                                      \
       __##op_name##Maker__,                                                   \
       paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>, \
       paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase,       \
@@ -892,7 +892,7 @@ namespace ops = paddle::operators;
   };                                                                     \
   REGISTER_OPERATOR(                                                     \
       op_name,                                                           \
-      ops::ReduceBaseOp##__VA_ARGS__,                                        \
+      ops::ReduceBaseOp##__VA_ARGS__,                                    \
       __##op_name##Maker__,                                              \
       paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
       paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
