@@ -19,6 +19,7 @@ from functools import partial
 import numpy as np
 
 import paddle
+from paddle.vision.models import resnet18
 
 # paddle.set_device('cpu')
 
@@ -168,24 +169,24 @@ class TestTrainStepTinyModelRMSProp(TestTrainStepTinyModel):
         self.steps = 5
 
 
-# class TestTrainStepResNet18Sgd(TestTrainStepTinyModel):
-#     def setUp(self):
-#         self.input = paddle.randn([64, 3, 224, 224])
-#         self.net_creator = resnet18
-#         self.optimizer_creator = partial(paddle.optimizer.SGD, 0.001)
-#         self.loss_fn = loss_fn_tiny_model
-#         self.train_step_func = train_step_tiny_model
-#         self.steps = 5
+class TestTrainStepResNet18Sgd(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([64, 3, 224, 224])
+        self.net_creator = resnet18
+        self.optimizer_creator = partial(paddle.optimizer.SGD, 0.001)
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 3
 
 
-# class TestTrainStepResNet18Adam(TestTrainStepTinyModel):
-#     def setUp(self):
-#         self.input = paddle.randn([64, 3, 224, 224])
-#         self.net_creator = resnet18
-#         self.optimizer_creator = partial(paddle.optimizer.Adam, 0.001)
-#         self.loss_fn = loss_fn_tiny_model
-#         self.train_step_func = train_step_tiny_model
-#         self.steps = 5
+class TestTrainStepResNet18Adam(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([64, 3, 224, 224])
+        self.net_creator = resnet18
+        self.optimizer_creator = partial(paddle.optimizer.Adam, 0.001)
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 3
 
 
 if __name__ == "__main__":
