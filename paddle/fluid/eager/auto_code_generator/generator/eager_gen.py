@@ -186,7 +186,12 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   VLOG(5) << \"Running C++ API: \" << \"{}\";
   // Before log info
 {}
+ // Op Debug Tensor Copy And Check Input
+{}
   // Call grad_api function
+{}
+
+ // Op Debug Call And Check Output
 {}
   // Check NaN and Inf id needed
 {}
@@ -218,11 +223,15 @@ FORWARD_FUNCTION_TEMPLATE = """
   VLOG(5) << \"Running C++ API: \" << \"{}\";
  // Before log info
 {}
+ // Op Debug Tensor Copy And Check Input
+{}
  // Forward API Call
 {}
   // Check NaN and Inf if needed
 {}
   // Get Outputs
+{}
+ // Op Debug Call And Check Output
 {}
   // Get Output AutoGradMeta
 {}
@@ -271,9 +280,13 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
   VLOG(5) << \"Running C++ API: \" << \"{}\";
   // Before log info
 {}
+  // Op Debug Tensor Copy And Check Input
+{}
   // Forward API Call
 {}
   // Get Outputs
+{}
+  // Op Debug Call And Check Output
 {}
   VLOG(4) << \"Finish AD API: {}";
 
@@ -351,6 +364,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/phi/api/lib/tensor_copy.h"
 DECLARE_bool(check_nan_inf);
 {}
 """
@@ -378,6 +392,7 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
+#include "paddle/phi/api/lib/tensor_copy.h"
 DECLARE_bool(check_nan_inf);
 DECLARE_string(tensor_operants_mode);
 {}
@@ -1296,9 +1311,12 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         layout_autotune_list = []
         layout_autotune_optional_list = []
         layout_tensors_vector_optional_list = []
+
+        dev2_inputs_call_list = ["" for i in range(num_inputs)]
         for name, (ttype, pos) in forward_inputs_position_map.items():
             inputs_call_list[pos] = f"{name}"
             amp_inputs_call_list[pos] = f"new_{name}"
+            dev2_inputs_call_list[pos] = f"dev2_{name}"
             is_optional = name in optional_inputs
             if IsPlainTensorType(ttype):
                 if is_optional:
@@ -1390,6 +1408,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         for name, atype, default_val, pos in forward_attrs_list:
             inputs_call_list[pos] = name
             amp_inputs_call_list[pos] = name
+            dev2_inputs_call_list[pos] = name
             if default_val is not None:
                 inputs_args_declaration_list[
                     pos
@@ -1401,6 +1420,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         inputs_args_declaration_str = ", ".join(inputs_args_declaration_list)
         inputs_args_definition_str = ", ".join(inputs_args_definition_list)
         inputs_call_args_str = ", ".join(inputs_call_list)
+        dev2_inputs_call_args_str = ", ".join(dev2_inputs_call_list)
 
         # Forward Full Logic
         function_name = forward_api_name
@@ -1420,6 +1440,71 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             intermediate_outputs
         )
 
+        # Op Debug Tensor Copy
+        inputs_tensor_dev2_list = [
+            "" for i in range(len(forward_inputs_position_map.keys()))
+        ]
+        tensor_copy_list = [
+            "" for i in range(len(forward_inputs_position_map.keys()))
+        ]
+        check_input_list = [
+            "" for i in range(len(forward_inputs_position_map.keys()))
+        ]
+        for name, (ttype, pos) in forward_inputs_position_map.items():
+            dev2_inputs_call_list[pos] = f"dev2_{name}"
+            is_optional = name in optional_inputs
+            if IsPlainTensorType(ttype):
+                if is_optional:
+                    # inputs_tensor_dev2_list[pos] = f"paddle::optional<paddle::Tensor> dev2_{name};"
+                    inputs_tensor_dev2_list[
+                        pos
+                    ] = f"paddle::Tensor dev2_{name}_tmp;\n  paddle::optional<paddle::Tensor> dev2_{name}(dev2_{name}_tmp);"
+                    tensor_copy_list[
+                        pos
+                    ] = f"paddle::experimental::copy({name}, paddle::experimental::xpu_debug_run_dev2(), false, &dev2_{name});"
+                else:
+                    inputs_tensor_dev2_list[
+                        pos
+                    ] = f"paddle::Tensor dev2_{name};"
+                    tensor_copy_list[
+                        pos
+                    ] = f"paddle::experimental::copy({name}, paddle::experimental::xpu_debug_run_dev2(), false, &dev2_{name});"
+            else:
+                assert IsVectorTensorType(ttype)
+                if is_optional:
+                    inputs_tensor_dev2_list[
+                        pos
+                    ] = f"std::vector<paddle::Tensor> dev2_{name}_tmp;\n  paddle::optional<std::vector<paddle::Tensor>> dev2_{name}(dev2_{name}_tmp);"
+                    tensor_copy_list[
+                        pos
+                    ] = f"paddle::experimental::copy({name}, paddle::experimental::xpu_debug_run_dev2(), false, &dev2_{name});"
+                else:
+                    inputs_tensor_dev2_list[
+                        pos
+                    ] = f"std::vector<paddle::Tensor> dev2_{name};"
+                    tensor_copy_list[
+                        pos
+                    ] = f"paddle::experimental::copy({name}, paddle::experimental::xpu_debug_run_dev2(), false, &dev2_{name});"
+
+            # inputs_tensor_dev2_list[pos] = f"paddle::Tensor dev2_{name};"
+            # tensor_copy_list[pos] = f"paddle::experimental::copy({name}, paddle::experimental::xpu_debug_run_dev2(), false, &dev2_{name});"
+            check_input_list[
+                pos
+            ] = f"""debug_str += paddle::experimental::XPUDebugString("{function_name}", "{name}", {name}, dev2_{name});"""
+        new_line = "\n"
+        op_debug_tensor_copy_str = f"""{indent}paddle::experimental::OpIdAdd();
+{indent}VLOG(9) << "Op ID: " << paddle::experimental::OpId();
+{indent}std::string debug_str;
+{indent}{(new_line + indent).join(inputs_tensor_dev2_list)}
+{indent}if (paddle::experimental::DebugOrNot()) {{
+{indent}{indent}VLOG(9) << "Start copy input!";
+{indent}{indent}{(new_line + indent + indent).join(tensor_copy_list)}
+{indent}{indent}VLOG(9) << "End copy input!";
+{indent}{indent}VLOG(9) << "Start check mse for input!";
+{indent}{indent}{(new_line + indent + indent).join(check_input_list)}
+{indent}{indent}VLOG(9) << "End check mse for input!";
+{indent}}}"""
+
         # Check Nan and Inf
         check_nan_inf_str = CHECK_NAN_AND_INF_TEMPLATE.format(
             function_name, "api_result"
@@ -1427,13 +1512,53 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
 
         # Get Outputs
         get_outputs_str = ""
+        get_outputs_dev2_str = ""
+        check_output_str = ""
         for name, (rtype, pos) in forward_outputs_position_map.items():
             if num_outputs == 1 and len(intermediate_outputs) == 0:
                 get_outputs_str += f"{indent}auto& {name} = api_result;\n"
+                get_outputs_dev2_str += (
+                    f"{indent}{indent}auto& dev2_{name} = dev2_api_result;\n"
+                )
             else:
                 get_outputs_str += (
                     f"{indent}auto& {name} = std::get<{pos}>(api_result);\n"
                 )
+                get_outputs_dev2_str += f"{indent}{indent}auto& dev2_{name} = std::get<{pos}>(dev2_api_result);\n"
+            if function_name == "batch_norm" and (
+                name
+                in ["mean_out", "variance_out", "saved_mean", "saved_variance"]
+            ):
+                check_output_str += f"""{indent}{indent}if (!global_stats) {{
+{indent}{indent}{indent}debug_str += paddle::experimental::XPUDebugString("{function_name}", "{name}", {name}, dev2_{name});
+{indent}{indent}}}
+"""
+            else:
+                check_output_str += f"""{indent}{indent}debug_str += paddle::experimental::XPUDebugString("{function_name}", "{name}", {name}, dev2_{name});\n"""
+
+        # Op Debug Call And Check Output
+        op_debug_call_str = f"""{indent}if (paddle::experimental::DebugOrNot()) {{
+{indent}{indent}debug_str += " out: ";
+{indent}{indent}VLOG(9) << "Strat run dev2";
+{indent}{indent}{api_out_type} dev2_api_result = paddle::experimental::{namespace}{function_name}({dev2_inputs_call_args_str});
+{indent}{indent}VLOG(9) << "End run dev2";
+{indent}{indent}VLOG(9) << "Start check mse for output!";
+{get_outputs_dev2_str}{check_output_str[:-1]}
+{indent}{indent}VLOG(9) << "End check mse for output!";
+{indent}{indent}if (paddle::experimental::GetDebugStartStr() != "" && debug_str != " out: ") {{
+{indent}{indent}  std::cout << paddle::experimental::GetDebugStartStr() << "in: " << debug_str << std::endl;
+{indent}{indent}}}
+{indent}}}
+{indent}paddle::experimental::SetDebugStartStr("");
+"""
+        if function_name == "batch_norm":
+            op_debug_call_str = (
+                f"""
+{indent}bool test_mode = is_test && (!trainable_statistics);
+{indent}bool global_stats = test_mode || use_global_stats;
+"""
+                + op_debug_call_str
+            )
 
         # Get return type list & outputs
         returns_type_list = ["" for i in range(num_outputs)]
@@ -1669,8 +1794,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     layout_logic_str,
                     forward_api_name,
                     before_log_str,
+                    op_debug_tensor_copy_str,
                     forward_call_str,
                     get_outputs_str,
+                    op_debug_call_str,
                     forward_api_name,
                     check_inplace_str,
                     bump_inplace_version_str,
@@ -1690,9 +1817,11 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 inputs_autograd_meta_str,
                 forward_api_name,
                 before_log_str,
+                op_debug_tensor_copy_str,
                 forward_call_str,
                 check_nan_inf_str,
                 get_outputs_str,
+                op_debug_call_str,
                 outputs_autograd_meta_str,
                 compute_require_grad_args_str,
                 check_inplace_str,
@@ -2168,6 +2297,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             get_grad_in_args_list.append(get_tensor_str)
 
         # Grad Attrs
+        arrt_pos = []
         for name, _, _, grad_api_position in backward_attrs_list:
             saved_attribute_name = GetSavedName(name)
             get_attr_str = (
@@ -2175,6 +2305,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             )
 
             grad_api_args[grad_api_position] = name
+            arrt_pos.append(grad_api_position)
             get_grad_in_args_list.append(get_attr_str)
 
         get_grad_in_args_str = "\n".join(get_grad_in_args_list)
@@ -2192,9 +2323,13 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 """
         inplace_for_grad_outs_str = ""
         optional_inplace_str = ""
-        # Grad Outputs
         out_index = -1
         out_assign_str = ""
+        api_output_name_type_dict = {}
+        api_output_type_map = {
+            "Tensor": "paddle::Tensor*",
+            "std::vector<Tensor>": "std::vector<paddle::Tensor*>",
+        }
         for name, (
             ttype,
             fwd_position,
@@ -2252,8 +2387,19 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
       api_output_{out_index}.push_back(&returns[{fwd_position}][i]);
     }}
   }}"""
+            api_output_name_type_dict[f"api_output_{out_index}"] = [
+                api_output_type_map[ttype],
+                transformed_tensor_name,
+            ]
+            # print("ttype: ", ttype)
 
         grad_api_args_str = ", ".join(grad_api_args)
+        dev2_grad_api_args = grad_api_args.copy()
+        op_debug_grad_tensor_copy_list = []
+        check_grad_input_list = []
+        check_grad_output_list = []
+        op_debug_grad_tensor_copy_str = ""
+        dev2_grad_function_call_str = ""
         composite_grad_api_args_str = ", ".join(grad_api_args)
         composite_template_name = "<paddle::Tensor>"
 
@@ -2278,6 +2424,95 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   {out_assign_str}}} else {{
   {indent}{autograd_api_out} api_output = paddle::experimental::{self.namespace}{self.grad_api_contents['invoke']};
   {out_assign_str}{indent}}}
+  """
+            # print("self.grad_api_contents = ", self.grad_api_contents)
+            # autograd_api.split('(')[1].split(',')[0]
+            # input_name = autograd_api.split('(')[1].split(')')[0].split(',')[0]
+            input_type_name_list = (
+                self.grad_api_contents['args']
+                .split('(')[1]
+                .split(')')[0]
+                .split(', ')
+            )
+            input_name_type_map = {
+                i.split(" ")[1]: i.split(" ")[0] for i in input_type_name_list
+            }
+            dev2_input_list = []
+            dev2_input_copy_list = []
+            input_check_list = []
+            dev2_grad_api_contents = self.grad_api_contents['invoke']
+            for input_name, type in input_name_type_map.items():
+                if type == "Tensor":
+                    dev2_input_list.append(f'paddle::Tensor dev2_{input_name};')
+                    dev2_input_copy_list.append(
+                        f'paddle::experimental::copy({input_name}, paddle::experimental::xpu_debug_run_dev2(), false, &dev2_{input_name});'
+                    )
+                    input_check_list.append(
+                        f"""debug_str += paddle::experimental::XPUDebugString("{backward_api_name}", "{input_name}", {input_name}, dev2_{input_name});"""
+                    )
+                    dev2_grad_api_contents = dev2_grad_api_contents.replace(
+                        input_name, f"dev2_{input_name}"
+                    )
+                elif type == "Tensor[]":
+                    dev2_input_list.append(
+                        f'std::vector<paddle::Tensor> dev2_{input_name};'
+                    )
+                    dev2_input_copy_list.append(
+                        f'paddle::experimental::copy({input_name}, paddle::experimental::xpu_debug_run_dev2(), false, &dev2_{input_name});'
+                    )
+                    input_check_list.append(
+                        f"""debug_str += paddle::experimental::XPUDebugString("{backward_api_name}", "{input_name}", {input_name}, dev2_{input_name});"""
+                    )
+                    dev2_grad_api_contents = dev2_grad_api_contents.replace(
+                        input_name, f"dev2_{input_name}"
+                    )
+            new_line = "\n"
+            op_debug_grad_tensor_copy_str = f"""
+{indent}paddle::experimental::OpIdAdd();
+{indent}VLOG(9) << "Op ID: " << paddle::experimental::OpId();
+{indent}std::string debug_str;
+{indent}VLOG(9) << "Start copy input!";
+{indent}{(new_line + indent + indent).join(dev2_input_list)}
+{indent}{(new_line + indent + indent).join(dev2_input_copy_list)}
+{indent}VLOG(9) << "End copy input!";
+{indent}if (paddle::experimental::DebugOrNot()) {{
+{indent}{indent}VLOG(9) << "Start check mse for input!";
+{indent}{(new_line + indent + indent).join(input_check_list)}
+{indent}{indent}VLOG(9) << "End check mse for input!";
+{indent}}}
+"""
+            # dev2_grad_api_contents = self.grad_api_contents['invoke'].replace(
+            #     input_name,
+            #     f"dev2_{input_name}",
+            #     1,
+            # )
+            dev2_out_assign_str = out_assign_str.replace(
+                "api_output", "dev2_api_output"
+            )
+            dev2_out_assign_str = dev2_out_assign_str.replace(
+                "*dev2_api_output", "auto dev2_api_output"
+            )
+            # check_grad_output_list = [i for i in api_output_name_type_dict.keys()]
+            for i, j in api_output_name_type_dict.items():
+                output_name = j[1]
+                check_grad_output_list.append(
+                    f"""if ({i} != nullptr) debug_str += paddle::experimental::XPUDebugString("{backward_api_name}", "{output_name}", *{i}, dev2_{i});"""
+                )
+
+            dev2_grad_function_call_str = f"""
+  if (!trace_backward) {{
+  {indent}{autograd_api_out} dev2_api_output = paddle::experimental::{self.namespace}{dev2_grad_api_contents};
+  {dev2_out_assign_str}{indent}
+  {indent}if (paddle::experimental::DebugOrNot()) {{
+  {indent}  VLOG(9) << "Start check mse for output!";
+  {indent}  {(new_line + indent + indent).join(check_grad_output_list)}
+  {indent}  VLOG(9) << "End check mse for output!";
+  {indent}{indent}if (paddle::experimental::GetDebugStartStr() != "" && debug_str != "") {{
+  {indent}{indent}  std::cout << paddle::experimental::GetDebugStartStr() << "in: " << debug_str << std::endl;
+  {indent}{indent}}}
+  {indent}}}
+  }}
+  paddle::experimental::SetDebugStartStr("");\n
   """
         # TODO(Ruting):using composite only when we don't have backward kernel in the future.
         elif is_composite_grad_api:
@@ -2311,6 +2546,96 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   }}
   """
         else:
+            for i in range(len(grad_api_args)):
+                if i in arrt_pos:
+                    pass
+                else:
+                    if grad_api_args[i] in api_output_name_type_dict.keys():
+                        # grad_api_output_pos.append[i]
+                        output_name = api_output_name_type_dict[
+                            grad_api_args[i]
+                        ][1]
+                        if (
+                            api_output_name_type_dict[grad_api_args[i]][0]
+                            == "paddle::Tensor*"
+                        ):
+
+                            op_debug_grad_tensor_copy_list.append(
+                                f"""
+{indent}paddle::Tensor dev2_{grad_api_args[i]}_tensor;
+{indent}{api_output_name_type_dict[grad_api_args[i]][0]}  dev2_{grad_api_args[i]} = &dev2_{grad_api_args[i]}_tensor;
+{indent}if ({grad_api_args[i]} == nullptr) {{
+{indent}{indent} dev2_{grad_api_args[i]} = nullptr;
+{indent}}} else {{
+{indent}{indent}paddle::experimental::copy(*{grad_api_args[i]}, paddle::experimental::xpu_debug_run_dev2(), false, dev2_{grad_api_args[i]});
+{indent}}}"""
+                            )
+                            check_grad_output_list.append(
+                                f"""if ({grad_api_args[i]} != nullptr) debug_str += paddle::experimental::XPUDebugString("{backward_api_name}", "{output_name}", *{grad_api_args[i]}, *dev2_{grad_api_args[i]});"""
+                            )
+                        else:
+                            # print("api_output_name_type_dict[grad_api_args[i]] = ", api_output_name_type_dict[grad_api_args[i]])
+                            op_debug_grad_tensor_copy_list.append(
+                                f"""
+{indent}{api_output_name_type_dict[grad_api_args[i]][0]}  dev2_{grad_api_args[i]};
+{indent}std::vector<std::shared_ptr<paddle::Tensor>> dev2_{grad_api_args[i]}_tmp;
+{indent}dev2_{grad_api_args[i]}_tmp.reserve({grad_api_args[i]}.size());
+{indent}dev2_{grad_api_args[i]}.reserve({grad_api_args[i]}.size());
+{indent}for (size_t i = 0; i < {grad_api_args[i]}.size(); ++i) {{
+{indent}  auto dev2_{grad_api_args[i]}_tensor = std::make_shared<paddle::Tensor>();
+{indent}  if (!({grad_api_args[i]}[i])) {{
+{indent}    dev2_{grad_api_args[i]}_tmp.push_back(nullptr);
+{indent}    dev2_{grad_api_args[i]}.push_back(nullptr);
+{indent}  }} else {{
+{indent}    paddle::experimental::copy(*({grad_api_args[i]}[i]), paddle::experimental::xpu_debug_run_dev2(), false, dev2_{grad_api_args[i]}_tensor.get());
+{indent}    dev2_{grad_api_args[i]}_tmp.push_back(dev2_{grad_api_args[i]}_tensor);
+{indent}    dev2_{grad_api_args[i]}.push_back(dev2_{grad_api_args[i]}_tmp[i].get());
+{indent}  }}
+{indent}}}
+
+"""
+                            )
+                            check_grad_output_list.append(
+                                f"""debug_str += paddle::experimental::XPUDebugString("{backward_api_name}", "{output_name}", {grad_api_args[i]}, dev2_{grad_api_args[i]});"""
+                            )
+                        # pass
+                        dev2_grad_api_args[i] = f"dev2_{grad_api_args[i]}"
+                    else:
+                        op_debug_grad_tensor_copy_list.append(
+                            f"auto dev2_{grad_api_args[i]} = paddle::experimental::copy({grad_api_args[i]}, paddle::experimental::xpu_debug_run_dev2(), false);"
+                        )
+                        check_grad_input_list.append(
+                            f"""debug_str += paddle::experimental::XPUDebugString("{backward_api_name}", "{grad_api_args[i]}", {grad_api_args[i]}, *dev2_{grad_api_args[i]});"""
+                        )
+                        dev2_grad_api_args[i] = f"*dev2_{grad_api_args[i]}"
+            new_line = "\n"
+            dev2_grad_api_args_str = ", ".join(dev2_grad_api_args)
+            op_debug_grad_tensor_copy_str = f"""{indent}paddle::experimental::OpIdAdd();
+{indent}VLOG(9) << "Op ID: " << paddle::experimental::OpId();
+{indent}std::string debug_str;
+{indent}VLOG(9) << "Start copy input and output!";
+{indent}{(new_line + indent).join(op_debug_grad_tensor_copy_list)}
+{indent}VLOG(9) << "End copy input and output!";
+{indent}if (paddle::experimental::DebugOrNot()) {{
+{indent}{indent}VLOG(9) << "Start check mse for input!";
+{indent}{indent}{(new_line + indent + indent).join(check_grad_input_list)}
+{indent}{indent}VLOG(9) << "End check mse for input!";
+{indent}}}"""
+            dev2_grad_function_call_str = f"""
+{indent}if (paddle::experimental::DebugOrNot()) {{
+{indent}{indent}debug_str += " out: ";
+{indent}{indent}VLOG(9) << "Strat run dev2";
+{indent}{indent}{grad_api_namespace}{backward_api_name}({dev2_grad_api_args_str});
+{indent}{indent}VLOG(9) << "End run dev2";
+{indent}{indent}VLOG(9) << "Start check mse for output!";
+{indent}{indent}{(new_line + indent + indent).join(check_grad_output_list)}
+{indent}{indent}VLOG(9) << "End check mse for output!";
+{indent}{indent}if (paddle::experimental::GetDebugStartStr() != "" && debug_str != " out: ") {{
+{indent}{indent}  std::cout << paddle::experimental::GetDebugStartStr() << "in: " << debug_str << std::endl;
+{indent}{indent}}}
+{indent}}}
+{indent}paddle::experimental::SetDebugStartStr("");
+"""
             grad_function_call_str = f"""
 {indent}{grad_api_namespace}{backward_api_name}({grad_api_args_str});"""
 
@@ -2428,7 +2753,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             inplace_for_grad_outs_str,
             self.backward_api_name,
             before_log_str,
+            op_debug_grad_tensor_copy_str,
             grad_function_call_str,
+            dev2_grad_function_call_str,
             check_nan_inf_str,
             outputs_autograd_meta_str,
             next_grad_node_creation_str,

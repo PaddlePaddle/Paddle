@@ -120,6 +120,8 @@ class DenseTensor : public TensorBase,
   /// \brief Test whether the allocation is allocated.
   /// return Whether the allocation is allocated.
   bool initialized() const override { return holder_ && holder_->ptr(); }
+  // bool holder_or_not() const override { return holder_; }
+  bool holder_ptr_or_not() const { return holder_->ptr(); }
 
   /// \brief Allocate memory with requested size from allocator.
   /// \return The mutable data pointer value of type T.
@@ -178,6 +180,13 @@ class DenseTensor : public TensorBase,
   /// \param storage_properties The storage_properties of the tensor.
   void set_storage_properties(
       std::unique_ptr<StorageProperties>&& storage_properties);
+
+  template <typename T>
+  double check_sum_impl() const;
+  double check_sum() const;
+  template <typename T>
+  double check_mse_impl(const DenseTensor& b) const;
+  double check_mse(const DenseTensor& b) const;
 
  private:
   friend class DenseTensorUtils;

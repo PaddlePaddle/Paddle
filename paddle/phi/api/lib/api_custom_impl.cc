@@ -73,6 +73,8 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
   VLOG(6) << kernel_name << " kernel: " << kernel;
   auto* dev_ctx = GetDeviceContextByBackend(
       kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
+  auto dev_place =
+      kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend;
 
   Tensor api_output;
 
@@ -95,7 +97,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
                  const std::vector<const phi::SelectedRows*>&,
                  phi::SelectedRows*);
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-
+    paddle::experimental::XPUPaddleOpTimeTik();
     (*kernel_fn)(*dev_ctx, input_x, kernel_out);
   } else {
     std::vector<const phi::TensorBase*> input_x(x.size());
@@ -123,13 +125,24 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
                  const std::vector<const phi::TensorBase*>&,
                  phi::DenseTensor*);
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-
+    paddle::experimental::XPUPaddleOpTimeTik();
     (*kernel_fn)(*dev_ctx, input_x, kernel_out);
     if (kernel_result.has_fallback_cpu) {
       TransDataBackend(kernel_out, kernel_backend, kernel_out);
     }
   }
-
+  paddle::experimental::XPUPaddleOpTimeTok(
+      "affine_grid", dev_ctx, dev_place, kernel_data_type);
+  auto debug_start_str = paddle::experimental::GetDebugStartStr();
+  if (debug_start_str == "") {
+    debug_start_str += paddle::experimental::XPUDebugStartString(
+        "affine_grid", dev_place, kernel_data_type);
+  } else {
+    std::stringstream print_buffer;
+    print_buffer << dev_place << " ";
+    debug_start_str += print_buffer.str();
+  }
+  paddle::experimental::SetDebugStartStr(debug_start_str);
   return api_output;
 }
 

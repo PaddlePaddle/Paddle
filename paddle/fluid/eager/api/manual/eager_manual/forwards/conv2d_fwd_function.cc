@@ -20,6 +20,7 @@
 #include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/lib/tensor_copy.h"
 
 DECLARE_bool(check_nan_inf);
 
@@ -99,6 +100,30 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
       egr::EagerUtils::nullable_autograd_meta(input);
   egr::AutogradMeta* filter_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(filter);
+
+  // Op Debug Tensor Copy And Check Input
+  paddle::experimental::OpIdAdd();
+  VLOG(10) << "Op ID: " << paddle::experimental::OpId();
+  std::string debug_str;
+  paddle::Tensor dev2_input;
+  paddle::Tensor dev2_filter;
+  if (paddle::experimental::DebugOrNot()) {
+    VLOG(10) << "Start copy input!";
+    paddle::experimental::copy(
+        input, paddle::experimental::xpu_debug_run_dev2(), false, &dev2_input);
+    paddle::experimental::copy(filter,
+                               paddle::experimental::xpu_debug_run_dev2(),
+                               false,
+                               &dev2_filter);
+    VLOG(10) << "End copy input!";
+    VLOG(10) << "Start check mse for input!";
+    debug_str += paddle::experimental::XPUDebugString(
+        "conv2d", "input", input, dev2_input);
+    debug_str += paddle::experimental::XPUDebugString(
+        "conv2d", "filter", filter, dev2_filter);
+    VLOG(10) << "End check mse for input!";
+  }
+
   // Forward API Call
   VLOG(3) << "Final State Running: "
           << "conv2d_ad_func";
@@ -117,6 +142,32 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
 
   // Get Outputs
   auto& out = api_result;
+
+  // Op Debug Call And Check Output
+  if (paddle::experimental::DebugOrNot()) {
+    debug_str += " out: ";
+    VLOG(10) << "Strat run dev2";
+    auto dev2_api_result = paddle::experimental::conv2d(dev2_input,
+                                                        dev2_filter,
+                                                        strides,
+                                                        paddings,
+                                                        padding_algorithm,
+                                                        dilations,
+                                                        groups,
+                                                        data_format);
+    VLOG(10) << "End run dev2";
+    VLOG(10) << "Start check mse for output!";
+    auto& dev2_out = dev2_api_result;
+    debug_str +=
+        paddle::experimental::XPUDebugString("conv2d", "out", out, dev2_out);
+    VLOG(10) << "End check mse for output!";
+    if (paddle::experimental::GetDebugStartStr() != "" &&
+        debug_str != " out: ") {
+      std::cout << paddle::experimental::GetDebugStartStr()
+                << "in: " << debug_str << std::endl;
+    }
+  }
+  paddle::experimental::SetDebugStartStr("");
 
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);

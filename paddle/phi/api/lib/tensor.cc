@@ -125,9 +125,15 @@ DataType Tensor::type() const { return impl_->dtype(); }
 
 DataLayout Tensor::layout() const { return impl_->layout(); }
 
+// bool Tensor::is_debug_dense_tensor() const {
+//   return phi::DenseTensor::classof(debug_impl_.get());
+// }
 bool Tensor::is_dense_tensor() const {
   return phi::DenseTensor::classof(impl_.get());
 }
+// bool Tensor::is_debug_selected_rows() const {
+//   return phi::SelectedRows::classof(debug_impl_.get());
+// }
 bool Tensor::is_selected_rows() const {
   return phi::SelectedRows::classof(impl_.get());
 }
@@ -339,15 +345,41 @@ Tensor Tensor::slice(int64_t begin_idx, int64_t end_idx) const {
   }
 }
 
+double Tensor::check_mse(const Tensor &b) const {
+  // return initialized() ? this->impl()->check_mse(b.impl())
+  if (this->is_dense_tensor()) {
+    // return static_cast<phi::DenseTensor *>(impl_.get())->data<T>();
+    return static_cast<phi::DenseTensor *>(this->impl_.get())
+        ->check_mse(*(static_cast<phi::DenseTensor *>(b.impl_.get())));
+  } else if (this->is_selected_rows()) {
+    // return static_cast<phi::SelectedRows *>(impl_.get())->value().data<T>();
+    return static_cast<phi::SelectedRows *>(this->impl_.get())
+        ->value()
+        .check_mse(static_cast<phi::SelectedRows *>(b.impl_.get())->value());
+  }
+  return 0;
+}
+
 const std::shared_ptr<phi::TensorBase> &Tensor::impl() const { return impl_; }
+// const std::shared_ptr<phi::TensorBase> &Tensor::debug_impl() const { return
+// debug_impl_; }
 
 void Tensor::set_impl(const std::shared_ptr<phi::TensorBase> &impl) {
   impl_ = impl;
 }
 
+// void Tensor::set_debug_impl(const std::shared_ptr<phi::TensorBase>
+// &debug_impl) {
+//   debug_impl_ = debug_impl;
+// }
+
 void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
   impl_ = std::move(impl);
 }
+
+// void Tensor::set_debug_impl(std::shared_ptr<phi::TensorBase> &&debug_impl) {
+//   debug_impl_ = std::move(debug_impl);
+// }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 gpuStream_t Tensor::stream() const {
@@ -361,8 +393,11 @@ gpuStream_t Tensor::stream() const {
 /* Part 5: Status utils methods */
 
 bool Tensor::defined() const { return impl_ != nullptr; }
+// bool Tensor::debug_defined() const { return debug_impl_ != nullptr; }
 
 bool Tensor::initialized() const { return defined() && impl_->initialized(); }
+// bool Tensor::debug_initialized() const { return debug_defined() &&
+// debug_impl_->initialized(); }
 
 bool Tensor::is_initialized() const {
   LOG_FIRST_N(WARNING, 1)
@@ -374,6 +409,7 @@ bool Tensor::is_initialized() const {
 
 void Tensor::reset() {
   impl_.reset();
+  // debug_impl_.reset();
   autograd_meta_.reset();
   name_ = "";
 }
@@ -382,6 +418,7 @@ void Tensor::reset() {
 
 Tensor &Tensor::operator=(const Tensor &x) & {
   impl_ = x.impl_;
+  // debug_impl_ = x.debug_impl_;
   autograd_meta_ = x.autograd_meta_;
   name_ = x.name_;
   return *this;
@@ -389,6 +426,7 @@ Tensor &Tensor::operator=(const Tensor &x) & {
 
 Tensor &Tensor::operator=(Tensor &&x) & {
   impl_ = std::move(x.impl_);
+  // debug_impl_ = std::move(x.debug_impl_);
   autograd_meta_ = std::move(x.autograd_meta_);
   name_ = std::move(x.name_);
   return *this;

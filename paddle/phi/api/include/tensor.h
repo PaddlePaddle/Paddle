@@ -223,6 +223,7 @@ class PADDLE_API Tensor final {
    * @return false
    */
   bool is_dense_tensor() const;
+  // bool is_debug_dense_tensor() const;
 
   /**
    * @brief Determine whether tensor is SelectedRows
@@ -231,6 +232,7 @@ class PADDLE_API Tensor final {
    * @return false
    */
   bool is_selected_rows() const;
+  // bool is_debug_selected_rows() const;
 
   /**
    * @brief Determine whether tensor is SparseCooTensor
@@ -339,6 +341,8 @@ class PADDLE_API Tensor final {
    */
   template <typename T>
   const T* data() const;
+  // template <typename T>
+  // const T* debug_data() const;
 
   /**
    * @brief Get the memory pointer directly.
@@ -350,6 +354,8 @@ class PADDLE_API Tensor final {
   template <typename T>
   T* data();
 
+  // template <typename T>
+  // T* debug_data();
   /**
    * @brief Get the const memory pointer directly.
    * It's usually used to get the output data pointer.
@@ -382,12 +388,18 @@ class PADDLE_API Tensor final {
    */
   Tensor slice(int64_t begin_idx, int64_t end_idx) const;
 
+  // double check_mse(const Tensor& b) const;
+
   /**
    * @brief Return the implementation of current Tensor.
    *
    * @return std::shared_ptr<phi::TensorBase>
    */
+
+  double check_mse(const Tensor& b) const;
+
   const std::shared_ptr<phi::TensorBase>& impl() const;
+  // const std::shared_ptr<phi::TensorBase>& debug_impl() const;
 
   /**
    * @brief Set the implementation of current Tensor.
@@ -395,6 +407,7 @@ class PADDLE_API Tensor final {
    * @param impl
    */
   void set_impl(const std::shared_ptr<phi::TensorBase>& impl);
+  // void set_debug_impl(const std::shared_ptr<phi::TensorBase>& impl);
 
   /**
    * @brief Set the implementation of current Tensor.
@@ -402,6 +415,7 @@ class PADDLE_API Tensor final {
    * @param impl
    */
   void set_impl(std::shared_ptr<phi::TensorBase>&& impl);
+  // void set_debug_impl(std::shared_ptr<phi::TensorBase>&& impl);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   /**
@@ -486,6 +500,7 @@ class PADDLE_API Tensor final {
    * @return false
    */
   bool defined() const;
+  // bool debug_defined() const;
 
   /**
    * @brief Determine whether Tensor is initialized.
@@ -494,6 +509,7 @@ class PADDLE_API Tensor final {
    * @return false
    */
   bool initialized() const;
+  // bool debug_initialized() const;
 
   /**
    * @brief Determine whether Tensor is initialized.
@@ -641,6 +657,7 @@ class PADDLE_API Tensor final {
    * to one `Tensor`.
    */
   std::shared_ptr<phi::TensorBase> impl_{nullptr};
+  // std::shared_ptr<phi::TensorBase> debug_impl_{nullptr};
 
   /**
    * [ Why need abstract AbstractAutogradMeta here? ]

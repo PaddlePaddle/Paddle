@@ -19,6 +19,7 @@
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/lib/tensor_copy.h"
 
 DECLARE_bool(check_nan_inf);
 
@@ -51,6 +52,22 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
   std::vector<egr::AutogradMeta*> x_autograd_meta_vec =
       egr::EagerUtils::nullable_autograd_meta(x);
   std::vector<egr::AutogradMeta*>* x_autograd_meta = &x_autograd_meta_vec;
+
+  // Op Debug Tensor Copy And Check Input
+  paddle::experimental::OpIdAdd();
+  VLOG(10) << "Op ID: " << paddle::experimental::OpId();
+  std::string debug_str;
+  std::vector<paddle::Tensor> dev2_x;
+  if (paddle::experimental::DebugOrNot()) {
+    VLOG(10) << "Start copy input!";
+    paddle::experimental::copy(
+        x, paddle::experimental::xpu_debug_run_dev2(), false, &dev2_x);
+    VLOG(10) << "End copy input!";
+    VLOG(10) << "Start check mse for input!";
+    debug_str += paddle::experimental::XPUDebugString("add_n", "x", x, dev2_x);
+    VLOG(10) << "End check mse for input!";
+  }
+
   // Forward API Call
   VLOG(3) << "Final State Running: "
           << "add_n_ad_func";
@@ -62,6 +79,25 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
 
   // Get Outputs
   auto& out = api_result;
+
+  // Op Debug Call And Check Output
+  if (paddle::experimental::DebugOrNot()) {
+    debug_str += " out: ";
+    VLOG(10) << "Strat run dev2";
+    auto dev2_api_result = paddle::experimental::add_n(dev2_x);
+    VLOG(10) << "End run dev2";
+    VLOG(10) << "Start check mse for output!";
+    auto& dev2_out = dev2_api_result;
+    debug_str +=
+        paddle::experimental::XPUDebugString("add_n", "out", out, dev2_out);
+    VLOG(10) << "End check mse for output!";
+    if (paddle::experimental::GetDebugStartStr() != "" &&
+        debug_str != " out: ") {
+      std::cout << paddle::experimental::GetDebugStartStr()
+                << "in: " << debug_str << std::endl;
+    }
+  }
+  paddle::experimental::SetDebugStartStr("");
 
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);

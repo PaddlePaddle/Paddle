@@ -26,6 +26,7 @@
 
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/api/lib/tensor_copy.h"
 DECLARE_bool(check_nan_inf);
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
@@ -74,6 +75,55 @@ Conv2dGradNodeFinal::operator()(
 
   // Inplace Strategy
 
+  // Op Debug Tensor Copy And Check Input
+  paddle::experimental::OpIdAdd();
+  VLOG(10) << "Op ID: " << paddle::experimental::OpId();
+  std::string debug_str;
+  VLOG(10) << "Start copy input and output!";
+  paddle::Tensor dev2_input;
+  paddle::Tensor dev2_filter;
+  paddle::Tensor dev2_grad_out;
+  paddle::Tensor dev2_input_grad_tensor;
+  paddle::Tensor* dev2_input_grad = &dev2_input_grad_tensor;
+  paddle::Tensor dev2_filter_grad_tensor;
+  paddle::Tensor* dev2_filter_grad = &dev2_filter_grad_tensor;
+  if (paddle::experimental::DebugOrNot()) {
+    paddle::experimental::copy(
+        input, paddle::experimental::xpu_debug_run_dev2(), false, &dev2_input);
+    paddle::experimental::copy(filter,
+                               paddle::experimental::xpu_debug_run_dev2(),
+                               false,
+                               &dev2_filter);
+    paddle::experimental::copy(grad_out,
+                               paddle::experimental::xpu_debug_run_dev2(),
+                               false,
+                               &dev2_grad_out);
+    if (api_output_0 == nullptr) {
+      dev2_input_grad = nullptr;
+    } else {
+      paddle::experimental::copy(*api_output_0,
+                                 paddle::experimental::xpu_debug_run_dev2(),
+                                 false,
+                                 dev2_input_grad);
+    }
+    if (api_output_1 == nullptr) {
+      dev2_filter_grad = nullptr;
+    } else {
+      paddle::experimental::copy(*api_output_1,
+                                 paddle::experimental::xpu_debug_run_dev2(),
+                                 false,
+                                 dev2_filter_grad);
+    }
+    VLOG(10) << "End copy input and output!";
+    VLOG(10) << "Start check mse for input!";
+    debug_str += paddle::experimental::XPUDebugString(
+        "conv2d_grad", "input", input, dev2_input);
+    debug_str += paddle::experimental::XPUDebugString(
+        "conv2d_grad", "filter", filter, dev2_filter);
+    debug_str += paddle::experimental::XPUDebugString(
+        "conv2d_grad", "grad_out", grad_out, dev2_grad_out);
+    VLOG(10) << "End check mse for input!";
+  }
   // Call grad_api function
   VLOG(3) << "Final State Running: Conv2dGradNodeFinal";
 
@@ -88,6 +138,40 @@ Conv2dGradNodeFinal::operator()(
                                     data_format,
                                     api_output_0,
                                     api_output_1);
+
+  // Op Debug Call And Check Output
+
+  if (paddle::experimental::DebugOrNot()) {
+    debug_str += " out: ";
+    VLOG(10) << "Strat run dev2";
+    paddle::experimental::conv2d_grad(dev2_input,
+                                      dev2_filter,
+                                      dev2_grad_out,
+                                      strides,
+                                      paddings,
+                                      padding_algorithm,
+                                      dilations,
+                                      groups,
+                                      data_format,
+                                      dev2_input_grad,
+                                      dev2_filter_grad);
+    VLOG(10) << "End run dev2";
+    VLOG(10) << "Start check mse for output!";
+    if (api_output_0 != nullptr)
+      debug_str += paddle::experimental::XPUDebugString(
+          "conv2d_grad", "input_grad", *api_output_0, *dev2_input_grad);
+    if (api_output_1 != nullptr)
+      debug_str += paddle::experimental::XPUDebugString(
+          "conv2d_grad", "filter_grad", *api_output_1, *dev2_filter_grad);
+    VLOG(10) << "End check mse for output!";
+    if (paddle::experimental::GetDebugStartStr() != "" &&
+        debug_str != " out: ") {
+      std::cout << paddle::experimental::GetDebugStartStr()
+                << "in: " << debug_str << std::endl;
+    }
+  }
+  paddle::experimental::SetDebugStartStr("");
+
   // Check NaN and Inf id needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d_grad", returns);
