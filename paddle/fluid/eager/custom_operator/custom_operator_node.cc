@@ -361,6 +361,8 @@ RunCustomOpDoubleGradNode::operator()(
       paddle::framework::OpMetaInfoHelper::GetInputs(vec_map[2]);
   auto grad_outputs_names =
       paddle::framework::OpMetaInfoHelper::GetOutputs(vec_map[2]);
+  const auto& grad_inplace_map =
+      paddle::framework::OpMetaInfoHelper::GetInplaceMap(vec_map[2]);
   auto map = egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
   auto kernel_map = egr::Controller::Instance().GetOpMetaInfoMap();
 
@@ -427,8 +429,10 @@ RunCustomOpDoubleGradNode::operator()(
   }
   VLOG(7) << "Run Kernel of Grad Custom Op: " << name();
 
+  ctx.MapPlainOutputs(grad_inputs_name, grad_outputs_names, grad_inplace_map);
   (*paddle::framework::OpMetaInfoHelper::GetKernelFn(
       kernel_map.at(op_type_)[2]))(&ctx);
+  ctx.AssignInplaceOutputs();
 
   return outs;
 }
