@@ -152,7 +152,7 @@ void CustomOpKernelContext::MapPlainOutputs(
                               input));
     inplace_tensor_map_[in_idx] = distance(outputs.begin(), out_iter);
   }
-  for (size_t i = 0; i < outputs_.size(); ++i) {
+  for (size_t i = 0; i < outputs.size(); ++i) {
     if (std::any_of(
             inplace_tensor_map_.begin(),
             inplace_tensor_map_.end(),
