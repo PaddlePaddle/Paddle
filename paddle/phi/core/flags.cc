@@ -104,16 +104,15 @@ PADDLE_DEFINE_EXPORTED_int32(
     0,
     "Setting the check and print level when FLAGS_check_nan_inf is set.");
 
-
 PADDLE_DEFINE_EXPORTED_bool(
     enable_divide_grad_use_xy,
     false,
-    "Setting the check and print level when FLAGS_check_nan_inf is set.");
+    "Flags to enable using dy = - x / y^2 instead of dy = - out / y");
 
-PADDLE_DEFINE_EXPORTED_bool(
-    enable_divide_forward_promot,
-    false,
-    "Setting the check and print level when FLAGS_check_nan_inf is set.");
+PADDLE_DEFINE_EXPORTED_bool(enable_divide_forward_promot,
+                            false,
+                            "Flags to using divide forward promot, using "
+                            "float32 computing in fp16/bf16");
 
 /**
  * Operator related FLAG
