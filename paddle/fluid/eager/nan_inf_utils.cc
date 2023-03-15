@@ -86,7 +86,7 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
   auto op_name = phi::TransToFluidOpName(api_name);
   if (tensor.initialized() && CheckOp(op_name)) {
     if (tensor.is_custom_device()) {
-      paddle::experimental::isfinite(tensor);
+      paddle::experimental::check_nan_inf(tensor, api_name, tensor.name());
       return;
     }
 

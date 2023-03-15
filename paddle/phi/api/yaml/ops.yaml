@@ -368,6 +368,14 @@
     func : celu
   backward : celu_grad
 
+- op : check_nan_inf
+  args: (Tensor x, str op_name, str var_name)
+  output : Tensor
+  infer_meta:
+    func : CheckNanInfInferMeta
+  kernel :
+    func : check_nan_inf
+
 - op : cholesky
   args : (Tensor x, bool upper=false)
   output : Tensor

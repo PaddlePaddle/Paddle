@@ -5086,6 +5086,14 @@ void ChannelShuffleInferMeta(const MetaTensor& x,
   out->set_dims(output_dims);
 }
 
+void CheckNanInfInferMeta(const MetaTensor& x,
+                          const std::string&,
+                          const std::string&,
+                          MetaTensor* out) {
+  out->set_dtype(phi::DataType::BOOL);
+  out->set_dims({1});
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(flatten, phi::FlattenInferMeta);

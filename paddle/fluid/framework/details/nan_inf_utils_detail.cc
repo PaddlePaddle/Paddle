@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/amp_type_traits.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
@@ -348,6 +349,20 @@ void CheckVarHasNanOrInf(const std::string& op_type,
         "with XPU.",
         var_name));
 #endif
+    return;
+  } else if (platform::is_custom_place(tensor->place())) {
+    auto dense_tensor = std::make_shared<phi::DenseTensor>();
+    dense_tensor->Resize(tensor->dims());
+    phi::DeviceContextPool::Instance()
+        .Get(tensor->place())
+        ->Alloc(dense_tensor.get(), tensor->dtype());
+    paddle::memory::Copy(tensor->place(),
+                         dense_tensor->data(),
+                         tensor->place(),
+                         tensor->data(),
+                         tensor->numel());
+    paddle::Tensor egr_tensor(std::move(dense_tensor));
+    paddle::experimental::check_nan_inf(egr_tensor, op_type, var_name);
     return;
   }
   tensor_check<phi::CPUContext>(op_type, var_name, *tensor, place);
