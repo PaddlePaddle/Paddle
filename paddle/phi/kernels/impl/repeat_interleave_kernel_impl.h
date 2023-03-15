@@ -131,32 +131,28 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
                         "But received: [%s], required: [%d].",
                         repeats_tensor.dims()[0],
                         x.dims()[dim]));
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(repeats_tensor.dtype());
+  const auto& index_type = repeats_tensor.dtype();
   bool index_type_match =
-      index_type == paddle::framework::proto::VarType::INT32 ||
-      index_type == paddle::framework::proto::VarType::INT64;
+      index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
   PADDLE_ENFORCE_EQ(
       index_type_match,
       true,
       phi::errors::InvalidArgument(
           "Input(RepeatsTensor) holds the wrong type, it holds %s, but "
           "desires to be %s or %s",
-          paddle::framework::DataTypeToString(index_type),
-          paddle::framework::DataTypeToString(
-              paddle::framework::proto::VarType::INT32),
-          paddle::framework::DataTypeToString(
-              paddle::framework::proto::VarType::INT64)));
+          phi::DataTypeToString(index_type),
+          phi::DataTypeToString(phi::DataType::INT32),
+          phi::DataTypeToString(phi::DataType::INT64)));
   if (place == cpu_place) {
     auto x_copy = x;
-    if (index_type == paddle::framework::proto::VarType::INT32) {
+    if (index_type == phi::DataType::INT32) {
       phi::funcs::RepeatsTensor2IndexTensor<Context, int>(
           ctx, repeats_tensor, &index);
       auto output_dim = phi::vectorize(x.dims());
       output_dim[dim] = index.dims()[0];
       out->Resize(phi::make_ddim(output_dim));
       IndexSelectInner<Context, T, int>(ctx, &x_copy, index, out, dim);
-    } else if (index_type == paddle::framework::proto::VarType::INT64) {
+    } else if (index_type == phi::DataType::INT64) {
       phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
           ctx, repeats_tensor, &index);
       auto output_dim = phi::vectorize(x.dims());
@@ -170,7 +166,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
     int64_t stride = stride_dim[dim];
     auto stream = ctx.stream();
     auto* in_data = x.data<T>();
-    if (index_type == paddle::framework::proto::VarType::INT64) {
+    if (index_type == phi::DataType::INT64) {
       phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
           ctx, repeats_tensor, &index);
 

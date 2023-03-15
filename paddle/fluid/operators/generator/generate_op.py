@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import math
 import os
 from pathlib import Path
 
@@ -478,6 +479,29 @@ def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
                         ] = False
 
 
+def split_ops_list(ops, backward_op_dict, split_num):
+    new_ops_list = []
+    new_bw_ops_list = []
+    list_size = math.ceil(len(ops) / split_num)
+    tmp_ops_list = []
+    tmp_bw_ops_list = []
+    for idx, op in enumerate(ops):
+        tmp_ops_list.append(op)
+        current_op = op
+        while (
+            'backward' in current_op
+            and current_op['backward'] in backward_op_dict
+        ):
+            tmp_bw_ops_list.append(backward_op_dict[current_op['backward']])
+            current_op = backward_op_dict[current_op['backward']]
+        if (idx + 1) % list_size == 0 or idx == len(ops) - 1:
+            new_ops_list.append(tmp_ops_list)
+            new_bw_ops_list.append(tmp_bw_ops_list)
+            tmp_ops_list = []
+            tmp_bw_ops_list = []
+    return new_ops_list, new_bw_ops_list
+
+
 def main(
     ops_yaml_path,
     backward_yaml_path,
@@ -548,13 +572,23 @@ def main(
             os.remove(output_arg_map_path)
         return
     op_template = env.get_template('op.c.j2')
-    with open(output_op_path, "wt") as f:
-        msg = op_template.render(
-            ops=ops,
-            backward_ops=backward_ops,
-            op_dict=op_dict,
-        )
-        f.write(msg)
+
+    backward_fluid_op_dict = {}
+    for bw_op in backward_ops:
+        backward_fluid_op_dict[bw_op['op_name']] = bw_op
+    output_op_files_num = len(output_op_path)
+    new_ops_list, new_bw_ops_list = split_ops_list(
+        ops, backward_fluid_op_dict, output_op_files_num
+    )
+    for idx, output_op_file in enumerate(output_op_path):
+        with open(output_op_file, "wt") as f:
+            msg = op_template.render(
+                ops=new_ops_list[idx],
+                backward_ops=new_bw_ops_list[idx],
+                op_dict=op_dict,
+            )
+            f.write(msg)
+
     ks_template = env.get_template('ks.c.j2')
     with open(output_arg_map_path, 'wt') as f:
         msg = ks_template.render(ops=ops, backward_ops=backward_ops)
@@ -578,7 +612,10 @@ if __name__ == "__main__":
         '--op_version_yaml_path', type=str, help="ops version yaml file."
     )
     parser.add_argument(
-        "--output_op_path", type=str, help="path to save generated operators."
+        "--output_op_path",
+        type=str,
+        nargs='+',
+        help="path to save generated operators.",
     )
     parser.add_argument(
         "--output_arg_map_path",

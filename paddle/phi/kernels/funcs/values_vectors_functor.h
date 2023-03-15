@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/core/errors.h"
@@ -191,12 +190,12 @@ static void CheckEighResult(const GPUContext &dev_ctx,
                             const int64_t batch_size,
                             int *info) {
   std::vector<int> error_info(batch_size);
-  paddle::memory::Copy(phi::CPUPlace(),
-                       error_info.data(),
-                       dev_ctx.GetPlace(),
-                       info,
-                       sizeof(int) * batch_size,
-                       dev_ctx.stream());
+  memory_utils::Copy(phi::CPUPlace(),
+                     error_info.data(),
+                     dev_ctx.GetPlace(),
+                     info,
+                     sizeof(int) * batch_size,
+                     dev_ctx.stream());
   dev_ctx.Wait();
   for (auto i = 0; i < batch_size; ++i) {
     CheckEighResult(i, error_info[i]);

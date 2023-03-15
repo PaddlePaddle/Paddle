@@ -233,7 +233,7 @@ def get_user_defined_strategy(config):
 
 
 def get_distributed_strategy(user_defined_strategy):  # pslib
-    from paddle.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+    from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
         StrategyFactory,
     )
 
@@ -444,7 +444,7 @@ class DnnTrainer:
             print(
                 "entering run {} - old".format(str(config["applied_pass_name"]))
             )
-            from paddle.incubate.fleet.parameter_server.ir import (
+            from paddle.incubate.distributed.fleet.parameter_server.ir import (
                 public as public,
             )
 
@@ -458,7 +458,7 @@ class DnnTrainer:
 
             _main = compiled_config.origin_main_program.clone()
             _startup = compiled_config.origin_startup_program.clone()
-            from paddle.incubate.fleet.parameter_server.ir import (
+            from paddle.incubate.distributed.fleet.parameter_server.ir import (
                 trainer_pass as worker,
             )
 

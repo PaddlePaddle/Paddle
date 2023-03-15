@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 
 namespace paddle {
@@ -320,35 +320,35 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   const int D = wh_dims[0];                                  \
   const int D4 = wh_dims[1]
 
-#define INIT_OTHER_DEFINES                                                     \
-  const T* x_data = x->data<T>();                                              \
-  const T* wx_data = wx->data<T>();                                            \
-  const T* wh_data = wh->data<T>();                                            \
-  /* diagonal weight*/                                                         \
-  const T* wp_data = bias->data<T>() + D4;                                     \
-  /* for peephole only*/                                                       \
-  T* checked_cell_data = nullptr;                                              \
-  auto place = ctx.GetPlace();                                                 \
-  if (use_peepholes) {                                                         \
-    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                           \
-    auto* checked_cell = ctx.Output<phi::DenseTensor>("CheckedCell");          \
-    checked_cell_data = checked_cell->mutable_data<T>(place);                  \
-  }                                                                            \
-  const jit::lstm_attr_t attr(                                                 \
-      D,                                                                       \
-      jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),            \
-      jit::to_kerneltype(ctx.Attr<std::string>("candidate_activation")),       \
-      jit::to_kerneltype(ctx.Attr<std::string>("cell_activation")),            \
-      use_peepholes);                                                          \
-  jit::lstm_t one_step;                                                        \
-  one_step.wp = wp_data;                                                       \
-  one_step.checked = checked_cell_data;                                        \
-  auto ComputeC1H1 =                                                           \
-      jit::KernelFuncs<jit::LSTMC1H1Tuple<T>, platform::CPUPlace>::Cache().At( \
-          attr);                                                               \
-  auto ComputeCtHt =                                                           \
-      jit::KernelFuncs<jit::LSTMCtHtTuple<T>, platform::CPUPlace>::Cache().At( \
-          attr)
+#define INIT_OTHER_DEFINES                                                    \
+  const T* x_data = x->data<T>();                                             \
+  const T* wx_data = wx->data<T>();                                           \
+  const T* wh_data = wh->data<T>();                                           \
+  /* diagonal weight*/                                                        \
+  const T* wp_data = bias->data<T>() + D4;                                    \
+  /* for peephole only*/                                                      \
+  T* checked_cell_data = nullptr;                                             \
+  auto place = ctx.GetPlace();                                                \
+  if (use_peepholes) {                                                        \
+    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                          \
+    auto* checked_cell = ctx.Output<phi::DenseTensor>("CheckedCell");         \
+    checked_cell_data = checked_cell->mutable_data<T>(place);                 \
+  }                                                                           \
+  const phi::jit::lstm_attr_t attr(                                           \
+      D,                                                                      \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),      \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("candidate_activation")), \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("cell_activation")),      \
+      use_peepholes);                                                         \
+  phi::jit::lstm_t one_step;                                                  \
+  one_step.wp = wp_data;                                                      \
+  one_step.checked = checked_cell_data;                                       \
+  auto ComputeC1H1 = phi::jit::KernelFuncs<phi::jit::LSTMC1H1Tuple<T>,        \
+                                           platform::CPUPlace>::Cache()       \
+                         .At(attr);                                           \
+  auto ComputeCtHt = phi::jit::KernelFuncs<phi::jit::LSTMCtHtTuple<T>,        \
+                                           platform::CPUPlace>::Cache()       \
+                         .At(attr)
 
 // Wh GEMM
 #define GEMM_WH_ADDON(bs, prev, out) \

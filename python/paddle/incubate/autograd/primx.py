@@ -550,8 +550,11 @@ def _lower(block, reverse, blacklist):
     block._sync_with_cpp()
 
 
-def _lower_composite(block, blacklist=[]):
-    # Some functions which are only used in _lower.
+def _lower_composite(
+    block, filter_: typing.Callable[[framework.Operator], bool] = lambda x: True
+):
+    """The operators in block wich satisfy the filter conditon will be decomposite into primitives."""
+
     def bind(args, to_bind, value_table):
         for i in range(len(args)):
             if isinstance(args[i], list):
@@ -603,7 +606,7 @@ def _lower_composite(block, blacklist=[]):
         for op_idx in range(len(block.ops)):
             op = block.ops[op_idx]
             ops_to_remove.append(op_idx)
-            if lookup_fn(op.type) is not None and op.type not in blacklist:
+            if lookup_fn(op.type) is not None and filter_(op):
                 change = True
                 op_name = op.type
                 prim_config["composite_ops_record"].add(op_name)
@@ -623,7 +626,7 @@ def _lower_composite(block, blacklist=[]):
                     new_outs,
                 ):
                     if orig_out is None:
-                        # to keep same as phi op defination, orig_out may receive None
+                        # to keep same as phi op definition, orig_out may receive None
                         continue
                     elif new_out is not None:
                         assert orig_out.dtype == new_out.dtype, (
@@ -631,6 +634,9 @@ def _lower_composite(block, blacklist=[]):
                             f'but orig_out.dtype={orig_out.dtype} and new_out.dtype={new_out.dtype}'
                         )
                         if orig_out.shape and new_out.shape:
+                            assert (
+                                -1 not in new_out.shape
+                            ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
                             assert orig_out.shape == new_out.shape, (
                                 f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
                                 f'but orig_out.shape={orig_out.shape} and new_out.shape={new_out.shape}'
@@ -645,36 +651,9 @@ def _lower_composite(block, blacklist=[]):
                     else:
                         none_vars_to_remove.add(orig_out.name)
             else:
-                inputs = {}
-                for i in range(len(op.input_names)):
-                    inputs[op.input_names[i]] = bind_name(
-                        op.input(op.input_names[i]), to_bind
-                    )
-
-                outputs = {}
-                for i in range(len(op.output_names)):
-                    outputs[op.output_names[i]] = op.output(op.output_names[i])
-
-                attrs = {}
-                # When copying op, all attrs defined in api should be kept.But op.attr_names is not complete here.
-                # Thus, all attrs should be got from init attrs of origin op.
-                runtime_attrs = op._get_runtime_attrs()
-                for name in runtime_attrs.keys():
-                    attrs[name] = runtime_attrs[name]
-
-                from paddle.fluid.dygraph.base import param_guard
-
-                new_op_desc = block.desc.append_op()
-                with param_guard(inputs), param_guard(outputs):
-                    op = Operator(
-                        block=block,
-                        desc=new_op_desc,
-                        type=op.type,
-                        inputs=inputs,
-                        outputs=outputs,
-                        attrs=attrs,
-                    )
-                block.ops.append(op)
+                op_desc = block.desc.append_op()
+                op_desc.copy_from(op.desc)
+                block._sync_with_cpp()
 
         # Step3: Do some post-processing work
         for op_idx in reversed(ops_to_remove):
@@ -708,12 +687,12 @@ def _lower_composite(block, blacklist=[]):
 
         # composite ops may contain other composite ops, thus, call _lower_composite again.
         if change:
-            _lower_composite(block, blacklist)
+            _lower_composite(block, filter_)
         return
 
     elif isinstance(block, typing.Sequence):
         for item in block:
-            _lower_composite(item, blacklist)
+            _lower_composite(item, filter_)
         return
     else:
         raise TypeError

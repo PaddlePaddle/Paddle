@@ -19,6 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 
 // only can include the headers in paddle/phi/api dirs
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -26,7 +29,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/reshape_grad_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
-
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -571,6 +573,25 @@ class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class Reshape2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // We prefer to use x.shape instead of using xshape, this is different from
+    // PHI definition.
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+
+    auto *dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    VLOG(6) << "Runing reshape2_grad composite func";
+    prim::reshape_grad<prim::DescTensor>(x, out_grad, dx_ptr);
+    this->RecoverOutputName(dx, dx_name);
+  }
+};
+
 template <typename T>
 class Reshape2DoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -715,6 +736,7 @@ REGISTER_OPERATOR(reshape2,
                   ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker<paddle::framework::OpDesc>,
                   ops::Reshape2GradMaker<paddle::imperative::OpBase>,
+                  ops::Reshape2CompositeGradOpMaker,
                   ops::ReshapeOpInplaceInferer);
 REGISTER_OPERATOR(reshape2_grad,
                   ops::Reshape2GradOp,

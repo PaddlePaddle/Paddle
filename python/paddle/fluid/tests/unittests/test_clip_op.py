@@ -299,6 +299,33 @@ class TestClipAPI(unittest.TestCase):
         paddle.disable_static()
 
 
+class TestClipOpFp16(unittest.TestCase):
+    def test_fp16(self):
+        paddle.enable_static()
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('float16')
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            images = paddle.static.data(
+                name='image1', shape=data_shape, dtype='float16'
+            )
+            min = paddle.static.data(name='min1', shape=[1], dtype='float16')
+            max = paddle.static.data(name='max1', shape=[1], dtype='float16')
+            out = paddle.clip(images, min, max)
+            if fluid.core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                res1 = exe.run(
+                    feed={
+                        "image1": data,
+                        "min1": np.array([0.2]).astype('float16'),
+                        "max1": np.array([0.8]).astype('float16'),
+                    },
+                    fetch_list=[out],
+                )
+        paddle.disable_static()
+
+
 class TestInplaceClipAPI(TestClipAPI):
     def _executed_api(self, x, min=None, max=None):
         return x.clip_(min, max)

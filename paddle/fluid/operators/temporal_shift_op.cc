@@ -45,7 +45,7 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
              "While N is the batch size, T is the temporal segment "
              "number, C is the channel number, H is the height of "
              "features and W is the width of features. "
-             "The data type is float32 and float64");
+             "The data type is float16, float32 and float64");
     AddOutput("Out",
               "The output tensor of temporal shift operator. "
               "This is a 4-D tensor in the same shape with Input(X).");

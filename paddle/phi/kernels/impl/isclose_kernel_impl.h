@@ -18,12 +18,13 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 // TODO(xiongkun): remove the header when decouple the memcpy function in phi.
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 using Tensor = DenseTensor;
@@ -58,7 +59,7 @@ struct GetTensorValue<phi::GPUContext, T> {
     const T* data = tensor.data<T>();
     T value;
     const auto gpu_place = dev_ctx.GetPlace();
-    paddle::memory::Copy(
+    memory_utils::Copy(
         phi::CPUPlace(), &value, gpu_place, data, sizeof(T), dev_ctx.stream());
     return value;
   }
@@ -109,14 +110,16 @@ __global__ void IscloseCUDAKernel(const T* in_data,
                                   bool* out_data) {
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const T a = in_data[i], b = other_data[i];
+    const MPType a = static_cast<MPType>(in_data[i]);
+    const MPType b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
-      T left = (a > b ? a - b : b - a);
-      T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-      T diff = (left > right ? left - right : right - left);
+      MPType left = (a > b ? a - b : b - a);
+      MPType right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+      MPType diff = (left > right ? left - right : right - left);
       val = a == b || left <= right || diff <= 1e-15;
     }
     out_data[i] = val;

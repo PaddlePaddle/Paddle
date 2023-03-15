@@ -31,8 +31,10 @@ using gpuStream_t = hipStream_t;
 
 #include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/common/scalar.h"
 
 namespace phi {
 class DenseTensor;
@@ -44,18 +46,9 @@ class DDim;
 }  // namespace phi
 
 namespace paddle {
-
-namespace experimental {
-
-class Tensor;
-
-template <typename T>
-class ScalarBase;
-using Scalar = paddle::experimental::ScalarBase<Tensor>;
-
-template <typename T>
-class IntArrayBase;
-using IntArray = paddle::experimental::IntArrayBase<Tensor>;
+// TODO(chenweihang): Remove the experimental namespace for Scalar and IntArray
+using Scalar = experimental::Scalar;
+using IntArray = experimental::IntArray;
 
 class AbstractAutogradMeta {
  public:
@@ -558,6 +551,14 @@ class PADDLE_API Tensor final {
 
   Tensor operator-() const;
 
+  Tensor operator~() const;
+
+  Tensor operator&(const Tensor& other) const;
+
+  Tensor operator|(const Tensor& other) const;
+
+  Tensor operator^(const Tensor& other) const;
+
   /* Part 8: Autograd methods */
 
   /**
@@ -677,28 +678,40 @@ class PADDLE_API Tensor final {
   Tensor divide(const Scalar& y) const;
   Tensor multiply(const Scalar& y) const;
   Tensor subtract(const Scalar& y) const;
+  Tensor bitwise_and(const Tensor& y) const;
+  Tensor bitwise_or(const Tensor& y) const;
+  Tensor bitwise_xor(const Tensor& y) const;
+  Tensor bitwise_not() const;
+  Tensor pow(const Tensor& y) const;
+  Tensor pow(const Scalar& y) const;
 
   Tensor exp() const;
   Tensor floor() const;
   Tensor gather_nd(const Tensor& index) const;
   Tensor log() const;
-  Tensor pow(const Scalar& y) const;
-  Tensor roll(const IntArray& shifts, const std::vector<int64_t>& axis) const;
+  Tensor roll(const IntArray& shifts = {},
+              const std::vector<int64_t>& axis = {}) const;
   Tensor scatter(const Tensor& index,
                  const Tensor& updates,
-                 bool overwrite) const;
+                 bool overwrite = true) const;
   Tensor scatter_nd_add(const Tensor& index, const Tensor& updates) const;
   Tensor abs() const;
   Tensor assign() const;
   Tensor elementwise_pow(const Tensor& y) const;
   Tensor expand(const IntArray& shape) const;
-  Tensor matmul(const Tensor& y, bool transpose_x, bool transpose_y) const;
-  Tensor max(const IntArray& axis, bool keepdim) const;
+  Tensor matmul(const Tensor& y,
+                bool transpose_x = false,
+                bool transpose_y = false) const;
+  Tensor max(const IntArray& axis = {}, bool keepdim = false) const;
   Tensor maximum(const Tensor& y) const;
   Tensor minimum(const Tensor& y) const;
-  Tensor scale(const Scalar& scale, float bias, bool bias_after_scale) const;
-  Tensor sum(const IntArray& axis, DataType dtype, bool keepdim) const;
-  Tensor tile(const IntArray& repeat_times) const;
+  Tensor scale(const Scalar& scale = 1.0,
+               float bias = 0.0,
+               bool bias_after_scale = true) const;
+  Tensor sum(const IntArray& axis = {},
+             DataType dtype = DataType::UNDEFINED,
+             bool keepdim = false) const;
+  Tensor tile(const IntArray& repeat_times = {}) const;
 };
 
 PADDLE_API Tensor operator+(const Scalar& x, const Tensor& y);
@@ -709,5 +722,4 @@ PADDLE_API Tensor operator*(const Scalar& x, const Tensor& y);
 
 PADDLE_API Tensor operator/(const Scalar& x, const Tensor& y);
 
-}  // namespace experimental
 }  // namespace paddle

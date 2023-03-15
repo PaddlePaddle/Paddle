@@ -120,6 +120,14 @@ void AffineGridInferMeta(const MetaTensor& input,
   output->share_lod(input);
 }
 
+void AllGatherInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
+  auto dim = x.dims();
+  dim[0] = dim[0] * nranks;
+  if (dim[0] < 0) dim[0] = -1;
+  out->set_dtype(x.dtype());
+  out->set_dims(dim);
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -273,6 +281,7 @@ void AsRealInferMeta(const MetaTensor& input, MetaTensor* output) {
   auto out_dims = phi::make_ddim(out_dims_v);
   output->set_dims(out_dims);
   output->share_lod(input);
+  output->set_dtype(dtype::ToReal(input.dtype()));
 }
 
 void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output) {
@@ -353,6 +362,11 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
 
   output_dim[out_batch_size_dim] = x.dims()[x_batch_size_dim];
   out->set_dims(output_dim);
+}
+
+void BroadcastBaseInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
 }
 
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
@@ -1612,6 +1626,7 @@ void HistogramInferMeta(
 
   out->set_dims({bins});
   out->share_lod(input);
+  out->set_dtype(DataType::INT64);
 }
 
 void IdentityLossInferMeta(const MetaTensor& x,
@@ -1658,25 +1673,17 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
               phi::make_ddim(shape),
               i));
       unk_dim_idx = i;
+      output_shape[i] = shape[i];
     } else if (shape[i] == 0) {
-      // for 0-Size Tensor, 0 is 0
-      // for not 0-Size Tensor, 0 represent copy origin shape
-      if (in_size > 0) {
-        PADDLE_ENFORCE_LT(
-            static_cast<int>(i),
-            in_dims.size(),
-            phi::errors::InvalidArgument(
-                "The index of 0 in `shape` must be less than "
-                "the input tensor X's dimensions. "
-                "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
-                "X's dimensions = %d.",
-                phi::make_ddim(shape),
-                i,
-                in_dims,
-                in_dims.size()));
+      if (static_cast<int>(i) < in_dims.size()) {
         output_shape[i] = in_dims[i];
       } else {
-        output_shape[i] = shape[i];
+        PADDLE_ENFORCE_EQ(
+            in_size,
+            0,
+            phi::errors::InvalidArgument("If The index of 0 in `shape` >= "
+                                         "the input tensor X's dimensions, "
+                                         "It can only be Zero-Sized Tensor"));
       }
       capacity *= output_shape[i];
     } else {
@@ -4233,10 +4240,12 @@ void TransposeInferMeta(const MetaTensor& x,
                         const std::vector<int>& axis,
                         MetaTensor* out) {
   auto x_dims = x.dims();
-  size_t x_rank = x_dims.size();
-  size_t axis_size = axis.size();
+  int x_rank = x_dims.size();
+  int axis_size = axis.size();
 
-  PADDLE_ENFORCE_EQ(
+  // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
+  // axis_size
+  PADDLE_ENFORCE_GE(
       x_rank,
       axis_size,
       errors::InvalidArgument("The input tensor's dimension "
@@ -4246,36 +4255,43 @@ void TransposeInferMeta(const MetaTensor& x,
                               x_rank,
                               axis_size));
 
+  std::vector<int> formated_axis = axis;
   std::vector<int> count(axis_size, 0);
-  for (size_t i = 0; i < axis_size; i++) {
-    PADDLE_ENFORCE_GE(
-        axis[i],
-        0,
-        errors::InvalidArgument("The axis should be greater than or equal to 0."
-                                "But received %d of axis[%d]",
-                                axis[i],
-                                i));
+  for (int i = 0; i < axis_size; i++) {
+    PADDLE_ENFORCE_LT(axis[i],
+                      x_rank,
+                      errors::InvalidArgument(
+                          "The reduce dim index %d should be in the "
+                          "range [ -dimension(X), dimension(X) ) "
+                          "which dimesion = %d. But received dim index = %d.",
+                          i,
+                          x_rank,
+                          axis[i]));
+    PADDLE_ENFORCE_GE(axis[i],
+                      -x_rank,
+                      errors::InvalidArgument(
+                          "The reduce dim index %d should be in the "
+                          "range [ -dimension(X), dimension(X) )  "
+                          "which dimesion = %d. But received dim index = %d.",
+                          i,
+                          x_rank,
+                          axis[i]));
 
+    if (axis[i] < 0) {
+      formated_axis[i] = axis[i] + x_rank;
+    }
     PADDLE_ENFORCE_EQ(
-        axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
-        true,
-        errors::InvalidArgument(
-            "Each element of Attribute axis should "
-            "be a unique value range from 0 to (dims - 1), "
-            "where the dims is the axis's size, "
-            "unique value means this axis value can appear only once. "
-            "But received axis[%d] is %d, axis_size is %d, "
-            "count[axis[%d]] is %d",
-            i,
-            axis[i],
-            axis_size,
-            i,
-            count[axis[i]]));
+        ++count[formated_axis[i]],
+        1,
+        errors::InvalidArgument("Each element of axis should be unique. but "
+                                "axis[%d] is %d appear not only once",
+                                i,
+                                axis[i]));
   }
 
   phi::DDim out_dims(x_dims);
-  for (size_t i = 0; i < axis_size; ++i) {
-    out_dims[i] = x_dims[axis[i]];
+  for (int i = 0; i < axis_size; ++i) {
+    out_dims[i] = x_dims[formated_axis[i]];
   }
 
   out->set_dims(out_dims);
@@ -4285,9 +4301,17 @@ void TransposeInferMeta(const MetaTensor& x,
 void TransposeGradInferMeta(const MetaTensor& x,
                             const std::vector<int>& axis,
                             MetaTensor* out) {
-  std::vector<int> reversed_axis(axis);
+  size_t x_rank = x.dims().size();
+  std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
-    reversed_axis[axis[i]] = i;
+    if (axis[i] < 0) {
+      formated_axis[i] = axis[i] + x_rank;
+    }
+  }
+
+  std::vector<int> reversed_axis(axis);
+  for (size_t i = 0; i < formated_axis.size(); i++) {
+    reversed_axis[formated_axis[i]] = i;
   }
 
   TransposeInferMeta(x, reversed_axis, out);
