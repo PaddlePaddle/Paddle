@@ -373,6 +373,30 @@ def relu_composite(x):
     return maximum(x, zeros_like(x))
 
 
+@REGISTER_COMPOSITE('where_index')
+def where_index_composite(x):
+    """define composite rule of op where_index."""
+    mask = x if x.dtype == bool else (x != 0)
+    mask = cast(mask, "int64")
+    size = mask.sum()
+    if size[0] == 0:
+        out = zeros(shape=[0, len(x.shape)], dtype="int64")
+        return out
+    flat_indices = cumsum(bincount(cumsum(mask))[: size[0]])
+    flat_shape = list(flat_indices.shape)
+    flat_shape.append(1)
+    flat_indices = reshape(flat_indices, flat_shape)
+    strides = (
+        cumprod(assign(x.shape[::-1]), dim=0)[::-1] // assign(x.shape)
+    ).astype("int64")
+    out = list(
+        (flat_indices // stride) % size
+        for stride, size in zip(strides, x.shape)
+    )
+    out = concat(out, axis=1)
+    return out
+
+
 @REGISTER_COMPOSITE('unsqueeze2')
 def unsqueeze_composite(x, axis):
     """define composite rule of op unsqueeze"""
