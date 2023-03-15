@@ -1337,7 +1337,7 @@ class Optimizer:
 
         return no_grad_set
 
-    @framework._non_static_only_
+    @framework.non_static_only
     def clear_grad(self, set_to_zero=True):
         """
         Clear the gradients of all optimized parameters for model.
@@ -1473,7 +1473,7 @@ class Optimizer:
         return
 
     @imperative_base.no_grad()
-    @framework._non_static_only_
+    @framework.non_static_only
     def step(self):
         """
         Execute the optimizer and update parameters once.
