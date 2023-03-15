@@ -161,12 +161,14 @@ class ProcessGroup:
             )
             paddle.distributed.all_reduce(tmp, sync_op=True, group=self)
             paddle.distributed.wait(tmp, group=self)
-            
+
             # TODO(shenliang03) AlltoAll create communicator
-            alltoall_tmp = paddle.empty(shape=[self.nranks, self.nranks], dtype="int32")
-            out = paddle._legacy_C_ops.alltoall(alltoall_tmp, 
-                                         'use_calc_stream', True, 
-                                         'ring_id', ring_id)
+            alltoall_tmp = paddle.empty(
+                shape=[self.nranks, self.nranks], dtype="int32"
+            )
+            out = paddle._legacy_C_ops.alltoall(
+                alltoall_tmp, 'use_calc_stream', True, 'ring_id', ring_id
+            )
             paddle.device.cuda.synchronize()
             paddle.enable_static()
         self._is_instantiate = True
