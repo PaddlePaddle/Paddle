@@ -68,7 +68,7 @@ class AttnMatMul {
               "The output (= input * weight) is expected to be nullptr or the "
               "same as bias_out when fused is true."));
 
-      auto fued_impl = phi::autotune::MatmulPlanner(
+      auto fused_impl = phi::autotune::MatmulPlanner(
           vectorize(input->dims()),
           vectorize(weight->dims()),
           transA_,
@@ -86,7 +86,7 @@ class AttnMatMul {
                                              input_size_,   // K
                                              transA_,
                                              transB_,
-                                             &fued_impl);
+                                             &fused_impl);
       return;
     }
 #endif

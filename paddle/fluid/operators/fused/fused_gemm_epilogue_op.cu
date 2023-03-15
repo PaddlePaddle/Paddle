@@ -29,24 +29,24 @@ template <typename T>
 size_t GetFwdFusedEpilogueType(const phi::GPUContext& ctx,
                                const std::string& activation,
                                phi::DenseTensor* reserve_space) {
-  using FusdType = phi::funcs::MatmulFusedType;
+  using FusedType = phi::funcs::MatmulFusedType;
 
-  auto fuse_type = FusdType::kMatmulBias;
+  auto fuse_type = FusedType::kMatmulBias;
   if (activation != "none") {
     if (activation == "relu") {
       if (reserve_space == nullptr) {
-        fuse_type = FusdType::kMatmulBiasRelu;
+        fuse_type = FusedType::kMatmulBiasRelu;
       } else {
-        fuse_type = FusdType::kMatmulBiasReluWithReservedData;
+        fuse_type = FusedType::kMatmulBiasReluWithReservedData;
         int64_t reserve_size =
             SizeOf(phi::DataType::BOOL) * phi::product(reserve_space->dims());
         ctx.Alloc(reserve_space, phi::DataType::BOOL, reserve_size);
       }
     } else if (activation == "gelu") {
       if (reserve_space == nullptr) {
-        fuse_type = FusdType::kMatmulBiasGelu;
+        fuse_type = FusedType::kMatmulBiasGelu;
       } else {
-        fuse_type = FusdType::kMatmulBiasGeluWithReservedData;
+        fuse_type = FusedType::kMatmulBiasGeluWithReservedData;
         int64_t reserve_size = sizeof(T) * phi::product(reserve_space->dims());
         ctx.Alloc<T>(reserve_space, reserve_size);
       }
@@ -95,7 +95,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
             << ", activation=" << activation << ", fuse_type=" << fuse_type
             << ", reserve_space=" << reserve_space;
 
-    auto fued_impl = phi::autotune::MatmulPlanner(
+    auto fused_impl = phi::autotune::MatmulPlanner(
         vectorize(x->dims()),
         vectorize(y->dims()),
         trans_x,
@@ -114,7 +114,7 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
                                            K,
                                            trans_x,
                                            trans_y,
-                                           &fued_impl);
+                                           &fused_impl);
   }
 };
 
