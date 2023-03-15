@@ -37,7 +37,7 @@
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/backends/dynload/port.h"
 
-extern std::string paddle::framework::DataTypeToString(
+extern std::string phi::DataTypeToString(
     const framework::proto::VarType::Type type);
 
 namespace paddle {
@@ -90,7 +90,7 @@ inline bool IsFloatVar(framework::proto::VarType::Type t) {
   return false;
 }
 
-using paddle::framework::DataTypeToString;
+using phi::DataTypeToString;
 
 // Timer for timer
 class Timer {

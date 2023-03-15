@@ -105,7 +105,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
           "But got "
           "unsupport dtype: %s.",
           i,
-          paddle::framework::DataTypeToString(
+          phi::DataTypeToString(
               framework::TransToProtoVarType(tensor->dtype()))));
     }
   }

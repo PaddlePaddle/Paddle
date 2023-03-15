@@ -427,7 +427,7 @@ inline cudaDataType_t GetGpuType(const VarType::Type data_type) {
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Not support tensor type in sparse_attention OP: %s",
-        framework::DataTypeToString(data_type)));
+        phi::DataTypeToString(data_type)));
   }
 }
 

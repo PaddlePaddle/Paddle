@@ -2421,9 +2421,8 @@ void OperatorWithKernel::HandleComplexGradToRealGrad(
       }
 
       // 3. cast complex grad to real grad
-      VLOG(6) << "Transform " << framework::DataTypeToString(src_type)
-              << " var `" << var_name << "` to "
-              << framework::DataTypeToString(dst_type)
+      VLOG(6) << "Transform " << phi::DataTypeToString(src_type) << " var `"
+              << var_name << "` to " << phi::DataTypeToString(dst_type)
               << " real var in static graph.";
       phi::DenseTensor out;
       TransComplexToReal(dst_type, src_type, *grad_tensor, &out);

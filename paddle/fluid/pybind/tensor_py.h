@@ -263,7 +263,7 @@ inline std::string TensorDTypeToPyDTypeStr(
   _ForEachDataType_(TENSOR_DTYPE_TO_PY_DTYPE);
 #undef TENSOR_DTYPE_TO_PY_DTYPE
   PADDLE_THROW(platform::errors::Unimplemented(
-      "Unsupported tensor data type: %s", framework::DataTypeToString(type)));
+      "Unsupported tensor data type: %s", phi::DataTypeToString(type)));
 }
 
 }  // namespace details
@@ -935,8 +935,7 @@ inline phi::DenseTensor *_sliceTensor(const phi::DenseTensor &self,
       return _sliceAndConcat<uint8_t>(self, obj, dim);
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Not support tensor type: %s",
-          framework::DataTypeToString(src_type)));
+          "Not support tensor type: %s", phi::DataTypeToString(src_type)));
   }
 }
 

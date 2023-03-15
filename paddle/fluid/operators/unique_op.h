@@ -82,16 +82,15 @@ struct UniqueOpFunctor {
       const auto& index_type = framework::TransToProtoVarType(index_->dtype());
       bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                               index_type == framework::proto::VarType::INT64;
-      PADDLE_ENFORCE_EQ(index_type_match,
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Index holds the wrong type, it holds %s, "
-                            "but desires to be %s or %s",
-                            paddle::framework::DataTypeToString(index_type),
-                            paddle::framework::DataTypeToString(
-                                framework::proto::VarType::INT32),
-                            paddle::framework::DataTypeToString(
-                                framework::proto::VarType::INT64)));
+      PADDLE_ENFORCE_EQ(
+          index_type_match,
+          true,
+          platform::errors::InvalidArgument(
+              "Index holds the wrong type, it holds %s, "
+              "but desires to be %s or %s",
+              phi::DataTypeToString(index_type),
+              phi::DataTypeToString(framework::proto::VarType::INT32),
+              phi::DataTypeToString(framework::proto::VarType::INT64)));
 
       if (index_type == framework::proto::VarType::INT32) {
         for (auto i = 0; i < in_->numel(); ++i) {

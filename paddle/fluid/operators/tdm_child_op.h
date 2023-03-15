@@ -117,16 +117,15 @@ class TDMChildKernel : public framework::OpKernel<T> {
         framework::TransToProtoVarType(input_tensor.dtype());
     bool input_type_match = input_type == framework::proto::VarType::INT32 ||
                             input_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(input_type_match,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) holds the wrong type, it holds %s, but "
-                          "desires to be %s or %s",
-                          paddle::framework::DataTypeToString(input_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
+    PADDLE_ENFORCE_EQ(
+        input_type_match,
+        true,
+        platform::errors::InvalidArgument(
+            "Input(X) holds the wrong type, it holds %s, but "
+            "desires to be %s or %s",
+            phi::DataTypeToString(input_type),
+            phi::DataTypeToString(framework::proto::VarType::INT32),
+            phi::DataTypeToString(framework::proto::VarType::INT64)));
 
     auto &tree_info_tensor = tree_info_var->Get<phi::DenseTensor>();
     const auto &info_type =
@@ -139,11 +138,9 @@ class TDMChildKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "Input(TreeInfo) holds the wrong type, it holds %s, but "
             "desires to be %s or %s",
-            paddle::framework::DataTypeToString(info_type),
-            paddle::framework::DataTypeToString(
-                framework::proto::VarType::INT32),
-            paddle::framework::DataTypeToString(
-                framework::proto::VarType::INT64)));
+            phi::DataTypeToString(info_type),
+            phi::DataTypeToString(framework::proto::VarType::INT32),
+            phi::DataTypeToString(framework::proto::VarType::INT64)));
 
     auto *child_var = ctx.OutputVar("Child");
     auto *leaf_mask_var = ctx.OutputVar("LeafMask");
@@ -154,17 +151,16 @@ class TDMChildKernel : public framework::OpKernel<T> {
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
     bool out_type_match = output_type == framework::proto::VarType::INT32 ||
                           output_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(out_type_match,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Output(Child) & Output(LeafMask) holds the wrong "
-                          "type, it holds %s, but "
-                          "desires to be %s or %s",
-                          paddle::framework::DataTypeToString(output_type),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT32),
-                          paddle::framework::DataTypeToString(
-                              framework::proto::VarType::INT64)));
+    PADDLE_ENFORCE_EQ(
+        out_type_match,
+        true,
+        platform::errors::InvalidArgument(
+            "Output(Child) & Output(LeafMask) holds the wrong "
+            "type, it holds %s, but "
+            "desires to be %s or %s",
+            phi::DataTypeToString(output_type),
+            phi::DataTypeToString(framework::proto::VarType::INT32),
+            phi::DataTypeToString(framework::proto::VarType::INT64)));
 
     if (info_type == framework::proto::VarType::INT32 &&
         output_type == framework::proto::VarType::INT32) {

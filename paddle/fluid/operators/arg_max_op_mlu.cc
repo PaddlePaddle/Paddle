@@ -36,11 +36,9 @@ class ArgMaxMLUKernel : public framework::OpKernel<T> {
             "The attribute of dtype in argmax op must be [%s] or [%s], "
             "but "
             "received [%s]",
-            paddle::framework::DataTypeToString(
-                framework::proto::VarType::INT64),
-            paddle::framework::DataTypeToString(
-                framework::proto::VarType::INT32),
-            paddle::framework::DataTypeToString(
+            phi::DataTypeToString(framework::proto::VarType::INT64),
+            phi::DataTypeToString(framework::proto::VarType::INT32),
+            phi::DataTypeToString(
                 static_cast<framework::proto::VarType::Type>(dtype))));
 
     if (axis < 0) {

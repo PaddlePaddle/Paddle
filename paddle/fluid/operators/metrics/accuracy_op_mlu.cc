@@ -45,8 +45,8 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
                         platform::errors::Unimplemented(
                             "In accuracy mlu kernel, cast indices from [%s] to "
                             "[%s] is not supported.",
-                            framework::DataTypeToString(indices_type),
-                            framework::DataTypeToString(VT::INT32)));
+                            phi::DataTypeToString(indices_type),
+                            phi::DataTypeToString(VT::INT32)));
       indices_int32.Resize(indices->dims());
       indices_int32.mutable_data<int>(ctx.GetPlace());
       MLUCnnlTensorDesc org_indices_desc(*indices);
@@ -69,8 +69,8 @@ class AccuracyMLUKernel : public framework::OpKernel<T> {
           platform::errors::Unimplemented(
               "In accuracy mlu kernel, cast label from [%s] to [%s] "
               "is not supported.",
-              framework::DataTypeToString(label_type),
-              framework::DataTypeToString(VT::INT32)));
+              phi::DataTypeToString(label_type),
+              phi::DataTypeToString(VT::INT32)));
       label_int32.Resize(label->dims());
       label_int32.mutable_data<int>(ctx.GetPlace());
       MLUCnnlTensorDesc org_label_desc(*label);

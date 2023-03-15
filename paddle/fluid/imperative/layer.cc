@@ -101,7 +101,7 @@ static std::string DebugString(
       auto& tensor = var.Get<phi::DenseTensor>();
       ss << "LoDTensor<";
       if (tensor.IsInitialized()) {
-        ss << framework::DataTypeToString(
+        ss << phi::DataTypeToString(
                   framework::TransToProtoVarType(tensor.dtype()))
            << ", ";
         ss << tensor.place() << ", ";
@@ -116,7 +116,7 @@ static std::string DebugString(
       auto& tensor = selected_rows.value();
       auto& rows = selected_rows.rows();
       if (tensor.IsInitialized()) {
-        ss << framework::DataTypeToString(
+        ss << phi::DataTypeToString(
                   framework::TransToProtoVarType(tensor.dtype()))
            << ", ";
         ss << tensor.place() << ", ";

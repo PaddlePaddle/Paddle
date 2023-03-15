@@ -206,7 +206,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   }
 
 #define PADDLE_TENSOR_ADD(T, CONTEXT)                                          \
-  if (data_type == framework::DataTypeTrait<T>::DataType()) {                  \
+  if (data_type == phi::DataTypeTrait<T>::DataType()) {                        \
     auto cpu_ctx = static_cast<CONTEXT*>(                                      \
         platform::DeviceContextPool::Instance().Get(place));                   \
     phi::AddKernel<T, CONTEXT>(*cpu_ctx, src_tensor, *dst_tensor, dst_tensor); \
@@ -247,7 +247,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   }
 
 #define PADDLE_TENSOR_ADD_CUSTOM(T)                              \
-  if (data_type == framework::DataTypeTrait<T>::DataType()) {    \
+  if (data_type == phi::DataTypeTrait<T>::DataType()) {          \
     platform::CustomDeviceContext* ctx =                         \
         static_cast<platform::CustomDeviceContext*>(             \
             platform::DeviceContextPool::Instance().Get(place)); \
@@ -276,18 +276,17 @@ void TensorAdd(const VarType& src, VarType* dst) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::DeviceContext* ctx = pool.Get(place);
     auto dev_ctx = dynamic_cast<platform::NPUDeviceContext*>(ctx);
-    if (data_type == framework::DataTypeTrait<float>::DataType()) {
+    if (data_type == phi::DataTypeTrait<float>::DataType()) {
       dst_tensor->mutable_data<float>(place);
-    } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
+    } else if (data_type == phi::DataTypeTrait<double>::DataType()) {
       dst_tensor->mutable_data<double>(place);
-    } else if (data_type ==
-               framework::DataTypeTrait<platform::float16>::DataType()) {
+    } else if (data_type == phi::DataTypeTrait<platform::float16>::DataType()) {
       dst_tensor->mutable_data<platform::float16>(place);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Gradient accumulation of data type (%s) on place (%s) is not "
           "supported in imperative mode",
-          framework::DataTypeToString(data_type),
+          phi::DataTypeToString(data_type),
           place));
     }
     const auto& runner = operators::NpuOpRunner(
@@ -299,18 +298,17 @@ void TensorAdd(const VarType& src, VarType* dst) {
 
 #ifdef PADDLE_WITH_XPU
   if (platform::is_xpu_place(place)) {
-    if (data_type == framework::DataTypeTrait<float>::DataType()) {
+    if (data_type == phi::DataTypeTrait<float>::DataType()) {
       XPUTensorAddFunctor<float>(place, src_tensor, dst_tensor);
-    } else if (data_type ==
-               framework::DataTypeTrait<platform::float16>::DataType()) {
+    } else if (data_type == phi::DataTypeTrait<platform::float16>::DataType()) {
       XPUTensorAddFunctor<platform::float16>(place, src_tensor, dst_tensor);
-    } else if (data_type == framework::DataTypeTrait<double>::DataType()) {
+    } else if (data_type == phi::DataTypeTrait<double>::DataType()) {
       XPUTensorAddFunctor<double>(place, src_tensor, dst_tensor);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Gradient accumulation of data type (%s) on place (%s) is not "
           "supported in imperative mode",
-          framework::DataTypeToString(data_type),
+          phi::DataTypeToString(data_type),
           place));
     }
     return;
@@ -322,16 +320,15 @@ void TensorAdd(const VarType& src, VarType* dst) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::DeviceContext* ctx = pool.Get(place);
     auto dev_ctx = dynamic_cast<platform::MLUDeviceContext*>(ctx);
-    if (data_type == framework::DataTypeTrait<float>::DataType()) {
+    if (data_type == phi::DataTypeTrait<float>::DataType()) {
       dst_tensor->mutable_data<float>(place);
-    } else if (data_type ==
-               framework::DataTypeTrait<platform::float16>::DataType()) {
+    } else if (data_type == phi::DataTypeTrait<platform::float16>::DataType()) {
       dst_tensor->mutable_data<platform::float16>(place);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Gradient accumulation of data type (%s) on place (%s) is not "
           "supported in imperative mode",
-          framework::DataTypeToString(data_type),
+          phi::DataTypeToString(data_type),
           place));
     }
     static const float alpha = 1.f;
@@ -355,7 +352,7 @@ void TensorAdd(const VarType& src, VarType* dst) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "Gradient accumulation of data type (%s) on place (%s) is not "
       "supported in imperative mode",
-      framework::DataTypeToString(data_type),
+      phi::DataTypeToString(data_type),
       place));
 }
 
@@ -375,7 +372,7 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
 #define PADDLE_SELECTED_ROWS_ADD_TO_TENSOR(dev_ctx_type, cpp_type)       \
-  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {     \
+  if (data_type == phi::DataTypeTrait<cpp_type>::DataType()) {           \
     paddle::platform::DeviceContext* dev_ctx = pool.Get(place);          \
     phi::funcs::SelectedRowsAddToTensor<dev_ctx_type, cpp_type> functor; \
     functor(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),                     \
@@ -400,7 +397,7 @@ void SelectedRowsAddToTensor(const VarType& src, VarType* dst) {
 
   PADDLE_THROW(platform::errors::InvalidArgument(
       "Not supported data type %s for SelectedRowsAddToTensor",
-      framework::DataTypeToString(data_type)));
+      phi::DataTypeToString(data_type)));
 }
 
 template void SelectedRowsAddToTensor(const framework::Variable& src,
@@ -426,7 +423,7 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
   dst_tensor->mutable_data(place, src_tensor.dtype());
 
 #define PADDLE_SELECTED_ROWS_ADD_TENSOR(dev_ctx_type, cpp_type)        \
-  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {   \
+  if (data_type == phi::DataTypeTrait<cpp_type>::DataType()) {         \
     phi::funcs::SelectedRowsAddTensor<dev_ctx_type, cpp_type> functor; \
     functor(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),                   \
             src_selected_rows,                                         \
@@ -449,7 +446,7 @@ void SelectedRowsAddTensor(const VarType& src_selected_rows_var,
 
   PADDLE_THROW(platform::errors::InvalidArgument(
       "Not supported data type %s for SelectedRowsAddToTensor",
-      framework::DataTypeToString(data_type)));
+      phi::DataTypeToString(data_type)));
 
 #undef PADDLE_SELECTED_ROWS_ADD_TENSOR
 }
@@ -487,7 +484,7 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
       GetEmptyInnerTensor<phi::SelectedRows>(dst_var.get());
 
 #define PADDLE_SELECTED_ROWS_ADD(dev_ctx_type, cpp_type)             \
-  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) { \
+  if (data_type == phi::DataTypeTrait<cpp_type>::DataType()) {       \
     paddle::platform::DeviceContext* dev_ctx = pool.Get(place);      \
     phi::funcs::scatter::MergeAdd<dev_ctx_type, cpp_type> merge_add; \
     merge_add(*(dynamic_cast<dev_ctx_type*>(dev_ctx)),               \
@@ -519,7 +516,7 @@ std::shared_ptr<ReturnVarType> SelectedRowsMerge(const VarType& src1,
 #undef PADDLE_SELECTED_ROWS_ADD
   PADDLE_THROW(platform::errors::InvalidArgument(
       "Not supported data type %s for SelectedRowsMerge",
-      framework::DataTypeToString(data_type)));
+      phi::DataTypeToString(data_type)));
 }
 
 template std::shared_ptr<paddle::Tensor> SelectedRowsMerge(

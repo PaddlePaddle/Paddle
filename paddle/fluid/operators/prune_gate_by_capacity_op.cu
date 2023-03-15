@@ -101,7 +101,7 @@ static void VisitDataType(phi::DataType type, Visitor visitor) {
         "The received values gate_id type %s can not meet input requirements. "
         "Because the given gate_id data type of operators must be "
         "int64. Please input appropriate gate_id again! ",
-        "framework::DataTypeToString(type)"));
+        "phi::DataTypeToString(type)"));
   }
 }
 
