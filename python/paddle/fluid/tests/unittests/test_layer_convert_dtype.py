@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
+from paddle.fluid import core
 
 
 class MyModel(paddle.nn.Layer):
@@ -80,6 +81,9 @@ class TestDtypeConvert(unittest.TestCase):
         loss.backward()
         optimizer.step()
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "Require compiled with CUDA."
+    )
     def test_func_half(self):
         x = paddle.to_tensor(self.x_data, dtype=paddle.float16)
         y = paddle.to_tensor(self.y_data, dtype=paddle.float16)
@@ -94,6 +98,9 @@ class TestDtypeConvert(unittest.TestCase):
         loss.backward()
         optimizer.step()
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "Require compiled with CUDA."
+    )
     def test_func_bfloat16(self):
         x = paddle.to_tensor(self.x_data, dtype=paddle.bfloat16)
         y = paddle.to_tensor(self.y_data, dtype=paddle.bfloat16)
