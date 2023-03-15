@@ -76,6 +76,9 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("round");
     int8_teller_set.insert("round");
     teller_set.insert("set_value");
+    int8_teller_set.insert("set_value");
+    teller_set.insert("einsum");
+    int8_teller_set.insert("eisum");
 #endif
   }
 

@@ -47,7 +47,6 @@ class NearestInterpolateV2OpConverter : public OpConverter {
     bool align_corners =
         PADDLE_GET_CONST(bool, op_desc.GetAttr("align_corners"));
 
-    auto input_names = op_desc.Input("X");
     auto scale = PADDLE_GET_CONST(std::vector<float>, op_desc.GetAttr("scale"));
     auto out_h = PADDLE_GET_CONST(int, op_desc.GetAttr("out_h"));
     auto out_w = PADDLE_GET_CONST(int, op_desc.GetAttr("out_w"));

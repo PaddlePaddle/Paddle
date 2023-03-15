@@ -2545,6 +2545,7 @@ USE_TRT_CONVERTER(cross_multihead_matmul)
 USE_TRT_CONVERTER(grid_sampler)
 #endif
 #if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(einsum)
 USE_TRT_CONVERTER(set_value)
 USE_TRT_CONVERTER(temporal_shift)
 #endif

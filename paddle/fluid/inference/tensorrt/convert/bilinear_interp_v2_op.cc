@@ -51,7 +51,6 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
     auto align_mode = PADDLE_GET_CONST(int, op_desc.GetAttr("align_mode"));
 
     auto resize_inputs = op_desc.Inputs();
-    auto input_names = op_desc.Input("X");
 
     auto out_h = PADDLE_GET_CONST(int, op_desc.GetAttr("out_h"));
     auto out_w = PADDLE_GET_CONST(int, op_desc.GetAttr("out_w"));
