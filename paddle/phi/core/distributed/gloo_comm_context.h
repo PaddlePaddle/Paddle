@@ -37,6 +37,9 @@ class GlooCommContext final : public CommContext {
                  const phi::DenseTensor& in_tensor,
                  int root);
 
+  void AllGather(phi::DenseTensor* out_tensor,
+                 const phi::DenseTensor& in_tensor);
+
  private:
   DISABLE_COPY_AND_ASSIGN(GlooCommContext);
 
