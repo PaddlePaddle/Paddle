@@ -21,11 +21,11 @@ from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 class TestGenerationPipeline(unittest.TestCase):
-
     def test_pp2(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        launch_model_path = os.path.join(file_dir,
-                                         "generation_pipeline_pass_unittest.py")
+        launch_model_path = os.path.join(
+            file_dir, "generation_pipeline_pass_unittest.py"
+        )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
@@ -33,10 +33,19 @@ class TestGenerationPipeline(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
-        cmd = [sys.executable, "-u"] + coverage_args + [
-            "-m", "paddle.distributed.launch", "--devices", "0,1", "--log_dir",
-            tmp_dir.name, launch_model_path
-        ]
+        cmd = (
+            [sys.executable, "-u"]
+            + coverage_args
+            + [
+                "-m",
+                "paddle.distributed.launch",
+                "--devices",
+                "0,1",
+                "--log_dir",
+                tmp_dir.name,
+                launch_model_path,
+            ]
+        )
 
         process = subprocess.Popen(cmd)
         process.wait()

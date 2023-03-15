@@ -107,13 +107,13 @@ class GEN(nn.Layer):
 
         return output, cur_step
 
+
 def get_model():
 
     with paddle.LazyGuard():
         mlp = MLPLayer()
         gen = GEN(mlp)
     return gen
-
 
 
 class TestGenerationPipeline(unittest.TestCase):
@@ -130,9 +130,13 @@ class TestGenerationPipeline(unittest.TestCase):
         engine = auto.Engine(model, strategy=strategy)
 
         engine.prepare(
-            inputs_spec=paddle.static.InputSpec(shape=[2, 1024], name='input', dtype='float32'), 
-            labels_spec=paddle.static.InputSpec(shape=[2, 1024], name='label', dtype='float32'), 
-            mode="eval"
+            inputs_spec=paddle.static.InputSpec(
+                shape=[2, 1024], name='input', dtype='float32'
+            ),
+            labels_spec=paddle.static.InputSpec(
+                shape=[2, 1024], name='label', dtype='float32'
+            ),
+            mode="eval",
         )
 
         train_data = MyDataset(50 * 2)
@@ -151,12 +155,18 @@ class TestGenerationPipeline(unittest.TestCase):
         assert fleet_opt['inference_generation'] == True
         assert fleet_opt['num_micro_batches'] == 4
         num_task_in_rank = 5
-        for idx, (task_id, rank_id) in enumerate(fleet_opt['task_id_to_rank'].items()):
-            assert task_id == rank_id * num_task_in_rank + idx % num_task_in_rank
+        for idx, (task_id, rank_id) in enumerate(
+            fleet_opt['task_id_to_rank'].items()
+        ):
+            assert (
+                task_id == rank_id * num_task_in_rank + idx % num_task_in_rank
+            )
 
         train_dataloader._inner_dataloader.start()
         try:
-            engine._executor.run(engine.main_program, use_program_cache=False, return_numpy=False)
+            engine._executor.run(
+                engine.main_program, use_program_cache=False, return_numpy=False
+            )
         except paddle.fluid.core.EOFException:
             print("test done")
             train_dataloader._inner_dataloader.reset()
@@ -165,4 +175,3 @@ class TestGenerationPipeline(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
