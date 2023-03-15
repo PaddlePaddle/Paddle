@@ -776,7 +776,8 @@ class SoftmaxOneDNNHandler
         errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
-    const int canonical_axis = funcs::CanonicalAxis(axis, x->dims().size());
+    int rank = x->dims().size() != 0 ? x->dims().size() : 1;
+    const int canonical_axis = funcs::CanonicalAxis(axis, rank);
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_scoring, x->mem_desc(), canonical_axis);
   }
@@ -790,8 +791,8 @@ class SoftmaxOneDNNHandler
                                 dnnl::softmax_forward,
                                 dnnl::softmax_backward>(onednn_engine,
                                                         cpu_place) {
-    const int canonical_axis =
-        funcs::CanonicalAxis(axis, out_grad->dims().size());
+    int rank = out_grad->dims().size() != 0 ? out_grad->dims().size() : 1;
+    const int canonical_axis = funcs::CanonicalAxis(axis, rank);
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_scoring, out->mem_desc(), canonical_axis);
     this->AcquireBackwardPrimitiveDescriptor(
