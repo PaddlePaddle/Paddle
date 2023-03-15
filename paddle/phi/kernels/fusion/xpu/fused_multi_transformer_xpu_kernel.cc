@@ -121,7 +121,7 @@ void FusedMultiTransformerXpuKernel(
   auto* out_data = reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(out));
   auto src_mask_dims = src_mask.get_ptr()->dims();
   auto out_dims = out->dims();
-  auto X = xft::xftTensor<XPUTypeT, 3>(
+  auto xft_x = xft::xftTensor<XPUTypeT, 3>(
       x_data, std::array<int64_t, 3>{x_dims[0], x_dims[1], x_dims[2]});
   // TODO(mayang02): xft support mask.dtype = float16
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
@@ -132,93 +132,95 @@ void FusedMultiTransformerXpuKernel(
                                      src_mask_fp32_data,
                                      src_mask.get_ptr()->numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::cast");
-  auto SrcMask =
+  auto xft_src_mask =
       xft::xftTensor<float, 4>(src_mask_fp32_data,
                                std::array<int64_t, 4>{src_mask_dims[0],
                                                       src_mask_dims[1],
                                                       src_mask_dims[2],
                                                       src_mask_dims[3]});
-  auto Out = xft::xftTensor<XPUTypeT, 3>(
+  auto xft_out = xft::xftTensor<XPUTypeT, 3>(
       out_data, std::array<int64_t, 3>{out_dims[0], out_dims[1], out_dims[2]});
 
   typedef int16_t TW;
-  std::vector<xft::xftVec<float>> LnScale;
-  std::vector<xft::xftVec<float>> LnBias;
-  std::vector<xft::xftMat<TW>> QKVW;
-  std::vector<xft::xftVec<float>> QKVBias;
-  std::vector<xft::xftMat<TW>> OutLinearW;
-  std::vector<xft::xftVec<float>> OutLinearBias;
-  std::vector<xft::xftVec<float>> FFNLnScale;
-  std::vector<xft::xftVec<float>> FFNLnBias;
-  std::vector<xft::xftMat<TW>> FFN1Weight;
-  std::vector<xft::xftVec<float>> FFN1Bias;
-  std::vector<xft::xftMat<TW>> FFN2Weight;
-  std::vector<xft::xftVec<float>> FFN2Bias;
-  std::vector<xft::xftTensor<XPUTypeT, 5>> CacheKVIn;
-  std::vector<xft::xftTensor<XPUTypeT, 5>> CacheKVOut;
+  std::vector<xft::xftVec<float>> xft_ln_scale;
+  std::vector<xft::xftVec<float>> xft_ln_bias;
+  std::vector<xft::xftMat<TW>> xft_qkvw;
+  std::vector<xft::xftVec<float>> xft_qkv_bias;
+  std::vector<xft::xftMat<TW>> xft_out_linear_w;
+  std::vector<xft::xftVec<float>> xft_out_linear_bias;
+  std::vector<xft::xftVec<float>> xft_ffn_ln_scale;
+  std::vector<xft::xftVec<float>> xft_ffn_ln_bias;
+  std::vector<xft::xftMat<TW>> xft_ffn1_w;
+  std::vector<xft::xftVec<float>> xft_ffn1_bias;
+  std::vector<xft::xftMat<TW>> xft_ffn2_w;
+  std::vector<xft::xftVec<float>> xft_ffn2_bias;
+  std::vector<xft::xftTensor<XPUTypeT, 5>> xft_cache_kv;
+  std::vector<xft::xftTensor<XPUTypeT, 5>> xft_cache_kv_out;
 
   int layers = qkvw.size();
   for (int i = 0; i < layers; ++i) {
     // step1. layer_norm
-    LnScale.emplace_back(const_cast<float*>(ln_scale[i]->data<float>()),
-                         std::array<int64_t, 1>{ln_scale[i]->dims()[0]});
-    LnBias.emplace_back(const_cast<float*>(ln_bias[i]->data<float>()),
-                        std::array<int64_t, 1>{ln_bias[i]->dims()[0]});
+    xft_ln_scale.emplace_back(const_cast<float*>(ln_scale[i]->data<float>()),
+                              std::array<int64_t, 1>{ln_scale[i]->dims()[0]});
+    xft_ln_bias.emplace_back(const_cast<float*>(ln_bias[i]->data<float>()),
+                             std::array<int64_t, 1>{ln_bias[i]->dims()[0]});
     // step2. qkv
     auto qkvw_dims = qkvw[i]->dims();
-    QKVW.emplace_back(
+    xft_qkvw.emplace_back(
         const_cast<TW*>(qkvw[i]->data<TW>()),
         const_cast<float*>(qkvw_max[i]->data<float>()),
         std::array<int64_t, 2>{qkvw_dims[0] * qkvw_dims[1] * qkvw_dims[2],
                                qkvw_dims[3]});
     auto qkvb_dims = qkv_bias[i]->dims();
-    QKVBias.emplace_back(
+    xft_qkv_bias.emplace_back(
         const_cast<float*>(qkv_bias[i]->data<float>()),
         std::array<int64_t, 1>{qkvb_dims[0] * qkvb_dims[1] * qkvb_dims[2]});
     // attn out
     auto outw_dims = out_linear_w[i]->dims();
-    OutLinearW.emplace_back(
+    xft_out_linear_w.emplace_back(
         const_cast<TW*>(out_linear_w[i]->data<TW>()),
         const_cast<float*>(out_linear_wmax[i]->data<float>()),
         std::array<int64_t, 2>{outw_dims[0], outw_dims[1]});
-    OutLinearBias.emplace_back(
+    xft_out_linear_bias.emplace_back(
         const_cast<float*>(out_linear_bias[i]->data<float>()),
         std::array<int64_t, 1>{out_linear_bias[i]->dims()[0]});
     // ffn ln
-    FFNLnScale.emplace_back(const_cast<float*>(ffn_ln_scale[i]->data<float>()),
-                            std::array<int64_t, 1>{ffn_ln_scale[i]->dims()[0]});
-    FFNLnBias.emplace_back(const_cast<float*>(ffn_ln_bias[i]->data<float>()),
-                           std::array<int64_t, 1>{ffn_ln_bias[i]->dims()[0]});
+    xft_ffn_ln_scale.emplace_back(
+        const_cast<float*>(ffn_ln_scale[i]->data<float>()),
+        std::array<int64_t, 1>{ffn_ln_scale[i]->dims()[0]});
+    xft_ffn_ln_bias.emplace_back(
+        const_cast<float*>(ffn_ln_bias[i]->data<float>()),
+        std::array<int64_t, 1>{ffn_ln_bias[i]->dims()[0]});
     // ffn1
     auto ffn1w_dims = ffn1_weight[i]->dims();
-    FFN1Weight.emplace_back(
+    xft_ffn1_w.emplace_back(
         const_cast<TW*>(ffn1_weight[i]->data<TW>()),
         const_cast<float*>(ffn1_weight_max[i]->data<float>()),
         std::array<int64_t, 2>{ffn1w_dims[0], ffn1w_dims[1]});
-    FFN1Bias.emplace_back(const_cast<float*>(ffn1_bias[i]->data<float>()),
-                          std::array<int64_t, 1>{ffn1_bias[i]->dims()[0]});
+    xft_ffn1_bias.emplace_back(const_cast<float*>(ffn1_bias[i]->data<float>()),
+                               std::array<int64_t, 1>{ffn1_bias[i]->dims()[0]});
     // ffn2
     auto ffn2w_dims = ffn2_weight[i]->dims();
-    FFN2Weight.emplace_back(
+    xft_ffn2_w.emplace_back(
         const_cast<TW*>(ffn2_weight[i]->data<TW>()),
         const_cast<float*>(ffn2_weight_max[i]->data<float>()),
         std::array<int64_t, 2>{ffn2w_dims[0], ffn2w_dims[1]});
-    FFN2Bias.emplace_back(const_cast<float*>(ffn2_bias[i]->data<float>()),
-                          std::array<int64_t, 1>{ffn2_bias[i]->dims()[0]});
+    xft_ffn2_bias.emplace_back(const_cast<float*>(ffn2_bias[i]->data<float>()),
+                               std::array<int64_t, 1>{ffn2_bias[i]->dims()[0]});
     // cache kv in
     if (time_step_value > 0) {
       auto cachekv_dims = cache_kv.get_ptr()->at(i)->dims();
-      CacheKVIn.emplace_back(reinterpret_cast<XPUTypeT*>(const_cast<T*>(
-                                 cache_kv.get_ptr()->at(i)->data<T>())),
-                             std::array<int64_t, 5>{cachekv_dims[0],
-                                                    cachekv_dims[1],
-                                                    cachekv_dims[2],
-                                                    cachekv_dims[3],
-                                                    cachekv_dims[4]});
+      xft_cache_kv.emplace_back(reinterpret_cast<XPUTypeT*>(const_cast<T*>(
+                                    cache_kv.get_ptr()->at(i)->data<T>())),
+                                std::array<int64_t, 5>{cachekv_dims[0],
+                                                       cachekv_dims[1],
+                                                       cachekv_dims[2],
+                                                       cachekv_dims[3],
+                                                       cachekv_dims[4]});
     }
     // cache kv out
     auto cachekv_out_dims = cache_kv_out[i]->dims();
-    CacheKVOut.emplace_back(
+    xft_cache_kv_out.emplace_back(
         reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(cache_kv_out[i])),
         std::array<int64_t, 5>{cachekv_out_dims[0],
                                cachekv_out_dims[1],
@@ -234,25 +236,25 @@ void FusedMultiTransformerXpuKernel(
   param.hidden_act = act_method;
   param.is_fuse_qkv = true;
   r = xft::fused_multi_transformer<XPUTypeT, TW, int16_t>(ctx.x_context(),
-                                                          X,
-                                                          CacheKVIn,
-                                                          SrcMask,
-                                                          LnScale,
-                                                          LnBias,
-                                                          QKVW,
-                                                          QKVBias,
-                                                          OutLinearW,
-                                                          OutLinearBias,
-                                                          FFNLnScale,
-                                                          FFNLnBias,
-                                                          FFN1Weight,
-                                                          FFN1Bias,
-                                                          FFN2Weight,
-                                                          FFN2Bias,
+                                                          xft_x,
+                                                          xft_cache_kv,
+                                                          xft_src_mask,
+                                                          xft_ln_scale,
+                                                          xft_ln_bias,
+                                                          xft_qkvw,
+                                                          xft_qkv_bias,
+                                                          xft_out_linear_w,
+                                                          xft_out_linear_bias,
+                                                          xft_ffn_ln_scale,
+                                                          xft_ffn_ln_bias,
+                                                          xft_ffn1_w,
+                                                          xft_ffn1_bias,
+                                                          xft_ffn2_w,
+                                                          xft_ffn2_bias,
                                                           param,
                                                           time_step_value,
-                                                          &Out,
-                                                          CacheKVOut);
+                                                          &xft_out,
+                                                          xft_cache_kv_out);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "xft::fused_multi_transformer");
 #else
   LOG(FATAL) << "fused_multi_transformer_xpu is not supported since it's not "

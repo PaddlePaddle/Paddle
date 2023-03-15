@@ -273,24 +273,10 @@ void FusedMultiTransformerQuantPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "DEBUG: in FusedMultiTransformerQuantPass::ApplyImpl";
 
   int found_subgraph_count = 0;
-  // TODO(mayang02): support all candidates
   for (bool with_cache_kv : {true, false}) {
-    for (bool with_pre_caches : {false}) {
-      for (bool with_rotary_pos_emb : {false}) {
-        for (bool with_time_step : {true, false}) {
-          for (bool with_seq_lengths : {false}) {
-            for (bool with_src_mask : {true}) {
-              found_subgraph_count += ApplyImpl(graph,
-                                                with_cache_kv,
-                                                with_pre_caches,
-                                                with_rotary_pos_emb,
-                                                with_time_step,
-                                                with_seq_lengths,
-                                                with_src_mask);
-            }
-          }
-        }
-      }
+    for (bool with_time_step : {true, false}) {
+      found_subgraph_count += ApplyImpl(
+          graph, with_cache_kv, false, false, with_time_step, false, true);
     }
   }
   AddStatis(found_subgraph_count);
@@ -472,84 +458,49 @@ int FusedMultiTransformerQuantPass::ApplyImpl(ir::Graph* graph,
     fused_mt->RenameOp("fused_multi_transformer_xpu");
     framework::OpDesc* fused_mt_xpu_op_desc = fused_mt->Op();
     fused_mt_xpu_op_desc->SetType("fused_multi_transformer_xpu");
-    fused_mt_xpu_op_desc->SetInput("x", fused_mt_xpu_op_desc->Input("X"));
-    fused_mt_xpu_op_desc->SetInput("ln_scale",
-                                   fused_mt_xpu_op_desc->Input("LnScale"));
-    fused_mt_xpu_op_desc->SetInput("ln_bias",
-                                   fused_mt_xpu_op_desc->Input("LnBias"));
-    fused_mt_xpu_op_desc->SetInput("qkv_bias",
-                                   fused_mt_xpu_op_desc->Input("QKVBias"));
+    std::unordered_map<std::string, std::vector<std::string>> name_caches;
+    for (auto key : fused_mt_xpu_op_desc->InputNames()) {
+      name_caches.insert({key, fused_mt_xpu_op_desc->Input(key)});
+    }
+    for (auto key : fused_mt_xpu_op_desc->OutputNames()) {
+      name_caches.insert({key, fused_mt_xpu_op_desc->Output(key)});
+    }
+    fused_mt_xpu_op_desc->MutableInputs()->clear();
+    fused_mt_xpu_op_desc->MutableOutputs()->clear();
+    fused_mt_xpu_op_desc->SetInput("x", name_caches.at("X"));
+    fused_mt_xpu_op_desc->SetInput("ln_scale", name_caches.at("LnScale"));
+    fused_mt_xpu_op_desc->SetInput("ln_bias", name_caches.at("LnBias"));
+    fused_mt_xpu_op_desc->SetInput("qkv_bias", name_caches.at("QKVBias"));
     if (cache_kv) {
-      fused_mt_xpu_op_desc->SetInput("cache_kv",
-                                     fused_mt_xpu_op_desc->Input("CacheKV"));
+      fused_mt_xpu_op_desc->SetInput("cache_kv", name_caches.at("CacheKV"));
     }
     if (pre_caches) {
-      fused_mt_xpu_op_desc->SetInput("pre_caches",
-                                     fused_mt_xpu_op_desc->Input("PreCaches"));
+      fused_mt_xpu_op_desc->SetInput("pre_caches", name_caches.at("PreCaches"));
     }
     if (rotary_pos_emb) {
-      fused_mt_xpu_op_desc->SetInput(
-          "rotary_pos_emb", fused_mt_xpu_op_desc->Input("RotaryPosEmb"));
+      fused_mt_xpu_op_desc->SetInput("rotary_pos_emb",
+                                     name_caches.at("RotaryPosEmb"));
     }
     if (time_step) {
-      fused_mt_xpu_op_desc->SetInput("time_step",
-                                     fused_mt_xpu_op_desc->Input("TimeStep"));
+      fused_mt_xpu_op_desc->SetInput("time_step", name_caches.at("TimeStep"));
     }
     if (seq_lengths) {
       fused_mt_xpu_op_desc->SetInput("seq_lengths",
-                                     fused_mt_xpu_op_desc->Input("SeqLengths"));
+                                     name_caches.at("SeqLengths"));
     }
     if (src_mask) {
-      fused_mt_xpu_op_desc->SetInput("src_mask",
-                                     fused_mt_xpu_op_desc->Input("SrcMask"));
+      fused_mt_xpu_op_desc->SetInput("src_mask", name_caches.at("SrcMask"));
     }
-    fused_mt_xpu_op_desc->SetInput(
-        "out_linear_bias", fused_mt_xpu_op_desc->Input("OutLinearBias"));
+    fused_mt_xpu_op_desc->SetInput("out_linear_bias",
+                                   name_caches.at("OutLinearBias"));
     fused_mt_xpu_op_desc->SetInput("ffn_ln_scale",
-                                   fused_mt_xpu_op_desc->Input("FFNLnScale"));
-    fused_mt_xpu_op_desc->SetInput("ffn_ln_bias",
-                                   fused_mt_xpu_op_desc->Input("FFNLnBias"));
-    fused_mt_xpu_op_desc->SetInput("ffn1_bias",
-                                   fused_mt_xpu_op_desc->Input("FFN1Bias"));
-    fused_mt_xpu_op_desc->SetInput("ffn2_bias",
-                                   fused_mt_xpu_op_desc->Input("FFN2Bias"));
+                                   name_caches.at("FFNLnScale"));
+    fused_mt_xpu_op_desc->SetInput("ffn_ln_bias", name_caches.at("FFNLnBias"));
+    fused_mt_xpu_op_desc->SetInput("ffn1_bias", name_caches.at("FFN1Bias"));
+    fused_mt_xpu_op_desc->SetInput("ffn2_bias", name_caches.at("FFN2Bias"));
     fused_mt_xpu_op_desc->SetOutput("cache_kv_out",
-                                    fused_mt_xpu_op_desc->Output("CacheKVOut"));
-    fused_mt_xpu_op_desc->SetOutput("out", fused_mt_xpu_op_desc->Output("Out"));
-
-    fused_mt_xpu_op_desc->RemoveInput("X");
-    fused_mt_xpu_op_desc->RemoveInput("LnScale");
-    fused_mt_xpu_op_desc->RemoveInput("LnBias");
-    fused_mt_xpu_op_desc->RemoveInput("QKVW");
-    fused_mt_xpu_op_desc->RemoveInput("QKVBias");
-    if (cache_kv) {
-      fused_mt_xpu_op_desc->RemoveInput("CacheKV");
-    }
-    if (pre_caches) {
-      fused_mt_xpu_op_desc->RemoveInput("PreCaches");
-    }
-    if (rotary_pos_emb) {
-      fused_mt_xpu_op_desc->RemoveInput("RotaryPosEmb");
-    }
-    if (time_step) {
-      fused_mt_xpu_op_desc->RemoveInput("TimeStep");
-    }
-    if (seq_lengths) {
-      fused_mt_xpu_op_desc->RemoveInput("SeqLengths");
-    }
-    if (src_mask) {
-      fused_mt_xpu_op_desc->RemoveInput("SrcMask");
-    }
-    fused_mt_xpu_op_desc->RemoveInput("OutLinearW");
-    fused_mt_xpu_op_desc->RemoveInput("OutLinearBias");
-    fused_mt_xpu_op_desc->RemoveInput("FFNLnScale");
-    fused_mt_xpu_op_desc->RemoveInput("FFNLnBias");
-    fused_mt_xpu_op_desc->RemoveInput("FFN1Weight");
-    fused_mt_xpu_op_desc->RemoveInput("FFN1Bias");
-    fused_mt_xpu_op_desc->RemoveInput("FFN2Weight");
-    fused_mt_xpu_op_desc->RemoveInput("FFN2Bias");
-    fused_mt_xpu_op_desc->RemoveOutput("CacheKVOut");
-    fused_mt_xpu_op_desc->RemoveOutput("Out");
+                                    name_caches.at("CacheKVOut"));
+    fused_mt_xpu_op_desc->SetOutput("out", name_caches.at("Out"));
 
     fused_mt_xpu_op_desc->SetInput("qkvw", w_int16_names_vec[0]);
     fused_mt_xpu_op_desc->SetInput("qkvw_max", w_max_names_vec[0]);
