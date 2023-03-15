@@ -43,11 +43,10 @@ from paddle.jit.dy2static.utils import (
 from paddle.utils import gast
 
 from .base_transformer import BaseTransformer
+from .utils import FALSE_FUNC_PREFIX, TRUE_FUNC_PREFIX
 
 __all__ = []
 
-TRUE_FUNC_PREFIX = 'true_fn'
-FALSE_FUNC_PREFIX = 'false_fn'
 GET_ARGS_FUNC_PREFIX = 'get_args'
 SET_ARGS_FUNC_PREFIX = 'set_args'
 ARGS_NAME = '__args'

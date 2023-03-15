@@ -16,6 +16,8 @@
 
 #include "glog/logging.h"
 
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -31,14 +33,16 @@ __global__ void AllcloseCUDAKernel(const T* in_data,
                                    bool* out_data) {
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const T a = in_data[i], b = other_data[i];
+    const MPType a = static_cast<MPType>(in_data[i]);
+    const MPType b = static_cast<MPType>(other_data[i]);
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
-      T left = (a > b ? a - b : b - a);
-      T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
-      T diff = (left > right ? left - right : right - left);
+      MPType left = (a > b ? a - b : b - a);
+      MPType right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+      MPType diff = (left > right ? left - right : right - left);
       val = a == b || left <= right || diff <= 1e-15;
     }
     if (!val) *out_data = false;
@@ -92,7 +96,12 @@ void AllCloseKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    allclose, GPU, ALL_LAYOUT, phi::AllCloseKernel, float, double) {
+PD_REGISTER_KERNEL(allclose,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::AllCloseKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
