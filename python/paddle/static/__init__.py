@@ -95,7 +95,6 @@ __all__ = [  # noqa
     'py_func',
     'ExecutionStrategy',
     'name_scope',
-    'ParallelExecutor',
     'program_guard',
     'WeightNormParamAttr',
     'ExponentialMovingAverage',
