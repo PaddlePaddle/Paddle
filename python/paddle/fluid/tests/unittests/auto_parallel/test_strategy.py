@@ -28,8 +28,8 @@ class TestStrategy(unittest.TestCase):
 
         amp = strategy.amp
         self.assertEqual(amp.enable, False)
-        self.assertEqual(amp.dtype == "float16")
-        self.assertEqual(amp.level == "o1")
+        self.assertEqual(amp.dtype, "float16")
+        self.assertEqual(amp.level, "o1")
         self.assertAlmostEqual(amp.init_loss_scaling, 32768.0)
         self.assertEqual(amp.incr_every_n_steps, 1000)
         self.assertEqual(amp.decr_every_n_nan_or_inf, 2)
