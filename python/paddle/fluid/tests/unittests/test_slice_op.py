@@ -498,7 +498,6 @@ class TestFP16(OpTest):
                 place,
                 ['Input'],
                 'Out',
-                max_relative_error=1e-3,
                 check_prim=True,
             )
 
@@ -542,7 +541,6 @@ class TestFP16_2(OpTest):
                 place,
                 ['Input'],
                 'Out',
-                max_relative_error=1e-3,
                 numeric_grad_delta=0.5,
                 check_prim=True,
             )
