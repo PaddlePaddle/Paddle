@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/sparse/unary_grad_kernel.h"
-#include "paddle/phi/kernels/sparse/unary_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
+#include "paddle/phi/kernels/sparse/unary_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/unary_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -104,6 +104,9 @@ void SumCooGradKernel(const Context& dev_ctx,
     *dx_values = dout_values;
     auto dim = axis[0] < 0 ? x.dims().size() + axis[0] : axis[0];
   }
+  if (dx_values->dtype() != dx->dtype()) {
+    *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+  }
 }
 
 template <typename T, typename Context>
@@ -165,6 +168,9 @@ void SumCsrGradKernel(const Context& dev_ctx,
                                                       x.dims()[1],
                                                       dx_values_data);
     }
+  }
+  if (dx_values->dtype() != dx->dtype()) {
+    *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
   }
 }
 }  // namespace sparse

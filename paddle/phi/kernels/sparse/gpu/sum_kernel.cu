@@ -206,9 +206,9 @@ void SumCooKernel(const Context& dev_ctx,
                                               keep_dim,
                                               out_indices_data,
                                               out_values_data);
-  }
-  if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
-    phi::Cast<T, Context>(dev_ctx, out_values, dtype);
+    if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
+      out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
+    }
   }
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 }
@@ -296,6 +296,9 @@ void SumCsrKernel(const Context& dev_ctx,
                                                   out_cols_data,
                                                   out_values_data);
     }
+    if (dtype != phi::DataType::UNDEFINED && dtype != x.dtype()) {
+      out_values = phi::Cast<T, Context>(dev_ctx, out_values, dtype);
+    }
   }
   out->SetMember(out_crows, out_cols, out_values, out_dims);
 }
@@ -312,7 +315,7 @@ PD_REGISTER_KERNEL(sum_coo,
                    int,
                    int64_t,
                    bool) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
 }
 
 PD_REGISTER_KERNEL(sum_csr,
@@ -325,5 +328,5 @@ PD_REGISTER_KERNEL(sum_csr,
                    int,
                    int64_t,
                    bool) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
 }

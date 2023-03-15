@@ -72,6 +72,9 @@ void SumCooGradKernel(const Context& dev_ctx,
       dx_values_data[j] = map_indices[pos];
     }
   }
+  if (dx_values->dtype() != dx->dtype()) {
+    *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
+  }
 }
 
 template <typename T, typename Context>
@@ -96,6 +99,8 @@ void SumCsrGradKernel(const Context& dev_ctx,
   *dx_crows = x_crows;
   *dx_cols = x_cols;
 
+  LOG(INFO) << dx_values->dtype();
+  LOG(INFO) << dx->dtype();
   if (n_dim == 0) {
     T value = dout_values.data<T>()[0];
     for (int i = 0; i < dx->nnz(); ++i) {
@@ -137,6 +142,9 @@ void SumCsrGradKernel(const Context& dev_ctx,
         }
       }
     }
+  }
+  if (dx_values->dtype() != dx->dtype()) {
+    *dx_values = phi::Cast<T, Context>(dev_ctx, *dx_values, dx->dtype());
   }
 }
 
