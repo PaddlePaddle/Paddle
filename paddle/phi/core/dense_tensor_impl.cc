@@ -164,9 +164,7 @@ template <typename T>
 inline T* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   return reinterpret_cast<T*>(
-      mutable_data(place,
-                   paddle::experimental::CppTypeToDataType<T>::Type(),
-                   requested_size));
+      mutable_data(place, phi::CppTypeToDataType<T>::Type(), requested_size));
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {

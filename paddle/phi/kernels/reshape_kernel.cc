@@ -65,7 +65,7 @@ void ReshapeInferKernel<phi::XPUContext>(const XPUContext& dev_ctx,
   auto dims = out->dims();
   auto* src_ptr = x.data();
   auto* dst_ptr = out->data();
-  auto size = x.numel() * paddle::experimental::SizeOf(x.dtype());
+  auto size = x.numel() * phi::SizeOf(x.dtype());
   int ret = xpu::copy(dev_ctx.x_context(),
                       reinterpret_cast<const int8_t*>(src_ptr),
                       reinterpret_cast<int8_t*>(dst_ptr),

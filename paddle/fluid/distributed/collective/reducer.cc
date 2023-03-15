@@ -113,7 +113,7 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
     }
 
     group_info.first.push_back(tensor_real_index);
-    group_info.second += experimental::SizeOf(var_dtype) * var_size;
+    group_info.second += phi::SizeOf(var_dtype) * var_size;
     // group_info.second += framework::SizeOfType(var_dtype) * var_size;
 
     if (group_limit_index.find(var_dtype) == group_limit_index.end()) {

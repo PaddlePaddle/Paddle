@@ -40,7 +40,7 @@ namespace {
 template <typename T1, typename T2>
 void ConvertTensorType(phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_tensor;
-  tmp_tensor.set_type(paddle::experimental::CppTypeToDataType<T2>::Type());
+  tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());
   auto* tmp_data = tmp_tensor.mutable_data<T2>(paddle::platform::CPUPlace());
   auto* data = tensor->mutable_data<T1>(paddle::platform::CPUPlace());

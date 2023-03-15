@@ -271,7 +271,7 @@ static void SetAllocationForUninitializedDenseTensor(
     phi::DenseTensor* dense_tensor, const platform::Place& place) {
   int dtype_size = dense_tensor->dtype() == DataType::UNDEFINED
                        ? 0
-                       : experimental::SizeOf(dense_tensor->dtype());
+                       : phi::SizeOf(dense_tensor->dtype());
   int64_t numels = product(dense_tensor->dims());
   numels = numels < 0 ? 0 : numels;
   auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);

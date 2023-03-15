@@ -142,7 +142,7 @@ class DeQuantizeLinearKernel : public framework::OpKernel<T> {
         static_cast<const typename paddle::framework::ConvertToPhiContext<
             DeviceContext>::TYPE&>(dev_ctx),
         *in,
-        experimental::CppTypeToDataType<D>::Type());
+        phi::CppTypeToDataType<D>::Type());
 
     auto* scale = context.Input<phi::DenseTensor>("Scale");
     auto* out = context.Output<phi::DenseTensor>("Y");

@@ -244,7 +244,7 @@ void PrepareWeight(phi::DenseTensor* weight,
          max_ptr_size * sizeof(float));
 
   // Quant
-  weight->set_type(paddle::experimental::CppTypeToDataType<T>::Type());
+  weight->set_type(phi::CppTypeToDataType<T>::Type());
   weight->Resize(weight_fp32.dims());
   QuantFP32ToIntX(weight_data, cpu_ctx->Alloc<T>(weight), max_val, size);
 }
