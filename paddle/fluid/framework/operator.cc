@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -2448,6 +2449,16 @@ Scope* OperatorWithKernel::PrepareData(
     }
   }
 
+  auto has_infer_varkernel_fn =
+      (run_phi_kernel_ && phi_kernel_->get_kerneltype_forvar_fn_ != nullptr);
+  phi::AttributeMap infer_attrs{};
+  auto fluid_attrs = Attrs();
+  phi::GetKernelTypeForVarContext infer_varkernel_context =
+      BuildGetKernelTypeForVarContext(expected_kernel_key,
+                                      fluid_attrs,
+                                      &infer_attrs,
+                                      has_infer_varkernel_fn);
+
   const auto& name_map = Inputs();
   auto prepare_input_data = [&](const std::string& in_name,
                                 std::vector<Variable*>* in_vars,
@@ -2510,6 +2521,13 @@ Scope* OperatorWithKernel::PrepareData(
 
       auto kernel_type_for_var =
           GetKernelTypeForVar(in_name, *tensor_in, expected_kernel_key);
+      if (has_infer_varkernel_fn) {
+        infer_varkernel_context.SetVarName(const_cast<std::string*>(&in_name));
+        infer_varkernel_context.SetDenseTensor(
+            const_cast<phi::DenseTensor*>(tensor_in));
+        kernel_type_for_var =
+            phi_kernel_->get_kerneltype_forvar_fn_(&infer_varkernel_context);
+      }
       bool need_trans_dtype =
           NeedTransformDataType(expected_kernel_key, kernel_type_for_var);
       bool need_trans_layout = NeedTransformLayout(

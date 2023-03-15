@@ -54,7 +54,7 @@ class TestGatherNdOpWithIndex1(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out', check_eager=False, check_prim=True)
 
 
 class TestGatherNdOpWithLowIndex(OpTest):
