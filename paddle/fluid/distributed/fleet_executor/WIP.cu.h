@@ -14,6 +14,8 @@
 // ref:
 // https://github.com/facebookresearch/xformers/blob/b6be33aecb5297f3f994568cf29e194a75e47667/xformers/ops/fmha/common.py#L102
 
+#pragma once
+
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -39,12 +41,11 @@ __global__ void ViewSliceHelper(T* data,
 }
 
 template <typename T>
-phi::DenseTensor* get_pad_lse(const phi::GPUContext& dev_ctx,
-                              phi::DenseTensor* lse,
-                              int out_second_dim,
-                              int pad_to,
-                              bool force_pad_inf = false,
-                              phi::DenseTensor* out = nullptr) {
+phi::DenseTensor get_pad_lse(const phi::GPUContext& dev_ctx,
+                             phi::DenseTensor* lse,
+                             int out_second_dim,
+                             int pad_to,
+                             bool force_pad_inf = false) {
   int pad_amount = (pad_to - (lse->dims()[2] % pad_to)) % pad_to;
   if (pad_amount > 0) {
     phi::DenseTensor tmp;
@@ -53,12 +54,12 @@ phi::DenseTensor* get_pad_lse(const phi::GPUContext& dev_ctx,
           dev_ctx, *lse, {2}, {0}, {out_second_dim});
       pad_amount = (pad_to - (tmp.dims()[2] % pad_to)) % pad_to;
     }
-    PADDLE_ENFORCE_NE(out,
-                      nullptr,
-                      phi::errors::InvalidArgument(
-                          "The out ptr shouldn't be null if need pad amount"));
-    phi::PadKernel<T, phi::GPUContext>(
-        dev_ctx, tmp, {0, pad_amount}, std::numeric_limits<T>::infinity(), out);
+    phi::DenseTensor out;
+    phi::PadKernel<T, phi::GPUContext>(dev_ctx,
+                                       tmp,
+                                       {0, pad_amount},
+                                       std::numeric_limits<T>::infinity(),
+                                       &out);
     return out;
   } else if (force_pad_inf && out_second_dim != lse->dims()[2]) {
     auto in_dim = lse->dims();
@@ -71,7 +72,7 @@ phi::DenseTensor* get_pad_lse(const phi::GPUContext& dev_ctx,
     phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
     ViewSliceHelper<T><<<grid, block, 0, dev_ctx.stream()>>>(
         in_data, stride, in_dim[2], out_second_dim);
-    return lse;
+    return *lse;
   }
 }
 }  // namespace phi
