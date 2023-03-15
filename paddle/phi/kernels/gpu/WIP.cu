@@ -39,12 +39,12 @@ __global__ void ViewSliceHelper(T* data,
 }
 
 template <typename T>
-void get_pad_lse(const phi::GPUContext& dev_ctx,
-                 phi::DenseTensor* lse,
-                 int out_second_dim,
-                 int pad_to,
-                 bool force_pad_inf = false,
-                 phi::DenseTensor* out = nullptr) {
+phi::DenseTensor* get_pad_lse(const phi::GPUContext& dev_ctx,
+                              phi::DenseTensor* lse,
+                              int out_second_dim,
+                              int pad_to,
+                              bool force_pad_inf = false,
+                              phi::DenseTensor* out = nullptr) {
   int pad_amount = (pad_to - (lse->dims()[2] % pad_to)) % pad_to;
   if (pad_amount > 0) {
     phi::DenseTensor tmp;
@@ -59,6 +59,7 @@ void get_pad_lse(const phi::GPUContext& dev_ctx,
                           "The out ptr shouldn't be null if need pad amount"));
     phi::PadKernel<T, phi::GPUContext>(
         dev_ctx, tmp, {0, pad_amount}, std::numeric_limits<T>::max(), out);
+    return out;
   } else if (force_pad_inf && out_second_dim != lse->dims()[2]) {
     auto in_dim = lse->dims();
     auto in_data = lse->template data<T>();
@@ -70,6 +71,7 @@ void get_pad_lse(const phi::GPUContext& dev_ctx,
     phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
     ViewSliceHelper<T><<<grid, block, 0, dev_ctx.stream()>>>(
         in_data, stride, in_dim[2], out_second_dim);
+    return lse;
   }
 }
 }  // namespace phi
