@@ -139,7 +139,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(reduce_sum,
                             PD_INFER_META(phi::SumRawInferMeta));
 
 REGISTER_OPERATOR(reduce_sum,
-                  ops::ReduceOp,
+                  ops::ReduceBaseOp,
                   ReduceSumOpMaker,
                   ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,

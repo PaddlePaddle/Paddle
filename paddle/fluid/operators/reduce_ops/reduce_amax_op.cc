@@ -30,7 +30,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(reduce_amax,
 
 REGISTER_OPERATOR(
     reduce_amax,
-    ops::ReduceOp,
+    ops::ReduceBaseOp,
     ReduceAMaxOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,

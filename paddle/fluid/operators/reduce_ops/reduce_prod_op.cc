@@ -42,7 +42,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(
 
 REGISTER_OPERATOR(
     reduce_prod,
-    ops::ReduceOp,
+    ops::ReduceBaseOp,
     ReduceProdOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,

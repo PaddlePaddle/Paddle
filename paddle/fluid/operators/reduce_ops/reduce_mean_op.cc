@@ -104,7 +104,7 @@ DECLARE_INFER_SHAPE_FUNCTOR(
     PD_INFER_META(phi::ReduceIntArrayAxisInferMetaBase));
 
 REGISTER_OPERATOR(reduce_mean,
-                  ops::ReduceOp,
+                  ops::ReduceBaseOp,
                   __reduce_meanMaker__,
                   ops::ReduceMeanOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceMeanOpGradMaker<paddle::imperative::OpBase>,
