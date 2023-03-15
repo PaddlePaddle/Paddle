@@ -267,7 +267,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 /**
  * CUDA related FLAG
  * Name: FLAGS_embedding_deterministic
- * Since Version: 2.4
+ * Since Version: 2.5
  * Value Range: bool, default=false
  * Example:
  * Note: whether to use deterministic algorithm in embedding op.

@@ -23,7 +23,6 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
-DECLARE_bool(cudnn_deterministic);
 DECLARE_bool(embedding_deterministic);
 
 namespace phi {
@@ -81,54 +80,65 @@ __global__ void EmbeddingGradDeterministic(T* table,
   extern __shared__ char buf[];
   T* smem = reinterpret_cast<T*>(buf);
   T* my_s = smem + WARP_SIZE * threadIdx.y;
-  int* indices_batch =
-      reinterpret_cast<int*>(buf + sizeof(T) * WARP_SIZE * blockDim.y);
+  int64_t* indices_batch =
+      reinterpret_cast<int64_t*>(buf + sizeof(T) * WARP_SIZE * BLOCKDIMY);
 
-  const int s = static_cast<int>(D);
+  const int stride = static_cast<int>(D);
 
-  const int f = threadIdx.x + blockIdx.x * blockDim.x;
+  const int feature = threadIdx.x + blockIdx.x * WARP_SIZE;
 
+  // To ensure determinism. If any other warps pulled grad data targeting
+  // dst_row, we elect the first warp in each matching group as the leader.
+  // Each leader warp serializes the accumulates targeting dst_row in shared
+  // memory, then adding the accumulated buffer to dst_row in table.
   for (int batch_start = 0; batch_start < K;
-       batch_start += blockDim.x * blockDim.y) {
-    int tid = threadIdx.x + threadIdx.y * blockDim.x;
+       batch_start += WARP_SIZE * BLOCKDIMY) {
+    int tid = threadIdx.x + threadIdx.y * WARP_SIZE;
     if (batch_start + tid < K)
-      indices_batch[tid] = static_cast<int>(ids[batch_start + tid]);
+      indices_batch[tid] = static_cast<int64_t>(ids[batch_start + tid]);
 
-    int batch_end = batch_start + blockDim.x * blockDim.y < K
-                        ? batch_start + blockDim.x * blockDim.y
-                        : K;
+    int batch_end =
+        min(static_cast<int64_t>(batch_start + WARP_SIZE * BLOCKDIMY), K);
 
+    // Loop over the batch of <= 1024 loaded indices in chunks of BLOCKDIMY
     for (int chunk_start = batch_start; chunk_start < batch_end;
-         chunk_start += blockDim.y) {
+         chunk_start += BLOCKDIMY) {
+      // This sync makes sure that indices_batch is ready and match-group
+      // leaders are done with their accumulates before other warps start
+      // loading again.
       __syncthreads();
 
-      int n_this_chunk = (batch_end - chunk_start) < blockDim.y
-                             ? (batch_end - chunk_start)
-                             : blockDim.y;
+      int n_this_chunk = min(batch_end - chunk_start, BLOCKDIMY);
 
-      int src_row = chunk_start + threadIdx.y;
-      int dst_row = indices_batch[src_row - batch_start];
-      if (src_row < K && f < s)
-        my_s[threadIdx.x] = static_cast<T>(output[src_row * D + f]);
+      int64_t src_row = static_cast<int64_t>(chunk_start + threadIdx.y);
+      int64_t dst_row = indices_batch[src_row - batch_start];
+      if (src_row < K && feature < stride)
+        my_s[threadIdx.x] = static_cast<T>(output[src_row * D + feature]);
 
       __syncthreads();
 
       if (src_row < K) {
         int match_found_this_thread = 0;
-        if (threadIdx.x < n_this_chunk)
+        if (threadIdx.x < n_this_chunk) {
           match_found_this_thread =
               (dst_row ==
                indices_batch[chunk_start - batch_start + threadIdx.x]);
+        }
 #ifdef PADDLE_WITH_HIP
         unsigned long long int matchmask =      // NOLINT
             __ballot(match_found_this_thread);  // NOLINT
         int first_remaining_peer = __ffsll(matchmask) - 1;
 #else
+        // If and only if match_found_this_thread of the Nth thread is non-zero,
+        // set the Nth bit of matchmask to 1.
         unsigned int matchmask = __ballot_sync(MASK, match_found_this_thread);
+        // Find the position of the first bit set to 1 in matchmask.
         int first_remaining_peer = __ffs(matchmask) - 1;
 #endif
 
+        // select lowest-indexed warp as the leader
         if (threadIdx.y == first_remaining_peer) {
+          // Set the first bit 1 in matchmask to 0.
           matchmask ^= (1 << first_remaining_peer);
           while (matchmask) {
 #ifdef PADDLE_WITH_HIP
@@ -140,8 +150,8 @@ __global__ void EmbeddingGradDeterministic(T* table,
                 smem[threadIdx.x + WARP_SIZE * first_remaining_peer];
             matchmask ^= (1 << first_remaining_peer);
           }
-          if (f < s)
-            table[dst_row * D + f] += static_cast<T>(my_s[threadIdx.x]);
+          if (feature < stride)
+            table[dst_row * D + feature] += static_cast<T>(my_s[threadIdx.x]);
         }
       }
     }
@@ -187,21 +197,19 @@ struct EmbeddingGradCUDAFunctor {
           cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #endif
 
-      const int gridx = 2 * dev_ctx_.GetSMCount();
-      dim3 threads(128, 8);
-      dim3 grids(gridx, 1);
-
-      dim3 threads2(WARP_SIZE, BLOCKDIMY);
-      dim3 grids2(static_cast<int>((D + WARP_SIZE - 1) / WARP_SIZE));
-
-      if (FLAGS_cudnn_deterministic || FLAGS_embedding_deterministic) {
+      if (FLAGS_embedding_deterministic) {
+        dim3 threads(WARP_SIZE, BLOCKDIMY);
+        dim3 grids(static_cast<int>((D + WARP_SIZE - 1) / WARP_SIZE));
         EmbeddingGradDeterministic<T, IdT>
-            <<<grids2,
-               threads2,
+            <<<grids,
+               threads,
                sizeof(T) * WARP_SIZE * BLOCKDIMY +
                    sizeof(int) * WARP_SIZE * BLOCKDIMY,
                dev_ctx_.stream()>>>(d_table, d_output, ids, K, D);
       } else {
+        const int gridx = 2 * dev_ctx_.GetSMCount();
+        dim3 threads(128, 8);
+        dim3 grids(gridx, 1);
         EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
             d_table, d_output, ids, N, K, D);
       }
