@@ -236,7 +236,7 @@ def flash_attn_unpadded(
         'seed_offset': seed_offset,
     }
     helper.append_op(
-        type='flash_attn',
+        type='flash_attn_unpadded',
         inputs=inputs,
         outputs=outputs,
         attrs={

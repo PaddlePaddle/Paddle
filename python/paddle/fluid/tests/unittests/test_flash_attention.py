@@ -119,6 +119,45 @@ class TestFlashAttentionAPI(unittest.TestCase):
             q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
         )
 
+        # test static
+        paddle.enable_static()
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            qs = paddle.static.data(
+                name="q", shape=self.shape, dtype=self.dtype
+            )
+
+            cu_q = paddle.arange(0, (bs + 1) * ms, ms, dtype='int32')
+            qs = paddle.reshape(qs, [bs * ms, nh, hd])
+
+            outs, softmax = flash_attn_unpadded(
+                qs,
+                qs,
+                qs,
+                cu_q,
+                cu_q,
+                ms,
+                ms,
+                scale,
+                self.dropout,
+                self.causal,
+                self.return_softmax,
+            )
+
+            exe = fluid.Executor(self.place)
+            fetches_result = exe.run(
+                feed={
+                    "q": query.astype('float16'),
+                    "k": query.astype('float16'),
+                    "v": query.astype('float16'),
+                },
+                fetch_list=[outs],
+            )
+
+            np.testing.assert_allclose(
+                fetches_result[0], out_, rtol=5e-03, atol=1e-03
+            )
+
     def test_all(self):
         print(
             f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
