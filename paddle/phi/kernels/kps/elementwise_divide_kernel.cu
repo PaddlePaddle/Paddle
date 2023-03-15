@@ -41,7 +41,6 @@ void DivideRawKernel(const Context& dev_ctx,
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
   if (FLAGS_enable_divide_forward_promot) {
-    LOG(ERROR) << "divide forward promot";
     using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
     funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
         dev_ctx, inputs, &outputs, axis, funcs::DivideNewFunctor<T, AccT>());
