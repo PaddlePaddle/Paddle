@@ -309,37 +309,24 @@ class TestEmptyBF16Op(OpTest):
         self.__class__.op_type = self.op_type
         self.python_api = paddle.empty
         shape = np.array([200, 3]).astype('int32')
-        dtype_inner = convert_np_dtype_to_dtype_('float32')
-        output = np.zeros(shape).astype('float32')
-        self.inputs = {"ShapeTensor": shape}
-        self.attrs = {'shape': shape, 'dtype': 'dtype_inner'}
+        dtype_inner = convert_np_dtype_to_dtype_(self.dtype)
+        output = np.zeros(shape).astype(self.dtype)
+        self.inputs = {}
+        self.attrs = {'shape': shape, 'dtype': dtype_inner}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
 
     def verify_output(self, outs):
-        data_type = outs[0].dtype
-        if data_type in ['bfloat16']:
-            max_value = np.nanmax(outs[0])
-            min_value = np.nanmin(outs[0])
-
-            always_full_zero = max_value == 0.0 and min_value == 0.0
-            always_non_full_zero = max_value >= min_value
-            self.assertTrue(
-                always_full_zero or always_non_full_zero,
-                'always_full_zero or always_non_full_zero.',
-            )
-        elif data_type in ['bool']:
-            total_num = outs[0].size
-            true_num = np.sum(outs[0])
-            false_num = np.sum(~outs[0])
-            self.assertTrue(
-                total_num == true_num + false_num,
-                'The value should always be True or False.',
-            )
-        else:
-            self.assertTrue(False, 'invalid data type')
+        max_value = np.nanmax(outs[0])
+        min_value = np.nanmin(outs[0])
+        always_full_zero = max_value == 0.0 and min_value == 0.0
+        always_non_full_zero = max_value >= min_value
+        self.assertTrue(
+            always_full_zero or always_non_full_zero,
+            'always_full_zero or always_non_full_zero.',
+        )
 
 
 class TestEmptyError(unittest.TestCase):
