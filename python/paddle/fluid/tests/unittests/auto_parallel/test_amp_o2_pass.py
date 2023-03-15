@@ -19,8 +19,8 @@ import tempfile
 import unittest
 
 
-class TestShardingWithNewEXE(unittest.TestCase):
-    def test_stage2(self):
+class TestAMPO2(unittest.TestCase):
+    def test_bf16(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "amp_o2_pass.py")
 
