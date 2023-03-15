@@ -69,32 +69,89 @@ void Conv2dTransposeGradKernel(const Context& ctx,
     ctx.template Alloc<T>(dfilter);
   }
 
-  int r = xpu::conv2d_transpose_grad<float, float, float, int16_t>(
-      ctx.x_context(),
-      x.data<T>(),
-      filter_.data<T>(),
-      dout.data<T>(),
-      dx ? dx->data<T>() : nullptr,
-      dfilter ? dfilter->data<T>() : nullptr,
-      batch_size,
-      img_yc,
-      img_yh,
-      img_yw,
-      img_xc,
-      img_xh,
-      img_xw,
-      ksize,
-      strides,
-      paddings_,
-      dilations_,
-      groups,
-      nullptr,
-      nullptr,
-      nullptr,
-      nullptr,
-      nullptr,
-      true);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_grad");
+  int fccal_type = FCCalcType<XPUT>();
+  if (fccal_type == XPUFCCalcType::FC_INT32) {
+    int r = xpu::conv2d_transpose_grad<float, float, float, int32_t>(
+        ctx.x_context(),
+        x.data<T>(),
+        filter_.data<T>(),
+        dout.data<T>(),
+        dx ? dx->data<T>() : nullptr,
+        dfilter ? dfilter->data<T>() : nullptr,
+        batch_size,
+        img_yc,
+        img_yh,
+        img_yw,
+        img_xc,
+        img_xh,
+        img_xw,
+        ksize,
+        strides,
+        paddings_,
+        dilations_,
+        groups,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        true);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_grad");
+  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+    int r = xpu::conv2d_transpose_grad<float, float, float, float>(
+        ctx.x_context(),
+        x.data<T>(),
+        filter_.data<T>(),
+        dout.data<T>(),
+        dx ? dx->data<T>() : nullptr,
+        dfilter ? dfilter->data<T>() : nullptr,
+        batch_size,
+        img_yc,
+        img_yh,
+        img_yw,
+        img_xc,
+        img_xh,
+        img_xw,
+        ksize,
+        strides,
+        paddings_,
+        dilations_,
+        groups,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        true);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_grad");
+  } else {
+    int r = xpu::conv2d_transpose_grad<float, float, float, int16_t>(
+        ctx.x_context(),
+        x.data<T>(),
+        filter_.data<T>(),
+        dout.data<T>(),
+        dx ? dx->data<T>() : nullptr,
+        dfilter ? dfilter->data<T>() : nullptr,
+        batch_size,
+        img_yc,
+        img_yh,
+        img_yw,
+        img_xc,
+        img_xh,
+        img_xw,
+        ksize,
+        strides,
+        paddings_,
+        dilations_,
+        groups,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        true);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_grad");
+  }
 }
 
 }  // namespace phi

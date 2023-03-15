@@ -48,6 +48,8 @@ void Conv2dTransposeKernel(const Context& ctx,
                            const std::vector<int>& dilations,
                            const std::string& data_format,
                            DenseTensor* out) {
+  using XPUT = typename XPUTypeTrait<T>::Type;
+
   // The filter will be reshaped in the calculations,
   // so here use an assignment operation,
   // that avoids modifying the variable in the Scope.
@@ -76,26 +78,71 @@ void Conv2dTransposeKernel(const Context& ctx,
   const int img_xh = static_cast<int>(out->dims()[2]);
   const int img_xw = static_cast<int>(out->dims()[3]);
 
-  int r = xpu::conv2d_transpose_v2<float, float, float, int16_t>(
-      ctx.x_context(),
-      x.data<float>(),
-      filter_.data<float>(),
-      out->data<float>(),
-      batch_size,
-      img_yc,
-      img_xh,
-      img_xw,
-      img_xc,
-      ksize,
-      strides,
-      paddings_,
-      dilations_,
-      groups,
-      nullptr,
-      nullptr,
-      nullptr,
-      true);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
+  int fccal_type = FCCalcType<XPUT>();
+  if (fccal_type == XPUFCCalcType::FC_INT32) {
+    int r = xpu::conv2d_transpose_v2<float, float, float, int32_t>(
+        ctx.x_context(),
+        x.data<float>(),
+        filter_.data<float>(),
+        out->data<float>(),
+        batch_size,
+        img_yc,
+        img_xh,
+        img_xw,
+        img_xc,
+        ksize,
+        strides,
+        paddings_,
+        dilations_,
+        groups,
+        nullptr,
+        nullptr,
+        nullptr,
+        true);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
+  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+    int r = xpu::conv2d_transpose_v2<float, float, float, float>(
+        ctx.x_context(),
+        x.data<float>(),
+        filter_.data<float>(),
+        out->data<float>(),
+        batch_size,
+        img_yc,
+        img_xh,
+        img_xw,
+        img_xc,
+        ksize,
+        strides,
+        paddings_,
+        dilations_,
+        groups,
+        nullptr,
+        nullptr,
+        nullptr,
+        true);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
+  } else {
+    int r = xpu::conv2d_transpose_v2<float, float, float, int16_t>(
+        ctx.x_context(),
+        x.data<float>(),
+        filter_.data<float>(),
+        out->data<float>(),
+        batch_size,
+        img_yc,
+        img_xh,
+        img_xw,
+        img_xc,
+        ksize,
+        strides,
+        paddings_,
+        dilations_,
+        groups,
+        nullptr,
+        nullptr,
+        nullptr,
+        true);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
+  }
 }
 
 }  // namespace phi
