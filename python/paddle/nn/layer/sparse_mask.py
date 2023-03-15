@@ -75,8 +75,10 @@ class ErineSparseMask(SparseMask):
         self.num_heads = num_heads
 
     def forward(self, batch_size, seq_len):
-        glb = 128
-        wnd = 64
+        # seq_len >= 1024 will get batter performance
+        num_wnd = (seq_len + 1023) / 1024
+        glb = 32 * num_wnd
+        wnd = 16 * num_wnd
         pad_len = (seq_len + wnd - 1) // wnd * wnd
         mask = np.zeros([pad_len, pad_len])
         mask[:glb, :glb] = 1
