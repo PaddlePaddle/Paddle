@@ -65,7 +65,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "generate_proposals",
     "graph_sample_neighbors",
     "group_norm",
-    "histogram",
     "instance_norm",
     "lamb",
     "layer_norm",
