@@ -38,8 +38,7 @@ void DivideGradKernel(const Context& dev_ctx,
                       DenseTensor* dy) {
   const auto place = dev_ctx.GetPlace();
   if (dx != nullptr && dy != nullptr) {
-    if ( FLAGS_enable_divide_grad_use_xy )
-    {
+    if (FLAGS_enable_divide_grad_use_xy) {
       VLOG(3) << "use new cal";
       std::vector<const DenseTensor*> ins = {&dout, &x, &y};
       using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -52,8 +51,7 @@ void DivideGradKernel(const Context& dev_ctx,
           dx,
           dy,
           funcs::DivGradXYNewFunctor<T, T, AccT>());
-    }else
-    {
+    } else {
       VLOG(3) << "use old cal div grad";
       std::vector<const DenseTensor*> ins = {&dout, &out, &y};
       GetGradXAndYOut<ElementwiseType::kTernary, T>(

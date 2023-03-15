@@ -25,32 +25,30 @@ DECLARE_bool(enable_divide_forward_promot);
 namespace phi {
 
 // Create the definition of Divide
-                           
-template <typename T, typename Context>                            
-  void DivideRawKernel(const Context& dev_ctx,                       
-                       const DenseTensor& x,                         
-                       const DenseTensor& y,                         
-                       int axis,                                     
-                       DenseTensor* out) {                           
-    std::vector<const DenseTensor*> inputs;                          
-    inputs.reserve(2);                                               
-    std::vector<DenseTensor*> outputs;                               
-    outputs.reserve(1);                                              
-    inputs.emplace_back(&x);                                         
-    inputs.emplace_back(&y);                                         
-    outputs.emplace_back(out);                                       
-    dev_ctx.template Alloc<T>(out);      
-    if( FLAGS_enable_divide_forward_promot )
-    { 
-        using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
-        funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(          
-        dev_ctx, inputs, &outputs, axis, funcs::DivideNewFunctor<T, AccT>()); 
-    }
-    
-    else {
-    funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(          
-        dev_ctx, inputs, &outputs, axis, funcs::DivideFunctor<T>()); 
-    }
+
+template <typename T, typename Context>
+void DivideRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     int axis,
+                     DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  if (FLAGS_enable_divide_forward_promot) {
+    LOG(ERROR) << "divide forward promot";
+    using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
+    funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+        dev_ctx, inputs, &outputs, axis, funcs::DivideNewFunctor<T, AccT>());
+  } else {
+    funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
+        dev_ctx, inputs, &outputs, axis, funcs::DivideFunctor<T>());
+  }
 }
 
 }  // namespace phi
