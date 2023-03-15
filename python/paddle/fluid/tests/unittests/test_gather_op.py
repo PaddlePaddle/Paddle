@@ -35,6 +35,7 @@ class TestGatherOp(OpTest):
         self.op_type = "gather"
         self.python_api = paddle.gather
         self.config()
+        self.prim_op_type = "prim"
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {
             'X': xnp,
@@ -46,7 +47,7 @@ class TestGatherOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def config(self):
         """
