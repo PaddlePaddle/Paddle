@@ -34,15 +34,26 @@ def _composite(op, *args):
 @REGISTER_COMPOSITE('softmax')
 def softmax_composite(x, axis):
     """define composite rule of op softmax"""
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    # Softmax need fp32 compute since it has sum op in
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
     if not x.shape:
         # do not return 1, to ensure gradients
         res = exp(x - x)
+        if is_amp:
+            res = cast(res, "float16")
         return res
     max_temp = max(x, axis, keepdim=True)
     max_temp.stop_gradient = True
     molecular = exp(x - max_temp)
     denominator = sum(molecular, axis=axis, keepdim=True)
     res = divide(molecular, denominator)
+    if is_amp:
+        res = cast(res, "float16")
     return res
 
 
@@ -65,7 +76,6 @@ def composite_batchnorm(
     from paddle.fluid.data_feeder import convert_dtype
 
     if convert_dtype(x.dtype) == "float16":
-        print("Running batch_norm in amp")
         is_amp = True
         x = cast(x, "float32")
 
@@ -132,7 +142,6 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     from paddle.fluid.data_feeder import convert_dtype
 
     if convert_dtype(x.dtype) == "float16":
-        print("Running layer_norm in amp")
         is_amp = True
         x = cast(x, "float32")
 
@@ -235,6 +244,43 @@ def expand_v2_composite(x, shape):
     return tile(x, repeat_times=repeat_times)
 
 
+@REGISTER_COMPOSITE('expand_as_v2')
+def expand_as_v2_composite(x, y, target_shape):
+    """
+    define composite rule of op expnad_as_v2, expand_as_v2->expand_as
+    repeat_times = target_shape / x.shape
+    out = tile(x, repeat_times = repeat_times)
+    """
+    shape_in = x.shape
+    if y is not None:
+        target_shape = y.shape
+    assert target_shape is not None
+    dim_out = len(target_shape)
+    dim_in = len(shape_in)
+    assert dim_in <= dim_out and dim_out >= 0
+    repeat_times = []
+    for i in range(dim_out):
+        offset = dim_out - i
+        dim = dim_in - offset
+        size_in = shape_in[dim] if dim >= 0 else 1
+        size_out = target_shape[i]
+        if size_out == -1:
+            assert dim >= 0
+            repeat = 1
+        else:
+            assert size_out % size_in == 0
+            repeat = int(size_out / size_in)
+        repeat_times.append(repeat)
+    if dim_in < dim_out:
+        shape_in_expand = []
+        for i in range(dim_out - dim_in):
+            shape_in_expand.append(1)
+        shape_in_expand.extend(shape_in)
+        x_reshape = reshape(x, shape_in_expand)
+        return tile(x_reshape, repeat_times=repeat_times)
+    return tile(x, repeat_times=repeat_times)
+
+
 @REGISTER_COMPOSITE('stack')
 def stack_composite(x, axis):
     """
@@ -290,6 +336,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
     fix_seed = True if fix_seed is None else fix_seed
     seed = seed if fix_seed else 0
     upscale_in_train = mode == "upscale_in_train"
+
     mask = bernoulli(shape=x.shape, dtype=x.dtype, p=p, seed=seed)
 
     if upscale_in_train:
@@ -374,6 +421,18 @@ def fill_any_like(x, fill_value, dtype, place=None):
     """arg place is not used, add it here to keep same as python api."""
     val = full(x.shape, fill_value, dtype)
     return val
+
+
+@REGISTER_COMPOSITE('pow')
+def pow_composite(x, y):
+    """
+    define composite rule of op pow
+    res = x^y
+    """
+    if isinstance(y, (int, float)):
+        y = full([1], y, x.dtype)
+    res = pow(x, y)
+    return res
 
 
 @REGISTER_COMPOSITE('relu')

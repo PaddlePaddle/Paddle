@@ -1196,6 +1196,7 @@
   kernel :
     func : multiply {dense, dense -> dense},
            multiply_sr {selected_rows, dense -> selected_rows}
+  inplace : (x -> out)
   backward : multiply_grad
 
 - op : nms
