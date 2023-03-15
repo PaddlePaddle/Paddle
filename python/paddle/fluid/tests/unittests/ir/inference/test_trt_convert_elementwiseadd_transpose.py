@@ -29,12 +29,12 @@ class TrtConvertElementwiseaddTransposeTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def conv_filter_datagen(dics):
             c = dics["c"]
-            x = (np.random.randn(c, c, 1, 1)) / np.sqrt(c)
+            x = (np.random.randn(c, c, 1, 1)) * np.sqrt(2 / c) * 0.1
             return x.astype(np.float32)
 
         def conv_elementwise_bias_datagen(dics):
             c = dics["c"]
-            x = np.random.random([dics["c"]]) * 0.1
+            x = np.random.random([dics["c"]]) * 0.01
             return x.astype(np.float32)
 
         def ele1_input_datagen(dics):

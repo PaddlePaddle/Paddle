@@ -33,7 +33,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
                             DenseTensor* x_grad,
                             DenseTensor* value_grad) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
       true,
       errors::PreconditionNotMet("PutAlongAxisGradOpKernel only runs on CPU."));
 

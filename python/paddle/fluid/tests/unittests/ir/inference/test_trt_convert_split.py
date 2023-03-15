@@ -70,6 +70,14 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             else:
                 return False
 
+        if self.dims == 2:
+            if self.batch != 3:
+                return False
+
+        if len(attrs[0]['sections']) != 0 and attrs[0]['axis'] == 0:
+            if self.dims != 2 or self.batch != 3:
+                return False
+
         return True
 
     def sample_program_configs(self):
@@ -81,7 +89,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             elif self.dims == 2:
                 return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.random.random([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.int32)
 
         def generate_AxisTensor(attrs: List[Dict[str, Any]]):
             return np.ones([1]).astype(np.int32)
@@ -204,13 +212,9 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                 }
                 self.dynamic_shape.opt_input_shape = {"split_input": [1, 3, 24]}
             elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "split_input": [1, 24 - 1]
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "split_input": [9, 24 + 1]
-                }
-                self.dynamic_shape.opt_input_shape = {"split_input": [1, 24]}
+                self.dynamic_shape.min_input_shape = {"split_input": [3, 24]}
+                self.dynamic_shape.max_input_shape = {"split_input": [3, 24]}
+                self.dynamic_shape.opt_input_shape = {"split_input": [3, 24]}
             elif self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"split_input": [24 - 1]}
                 self.dynamic_shape.max_input_shape = {"split_input": [24 + 1]}
@@ -223,15 +227,21 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if len(program_config.outputs) == 2:
-                if attrs[0]['axis'] != 0:
+                if dynamic_shape:
                     return 1, 3
                 else:
-                    return 0, 4
+                    if attrs[0]['axis'] != 0:
+                        return 1, 3
+                    else:
+                        return 0, 4
             else:
-                if attrs[0]['axis'] != 0:
+                if dynamic_shape:
                     return 1, 4
                 else:
-                    return 0, 5
+                    if attrs[0]['axis'] != 0:
+                        return 1, 4
+                    else:
+                        return 0, 5
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -270,6 +280,136 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             SkipReasons.TRT_NOT_SUPPORT,
             "INPUT AxisTensor AND SectionsTensorList NOT SUPPORT.",
         )
+
+    def test(self):
+        self.add_skip_trt_case()
+        self.run_test()
+
+
+class TrtConvertSplitTest2(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
+    def sample_program_configs(self):
+        def generate_input1(attrs: List[Dict[str, Any]]):
+            return np.random.random([3, 3, 3, 24]).astype(np.float32)
+
+        for sections in [
+            [-1, -1, -1],
+            [1, 1, 1],
+        ]:
+            for num in [0]:
+                for axis in [0, 1]:
+                    dics = [
+                        {
+                            "sections": sections,
+                            "num": num,
+                            "axis": axis,
+                        }
+                    ]
+                    dics_intput = [
+                        {
+                            "X": ["split_input"],
+                            "SectionsTensorList": [
+                                "shapeT1_data",
+                                "shapeT2_data",
+                                "shapeT3_data",
+                            ],
+                        },
+                    ]
+                    ops_config = [
+                        {
+                            "op_type": "fill_constant",
+                            "op_inputs": {},
+                            "op_outputs": {"Out": ["shapeT1_data"]},
+                            "op_attrs": {
+                                "dtype": 2,
+                                "str_value": "1",
+                                "shape": [1],
+                            },
+                        },
+                        {
+                            "op_type": "fill_constant",
+                            "op_inputs": {},
+                            "op_outputs": {"Out": ["shapeT2_data"]},
+                            "op_attrs": {
+                                "dtype": 2,
+                                "str_value": "1",
+                                "shape": [1],
+                            },
+                        },
+                        {
+                            "op_type": "fill_constant",
+                            "op_inputs": {},
+                            "op_outputs": {"Out": ["shapeT3_data"]},
+                            "op_attrs": {
+                                "dtype": 2,
+                                "str_value": "1",
+                                "shape": [1],
+                            },
+                        },
+                        {
+                            "op_type": "split",
+                            "op_inputs": dics_intput[0],
+                            "op_outputs": {
+                                "Out": [
+                                    "output_var0",
+                                    "output_var1",
+                                    "output_var2",
+                                ]
+                            },
+                            "op_attrs": dics[0],
+                        },
+                    ]
+                    ops = self.generate_op_config(ops_config)
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "split_input": TensorConfig(
+                                data_gen=partial(generate_input1, dics)
+                            )
+                        },
+                        outputs=["output_var0", "output_var1", "output_var2"],
+                    )
+                    yield program_config
+
+    def sample_predictor_configs(
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
+        def generate_dynamic_shape(attrs):
+            self.dynamic_shape.min_input_shape = {"split_input": [1, 3, 3, 24]}
+            self.dynamic_shape.max_input_shape = {"split_input": [9, 3, 3, 24]}
+            self.dynamic_shape.opt_input_shape = {"split_input": [3, 3, 3, 24]}
+
+        def clear_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
+
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            if dynamic_shape:
+                return 1, 4
+            return 0, 5
+
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+        self.trt_param.max_batch_size = 9
+
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-3
+
+    def add_skip_trt_case(self):
+        pass
 
     def test(self):
         self.add_skip_trt_case()

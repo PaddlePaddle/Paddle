@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/mean_all_grad_kernel.h"
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -40,7 +40,7 @@ void MeanAllGradKernel(const Context& dev_ctx,
   const T* dy = OG->data<T>();
   T dy0_value;
   xpu_wait(dev_ctx.x_context()->xpu_stream);
-  paddle::memory::Copy(phi::CPUPlace(), &dy0_value, OG->place(), dy, sizeof(T));
+  memory_utils::Copy(phi::CPUPlace(), &dy0_value, OG->place(), dy, sizeof(T));
   float dy0_fp32 = static_cast<float>(dy0_value);
   dy0_fp32 = dy0_fp32 / static_cast<float>(IG->numel());
 
