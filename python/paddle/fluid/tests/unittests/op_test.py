@@ -1809,7 +1809,7 @@ class OpTest(unittest.TestCase):
                 ):
                     pass
                 else:
-                    np.testing.aseert_allclose(
+                    np.testing.assert_allclose(
                         actual_np,
                         expect_np,
                         atol=atol,
