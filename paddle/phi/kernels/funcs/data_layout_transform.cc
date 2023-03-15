@@ -65,7 +65,7 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
   auto& cpu_engine = dev_ctx->GetEngine();
 
   auto in_tz = vectorize<int64_t>(in.dims());
-  auto out_tz = in_tz;
+  auto out_tz = in_tz.size() != 0 ? in_tz : std::vector<int64_t>{1};
 
   auto in_type = ToOneDNNDataType(in.dtype());
   PADDLE_ENFORCE_NE(

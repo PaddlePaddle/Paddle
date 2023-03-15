@@ -148,9 +148,10 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
       OneDNNContext::tls().set_cur_paddle_data_layout(src_layout);
     }
 
-    dnnl::memory::desc out_mem_desc(vectorize<int64_t>(out->dims()),
-                                    funcs::ToOneDNNDataType(x.dtype()),
-                                    out_format);
+    auto out_dims = out->dims().size() != 0 ? vectorize<int64_t>(out->dims())
+                                            : std::vector<int64_t>{1};
+    dnnl::memory::desc out_mem_desc(
+        out_dims, funcs::ToOneDNNDataType(x.dtype()), out_format);
     out->set_mem_desc(out_mem_desc);
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout != DataLayout::ONEDNN) {

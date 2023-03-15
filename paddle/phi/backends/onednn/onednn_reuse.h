@@ -1646,7 +1646,13 @@ class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
 
-    auto x_tz = phi::vectorize(x->dims());
+    // if x is a 0-D tensor, then:
+    //     x->dims() is [] and x->mem_desc().dims() is [1], we should use
+    //     the later shape since oneDNN doesn't support 0-D shape.
+    // else, then:
+    //    x->dims() == x->mem_desc().dims()
+    // so, we can directly use x->mem_desc().dims() here
+    auto x_tz = x->mem_desc().dims();
     auto beta_tz = std::vector<int64_t>(x_tz.size(), 1);
     auto beta_md = dnnl::memory::desc(
         beta_tz, OneDNNGetDataType<T>(), GetPlainOneDNNFormat(x_tz.size()));

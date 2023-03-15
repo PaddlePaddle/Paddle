@@ -72,10 +72,12 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
           // NHWC or NCHW
           phi::OneDNNContext::tls().set_cur_paddle_data_layout(lin);
         }
+
+        auto out_dims = out.dims().size() != 0 ? vectorize(out.dims())
+                                               : std::vector<int64_t>{1};
+
         dnnl::memory::desc out_mem_desc(
-            vectorize(out.dims()),
-            phi::funcs::ToOneDNNDataType(in.dtype()),
-            out_format);
+            out_dims, phi::funcs::ToOneDNNDataType(in.dtype()), out_format);
         out.set_mem_desc(out_mem_desc);
       } else {
         // Case2 - transfrom from ONEDNN OPKernel to Non-ONEDNN OPKernel
