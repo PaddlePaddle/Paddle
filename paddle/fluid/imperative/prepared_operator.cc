@@ -296,7 +296,7 @@ PreparedOp PrepareImpl(
 #ifdef PADDLE_WITH_XPU_KP
     if (expected_kernel_key.backend() == phi::Backend::XPU) {
       bool use_xpu_kp_kernel_rt =
-          FLAGS_run_kp_kernel && paddle::platform::is_xpu_support_op(
+          FLAGS_run_kp_kernel && paddle::platform::is_xpu_kp_support_op(
                                      op.Type(), expected_kernel_key.dtype());
       bool use_xpu_kp_kernel_debug =
           paddle::platform::is_in_xpu_kpwhite_list(op.Type());
@@ -369,8 +369,8 @@ PreparedOp PrepareImpl(
   bool use_xpu_kp_kernel_rt =
       expected_kernel_key.backend() == phi::Backend::XPU &&
       FLAGS_run_kp_kernel &&
-      paddle::platform::is_xpu_support_op(op.Type(),
-                                          expected_kernel_key.dtype());
+      paddle::platform::is_xpu_kp_support_op(op.Type(),
+                                             expected_kernel_key.dtype());
   bool use_xpu_kp_kernel_debug =
       expected_kernel_key.backend() == phi::Backend::XPU &&
       paddle::platform::is_in_xpu_kpwhite_list(op.Type());

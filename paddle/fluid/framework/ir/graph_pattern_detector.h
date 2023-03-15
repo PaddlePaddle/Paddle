@@ -662,19 +662,25 @@ struct FC : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
-struct FCOneDNN : public PatternBase {
-  FCOneDNN(PDPattern* pattern, const std::string& name_scope)
+// MKL-DNN's FC with bias
+// op: fc
+// named node:
+// fc
+// w, bias, output, residual_data
+struct FCMKLDNN : public PatternBase {
+  FCMKLDNN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc_mkldnn") {}
 
-  PDNode* operator()(const std::string& fc_type,
-                     bool with_residual_data = false);
+  PDNode* operator()(bool with_residual_data);
 
+  // declare operator node's name
+  PATTERN_DECL_NODE(fc);
+  // declare variable node's name
   PATTERN_DECL_NODE(input);
   PATTERN_DECL_NODE(weights);
   PATTERN_DECL_NODE(bias);
-  PATTERN_DECL_NODE(residual_data);
-  PATTERN_DECL_NODE(fc);
   PATTERN_DECL_NODE(output);
+  PATTERN_DECL_NODE(residual_data);
 };
 
 // Embedding
@@ -1396,7 +1402,7 @@ struct QuantConv : public PatternBase {
   QuantConv(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "quant_conv") {}
 
-  PDNode* operator()();
+  PDNode* operator()(const std::string& conv_type);
 
   PATTERN_DECL_NODE(quant_in);
   PATTERN_DECL_NODE(quant_op);
@@ -1919,7 +1925,6 @@ struct FusionGru : public PatternBase {
 struct FusionLSTM : public PatternBase {
   FusionLSTM(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fusion_lstm") {}
-  // TODO(lidanqing): Is it enough to detect fusion_lstm with these things
   PDNode* operator()();
 
   // declare op

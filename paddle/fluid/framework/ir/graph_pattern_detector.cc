@@ -1174,33 +1174,32 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
   }
 }
 
-PDNode *patterns::FCOneDNN::operator()(const std::string &fc_type,
-                                       bool with_residual_data) {
-  auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op(fc_type);
+PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
+  auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
   // Create variables
   // Input
   auto *input_var = pattern->NewNode(input_repr())
                         ->AsInput()
-                        ->assert_is_op_input(fc_type, "Input");
+                        ->assert_is_op_input("fc", "Input");
   // Filter
   auto *fc_weight_var = pattern->NewNode(weights_repr())
                             ->AsInput()
-                            ->assert_is_op_input(fc_type, "W");
+                            ->assert_is_op_input("fc", "W");
   // Bias
   auto *fc_bias_var = pattern->NewNode(bias_repr())
                           ->AsInput()
-                          ->assert_is_op_input(fc_type, "Bias");
+                          ->assert_is_op_input("fc", "Bias");
   // Output
   auto *fc_out_var = pattern->NewNode(output_repr())
                          ->AsOutput()
-                         ->assert_is_op_output(fc_type, "Out")
-                         ->assert_is_only_output_of_op(fc_type);
+                         ->assert_is_op_output("fc", "Out")
+                         ->assert_is_only_output_of_op("fc");
 
   std::vector<PDNode *> links_from{input_var, fc_weight_var, fc_bias_var};
   if (with_residual_data) {
     auto res_fc_var = pattern->NewNode(residual_data_repr())
                           ->AsInput()
-                          ->assert_is_op_input(fc_type, "ResidualData");
+                          ->assert_is_op_input("fc", "ResidualData");
     links_from.push_back(res_fc_var);
   } else {
     fc_op->assert_more([&](Node *x) {
@@ -2347,7 +2346,7 @@ PDNode *patterns::ScaleQuant::operator()() {
   return quant_op;
 }
 
-PDNode *patterns::QuantConv::operator()() {
+PDNode *patterns::QuantConv::operator()(const std::string &conv_type) {
   auto quant_in = pattern->NewNode(quant_in_repr())
                       ->AsInput()
                       ->assert_is_op_input("quantize", "Input");
@@ -2355,8 +2354,8 @@ PDNode *patterns::QuantConv::operator()() {
 
   auto conv_in = pattern->NewNode(conv_in_repr())
                      ->AsInput()
-                     ->assert_is_op_input("conv2d", "Input");
-  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+                     ->assert_is_op_input(conv_type, "Input");
+  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op(conv_type);
   conv_op->assert_more([&](Node *node) {
     return node->Op()->GetAttrIfExists<std::string>("mkldnn_data_type") ==
            "bfloat16";
@@ -2846,6 +2845,7 @@ PDNode *patterns::Bfloat16Placement::operator()(
                                        "clip",
                                        "concat",
                                        "conv2d",
+                                       "fused_conv2d",
                                        "conv2d_transpose",
                                        "elementwise_add",
                                        "elementwise_mul",

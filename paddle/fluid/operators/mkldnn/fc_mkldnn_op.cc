@@ -1,16 +1,18 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#include <memory>
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fc_op.h"
@@ -32,13 +34,12 @@ struct InnerProductCache {
   dnnl::memory bias_mem;
   dnnl::memory dst_mem;
 };
-
 template <typename T_in, typename T_w, typename T_out>
-class FCOneDNNHandler
+class FCMKLDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<T_in,
                                                  dnnl::inner_product_forward> {
  public:
-  FCOneDNNHandler(const ExecutionContext& ctx,
+  FCMKLDNNHandler(const ExecutionContext& ctx,
                   const OneDNNContext& dev_ctx,
                   const phi::DenseTensor* x,
                   const phi::DenseTensor* weights,
@@ -106,6 +107,11 @@ class FCOneDNNHandler
       attributes.set_output_scales(mask, output_shift_scale);
     }
 
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
+      post_operations.append_sum(sum_scale);
+    }
+
     // ReLU from "fc_fuse_pass"
     if (ctx.Attr<std::string>("activation_type") == "relu") {
       post_operations.append_eltwise(
@@ -113,12 +119,8 @@ class FCOneDNNHandler
     }
     AppendActivation(ctx, post_operations, activation_scale);
 
-    if (ctx.HasInput("ResidualData")) {
-      post_operations.append_sum(sum_scale);
-    }
-
-    float scale_alpha = ctx.Attr<float>("fused_output_scale");
-    if (scale_alpha != 1.0f) {
+    if (ctx.HasAttr("fused_output_scale")) {
+      float scale_alpha = ctx.Attr<float>("fused_output_scale");
       post_operations.append_eltwise(
           1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
     }
@@ -130,7 +132,7 @@ class FCOneDNNHandler
   // Compute the bias scales so that its values correspond to the
   // scale of data being an output of weights and input multiplication
   std::vector<float> GetBiasScales(const ExecutionContext& ctx) {
-    if (!(ctx.Attr<std::vector<float>>("Bias_scales")).empty()) {
+    if (ctx.HasAttr("Bias_scales")) {
       return ctx.Attr<std::vector<float>>("Bias_scales");
     } else {
       const float scale_in = ctx.Attr<float>("Scale_in");
@@ -150,11 +152,17 @@ class FCOneDNNHandler
   void AppendActivation(const ExecutionContext& ctx,
                         dnnl::post_ops& post_ops,  // NOLINT
                         float activation_scale = 1.0f) {
-    const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
-    if (fuse_activation.empty()) return;
+    const auto invalid_attribute =
+        ctx.HasAttr("fuse_activation")
+            ? ctx.Attr<std::string>("fuse_activation").empty()
+            : true;
+    if (invalid_attribute) return;
 
-    const auto fuse_alpha = ctx.Attr<float>("fuse_alpha");
-    const auto fuse_beta = ctx.Attr<float>("fuse_beta");
+    const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
+    const auto fuse_alpha =
+        ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
+    const auto fuse_beta =
+        ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
 
     const auto activation_map = phi::funcs::OneDNNActivationMap();
     const auto& activation_type = activation_map.find(fuse_activation);
@@ -177,37 +185,46 @@ class FCOneDNNHandler
   // was. Then we multiply them by desired output scale we want on the output.
   std::tuple<std::vector<float>, float, float> GetOutputScales(
       const ExecutionContext& ctx) {
-    bool fuse_residual_conn = ctx.HasInput("ResidualData");
-    bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
-    auto scale_in_data = ctx.Attr<float>("Scale_in");
-    auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-    auto scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
-    auto scale_out = ctx.Attr<float>("Scale_out");
+    if (ctx.HasAttr("Sum_scale")) {
+      return std::make_tuple(ctx.Attr<std::vector<float>>("Output_shift_scale"),
+                             ctx.Attr<float>("Sum_scale"),
+                             ctx.Attr<float>("Activation_scale"));
+    } else {
+      auto scale_in_data = ctx.Attr<float>("Scale_in");
+      auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+      bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
+      bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+      bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
+                                ctx.Attr<bool>("fuse_residual_connection");
+      auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
+                                       ? ctx.Attr<float>("Scale_in_eltwise")
+                                       : 1.0f;
 
-    // If the output will be in floats, we don't multiply by scale_out.
-    float activation_scale =
-        (!force_fp32_output && has_activation) ? scale_out : 1.0f;
-    float scale_out_data =
-        (force_fp32_output || has_activation) ? 1.0f : scale_out;
-    float sum_scale =
-        fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
-    const size_t weight_scales_num = scale_weights_data.size();
+      // If the output will be in floats, we don't multiply by scale_out.
 
-    for (size_t i = 0; i < weight_scales_num; ++i) {
-      if (scale_weights_data[i] == 0.0)
-        scale_weights_data[i] = scale_out_data;
-      else
-        scale_weights_data[i] =
-            scale_out_data / (scale_in_data * scale_weights_data[i]);
+      float activation_scale = (!force_fp32_output && has_activation)
+                                   ? ctx.Attr<float>("Scale_out")
+                                   : 1.0f;
+      float scale_out_data = (force_fp32_output || has_activation)
+                                 ? 1.0f
+                                 : ctx.Attr<float>("Scale_out");
+      float sum_scale =
+          fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
+      const size_t weight_scales_num = scale_weights_data.size();
+
+      for (size_t i = 0; i < weight_scales_num; ++i) {
+        if (scale_weights_data[i] == 0.0)
+          scale_weights_data[i] = scale_out_data;
+        else
+          scale_weights_data[i] =
+              scale_out_data / (scale_in_data * scale_weights_data[i]);
+      }
+      return std::make_tuple(scale_weights_data, sum_scale, activation_scale);
     }
-    return std::make_tuple(scale_weights_data, sum_scale, activation_scale);
   }
 
-  // Computing MKL-DNN's scaling mask which determines along which dimension
-  // slice should the scaling be applied. For more data plase refer to:
-  // https://intel.github.io/mkl-dnn/group__c__api__attributes.html
-  // Section dnnl_status_t DNNL_API dnnl_primitive_attr_set_output_scales
+  // Computing oneDNN's scaling mask which determines along which dimension
+  // slice should the scaling be applied.
   int CreateMask(int slice_dimension, bool is_multi_channel_quantizied) {
     return is_multi_channel_quantizied ? 1 << slice_dimension : 0;
   }
@@ -333,7 +350,8 @@ class FCOneDNNHandler
 
   std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(
       const ExecutionContext& ctx, phi::DenseTensor* out) {
-    if (ctx.HasInput("ResidualData")) {
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
       auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
 
       PADDLE_ENFORCE_EQ(
@@ -362,7 +380,7 @@ class FCOneDNNHandler
   }
 
 template <typename T_in>
-class FCOneDNNKernel : public framework::OpKernel<T_in> {
+class FCMKLDNNKernel : public framework::OpKernel<T_in> {
  public:
   void Compute(const ExecutionContext& ctx) const override {
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
@@ -430,13 +448,7 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
     auto inner_product_cache =
         std::static_pointer_cast<InnerProductCache>(dev_ctx.GetBlob(cache_key));
 
-    PADDLE_ENFORCE_EQ(ctx.Attr<bool>("padding_weights"),
-                      false,
-                      phi::errors::PermissionDenied(
-                          "padding_weights can't be used in oneDNN FC"));
-
-    const auto in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
-    RecomputeOutputDims(in_num_col_dims, x, weights, out);
+    RecomputeOutputDims(ctx, x, weights, out);
 
     if (inner_product_cache) {
       fc_p = std::make_shared<dnnl::inner_product_forward>(
@@ -450,7 +462,8 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
 
       dst_memory_p =
           std::make_shared<dnnl::memory>(inner_product_cache->dst_mem);
-      if (ctx.HasInput("ResidualData")) {
+      if (ctx.HasAttr("fuse_residual_connection") &&
+          ctx.Attr<bool>("fuse_residual_connection")) {
         auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
         out->ShareDataWith(*residual_param);
       }
@@ -463,13 +476,15 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
             std::make_shared<dnnl::memory>(inner_product_cache->bias_mem);
       }
     } else {
-      FCOneDNNHandler<T_in, T_w, T_out> handler(ctx,
+      auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
+
+      FCMKLDNNHandler<T_in, T_w, T_out> handler(ctx,
                                                 dev_ctx,
                                                 x,
                                                 weights,
                                                 bias,
                                                 out,
-                                                in_num_col_dims,
+                                                in_col_dims,
                                                 onednn_engine,
                                                 ctx.GetPlace());
 
@@ -511,25 +526,33 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
       dev_ctx.SetBlob(cache_key, ip_cache);
     }
 
-    auto out_md = dst_memory_p->get_desc().reshape(phi::vectorize(out->dims()));
-    auto fused_reshape2_shape =
-        ctx.Attr<std::vector<int>>("fused_reshape2_shape");
+    const auto out_md =
+        dst_memory_p->get_desc().reshape(phi::vectorize(out->dims()));
 
-    if (fused_reshape2_shape.empty()) {
-      out->set_mem_desc(out_md);
-    } else {
+    if (ctx.HasAttr("fused_reshape2_shape")) {
       phi::funcs::SetOutMemDescWithReshape2FuseSupport(
-          fused_reshape2_shape, out, out_md);
+          ctx.Attr<std::vector<int>>("fused_reshape2_shape"), out, out_md);
+    } else {
+      out->set_mem_desc(out_md);
     }
   }
 
-  void RecomputeOutputDims(const int in_num_col_dims,
+  void RecomputeOutputDims(const ExecutionContext& ctx,
                            const phi::DenseTensor* x,
                            const phi::DenseTensor* weights,
                            phi::DenseTensor* out) const {
+    int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
+    bool padding_weights = ctx.Attr<bool>("padding_weights");
+    PADDLE_ENFORCE_EQ(padding_weights,
+                      false,
+                      phi::errors::PermissionDenied(
+                          "Weight padding in fc can not be used in oneDNN."));
     std::vector<int64_t> output_dims;
-    FCOutputSize(
-        x->dims(), weights->dims(), output_dims, in_num_col_dims, false);
+    FCOutputSize(x->dims(),
+                 weights->dims(),
+                 output_dims,
+                 in_num_col_dims,
+                 padding_weights);
     out->Resize(phi::make_ddim(output_dims));
     out->set_lod(x->lod());
   }
@@ -543,10 +566,10 @@ class FCOneDNNKernel : public framework::OpKernel<T_in> {
 // be used during computations of kernel).
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(fused_fc,
+REGISTER_OP_KERNEL(fc,
                    MKLDNN,
                    ::phi::CPUPlace,
-                   ops::FCOneDNNKernel<float>,
-                   ops::FCOneDNNKernel<paddle::platform::bfloat16>,
-                   ops::FCOneDNNKernel<uint8_t>,
-                   ops::FCOneDNNKernel<int8_t>);
+                   ops::FCMKLDNNKernel<float>,
+                   ops::FCMKLDNNKernel<paddle::platform::bfloat16>,
+                   ops::FCMKLDNNKernel<uint8_t>,
+                   ops::FCMKLDNNKernel<int8_t>);

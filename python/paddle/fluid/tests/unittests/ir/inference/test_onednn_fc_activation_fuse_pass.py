@@ -48,7 +48,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
             return np.random.random(shape).astype(np.float32)
 
         fc_op = OpConfig(
-            type="fused_fc",
+            type="fc",
             inputs={
                 "Input": ["fc_input"],
                 "W": ["fc_weight"],
@@ -140,7 +140,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                 "operator_scale_onednn_fuse_pass",
             ],
         )
-        yield config, ["fused_fc"], (1e-5, 1e-5)
+        yield config, ["fc"], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(

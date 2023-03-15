@@ -23,7 +23,7 @@ namespace framework {
 namespace ir {
 
 FCResidualConnectionMKLDNNFusePass::FCResidualConnectionMKLDNNFusePass() {
-  AddOpCompat(OpCompat("fused_fc"))
+  AddOpCompat(OpCompat("fc"))
       .AddInput("Input")
       .IsTensor()
       .End()
@@ -61,8 +61,8 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
     bool fc_as_x) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::FCOneDNN fc_pattern{pattern, name_scope};
-  auto fc_output = fc_pattern("fused_fc");
+  patterns::FCMKLDNN fc_pattern{pattern, name_scope};
+  auto fc_output = fc_pattern(false);
 
   patterns::ResidualElementwise elementwise_pattern{
       pattern, name_scope, fc_as_x};
@@ -121,6 +121,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
 
     fc_op->Op()->SetInput("ResidualData", {residual_data->Name()});
     fc_op->Op()->SetOutput("Out", {elementwise_out->Name()});
+    fc_op->Op()->SetAttr("fuse_residual_connection", true);
 
     GraphSafeRemoveNodes(g, {fc_output, elementwise_op});
 
@@ -160,5 +161,5 @@ REGISTER_PASS(fc_elementwise_add_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(fc_elementwise_add_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("fused_fc", 0)
+            .EQ("fc", 0)
             .LE("elementwise_add", 1));

@@ -594,8 +594,8 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float16, float32, float64.
-        lower (float, optional): The lower bound of uniform distribution. Default: 1.0/8.0.
-        upper (float, optional): The upper bound of uniform distribution. Default: 1.0/3.0.
+        lower (float, optional): The lower bound of uniform distribution. Default: 0.125.
+        upper (float, optional): The upper bound of uniform distribution. Default: 0.3333333333333333.
         training (bool, optional): Current mode is in training or others.  Default is True.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 

@@ -25,7 +25,7 @@ enable_static()
 @OpTestTool.skip_if_not_cpu()
 class TestFCINT8OneDNNOp(OpTest):
     def setUp(self):
-        self.op_type = "fused_fc"
+        self.op_type = "fc"
         self._cpu_only = True
         self.configure()
         self.generate_data()

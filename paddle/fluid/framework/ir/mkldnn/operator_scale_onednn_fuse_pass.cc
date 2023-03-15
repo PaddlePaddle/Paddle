@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/operator_scale_onednn_fuse_pass.h"
 
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
@@ -26,7 +27,7 @@ using string::PrettyLogDetail;
 
 void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
   const std::vector<std::string> fusable_ops{
-      "fused_fc",
+      "fc",
       "fused_matmul",
       "matmul",
       "matmul_v2",
@@ -86,17 +87,8 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
       scale = *(scale_tensor->data<float>());
     }
 
-    if (op_type == "matmul") {
-      operator_op->Op()->SetType("fused_matmul");
-      operator_op->Op()->SetAttr("trans_x",
-                                 operator_op->Op()->GetAttr("transpose_X"));
-      operator_op->Op()->SetAttr("trans_y",
-                                 operator_op->Op()->GetAttr("transpose_Y"));
-      operator_op->Op()->SetAttr("matmul_alpha",
-                                 operator_op->Op()->GetAttr("alpha"));
-    }
-    if (op_type == "matmul_v2") {
-      operator_op->Op()->SetType("fused_matmul");
+    if (op_type == "matmul" || op_type == "matmul_v2") {
+      ConvertToFusedOp(operator_op->Op());
     }
 
     operator_op->Op()->SetAttr("fused_output_scale", scale);
@@ -124,7 +116,7 @@ REGISTER_PASS(operator_scale_onednn_fuse_pass,
 REGISTER_PASS_CAPABILITY(operator_scale_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("fused_fc", 0)
+            .EQ("fc", 0)
             .EQ("fused_matmul", 0)
             .LE("matmul", 1)
             .EQ("matmul_v2", 0)

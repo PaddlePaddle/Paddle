@@ -36,7 +36,7 @@ namespace paddle {
 
 namespace prim {
 
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 using Scalar = paddle::experimental::Scalar;
 using IntArray = paddle::experimental::IntArray;
 using TensorOperantsBase = paddle::operants::TensorOperantsBase;
@@ -55,6 +55,18 @@ class EagerTensorOperants : public TensorOperantsBase {
   Tensor multiply(const Tensor& x, const Scalar& y);
 
   Tensor divide(const Tensor& x, const Scalar& y);
+
+  Tensor add(const Scalar& x, const Tensor& y);
+
+  Tensor subtract(const Scalar& x, const Tensor& y);
+
+  Tensor multiply(const Scalar& x, const Tensor& y);
+
+  Tensor divide(const Scalar& x, const Tensor& y);
+
+  Tensor pow(const Tensor& x, const Tensor& y);
+
+  Tensor pow(const Tensor& x, const Scalar& y);
 
 """
 
@@ -90,11 +102,35 @@ Tensor EagerTensorOperants::subtract(const Tensor& x, const Scalar& y) {
 }
 
 Tensor EagerTensorOperants::multiply(const Tensor& x, const Scalar& y) {
-  return ::multiply_ad_func(x, ::full_like_ad_func(x, y));
+  return ::scale_ad_func(x, y, 0.0f, true);
 }
 
 Tensor EagerTensorOperants::divide(const Tensor& x, const Scalar& y) {
   return ::divide_ad_func(x, ::full_like_ad_func(x, y));
+}
+
+Tensor EagerTensorOperants::add(const Scalar& x, const Tensor& y) {
+  return ::add_ad_func(::full_like_ad_func(y, x), y);
+}
+
+Tensor EagerTensorOperants::subtract(const Scalar& x, const Tensor& y) {
+  return ::subtract_ad_func(::full_like_ad_func(y, x), y);
+}
+
+Tensor EagerTensorOperants::multiply(const Scalar& x, const Tensor& y) {
+  return ::scale_ad_func(y, x, 0.0f, true);
+}
+
+Tensor EagerTensorOperants::divide(const Scalar& x, const Tensor& y) {
+  return ::divide_ad_func(::full_like_ad_func(y, x), y);
+}
+
+Tensor EagerTensorOperants::pow(const Tensor& x, const Tensor& y) {
+  return ::elementwise_pow_ad_func(x, y);
+}
+
+Tensor EagerTensorOperants::pow(const Tensor& x, const Scalar& y) {
+  return ::elementwise_pow_ad_func(x, ::full_like_ad_func(x, y));
 }
 
 """
@@ -124,7 +160,7 @@ namespace paddle {
 
 namespace prim {
 
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 using Scalar = paddle::experimental::Scalar;
 using IntArray = paddle::experimental::IntArray;
 using TensorOperantsBase = paddle::operants::TensorOperantsBase;
@@ -143,6 +179,18 @@ class StaticTensorOperants : public TensorOperantsBase {
   Tensor multiply(const Tensor& x, const Scalar& y);
 
   Tensor divide(const Tensor& x, const Scalar& y);
+
+  Tensor add(const Scalar& x, const Tensor& y);
+
+  Tensor subtract(const Scalar& x, const Tensor& y);
+
+  Tensor multiply(const Scalar& x, const Tensor& y);
+
+  Tensor divide(const Scalar& x, const Tensor& y);
+
+  Tensor pow(const Tensor& x, const Tensor& y);
+
+  Tensor pow(const Tensor& x, const Scalar& y);
 
 """
 
@@ -181,11 +229,35 @@ Tensor StaticTensorOperants::subtract(const Tensor& x, const Scalar& y) {
 }
 
 Tensor StaticTensorOperants::multiply(const Tensor& x, const Scalar& y) {
-  return paddle::prim::multiply<DescTensor>(x, paddle::prim::full<DescTensor>(x.shape(), y, x.dtype(), x.place()));
+  return paddle::prim::scale<DescTensor>(x, y, 0.0f, true);
 }
 
 Tensor StaticTensorOperants::divide(const Tensor& x, const Scalar& y) {
   return paddle::prim::divide<DescTensor>(x, paddle::prim::full<DescTensor>(x.shape(), y, x.dtype(), x.place()));
+}
+
+Tensor StaticTensorOperants::add(const Scalar& x, const Tensor& y) {
+  return paddle::prim::add<DescTensor>(paddle::prim::full<DescTensor>(y.shape(), x, y.dtype(), y.place()), y);
+}
+
+Tensor StaticTensorOperants::subtract(const Scalar& x, const Tensor& y) {
+  return paddle::prim::subtract<DescTensor>(paddle::prim::full<DescTensor>(y.shape(), x, y.dtype(), y.place()), y);
+}
+
+Tensor StaticTensorOperants::multiply(const Scalar& x, const Tensor& y) {
+  return paddle::prim::scale<DescTensor>(y, x, 0.0f, true);
+}
+
+Tensor StaticTensorOperants::divide(const Scalar& x, const Tensor& y) {
+  return paddle::prim::divide<DescTensor>(paddle::prim::full<DescTensor>(y.shape(), x, y.dtype(), y.place()), y);
+}
+
+Tensor StaticTensorOperants::pow(const Tensor& x, const Tensor& y) {
+  return paddle::prim::elementwise_pow<DescTensor>(x, y);
+}
+
+Tensor StaticTensorOperants::pow(const Tensor& x, const Scalar& y) {
+  return paddle::prim::elementwise_pow<DescTensor>(x, paddle::prim::full<DescTensor>(x.shape(), y, x.dtype(), x.place()));
 }
 
 """

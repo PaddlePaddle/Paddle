@@ -193,6 +193,102 @@ class XPUTestTopKV2Op(XPUOpTestWrapper):
             self.largest = True
             self.input_data_shape = (10, 10, 5)
 
+    class TestTopkSmallestOp1(TestTopkOp):
+        def init_args(self):
+            self.k = 3
+            self.axis = 1
+            self.largest = False
+            # too many values for fp16 will lead to failure in random_unique_float function
+            if self.dtype == np.float16:
+                self.input_data_shape = (100, 55)
+            else:
+                self.input_data_shape = (100, 155)
+
+    class TestTopkSmallestOp2(TestTopkOp):
+        def init_args(self):
+            self.k = 3
+            self.axis = 1
+            self.largest = False
+            self.input_data_shape = (10, 10, 5)
+
+    class TestTopkSmallestOp3(TestTopkOp):
+        def init_args(self):
+            self.k = 5
+            self.axis = 1
+            self.largest = False
+            self.input_data_shape = (10, 10, 5)
+
+    class TestTopkSmallestOp4(TestTopkOp):
+        def init_args(self):
+            self.k = 1
+            self.axis = 1
+            self.largest = False
+            self.input_data_shape = (10, 10, 5)
+
+    class TestTopkSmallestOp5(TestTopkOp):
+        def init_args(self):
+            self.k = 3
+            self.axis = 2
+            self.largest = False
+            self.input_data_shape = (10, 10, 5)
+
+    class TestTopkSmallestOp6(TestTopkOp):
+        def init_args(self):
+            self.k = 5
+            self.axis = 1
+            self.largest = False
+            # too many values for fp16 will lead to failure in random_unique_float function
+            if self.dtype == np.float16:
+                self.input_data_shape = (8, 32, 32)
+            else:
+                self.input_data_shape = (8, 32, 64)
+
+    class TestTopkSmallestOp7(TestTopkOp):
+        def init_args(self):
+            self.k = 10
+            self.axis = 2
+            self.largest = False
+            self.input_data_shape = (8, 5, 10, 16)
+
+    class TestTopkSmallestOp8(TestTopkOp):
+        def init_args(self):
+            self.k = 1
+            self.axis = 1
+            self.largest = False
+            # too many values for fp16 will lead to failure in random_unique_float function
+            if self.dtype == np.float16:
+                self.input_data_shape = (8, 32, 32)
+            else:
+                self.input_data_shape = (8, 32, 64)
+
+    class TestTopkSmallestOp9(TestTopkOp):
+        def init_args(self):
+            self.k = 3
+            self.axis = 1
+            self.largest = False
+            self.input_data_shape = (10, 10, 5)
+
+    class TestTopkSmallestOp10(TestTopkOp):
+        def init_args(self):
+            self.k = 3
+            self.axis = 1
+            self.largest = False
+            self.input_data_shape = (10, 10, 5)
+
+    class TestTopkSmallestOp11(TestTopkOp):
+        def init_args(self):
+            self.k = 5
+            self.axis = 1
+            self.largest = False
+            self.input_data_shape = (10, 10, 5)
+
+    class TestTopkSmallestOp12(TestTopkOp):
+        def init_args(self):
+            self.k = 1
+            self.axis = 1
+            self.largest = False
+            self.input_data_shape = (10, 10, 5)
+
 
 support_types = get_xpu_op_support_types('top_k_v2')
 for stype in support_types:

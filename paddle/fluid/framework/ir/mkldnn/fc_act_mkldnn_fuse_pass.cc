@@ -39,7 +39,7 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
   GraphPatternDetector gpd;
   patterns::OperatorActivation fc_act_pattern(
       gpd.mutable_pattern(), "fc_" + act_type + "_mkldnn_fuse_pass");
-  fc_act_pattern("fused_fc", act_type);
+  fc_act_pattern("fc", act_type);
 
   int found_fc_act_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -75,7 +75,7 @@ REGISTER_PASS(fc_act_mkldnn_fuse_pass,
 REGISTER_PASS_CAPABILITY(fc_act_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
-            .EQ("fused_fc", 0)
+            .EQ("fc", 0)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)

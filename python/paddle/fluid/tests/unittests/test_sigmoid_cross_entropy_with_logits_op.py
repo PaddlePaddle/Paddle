@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from scipy.special import expit, logit
 
 import paddle
@@ -23,11 +23,19 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
+def loss_wrapper(logit, label, normalize=False, ignore_index=-100):
+    out = paddle._C_ops.sigmoid_cross_entropy_with_logits(
+        logit, label, normalize, ignore_index
+    )
+    return out
+
+
 class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
     """Test sigmoid_cross_entropy_with_logit_op with binary label"""
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         self.inputs = {
@@ -50,10 +58,10 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
@@ -61,6 +69,7 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         ignore_index = -1
@@ -88,10 +97,10 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
@@ -99,6 +108,7 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         self.inputs = {
@@ -121,15 +131,16 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSigmoidCrossEntropyWithNorm(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = loss_wrapper
         batch_size = 64
         num_classes = 20
         ignore_index = -1
@@ -156,10 +167,10 @@ class TestSigmoidCrossEntropyWithNorm(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
@@ -167,6 +178,7 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = loss_wrapper
         batch_size = [10, 10]
         num_classes = 20
         self.inputs = {
@@ -189,15 +201,16 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
         self.outputs = {'Out': -term1 - term2}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSigmoidCrossEntropyWithNorm2(OpTest):
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
+        self.python_api = loss_wrapper
         batch_size = [10, 10]
         num_classes = 20
         ignore_index = -1
@@ -224,16 +237,17 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=False)
+        self.check_grad(['X'], 'Out')
 
     class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
         """Test sigmoid_cross_entropy_with_logit_op with binary label"""
 
         def setUp(self):
             self.op_type = "sigmoid_cross_entropy_with_logits"
+            self.python_api = loss_wrapper
             batch_size = [10, 10]
             num_classes = 20
             self.inputs = {
@@ -256,10 +270,10 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
             self.outputs = {'Out': -term1 - term2}
 
         def test_check_output(self):
-            self.check_output(check_eager=False)
+            self.check_output()
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', check_eager=False)
+            self.check_grad(['X'], 'Out')
 
     class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
         def test_errors(self):

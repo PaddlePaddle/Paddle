@@ -23,23 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class FCOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override;
-
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override;
-};
-
-class FCOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() final;
-
- protected:
-  virtual void Apply() {}
-};
-
 inline void FCOutputSize(const framework::DDim& in_dims,
                          const framework::DDim& w_dims,
                          std::vector<int64_t>& out_dims,  // NOLINT
@@ -51,7 +34,7 @@ inline void FCOutputSize(const framework::DDim& in_dims,
   PADDLE_ENFORCE_EQ(
       in_mat_dims[1],
       w_dims0,
-      phi::errors::InvalidArgument(
+      platform::errors::InvalidArgument(
           "The input's second dimension and weight's first dimension is "
           "expected to be the same. But received input's second dimension is "
           "%d, input's shape is %s; weight's first dimension is %d, weight's "

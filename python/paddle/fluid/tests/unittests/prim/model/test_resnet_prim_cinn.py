@@ -159,6 +159,7 @@ class TestResnet(unittest.TestCase):
         not paddle.is_compiled_with_cinn(), "padle is not compiled with CINN"
     )
     def test_prim_cinn(self):
+        core._set_prim_forward_blacklist("flatten_contiguous_range")
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )

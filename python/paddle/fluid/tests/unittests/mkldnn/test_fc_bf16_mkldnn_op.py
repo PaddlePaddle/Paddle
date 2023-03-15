@@ -41,7 +41,7 @@ class TestFcBf16MklDNNOp(OpTest):
         self.bias = np.random.random(15).astype("float32")
 
     def setUp(self):
-        self.op_type = "fused_fc"
+        self.op_type = "fc"
         self.use_mkldnn = True
         self.mkldnn_data_type = "bfloat16"
         self.force_fp32_output = False

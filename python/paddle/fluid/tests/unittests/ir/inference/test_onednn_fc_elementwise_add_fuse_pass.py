@@ -39,7 +39,7 @@ class TestFCElementwiseAddOneDNNFusePass(PassAutoScanTest):
         )
 
         fc_op = OpConfig(
-            type='fused_fc',
+            type='fc',
             inputs={
                 'Input': ['relu_out'],
                 'W': ['fc_weight'],
@@ -92,7 +92,7 @@ class TestFCElementwiseAddOneDNNFusePass(PassAutoScanTest):
         config = self.create_inference_config(
             use_mkldnn=True, passes=['fc_elementwise_add_mkldnn_fuse_pass']
         )
-        yield config, ['relu', 'fused_fc'], (1e-5, 1e-5)
+        yield config, ['relu', 'fc'], (1e-5, 1e-5)
 
     def test(self):
         self.run_and_statis(

@@ -323,7 +323,7 @@ void ComputePropagateScalesMkldnnPass::ComputeWeightScales(
                    "Filter",
                    1,
                    var_quant_scales);
-  ComputeVarScales(graph, scope, {"fused_fc"}, "W", 0, var_quant_scales);
+  ComputeVarScales(graph, scope, {"fc"}, "W", 0, var_quant_scales);
   ComputeVarScales(graph,
                    scope,
                    {"fusion_gru", "multi_gru"},
@@ -449,7 +449,7 @@ void ComputePropagateScalesMkldnnPass::UpdateReluOutputScales(
       if (op->Type() == "conv2d" || op->Type() == "fused_conv2d") {
         act_name = "fuse_activation";
         output_name = "Output";
-      } else if (op->Type() == "fused_fc") {
+      } else if (op->Type() == "fc") {
         act_name = "activation_type";
       }
       if (!act_name.empty()) {
@@ -526,7 +526,7 @@ REGISTER_PASS_CAPABILITY(compute_propagate_scales_mkldnn_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .EQ("fused_fc", 0)
+            .EQ("fc", 0)
             .LE("conv2d_transpose", 2)
             .EQ("fake_quantize_abs_max", 0)
             .EQ("fake_quantize_range_abs_max", 0)

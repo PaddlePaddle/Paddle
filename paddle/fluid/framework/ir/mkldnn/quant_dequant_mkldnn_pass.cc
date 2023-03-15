@@ -771,7 +771,7 @@ REGISTER_PASS_CAPABILITY(quant_dequant_mkldnn_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("conv2d", 1)
-            .EQ("fused_fc", 0)
+            .EQ("fc", 0)
             .LE("conv2d_transpose", 2)
             .EQ("fake_quantize_abs_max", 0)
             .EQ("fake_quantize_range_abs_max", 0)

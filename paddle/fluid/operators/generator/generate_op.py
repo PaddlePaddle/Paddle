@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import math
 import os
 from pathlib import Path
 
@@ -100,18 +101,12 @@ def process_scalar(op_item, scalar_configs):
                     and scalar_config['support_tensor']
                     else False
                 )
-                if attr_item['is_support_tensor']:
-                    attr_item['typename'] = (
-                        scalar_config['data_type']
-                        if 'data_type' in scalar_config
-                        else scalar_map[attr_type]
-                    )
-                else:
-                    attr_item['data_type'] = (
-                        scalar_config['data_type']
-                        if 'data_type' in scalar_config
-                        else scalar_map[attr_type]
-                    )
+                attr_item['data_type'] = (
+                    scalar_config['data_type']
+                    if 'data_type' in scalar_config
+                    else scalar_map[attr_type]
+                )
+                if attr_item['is_support_tensor'] is False:
                     attr_item['tensor_name'] = scalar_config['tensor_name']
 
 
@@ -135,19 +130,12 @@ def process_int_array(op_item, int_array_configs):
                     and int_array_config['support_tensor']
                     else False
                 )
-                if attr_item['is_support_tensor']:
-                    attr_item['typename'] = (
-                        'int[]'
-                        if 'data_type' in int_array_config
-                        and int_array_config['data_type'] == 'int'
-                        else 'int64_t[]'
-                    )
-                else:
-                    attr_item['data_type'] = (
-                        data_type_map[int_array_config['data_type']]
-                        if 'data_type' in int_array_config
-                        else 'std::vector<int64_t>'
-                    )
+                attr_item['data_type'] = (
+                    data_type_map[int_array_config['data_type']]
+                    if 'data_type' in int_array_config
+                    else 'std::vector<int64_t>'
+                )
+                if attr_item['is_support_tensor'] is False:
                     attr_item['manual_flag'] = True
                     if 'tensor_name' in int_array_config:
                         attr_item['tensor_name'] = int_array_config[
@@ -459,16 +447,16 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
 
 
 def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
-    for op_op in op_fluid_list:
-        if 'drop_empty_grad' in op_op:
+    for op_comp_map in op_fluid_list:
+        if 'drop_empty_grad' in op_comp_map:
             bw_names = [
                 bw_name.split('(')[0].strip()
-                for bw_name in op_op['backward'].split(',')
+                for bw_name in op_comp_map['backward'].split(',')
             ]
             for bw_name in bw_names:
                 # static_ops.yaml and ops.yaml use the common op_compat.yaml
                 if bw_name in bw_op_dict:
-                    for out_grad in op_op['drop_empty_grad']:
+                    for out_grad in op_comp_map['drop_empty_grad']:
                         assert (
                             out_grad in bw_op_dict[bw_name]['output_dict']
                         ), f'''
@@ -476,6 +464,68 @@ def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
                         bw_op_dict[bw_name]['output_dict'][out_grad][
                             'drop_empty_grad'
                         ] = False
+
+
+def parse_get_expected_kerneltype(
+    op_fluid_list: list, fw_op_dict: dict, bw_op_dict: dict
+):
+    for op_comp_map in op_fluid_list:
+        if 'get_expected_kernel_type' in op_comp_map:
+            fw_name = op_comp_map['op'].split('(')[0].strip()
+            if fw_name in op_comp_map['get_expected_kernel_type']:
+                # static_ops.yaml and ops.yaml use the common op_compat.yaml
+                if fw_name in fw_op_dict:
+                    fw_op_dict[fw_name][
+                        "get_expected_kernel_type"
+                    ] = op_comp_map['get_expected_kernel_type'][fw_name]
+            bw_names = [
+                bw_name.split('(')[0].strip()
+                for bw_name in op_comp_map['backward'].split(',')
+            ]
+            for bw_name in bw_names:
+                # static_ops.yaml and ops.yaml use the common op_compat.yaml
+                if (
+                    bw_name in bw_op_dict
+                    and bw_name in op_comp_map['get_expected_kernel_type']
+                ):
+                    bw_op_dict[bw_name][
+                        "get_expected_kernel_type"
+                    ] = op_comp_map['get_expected_kernel_type'][bw_name]
+
+
+def parse_keep_signature(
+    op_fluid_list: list, fw_op_dict: dict, bw_op_dict: dict
+):
+    for op_comp_map in op_fluid_list:
+        if 'manual_signature' in op_comp_map:
+            for op_name in op_comp_map['manual_signature']:
+                if op_name in fw_op_dict:
+                    fw_op_dict[op_name]["manual_signature"] = True
+                elif op_name in bw_op_dict:
+                    bw_op_dict[op_name]["manual_signature"] = True
+
+
+def split_ops_list(ops, backward_op_dict, split_num):
+    new_ops_list = []
+    new_bw_ops_list = []
+    list_size = math.ceil(len(ops) / split_num)
+    tmp_ops_list = []
+    tmp_bw_ops_list = []
+    for idx, op in enumerate(ops):
+        tmp_ops_list.append(op)
+        current_op = op
+        while (
+            'backward' in current_op
+            and current_op['backward'] in backward_op_dict
+        ):
+            tmp_bw_ops_list.append(backward_op_dict[current_op['backward']])
+            current_op = backward_op_dict[current_op['backward']]
+        if (idx + 1) % list_size == 0 or idx == len(ops) - 1:
+            new_ops_list.append(tmp_ops_list)
+            new_bw_ops_list.append(tmp_bw_ops_list)
+            tmp_ops_list = []
+            tmp_bw_ops_list = []
+    return new_ops_list, new_bw_ops_list
 
 
 def main(
@@ -523,6 +573,12 @@ def main(
     # deal the drop_empty_grad of bw_op by op_compat.yaml
     parse_drop_empty_grad(op_fluid_map_list, backward_op_dict)
 
+    parse_get_expected_kerneltype(
+        op_fluid_map_list, forward_op_dict, backward_op_dict
+    )
+
+    parse_keep_signature(op_fluid_map_list, forward_op_dict, backward_op_dict)
+
     add_composite_info(ops, backward_ops, backward_op_dict)
 
     add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict)
@@ -548,13 +604,23 @@ def main(
             os.remove(output_arg_map_path)
         return
     op_template = env.get_template('op.c.j2')
-    with open(output_op_path, "wt") as f:
-        msg = op_template.render(
-            ops=ops,
-            backward_ops=backward_ops,
-            op_dict=op_dict,
-        )
-        f.write(msg)
+
+    backward_fluid_op_dict = {}
+    for bw_op in backward_ops:
+        backward_fluid_op_dict[bw_op['op_name']] = bw_op
+    output_op_files_num = len(output_op_path)
+    new_ops_list, new_bw_ops_list = split_ops_list(
+        ops, backward_fluid_op_dict, output_op_files_num
+    )
+    for idx, output_op_file in enumerate(output_op_path):
+        with open(output_op_file, "wt") as f:
+            msg = op_template.render(
+                ops=new_ops_list[idx],
+                backward_ops=new_bw_ops_list[idx],
+                op_dict=op_dict,
+            )
+            f.write(msg)
+
     ks_template = env.get_template('ks.c.j2')
     with open(output_arg_map_path, 'wt') as f:
         msg = ks_template.render(ops=ops, backward_ops=backward_ops)
@@ -578,7 +644,10 @@ if __name__ == "__main__":
         '--op_version_yaml_path', type=str, help="ops version yaml file."
     )
     parser.add_argument(
-        "--output_op_path", type=str, help="path to save generated operators."
+        "--output_op_path",
+        type=str,
+        nargs='+',
+        help="path to save generated operators.",
     )
     parser.add_argument(
         "--output_arg_map_path",

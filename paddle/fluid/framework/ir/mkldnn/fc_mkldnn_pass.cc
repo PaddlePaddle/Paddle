@@ -19,25 +19,34 @@
 
 namespace paddle {
 namespace framework {
+class OpDesc;
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
 namespace ir {
+
+class Graph;
 
 void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          phi::errors::InvalidArgument(
+                          platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
   Init("fc_mkldnn_pass", graph);
 
   GraphPatternDetector gpd;
-  patterns::FCOneDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
-  fc_pattern("fc");
+  patterns::FCMKLDNN fc_pattern(gpd.mutable_pattern(), "fc_mkldnn_pass");
+  // searching for fc+residual  doesn't make sense at this stage
+  fc_pattern(false /*with_residual*/);
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "Handle fc_mkldnn_pass";
+    VLOG(4) << "Handle FC MKL-DNN pass";
     if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn"))) {
-      VLOG(3) << "Don't enable oneDNN version of FC because graph doesn't "
-                 "have \"use_mkldnn\" attribute.";
+      VLOG(3) << "do not enable FC MKL-DNN because it doesn't have use_mkldnn "
+                 "attribute.";
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
@@ -55,12 +64,10 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
     bool is_size_supported =
         dim_num == 4 ? (dims[width_axis] == 1 && dims[height_axis] == 1) : true;
     if (!are_dims_supported || !is_size_supported) {
-      VLOG(3)
-          << "oneDNN version of FC can be enabled only if number of dims is "
-             "2, 3 or 4. In case of 4 dims last two dims must be equal 1.";
+      VLOG(3) << "Do not enable FC MKL-DNN for dimensions different than"
+                 "2, 3 & 4, or when width or height is different than one.";
       return;
     }
-    desc->SetType("fused_fc");
     desc->SetAttr("use_mkldnn", true);
 
     found_fc_count++;
@@ -72,8 +79,8 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
 
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       (found_fc_count > 0)) {
-    std::string msg_ss = "---    enabled oneDNN for " +
-                         std::to_string(found_fc_count) + " FC ops";
+    std::string msg_ss = "---    enabled FC MKL-DNN for " +
+                         std::to_string(found_fc_count) + " fc ops ";
     string::PrettyLogDetail(msg_ss.c_str());
   }
 }

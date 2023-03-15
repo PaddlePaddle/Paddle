@@ -112,7 +112,7 @@ void CPUQuantizePass::QuantizeInput(Graph* g,
   q_desc.SetAttr("is_negative_input", !is_input_unsigned);
 
   // fix to fc format error
-  if (op->Op()->Type() == "fused_fc" &&
+  if (op->Op()->Type() == "fc" &&
       op->Op()->GetAttrIfExists<int>("in_num_col_dims") == 2) {
     q_desc.SetAttr(
         "output_format",
@@ -453,7 +453,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     VLOG(4) << "Quantize conv2d op";
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
     if (conv_op->Op()->Type() == "conv2d") {
-      conv_op->Op()->SetType("fused_conv2d");
+      ConvertToFusedOp(conv_op->Op());
     }
 
     // skip if should not be quantized
@@ -574,8 +574,8 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
 void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-  patterns::FCOneDNN fc_pattern{pattern, name_scope_};
-  fc_pattern("fused_fc", with_residual_data);
+  patterns::FCMKLDNN fc_pattern{pattern, name_scope_};
+  fc_pattern(with_residual_data);
 
   int quantize_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -1033,7 +1033,6 @@ void CPUQuantizePass::QuantizeElementwise(
     auto input_x_scale = GetScaleValueForNode(elementwise_x, &is_x_unsigned);
     auto input_y_scale = GetScaleValueForNode(elementwise_y, &is_y_unsigned);
 
-    // TODO(sfraczek): add support for different signness
     if (is_x_unsigned != is_y_unsigned) {
       MarkAndLogCannotQuantizeOp(
           elementwise_op, "Elementwise inputs must be of the same type.");

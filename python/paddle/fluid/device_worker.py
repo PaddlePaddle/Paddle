@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defination of device workers."""
+"""Definition of device workers."""
 
 __all__ = [
     'DeviceWorker',
@@ -123,7 +123,7 @@ class Hogwild(DeviceWorker):
                 hogwild.stat_var_names.extend([i])
                 downpour.stat_var_names.extend([i])
 
-        from paddle.incubate.fleet.parameter_server import version
+        from paddle.incubate.distributed.fleet.parameter_server import version
 
         if (
             version.is_transpiler()
@@ -271,7 +271,7 @@ class DownpourLite(DeviceWorker):
             for i in opt_info["stat_var_names"]:
                 downpour.stat_var_names.extend([i])
 
-        from paddle.incubate.fleet.parameter_server import version
+        from paddle.incubate.distributed.fleet.parameter_server import version
 
         if (
             version.is_transpiler()

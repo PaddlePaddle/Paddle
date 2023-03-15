@@ -30,4 +30,20 @@ extra {
     name: "@ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@"
     type: BOOLEAN
   }
+  attrs {
+    name: "Scale_in"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_weights"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_out"
+    type: FLOAT
+  }
+  attrs {
+    name: "force_fp32_output"
+    type: BOOLEAN
+  }
 }

@@ -72,7 +72,7 @@ void SetOp(ProgramDesc* prog,
   } else if (type == "dropout") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
-  } else if (type == "fused_fc") {
+  } else if (type == "fc") {
     op->SetInput("Input", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("W", {inputs[1]});
     if (inputs.size() > 2) op->SetInput("Bias", {inputs[2]});
@@ -172,7 +172,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph,
 void CheckScales(const OpDesc* op, float scale, float shift) {
   std::string type = op->Type();
   std::vector<std::string> scale_names;
-  if (type == "conv2d" || type == "fused_conv2d" || type == "fused_fc") {
+  if (type == "conv2d" || type == "fused_conv2d" || type == "fc") {
     EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights")[0],
               scale);
     scale_names.push_back("Scale_in");
@@ -287,7 +287,7 @@ ProgramDesc BuildProgramDesc(bool use_mkldnn,
 
   SetOp(&prog, "dropout", "Dropout1", {"d"}, {"g"}, use_mkldnn);
   SetOp(&prog,
-        "fused_fc",
+        "fc",
         "Fc1",
         {"g", "w5", "b3"},
         {"h"},
