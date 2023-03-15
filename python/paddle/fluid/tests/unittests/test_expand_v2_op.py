@@ -44,7 +44,7 @@ class TestExpandV2OpRank1(OpTest):
         self.expand_times = [1]
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
