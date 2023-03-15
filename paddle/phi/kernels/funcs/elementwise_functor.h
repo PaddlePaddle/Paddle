@@ -102,8 +102,8 @@ template <typename T, typename AccT>
 struct DivideNewFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     // For int32/int64, need to check whether the divison is zero.
-    
-    return static_cast<T>( static_cast<AccT>(a) / static_cast<AccT>(b) );
+
+    return static_cast<T>(static_cast<AccT>(a) / static_cast<AccT>(b));
   }
 };
 
@@ -137,8 +137,11 @@ struct DivGradXYNewFunctor {
     // dx = dout / y
     // dy = - dout * out / y
     phi::Array<OutT, 2> outs;
-    outs[0] = static_cast<OutT>( static_cast<AccT>(a) / static_cast<AccT>(c) );
-    outs[1] = - static_cast<OutT>( (static_cast<AccT>(a)) * (static_cast<AccT>(b)) / ( static_cast<AccT>(c) * static_cast<AccT>(c)  )  );
+
+    outs[0] = static_cast<OutT>(static_cast<AccT>(a) / static_cast<AccT>(c));
+    outs[1] =
+        -static_cast<OutT>((static_cast<AccT>(a)) * (static_cast<AccT>(b)) /
+                           (static_cast<AccT>(c) * static_cast<AccT>(c)));
     return outs;
   }
 };
