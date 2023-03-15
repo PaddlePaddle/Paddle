@@ -1598,20 +1598,20 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                self.op_test.assertTrue(
-                    np.allclose(
-                        actual_np,
-                        expect_np,
-                        atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
-                        equal_nan=equal_nan,
+                np.testing.assert_allclose(
+                    actual_np,
+                    expect_np,
+                    atol=atol,
+                    rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                    equal_nan=equal_nan,
+                    err_msg=(
+                        "Output ("
+                        + name
+                        + ") has diff at "
+                        + str(place)
+                        + " in "
+                        + self.checker_name
                     ),
-                    "Output ("
-                    + name
-                    + ") has diff at "
-                    + str(place)
-                    + " in "
-                    + self.checker_name,
                 )
 
             def _compare_list(self, name, actual, expect):
@@ -1809,20 +1809,20 @@ class OpTest(unittest.TestCase):
                 ):
                     pass
                 else:
-                    self.op_test.assertTrue(
-                        np.allclose(
-                            actual_np,
-                            expect_np,
-                            atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
-                            equal_nan=equal_nan,
+                    np.testing.aseert_allclose(
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        equal_nan=equal_nan,
+                        err_msg=(
+                            "Output ("
+                            + name
+                            + ") has diff at "
+                            + str(place)
+                            + " in "
+                            + self.checker_name
                         ),
-                        "Output ("
-                        + name
-                        + ") has diff at "
-                        + str(place)
-                        + " in "
-                        + self.checker_name,
                     )
 
         class EagerChecker(DygraphChecker):
