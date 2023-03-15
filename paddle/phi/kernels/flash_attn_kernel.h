@@ -20,22 +20,22 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FlashAttnRawKernel(const Context& ctx,
-                        const DenseTensor& q,
-                        const DenseTensor& k,
-                        const DenseTensor& v,
-                        const DenseTensor& cu_seqlens_q,
-                        const DenseTensor& cu_seqlens_k,
-                        int64_t max_seqlen_q,
-                        int64_t max_seqlen_k,
-                        float scale,
-                        float dropout,
-                        bool causal,
-                        bool return_softmax,
-                        DenseTensor* out,
-                        DenseTensor* softmax_lse,
-                        DenseTensor* softmax,
-                        DenseTensor* seed_offset);
+void FlashAttnUnpaddedKernel(const Context& ctx,
+                             const DenseTensor& q,
+                             const DenseTensor& k,
+                             const DenseTensor& v,
+                             const DenseTensor& cu_seqlens_q,
+                             const DenseTensor& cu_seqlens_k,
+                             int64_t max_seqlen_q,
+                             int64_t max_seqlen_k,
+                             float scale,
+                             float dropout,
+                             bool causal,
+                             bool return_softmax,
+                             DenseTensor* out,
+                             DenseTensor* softmax_lse,
+                             DenseTensor* softmax,
+                             DenseTensor* seed_offset);
 
 template <typename T, typename Context>
 void FlashAttnKernel(const Context& ctx,

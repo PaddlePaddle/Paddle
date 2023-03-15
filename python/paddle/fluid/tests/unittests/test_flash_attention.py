@@ -22,7 +22,10 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.nn.functional.flash_attention import flash_attention
+from paddle.nn.functional.flash_attention import (
+    flash_attention,
+    flash_attn_unpadded,
+)
 
 
 def get_cuda_version():
@@ -66,9 +69,9 @@ class TestFlashAttentionAPI(unittest.TestCase):
         self.causal = False
         self.return_softmax = False
 
-    def test_raw(self):
+    def test_unpadded(self):
         print(
-            f"Test Raw case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+            f"Test unpadded case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
 
         paddle.disable_static()
@@ -92,7 +95,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         cu_q = paddle.arange(0, (bs + 1) * ms, ms, dtype='int32')
 
         qq = paddle.reshape(q, [bs * ms, nh, hd])
-        out, _, _, _ = paddle._C_ops.flash_attn_raw(
+        out, _ = flash_attn_unpadded(
             qq,
             qq,
             qq,

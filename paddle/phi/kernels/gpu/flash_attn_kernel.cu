@@ -31,22 +31,22 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FlashAttnRawKernel(const Context& ctx,
-                        const DenseTensor& q,
-                        const DenseTensor& k,
-                        const DenseTensor& v,
-                        const DenseTensor& cu_seqlens_q,
-                        const DenseTensor& cu_seqlens_k,
-                        int64_t max_seqlen_q,
-                        int64_t max_seqlen_k,
-                        float scale,
-                        float dropout,
-                        bool causal,
-                        bool return_softmax,
-                        DenseTensor* out,
-                        DenseTensor* softmax_lse,
-                        DenseTensor* softmax,
-                        DenseTensor* seed_offset) {
+void FlashAttnUnpaddedKernel(const Context& ctx,
+                             const DenseTensor& q,
+                             const DenseTensor& k,
+                             const DenseTensor& v,
+                             const DenseTensor& cu_seqlens_q,
+                             const DenseTensor& cu_seqlens_k,
+                             int64_t max_seqlen_q,
+                             int64_t max_seqlen_k,
+                             float scale,
+                             float dropout,
+                             bool causal,
+                             bool return_softmax,
+                             DenseTensor* out,
+                             DenseTensor* softmax_lse,
+                             DenseTensor* softmax,
+                             DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
   ctx.template Alloc<T>(out);
 
@@ -224,32 +224,32 @@ void FlashAttnKernel(const Context& ctx,
   ArangeNullaryKernel<int32_t, Context>(
       ctx, 0, (batch_size + 1) * seq_len_k, seq_len_k, &cu_seqlens_k);
 
-  FlashAttnRawKernel<T, Context>(ctx,
-                                 q_t_s,
-                                 k_t_s,
-                                 v_t_s,
-                                 cu_seqlens_q,
-                                 cu_seqlens_k,
-                                 seq_len_q,
-                                 seq_len_k,
-                                 scale,
-                                 dropout,
-                                 causal,
-                                 return_softmax,
-                                 out,
-                                 softmax_lse,
-                                 softmax,
-                                 seed_offset);
+  FlashAttnUnpaddedKernel<T, Context>(ctx,
+                                      q_t_s,
+                                      k_t_s,
+                                      v_t_s,
+                                      cu_seqlens_q,
+                                      cu_seqlens_k,
+                                      seq_len_q,
+                                      seq_len_k,
+                                      scale,
+                                      dropout,
+                                      causal,
+                                      return_softmax,
+                                      out,
+                                      softmax_lse,
+                                      softmax,
+                                      seed_offset);
 
 #endif
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(flash_attn_raw,
+PD_REGISTER_KERNEL(flash_attn_unpadded,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FlashAttnRawKernel,
+                   phi::FlashAttnUnpaddedKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
