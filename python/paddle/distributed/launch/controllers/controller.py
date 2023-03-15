@@ -55,10 +55,11 @@ class ControllerBase:
 
     def deploy_pod(self):
 
-        assert len(self.pod.containers) > 0, "No container in the pod"
+        assert len(self.pod.containers) + len(self.pod.init_containers) > 0, "No container in the pod"
 
         self.ctx.logger.info("Run {}".format(self.pod))
-        self.ctx.logger.debug(self.pod.containers[0])
+        if len(self.pod.containers) > 0:
+            self.ctx.logger.debug(self.pod.containers[0])
 
         self.ctx.status.run()
         self.pod.deploy()

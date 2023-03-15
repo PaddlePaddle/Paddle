@@ -106,9 +106,24 @@ class Pod(PodSepc):
 
     def deploy(self):
         # init container should stop before run containers
+        print(
+            'debug begin init container count {}, container count {}'.format(
+                len(self._init_containers), len(self._containers)
+            )
+        )
         for i in self._init_containers:
             i.start()
+            print(
+                'debug begin wait for init container {}, init_timeout: {}'.format(
+                    i, self._init_timeout
+                )
+            )
             i.wait(self._init_timeout)
+            print(
+                'debug end wait for init container {}, init_timeout: {}'.format(
+                    i, self._init_timeout
+                )
+            )
 
         for c in self._containers:
             c.start()
@@ -173,7 +188,10 @@ class Pod(PodSepc):
 
     def logs(self, idx=None):
         if idx is None:
-            self._containers[0].logs()
+            if len(self._containers) > 0:
+                self._containers[0].logs()
+            if len(self._init_containers) > 0:
+                self._init_containers[0].logs()
         else:
             self._containers[idx].logs()
 
@@ -196,11 +214,11 @@ class Pod(PodSepc):
         '''
         end = time.time() + timeout
         while timeout < 0 or time.time() < end:
-            for c in self._containers:
+            for c in self._init_containers + self._containers:
                 if c.status in any_list:
                     return c.status
 
-            s = [c.status for c in self._containers]
+            s = [c.status for c in self._init_containers + self._containers]
             if len(set(s)) == 1 and s[0] in all_list:
                 return s[0]
 
