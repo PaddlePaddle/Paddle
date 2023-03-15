@@ -33,7 +33,7 @@ __global__ void ViewSliceHelper(T* data,
                                 int out_second_dim) {
   CUDA_KERNEL_LOOP_TYPE(i, stride * in_last_dim, int64_t) {
     if (i % in_last_dim >= out_second_dim) {
-      *(data + i) = std::numeric_limits<T>::max();
+      *(data + i) = std::numeric_limits<T>::infinity();
     }
   }
 }
@@ -58,7 +58,7 @@ phi::DenseTensor* get_pad_lse(const phi::GPUContext& dev_ctx,
                       phi::errors::InvalidArgument(
                           "The out ptr shouldn't be null if need pad amount"));
     phi::PadKernel<T, phi::GPUContext>(
-        dev_ctx, tmp, {0, pad_amount}, std::numeric_limits<T>::max(), out);
+        dev_ctx, tmp, {0, pad_amount}, std::numeric_limits<T>::infinity(), out);
     return out;
   } else if (force_pad_inf && out_second_dim != lse->dims()[2]) {
     auto in_dim = lse->dims();
