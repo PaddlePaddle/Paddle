@@ -30,7 +30,7 @@ namespace paddle {
 namespace tests {
 
 using Tensor = paddle::Tensor;
-using DataType = paddle::experimental::DataType;
+using DataType = phi::DataType;
 
 template <typename T>
 Tensor InitCPUTensorForTest() {

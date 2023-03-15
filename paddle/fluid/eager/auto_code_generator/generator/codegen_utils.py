@@ -91,7 +91,7 @@ yaml_types_mapping = {
     'bool[]': 'std::vector<bool>',
     'Place': 'paddle::Place',
     'DataLayout': 'phi::DataLayout',
-    'DataType': 'paddle::experimental::DataType',
+    'DataType': 'phi::DataType',
     'int64_t[]': 'std::vector<int64_t>',
     'int[]': 'std::vector<int>',
     'Tensor': 'Tensor',

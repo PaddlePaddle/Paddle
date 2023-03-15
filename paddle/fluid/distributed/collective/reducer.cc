@@ -77,12 +77,11 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 
   // Key: the var type
   // Value: should use which index in group_size_limits for group size limit
-  std::map<experimental::DataType, size_t> group_limit_index;
+  std::map<phi::DataType, size_t> group_limit_index;
 
   // Key: the var type
   // Value: <the var index in input tensors, total numel in this group>
-  std::map<experimental::DataType, std::pair<std::vector<size_t>, size_t>>
-      next_group;
+  std::map<phi::DataType, std::pair<std::vector<size_t>, size_t>> next_group;
 
   for (size_t i = 0; i < tensors.size(); ++i) {
     const auto &var = tensors[i];

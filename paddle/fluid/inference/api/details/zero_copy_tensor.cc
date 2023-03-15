@@ -287,37 +287,37 @@ struct DataTypeInfo;
 
 template <>
 struct DataTypeInfo<bool> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::BOOL;
+  phi::DataType TYPE = phi::DataType::BOOL;
 };
 
 template <>
 struct DataTypeInfo<float> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::FLOAT32;
+  phi::DataType TYPE = phi::DataType::FLOAT32;
 };
 
 template <>
 struct DataTypeInfo<float16> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::FLOAT16;
+  phi::DataType TYPE = phi::DataType::FLOAT16;
 };
 
 template <>
 struct DataTypeInfo<int64_t> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::INT64;
+  phi::DataType TYPE = phi::DataType::INT64;
 };
 
 template <>
 struct DataTypeInfo<int8_t> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::INT8;
+  phi::DataType TYPE = phi::DataType::INT8;
 };
 
 template <>
 struct DataTypeInfo<uint8_t> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::UINT8;
+  phi::DataType TYPE = phi::DataType::UINT8;
 };
 
 template <>
 struct DataTypeInfo<int32_t> {
-  paddle::experimental::DataType TYPE = paddle::experimental::DataType::INT32;
+  phi::DataType TYPE = phi::DataType::INT32;
 };
 
 phi::DataLayout LayoutConvert(DataLayout layout) {

@@ -180,11 +180,10 @@ namespace phi {
   [&] {                                                                    \
     const auto& __dtype__ = TYPE;                                          \
     switch (__dtype__) {                                                   \
-      PD_PRIVATE_CASE_TYPE(                                                \
-          NAME,                                                            \
-          SPECIFIED_TYPE,                                                  \
-          ::paddle::experimental::DataTypeToCppType<SPECIFIED_TYPE>::type, \
-          __VA_ARGS__)                                                     \
+      PD_PRIVATE_CASE_TYPE(NAME,                                           \
+                           SPECIFIED_TYPE,                                 \
+                           ::phi::DataTypeToCppType<SPECIFIED_TYPE>::type, \
+                           __VA_ARGS__)                                    \
       PD_PRIVATE_CASE_TYPE(                                                \
           NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)           \
       PD_PRIVATE_CASE_TYPE(                                                \
@@ -211,16 +210,14 @@ namespace phi {
   [&] {                                                                     \
     const auto& __dtype__ = TYPE;                                           \
     switch (__dtype__) {                                                    \
-      PD_PRIVATE_CASE_TYPE(                                                 \
-          NAME,                                                             \
-          SPECIFIED_TYPE1,                                                  \
-          ::paddle::experimental::DataTypeToCppType<SPECIFIED_TYPE1>::type, \
-          __VA_ARGS__)                                                      \
-      PD_PRIVATE_CASE_TYPE(                                                 \
-          NAME,                                                             \
-          SPECIFIED_TYPE2,                                                  \
-          ::paddle::experimental::DataTypeToCppType<SPECIFIED_TYPE2>::type, \
-          __VA_ARGS__)                                                      \
+      PD_PRIVATE_CASE_TYPE(NAME,                                            \
+                           SPECIFIED_TYPE1,                                 \
+                           ::phi::DataTypeToCppType<SPECIFIED_TYPE1>::type, \
+                           __VA_ARGS__)                                     \
+      PD_PRIVATE_CASE_TYPE(NAME,                                            \
+                           SPECIFIED_TYPE2,                                 \
+                           ::phi::DataTypeToCppType<SPECIFIED_TYPE2>::type, \
+                           __VA_ARGS__)                                     \
       PD_PRIVATE_CASE_TYPE(                                                 \
           NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)            \
       PD_PRIVATE_CASE_TYPE(                                                 \
@@ -327,21 +324,18 @@ namespace phi {
                            ::paddle::DataType::COMPLEX128,                    \
                            ::paddle::complex128,                              \
                            __VA_ARGS__)                                       \
-      PD_PRIVATE_CASE_TYPE(                                                   \
-          NAME,                                                               \
-          SPECIFIED_TYPE1,                                                    \
-          ::paddle::experimental::DataTypeToCppType<SPECIFIED_TYPE1>::type,   \
-          __VA_ARGS__)                                                        \
-      PD_PRIVATE_CASE_TYPE(                                                   \
-          NAME,                                                               \
-          SPECIFIED_TYPE2,                                                    \
-          ::paddle::experimental::DataTypeToCppType<SPECIFIED_TYPE2>::type,   \
-          __VA_ARGS__)                                                        \
-      PD_PRIVATE_CASE_TYPE(                                                   \
-          NAME,                                                               \
-          SPECIFIED_TYPE3,                                                    \
-          ::paddle::experimental::DataTypeToCppType<SPECIFIED_TYPE3>::type,   \
-          __VA_ARGS__)                                                        \
+      PD_PRIVATE_CASE_TYPE(NAME,                                              \
+                           SPECIFIED_TYPE1,                                   \
+                           ::phi::DataTypeToCppType<SPECIFIED_TYPE1>::type,   \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME,                                              \
+                           SPECIFIED_TYPE2,                                   \
+                           ::phi::DataTypeToCppType<SPECIFIED_TYPE2>::type,   \
+                           __VA_ARGS__)                                       \
+      PD_PRIVATE_CASE_TYPE(NAME,                                              \
+                           SPECIFIED_TYPE3,                                   \
+                           ::phi::DataTypeToCppType<SPECIFIED_TYPE3>::type,   \
+                           __VA_ARGS__)                                       \
       default:                                                                \
         PD_THROW("function " #NAME " is not implemented for data type `",     \
                  __dtype__,                                                   \
