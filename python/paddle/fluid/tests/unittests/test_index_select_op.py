@@ -94,6 +94,7 @@ class TestIndexSelectFP16OP(TestIndexSelectOp):
         self.index_size = 100
 
 
+# no scatter op (the backward op of index_select/gather) for bf16
 class TestIndexSelectBF16Op(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select
