@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/autogen/memory_efficient_attention.h"
 
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
 
 template <typename T, typename Context>
-void MultiHeadAttentionForwardKernel(
+void MemoryEfficientAttentionForwardKernel(
     const Context& ctx,
     const DenseTensor& query,
     const DenseTensor& key,
@@ -30,8 +31,6 @@ void MultiHeadAttentionForwardKernel(
     const paddle::optional<DenseTensor>& bias,
     const paddle::optional<DenseTensor>& cu_seqlens_q,
     const paddle::optional<DenseTensor>& cu_seqlens_k,
-    const paddle::optional<DenseTensor>& seqstart_q,
-    const paddle::optional<DenseTensor>& seqstart_k,
     const paddle::optional<DenseTensor>& causal_diagonal,
     const paddle::optional<DenseTensor>& seqlen_k,
     const Scalar& max_seqlen_q,
@@ -43,13 +42,6 @@ void MultiHeadAttentionForwardKernel(
     DenseTensor* output,
     DenseTensor* logsumexp,
     DenseTensor* seed_and_offset) {
-  phi::Dim<1> seed_dims;
-  seed_dims[0] = 2;
-  seed_and_offset->Resize(seed_dims);
-  ctx.template HostAlloc<int64_t>(seed_and_offset);
-
-  VLOG(3) << seed_and_offset->data();
-
   int compute_capacity = ctx.GetComputeCapability();
   const auto max_shmem =
       getMaximumSharedMemoryPerBlockKb(compute_capacity) * 1024;
@@ -88,7 +80,7 @@ void MultiHeadAttentionForwardKernel(
 
     int64_t max_seqlen_q_tmp, max_seqlen_k_tmp;
 
-    if (seqstart_q) {
+    if (cu_seqlens_q) {
       max_seqlen_q_tmp = max_seqlen_q_num;
       max_seqlen_k_tmp = 0;  // Will be set inside the kernel
     } else {
@@ -118,7 +110,8 @@ void MultiHeadAttentionForwardKernel(
 
     constexpr int64_t kAlignLSE = KernelType::kAlignLSE;
     phi::Dim<3> logsumexp_dims;
-    logsumexp_dims[0] = seqstart_q ? seqstart_q.get().dims()[0] - 1 : q_dims[0];
+    logsumexp_dims[0] =
+        cu_seqlens_q ? cu_seqlens_q.get().dims()[0] - 1 : q_dims[0];
     logsumexp_dims[1] = q_dims[2];
     logsumexp_dims[2] =
         is_test ? 0 : (max_seqlen_q_tmp + kAlignLSE - 1) / kAlignLSE;
@@ -130,12 +123,9 @@ void MultiHeadAttentionForwardKernel(
     VLOG(3) << "kAlignLSE" << kAlignLSE;
 
     typename KernelType::Params p;
-    p.query_ptr =
-        const_cast<scalar_t*>(reinterpret_cast<const scalar_t*>(query.data()));
-    p.key_ptr =
-        const_cast<scalar_t*>(reinterpret_cast<const scalar_t*>(key.data()));
-    p.value_ptr =
-        const_cast<scalar_t*>(reinterpret_cast<const scalar_t*>(value.data()));
+    p.query_ptr = SafeGetTensorPtr<scalar_t>(query);
+    p.key_ptr = SafeGetTensorPtr<scalar_t>(key);
+    p.value_ptr = SafeGetTensorPtr<scalar_t>(value);
     p.logsumexp_ptr = is_test ? nullptr : logsumexp->data<float>();
     VLOG(3) << "logsumexp_ptr" << p.logsumexp_ptr;
 
@@ -143,34 +133,23 @@ void MultiHeadAttentionForwardKernel(
     if (KernelType::kNeedsOutputAccumulatorBuffer) {
       out_accum.Resize(output->dims());
       p.output_accum_ptr =
-          ctx.template Alloc<typename KernelType::output_accum_t>(&out_accum);
+          SafeAllocTensor<typename KernelType::output_accum_t, Context>(
+              ctx, &out_accum);
       VLOG(3) << "output_accum_ptr " << p.output_accum_ptr;
     } else {
       p.output_accum_ptr = nullptr;
     }
-    p.output_ptr = ctx.template Alloc<typename KernelType::output_t>(output);
+    p.output_ptr =
+        SafeAllocTensor<typename KernelType::output_t, Context>(ctx, output);
     VLOG(3) << "output_ptr " << p.output_ptr;
 
-    if (seqstart_q) {
-      p.seqstart_q_ptr = const_cast<int32_t*>(
-          reinterpret_cast<const int32_t*>(seqstart_q.get().data()));
-      p.seqstart_k_ptr = const_cast<int32_t*>(
-          reinterpret_cast<const int32_t*>(seqstart_k.get().data()));
+    if (cu_seqlens_q) {
+      p.seqstart_q_ptr = SafeGetTensorPtr<int32_t>(cu_seqlens_q);
+      p.seqstart_k_ptr = SafeGetTensorPtr<int32_t>(cu_seqlens_k);
       VLOG(3) << "seqstart_q_ptr " << p.seqstart_q_ptr;
     } else {
       p.seqstart_q_ptr = nullptr;
       p.seqstart_k_ptr = nullptr;
-    }
-
-    if (cu_seqlens_q) {
-      int32_t* cu_seqstart_q_ptr = const_cast<int32_t*>(
-          reinterpret_cast<const int32_t*>(cu_seqlens_q.get().data()));
-      int32_t* cu_seqstart_k_ptr = const_cast<int32_t*>(
-          reinterpret_cast<const int32_t*>(cu_seqlens_k.get().data()));
-      VLOG(3) << "cu_seqstart_k_ptr " << cu_seqstart_k_ptr;
-    } else {
-      int32_t* cu_seqstart_q_ptr = nullptr;
-      int32_t* cu_seqstart_k_ptr = nullptr;
     }
 
     p.num_heads = q_dims[2];
@@ -179,11 +158,10 @@ void MultiHeadAttentionForwardKernel(
 
     p.num_queries = max_seqlen_q_tmp;
     p.num_keys = max_seqlen_k_tmp;
-    p.num_batches = seqstart_q ? seqstart_q.get().dims()[0] - 1 : q_dims[0];
+    p.num_batches = cu_seqlens_q ? cu_seqlens_q.get().dims()[0] - 1 : q_dims[0];
     p.causal = causal;
     if (causal_diagonal) {
-      p.causal_diagonal_ptr = const_cast<int32_t*>(
-          reinterpret_cast<const int32_t*>(causal_diagonal.get().data()));
+      p.causal_diagonal_ptr = SafeGetTensorPtr<int32_t>(causal_diagonal);
     } else {
       p.causal_diagonal_ptr = nullptr;
     }
@@ -191,8 +169,7 @@ void MultiHeadAttentionForwardKernel(
 
     p.seqlen_k_ptr = nullptr;
     if (seqlen_k) {
-      p.seqlen_k_ptr = const_cast<int32_t*>(
-          reinterpret_cast<const int32_t*>(seqlen_k.get().data()));
+      p.seqlen_k_ptr = SafeGetTensorPtr<int32_t>(seqlen_k);
     } else {
       p.seqlen_k_ptr = nullptr;
     }
@@ -205,20 +182,19 @@ void MultiHeadAttentionForwardKernel(
     }
     VLOG(3) << "scale " << p.scale;
 
-    p.q_strideB = q_dims[1] * q_dims[2] * q_dims[3];
-    p.k_strideB = k_dims[1] * k_dims[2] * k_dims[3];
-    p.v_strideB = v_dims[1] * v_dims[2] * v_dims[3];
-    p.q_strideM = q_dims[2] * q_dims[3];
-    p.k_strideM = k_dims[2] * k_dims[3];
-    p.v_strideM = v_dims[2] * v_dims[3];
-    p.q_strideH = q_dims[3];
-    p.k_strideH = k_dims[3];
-    p.v_strideH = v_dims[3];
-    p.o_strideM = output->dims()[2] * output->dims()[3];
+    p.q_strideB = DimStride(query.dims(), 0);
+    p.k_strideB = DimStride(key.dims(), 0);
+    p.v_strideB = DimStride(value.dims(), 0);
+    p.q_strideM = DimStride(query.dims(), 1);
+    p.k_strideM = DimStride(key.dims(), 1);
+    p.v_strideM = DimStride(value.dims(), 1);
+    p.q_strideH = DimStride(query.dims(), 2);
+    p.k_strideH = DimStride(key.dims(), 2);
+    p.v_strideH = DimStride(value.dims(), 2);
+    p.o_strideM = DimStride(output->dims(), 1);
 
     if (bias) {
-      p.attn_bias_ptr = const_cast<scalar_t*>(
-          reinterpret_cast<const scalar_t*>(bias.get().data()));
+      p.attn_bias_ptr = SafeGetTensorPtr<scalar_t>(bias);
       p.bias_strideB = q_dims[2] * q_dims[1] * k_dims[1];
       p.bias_strideH = q_dims[1] * k_dims[1];
       p.bias_strideM = k_dims[1];
@@ -230,15 +206,19 @@ void MultiHeadAttentionForwardKernel(
     VLOG(3) << "bias_strideH " << p.bias_strideH;
     VLOG(3) << "bias_strideM " << p.bias_strideM;
 
-    uint64_t* seed_and_offset_ptr = const_cast<uint64_t*>(
-        reinterpret_cast<const uint64_t*>(seed_and_offset->data()));
+    phi::Dim<1> seed_dims;
+    seed_dims[0] = 2;
+    seed_and_offset->Resize(seed_dims);
+    ctx.template HostAlloc<int64_t>(seed_and_offset);
+    int64_t* seed_and_offset_ptr = SafeGetTensorPtr<int64_t>(seed_and_offset);
+
     auto gen = ctx.GetGenerator();
     uint64_t inc = query.dims()[0] * query.dims()[2] * 32;
     auto seed_offset_pair = gen->IncrementOffset(inc);
-    auto seed = (uint64_t)(seed_offset_pair.first);
-    auto offset = (uint64_t)(seed_offset_pair.second);
-    seed_and_offset_ptr[0] = seed;
-    seed_and_offset_ptr[1] = offset;
+    auto seed = (seed_offset_pair.first);
+    auto offset = (seed_offset_pair.second);
+    seed_and_offset_ptr[0] = (int64_t)seed;
+    seed_and_offset_ptr[1] = (int64_t)offset;
     VLOG(3) << "seed and offset: " << seed << " " << offset << " "
             << seed_and_offset_ptr;
 
@@ -265,7 +245,10 @@ void MultiHeadAttentionForwardKernel(
                 ctx.stream()>>>(p);
   };
   dispatch_cutlass_forward<T>(ctx, launchKernel);
-  PADDLE_ENFORCE_EQ(kernel_launched, true);
+  PADDLE_ENFORCE_EQ(kernel_launched,
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "the kernel should not be launched"));
 }
 
 }  // namespace cutlass_internal
@@ -273,8 +256,10 @@ void MultiHeadAttentionForwardKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    fused_multihead_attention,
+    memory_efficient_attention,
     GPU,
     ALL_LAYOUT,
-    phi::fusion::cutlass_internal::MultiHeadAttentionForwardKernel,
-    float) {}
+    phi::fusion::cutlass_internal::MemoryEfficientAttentionForwardKernel,
+    float,
+    phi::dtype::bfloat16,
+    phi::dtype::float16) {}

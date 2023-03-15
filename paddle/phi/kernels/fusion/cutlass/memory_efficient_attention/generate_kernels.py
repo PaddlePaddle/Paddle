@@ -438,18 +438,23 @@ struct CutlassTrait<dtype::bfloat16> {
   using Type = cutlass::bfloat16_t;
 };
 
+
 template <typename T>
-T *AnyPtrCast(const void *ptr) {
-  return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(ptr));
-}
+struct ToPhiDTypeTrait {
+ private:
+  using NonConstT = typename std::remove_const<T>::type;
+  static constexpr bool kIsFP16 = std::is_same<NonConstT, cutlass::half_t>::value;
+  static constexpr bool kIsBF16 = std::is_same<NonConstT, cutlass::bfloat16_t>::value;
+
+ public:
+  using Type = typename std::conditional<kIsFP16, dtype::float16,
+      typename std::conditional<kIsBF16, dtype::bfloat16, NonConstT>::type>::type;
+};
+
 
 template <typename T>
 T *SafeGetTensorPtr(const DenseTensor &t) {
-  using NonConstT = typename std::remove_const<T>::type;
-  constexpr bool kIsFP16 = std::is_same<NonConstT, cutlass::half_t>::value;
-  constexpr bool kIsBF16 = std::is_same<NonConstT, cutlass::bfloat16_t>::value;
-  using PDT = typename std::conditional<kIsFP16, dtype::float16,
-      typename std::conditional<kIsBF16, dtype::bfloat16, NonConstT>::type>::type;
+  using PDT = typename ToPhiDTypeTrait<T>::Type;
   return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(t.template data<PDT>()));
 }
 
@@ -461,6 +466,13 @@ T *SafeGetTensorPtr(const DenseTensor *t) {
 template <typename T>
 T *SafeGetTensorPtr(const paddle::optional<DenseTensor> &t) {
   return t ? SafeGetTensorPtr<T>(t.get()) : nullptr;
+}
+
+template <typename T, typename Context>
+T *SafeAllocTensor(const Context &ctx, DenseTensor *t) {
+  using PDT = typename ToPhiDTypeTrait<T>::Type;
+  void *ptr = ctx.template Alloc<PDT>(t);
+  return reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(ptr));
 }
 
 inline int64_t DimStride(const phi::DDim &dims, int n) {
@@ -493,7 +505,8 @@ inline int64_t DimStride(const phi::DDim &dims, int n) {
     path.write_text(main_header_content)
 
 
-shutil.rmtree(Path(args.dst_path) / "autogen")
+if os.path.exists(Path(args.dst_path) / "autogen"):
+    shutil.rmtree(Path(args.dst_path) / "autogen")
 forward_impl = "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/kernel_forward.h"
 backward_impl = "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/kernel_backward.h"
 

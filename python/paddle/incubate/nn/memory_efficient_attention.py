@@ -67,134 +67,6 @@ def _get_tensor_bias(attn_bias):
         return None
 
 
-def cutlass_fused_multi_head_attention(
-    query,
-    key,
-    value,
-    bias=None,
-    cu_seqlens_q=None,
-    cu_seqlens_k=None,
-    seqstart_q=None,
-    seqstart_k=None,
-    causal_diagonal=None,
-    seqlen_k=None,
-    max_seqlen_q=0,
-    max_seqlen_k=0,
-    causal=False,
-    dropout_p=0.0,
-    scale=0.0,
-    is_test=False,
-):
-    """
-    Cutlass Fused Multihead Attention.
-    This method requires SM_ARCH in sm70, sm75, sm80.
-
-    Args:
-        query (Tensor): the Query Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
-        key (Tensor): the Key Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
-        value (Tensor): the Value Tensor. Its shape is [batchsize, seq_len, num_head, head_size].
-        mask (Tensor): the Mask Tensor. Its shape is [batchsize, seq_len, num_head, seq_len]. And it can broadcast in each dims (which means you can set dimsize=1).
-        scale (Float): the attention matrix's scale. Default is sqrt(1.0 / head_size).
-        causal (Bool): whether causal masking is used or not. Default is False.
-    Returns:
-        Tensor: the output Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            # required: gpu
-            import math
-            import paddle
-            from paddle.incubate.nn.functional import cutlass_fused_multi_head_attention
-
-            batch = 1
-            num_head = 8
-            seq_len = 256
-            head_size = 32
-
-            dtype = paddle.float16
-
-            query = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
-            key = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
-            value = paddle.randn([batch, seq_len, num_head, head_size], dtype=dtype)
-            mask = paddle.randn([1, 1, 1, seq_len], dtype=dtype)
-
-            scale = float(1.0 / math.sqrt(head_size))
-
-            def naive_attention_impl(query, key, value, mask, scale):
-                query = paddle.transpose(query, [0, 2, 1, 3])
-                key = paddle.transpose(key, [0, 2, 1, 3])
-                value = paddle.transpose(value, [0, 2, 1, 3])
-
-                qk_res = paddle.matmul(query, key, transpose_y=True)
-                attention = qk_res * scale
-                attention = attention + mask
-                softmax_result = paddle.nn.functional.softmax(attention, -1)
-                result = paddle.matmul(softmax_result, value)
-                result = paddle.transpose(result, [0, 2, 1, 3])
-                return result
-
-            out = naive_attention_impl(query, key, value, mask, scale)
-            # equals to: out = cutlass_fused_multi_head_attention(query, key, value, mask, scale, causal, dropout_p)
-
-            print(out.shape) # [batch, seq_len, num_head, head_size]
-    """
-
-    if in_dygraph_mode():
-        return _C_ops.cutlass_fused_multihead_attention(
-            query,
-            key,
-            value,
-            bias,
-            cu_seqlens_q,
-            cu_seqlens_k,
-            seqstart_q,
-            seqstart_k,
-            causal_diagonal,
-            seqlen_k,
-            max_seqlen_q,
-            max_seqlen_k,
-            causal,
-            dropout_p,
-            scale,
-            is_test,
-        )
-
-    helper = LayerHelper('cutlass_fused_multihead_attention', **locals())
-    output = helper.create_variable_for_type_inference(dtype=query.dtype)
-    logsumexp = helper.create_variable_for_type_inference(dtype='float')
-    seed_and_offset = helper.create_variable_for_type_inference(dtype='int32')
-    helper.append_op(
-        type='cutlass_fused_multihead_attention',
-        inputs={
-            'query': query,
-            'key': key,
-            'value': value,
-            'bias': bias,
-            "cu_seqlens_q": cu_seqlens_q,
-            "cu_seqlens_k": cu_seqlens_k,
-            "seqstart_q": seqstart_q,
-            "seqstart_k": seqstart_k,
-            "causal_diagonal": causal_diagonal,
-            "seqlen_k": seqlen_k,
-        },
-        args={
-            "max_seqlen_q": max_seqlen_q,
-            "max_seqlen_k": max_seqlen_k,
-            "causal": causal,
-            "dropout_p": dropout_p,
-            "scale": scale,
-            "is_test": is_test,
-        },
-        outputs={
-            'output': output,
-            'logsumexp': logsumexp,
-            "seed_and_offset": seed_and_offset,
-        },
-    )
-    return output, logsumexp, seed_and_offset
-
-
 def memory_efficient_attention(
     query, key, value, attn_bias, p=0.0, scale=None, training=True
 ):
@@ -223,24 +95,56 @@ def memory_efficient_attention(
     )
 
     bias = _get_tensor_bias(attn_bias)
+    is_test = not training
 
-    output, logsumexp, seed_and_offset = cutlass_fused_multi_head_attention(
-        query=query,
-        key=key,
-        value=value,
-        bias=bias,
-        cu_seqlens_q=seqstart_q,
-        cu_seqlens_k=seqstart_k,
-        seqstart_q=seqstart_q,
-        seqstart_k=seqstart_k,
-        causal_diagonal=causal_diagonal,
-        seqlen_k=seqlen_k,
-        max_seqlen_q=max_seqlen_q,
-        max_seqlen_k=max_seqlen_k,
-        causal=causal,
-        dropout_p=p,
-        scale=scale,
-        is_test=not training,
+    if in_dygraph_mode():
+        output, logsumexp, seed_and_offset = _C_ops.memory_efficient_attention(
+            query,
+            key,
+            value,
+            bias,
+            seqstart_q,
+            seqstart_k,
+            causal_diagonal,
+            seqlen_k,
+            max_seqlen_q,
+            max_seqlen_k,
+            causal,
+            p,
+            scale,
+            is_test,
+        )
+        return output
+
+    helper = LayerHelper('memory_efficient_attention', **locals())
+    output = helper.create_variable_for_type_inference(dtype=query.dtype)
+    logsumexp = helper.create_variable_for_type_inference(dtype='float')
+    seed_and_offset = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type='memory_efficient_attention',
+        inputs={
+            'query': query,
+            'key': key,
+            'value': value,
+            'bias': bias,
+            "cu_seqlens_q": seqstart_q,
+            "cu_seqlens_k": seqstart_k,
+            "causal_diagonal": causal_diagonal,
+            "seqlen_k": seqlen_k,
+        },
+        args={
+            "max_seqlen_q": max_seqlen_q,
+            "max_seqlen_k": max_seqlen_k,
+            "causal": causal,
+            "dropout_p": p,
+            "scale": scale,
+            "is_test": is_test,
+        },
+        outputs={
+            'output': output,
+            'logsumexp': logsumexp,
+            "seed_and_offset": seed_and_offset,
+        },
     )
 
-    return output, logsumexp, seed_and_offset
+    return output

@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MultiHeadAttentionForwardKernel(
+void MemoryEfficientAttentionForwardKernel(
     const Context& ctx,
     const DenseTensor& query,
     const DenseTensor& key,
@@ -27,8 +27,6 @@ void MultiHeadAttentionForwardKernel(
     const paddle::optional<DenseTensor>& bias,
     const paddle::optional<DenseTensor>& cu_seqlens_q,
     const paddle::optional<DenseTensor>& cu_seqlens_k,
-    const paddle::optional<DenseTensor>& seqstart_q,
-    const paddle::optional<DenseTensor>& seqstart_k,
     const paddle::optional<DenseTensor>& causal_diagonal,
     const paddle::optional<DenseTensor>& seqlen_k,
     const Scalar& max_seqlen_q,
