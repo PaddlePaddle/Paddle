@@ -282,6 +282,29 @@ class TestMaxOp_ZeroDim(OpTest):
         self.check_grad(['X'], 'Out', check_eager=True, only_check_prim=True)
 
 
+class TestMaxOp_FP32(OpTest):
+    """Remove Max with subgradient from gradient check to confirm the success of CI."""
+
+    def setUp(self):
+        self.op_type = "reduce_max"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.max
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
+        self.attrs = {'dim': [-1], 'keep_dim': True}
+        self.outputs = {
+            'Out': self.inputs['X'].max(
+                axis=tuple(self.attrs['dim']), keepdims=True
+            )
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_check_grad(self):
+        # only composite op support gradient check of reduce_max
+        self.check_grad(['X'], 'Out', check_eager=True, only_check_prim=True)
+
+
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
     " its gradient check is not supported by unittest framework."
