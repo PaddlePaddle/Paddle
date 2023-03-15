@@ -28,10 +28,12 @@ class ReduceMaxOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_max"; }
 };
 
-class ReduceMaxCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
-  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+namespace paddle {
+namespace operators {
 
+class ReduceMaxCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
  public:
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
   void Apply() override {
     paddle::Tensor x = this->GetSingleForwardInput("X");
     paddle::Tensor out = this->GetSingleForwardInput("Out");
@@ -48,6 +50,9 @@ class ReduceMaxCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     this->RecoverOutputName(x_grad_t, x_grad_name);
   }
 };
+
+}  // namespace operators
+}  // namespace paddle
 
 DECLARE_INFER_SHAPE_FUNCTOR(
     reduce_max,
