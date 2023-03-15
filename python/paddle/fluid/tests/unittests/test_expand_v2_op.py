@@ -196,6 +196,47 @@ class TestExpandV2OpInt64_t(OpTest):
         self.check_output()
 
 
+class TestExpandV2ErrCorner(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand
+        self.init_data()
+        x = np.random.random(self.ori_shape).astype("float64")
+        self.inputs = {'X': x}
+        self.attrs = {'shape': self.shape}
+        output = np.tile(self.inputs['X'], self.bcast_dims)
+        self.outputs = {'Out': output}
+        self.enable_cinn = True
+
+    def init_data(self):
+        self.ori_shape = [2, 10]
+        self.shape = [3, 10]
+        self.bcast_dims = [1, 1]
+
+    def test_check_output(self):
+        self.assertRaises(ValueError, self.check_output, check_prim=True)
+
+    def test_check_grad(self):
+        self.assertRaises(
+            ValueError, self.check_grad, ['X'], 'Out', check_prim=True
+        )
+
+
+class TestExpandV2ErrCornerRank1(TestExpandV2ErrCorner):
+    def init_data(self):
+        self.ori_shape = [2, 10]
+        self.shape = [4, 10]
+        self.bcast_dims = [1, 1]
+
+
+class TestExpandV2ErrCornerRank2(TestExpandV2ErrCorner):
+    def init_data(self):
+        self.ori_shape = [2, 10]
+        self.shape = [-1, 2, 10]
+        self.bcast_dims = [1, 1]
+
+
 class TestExpandV2Error(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):

@@ -102,6 +102,48 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
         pass
 
 
+class TestExpandV2Corner(OpTest):
+    def setUp(self):
+        self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand_as
+        self.init_data()
+        x = np.random.random(self.ori_shape).astype("float64")
+        target_tensor = np.random.random(self.target_shape).astype("float64")
+        self.inputs = {'X': x, 'Y': target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        output = np.tile(self.inputs['X'], self.bcast_dims)
+        self.outputs = {'Out': output}
+        self.enable_cinn = True
+
+    def init_data(self):
+        self.ori_shape = [2, 10]
+        self.target_shape = [3, 10]
+        self.bcast_dims = [1, 1]
+
+    def test_check_output(self):
+        self.assertRaises(
+            ValueError, self.check_output, check_eager=True, check_prim=True
+        )
+
+    def test_check_grad(self):
+        self.assertRaises(
+            ValueError,
+            self.check_grad,
+            ['X'],
+            'Out',
+            check_eager=True,
+            check_prim=True,
+        )
+
+
+class TestExpandV2CompOpCornerRank1(TestExpandV2Corner):
+    def init_data(self):
+        self.ori_shape = [2, 10]
+        self.target_shape = [4, 10]
+        self.bcast_dims = [2, 1]
+
+
 class TestExpandAsV2Error(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
