@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -51,7 +51,7 @@ class TestSvdOp(OpTest):
         self._output_data = np.linalg.svd(self._input_data)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['U', 'VH'], check_eager=True)
+        self.check_output(no_check_set=['U', 'VH'])
 
     def test_svd_forward(self):
         """u matmul diag(s) matmul vt must become X"""
@@ -71,19 +71,13 @@ class TestSvdOp(OpTest):
         paddle.enable_static()
 
     def check_S_grad(self):
-        self.check_grad(
-            ['X'], ['S'], numeric_grad_delta=0.001, check_eager=True
-        )
+        self.check_grad(['X'], ['S'], numeric_grad_delta=0.001)
 
     def check_U_grad(self):
-        self.check_grad(
-            ['X'], ['U'], numeric_grad_delta=0.001, check_eager=True
-        )
+        self.check_grad(['X'], ['U'], numeric_grad_delta=0.001)
 
     def check_V_grad(self):
-        self.check_grad(
-            ['X'], ['VH'], numeric_grad_delta=0.001, check_eager=True
-        )
+        self.check_grad(['X'], ['VH'], numeric_grad_delta=0.001)
 
     def test_check_grad(self):
         """

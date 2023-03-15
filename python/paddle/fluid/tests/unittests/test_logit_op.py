@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -58,12 +58,10 @@ class TestLogitOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
-        )
+        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
 
 
 class TestLogitShape(TestLogitOp):

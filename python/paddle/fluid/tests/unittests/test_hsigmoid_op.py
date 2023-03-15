@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -219,14 +219,13 @@ class TestHSigmoidOp(OpTest):
         self.user_grads = hsigmoid_grad(x, w, label, bias, num_classes)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
             ['X', 'W', 'Bias'],
             ['Out'],
             user_defined_grads=self.user_grads,
-            check_eager=True,
         )
 
 
@@ -280,7 +279,7 @@ class TestHSigmoidOpSparse(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
@@ -416,14 +415,13 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
             ['Bias', 'X', 'W'],
             ['Out'],
             no_grad_set=set('Label'),
-            check_eager=True,
         )
 
 
@@ -482,12 +480,10 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X', 'W'], ['Out'], no_grad_set=set('Label'), check_eager=True
-        )
+        self.check_grad(['X', 'W'], ['Out'], no_grad_set=set('Label'))
 
 
 class TestHSigmoidLossAPI(unittest.TestCase):

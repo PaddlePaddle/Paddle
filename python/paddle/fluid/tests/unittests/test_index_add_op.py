@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 from paddle.fluid import Program
@@ -93,10 +93,10 @@ class TestIndexAddOp(OpTest):
         self.add_value_shape = (3, 3)
 
     def test_check_output(self):
-        self.check_output(check_eager=True, atol=1e-2)
+        self.check_output(atol=1e-2)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'AddValue'], 'Out', check_eager=True)
+        self.check_grad(['X', 'AddValue'], 'Out')
 
 
 class TestIndexAddAPI(unittest.TestCase):

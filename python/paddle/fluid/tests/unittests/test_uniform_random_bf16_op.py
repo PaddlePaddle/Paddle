@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_uint16_to_float
+from eager_op_test import OpTest, convert_uint16_to_float
 
 import paddle
 import paddle.fluid as fluid

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -40,10 +40,10 @@ class TestMaskedSelectOp(OpTest):
         self.outputs = {'Y': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y', check_eager=True)
+        self.check_grad(['X'], 'Y')
 
     def init(self):
         self.shape = (50, 3)

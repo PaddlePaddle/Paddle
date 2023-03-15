@@ -45,7 +45,7 @@ class TestMatrixRankOP(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def init_data(self):
         self.x = np.eye(3, dtype=np.float32)

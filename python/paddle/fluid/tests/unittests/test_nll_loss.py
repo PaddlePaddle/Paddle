@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -904,19 +904,19 @@ class TestNLLLossOp1DWithReduce(OpTest):
         self.attrs = {'reduction': 'mean', 'ignore_index': -100}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_output_with_weight(self):
         self.with_weight = True
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.with_weight = True
         place = fluid.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(place, ['X'], 'Out')
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
     def init_test_case(self):
         self.input_shape = [10, 10]
@@ -955,19 +955,19 @@ class TestNLLLossOp1DNoReduce(OpTest):
         self.attrs = {'reduction': 'none', 'ignore_index': -100}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_output_with_weight(self):
         self.with_weight = True
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.with_weight = True
         place = fluid.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(place, ['X'], 'Out')
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
     def init_test_case(self):
         self.input_shape = [10, 10]
@@ -1005,19 +1005,19 @@ class TestNLLLossOp2DWithReduce(OpTest):
         self.attrs = {'reduction': 'mean', 'ignore_index': -100}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_output_with_weight(self):
         self.with_weight = True
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.with_weight = True
         place = fluid.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(place, ['X'], 'Out')
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
     def init_test_case(self):
         self.input_shape = [2, 3, 5, 5]
@@ -1056,19 +1056,19 @@ class TestNLLLossOp2DNoReduce(OpTest):
         self.attrs = {'reduction': 'none', 'ignore_index': -100}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_output_with_weight(self):
         self.with_weight = True
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.with_weight = True
         place = fluid.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+        self.check_grad_with_place(place, ['X'], 'Out')
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X'], 'Out', check_eager=True)
+            self.check_grad_with_place(place, ['X'], 'Out')
 
     def init_test_case(self):
         self.input_shape = [5, 3, 5, 5]
