@@ -50,6 +50,17 @@ from white_list import (
     op_threshold_white_list,
 )
 
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+
+
+@signature_safe_contextmanager
+def paddle_static_guard():
+    try:
+        paddle.enable_static()
+        yield
+    finally:
+        paddle.disable_static()
+
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     """
@@ -66,37 +77,39 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
         check_out_dtype(fluid.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
 
     """
-    paddle.enable_static()
-    for i, expect_dtype in enumerate(expect_dtypes):
-        with paddle.static.program_guard(paddle.static.Program()):
-            input_t = []
-            for index, spec in enumerate(in_specs):
-                if len(spec) == 1:
-                    shape = spec[0]
-                    dtype = expect_dtype if target_index == index else 'float32'
-                elif len(spec) == 2:
-                    shape, dtype = spec
-                else:
-                    raise ValueError(
-                        "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
-                            index
+    with paddle_static_guard():
+        for i, expect_dtype in enumerate(expect_dtypes):
+            with paddle.static.program_guard(paddle.static.Program()):
+                input_t = []
+                for index, spec in enumerate(in_specs):
+                    if len(spec) == 1:
+                        shape = spec[0]
+                        dtype = (
+                            expect_dtype if target_index == index else 'float32'
+                        )
+                    elif len(spec) == 2:
+                        shape, dtype = spec
+                    else:
+                        raise ValueError(
+                            "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
+                                index
+                            )
+                        )
+                    input_t.append(
+                        paddle.static.data(
+                            name='data_%s' % index, shape=shape, dtype=dtype
                         )
                     )
-                input_t.append(
-                    paddle.static.data(
-                        name='data_%s' % index, shape=shape, dtype=dtype
-                    )
-                )
 
-            out = api_fn(*input_t, **configs)
-            out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
+                out = api_fn(*input_t, **configs)
+                out_dtype = fluid.data_feeder.convert_dtype(out.dtype)
 
-            if out_dtype != expect_dtype:
-                raise ValueError(
-                    "Expected out.dtype is {}, but got {} from {}.".format(
-                        expect_dtype, out_dtype, api_fn.__name__
+                if out_dtype != expect_dtype:
+                    raise ValueError(
+                        "Expected out.dtype is {}, but got {} from {}.".format(
+                            expect_dtype, out_dtype, api_fn.__name__
+                        )
                     )
-                )
 
 
 def _set_use_system_allocator(value=None):
@@ -723,11 +736,9 @@ class OpTest(unittest.TestCase):
 
             if is_input:
                 v = self._create_var_from_numpy(np_value_temp)
-
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
-                    if hasattr(v, "retain_grads"):
-                        v.retain_grads()
+                    v.retain_grads()
 
                 if has_lod:
                     v.value().get_tensor().set_recursive_sequence_lengths(
@@ -887,6 +898,8 @@ class OpTest(unittest.TestCase):
             )
             if not kernel_sig:
                 return None
+            if not hasattr(self, "python_api"):
+                print(kernel_sig)
             assert hasattr(self, "python_api"), (
                 "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
                 % self.op_type
@@ -1704,11 +1717,14 @@ class OpTest(unittest.TestCase):
                 if hasattr(self, 'force_fp32_output') and getattr(
                     self, 'force_fp32_output'
                 ):
-                    atol = 1e-2
+                    atol = 1e-2 if atol < 1e-2 else atol
                 else:
-                    atol = 2
+                    atol = 2 if atol < 2 else atol
             else:
-                atol = 1e-1
+                atol = 1e-1 if atol < 1e-1 else atol
+
+        if self.is_float16_op():
+            atol = 1e-3 if atol < 1e-3 else atol
 
         if no_check_set is not None:
             if (
@@ -2158,7 +2174,7 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
@@ -2168,10 +2184,15 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
+
+        if self.is_float16_op():
+            max_relative_error = (
+                0.001 if max_relative_error < 0.001 else max_relative_error
+            )
 
         self._assert_is_close(
             numeric_grads,
@@ -2256,6 +2277,10 @@ class OpTest(unittest.TestCase):
                 dygraph_outputs = self._calc_python_api_output(
                     place, inputs, outputs
                 )
+                if dygraph_outputs is None:
+                    # missing KernelSignature, fall back to eager middle output.
+                    dygraph_outs = self._calc_dygraph_output(place)
+
             # if outputs is None, kernel sig is empty or other error is happens.
             if not check_dygraph or dygraph_outputs is None:
                 block.append_op(

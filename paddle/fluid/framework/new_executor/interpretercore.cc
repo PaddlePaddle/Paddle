@@ -204,6 +204,8 @@ void InterpreterCore::RunImpl() {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
   }
 
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+
   if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
       (sync_op_num_ == 0)) {
     VLOG(4) << "Tracing Instruction List";
@@ -539,6 +541,11 @@ void InterpreterCore::BuildInplace() {
 void InterpreterCore::PrepareForCUDAGraphCapture() {
   if (!FLAGS_new_executor_use_cuda_graph) return;
 #ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_EQ(
+      platform::IsCUDAGraphCapturing(),
+      false,
+      platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
+                                         "when running the first batch."));
   PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
                     true,
                     platform::errors::InvalidArgument(
@@ -670,6 +677,20 @@ void InterpreterCore::Convert(
     auto& op_func_node = nodes[op_idx];
     auto* dev_ctx_ = stream_analyzer_.ParseDeviceContext(op_func_node);
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
+#ifdef PADDLE_WITH_CUDA
+    if (FLAGS_new_executor_use_cuda_graph) {
+      auto& op = op_func_node.operator_base_;
+      auto& op_type = op->Type();
+      if (op_type == interpreter::kMemcpyD2H ||
+          op_type == interpreter::kMemcpyH2D) {
+        PADDLE_THROW(paddle::platform::errors::Fatal(
+            "op_type can't be memcpy d2h or h2d while using cuda graph."));
+      }
+      // cuda graph needs to record all stream
+      phi::backends::gpu::CUDAGraphContextManager::Instance()
+          .RecordCapturingDeviceContext(dev_ctx_);
+    }
+#endif
   }
 
   BuildOperatorDependences();
@@ -1022,7 +1043,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
-  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
   unfinished_op_number_ = vec_instr.size();
   if (unfinished_op_number_ == 0) {
     VLOG(4) << "No op to run, return";
