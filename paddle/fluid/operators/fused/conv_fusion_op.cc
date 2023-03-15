@@ -70,10 +70,6 @@ class Conv2DFusionOpMaker : public Conv2DOpMaker {
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
         .SetDefault(true);
-    AddAttr<float>(
-        "fuse_alpha",
-        "(float, default 0.0) Only same to Conv2dFusionKernel in PHI")
-        .SetDefault(.0f);
   }
 };
 
