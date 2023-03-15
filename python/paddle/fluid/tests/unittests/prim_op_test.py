@@ -78,7 +78,11 @@ class OpTestUtils:
 
     @classmethod
     def prepare_python_api_arguments(
-        cls, api, op_proto_ins, op_proto_attrs, kernel_sig
+        cls,
+        api,
+        op_proto_ins,
+        op_proto_attrs,
+        kernel_sig,
     ):
         """map from `op proto inputs and attrs` to `api input list and api attrs dict`
 
@@ -100,7 +104,7 @@ class OpTestUtils:
         def to_defaults_list(params, defaults):
             return [defaults[p] for p in params if p in defaults]
 
-        def parse_attri_value(name, op_inputs, op_attrs):
+        def parse_attri_value(name, op_inputs, op_proto_attrs):
             """parse true value from inputs and attrs, if there is no name passed by OpTest, return Empty
             1. if the name in op_attrs, use the op_attrs[name]
             2. if the name in op_inputs, convert the op_inputs to [type of default value]
@@ -155,6 +159,10 @@ class OpTestUtils:
             for name in attrs_sig
         ]
         results = []
+        # hack support variable length parameter(such as paddle.meshgrid(*args,**kwargs)
+        if api_params == []:
+            results.append(input_arguments)
+            return results
         api_ignore_param_list = set(['name', 'dtype', 'out', 'output'])
         idx_of_op_proto_arguments = 0
         for idx, arg_name in enumerate(api_params):
@@ -178,6 +186,7 @@ class OpTestUtils:
     def assumption_assert_and_transform(cls, args, inp_num):
         """
         transform inputs by the following rules:
+            Note: it may not be possible to distinguish list with one Tensor,you should use wrapper to distinguish.
             1. [Tensor] -> Tensor
             2. [Tensor, Tensor, ...] -> list of Tensors
             3. None -> None
@@ -376,7 +385,7 @@ class PrimForwardChecker:
 
     def check(self):
         if (
-            self.place is paddle.fluid.libpaddle.CUDAPlace
+            type(self.place) is paddle.fluid.libpaddle.CUDAPlace
             and not paddle.is_compiled_with_cuda()
         ):
             return
@@ -422,7 +431,10 @@ class PrimForwardChecker:
             _,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api, eager_tensor_inputs, attrs_outputs, self.kernel_sig
+            self.python_api,
+            eager_tensor_inputs,
+            attrs_outputs,
+            self.kernel_sig,
         )
         inputs_sig, _, _ = self.kernel_sig
         args = OpTestUtils.assumption_assert_and_transform(
@@ -566,7 +578,10 @@ class PrimForwardChecker:
                 stop_gradient=True
             )
             args = OpTestUtils.prepare_python_api_arguments(
-                self.python_api, static_inputs, attrs, self.kernel_sig
+                self.python_api,
+                static_inputs,
+                attrs,
+                self.kernel_sig,
             )
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -634,7 +649,10 @@ class PrimForwardChecker:
             _,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api, eager_tensor_inputs, attrs_outputs, self.kernel_sig
+            self.python_api,
+            eager_tensor_inputs,
+            attrs_outputs,
+            self.kernel_sig,
         )
         inputs_sig, _, _ = self.kernel_sig
         args = OpTestUtils.assumption_assert_and_transform(
@@ -713,7 +731,10 @@ class PrimForwardChecker:
             _,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api, eager_tensor_inputs, attrs_outputs, self.kernel_sig
+            self.python_api,
+            eager_tensor_inputs,
+            attrs_outputs,
+            self.kernel_sig,
         )
         inputs_sig, _, _ = self.kernel_sig
         args = OpTestUtils.assumption_assert_and_transform(
@@ -786,7 +807,7 @@ class PrimGradChecker(PrimForwardChecker):
 
     def check(self):
         if (
-            self.place is paddle.fluid.libpaddle.CUDAPlace
+            type(self.place) is paddle.fluid.libpaddle.CUDAPlace
             and not paddle.is_compiled_with_cuda()
         ):
             return
@@ -873,7 +894,10 @@ class PrimGradChecker(PrimForwardChecker):
             inputs_dict,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api, eager_tensor_inputs, attrs_outputs, self.kernel_sig
+            self.python_api,
+            eager_tensor_inputs,
+            attrs_outputs,
+            self.kernel_sig,
         )
         inputs_sig, _, outputs_sig = self.kernel_sig
         if hasattr(self.op_test, "python_out_sig"):
@@ -979,7 +1003,10 @@ class PrimGradChecker(PrimForwardChecker):
                 stop_gradient=False
             )
             args = OpTestUtils.prepare_python_api_arguments(
-                self.python_api, static_inputs, attrs, self.kernel_sig
+                self.python_api,
+                static_inputs,
+                attrs,
+                self.kernel_sig,
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             if hasattr(self.op_test, "python_out_sig"):
@@ -1082,7 +1109,10 @@ class PrimGradChecker(PrimForwardChecker):
             inputs_dict,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api, eager_tensor_inputs, attrs_outputs, self.kernel_sig
+            self.python_api,
+            eager_tensor_inputs,
+            attrs_outputs,
+            self.kernel_sig,
         )
         inputs_sig, _, outputs_sig = self.kernel_sig
         args = OpTestUtils.assumption_assert_and_transform(
@@ -1194,7 +1224,10 @@ class PrimGradChecker(PrimForwardChecker):
             inputs_dict,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api, eager_tensor_inputs, attrs_outputs, self.kernel_sig
+            self.python_api,
+            eager_tensor_inputs,
+            attrs_outputs,
+            self.kernel_sig,
         )
         inputs_sig, _, outputs_sig = self.kernel_sig
         args = OpTestUtils.assumption_assert_and_transform(

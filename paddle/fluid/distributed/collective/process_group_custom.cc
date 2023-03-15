@@ -100,6 +100,18 @@ bool ProcessGroupCustom::CustomTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupCustom::CustomTask::Synchronize() { Wait(kWaitTimeout); }
 
+void ProcessGroupCustom::CustomTask::UpdateWaitChain(
+    const phi::DeviceContext& ctx) {
+  PADDLE_ENFORCE_NE(
+      std::find(places_.cbegin(), places_.cend(), ctx.GetPlace()),
+      places_.cend(),
+      phi::errors::NotFound("Cannot find the device context in this task."));
+  auto index = std::find(places_.cbegin(), places_.cend(), ctx.GetPlace()) -
+               places_.cbegin();
+  control_events_[index].Record(
+      reinterpret_cast<const phi::CustomContext&>(ctx));
+}
+
 ProcessGroupCustom::ProcessGroupCustom(
     const std::shared_ptr<phi::distributed::Store>& store,
     const std::string& device_type,

@@ -24,12 +24,12 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/flat_hash_map.h"
 #include "paddle/utils/small_vector.h"
-
 namespace phi {
 
 using DataType = phi::DataType;
@@ -285,6 +285,8 @@ class Kernel {
   KernelRegisteredType GetKernelRegisteredType() const {
     return kernel_registered_type_;
   }
+
+  GetKernelTypeForVarFn get_kerneltype_forvar_fn_{nullptr};
 
  private:
   KernelFn fn_{nullptr};

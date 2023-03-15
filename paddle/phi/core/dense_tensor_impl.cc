@@ -21,7 +21,7 @@ limitations under the License. */
 
 namespace phi {
 /* --------------------------- */
-/*   From phi::DenseTensor    */
+/*   From phi::DenseTensor     */
 /* --------------------------- */
 DenseTensor::DenseTensor() {
   meta_.dtype = phi::DataType::FLOAT32;

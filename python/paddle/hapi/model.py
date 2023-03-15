@@ -740,6 +740,15 @@ class StaticGraphAdapter:
                     continue
 
                 uninitialized.append(var_py)
+
+            # for RawProgramOptimizer, it will insert OP with no outputs like:
+            #       c_comm_init(inputs={X=['comm_id_0']}
+            # but we cannot prune this op.
+            block = self._startup_prog.global_block()
+            for op in block.ops:
+                if op.type == "c_comm_init":
+                    uninitialized.append(op)
+
             if uninitialized:
                 startup_prog = self._startup_prog._prune(uninitialized)
                 self._executor.run(startup_prog)
