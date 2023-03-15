@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,19 @@ limitations under the License. */
 
 #pragma once
 
-// All paddle apis in C++ frontend
-#include "paddle/phi/api/all.h"
-// Python bindings for the C++ frontend (includes Python.h)
-#if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
-#include "paddle/utils/pybind.h"
-#endif
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/core/kernel_factory.h"
+
+namespace paddle {
+namespace operators {
+
+phi::KernelKey GetReduceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
+phi::KernelKey GetReduceGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
+}  // namespace operators
+}  // namespace paddle
