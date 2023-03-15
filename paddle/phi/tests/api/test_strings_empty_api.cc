@@ -51,7 +51,7 @@ TEST(API, strings_empty) {
   shape_data[0] = 2;
   shape_data[1] = 3;
 
-  paddle::experimental::Tensor tensor_shape(dense_shape);
+  paddle::Tensor tensor_shape(dense_shape);
 
   // 2. test API
   auto empty_out = paddle::experimental::strings::empty(tensor_shape);
@@ -74,7 +74,7 @@ TEST(API, strings_empty_like) {
       alloc.get(), phi::StringTensorMeta(meta));
 
   // 2. test API
-  paddle::experimental::Tensor x(cpu_strings_x);
+  paddle::Tensor x(cpu_strings_x);
   auto empty_like_out = paddle::experimental::strings::empty_like(x);
 
   // 3. check result

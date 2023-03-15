@@ -46,8 +46,9 @@ class DDim;
 }  // namespace phi
 
 namespace paddle {
-
-namespace experimental {
+// TODO(chenweihang): Remove the experimental namespace for Scalar and IntArray
+using Scalar = experimental::Scalar;
+using IntArray = experimental::IntArray;
 
 class AbstractAutogradMeta {
  public:
@@ -721,5 +722,4 @@ PADDLE_API Tensor operator*(const Scalar& x, const Tensor& y);
 
 PADDLE_API Tensor operator/(const Scalar& x, const Tensor& y);
 
-}  // namespace experimental
 }  // namespace paddle

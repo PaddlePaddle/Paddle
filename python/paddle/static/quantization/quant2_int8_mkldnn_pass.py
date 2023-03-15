@@ -486,7 +486,7 @@ class Quant2Int8MkldnnPass:
         )
         graph = self._apply_pass(graph, 'matmul_activation_mkldnn_fuse_pass')
         graph = self._apply_pass(graph, 'batch_norm_act_fuse_pass')
-        graph = self._apply_pass(graph, 'softplus_activation_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'softplus_activation_onednn_fuse_pass')
         graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         graph = self._apply_pass(
             graph, 'reshape_transpose_matmul_mkldnn_fuse_pass'
