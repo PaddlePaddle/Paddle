@@ -1011,6 +1011,15 @@
   optional : weight
   backward : nll_loss_grad
 
+- op : nonzero
+  args : (Tensor condition)
+  output : Tensor(out)
+  infer_meta :
+    func : NonZeroInferMeta
+  kernel :
+    func : nonzero
+    data_type: condition
+
 - op : npu_identity
   args : (Tensor x, int format = -1)
   output : Tensor
@@ -1261,6 +1270,7 @@
     func : UnchangedInferMeta
   kernel :
     func : sigmoid
+  inplace : (x -> out)
   backward : sigmoid_grad
 
 - op : sign
