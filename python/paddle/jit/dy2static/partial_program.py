@@ -321,9 +321,7 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_amp_program(self):
         whole_program = self._train_amp_program
-        _, forward_end_op_index = self._infer_info(
-            'amp', self._create_amp_program
-        )
+        forward_end_op_index = self.get_forward_end_op_idx(whole_program)
         assert forward_end_op_index >= 0
 
         return self._get_forward_backward_program_form(
@@ -333,9 +331,7 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _create_forward_backward_train_pure_fp16_program(self):
         whole_program = self._train_pure_fp16_program
-        _, forward_end_op_index = self._infer_info(
-            'fp16', self._create_pure_fp16_program
-        )
+        forward_end_op_index = self.get_forward_end_op_idx(whole_program)
         assert forward_end_op_index >= 0
 
         return self._get_forward_backward_program_form(

@@ -59,7 +59,11 @@ void gather_grad(const Tensor& x,
   std::vector<int> reverse_perm(tmp_perm);
   // make origin ranks
   for (int i = 0; i < static_cast<int>(tmp_perm.size()); ++i) {
-    reverse_perm[tmp_perm[i]] = i;
+    if (tmp_perm[i] >= 0) {
+      reverse_perm[tmp_perm[i]] = i;
+    } else {
+      reverse_perm[tmp_perm[i] + tmp_perm.size()] = i;
+    }
   }
 
   // transpose out_grad and zero grad to target rank.
@@ -855,6 +859,16 @@ void cumsum_grad(const Tensor& x,
   if (x_grad) {
     auto grad = cumsum<T>(out_grad, axis, flatten, exclusive, !reverse);
     grad = reshape<T>(grad, x.shape());
+    set_output<T>(grad, x_grad);
+  }
+}
+
+template <typename T>
+void split_grad(const std::vector<Tensor>& out_grad,
+                const Scalar& axis,
+                Tensor* x_grad) {
+  if (x_grad) {
+    auto grad = concat<T>(out_grad, axis);
     set_output<T>(grad, x_grad);
   }
 }
