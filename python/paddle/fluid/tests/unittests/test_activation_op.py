@@ -2966,6 +2966,7 @@ class TestSquareBF16(OpTest):
 class TestPow(TestActivation):
     def setUp(self):
         self.op_type = "pow"
+        self.prim_op_type = "comp"
         self.python_api = paddle.pow
         self.init_dtype()
         self.init_shape()
@@ -2979,23 +2980,28 @@ class TestPow(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestPow_ZeroDim(TestPow):
     def init_shape(self):
         self.shape = []
 
+    def setUp(self):
+        super(TestPow_ZeroDim, self).setUp()
+        self.enable_cinn = False
+
 
 class TestPow_factor_tensor(TestActivation):
     def setUp(self):
         self.op_type = "pow"
         self.python_api = paddle.pow
+        self.enable_cinn = False
         self.init_dtype()
 
         np.random.seed(1024)
@@ -3879,7 +3885,7 @@ else:
 create_test_act_fp16_class(TestLog10, atol=5e-2)
 create_test_act_fp16_class(TestLog1p, grad_atol=0.9)
 create_test_act_fp16_class(TestSquare)
-create_test_act_fp16_class(TestPow, atol=5e-2)
+create_test_act_fp16_class(TestPow, check_prim=True, atol=5e-2)
 create_test_act_fp16_class(TestPow_factor_tensor, atol=5e-2)
 create_test_act_fp16_class(TestSTanh, grad_atol=0.9)
 create_test_act_fp16_class(TestSoftplus)
