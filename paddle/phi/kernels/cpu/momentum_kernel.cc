@@ -19,11 +19,17 @@
 #include "paddle/phi/kernels/impl/momentum_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
-    momentum, CPU, ALL_LAYOUT, phi::MomentumDenseKernel, float, double) {}
+    momentum, CPU, ALL_LAYOUT, phi::MomentumDenseKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+}
 
 PD_REGISTER_KERNEL(momentum_dense_param_sparse_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::MomentumSparseKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+}
