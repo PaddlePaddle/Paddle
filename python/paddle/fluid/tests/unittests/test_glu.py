@@ -41,7 +41,7 @@ class TestGLUCase(unittest.TestCase):
     def check_identity(self, place):
         with dg.guard(place):
             x_var = dg.to_variable(self.x)
-            y_var = fluid.nets.glu(x_var, self.dim)
+            y_var = paddle.nn.functional.glu(x_var, self.dim)
             y_np = y_var.numpy()
 
         np.testing.assert_allclose(y_np, self.out)
