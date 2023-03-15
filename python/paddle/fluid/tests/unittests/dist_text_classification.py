@@ -22,6 +22,8 @@ from test_dist_base import TestDistRunnerBase, runtime_main
 import paddle
 import paddle.fluid as fluid
 
+from . import nets
+
 DTYPE = "float32"
 VOCAB_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/imdb.vocab'
 VOCAB_MD5 = '23c86a0533c0151b6f12fa52b106dcc2'
@@ -63,7 +65,7 @@ def conv_net(
         ),
     )
 
-    conv_3 = fluid.nets.sequence_conv_pool(
+    conv_3 = nets.sequence_conv_pool(
         input=emb,
         num_filters=num_filters,
         filter_size=window_size,

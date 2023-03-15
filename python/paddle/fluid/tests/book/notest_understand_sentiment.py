@@ -23,6 +23,8 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 
+from ..unittests import nets
+
 
 def convolution_net(
     data, label, input_dim, class_dim=2, emb_dim=32, hid_dim=32
@@ -30,14 +32,14 @@ def convolution_net(
     emb = fluid.layers.embedding(
         input=data, size=[input_dim, emb_dim], is_sparse=True
     )
-    conv_3 = fluid.nets.sequence_conv_pool(
+    conv_3 = nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
         filter_size=3,
         act="tanh",
         pool_type="sqrt",
     )
-    conv_4 = fluid.nets.sequence_conv_pool(
+    conv_4 = nets.sequence_conv_pool(
         input=emb,
         num_filters=hid_dim,
         filter_size=4,
