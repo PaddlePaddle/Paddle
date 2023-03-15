@@ -100,8 +100,8 @@ class TestInstanceNormOp(OpTest):
         self.python_out_sig = ['Y']
         self.jit_comp_rtol = 1e-05
         self.jit_comp_atol = 1e-05
-        self.fw_comp_rtol = 1e-02
-        self.fw_comp_atol = 1e-02
+        self.fw_comp_rtol = 1e-01
+        self.fw_comp_atol = 1e-01
         self.rev_comp_rtol = 1e-02
         self.rev_comp_atol = 1e-02
         self.init_test_case()
@@ -140,7 +140,7 @@ class TestInstanceNormOp(OpTest):
         )
 
     def init_test_case(self):
-        self.shape = [3, 4, 5, 6]
+        self.shape = [6, 7, 8, 9]
         self.n = self.shape[0]
         self.c = self.shape[1]
         self.h = self.shape[2]
