@@ -53,8 +53,7 @@ class EmitGatherGemmScatterInstance(EmitGemmInstance):
         self.gemm_template = """
 // Gemm operator ${operation_name}
 template<cutlass::gemm::GemmUniversalMode Mode_ =
-             cutlass::gemm::GemmUniversalMode::kGemm,
-         int SplitKSlices_ = 1>
+             cutlass::gemm::GemmUniversalMode::kGemm>
 struct ${operation_name} {
   using Gemm =
     cutlass::gemm::device::GemmUniversal<
@@ -83,7 +82,6 @@ struct ${operation_name} {
       ${scatter_d} // scatter d
     >;
   static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
-  static const int SplitKSlices = SplitKSlices_;
 };
 """
 

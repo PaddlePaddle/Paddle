@@ -63,10 +63,11 @@ namespace sparse {
                     const int32_t* c_d_indices) {                          \
     cutlass::gemm::GemmCoord problem_size_real({m, n, k});                 \
     using Gemm = typename Config::Gemm;                                    \
+    int split_k_slices = std::max(std::min(256, k / 128), 1);              \
     typename Gemm::Arguments arguments{                                    \
         Config::Mode,                                                      \
         problem_size_real,                                                 \
-        Config::SplitKSlices,                                              \
+        split_k_slices,                                                    \
         {static_cast<const cutlass_type>(static_cast<const float>(alpha)), \
          static_cast<const cutlass_type>(static_cast<const float>(beta))}, \
         reinterpret_cast<const cutlass_type* const>(a),                    \

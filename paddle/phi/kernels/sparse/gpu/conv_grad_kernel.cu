@@ -145,7 +145,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   if (std::is_same<T, double>::value) cutlass = false;
   if (!std::is_same<IntT, int32_t>::value) cutlass = false;
 
-  if (cutlass) {
+  if (!cutlass) {
 #endif
 
     GroupIndexsV2<<<config.block_per_grid,

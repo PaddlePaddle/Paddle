@@ -82,19 +82,15 @@ namespace sparse {
         self.configurations.append(configuration_name)
 
         if operations[0].layout_name() == 'tn':
-            split_k_slices_list = ['8', '16', '32']
-            for split_k_slices in split_k_slices_list:
-                self.kernels_lists[
-                    operations[0].short_math_name()
-                    + operations[0].layout_name()
-                ] += (
-                    """
+            self.kernels_lists[
+                operations[0].short_math_name() + operations[0].layout_name()
+            ] += (
+                """
 launchKernel<"""
-                    + configuration_name
-                    + "<cutlass::gemm::GemmUniversalMode::kGemmSplitKParallel,"
-                    + split_k_slices
-                    + ">>,"
-                )
+                + configuration_name
+                + "<cutlass::gemm::GemmUniversalMode::kGemmSplitKParallel"
+                + ">>,"
+            )
         else:
             self.kernels_lists[
                 operations[0].short_math_name() + operations[0].layout_name()
