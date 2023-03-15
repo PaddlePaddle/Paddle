@@ -25,7 +25,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 namespace paddle {
 namespace prim {
-using Tensor = paddle::experimental::Tensor;
+using Tensor = paddle::Tensor;
 template <>
 Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
                          paddle::experimental::DataType dtype,
@@ -48,14 +48,12 @@ Tensor empty_like<DescTensor>(const Tensor& x,
 }
 
 template <>
-void set_output<DescTensor>(const paddle::experimental::Tensor& x_tmp,
-                            paddle::experimental::Tensor* x) {
+void set_output<DescTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_impl(x_tmp.impl());
 }
 
 template <>
-void by_pass<DescTensor>(const paddle::experimental::Tensor& x,
-                         paddle::experimental::Tensor* out) {
+void by_pass<DescTensor>(const paddle::Tensor& x, paddle::Tensor* out) {
   Tensor new_out =
       empty<DescTensor>({}, phi::DataType::FLOAT32, paddle::Place());
   framework::BlockDesc* block = StaticCompositeContext::Instance().GetBlock();

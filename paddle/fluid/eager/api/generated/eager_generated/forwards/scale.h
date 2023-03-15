@@ -17,10 +17,10 @@
 #include "paddle/fluid/eager/eager_tensor.h"
 namespace egr {
 
-paddle::experimental::Tensor scale(const paddle::experimental::Tensor& x,
-                                   float scale,
-                                   float bias,
-                                   bool bias_after_scale,
-                                   bool trace_backward);
+paddle::Tensor scale(const paddle::Tensor& x,
+                     float scale,
+                     float bias,
+                     bool bias_after_scale,
+                     bool trace_backward);
 
 }  // namespace egr

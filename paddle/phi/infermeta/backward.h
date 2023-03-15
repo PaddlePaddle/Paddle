@@ -168,6 +168,13 @@ void FillDiagonalTensorGradInferMeta(const MetaTensor& out_grad,
                                      int dim2,
                                      MetaTensor* x_grad);
 
+void FlashAttnGradInferMeta(const MetaTensor& q,
+                            const MetaTensor& k,
+                            const MetaTensor& v,
+                            MetaTensor* dq,
+                            MetaTensor* dk,
+                            MetaTensor* dv);
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,

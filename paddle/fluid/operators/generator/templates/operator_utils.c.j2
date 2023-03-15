@@ -68,11 +68,13 @@ AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name
 {% macro add_attr(i, attr, op_name) %}{# inline #}
   {% set name = attr["fluid_name"] %}
   {% set typename = attr["typename"] %}
-  {% if typename is scalar %}
+  {% if typename is scalar and
+  ("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}
 AddInput("{{attr | to_scalar_tensor_name}}", "attribute {{i}} for {{op_name}} op from 0D Tensor.")
     .AsDispensable();
 AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
-  {% elif typename == "IntArray" %}{# the type has been renamed #}
+  {% elif typename == "IntArray" and
+  ("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}{# the type has been renamed #}
     {% if 'tensor_name' in attr or 'manual_flag' not in attr %}
 AddInput("{{attr | to_int_array_tensor_name}}", "attribute {{i}} for {{op_name}} op from 1D integer Tensor.")
     .AsDispensable();
@@ -82,6 +84,8 @@ AddInput("{{attr | to_int_array_tensors_name}}", "attribute {{i}} for {{op_name}
     .AsDuplicable()
     .AsDispensable();
     {% endif %}
+  AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
+  {% elif "is_support_tensor" in attr and attr["is_support_tensor"] %}
 AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
   {% else %}
 AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_type}}), attribute {{i}} for {{op_name}} op.")
@@ -221,9 +225,11 @@ paddle::small_vector<const char*> inputs {
 {% set typename = attr["typename"] %}
 {%- if attr["fluid_name"] in kernel_args %}
 {% set name = attr["fluid_name"] %}
-{% if typename is scalar %}{# scalar correspond to a dispensable input and an attr in opmaker #}
+{% if typename is scalar and
+("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}{# scalar correspond to a dispensable input and an attr in opmaker #}
 attrs.emplace_back(ctx.HasInput("{{attr | to_scalar_tensor_name}}") ? "{{attr | to_scalar_tensor_name}}" : "{{name}}");
-{%- elif typename == "IntArray" %}
+{%- elif typename == "IntArray" and
+("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}
   {% if 'tensor_name' in attr and  'tensors_name' not in attr %}
 attrs.emplace_back(
   ctx.HasInput("{{attr | to_int_array_tensor_name}}")
@@ -260,6 +266,7 @@ paddle::small_vector<const char*> outputs {
 {% set kernel = op["kernel"] %}
 phi::KernelKey GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const override {
+{% if "get_expected_kernel_type" not in op %}
     phi::KernelKey kt;
 {%if kernel["data_type"] is not none %}{# data type ---------------------------------#}
   {% if kernel["data_type"]["candidates"] | length == 1 %}
@@ -303,6 +310,9 @@ phi::KernelKey GetExpectedKernelType(
     }
 {% endif %}
   return kt;
+{% else %}
+  return {{op["get_expected_kernel_type"]}}(ctx, this);
+{% endif %}
 }
 {% endmacro -%}
 
@@ -360,10 +370,12 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
   {% set kernel = op["kernel"] %}
   {% if kernel["data_type"] is not none or kernel["backend"] is not none
       or kernel["force_backend"] is not none
-      or "complex_promote" in op or "data_transform" in op %}
+      or "complex_promote" in op or "data_transform" in op 
+      or "get_expected_kernel_type" in op%}
  protected:
     {% if kernel["data_type"] is not none or kernel["backend"] is not none
-      or kernel["force_backend"] is not none or "complex_promote" in op %}
+      or kernel["force_backend"] is not none or "complex_promote" in op
+      or "get_expected_kernel_type" in op%}
       {% filter indent(2, True)%}
 {{get_expected_kernel(op)}}
       {% endfilter %}
@@ -523,7 +535,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       grad_op->SetInput("{{attr | to_int_array_tensors_name}}", this->Input("{{attr | to_int_array_tensors_name}}"));
     }
         {% endif %}
-      {% elif attr["typename"] == "Scalar" %}
+      {% elif attr["typename"] is scalar and 
+      ("is_support_tensor" not in attr or attr["is_support_tensor"] is false)%}
     if (this->HasInput("{{attr | to_scalar_tensor_name}}")) {
       grad_op->SetInput("{{attr | to_scalar_tensor_name}}", this->Input("{{attr | to_scalar_tensor_name}}"));
     }
@@ -589,7 +602,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       grad_op->SetInput("{{fw_attr | to_int_array_tensors_name}}", this->Input("{{fw_attr | to_int_array_tensors_name}}"));
     }
         {% endif %}
-      {% elif fw_attr["typename"] == "Scalar" %}
+      {% elif fw_attr["typename"] is scalar and
+         ("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}
     if (this->HasInput("{{fw_attr | to_scalar_tensor_name}}")) {
       grad_op->SetInput("{{fw_attr | to_scalar_tensor_name}}", this->Input("{{fw_attr | to_scalar_tensor_name}}"));
     }
@@ -624,6 +638,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
   void Apply() override {
     //get inputs
 {{construct_composite_input(inputs, fluid_inputs, forward_fluid_inputs, forward_fluid_outputs, input_dict)}}
+{{construct_composite_tensor_attr(attrs, fluid_attrs, attr_dict, op_name)}}
     //get attr
 {{construct_composite_attr(attrs, fluid_attrs, attr_dict)}}
     //get output
@@ -691,6 +706,28 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
   {%- endfor %}
 {%- endmacro %}
 
+{% macro construct_composite_tensor_attr(attrs, fluid_attrs, attr_dict, op_name) %}
+  {% set attrs_length = attrs | length %}
+  {% for i in range(attrs_length) %}
+    {% if "tensor_name" in attr_dict[attrs[i]] %}
+    auto {{'tensor_' + attrs[i]}} = this->GetOptionalSingleForwardInput("{{attr_dict[attrs[i]]['tensor_name']}}");
+    if ({{'tensor_' + attrs[i]}}) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support dynamic tensor attribute {{attr_dict[attrs[i]]['tensor_name']}} for {{op_name}} composite"
+          "for now. "));
+    }
+    {%- endif %}
+    {% if "tensors_name" in attr_dict[attrs[i]] %}
+    auto {{'tensors_' + attrs[i]}} = this->GetOptionalMultiForwardInput("{{attr_dict[attrs[i]]['tensors_name']}}");
+    if ({{'tensors_' + attrs[i]}}) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support dynamic tensors attribute {{attr_dict[attrs[i]]['tensor_name']}} for {{op_name}} composite "
+          "for now. "));
+    }
+    {%- endif %}
+  {%- endfor %}
+{%- endmacro %}
+
 {% macro construct_composite_attr(attrs, fluid_attrs, attr_dict) %}
   {% set attrs_length = attrs | length %}
   {% for i in range(attrs_length) %}
@@ -722,7 +759,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
     {% if output_typename == "Tensor" %}
     auto {{outputs[i]}} = this->GetOutputPtr(&{{outputs[i]+ "_t"}});
     {% elif output_typename == "Tensor[]" %}
-    std::vector<paddle::experimental::Tensor*> {{outputs[i]}}({{outputs[i] + "_t"}}.size());
+    std::vector<paddle::Tensor*> {{outputs[i]}}({{outputs[i] + "_t"}}.size());
     for(size_t i = 0; i < {{outputs[i]}}.size(); ++i){
       {{outputs[i]}}[i] = &{{outputs[i] + "_t"}}[i];
     }

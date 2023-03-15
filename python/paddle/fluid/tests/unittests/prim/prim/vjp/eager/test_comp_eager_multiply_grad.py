@@ -81,10 +81,10 @@ class TestMultiplyGradComp(unittest.TestCase):
         return [g for g in grads if g is not None]
 
     def test_comp(self):
-        core._set_prim_backward_enabled(True)
+        core.set_prim_eager_enabled(True)
         actual = self.vjp()
 
-        core._set_prim_backward_enabled(False)
+        core.set_prim_eager_enabled(False)
         desired = self.vjp()
 
         for i, j in zip(actual, desired):

@@ -28,14 +28,17 @@ class TestFlattenOp(OpTest):
         self.prim_op_type = "comp"
         self.start_axis = 0
         self.stop_axis = -1
+        self.skip_cinn()
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.in_shape).astype("float64")}
         self.init_attrs()
-        self.enable_cinn = False
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
             "XShape": np.random.random(self.in_shape).astype("float32"),
         }
+
+    def skip_cinn(self):
+        self.enable_cinn = True
 
     def test_check_output(self):
         self.check_output(
@@ -134,6 +137,9 @@ class TestFlattenOp_6(TestFlattenOp):
         self.start_axis = 0
         self.stop_axis = -1
         self.new_shape = (1,)
+
+    def skip_cinn(self):
+        self.enable_cinn = False
 
     def init_attrs(self):
         self.attrs = {

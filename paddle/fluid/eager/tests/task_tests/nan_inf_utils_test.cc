@@ -83,17 +83,16 @@ TEST(NanInfUtils, Functions) {
   auto six_tensors =
       std::make_tuple(tensor, tensor1, tensor2, tensor3, tensor4, tensor5);
   CHECK_NAN_INF(six_tensors);
-  std::vector<paddle::experimental::Tensor> tensor_vec;
+  std::vector<paddle::Tensor> tensor_vec;
   tensor_vec.emplace_back(tensor);
   tensor_vec.emplace_back(tensor1);
   CHECK_NAN_INF(tensor_vec);
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       egr::kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       small_vec;
   small_vec.emplace_back(tensor_vec);
   CHECK_NAN_INF(small_vec);
   // test selected_rows
-  paddle::experimental::Tensor tensor_sr;
+  paddle::Tensor tensor_sr;
   auto sr = std::make_shared<phi::SelectedRows>();
   *sr->mutable_value() =
       *(static_cast<const phi::DenseTensor*>(tensor.impl().get()));

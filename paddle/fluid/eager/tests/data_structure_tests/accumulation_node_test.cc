@@ -39,7 +39,7 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
   sr0->mutable_value()->Resize(phi::make_ddim({1, 1}));
   sr0->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
       static_cast<float>(10.0f);
-  paddle::experimental::Tensor et0 = paddle::experimental::Tensor(sr0);
+  paddle::Tensor et0 = paddle::Tensor(sr0);
   std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
           paddle::platform::CPUPlace())
@@ -47,15 +47,14 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
       meta);
   dt1->mutable_data<float>(paddle::platform::CPUPlace())[0] =
       static_cast<float>(20.0f);
-  paddle::experimental::Tensor et1 = paddle::experimental::Tensor(dt1);
+  paddle::Tensor et1 = paddle::Tensor(dt1);
   std::shared_ptr<phi::DenseTensor> input_dt =
       std::make_shared<phi::DenseTensor>(
           std::make_unique<paddle::experimental::DefaultAllocator>(
               paddle::platform::CPUPlace())
               .get(),
           meta);
-  paddle::experimental::Tensor input_et =
-      paddle::experimental::Tensor(input_dt);
+  paddle::Tensor input_et = paddle::Tensor(input_dt);
   auto grad_meta = EagerUtils::autograd_meta(&input_et);
   // Initialize Grad Tensor
   std::shared_ptr<phi::SelectedRows> grad_dt =
@@ -69,19 +68,17 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
   grad_meta->SetGradNode(node);
   grad_meta->SetStopGradient(false);
   // operator()
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et0_vec = {{et0}};
-  paddle::experimental::Tensor ret_et0 = node->operator()(et0_vec)[0][0];
+  paddle::Tensor ret_et0 = node->operator()(et0_vec)[0][0];
   auto* ret_et0_ptr =
       std::dynamic_pointer_cast<phi::SelectedRows>(ret_et0.impl())
           ->value()
           .data<float>();
   CHECK_EQ(ret_et0_ptr[0], static_cast<float>(10.0f));
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
-  paddle::experimental::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
+  paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et1.impl())
           ->data<float>();
@@ -91,7 +88,7 @@ TEST(AccumulationNode, SelectedRowsAddToTensor) {
                ->value()
                .data<float>()[0],
            static_cast<float>(10.0f));
-  paddle::experimental::Tensor* grad = EagerUtils::mutable_grad(input_et);
+  paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
   auto* grad_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())->data<float>();
   CHECK_EQ(grad_ptr[0], static_cast<float>(30.0f));
@@ -107,21 +104,20 @@ TEST(AccumulationNode, SelectedRowsMerge) {
   sr0->mutable_value()->Resize(phi::make_ddim({1, 1}));
   sr0->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
       static_cast<float>(10.0f);
-  paddle::experimental::Tensor et0 = paddle::experimental::Tensor(sr0);
+  paddle::Tensor et0 = paddle::Tensor(sr0);
   std::shared_ptr<phi::SelectedRows> sr1 =
       std::make_shared<phi::SelectedRows>(rows, 1);
   sr1->mutable_value()->Resize(phi::make_ddim({1, 1}));
   sr1->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
       static_cast<float>(20.0f);
-  paddle::experimental::Tensor et1 = paddle::experimental::Tensor(sr1);
+  paddle::Tensor et1 = paddle::Tensor(sr1);
   std::shared_ptr<phi::DenseTensor> input_dt =
       std::make_shared<phi::DenseTensor>(
           std::make_unique<paddle::experimental::DefaultAllocator>(
               paddle::platform::CPUPlace())
               .get(),
           meta);
-  paddle::experimental::Tensor input_et =
-      paddle::experimental::Tensor(input_dt);
+  paddle::Tensor input_et = paddle::Tensor(input_dt);
   auto grad_meta = EagerUtils::autograd_meta(&input_et);
   // Initialize Grad Tensor
   std::shared_ptr<phi::SelectedRows> grad_dt =
@@ -135,19 +131,17 @@ TEST(AccumulationNode, SelectedRowsMerge) {
   grad_meta->SetGradNode(node);
   grad_meta->SetStopGradient(false);
   // operator()
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et0_vec = {{et0}};
-  paddle::experimental::Tensor ret_et0 = node->operator()(et0_vec)[0][0];
+  paddle::Tensor ret_et0 = node->operator()(et0_vec)[0][0];
   auto* ret_et0_ptr =
       std::dynamic_pointer_cast<phi::SelectedRows>(ret_et0.impl())
           ->value()
           .data<float>();
   CHECK_EQ(ret_et0_ptr[0], static_cast<float>(10.0f));
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
-  paddle::experimental::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
+  paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<phi::SelectedRows>(ret_et1.impl())
           ->value()
@@ -158,7 +152,7 @@ TEST(AccumulationNode, SelectedRowsMerge) {
                ->value()
                .data<float>()[0],
            static_cast<float>(10.0f));
-  paddle::experimental::Tensor* grad = EagerUtils::mutable_grad(input_et);
+  paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
   auto* grad_ptr = std::dynamic_pointer_cast<phi::SelectedRows>(grad->impl())
                        ->value()
                        .data<float>();
@@ -175,21 +169,20 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
   sr0->mutable_value()->Resize(phi::make_ddim({1, 1}));
   sr0->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
       static_cast<float>(10.0f);
-  paddle::experimental::Tensor et0 = paddle::experimental::Tensor(sr0);
+  paddle::Tensor et0 = paddle::Tensor(sr0);
   std::shared_ptr<phi::SelectedRows> sr1 =
       std::make_shared<phi::SelectedRows>(rows, 1);
   sr1->mutable_value()->Resize(phi::make_ddim({1, 1}));
   sr1->mutable_value()->mutable_data<float>(paddle::platform::CPUPlace())[0] =
       static_cast<float>(20.0f);
-  paddle::experimental::Tensor et1 = paddle::experimental::Tensor(sr1);
+  paddle::Tensor et1 = paddle::Tensor(sr1);
   std::shared_ptr<phi::DenseTensor> input_dt =
       std::make_shared<phi::DenseTensor>(
           std::make_unique<paddle::experimental::DefaultAllocator>(
               paddle::platform::CPUPlace())
               .get(),
           meta);
-  paddle::experimental::Tensor input_et =
-      paddle::experimental::Tensor(input_dt);
+  paddle::Tensor input_et = paddle::Tensor(input_dt);
   auto grad_meta = EagerUtils::autograd_meta(&input_et);
   // Initialize Grad Tensor
   std::shared_ptr<phi::DenseTensor> grad_dt =
@@ -206,19 +199,17 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
   grad_meta->SetGradNode(node);
   grad_meta->SetStopGradient(false);
   // operator()
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et0_vec = {{et0}};
-  paddle::experimental::Tensor ret_et0 = node->operator()(et0_vec)[0][0];
+  paddle::Tensor ret_et0 = node->operator()(et0_vec)[0][0];
   auto* ret_et0_ptr =
       std::dynamic_pointer_cast<phi::SelectedRows>(ret_et0.impl())
           ->value()
           .data<float>();
   CHECK_EQ(ret_et0_ptr[0], static_cast<float>(10.0f));
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
-  paddle::experimental::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
+  paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<phi::SelectedRows>(ret_et1.impl())
           ->value()
@@ -229,7 +220,7 @@ TEST(AccumulationNode, SelectedRowsAddTensor) {
                ->value()
                .data<float>()[0],
            static_cast<float>(10.0f));
-  paddle::experimental::Tensor* grad = EagerUtils::mutable_grad(input_et);
+  paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
   auto* grad_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())->data<float>();
   CHECK_EQ(grad_ptr[0], static_cast<float>(30.0f));
@@ -246,7 +237,7 @@ TEST(AccumulationNode, Tensor) {
       meta);
   dt0->mutable_data<paddle::platform::float16>(
       paddle::platform::CPUPlace())[0] = paddle::platform::float16(10.0f);
-  paddle::experimental::Tensor et0 = paddle::experimental::Tensor(dt0);
+  paddle::Tensor et0 = paddle::Tensor(dt0);
 
   std::shared_ptr<phi::DenseTensor> dt1 = std::make_shared<phi::DenseTensor>(
       std::make_unique<paddle::experimental::DefaultAllocator>(
@@ -256,7 +247,7 @@ TEST(AccumulationNode, Tensor) {
 
   dt1->mutable_data<paddle::platform::float16>(
       paddle::platform::CPUPlace())[0] = paddle::platform::float16(20.0f);
-  paddle::experimental::Tensor et1 = paddle::experimental::Tensor(dt1);
+  paddle::Tensor et1 = paddle::Tensor(dt1);
 
   std::shared_ptr<phi::DenseTensor> input_dt =
       std::make_shared<phi::DenseTensor>(
@@ -264,8 +255,7 @@ TEST(AccumulationNode, Tensor) {
               paddle::platform::CPUPlace())
               .get(),
           meta);
-  paddle::experimental::Tensor input_et =
-      paddle::experimental::Tensor(input_dt);
+  paddle::Tensor input_et = paddle::Tensor(input_dt);
   auto grad_meta = EagerUtils::autograd_meta(&input_et);
 
   // Initialize Grad Tensor
@@ -285,19 +275,17 @@ TEST(AccumulationNode, Tensor) {
   grad_meta->SetStopGradient(false);
 
   // operator()
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et0_vec = {{et0}};
-  paddle::experimental::Tensor ret_et0 = node->operator()(et0_vec)[0][0];
+  paddle::Tensor ret_et0 = node->operator()(et0_vec)[0][0];
   auto* ret_et0_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et0.impl())
           ->data<paddle::platform::float16>();
   CHECK_EQ(ret_et0_ptr[0], paddle::platform::float16(10.0f));
 
-  paddle::small_vector<std::vector<paddle::experimental::Tensor>,
-                       kSlotSmallVectorSize>
+  paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       et1_vec = {{et1}};
-  paddle::experimental::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
+  paddle::Tensor ret_et1 = node->operator()(et1_vec)[0][0];
 
   auto* ret_et1_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(ret_et1.impl())
@@ -308,7 +296,7 @@ TEST(AccumulationNode, Tensor) {
   CHECK_EQ(std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
                ->data<paddle::platform::float16>()[0],
            paddle::platform::float16(10.0f));
-  paddle::experimental::Tensor* grad = EagerUtils::mutable_grad(input_et);
+  paddle::Tensor* grad = EagerUtils::mutable_grad(input_et);
   auto* grad_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl())
                        ->data<paddle::platform::float16>();
   CHECK_EQ(grad_ptr[0], paddle::platform::float16(30.0f));
@@ -331,7 +319,7 @@ TEST(AccumulationNode, Tensor) {
   node->RegisterReduceHook(std::make_shared<egr::CppVoidHook>(reduce_hook_1));
 
   // operator()
-  paddle::experimental::Tensor _ret = node->operator()(et0_vec)[0][0];
+  paddle::Tensor _ret = node->operator()(et0_vec)[0][0];
 
   // Check operator() result, should be 36.0
   auto* _ret_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(_ret.impl())
