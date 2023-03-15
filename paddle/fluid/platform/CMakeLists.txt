@@ -121,7 +121,7 @@ endif()
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context gpu_info custom_kernel context_pool memcpy)
+  DEPS device_context custom_kernel context_pool memcpy)
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
