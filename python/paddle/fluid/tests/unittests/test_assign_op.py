@@ -30,6 +30,8 @@ class TestAssignOp(op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.op_type = "assign"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.random(size=(100, 10)).astype('float64')
         self.inputs = {'X': x}
         self.outputs = {'Out': x}
@@ -41,7 +43,7 @@ class TestAssignOp(op_test.OpTest):
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
         paddle.disable_static()
 
 
@@ -49,6 +51,8 @@ class TestAssignFP16Op(op_test.OpTest):
     def setUp(self):
         self.python_api = paddle.assign
         self.op_type = "assign"
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.random(size=(100, 10)).astype('float16')
         self.inputs = {'X': x}
         self.outputs = {'Out': x}
@@ -60,7 +64,7 @@ class TestAssignFP16Op(op_test.OpTest):
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
         paddle.disable_static()
 
 
