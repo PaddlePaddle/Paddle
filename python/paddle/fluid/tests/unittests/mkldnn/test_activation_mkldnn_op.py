@@ -114,14 +114,6 @@ class TestMKLDNNLeakyRelu_ZeroDim(TestLeakyRelu_ZeroDim):
     def init_dtype(self):
         self.dtype = np.float32
 
-    def test_check_output(self):
-        self.check_output(check_dygraph=False)
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', check_dygraph=False)
-
 
 class TestMKLDNNGeluDim2(TestActivation):
     def setUp(self):
