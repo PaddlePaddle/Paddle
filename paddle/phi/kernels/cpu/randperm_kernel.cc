@@ -19,9 +19,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RandpermRawKernel(
-    const Context& dev_ctx, int n, DataType dtype, int seed, DenseTensor* out) {
+void RandpermKernel(const Context& dev_ctx,
+                    int n,
+                    DataType dtype,
+                    DenseTensor* out) {
   T* out_data = dev_ctx.template Alloc<T>(out);
+  int seed = 0;
 
   std::shared_ptr<std::mt19937_64> engine;
   if (seed) {
@@ -35,14 +38,6 @@ void RandpermRawKernel(
     out_data[i] = static_cast<T>(i);
   }
   std::shuffle(out_data, out_data + n, *engine);
-}
-
-template <typename T, typename Context>
-void RandpermKernel(const Context& dev_ctx,
-                    int n,
-                    DataType dtype,
-                    DenseTensor* out) {
-  RandpermRawKernel<T>(dev_ctx, n, dtype, 0, out);
 }
 
 }  // namespace phi
