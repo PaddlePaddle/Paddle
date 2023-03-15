@@ -32,7 +32,7 @@ np.random.seed(SEED)
 # Use a decorator to test exception
 @paddle.jit.to_static
 def dyfunc_with_if(x_v):
-    if paddle.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy() > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -53,7 +53,7 @@ def nested_func(x_v):
 @paddle.jit.to_static
 def dyfunc_with_third_library_logging(x_v):
     logging.info('test dyfunc_with_third_library_logging')
-    if paddle.mean(x_v).numpy()[0] > 5:
+    if paddle.mean(x_v).numpy() > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -270,6 +270,7 @@ class TestNotToConvert2(TestRecursiveCall2):
 
 
 # Situation 3 : test to_static for paddle api
+@paddle.jit.not_to_static
 def forward(self, x):
     if x.shape[0] > 1:
         x = x + 1

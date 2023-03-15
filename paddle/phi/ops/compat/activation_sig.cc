@@ -41,10 +41,6 @@ namespace phi {
 
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardTanh, "hardtanh", "t_min" comma "t_max");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Mish, "mish", "threshold");
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardSwish,
-                               "hardswish",
-                               "threshold" comma "scale" comma
-                               "offset");                // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Swish, "swish", "beta");  // NOLINT
 
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(STanh,
@@ -53,9 +49,13 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(STanh,
 
 DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu6, "relu6", "threshold");  // NOLINT
 
+KernelSignature HardSwishGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("hardswish_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
+}
+
 KernelSignature HardSwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "hardswish_raw", {"X"}, {"threshold", "scale", "offset"}, {"Out"});
+  return KernelSignature("hardswish", {"X"}, {}, {"Out"});
 }
 
 KernelSignature SwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
