@@ -264,7 +264,7 @@ class TestBceLossOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -291,7 +291,7 @@ class TestBceLossOpFP16(TestBceLossOp):
         self.check_grad(['X'], 'Out', max_relative_error=1e-3)
 
     def init_test_dtype(self):
-        self.dtype = "float16"
+        self.dtype = np.float16
 
 
 class TestBceLossOpStaticFP16(unittest.TestCase):
