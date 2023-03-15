@@ -91,13 +91,11 @@ class TestAMPPass(unittest.TestCase):
         # mp2 training
         mp_engine = self.get_engine()
         history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        print(mp_engine.main_program)
         mp_losses = np.array(history.history["loss"])
 
         # mp2 amp-o1 training
         amp_o1_engine = self.get_engine(True, "o1")
         history = amp_o1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        print(amp_o1_engine.main_program)
         amp_o1_losses = np.array(history.history["loss"])
         amp_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o1_losses)
