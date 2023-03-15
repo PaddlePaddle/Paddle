@@ -14,13 +14,11 @@
 
 import paddle
 
-from ....utils import deprecated
 from ...data_feeder import check_variable_and_dtype, convert_dtype
 
 __all__ = [
     "simple_img_conv_pool",
     "sequence_conv_pool",
-    "glu",
     "scaled_dot_product_attention",
     "img_conv_group",
 ]
@@ -353,55 +351,6 @@ def sequence_conv_pool(
         input=conv_out, pool_type=pool_type
     )
     return pool_out
-
-
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.glu")
-def glu(input, dim=-1):
-    r"""
-        :api_attr: Static Graph
-
-    The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` ,
-    :ref:`api_fluid_layers_sigmoid`  and :ref:`api_fluid_layers_elementwise_mul` .
-    Specifically, GLU will plit the input into two equal-sized parts,
-    :math:`a` and :math:`b`, along the given dimension and then compute as
-    following:
-
-        .. math::
-
-            {GLU}(a, b)= a \otimes \sigma(b)
-
-    Refer to `Language Modeling with Gated Convolutional Networks
-    <https://arxiv.org/pdf/1612.08083.pdf>`_.
-
-    Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-                          The supported data types include float32, float64
-                          and float16 (only for GPU).
-        dim (int, optional): The dimension along which to split. If :math:`dim < 0`, the
-            dimension to split along is :math:`rank(input) + dim`. Default -1.
-
-    Returns:
-        Variable: Variable with half the size and same data type of input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-
-            data = fluid.data(
-                name="words", shape=[-1, 6, 3, 9], dtype="float32")
-            # shape of output: [-1, 3, 3, 9]
-            output = fluid.nets.glu(input=data, dim=1)
-    """
-    check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64'], "glu"
-    )
-    a, b = paddle.split(input, num_or_sections=2, axis=dim)
-    act_b = paddle.nn.functional.sigmoid(x=b)
-    out = paddle.multiply(x=a, y=act_b)
-    return out
 
 
 def scaled_dot_product_attention(
