@@ -78,12 +78,7 @@ def flash_attention(
             print(output)
     """
     if in_dynamic_mode():
-        (
-            result_attention,
-            result_softmax_lse,
-            result_softmax,
-            seed_offset,
-        ) = _C_ops.flash_attn(
+        (result_attention, result_softmax,) = _C_ops.flash_attn(
             query,
             key,
             value,
@@ -196,12 +191,7 @@ def flash_attn_unpadded(
             print(output)
     """
     if in_dynamic_mode():
-        (
-            result_attention,
-            result_softmax_lse,
-            result_softmax,
-            seed_offset,
-        ) = _C_ops.flash_attn_unpadded(
+        (result_attention, result_softmax,) = _C_ops.flash_attn_unpadded(
             query,
             key,
             value,

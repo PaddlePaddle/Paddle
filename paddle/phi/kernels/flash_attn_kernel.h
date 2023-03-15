@@ -33,8 +33,8 @@ void FlashAttnUnpaddedKernel(const Context& ctx,
                              bool causal,
                              bool return_softmax,
                              DenseTensor* out,
-                             DenseTensor* softmax_lse,
                              DenseTensor* softmax,
+                             DenseTensor* softmax_lse,
                              DenseTensor* seed_offset);
 
 template <typename T, typename Context>
@@ -46,8 +46,8 @@ void FlashAttnKernel(const Context& ctx,
                      bool causal,
                      bool return_softmax,
                      DenseTensor* out,
-                     DenseTensor* softmax_lse,
                      DenseTensor* softmax,
+                     DenseTensor* softmax_lse,
                      DenseTensor* seed_offset);
 
 }  // namespace phi

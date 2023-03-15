@@ -44,8 +44,8 @@ void FlashAttnUnpaddedKernel(const Context& ctx,
                              bool causal,
                              bool return_softmax,
                              DenseTensor* out,
-                             DenseTensor* softmax_lse,
                              DenseTensor* softmax,
+                             DenseTensor* softmax_lse,
                              DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
   ctx.template Alloc<T>(out);
@@ -185,8 +185,8 @@ void FlashAttnKernel(const Context& ctx,
                      bool causal,
                      bool return_softmax,
                      DenseTensor* out,
-                     DenseTensor* softmax_lse,
                      DenseTensor* softmax,
+                     DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
 #ifdef PADDLE_WITH_FLASHATTN
   // q,k,v [batch_size, seq_len, num_heads, head_dim]
@@ -237,8 +237,8 @@ void FlashAttnKernel(const Context& ctx,
                                       causal,
                                       return_softmax,
                                       out,
-                                      softmax_lse,
                                       softmax,
+                                      softmax_lse,
                                       seed_offset);
 
 #endif
