@@ -55,6 +55,18 @@ void CumprodKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_HIP
+PD_REGISTER_KERNEL(cumprod,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CumprodKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#else
 PD_REGISTER_KERNEL(cumprod,
                    GPU,
                    ALL_LAYOUT,
@@ -67,3 +79,4 @@ PD_REGISTER_KERNEL(cumprod,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+#endif

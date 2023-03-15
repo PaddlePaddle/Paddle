@@ -324,6 +324,18 @@ void CumprodGradKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
+#ifdef PADDLE_WITH_HIP
+PD_REGISTER_KERNEL(cumprod_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CumprodGradKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+#else
 PD_REGISTER_KERNEL(cumprod_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -336,3 +348,4 @@ PD_REGISTER_KERNEL(cumprod_grad,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+#endif
