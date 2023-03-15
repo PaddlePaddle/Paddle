@@ -23,7 +23,7 @@ class ReshapeOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a paddle " << op_type << " op to tensorrt layer";
+    VLOG(3) << "convert a paddle reshape op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);

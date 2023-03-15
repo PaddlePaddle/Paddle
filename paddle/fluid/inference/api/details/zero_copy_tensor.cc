@@ -197,7 +197,7 @@ void Tensor::CopyFromCpu(const T *data) {
                         "function before copying data from cpu."));
   size_t ele_size = tensor->numel() * sizeof(T);
 
-  if (paddle::platform::is_cpu_place(place_)) {
+  if (place_ == PlaceType::kCPU) {
     auto *t_data = tensor->mutable_data<T>(paddle::platform::CPUPlace());
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
   } else if (place_ == PlaceType::kGPU) {
@@ -339,7 +339,7 @@ void Tensor::ShareExternalData(const T *data,
       sizeof(T);
   phi::DenseTensorMeta meta(
       DataTypeInfo<T>().TYPE, phi::make_ddim(shape), LayoutConvert(layout));
-  if (paddle::platform::is_cpu_place(place)) {
+  if (place == PlaceType::kCPU) {
     phi::DenseTensor dtensor(
         std::make_shared<phi::Allocation>(
             const_cast<T *>(data), size, paddle::platform::CPUPlace()),
@@ -775,7 +775,7 @@ void Tensor::ORTCopyToCpu(T *data) const {
   auto info = value.GetTensorTypeAndShapeInfo();
   size_t size = info.GetElementCount() * sizeof(T);
 
-  if (paddle::platform::is_cpu_place(place_)) {
+  if (place_ == PlaceType::kCPU) {
     std::memcpy(static_cast<void *>(data), value.GetTensorData<void *>(), size);
   } else {
     PADDLE_THROW(paddle::platform::errors::Unavailable(
@@ -821,7 +821,7 @@ void InternalUtils::CopyFromCpuWithIoStream(paddle_infer::Tensor *t,
                         "std::vector<int> &shape)"
                         "function before copying data from cpu."));
   size_t ele_size = tensor->numel() * sizeof(T);
-  if (paddle::platform::is_cpu_place(t->place_)) {
+  if (t->place_ == PlaceType::kCPU) {
     auto *t_data = tensor->mutable_data<T>(paddle::platform::CPUPlace());
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
   } else if (t->place_ == PlaceType::kGPU) {
