@@ -47,6 +47,7 @@ message GraphConfig {
   optional bool get_degree = 17 [ default = false ];
   optional bool weighted_sample = 18 [ default = false ];
   optional bool return_weight = 19 [ default = false ];
+  optional string pair_label = 20;
 }
 
 message DataFeedDesc {
