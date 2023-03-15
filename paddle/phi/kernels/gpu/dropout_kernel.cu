@@ -31,7 +31,6 @@ void DropoutRawKernel(const Context& dev_ctx,
                       bool fix_seed,
                       DenseTensor* out,
                       DenseTensor* mask) {
-  std::cout << "DropoutRawKernel" << std::endl;
   bool upscale_in_train = (mode == "upscale_in_train");
   dev_ctx.template Alloc<T>(out);
   if (mask) {
@@ -46,8 +45,7 @@ void DropoutRawKernel(const Context& dev_ctx,
                                           x,
                                           seed_tensor.get_ptr(),
                                           mask,
-                                          out,
-                                          false);
+                                          out);
 }
 
 template <typename T, typename Context>
@@ -62,7 +60,6 @@ void DropoutNdKernel(const Context& dev_ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out,
                      DenseTensor* mask) {
-  std::cout << "DropoutNdKernel" << std::endl;
   bool upscale_in_train = (mode == "upscale_in_train");
   dev_ctx.template Alloc<T>(out);
   if (mask) {
@@ -78,7 +75,8 @@ void DropoutNdKernel(const Context& dev_ctx,
                                           seed_tensor.get_ptr(),
                                           mask,
                                           out,
-                                          true);
+                                          true,
+                                          axis);
 }
 
 }  // namespace phi
