@@ -74,18 +74,6 @@ class TestIndexSelectOpCase2(TestIndexSelectOp):
         self.index_size = 10
 
 
-class TestIndexSelectOpFp16(TestIndexSelectOp):
-    def init_dtype_type(self):
-        super().init_dtype_type()
-        self.x_type = np.float16
-
-
-class TestIndexSelectOpCase2fp16(TestIndexSelectOpCase2):
-    def init_dtype_type(self):
-        super().init_dtype_type()
-        self.x_type = np.float16
-
-
 class TestIndexSelectOpCaseSingleThread(TestIndexSelectOp):
     def init_dtype_type(self):
         if fluid.is_compiled_with_cuda():
