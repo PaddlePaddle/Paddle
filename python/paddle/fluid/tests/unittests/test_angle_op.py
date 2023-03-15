@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+import paddle.fluid.core as core
 from paddle import static
 from paddle.fluid import dygraph
 
@@ -107,6 +108,72 @@ class TestAngleAPI(unittest.TestCase):
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_float16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the float16",
+)
+class TestAngleFP16OP(OpTest):
+    def setUp(self):
+        self.op_type = "angle"
+        self.python_api = paddle.angle
+        self.dtype = np.float16
+        self.__class__.op_type = self.op_type
+        self.x = np.linspace(-5, 5, 101).astype(np.float32)
+        out_ref = np.angle(self.x)
+        self.inputs = {'X': self.x.astype(self.dtype)}
+        self.outputs = {'Out': out_ref}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            max_relative_error=1e-2,
+            user_defined_grads=[
+                angle_grad(self.x, np.ones_like(self.x) / self.x.size)
+            ],
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestAngleBF16(OpTest):
+    def setUp(self):
+        self.op_type = "angle"
+        self.python_api = paddle.angle
+        self.dtype = np.uint16
+        self.__class__.op_type = self.op_type
+        self.x = np.linspace(-5, 5, 101).astype(np.float32)
+        out_ref = np.angle(self.x)
+        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.outputs = {'Out': convert_float_to_uint16(out_ref)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            max_relative_error=1e-2,
+            user_defined_grads=[
+                angle_grad(self.x, np.ones_like(self.x) / self.x.size)
+            ],
+        )
 
 
 if __name__ == "__main__":
