@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
+#include "paddle/phi/api/include/dll_decl.h"
 namespace paddle {
-namespace framework {
 
-class InitExtension {
+class PADDLE_API InitExtension {
  public:
   InitExtension();
 };
@@ -27,5 +27,4 @@ class InitExtension {
   extern int RegisterSymbolsFor##name(); \
   UNUSED static int use_file_##name = RegisterSymbolsFor##name()
 
-}  // namespace framework
 }  // namespace paddle

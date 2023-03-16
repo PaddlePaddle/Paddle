@@ -23,4 +23,4 @@ limitations under the License. */
 // For initialization of DeviceContextPool and MemoryMethod
 #include "paddle/fluid/platform/init_extension.h"
 
-static paddle::framework::InitExtension g_init_extension;
+static paddle::InitExtension g_init_extension;

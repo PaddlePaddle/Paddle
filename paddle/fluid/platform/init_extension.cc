@@ -19,15 +19,13 @@ limitations under the License. */
 REGISTER_FILE_SYMBOLS(init_extension)
 
 namespace paddle {
-namespace framework {
 
 InitExtension::InitExtension() {
-  InitMemoryMethod();
+  paddle::framework::InitMemoryMethod();
   if (!phi::DeviceContextPool::IsInitialized()) {
     paddle::framework::InitDevices();
   }
   LOG(INFO) << "Init DeviceContextPool and MemoryMethod success.";
 }
 
-}  // namespace framework
 }  // namespace paddle
