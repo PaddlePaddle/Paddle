@@ -23,9 +23,17 @@ namespace funcs {
 TEST(WIPTest, WIP) {
   phi::GPUPlace gpu_place;
   phi::GPUContext gpu_context(gpu_place);
+  gpu_context.SetAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(gpu_place, gpu_context.stream())
+          .get());
   phi::DataType dtype = phi::DataType::FLOAT32;
   phi::DenseTensor lse(dtype);
   phi::UniformKernel<float>(gpu_context, {2, 3, 4}, dtype, 0, 1, 1234, &lse);
+
+  phi::DenseTensor out =
+      phi::funcs::get_pad_lse<float>(gpu_context, &lse, 3, 32);
+  std::cout << out.dims() << std::endl;
 
   phi::CPUPlace cpu_place;
   phi::DenseTensor cpu_assert_tensor(dtype);
