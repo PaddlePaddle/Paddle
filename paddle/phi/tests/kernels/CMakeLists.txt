@@ -75,7 +75,7 @@ if(WITH_GPU)
   cc_test(
     test_WIP
     SRCS test_WIP.cc
-    DEPS gtest phi)
+    DEPS gtest phi phi_api_utils)
   nv_test(
     test_auto_tune
     SRCS test_auto_tune.cu

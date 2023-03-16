@@ -19,8 +19,10 @@
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice.h"
 #include "paddle/phi/kernels/pad_kernel.h"
 
