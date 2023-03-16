@@ -46,7 +46,7 @@ void SumCooKernel(const Context& dev_ctx,
       out_indices_shape = {x_dims.size(), 1};
     } else {
       out_dims = make_ddim({1});
-      out_indices_shape = {1, 1};
+      out_indices_shape = {1};
     }
     out_indices = Empty<int64_t, Context>(dev_ctx, out_indices_shape);
     auto* out_indices_data = out_indices.data<int64_t>();

@@ -22,7 +22,7 @@ import paddle
 class TestSum(unittest.TestCase):
     # x: sparse, out: sparse
     def check_result(self, x_shape, dims, keepdim, format, dtype=None):
-        mask = paddle.randint(0, 2, x_shape).astype("float32")
+        mask = paddle.randint(0, 2, x_shape)
         # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
         # or the backward checks may fail.
         origin_x = (paddle.rand(x_shape, dtype='float32') + 1) * mask
@@ -35,7 +35,6 @@ class TestSum(unittest.TestCase):
             sp_x = origin_x.detach().to_sparse_csr()
         sp_x.stop_gradient = False
         sp_out = paddle.sparse.sum(sp_x, dims, keepdim=keepdim, dtype=dtype)
-
         np.testing.assert_allclose(
             sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
         )
@@ -54,15 +53,15 @@ class TestSum(unittest.TestCase):
         self.check_result([5], 0, False, 'coo')
 
     def test_sum_2d(self):
-        self.check_result([2, 5], None, False, 'coo')
+        self.check_result([2, 5], None, False, 'coo', dtype="float32")
         self.check_result([2, 5], None, True, 'coo')
-        self.check_result([2, 5], 0, True, 'coo')
+        self.check_result([2, 5], 0, True, 'coo', dtype="float32")
         self.check_result([2, 5], 0, False, 'coo')
         self.check_result([2, 5], 1, False, 'coo')
-        self.check_result([2, 5], None, True, 'csr')
+        self.check_result([2, 5], None, True, 'csr', dtype="float32")
+        self.check_result([2, 5], -1, True, 'csr', dtype="float32")
+        self.check_result([2, 5], 0, False, 'coo')
         self.check_result([2, 5], -1, True, 'csr')
-        # self.check_result([2, 5], 0, False, 'coo', dtype="int32")
-        # self.check_result([2, 5], -1, True, 'csr', dtype="int32")
 
     def test_sum_3d(self):
         self.check_result([6, 2, 3], -1, True, 'csr')
