@@ -24,7 +24,7 @@
 #include "paddle/phi/core/string_tensor.h"
 
 namespace phi {
-using DataType = paddle::experimental::DataType;
+using DataType = phi::DataType;
 
 struct DeviceContext::Impl {
   Impl() = default;
@@ -174,7 +174,7 @@ struct DeviceContext::Impl {
            const Place& place,
            size_t requested_size = 0,
            bool pinned = false) const {
-    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+    DataType dtype = phi::CppTypeToDataType<T>::Type();
     return static_cast<T*>(Alloc(tensor, place, dtype, requested_size, pinned));
   }
 
@@ -202,7 +202,7 @@ struct DeviceContext::Impl {
 
   template <typename T>
   T* HostAlloc(phi::TensorBase* tensor, size_t requested_size = 0) const {
-    DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+    DataType dtype = phi::CppTypeToDataType<T>::Type();
     return static_cast<T*>(HostAlloc(tensor, dtype, requested_size));
   }
 
@@ -406,11 +406,11 @@ DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int32_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int64_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(float)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(double)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::bfloat16)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::float16)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex64)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::complex128)
-DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::paddle::experimental::pstring)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::bfloat16)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::float16)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::complex64)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::complex128)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::pstring)
 
 #undef DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION
 

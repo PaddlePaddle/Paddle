@@ -25,8 +25,7 @@ class pstring;
 }  // namespace dtype
 }  // namespace phi
 
-namespace paddle {
-namespace experimental {
+namespace phi {
 
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
@@ -253,22 +252,15 @@ inline std::string DataTypeToString(const DataType& dtype) {
   }
 }
 
-}  // namespace experimental
-}  // namespace paddle
-
-namespace phi {
-using DataType = paddle::experimental::DataType;
-using paddle::experimental::DataTypeToString;
-using paddle::experimental::SizeOf;
 }  // namespace phi
 
 namespace paddle {
 // In order to be compatible with the original custom operator Tensor interface
-using DataType = paddle::experimental::DataType;
-using bfloat16 = paddle::experimental::bfloat16;
-using complex64 = paddle::experimental::complex64;
-using complex128 = paddle::experimental::complex128;
-using float16 = paddle::experimental::float16;
-using pstring = paddle::experimental::pstring;
+using DataType = phi::DataType;
+using bfloat16 = phi::bfloat16;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
+using float16 = phi::float16;
+using pstring = phi::pstring;
 
 }  // namespace paddle

@@ -20,26 +20,24 @@
 
 namespace egr {
 
-static inline paddle::experimental::DataType GetPromoteType(
+static inline phi::DataType GetPromoteType(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& amp_tensors_vector,
-    const paddle::experimental::DataType& amp_dtype) {
+    const phi::DataType& amp_dtype) {
   auto dst_type = amp_dtype;
   if (egr::Controller::Instance().GetCurrentTracer()->GetAmpDtype() ==
       "float16") {
     if (op_name == "batch_norm" || op_name == "layer_norm" ||
         op_name == "sync_batch_norm") {
-      if (amp_tensors_vector[0][0].dtype() ==
-          paddle::experimental::DataType::FLOAT32) {
-        dst_type = paddle::experimental::DataType::FLOAT32;
+      if (amp_tensors_vector[0][0].dtype() == phi::DataType::FLOAT32) {
+        dst_type = phi::DataType::FLOAT32;
       }
     } else if (op_name == "fused_attention") {
       for (size_t i = 0; i < amp_tensors_vector.size(); i++) {
         if (i != 3 || i != 4 || i != 9 || i != 10) {
-          if (amp_tensors_vector[i][0].dtype() ==
-              paddle::experimental::DataType::FLOAT32) {
-            dst_type = paddle::experimental::DataType::FLOAT32;
+          if (amp_tensors_vector[i][0].dtype() == phi::DataType::FLOAT32) {
+            dst_type = phi::DataType::FLOAT32;
             break;
           }
         }
@@ -47,9 +45,8 @@ static inline paddle::experimental::DataType GetPromoteType(
     } else if (op_name == "fused_feedforward") {
       for (size_t i = 0; i < amp_tensors_vector.size(); i++) {
         if (i != 7 || i != 8 || i != 9 || i != 10) {
-          if (amp_tensors_vector[i][0].dtype() ==
-              paddle::experimental::DataType::FLOAT32) {
-            dst_type = paddle::experimental::DataType::FLOAT32;
+          if (amp_tensors_vector[i][0].dtype() == phi::DataType::FLOAT32) {
+            dst_type = phi::DataType::FLOAT32;
             break;
           }
         }
@@ -57,7 +54,7 @@ static inline paddle::experimental::DataType GetPromoteType(
     } else {
       for (const auto& tensors : amp_tensors_vector) {
         for (const auto& tensor : tensors) {
-          if (tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+          if (tensor.dtype() == phi::DataType::FLOAT32) {
             dst_type = tensor.dtype();
             break;
           }
@@ -67,7 +64,7 @@ static inline paddle::experimental::DataType GetPromoteType(
   } else {
     for (const auto& tensors : amp_tensors_vector) {
       for (const auto& tensor : tensors) {
-        if (tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+        if (tensor.dtype() == phi::DataType::FLOAT32) {
           dst_type = tensor.dtype();
           break;
         }
@@ -77,20 +74,19 @@ static inline paddle::experimental::DataType GetPromoteType(
   // NOTE(juncai): moving_average_abs_max_scale only consider the dtype of
   // input(X)
   if (op_name == "moving_average_abs_max_scale") {
-    if (amp_tensors_vector[0][0].dtype() ==
-        paddle::experimental::DataType::FLOAT16) {
-      dst_type = paddle::experimental::DataType::FLOAT16;
+    if (amp_tensors_vector[0][0].dtype() == phi::DataType::FLOAT16) {
+      dst_type = phi::DataType::FLOAT16;
     }
   }
   return dst_type;
 }
 
-inline paddle::experimental::DataType GetDtypeWithPlace(
+inline phi::DataType GetDtypeWithPlace(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& amp_tensors_vector,
-    const paddle::experimental::DataType amp_dtype) {
-  if (amp_dtype == paddle::experimental::DataType::FLOAT32) {
+    const phi::DataType amp_dtype) {
+  if (amp_dtype == phi::DataType::FLOAT32) {
     return amp_dtype;
   }
   bool is_right_place = false;
@@ -113,12 +109,12 @@ inline paddle::experimental::DataType GetDtypeWithPlace(
   if (!is_right_place) {
     VLOG(6) << "Change " << op_name << "'s AMP type from " << amp_dtype
             << " to FP32";
-    return paddle::experimental::DataType::FLOAT32;
+    return phi::DataType::FLOAT32;
   }
   return amp_dtype;
 }
 
-inline paddle::experimental::DataType GetAmpDestDtype(
+inline phi::DataType GetAmpDestDtype(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& amp_tensors_vector) {
@@ -134,7 +130,7 @@ inline paddle::experimental::DataType GetAmpDestDtype(
     } else if (paddle::imperative::AmpOperators::Instance()
                    .GetMutableBlockOps()
                    ->count(op_name)) {
-      dst_type = paddle::experimental::DataType::FLOAT32;
+      dst_type = phi::DataType::FLOAT32;
     } else {
       dst_type = GetPromoteType(op_name, amp_tensors_vector, amp_setting_dtype);
     }
@@ -142,7 +138,7 @@ inline paddle::experimental::DataType GetAmpDestDtype(
     if (paddle::imperative::AmpOperators::Instance()
             .GetMutableBlockOps()
             ->count(op_name)) {
-      dst_type = paddle::experimental::DataType::FLOAT32;
+      dst_type = phi::DataType::FLOAT32;
     }
   }
 
@@ -150,7 +146,7 @@ inline paddle::experimental::DataType GetAmpDestDtype(
       (paddle::imperative::AmpOperators::Instance()
            .GetMutableUnsupportedOps(amp_setting_dtype)
            ->count(op_name))) {
-    dst_type = paddle::experimental::DataType::FLOAT32;
+    dst_type = phi::DataType::FLOAT32;
   }
 
   dst_type = GetDtypeWithPlace(op_name, amp_tensors_vector, dst_type);

@@ -23,9 +23,9 @@
 namespace phi {
 namespace capi {
 
-inline PD_DataType ToPDDataType(::paddle::experimental::DataType dtype) {
-#define return_result(in, ret)               \
-  case ::paddle::experimental::DataType::in: \
+inline PD_DataType ToPDDataType(::phi::DataType dtype) {
+#define return_result(in, ret) \
+  case ::phi::DataType::in:    \
     return PD_DataType::ret
   switch (dtype) {
     return_result(UNDEFINED, UNDEFINED);
@@ -50,10 +50,10 @@ inline PD_DataType ToPDDataType(::paddle::experimental::DataType dtype) {
 #undef return_result
 }
 
-inline ::paddle::experimental::DataType ToPhiDataType(PD_DataType dtype) {
+inline ::phi::DataType ToPhiDataType(PD_DataType dtype) {
 #define return_result(in, ret) \
   case PD_DataType::in:        \
-    return ::paddle::experimental::DataType::ret
+    return ::phi::DataType::ret
   switch (dtype) {
     return_result(UNDEFINED, UNDEFINED);
     return_result(FLOAT64, FLOAT64);
@@ -72,7 +72,7 @@ inline ::paddle::experimental::DataType ToPhiDataType(PD_DataType dtype) {
     default: {
       PADDLE_THROW(
           ::phi::errors::Unavailable("DataType %d is not supported.", dtype));
-      return ::paddle::experimental::DataType::UNDEFINED;
+      return ::phi::DataType::UNDEFINED;
     }
   }
 #undef return_result

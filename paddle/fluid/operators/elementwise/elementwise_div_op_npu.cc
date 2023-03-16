@@ -83,13 +83,13 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
           NpuOpRunner("ZerosLike", {*x}, {tensor_zeros}, {});
       runner_tensor_zeros.Run(stream);
 
-      phi::DenseTensor x_zero(experimental::DataType::BOOL);
+      phi::DenseTensor x_zero(phi::DataType::BOOL);
       x_zero.mutable_data<bool>(x->dims(), place);
       const auto& runner_x_zero =
           NpuOpRunner("Equal", {*x, tensor_zeros}, {x_zero}, {});
       runner_x_zero.Run(stream);
 
-      phi::DenseTensor x_nozero(experimental::DataType::BOOL);
+      phi::DenseTensor x_nozero(phi::DataType::BOOL);
       x_nozero.mutable_data<bool>(x->dims(), place);
       const auto& runner_x_nonzero =
           NpuOpRunner("LogicalNot", {x_zero}, {x_nozero}, {});

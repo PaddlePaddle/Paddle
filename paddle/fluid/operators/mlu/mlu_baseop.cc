@@ -981,7 +981,7 @@ MLURNNDesc::~MLURNNDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(
       cnnlGetConcatWorkspaceSize(handle, pack_num, &workspace_size));
 
-  phi::DenseTensor workspace(paddle::experimental::DataType::INT8);
+  phi::DenseTensor workspace(phi::DataType::INT8);
   workspace.Resize(framework::DDim({static_cast<int64_t>(workspace_size)}));
   void* workspace_ptr = workspace.mutable_data(dev_ctx.GetPlace());
 
@@ -1831,7 +1831,7 @@ MLURNNDesc::~MLURNNDesc() {
   PADDLE_ENFORCE_MLU_SUCCESS(
       cnnlGetSplitWorkspaceSize(handle, split_num, &workspace_size));
 
-  phi::DenseTensor workspace(paddle::experimental::DataType::INT8);
+  phi::DenseTensor workspace(phi::DataType::INT8);
   workspace.Resize(framework::DDim({static_cast<int64_t>(workspace_size)}));
   void* workspace_ptr = workspace.mutable_data(dev_ctx.GetPlace());
 

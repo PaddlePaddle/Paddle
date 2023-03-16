@@ -257,7 +257,7 @@ TEST(EagerUtils, FillZeroForEmptyOptionalGradInput) {
       slot_metas = {std::vector<GradSlotMeta>(1)};
 
   phi::DenseTensorMeta tensor_meta;
-  tensor_meta.dtype = paddle::experimental::DataType::FLOAT32;
+  tensor_meta.dtype = phi::DataType::FLOAT32;
   tensor_meta.dims = {2, 4};
   slot_metas[0][0].SetTensorMeta(tensor_meta);
   slot_metas[0][0].SetPlace(phi::CPUPlace());

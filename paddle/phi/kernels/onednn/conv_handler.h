@@ -726,8 +726,7 @@ class ConvOneDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireResidualMemory(
       const phi::DenseTensor* residual_param) {
     void* residual_data =
-        residual_param->dtype() ==
-                paddle::experimental::CppTypeToDataType<T_out>::Type()
+        residual_param->dtype() == phi::CppTypeToDataType<T_out>::Type()
             ? funcs::to_void_cast<T_out>(residual_param->data<T_out>())
             : funcs::to_void_cast<T>(residual_param->data<T>());
     auto residual_mem_p = this->AcquireMemory("@user_residual_data_mem_p");

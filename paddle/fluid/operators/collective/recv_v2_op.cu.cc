@@ -40,8 +40,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
                           "to send the shape info."));
   }
 
-  paddle::experimental::DataType shape_dytpe =
-      paddle::experimental::DataType::INT32;
+  phi::DataType shape_dytpe = phi::DataType::INT32;
   ncclDataType_t nccl_dtype =
       platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
 

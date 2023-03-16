@@ -34,7 +34,7 @@ class TensorBase;
  * DeviceContext.
  */
 class PADDLE_API DeviceContext {
-  using DataType = paddle::experimental::DataType;
+  using DataType = phi::DataType;
 
  public:
   /**

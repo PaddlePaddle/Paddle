@@ -73,10 +73,10 @@ TEST(API, data_transform_same_place) {
 TEST(Tensor, data_transform_diff_place) {
   // 1. create tensor
   auto x = paddle::experimental::full(
-      {3, 3}, 1.0, experimental::DataType::FLOAT64, CPUPlace());
+      {3, 3}, 1.0, phi::DataType::FLOAT64, CPUPlace());
 
   auto y = paddle::experimental::full(
-      {3, 3}, 2.0, experimental::DataType::FLOAT64, GPUPlace());
+      {3, 3}, 2.0, phi::DataType::FLOAT64, GPUPlace());
 
   std::vector<float> sum(9, 6.0);
 

@@ -21,7 +21,7 @@
 namespace egr {
 
 static inline bool NeedCast(const paddle::Tensor& tensor,
-                            const paddle::experimental::DataType& dst_dtype) {
+                            const phi::DataType& dst_dtype) {
   auto place = tensor.place();
   auto data_type = tensor.dtype();
   if (paddle::platform::is_gpu_place(place) ||
@@ -32,9 +32,9 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
       paddle::platform::is_npu_pinned_place(place) ||
       paddle::platform::is_custom_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
-    if ((data_type == paddle::experimental::DataType::FLOAT32 ||
-         data_type == paddle::experimental::DataType::FLOAT16 ||
-         data_type == paddle::experimental::DataType::BFLOAT16) &&
+    if ((data_type == phi::DataType::FLOAT32 ||
+         data_type == phi::DataType::FLOAT16 ||
+         data_type == phi::DataType::BFLOAT16) &&
         (data_type != dst_dtype)) {
       return true;
     }
@@ -45,7 +45,7 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
 inline std::vector<paddle::Tensor> AmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::Tensor>& inputs,
-    const paddle::experimental::DataType& dst_dtype,
+    const phi::DataType& dst_dtype,
     std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
@@ -65,15 +65,14 @@ inline std::vector<paddle::Tensor> AmpAutoCasts(
   return inputs_casted;
 }
 
-inline paddle::Tensor AmpAutoCast(
-    const std::string& input_name,
-    const paddle::Tensor& input,
-    const paddle::experimental::DataType& dst_dtype,
-    std::string op_name) {
+inline paddle::Tensor AmpAutoCast(const std::string& input_name,
+                                  const paddle::Tensor& input,
+                                  const phi::DataType& dst_dtype,
+                                  std::string op_name) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << input_name << ") dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
-  if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
+  if (dst_dtype == phi::DataType::FLOAT16) {
     if (op_name == "run_program") {
       return input;
     }

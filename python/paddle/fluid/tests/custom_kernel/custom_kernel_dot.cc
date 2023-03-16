@@ -47,5 +47,5 @@ void DotKernel(const Context& dev_ctx,
 
 PD_REGISTER_BUILTIN_KERNEL(
     dot, CPU, ALL_LAYOUT, paddle::custom_kernel::DotKernel, int8_t) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::INT8);
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT8);
 }

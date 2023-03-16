@@ -19,7 +19,7 @@
 namespace egr {
 
 static inline bool NeedCast(const paddle::Tensor& tensor,
-                            const paddle::experimental::DataType& dst_dtype) {
+                            const phi::DataType& dst_dtype) {
   auto place = tensor.place();
   auto data_type = tensor.dtype();
   // Except CPU judgment, other conditions should be consistent with
@@ -35,9 +35,9 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
     // CudaPinndePlace is added for varbase created by dataloader
     // Cpu place is for differnt place tensor, when input1 is cpu and input2 is
     // gpu
-    if ((data_type == paddle::experimental::DataType::FLOAT32 ||
-         data_type == paddle::experimental::DataType::FLOAT16 ||
-         data_type == paddle::experimental::DataType::BFLOAT16) &&
+    if ((data_type == phi::DataType::FLOAT32 ||
+         data_type == phi::DataType::FLOAT16 ||
+         data_type == phi::DataType::BFLOAT16) &&
         (data_type != dst_dtype)) {
       return true;
     }
@@ -46,15 +46,14 @@ static inline bool NeedCast(const paddle::Tensor& tensor,
 }
 
 inline paddle::Tensor Cast(const paddle::Tensor& input,
-                           const paddle::experimental::DataType& dst_dtype,
+                           const phi::DataType& dst_dtype,
                            const bool trace_backward = true) {
   if (input.is_sparse_coo_tensor() || input.is_sparse_csr_tensor()) {
     if (trace_backward) {
-      return sparse::cast_ad_func(
-          input, paddle::experimental::DataType::UNDEFINED, dst_dtype);
+      return sparse::cast_ad_func(input, phi::DataType::UNDEFINED, dst_dtype);
     } else {
       return paddle::experimental::sparse::cast(
-          input, paddle::experimental::DataType::UNDEFINED, dst_dtype);
+          input, phi::DataType::UNDEFINED, dst_dtype);
     }
   } else {
     if (trace_backward) {
@@ -68,7 +67,7 @@ inline paddle::Tensor Cast(const paddle::Tensor& input,
 inline std::vector<paddle::Tensor> EagerAmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::Tensor>& inputs,
-    const paddle::experimental::DataType& dst_dtype,
+    const phi::DataType& dst_dtype,
     std::string op_name,
     bool trace_backward = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
@@ -85,16 +84,15 @@ inline std::vector<paddle::Tensor> EagerAmpAutoCasts(
   return inputs_casted;
 }
 
-inline paddle::Tensor EagerAmpAutoCast(
-    const std::string& input_name,
-    const paddle::Tensor& input,
-    const paddle::experimental::DataType& dst_dtype,
-    const std::string& op_name,
-    bool trace_backward = true) {
+inline paddle::Tensor EagerAmpAutoCast(const std::string& input_name,
+                                       const paddle::Tensor& input,
+                                       const phi::DataType& dst_dtype,
+                                       const std::string& op_name,
+                                       bool trace_backward = true) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " input(" << egr::EagerUtils::TensorStr(input) << " to dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
-  if (dst_dtype == paddle::experimental::DataType::FLOAT16) {
+  if (dst_dtype == phi::DataType::FLOAT16) {
     if (op_name == "run_program") {
       return input;
     }
@@ -121,7 +119,7 @@ inline paddle::Tensor EagerAmpAutoCast(
 inline paddle::optional<paddle::Tensor> EagerAmpAutoCast(
     const std::string& input_name,
     const paddle::optional<paddle::Tensor>& input,
-    const paddle::experimental::DataType& dst_dtype,
+    const phi::DataType& dst_dtype,
     const std::string& op_name,
     bool trace_backward = true) {
   if (input) {
@@ -134,7 +132,7 @@ inline paddle::optional<paddle::Tensor> EagerAmpAutoCast(
 inline paddle::optional<std::vector<paddle::Tensor>> EagerAmpAutoCasts(
     const std::string& inputs_name,
     const paddle::optional<std::vector<paddle::Tensor>>& inputs,
-    const paddle::experimental::DataType& dst_dtype,
+    const phi::DataType& dst_dtype,
     std::string op_name,
     bool trace_backward = true) {
   if (inputs) {

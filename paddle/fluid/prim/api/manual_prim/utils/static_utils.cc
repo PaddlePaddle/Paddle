@@ -28,7 +28,7 @@ namespace prim {
 using Tensor = paddle::Tensor;
 template <>
 Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
-                         paddle::experimental::DataType dtype,
+                         phi::DataType dtype,
                          const paddle::Place& place) {
   framework::VarDesc* new_var =
       StaticCompositeContext::Instance().GetBlock()->Var(
@@ -41,7 +41,7 @@ Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
 
 template <>
 Tensor empty_like<DescTensor>(const Tensor& x,
-                              paddle::experimental::DataType dtype,
+                              phi::DataType dtype,
                               const paddle::Place& place) {
   return empty<prim::DescTensor>(
       paddle::experimental::IntArray(x.shape()), x.dtype(), paddle::Place());

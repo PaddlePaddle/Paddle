@@ -73,7 +73,7 @@ void Copy(const Context& dev_ctx,
 #endif
   }
 
-  auto size = src.numel() * paddle::experimental::SizeOf(src.dtype());
+  auto size = src.numel() * phi::SizeOf(src.dtype());
   if (UNLIKELY(size) == 0) {
     return;
   }

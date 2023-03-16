@@ -231,10 +231,10 @@ def gen_dtype(vals: List[str]):
             origin_dtypes.append("double")
         elif val == "float16":
             ir_dtypes.append("float16")
-            origin_dtypes.append("paddle::experimental::float16")
+            origin_dtypes.append("phi::float16")
         elif val == "bfloat16":
             ir_dtypes.append("bf16")
-            origin_dtypes.append("paddle::experimental::bfloat16")
+            origin_dtypes.append("phi::bfloat16")
         elif val == "bool":
             ir_dtypes.append("bool")
             origin_dtypes.append("bool")
@@ -255,13 +255,13 @@ def gen_dtype(vals: List[str]):
             origin_dtypes.append("int64_t")
         elif val == "complex<float>" or val == "complex64":
             ir_dtypes.append("complex64")
-            origin_dtypes.append("paddle::experimental::complex64")
+            origin_dtypes.append("phi::complex64")
         elif val == "complex<double>" or val == "complex128":
             ir_dtypes.append("complex128")
-            origin_dtypes.append("paddle::experimental::complex128")
+            origin_dtypes.append("phi::complex128")
         elif val == "pstring":
             ir_dtypes.append("pstring")
-            origin_dtypes.append("paddle::experimental::pstring")
+            origin_dtypes.append("phi::pstring")
         elif val == "ALL_DTYPE":
             ir_dtypes.append("all")
             origin_dtypes.append("all")

@@ -44,14 +44,13 @@ auto GenerateRandomTensorVectors(
   size_t n = shapes.size();
   std::vector<DenseTensor> tensors(n);
   for (size_t i = 0; i < n; ++i) {
-    GaussianKernel<T, Context>(
-        ctx,
-        shapes[i],
-        0.0f,
-        1.0f,
-        0,
-        paddle::experimental::CppTypeToDataType<T>::Type(),
-        &tensors[i]);
+    GaussianKernel<T, Context>(ctx,
+                               shapes[i],
+                               0.0f,
+                               1.0f,
+                               0,
+                               phi::CppTypeToDataType<T>::Type(),
+                               &tensors[i]);
   }
   return tensors;
 }
@@ -64,11 +63,8 @@ auto GenerateConstantTensorVectors(
   size_t n = shapes.size();
   std::vector<DenseTensor> tensors(n);
   for (size_t i = 0; i < n; ++i) {
-    FullKernel<T, Context>(ctx,
-                           shapes[i],
-                           value,
-                           paddle::experimental::CppTypeToDataType<T>::Type(),
-                           &tensors[i]);
+    FullKernel<T, Context>(
+        ctx, shapes[i], value, phi::CppTypeToDataType<T>::Type(), &tensors[i]);
   }
   return tensors;
 }
@@ -167,9 +163,7 @@ struct AdamInfo {
       master_params.resize(shapes.size());
       for (size_t i = 0; i < shapes.size(); ++i) {
         master_params[i] = Cast<T, Context>(
-            *ctx,
-            params[i],
-            paddle::experimental::CppTypeToDataType<MT>::Type());
+            *ctx, params[i], phi::CppTypeToDataType<MT>::Type());
       }
     }
 
@@ -358,7 +352,7 @@ auto MaxDiff(const Context &ctx,
              const DenseTensor &x_t,
              const DenseTensor &y_t) {
   using MT = typename AdamInfo<T, Context>::MT;
-  auto mp_dtype = paddle::experimental::CppTypeToDataType<MT>::Type();
+  auto mp_dtype = phi::CppTypeToDataType<MT>::Type();
   auto x = Cast<T, Context>(ctx, x_t, mp_dtype);
   auto y = Cast<T, Context>(ctx, y_t, mp_dtype);
 

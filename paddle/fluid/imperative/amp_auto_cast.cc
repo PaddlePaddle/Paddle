@@ -201,15 +201,14 @@ AmpOperators::GetMutableBlockOps() {
 }
 
 std::shared_ptr<std::unordered_set<std::string>>
-AmpOperators::GetMutableUnsupportedOps(
-    const paddle::experimental::DataType& data_type) {
+AmpOperators::GetMutableUnsupportedOps(const phi::DataType& data_type) {
   PADDLE_ENFORCE_EQ(
-      data_type == paddle::experimental::DataType::FLOAT16 ||
-          data_type == paddle::experimental::DataType::BFLOAT16,
+      data_type == phi::DataType::FLOAT16 ||
+          data_type == phi::DataType::BFLOAT16,
       true,
       phi::errors::InvalidArgument(
           "The data_type mismatch. It should be FLOAT16 or BFLOAT16."));
-  if (data_type == paddle::experimental::DataType::FLOAT16) {
+  if (data_type == phi::DataType::FLOAT16) {
     return unsupported_fp16_ops_;
   } else {
     return unsupported_bf16_ops_;

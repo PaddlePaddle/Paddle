@@ -46,7 +46,7 @@ using LoD = std::vector<std::vector<size_t>>;
 /// and use all default operations.
 ///
 struct DenseTensorMeta {
-  using DataType = paddle::experimental::DataType;
+  using DataType = phi::DataType;
 
   DenseTensorMeta();
   DenseTensorMeta(DataType dtype, const DDim& dims);

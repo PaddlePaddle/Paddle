@@ -37,8 +37,9 @@ void AsRealKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   auto out_dims_original = out->dims();
   Copy(ctx, x, ctx.GetPlace(), false, out);
   out->Resize(out_dims_original);  // restored the shape.
-  out->set_type(paddle::experimental::CppTypeToDataType<
-                typename T::value_type>::Type());  // restored the dtype.
+  out->set_type(
+      phi::CppTypeToDataType<typename T::value_type>::Type());  // restored the
+                                                                // dtype.
 }
 
 }  // namespace phi

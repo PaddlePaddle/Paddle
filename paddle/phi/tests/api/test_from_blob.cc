@@ -31,8 +31,8 @@ PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
 #endif
 
-using paddle::experimental::DataType;
 using paddle::experimental::from_blob;
+using phi::DataType;
 
 namespace paddle {
 namespace experimental {

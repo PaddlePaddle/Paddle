@@ -72,7 +72,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     // Step1: Define Tensors and Preprocess the situation that pre_id == end_id
 
     // cast ids and pre_ids from int to float32
-    Tensor ids_int32(experimental::DataType::INT32);
+    Tensor ids_int32(phi::DataType::INT32);
     if (framework::TransToProtoVarType(ids->dtype()) !=
         framework::proto::VarType::INT32) {
       ids_int32.Resize(ids->dims());
@@ -89,7 +89,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
       ids_int32.ShareDataWith(*ids);
     }
 
-    Tensor pre_ids_int32(experimental::DataType::INT32);
+    Tensor pre_ids_int32(phi::DataType::INT32);
     if (framework::TransToProtoVarType(pre_ids->dtype()) !=
         framework::proto::VarType::INT32) {
       pre_ids_int32.Resize(pre_ids->dims());
@@ -129,7 +129,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     expand_pre_scores.Resize(scores->dims());
 
     // End_id Tensors
-    Tensor end_id_tmp_tensor(experimental::DataType::INT32);
+    Tensor end_id_tmp_tensor(phi::DataType::INT32);
     end_id_tmp_tensor.mutable_data<int>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<int>(&end_id_tmp_tensor, end_id);
 
@@ -143,7 +143,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_fill_end_id.Run(stream);
 
     // whether expand_pre_ids == end_ids?
-    Tensor equal_end_ids(experimental::DataType::BOOL);
+    Tensor equal_end_ids(phi::DataType::BOOL);
     equal_end_ids.mutable_data<bool>(ids_int32.dims(), place);
     const auto& runner_equal_end_ids = NpuOpRunner(
         "Equal", {expand_pre_ids, end_id_tensors}, {equal_end_ids}, {});
@@ -153,11 +153,11 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     // [[False, True, True, True, ...],
     //  [False, True, True, True, ...],
     //  ...]
-    Tensor false_tmp_tensor(experimental::DataType::INT32);
+    Tensor false_tmp_tensor(phi::DataType::INT32);
     false_tmp_tensor.mutable_data<int>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<int>(&false_tmp_tensor, static_cast<int>(false));
 
-    Tensor first_pos_false_tensors(experimental::DataType::INT32);
+    Tensor first_pos_false_tensors(phi::DataType::INT32);
     first_pos_false_tensors.Resize(phi::make_ddim({batch_size, 1}));
     first_pos_false_tensors.mutable_data<int>(place);
     std::vector<int64_t> fill_dims = {batch_size, 1};
@@ -166,16 +166,16 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         "FillD", {false_tmp_tensor}, {first_pos_false_tensors}, fill_attr);
     runner_fill_false_tensors.Run(stream);
 
-    Tensor pos_tensors(experimental::DataType::INT32);
+    Tensor pos_tensors(phi::DataType::INT32);
     if (seq_width > 1) {
       pos_tensors.Resize(phi::make_ddim({batch_size, seq_width}));
       pos_tensors.mutable_data<int>(place);
 
-      Tensor true_tmp_tensor(experimental::DataType::INT32);
+      Tensor true_tmp_tensor(phi::DataType::INT32);
       true_tmp_tensor.mutable_data<int>({1}, ctx.GetPlace());
       FillNpuTensorWithConstant<int>(&true_tmp_tensor, static_cast<int>(true));
 
-      Tensor second_pos_true_tensors(experimental::DataType::INT32);
+      Tensor second_pos_true_tensors(phi::DataType::INT32);
       second_pos_true_tensors.Resize(
           phi::make_ddim({batch_size, seq_width - 1}));
       second_pos_true_tensors.mutable_data<int>(place);
@@ -199,7 +199,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
       pos_tensors.ShareDataWith(first_pos_false_tensors);
     }
 
-    Tensor cast_pos_tensors_bool(experimental::DataType::BOOL);
+    Tensor cast_pos_tensors_bool(phi::DataType::BOOL);
     cast_pos_tensors_bool.Resize(pos_tensors.dims());
     cast_pos_tensors_bool.mutable_data<bool>(ctx.GetPlace());
     auto dst_dtype = ConvertToNpuDtype(
@@ -213,7 +213,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
 
     // if pre_ids == end_ids, save only one score, and others become -inf
     // construct pre_ids == end_ids and save only one score
-    Tensor save_one_end_score(experimental::DataType::BOOL);
+    Tensor save_one_end_score(phi::DataType::BOOL);
     save_one_end_score.mutable_data<bool>(ids_int32.dims(), place);
     const auto& runner_logical_and =
         NpuOpRunner("LogicalAnd",
@@ -307,7 +307,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         phi::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
     topk_scores.mutable_data<float>(ctx.GetPlace());
 
-    Tensor tmp_indices(experimental::DataType::INT32);
+    Tensor tmp_indices(phi::DataType::INT32);
     tmp_indices.Resize(
         phi::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
     tmp_indices.mutable_data<int>(ctx.GetPlace());
@@ -325,7 +325,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_topk.Run(stream);
 
     // cast tmp_indices from int to float32 for Sort op
-    Tensor cast_tmp_indices(experimental::DataType::FLOAT32);
+    Tensor cast_tmp_indices(phi::DataType::FLOAT32);
     cast_tmp_indices.Resize(tmp_indices.dims());
     cast_tmp_indices.mutable_data<float>(ctx.GetPlace());
     auto dst_dtype_tmp_indices_fp32 = ConvertToNpuDtype(
@@ -338,10 +338,10 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_cast_tmp_indices.Run(stream);
 
     // sort tmp_indices
-    Tensor sorted_tmp_indices(experimental::DataType::FLOAT32);
+    Tensor sorted_tmp_indices(phi::DataType::FLOAT32);
     sorted_tmp_indices.Resize(tmp_indices.dims());
     sorted_tmp_indices.mutable_data<float>(ctx.GetPlace());
-    Tensor sorted_score_indices(experimental::DataType::INT32);
+    Tensor sorted_score_indices(phi::DataType::INT32);
     sorted_score_indices.Resize(tmp_indices.dims());
     sorted_score_indices.mutable_data<int>(ctx.GetPlace());
     const auto& runner_sort_tmp_indices =
@@ -352,7 +352,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_sort_tmp_indices.Run(stream);
 
     // cast sorted_tmp_indices from float32 to int
-    Tensor cast_sort_tmp_indices(experimental::DataType::INT32);
+    Tensor cast_sort_tmp_indices(phi::DataType::INT32);
     cast_sort_tmp_indices.Resize(sorted_tmp_indices.dims());
     cast_sort_tmp_indices.mutable_data<int>(ctx.GetPlace());
     auto dst_dtype_tmp_indices_int32 = ConvertToNpuDtype(
@@ -381,7 +381,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     // construct batch_ids like [[0, 0, 0], [1, 1, 1], ..., [bs-1, bs-1, bs-1]]
     // construct arange(num_seqs*beam_size).reshape((num_seqs, beam_size)) //
     // beam_size
-    Tensor batch_ids(experimental::DataType::INT32);
+    Tensor batch_ids(phi::DataType::INT32);
     batch_ids.Resize(
         phi::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 1}));
     batch_ids.mutable_data<int>(place);
@@ -396,7 +396,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
 
     // sort topk_scores to get selected_scores
     // get indices of gather_nd op for calculating selected_scores
-    Tensor gather_nd_score_indices(experimental::DataType::INT32);
+    Tensor gather_nd_score_indices(phi::DataType::INT32);
     gather_nd_score_indices.Resize(
         phi::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 2}));
     gather_nd_score_indices.mutable_data<int>(place);
@@ -424,7 +424,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     // get indices of gather_nd op
     cast_sort_tmp_indices.Resize(
         phi::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 1}));
-    Tensor gather_nd_id_indices(experimental::DataType::INT32);
+    Tensor gather_nd_id_indices(phi::DataType::INT32);
     gather_nd_id_indices.Resize(
         phi::make_ddim({num_seqs, static_cast<int64_t>(beam_size), 2}));
     gather_nd_id_indices.mutable_data<int>(place);
@@ -439,7 +439,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_concat_id_indices.Run(stream);
 
     // use gather_nd to get selected_ids
-    Tensor topk_ids(experimental::DataType::INT32);
+    Tensor topk_ids(phi::DataType::INT32);
     topk_ids.Resize(
         phi::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
     topk_ids.mutable_data<int>(ctx.GetPlace());
@@ -462,13 +462,13 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
 
     // Step 4: set lod of output Tensor
     // define Tensor with value `seq_width`
-    Tensor seq_width_tensor(experimental::DataType::INT32);
+    Tensor seq_width_tensor(phi::DataType::INT32);
     seq_width_tensor.mutable_data<int>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<int>(&seq_width_tensor,
                                    static_cast<int>(seq_width));
 
     // beam_ids = tmp_indices // seq_width
-    Tensor beam_ids(experimental::DataType::INT32);
+    Tensor beam_ids(phi::DataType::INT32);
     beam_ids.Resize(
         phi::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
     beam_ids.mutable_data<int>(ctx.GetPlace());
@@ -486,7 +486,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         phi::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
 
     // cast batch_ids from int to float32
-    Tensor cast_batch_ids(experimental::DataType::FLOAT32);
+    Tensor cast_batch_ids(phi::DataType::FLOAT32);
     cast_batch_ids.Resize(batch_ids.dims());
     cast_batch_ids.mutable_data<float>(ctx.GetPlace());
     auto dst_dtype1 = ConvertToNpuDtype(
@@ -499,7 +499,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_cast_batch_ids.Run(stream);
 
     // scale batch_ids with beam_size
-    Tensor scale_batch_ids(experimental::DataType::FLOAT32);
+    Tensor scale_batch_ids(phi::DataType::FLOAT32);
     scale_batch_ids.Resize(batch_ids.dims());
     scale_batch_ids.mutable_data<float>(place);
     const auto& runner_power =
@@ -512,7 +512,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_power.Run(stream);
 
     // cast cast_scale_batch_ids from float32 to int
-    Tensor cast_scale_batch_ids(experimental::DataType::INT32);
+    Tensor cast_scale_batch_ids(phi::DataType::INT32);
     cast_scale_batch_ids.Resize(scale_batch_ids.dims());
     cast_scale_batch_ids.mutable_data<int>(ctx.GetPlace());
     auto dst_dtype2 = ConvertToNpuDtype(
@@ -525,7 +525,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_cast_scale_batch_ids.Run(stream);
 
     // calculate parent_idx
-    Tensor tmp_parent_idx(experimental::DataType::INT32);
+    Tensor tmp_parent_idx(phi::DataType::INT32);
     tmp_parent_idx.Resize(parent_idx->dims());
     tmp_parent_idx.mutable_data<int>(place);
     const auto& runner_add_beam_id = NpuOpRunner(
