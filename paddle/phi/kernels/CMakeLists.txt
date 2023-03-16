@@ -114,7 +114,15 @@ file(
   "fusion/gpu/*.cu")
 
 if(WITH_CUTLASS)
-  file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
+
+  file(GLOB cutlass_cu "fusion/cutlass/conv2d/generated/*.cu"
+       "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
@@ -166,6 +174,9 @@ set(ADD_PHI_KERNELS phi_cpu)
 if(WITH_GPU OR WITH_ROCM)
   if(WITH_GPU)
     add_library(phi_gpu ${kernel_cu})
+    if(WITH_CUTLASS)
+      add_dependencies(phi_gpu cutlass_codegen)
+    endif()
   elseif(WITH_ROCM)
     hip_add_library(phi_gpu STATIC ${kernel_cu})
   endif()
