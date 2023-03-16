@@ -18,6 +18,8 @@ limitations under the License. */
 
 #include <cuda_runtime_api.h>
 #include "cuda.h"  // NOLINT
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/autotune/cache.h"

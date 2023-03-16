@@ -34,15 +34,26 @@ def _composite(op, *args):
 @REGISTER_COMPOSITE('softmax')
 def softmax_composite(x, axis):
     """define composite rule of op softmax"""
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    # Softmax need fp32 compute since it has sum op in
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
     if not x.shape:
         # do not return 1, to ensure gradients
         res = exp(x - x)
+        if is_amp:
+            res = cast(res, "float16")
         return res
     max_temp = max(x, axis, keepdim=True)
     max_temp.stop_gradient = True
     molecular = exp(x - max_temp)
     denominator = sum(molecular, axis=axis, keepdim=True)
     res = divide(molecular, denominator)
+    if is_amp:
+        res = cast(res, "float16")
     return res
 
 
@@ -65,7 +76,6 @@ def composite_batchnorm(
     from paddle.fluid.data_feeder import convert_dtype
 
     if convert_dtype(x.dtype) == "float16":
-        print("Running batch_norm in amp")
         is_amp = True
         x = cast(x, "float32")
 
@@ -128,6 +138,12 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     out = (x - mean(x)) / sqrt(var + epsilon))
     var = mean((x-mean(x))^2)
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
 
     axis = tuple(range(begin_norm_axis, len(x.shape)))
     mean_ = mean(x, axis=axis, keepdim=True)
@@ -147,6 +163,8 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
 
     mean_ = reshape(mean_, [-1])
     variance = reshape(variance, [-1])
+    if is_amp:
+        out = cast(out, "float16")
     return out, mean_, variance
 
 
@@ -315,6 +333,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
     fix_seed = True if fix_seed is None else fix_seed
     seed = seed if fix_seed else 0
     upscale_in_train = mode == "upscale_in_train"
+
     mask = bernoulli(shape=x.shape, dtype=x.dtype, p=p, seed=seed)
 
     if upscale_in_train:
@@ -401,6 +420,18 @@ def fill_any_like(x, fill_value, dtype, place=None):
     return val
 
 
+@REGISTER_COMPOSITE('pow')
+def pow_composite(x, y):
+    """
+    define composite rule of op pow
+    res = x^y
+    """
+    if isinstance(y, (int, float)):
+        y = full([1], y, x.dtype)
+    res = pow(x, y)
+    return res
+
+
 @REGISTER_COMPOSITE('relu')
 def relu_composite(x):
     """define composite rule of op relu."""
@@ -426,3 +457,11 @@ def unsqueeze_composite(x, axis):
         )
     out = reshape(x, x_shape)
     return [out, None]
+
+
+@REGISTER_COMPOSITE('rsqrt')
+def rsqrt_composite(x):
+    """define composite rule of op rsqrt."""
+    # rsqrt(x) = x^(-0.5)
+    y = full(x.shape, -0.5, x.dtype)
+    return pow(x, y)
