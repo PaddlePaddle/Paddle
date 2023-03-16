@@ -42,12 +42,13 @@ TEST(WIPTest, WIP) {
   gpu_context.PartialInitWithAllocator();
   phi::DataType dtype = phi::DataType::FLOAT32;
   int out_shape_1 = 1;
+  std::string data_format = "NCHW";
 
   phi::DenseTensor lse(dtype);
   phi::UniformKernel<float>(gpu_context, {2, 3, 4}, dtype, 0, 1, 1234, &lse);
 
-  phi::DenseTensor out =
-      phi::funcs::get_pad_lse<float>(gpu_context, &lse, out_shape_1, 32);
+  phi::DenseTensor out = phi::funcs::get_pad_lse<float>(
+      gpu_context, &lse, out_shape_1, 32, data_format);
   EXPECT_EQ(out.dims()[2], 32);
   phi::CPUPlace cpu_place;
   phi::DenseTensor cpu_assert_tensor(dtype);
@@ -61,8 +62,8 @@ TEST(WIPTest, WIP) {
     }
   }
 
-  phi::DenseTensor out_0 =
-      phi::funcs::get_pad_lse<float>(gpu_context, &lse, out_shape_1, 32, true);
+  phi::DenseTensor out_0 = phi::funcs::get_pad_lse<float>(
+      gpu_context, &lse, out_shape_1, 32, data_format, true);
   EXPECT_EQ(out_0.dims()[2], 32);
   paddle::framework::TensorCopySync(out_0, cpu_place, &cpu_assert_tensor);
   cpu_data = cpu_assert_tensor.data<float>();
@@ -72,8 +73,8 @@ TEST(WIPTest, WIP) {
     }
   }
 
-  phi::DenseTensor out_1 =
-      phi::funcs::get_pad_lse<float>(gpu_context, &lse, out_shape_1, 2, true);
+  phi::DenseTensor out_1 = phi::funcs::get_pad_lse<float>(
+      gpu_context, &lse, out_shape_1, 2, data_format, true);
   EXPECT_EQ(out_1.dims()[2], 4);
   paddle::framework::TensorCopySync(out_1, cpu_place, &cpu_assert_tensor);
   cpu_data = cpu_assert_tensor.data<float>();
