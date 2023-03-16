@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/dropout_impl_util.h"
@@ -234,7 +235,7 @@ class FusedDropoutHelper {
             quant_max_bound,
             quant_min_bound);
       } else {
-        GeluFunctor<T> gelu;
+        phi::fusion::GeluFunctor<T> gelu;
         LaunchDropoutActBias<T, MaskType, GeluFunctor<T>, InType, OutType>(
             gelu,
             dropout_param_.seed,
@@ -282,7 +283,7 @@ class FusedDropoutHelper {
                                     quant_max_bound,
                                     quant_min_bound);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));
     }
   }
@@ -296,7 +297,7 @@ class FusedDropoutHelper {
                           T* d_bias,
                           const std::string& act_method) {
     if (act_method == "gelu") {
-      GeluGradFunctor<T> gelu_grad;
+      phi::fusion::GeluGradFunctor<T> gelu_grad;
       LaunchDropoutActBiasGrad<T, MaskType, GeluGradFunctor<T>>(
           gelu_grad,
           dout,
@@ -326,7 +327,7 @@ class FusedDropoutHelper {
           d_bias,
           ctx);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));
     }
   }
@@ -376,7 +377,8 @@ class FusedDropoutLayerNormHelper
     using InDataType = typename DataTypeTraits<InType>::DataType;
     using OutDataType = typename DataTypeTraits<OutType>::DataType;
 
-    phi::LayerNormDirectCUDAFunctor<InDataType, LayerNormParamType<T>>
+    phi::LayerNormDirectCUDAFunctor<InDataType,
+                                    phi::funcs::LayerNormParamType<T>>
         layer_norm;
     std::vector<int> src_shape{this->rows_, this->cols_};
     layer_norm(ctx.stream(),
@@ -394,13 +396,13 @@ class FusedDropoutLayerNormHelper
   void LayerNormGrad(const phi::GPUContext& ctx,
                      const T* dout,
                      const T* src,
-                     const LayerNormParamType<T>* gamma,
-                     const LayerNormParamType<T>* mean,
-                     const LayerNormParamType<T>* variance,
+                     const phi::funcs::LayerNormParamType<T>* gamma,
+                     const phi::funcs::LayerNormParamType<T>* mean,
+                     const phi::funcs::LayerNormParamType<T>* variance,
                      T* d_src,
-                     LayerNormParamType<T>* d_scale,
-                     LayerNormParamType<T>* d_bias) {
-    using U = LayerNormParamType<T>;
+                     phi::funcs::LayerNormParamType<T>* d_scale,
+                     phi::funcs::LayerNormParamType<T>* d_bias) {
+    using U = phi::funcs::LayerNormParamType<T>;
     phi::funcs::LayerNormBackward<T, U>(src,
                                         dout,
                                         gamma,
@@ -416,7 +418,8 @@ class FusedDropoutLayerNormHelper
   }
 
   // out = layernorm(residual + dropout(src + bias))
-  template <typename P = LayerNormParamType<T>, bool is_same_type = false>
+  template <typename P = phi::funcs::LayerNormParamType<T>,
+            bool is_same_type = false>
   void LayernormResidualDropoutBias(
       const phi::GPUContext& ctx,
       const InType* src,
@@ -427,15 +430,15 @@ class FusedDropoutLayerNormHelper
       T* dropout_out,
       MaskType* mask,
       OutType* out,
-      LayerNormParamType<T>* mean,
-      LayerNormParamType<T>* variance,
+      phi::funcs::LayerNormParamType<T>* mean,
+      phi::funcs::LayerNormParamType<T>* variance,
       const float quant_last_in_scale = 1.0,
       const float* dequant_out_scale_data = nullptr,
       const float quant_next_in_scale = 1.0,
       const int quant_round_type = 1,
       const float quant_max_bound = 127.0,
       const float quant_min_bound = -127.0) {
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     int vec_size = MAX_CACHE_BYTES / sizeof(T);
     if (this->cols_ % vec_size != 0) {
       vec_size = 1;
@@ -476,20 +479,22 @@ class FusedDropoutLayerNormHelper
         quant_min_bound);
   }
 
-  template <typename P = LayerNormParamType<T>, bool is_same_type = false>
-  void LayernormResidualDropoutBiasGrad(const phi::GPUContext& ctx,
-                                        const T* d_out,
-                                        const T* layernorm_src,
-                                        const MaskType* mask,
-                                        const P* gamma,
-                                        const LayerNormParamType<T>* mean,
-                                        const LayerNormParamType<T>* variance,
-                                        T* d_layernorm_src,
-                                        P* d_scale,
-                                        P* d_layernorm_bias,
-                                        T* d_dropout_src,
-                                        T* d_bias,
-                                        T* d_residual) {
+  template <typename P = phi::funcs::LayerNormParamType<T>,
+            bool is_same_type = false>
+  void LayernormResidualDropoutBiasGrad(
+      const phi::GPUContext& ctx,
+      const T* d_out,
+      const T* layernorm_src,
+      const MaskType* mask,
+      const P* gamma,
+      const phi::funcs::LayerNormParamType<T>* mean,
+      const phi::funcs::LayerNormParamType<T>* variance,
+      T* d_layernorm_src,
+      P* d_scale,
+      P* d_layernorm_bias,
+      T* d_dropout_src,
+      T* d_bias,
+      T* d_residual) {
     using U = phi::funcs::LayerNormParamType<T>;
     bool can_call_1024_kernel = false;
     // Fast impl for cases when cols is 1024 and linear_bias is nullptr.

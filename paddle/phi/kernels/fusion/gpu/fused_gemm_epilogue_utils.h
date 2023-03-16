@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <cublasLt.h>
+
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/forwards.h"

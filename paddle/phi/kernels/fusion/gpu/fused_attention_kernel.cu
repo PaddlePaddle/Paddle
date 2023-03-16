@@ -89,6 +89,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
                                            dropout_implementation,
                                            is_test,
                                            dropout_fix_seed,
+                                           nullptr,
                                            dropout_seed);
   const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
 
