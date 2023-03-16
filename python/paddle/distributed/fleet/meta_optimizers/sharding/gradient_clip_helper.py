@@ -207,7 +207,7 @@ class GradientClipHelper:
         for var_name in removed_tmp_var:
             block._remove_var(var_name, sync=False)
 
-        for idx, op in list(enumerate(block.ops)):
+        for idx, op in reversed(list(enumerate(block.ops))):
             if not self._is_gradient_clip_op(op):
                 continue
             if op.type == 'sum':
@@ -241,7 +241,6 @@ class GradientClipHelper:
                         )
                         fill_constant_op._set_attr('op_namescope', namescope)
                 self._insert_allreduce(block, ring_ids, idx, sum_rst_var)
-                break
 
     @staticmethod
     def _insert_allreduce(block, ring_ids, idx, var):
