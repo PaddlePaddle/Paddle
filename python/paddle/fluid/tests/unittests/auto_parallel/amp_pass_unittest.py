@@ -32,7 +32,9 @@ def apply_pass(use_amp=False, level=None):
         amp.enable = True
         amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
         amp.custom_black_list = [
-            'c_softmax_with_cross_entropy', 'elementwise_div', 'reduce_sum'
+            'c_softmax_with_cross_entropy',
+            'elementwise_div',
+            'reduce_sum',
         ]
         amp.init_loss_scaling = 32768
         amp.use_fp16_guard = False
@@ -48,7 +50,6 @@ def reset_prog():
 
 
 class TestAMPPass(unittest.TestCase):
-
     def setUp(self):
         self.rtol = 1e-5
         self.atol = 1e-8
@@ -61,6 +62,7 @@ class TestAMPPass(unittest.TestCase):
         paddle.seed(2021)
         np.random.seed(2021)
         random.seed(2021)
+        paddle.distributed.fleet.init(is_collective=True)
         place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
@@ -83,7 +85,9 @@ class TestAMPPass(unittest.TestCase):
             rtol=rtol or self.rtol,
             atol=atol or self.atol,
             err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses))
+                __class__, ref_losses, check_losses, ref_losses - check_losses
+            ),
+        )
 
     def test_amp_pass(self):
         # mp2 training
