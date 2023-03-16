@@ -13,10 +13,16 @@
 // limitations under the License.
 
 #include "Pass/Pass.h"
+#include <algorithm>
 #include <memory>
+#include <utility>
+#include "Pass/AnalysisManager.h"
 #include "Pass/PassDetail.h"
+#include "Pass/PassInstrumentation.h"
 #include "Pass/PassManager.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/raw_ostream.h"
 #include "mlir/IR/DialectRegistry.h"
 #include "mlir/IR/Verifier.h"
 #include "mlir/Support/LogicalResult.h"
@@ -30,10 +36,14 @@ void AdaptorPass::Run(mlir::Operation* op, int opt_level, bool verify) {
 }
 
 void AdaptorPass::RunImpl(mlir::Operation* op, int opt_level, bool verify) {
+  auto last_am = GetAnalysisManager();
+
   for (mlir::Region& region : op->getRegions()) {
     for (mlir::Block& block : region.getBlocks()) {
       for (mlir::Operation& inner_op : block.getOperations()) {
-        (void)RunPipeline(*mgr, &inner_op, opt_level, verify);
+        AnalysisManagerHolder am(&inner_op, last_am.GetPassInstrumentor());
+        if (mlir::failed(RunPipeline(*mgr, &inner_op, am, opt_level, verify)))
+          return SignalPassFailure();
       }
     }
   }
@@ -41,32 +51,58 @@ void AdaptorPass::RunImpl(mlir::Operation* op, int opt_level, bool verify) {
 
 mlir::LogicalResult AdaptorPass::RunPipeline(PassManager& pm,
                                              mlir::Operation* op,
+                                             AnalysisManager am,
                                              int opt_level,
                                              bool verify) {
+  auto* instrumentor = am.GetPassInstrumentor();
+  if (instrumentor) {
+    instrumentor->RunBeforePipeline(op->getName());
+  }
+
   for (Pass& pass : pm.GetPasses()) {
     // llvm::outs() << "run Pass: " << pass.info_.name << " on " <<
     // op->getName().getStringRef() << ", can schedule on: " <<
     // pass.CanScheduleOn(op) <<"\n";
     if (pass.CanScheduleOn(op)) {
-      if (mlir::failed(RunAPass(&pass, op, opt_level, verify)))
+      if (mlir::failed(RunPass(&pass, op, am, opt_level, verify)))
         return mlir::failure();
     }
+  }
+
+  if (instrumentor) {
+    instrumentor->RunAfterPipeline(op->getName());
+  }
+
+  // Apply pass manager on all nested ir.
+  if (mlir::failed(
+          RunPass(pm.adaptor_pass_.get(), op, am, opt_level, verify))) {
+    return mlir::failure();
   }
 
   return mlir::success();
 }
 
-mlir::LogicalResult AdaptorPass::RunAPass(Pass* pass,
-                                          mlir::Operation* op,
-                                          int opt_level,
-                                          bool verify) {
+mlir::LogicalResult AdaptorPass::RunPass(Pass* pass,
+                                         mlir::Operation* op,
+                                         AnalysisManager am,
+                                         int opt_level,
+                                         bool verify) {
   if (opt_level < pass->info_.opt_level) return mlir::success();
+
+  pass->pass_state_.emplace(op, am);
+  PassInstrumentor* instrumentor = am.GetPassInstrumentor();
 
   if (auto* adaptor = dynamic_cast<AdaptorPass*>(pass)) {
     adaptor->Run(op, opt_level, verify);
-  } else {
-    pass->Run(op);
+    return mlir::failure(pass->pass_state_->pass_failed);
   }
+
+  if (instrumentor) instrumentor->RunBeforePass(pass, op);
+  pass->Run(op);
+
+  // TODO(wilber): failed?
+
+  if (instrumentor) instrumentor->RunAfterPass(pass, op);
 
   if (verify) {
     bool verify_recursively = !dynamic_cast<AdaptorPass*>(pass);
@@ -78,28 +114,42 @@ mlir::LogicalResult AdaptorPass::RunAPass(Pass* pass,
 
 }  // namespace detail
 
+//===----------------------------------------------------------------------===//
+// PassManager
+//===----------------------------------------------------------------------===//
+
+PassManager::~PassManager() = default;
+
+PassManager::PassManager(mlir::MLIRContext* context, int opt_level)
+    : context_(context), opt_level_(opt_level) {
+  auto pass = std::make_unique<infra::detail::AdaptorPass>(this);
+  // this->addPass(std::move(pass));
+  adaptor_pass_ = std::move(pass);
+}
+
 mlir::LogicalResult PassManager::Run(mlir::Operation* op) {
   // TODO(wilber): Has some problem in reinit.
   llvm::hash_code new_init_key = context_->getRegistryHash();
   if (new_init_key != init_key_) {
-    (void)FinalizePassList();
-
     if (mlir::failed(Initialize(context_))) return mlir::failure();
     init_key_ = new_init_key;
   }
 
+  // Construct a  analysis manager for the pipeline.
+  AnalysisManagerHolder am(op, instrumentor_.get());
+
   bool crash_recovery = false;
-  return crash_recovery ? runWithCrashRecovery(op) : runPasses(op);
+  return crash_recovery ? RunWithCrashRecovery(op, am) : RunPasses(op, am);
+}
+mlir::LogicalResult PassManager::RunWithCrashRecovery(mlir::Operation* op,
+                                                      AnalysisManager am) {
+  // TODO(wilber): support crash recovery.
+  return mlir::failure();
 }
 
-mlir::LogicalResult PassManager::FinalizePassList() {
-  auto pass = std::make_unique<infra::detail::AdaptorPass>(this);
-  this->addPass(std::move(pass));
-  return mlir::success();
-}
-
-mlir::LogicalResult PassManager::runPasses(mlir::Operation* op) {
-  return detail::AdaptorPass::RunPipeline(*this, op, opt_level_, verify_);
+mlir::LogicalResult PassManager::RunPasses(mlir::Operation* op,
+                                           AnalysisManager am) {
+  return detail::AdaptorPass::RunPipeline(*this, op, am, opt_level_, verify_);
 }
 
 mlir::LogicalResult PassManager::Initialize(mlir::MLIRContext* context) {
@@ -117,6 +167,95 @@ mlir::LogicalResult PassManager::Initialize(mlir::MLIRContext* context) {
   }
 
   return mlir::success();
+}
+
+void PassManager::AddInstrumentation(std::unique_ptr<PassInstrumentation> pi) {
+  if (!instrumentor_) instrumentor_ = std::make_unique<PassInstrumentor>();
+
+  instrumentor_->AddInstrumentation(std::move(pi));
+}
+
+//===----------------------------------------------------------------------===//
+// PassInstrumentation
+//===----------------------------------------------------------------------===//
+
+void PassInstrumentation::RunBeforePipeline(
+    std::optional<mlir::OperationName> name) {}
+
+void PassInstrumentation::RunAfterPipeline(
+    std::optional<mlir::OperationName> name) {}
+
+void PassInstrumentation::RunBeforePass(Pass* pass, mlir::Operation* op) {}
+
+void PassInstrumentation::RunAfterPass(Pass* pass, mlir::Operation* op) {}
+
+void PassInstrumentation::RunBeforeAnalysis(const std::string& name,
+                                            mlir::TypeID id,
+                                            mlir::Operation* op) {}
+
+void PassInstrumentation::RunAfterAnalysis(const std::string& name,
+                                           mlir::TypeID id,
+                                           mlir::Operation* op) {}
+
+//===----------------------------------------------------------------------===//
+// PassInstrumentor
+//===----------------------------------------------------------------------===//
+namespace detail {
+struct PassInstrumentorImpl {
+  // TODO(wilber): not support multi-thread now.
+  std::vector<std::unique_ptr<PassInstrumentation>> instrumentations;
+};
+}  // namespace detail
+
+PassInstrumentor::PassInstrumentor()
+    : impl(new detail::PassInstrumentorImpl()) {}
+PassInstrumentor::~PassInstrumentor() = default;
+
+void PassInstrumentor::RunBeforePipeline(
+    std::optional<mlir::OperationName> name) {
+  for (auto& instr : impl->instrumentations) {
+    instr->RunBeforePipeline(name);
+  }
+}
+
+void PassInstrumentor::RunAfterPipeline(
+    std::optional<mlir::OperationName> name) {
+  for (auto& instr : llvm::reverse(impl->instrumentations)) {
+    instr->RunAfterPipeline(name);
+  }
+}
+
+void PassInstrumentor::RunBeforePass(Pass* pass, mlir::Operation* op) {
+  for (auto& instr : impl->instrumentations) {
+    instr->RunBeforePass(pass, op);
+  }
+}
+
+void PassInstrumentor::RunAfterPass(Pass* pass, mlir::Operation* op) {
+  for (auto& instr : llvm::reverse(impl->instrumentations)) {
+    instr->RunAfterPass(pass, op);
+  }
+}
+
+void PassInstrumentor::RunBeforeAnalysis(const std::string& name,
+                                         mlir::TypeID id,
+                                         mlir::Operation* op) {
+  for (auto& instr : impl->instrumentations) {
+    instr->RunBeforeAnalysis(name, id, op);
+  }
+}
+
+void PassInstrumentor::RunAfterAnalysis(const std::string& name,
+                                        mlir::TypeID id,
+                                        mlir::Operation* op) {
+  for (auto& instr : llvm::reverse(impl->instrumentations)) {
+    instr->RunBeforeAnalysis(name, id, op);
+  }
+}
+
+void PassInstrumentor::AddInstrumentation(
+    std::unique_ptr<PassInstrumentation> pi) {
+  impl->instrumentations.emplace_back(std::move(pi));
 }
 
 }  // namespace infra

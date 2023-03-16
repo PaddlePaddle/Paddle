@@ -34,9 +34,14 @@
 
 namespace infra {
 
+class PassInstrumentation;
+class PassInstrumentor;
+class AnalysisManager;
 class PassManager;
 
-namespace detail {}  // namespace detail
+namespace detail {
+class AdaptorPass;
+}  // namespace detail
 
 //==----==//
 //
@@ -44,10 +49,9 @@ namespace detail {}  // namespace detail
 
 class PassManager {
  public:
-  ~PassManager() = default;
+  ~PassManager();
 
-  explicit PassManager(mlir::MLIRContext* context, int opt_level = 2)
-      : context_(context), opt_level_(opt_level) {}
+  explicit PassManager(mlir::MLIRContext* context, int opt_level = 2);
 
   using pass_iterator = llvm::pointee_iterator<
       llvm::MutableArrayRef<std::unique_ptr<Pass>>::iterator>;
@@ -81,24 +85,28 @@ class PassManager {
     passes_.emplace_back(std::move(pass));
   }
 
+  void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
+
  private:
-  mlir::LogicalResult FinalizePassList();
+  mlir::LogicalResult RunPasses(mlir::Operation* op, AnalysisManager am);
 
-  mlir::LogicalResult runPasses(mlir::Operation* op);
-
-  mlir::LogicalResult runWithCrashRecovery(mlir::Operation* op) {
-    // TODO(wilber): support crash recovery.
-    return mlir::failure();
-  }
+  mlir::LogicalResult RunWithCrashRecovery(mlir::Operation* op,
+                                           AnalysisManager am);
 
   mlir::LogicalResult Initialize(mlir::MLIRContext* context);
 
  private:
   mlir::MLIRContext* context_;
 
+  std::unique_ptr<PassInstrumentor> instrumentor_;
+
   int opt_level_;
 
   std::vector<std::unique_ptr<Pass>> passes_;
+
+  // Used to apply pass manager on all nested ir.
+  std::unique_ptr<Pass> adaptor_pass_;
+  friend class detail::AdaptorPass;
 
   llvm::hash_code init_key_ =
       llvm::DenseMapInfo<llvm::hash_code>::getTombstoneKey();

@@ -39,13 +39,15 @@ class AdaptorPass : public Pass {
  private:
   void RunImpl(mlir::Operation* op, int opt_level, bool verifyPasses);
 
-  static mlir::LogicalResult RunAPass(Pass* pass,
-                                      mlir::Operation* op,
-                                      int opt_level,
-                                      bool verify);
+  static mlir::LogicalResult RunPass(Pass* pass,
+                                     mlir::Operation* op,
+                                     AnalysisManager am,
+                                     int opt_level,
+                                     bool verify);
 
   static mlir::LogicalResult RunPipeline(PassManager& pm,  // NOLINT
                                          mlir::Operation* op,
+                                         AnalysisManager am,
                                          int opt_level,
                                          bool verify);
 

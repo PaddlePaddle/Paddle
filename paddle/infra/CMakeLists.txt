@@ -7,6 +7,16 @@ if(NOT IS_DIRECTORY ${LLVM_PATH})
     FATAL_ERROR "Please set LLVM_PATH, e.g. -DLLVM_PATH=llvm-project/build")
 endif()
 
+if(NOT IS_DIRECTORY ${GTEST_PATH})
+  message(
+    FATAL_ERROR "Please set GTEST_PATH, e.g. -DGTEST_PATH=goolgetest/install")
+endif()
+# list(APPEND CMAKE_MODULE_PATH ${GTEST_PATH}/lib/cmake/GTest)
+# find_package(GTest REQUIRED CONFIG PATHS ${GTEST_PATH}/lib/cmake/GTest NO_DEFAULT_PATH)
+# message(STATUS "Using GTEST in: " ${GTest_DIR})
+include_directories(${GTEST_PATH}/include)
+link_directories(${GTEST_PATH}/lib)
+
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -std=c++17)
 
 set(LLVM_DIR ${LLVM_PATH}/lib/cmake/llvm)
@@ -38,8 +48,9 @@ add_definitions(${LLVM_DEFINITIONS})
 
 add_library(
   pass_infra
-  Pass/Pass.cc IR/PatternMatch.cc Rewrite/FrozenRewritePatternSet.cc
-  Rewrite/PatternApplicator.cc Transforms/GreedyPatternRewriteDriver.cc)
+  Pass/Pass.cc Pass/PassRegistry.cc IR/PatternMatch.cc
+  Rewrite/FrozenRewritePatternSet.cc Rewrite/PatternApplicator.cc
+  Transforms/GreedyPatternRewriteDriver.cc)
 
 add_executable(demo test/demo.cc)
 target_link_libraries(demo ${mlir_libs} pass_infra)
@@ -53,3 +64,10 @@ add_public_tablegen_target(MLIRTDPatternsIncGen)
 add_executable(mlir_demo test/mlir_demo.cc)
 target_link_libraries(mlir_demo ${mlir_libs})
 add_dependencies(mlir_demo MLIRPDLLPatternsIncGen MLIRTDPatternsIncGen)
+
+enable_testing()
+add_executable(test_analysis_manager test/AnalysisManagerTest.cc)
+target_link_libraries(test_analysis_manager pass_infra gtest gtest_main pthread
+                      MLIRIR)
+
+add_test(NAME test_analysis_manager COMMAND test_analysis_manager)

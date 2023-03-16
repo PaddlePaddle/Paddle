@@ -24,10 +24,22 @@ cmake -GNinja \
 ninja
 ```
 
+## 2. compile googletest
+
+```
+git clone https://github.com/google/googletest.git
+cd googletest
+git checkout v1.13.0
+mkdir build && mkdir install
+cmake -B build/ -DCMAKE_INSTALL_PREFIX=install/ .
+cmake --build build/ -j 16
+cmake --install build/
+```
+
 ## 2. compile infra
 
 ```bash
 mkdir build && cd build
-cmake .. -GNinja -DLLVM_PATH=...llvm-project/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake .. -GNinja -DLLVM_PATH=...llvm-project/build -DGTEST_PATH=...googletest/install -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ninja
 ```

@@ -43,11 +43,32 @@ static llvm::cl::opt<int> opt_level("opt",
                                     llvm::cl::init(2),
                                     llvm::cl::desc("opt_level"));
 
+struct CountOpAnalysis {
+  explicit CountOpAnalysis(mlir::Operation* container_op) {
+    llvm::outs() << "In CountOpAnalysis, op is "
+                 << container_op->getName().getStringRef() << "\n";
+    for (auto& region : container_op->getRegions()) {
+      for (auto& block : region.getBlocks()) {
+        for (auto& op : block.getOperations()) {
+          ++count;
+        }
+      }
+    }
+
+    llvm::outs() << "-- count is " << count << "\n";
+  }
+
+  int count = 0;
+};
+
 class TestPass : public infra::Pass {
  public:
   TestPass() : infra::Pass("TestPass", 1) {}
   void Run(mlir::Operation* op) override {
     llvm::outs() << "In TestPass: " << op->getName() << "\n";
+
+    GetAnalysisManager().GetAnalysis<CountOpAnalysis>();
+    // this->pass_state_->preserved_analyses.Preserve<CountOpAnalysis>();
 
     for (auto& region : op->getRegions()) {
       for (auto& block : region.getBlocks()) {
@@ -132,6 +153,12 @@ class TestPatternDriver : public infra::Pass {
   void Run(mlir::Operation* op) override {
     infra::RewritePatternSet patterns(op->getContext());
     patterns.Add<TestPattern, AddPattern>(op->getContext());
+
+    auto an = GetAnalysisManager().GetCachedAnalysis<CountOpAnalysis>();
+    if (an) {
+      llvm::outs() << "In TestPatternDriverPass, last pass analysis "
+                   << an->get().count << " ops.\n";
+    }
 
     infra::GreedyRewriteConfig config;
     config.use_top_down_traversal = true;

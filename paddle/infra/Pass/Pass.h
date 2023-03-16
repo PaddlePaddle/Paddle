@@ -19,20 +19,46 @@
 #include <cassert>
 #include <optional>
 
+#include "Pass/AnalysisManager.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Operation.h"
+#include "mlir/IR/OperationSupport.h"
 #include "mlir/Support/LogicalResult.h"
 
 namespace infra {
+class PassRegistry;
 namespace detail {
 class AdaptorPass;
+
+struct PassExecutionState {
+  explicit PassExecutionState(mlir::Operation* ir, AnalysisManager am)
+      : ir(ir), pass_failed(false), am(am) {}
+
+  mlir::Operation* ir;
+  bool pass_failed;
+  AnalysisManager am;
+  detail::PreservedAnalyses preserved_analyses;
+};
+
 }  // namespace detail
 
 struct PassInfo {
-  PassInfo(const std::string& name, int opt_level)
-      : name(name), opt_level(opt_level) {}
+  PassInfo(const std::string& name,
+           int opt_level,
+           const std::vector<std::string>& dependents = {})
+      : name(name), opt_level(opt_level), dependents(dependents) {}
+
+  // Pass name.
   std::string name;
+
+  // opt_level=0: the basic pass which framework need.
+  // opt_level=1: the fusion logical pass.
+  // opt_level=2: constant fold, cse, memory optimize, etc.
+  // opt_level=3: layout.
   int opt_level;
+
+  // The list which pass depends on. PassManager will check the constraint.
+  std::vector<std::string> dependents;
 };
 
 /// We can access pass only from PassManager.
@@ -40,122 +66,33 @@ class Pass {
  public:
   virtual ~Pass() = default;
 
+  PassInfo GetPassInfo() const { return info_; }
+
  protected:
-  explicit Pass(const std::string& name, int opt_level)
-      : info_(name, opt_level) {}
+  explicit Pass(const std::string& name,
+                int opt_level,
+                const std::vector<std::string>& dependents = {})
+      : info_(name, opt_level, dependents) {}
   virtual void Run(mlir::Operation* op) = 0;
 
-  virtual inline bool CanScheduleOn(mlir::Operation*) const { return true; }
+  virtual inline bool CanScheduleOn(mlir::Operation* op) const {
+    return op->getNumRegions() > 0;
+  }
 
   virtual mlir::LogicalResult Initialize(mlir::MLIRContext* context) {
     return mlir::success();
   }
 
- private:
+  AnalysisManager GetAnalysisManager() { return pass_state_->am; }
+
+  void SignalPassFailure() { pass_state_->pass_failed = true; }
+
   PassInfo info_;
+  std::optional<detail::PassExecutionState> pass_state_;
 
   friend class PassManager;
   friend class detail::AdaptorPass;
+  friend class PassRegistry;
 };
-
-// namespace detail {
-
-// struct PassExecutionState {
-//   PassExecutionState(mlir::Operation* ir) : ir(ir), pass_failed(false) {}
-
-//   mlir::Operation* ir;
-//   bool pass_failed;
-// };
-
-// } // namespace detail
-
-// //
-// class Pass {
-//  public:
-//   virtual ~Pass() = default;
-
-//   std::optional<llvm::StringRef> getOpName() const { return op_name_; }
-
-//   // //=== ----- ===//
-//   // // Statistic
-//   // //=== ----- ===//
-//   // class Statistic : public llvm::Statistic {
-//   //  public:
-//   //   Statistic(Pass* owner, const char* name, const char* description);
-
-//   //   Statistic& operator=(unsigned value);
-//   // };
-
-//   // llvm::ArrayRef<Statistic*> GetStatistics() const { return statistics_; }
-//   // llvm::MutableArrayRef<Statistic*> GetStatistics() { return statistics_;
-//   }
-//  protected:
-//   explicit Pass(std::optional<llvm::StringRef> op_name = std::nullopt)
-//       : op_name_(op_name) {}
-
-//   ///
-//   detail::PassExecutionState& GetPassState() {
-//     assert(pass_state_ && "pass state was never initialized");
-//     return *pass_state_;
-//   }
-
-//   mlir::MLIRContext& GetContext() { return *GetOperation()->getContext(); }
-
-//   virtual void RunOpOperation() = 0;
-
-//   virtual bool CanScheduleOn(mlir::RegisteredOperationName op_name) const =
-//   0;
-
-//   mlir::Operation* GetOperation() {
-//     return GetPassState().ir;
-//   }
-
-//   void SignalPassFailure() { GetPassState().pass_failed = true; }
-
-//  private:
-
-//   /// The name of the operation that this pass operates on, or std::nullopt
-//   if this is a generic OperationPass. std::optional<llvm::StringRef>
-//   op_name_;
-
-//   /// The current execution state for the pass.
-//   std::optional<detail::PassExecutionState> pass_state_;
-
-//   // /// The set of statistics held by this pass.
-//   // std::vector<Statistic*> statistics_;
-
-//   friend class PassManager;
-// };
-
-//==------==//
-// Pass Model Definitions
-//==------==//
-
-/// Pass to transform an operation of a specified type.
-///
-///
-
-// template <typename OpT = void>
-// class OperationPass : public Pass {
-//  protected:
-//   OperationPass() : Pass(OpT::getOperationName()) {}
-
-//   bool CanScheduleOn(mlir::RegisteredOperationName op_name) const final {
-//     return op_name.getStringRef() == getOpName();
-//   }
-
-//   OpT GetOperation() { return llvm::cast<OpT>(Pass::GetOperation()); }
-// };
-
-// /// Pass to transform an operation.
-// template<>
-// class OperationPass<void> : public Pass {
-//  protected:
-//   OperationPass() : Pass() {}
-
-//   bool CanScheduleOn(mlir::RegisteredOperationName op_name) const override {
-//     return true;
-//   }
-// };
 
 }  // namespace infra
