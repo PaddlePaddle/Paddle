@@ -78,7 +78,6 @@ TEST(WIPTest, WIP) {
   paddle::framework::TensorCopySync(out_1, cpu_place, &cpu_assert_tensor);
   cpu_data = cpu_assert_tensor.data<float>();
   for (int i = 0; i < 2 * 3 * 4; ++i) {
-    std::cout << cpu_data[i] << std::endl;
     if (i % 4 >= out_shape_1) {
       EXPECT_TRUE(cpu_data[i] == std::numeric_limits<float>::infinity());
     }
