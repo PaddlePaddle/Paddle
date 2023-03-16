@@ -1258,11 +1258,13 @@ class DataFeed {
   virtual MiniBatchGpuPack* get_pack(MiniBatchGpuPack* last_pack) {
     return nullptr;
   }
+
   virtual void PackToScope(MiniBatchGpuPack* pack, const Scope* scope) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(PackToScope) is not implemented."));
   }
 #endif
+
   virtual void SetInsIdVec(MiniBatchGpuPack* pack) {}
 
   virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) {
@@ -1854,6 +1856,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   void BuildSlotBatchGPU(const int ins_num, MiniBatchGpuPack* pack);
 
   virtual MiniBatchGpuPack* get_pack(MiniBatchGpuPack* last_pack);
+
   virtual void PackToScope(MiniBatchGpuPack* pack,
                            const Scope* scope = nullptr);
 
