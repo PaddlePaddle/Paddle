@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid as fluid
@@ -190,9 +190,6 @@ class TestDistAPI(unittest.TestCase):
             np.testing.assert_allclose(dist(x_i, y_i, p), out[0], rtol=1e-05)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
 class TestDistFP16OP(TestDistOp):
     def init_data_type(self):
         self.data_type = np.float16
