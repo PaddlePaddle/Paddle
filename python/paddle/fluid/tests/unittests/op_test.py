@@ -2185,7 +2185,7 @@ class OpTest(unittest.TestCase):
                     else:
                         abs_a = 1 if abs_a < 1e-3 else abs_a
 
-                if self.dtype == np.bool:
+                if self.dtype == np.bool_:
                     diff_mat = np.abs(a ^ b) / abs_a
                 else:
                     diff_mat = np.abs(a - b) / abs_a

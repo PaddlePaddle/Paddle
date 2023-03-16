@@ -19,8 +19,9 @@ from utils import SUB_TOLERANCE
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.fluid import core, framework
 from paddle.incubate.autograd import primapi
+from paddle.nn import LayerNorm
 
 
 def generate_data(shape1, shape2, shape3, dtype="float32"):
@@ -43,7 +44,7 @@ class Attr:
         self.dtype = dtype
         return
 
-    def set_shape(self, n_shape, shape1, shape2, shape3) -> None:
+    def set_shape(self, n_shape, shape1=[], shape2=[], shape3=[]) -> None:
         self.n_shape = n_shape
         self.shape1 = shape1
         self.shape2 = shape2
@@ -72,7 +73,7 @@ def expect_forward(x, norm_shape, w, b):
 
 class TestCompositelayer_norm(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float16", "float32", "float64"]
+        self.dtypes = ["float32", "float64"]
         self.n_shape = [[4], [64, 128], [64]]
         self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
         self.shape2s = [[4], [64 * 128], [64]]
@@ -201,6 +202,73 @@ class TestCompositelayer_norm(unittest.TestCase):
                     self.shape3s[t],
                 )
                 self.compare_forward()
+
+
+def apply_to_static(net, use_cinn):
+    build_strategy = paddle.static.BuildStrategy()
+    build_strategy.build_cinn_pass = use_cinn
+    return paddle.jit.to_static(net, build_strategy=False)
+
+
+class PrimeNet(paddle.nn.Layer):
+    def __init__(self, n_shape):
+        super(PrimeNet, self).__init__()
+        self.ln = LayerNorm(n_shape)
+
+    def forward(self, x):
+        out = self.ln(x)
+        return out
+
+
+class TestPrimForwardAndBackward(unittest.TestCase):
+    """
+    Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
+    """
+
+    def setUp(self):
+        paddle.seed(2022)
+        self.n_shape = [[4], [64, 128], [64]]
+        self.shape1s = [[3, 4], [64, 64, 128], [128, 64, 64]]
+
+    def train(self, use_prim):
+        self.x = paddle.randn(attrs.shape1, dtype="float32")
+        self.x.stop_gradient = False
+        core._set_prim_all_enabled(use_prim)
+        paddle.seed(2022)
+        net = PrimeNet(attrs.n_shape)
+        sgd = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=net.parameters()
+        )
+
+        net = paddle.amp.decorate(models=net, level='O2')
+
+        net = apply_to_static(net, False)
+        with paddle.amp.auto_cast(level='O2'):
+            out = net(self.x)
+            loss = paddle.mean(out)
+            loss.backward()
+            sgd.step()
+            sgd.clear_grad()
+            return loss
+
+    def compare_forward(self):
+        if not isinstance(framework._current_expected_place(), core.CPUPlace):
+            expected = self.train(False)
+            actual = self.train(True)
+            np.testing.assert_allclose(
+                expected,
+                actual,
+                rtol=1e-3,
+                atol=1e-3,
+            )
+
+    def test_forward(self):
+        for t in range(0, len(self.shape1s)):
+            attrs.set_shape(
+                self.n_shape[t],
+                self.shape1s[t],
+            )
+            self.compare_forward()
 
 
 if __name__ == '__main__':
