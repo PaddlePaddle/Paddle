@@ -1220,7 +1220,8 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj) {
   return result;
 }
 
-std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
+std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
+                                                      bool allow_none) {
   std::vector<paddle::Tensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
@@ -1230,50 +1231,7 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
       if (PyObject_IsInstance(item,
                               reinterpret_cast<PyObject*>(p_tensor_type))) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "argument must be "
-            "list of Tensor, but got %s at pos %d",
-            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
-            i));
-      }
-    }
-  } else if (PyTuple_Check(obj)) {
-    Py_ssize_t len = PyTuple_Size(obj);
-    PyObject* item = nullptr;
-    for (Py_ssize_t i = 0; i < len; i++) {
-      item = PyTuple_GetItem(obj, i);
-      if (PyObject_IsInstance(item,
-                              reinterpret_cast<PyObject*>(p_tensor_type))) {
-        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "argument must be "
-            "list of Tensor, but got %s at pos %d",
-            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
-            i));
-      }
-    }
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument must be "
-        "list or tuple, but got %s",
-        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
-  }
-  return result;
-}
-
-std::vector<paddle::Tensor> GetOptionalTensorListFromPyObject(PyObject* obj) {
-  std::vector<paddle::Tensor> result;
-  if (PyList_Check(obj)) {
-    Py_ssize_t len = PyList_Size(obj);
-    PyObject* item = nullptr;
-    for (Py_ssize_t i = 0; i < len; i++) {
-      item = PyList_GetItem(obj, i);
-      if (PyObject_IsInstance(item,
-                              reinterpret_cast<PyObject*>(p_tensor_type))) {
-        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
-      } else if (item == Py_None) {
+      } else if (allow_none && (item == Py_None)) {
         VLOG(4) << "Got None in Tensor list: " << i;
         result.emplace_back();
       } else {
@@ -1292,7 +1250,7 @@ std::vector<paddle::Tensor> GetOptionalTensorListFromPyObject(PyObject* obj) {
       if (PyObject_IsInstance(item,
                               reinterpret_cast<PyObject*>(p_tensor_type))) {
         result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
-      } else if (item == Py_None) {
+      } else if (allow_none && (item == Py_None)) {
         VLOG(4) << "Got None in Tensor list: " << i;
         result.emplace_back();
       } else {
@@ -1312,18 +1270,12 @@ std::vector<paddle::Tensor> GetOptionalTensorListFromPyObject(PyObject* obj) {
   return result;
 }
 
-paddle::Tensor& GetTensorFromPyObject(PyObject* obj) {
-  if (!PyCheckTensor(obj)) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument must be "
-        "Tensor, but got %s",
-        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
-  }
+paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj) {
   return reinterpret_cast<TensorObject*>(obj)->tensor;
 }
-git paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
-                                                  const std::string& op_type,
-                                                  ssize_t arg_pos) {
+paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
+                                              const std::string& op_type,
+                                              ssize_t arg_pos) {
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
   VLOG(4) << "type_name: " << type_name;
