@@ -627,7 +627,6 @@ void ConvCudnnGradKernel(const Context& ctx,
       compute_format == phi::backends::gpu::DataLayout::kNHWC
           ? phi::backends::gpu::DataLayout::kNHWC
           : phi::backends::gpu::DataLayout::kNCHW;
-  // TODO(phlrain): replace paddle::platform::DataLaytout to phi::DataLayout
   if (transformed_input.dims().size() == 5) {
     layout = compute_format == phi::backends::gpu::DataLayout::kNHWC
                  ? phi::backends::gpu::DataLayout::kNDHWC

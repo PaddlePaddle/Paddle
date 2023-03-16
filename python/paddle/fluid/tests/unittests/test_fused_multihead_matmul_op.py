@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 from paddle.fluid import core
 
@@ -135,7 +135,7 @@ class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=2e-3)
+        self.check_output_with_place(place, atol=2e-3, check_dygraph=False)
 
 
 @unittest.skipIf(
@@ -239,7 +239,7 @@ class TestFusedMultiheadMatmulOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=2e-3)
+        self.check_output_with_place(place, atol=2e-3, check_dygraph=False)
 
 
 class TestFusedMultiHeadMatmulOp2(TestFusedMultiheadMatmulOp):
