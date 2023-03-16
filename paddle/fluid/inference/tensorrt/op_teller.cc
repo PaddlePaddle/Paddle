@@ -71,6 +71,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     int8_teller_set.insert("flash_multihead_matmul");
     teller_set.insert("cross_multihead_matmul");
     int8_teller_set.insert("cross_multihead_matmul");
+    teller_set.insert("bev_cross_multihead_matmul");
+    int8_teller_set.insert("bev_cross_multihead_matmul");
 #endif
 #if IS_TRT_VERSION_GE(8200)
     teller_set.insert("round");
