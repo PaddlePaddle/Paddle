@@ -72,10 +72,10 @@ if(WITH_GPU)
     test_gpu_timer
     SRCS test_gpu_timer.cu
     DEPS gtest)
-  cc_test(
+  nv_test(
     test_WIP
     SRCS test_WIP.cc
-    DEPS gtest phi phi_api_utils)
+    DEPS gtest phi phi_api_utils phi_backends)
   nv_test(
     test_auto_tune
     SRCS test_auto_tune.cu
