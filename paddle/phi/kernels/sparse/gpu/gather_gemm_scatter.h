@@ -35,6 +35,7 @@ constexpr int features_num_range = 10000;
           TransposeA == transpose_a && TransposeB == transpose_b,             \
       void>::type                                                             \
   GatherGemmScatterDriver(const phi::GPUContext& ctx,                         \
+                          const size_t key,                                   \
                           const T* const a,                                   \
                           const T* const b,                                   \
                           const T* const c,                                   \
@@ -51,7 +52,6 @@ constexpr int features_num_range = 10000;
         autotune::MakeGatherGemmScatterTuner<TransposeA, TransposeB>(         \
             kernels[0]);                                                      \
     for (auto i = 1; i < kernels.size(); i++) tuner->AddCallBack(kernels[i]); \
-    size_t key = autotune::GenKey(m / features_num_range, n, k);              \
     tuner->Run(ctx,                                                           \
                key,                                                           \
                alpha,                                                         \
@@ -74,6 +74,7 @@ typename std::enable_if<std::is_same<T, double>::value ||
                             !std::is_same<IntT, int32_t>::value,
                         void>::type
 GatherGemmScatterDriver(const phi::GPUContext& ctx,
+                        const size_t key,
                         const T* const a,
                         const T* const b,
                         const T* const c,

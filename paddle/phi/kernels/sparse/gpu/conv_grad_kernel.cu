@@ -199,10 +199,12 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
       const IntT* gather_x_indices = rulebook_ptr + offsets[i];
       const IntT* scatter_x_indices = rulebook_ptr + offsets[i];
       const IntT* gather_out_indices = rulebook_ptr + rulebook_len + offsets[i];
+      const size_t key = autotune::GenKey(M / features_num_range, N, K);
       // call gemm: d_kernel = transpose(x) * out_grad
       // (in_channels, n) * (n, out_channels)
       GatherGemmScatterDriver<T, IntT, true, false>(
           dev_ctx,
+          key,
           x.values().data<T>(),
           out_grad.values().data<T>(),
           tmp_d_kernel_ptr,
@@ -219,6 +221,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
       // (n, out_channels) * (out_channels, in_channels)
       GatherGemmScatterDriver<T, IntT, false, true>(
           dev_ctx,
+          key,
           out_grad.values().data<T>(),
           tmp_kernel_ptr,
           x_grad_values_ptr,
