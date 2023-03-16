@@ -355,7 +355,7 @@ class TestunfoldBF16(OpTest):
         self.init_data()
         self.calc_unfold()
 
-        self.inputs = {'X ': convert_float_to_uint16(self.x)}
+        self.inputs = {'X': convert_float_to_uint16(self.x)}
         self.attrs = {
             'kernel_sizes': self.kernel_sizes,
             'paddings': self.paddings,
