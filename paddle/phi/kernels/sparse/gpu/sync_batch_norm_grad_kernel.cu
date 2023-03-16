@@ -71,10 +71,7 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    ALL_LAYOUT,
                    phi::sparse::SyncBatchNormCooGradKernel,
                    float,
-                   phi::dtype::float16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
-  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
-}
+                   phi::dtype::float16) {}
 #else
 PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    GPU,
@@ -83,7 +80,10 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
                    float,
                    double,
                    phi::dtype::float16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
-  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
+  }
 }
 #endif
