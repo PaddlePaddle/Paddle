@@ -1321,17 +1321,9 @@ paddle::Tensor& GetTensorFromPyObject(PyObject* obj) {
   }
   return reinterpret_cast<TensorObject*>(obj)->tensor;
 }
-
-paddle::Tensor& GetOptionalTensorFromPyObject(PyObject* obj) {
-  if (!PyCheckTensor(obj)) {
-    VLOG(4) << "Got None in GetOptionalTensorFromPyObject";
-  }
-  return reinterpret_cast<TensorObject*>(obj)->tensor;
-}
-
-paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
-                                              const std::string& op_type,
-                                              ssize_t arg_pos) {
+git paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
+                                                  const std::string& op_type,
+                                                  ssize_t arg_pos) {
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
   VLOG(4) << "type_name: " << type_name;
