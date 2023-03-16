@@ -536,8 +536,12 @@ void MemoryEfficientAttentionBackwardKernel(
     VLOG(3) << "temp_workspace has been set";
 
     if (smem_bytes > 0xc000) {
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaFuncSetAttribute(
-          kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_bytes));
+      const void* kernel_fn_void_ptr =
+          reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(kernel_fn));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaFuncSetAttribute(kernel_fn_void_ptr,
+                               cudaFuncAttributeMaxDynamicSharedMemorySize,
+                               smem_bytes));
     }
     KernelType::check_supported(p);
     VLOG(3) << "Kernel launched with func : " << typeid(kernel_fn).name()
