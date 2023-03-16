@@ -205,6 +205,7 @@ void run(PaddlePredictor* predictor, const LoadConfig& config) {
     }
     std::vector<paddle::PaddleTensor> fetch_tensors;
     infrt::tests::BenchmarkStats benchmark;
+    predictor->Run(feed_tensors, &fetch_tensors);
     benchmark.Start();
     predictor->Run(std::move(feed_tensors), &fetch_tensors);
     benchmark.Stop();
@@ -217,8 +218,8 @@ void run(PaddlePredictor* predictor, const LoadConfig& config) {
 
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
-  paddle::framework::InitGflags(
-      {"--tryfromenv=allow_cinn_ops,deny_cinn_ops,enable_pe_launch_cinn"});
+  // paddle::framework::InitGflags(
+  //     {"--tryfromenv=allow_cinn_ops,deny_cinn_ops,enable_pe_launch_cinn"});
 
   LOG(INFO) << "FLAGS_repeats: " << FLAGS_repeats;
   LoadConfig config;
