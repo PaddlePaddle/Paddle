@@ -32,12 +32,14 @@ def reference_unique_consecutive(X, return_inverse=False, return_counts=False):
         return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
     """
     X = list(X)
+    is_empty = len(X) == 0
     counts_vec = [1] * len(X)
     i = 0
     counts = 1
     last = 0
     inverse_vec = [0] * len(X)
-    inverse_vec[last] = i
+    if not is_empty:
+        inverse_vec[last] = i
     cnt = 0
     while i < len(X) - 1:
         if X[i] == X[i + 1]:
@@ -269,6 +271,40 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
                 result, inverse, counts = paddle.unique_consecutive(
                     x, return_inverse=True, return_counts=True
                 )
+
+
+class TestUniqueConsecutiveEmptyInput(OpTest):
+    """empty input"""
+
+    def config(self):
+        self.return_inverse = True
+        self.return_counts = True
+        self.python_api = paddle.unique_consecutive
+
+    def init_kernel_type(self):
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+
+    def setUp(self):
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "unique_consecutive"
+        x = np.array([]).astype(self.dtype)
+        result = reference_unique_consecutive(
+            x, self.return_inverse, self.return_counts
+        )
+        out = reference_unique_consecutive(x)
+        out = np.array(out).astype(self.dtype)
+        self.inputs = {
+            'X': x,
+        }
+        self.python_out_sig = ["Out"]
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.outputs = {
+            'Out': out,
+        }
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
 
 
 if __name__ == "__main__":

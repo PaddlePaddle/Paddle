@@ -18,13 +18,13 @@ import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc
 
+from ..common_ops_import import Variable
 from ..fluid.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
 )
 from ..framework import LayerHelper, in_dygraph_mode
-from ..static import Variable
 from .creation import full
 from .logic import logical_not
 from .manipulation import cast
@@ -2323,6 +2323,7 @@ def eig(x, name=None):
             #       [ (16.50471283351188+0j)  , (-5.5034820550763515+0j) ,
             #         (-0.21026087843552282+0j)])
     """
+
     if in_dygraph_mode():
         return _C_ops.eig(x)
     else:
@@ -3171,11 +3172,24 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     else:
         raise RuntimeError("Only support lstsq api for CPU or CUDA device.")
 
-    if x.dtype == y.dtype and x.dtype in (paddle.float32, paddle.float64):
-        pass
-    else:
+    if not (x.dtype == y.dtype and x.dtype in (paddle.float32, paddle.float64)):
         raise ValueError(
             "Only support x and y have the same dtype such as 'float32' and 'float64'."
+        )
+
+    if x.ndim < 2:
+        raise ValueError(
+            f"The shape of x should be (*, M, N), but received ndim is [{x.ndim} < 2]"
+        )
+
+    if y.ndim < 2:
+        raise ValueError(
+            f"The shape of y should be (*, M, K), but received ndim is [{y.ndim} < 2]"
+        )
+
+    if x.shape[-2] != y.shape[-2]:
+        raise ValueError(
+            f"x with shape (*, M = {x.shape[-2]}, N) and y with shape (*, M = {y.shape[-2]}, K) should have same M."
         )
 
     if rcond is None:

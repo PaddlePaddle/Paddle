@@ -22,6 +22,8 @@
 namespace paddle {
 namespace distributed {
 
+const int64_t INFINITE_BUFFER_SIZE = -1;
+
 class ComputeInterceptor : public Interceptor {
  public:
   ComputeInterceptor(int64_t interceptor_id, TaskNode* node);

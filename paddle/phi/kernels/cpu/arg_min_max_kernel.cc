@@ -96,6 +96,12 @@ struct VisitDataArgMinMaxFunctor {
       if (axis < 0) new_axis = axis + x_dims.size();
     }
 
+    // For 0D Tensor
+    if (x.dims().size() == 0) {
+      phi::funcs::set_constant(dev_ctx, out, 0);
+      return;
+    }
+
 #define CALL_ARG_MINMAX_FUNCTOR(rank)                                         \
   ArgMinMaxFunctor<Context, T, Tout, rank, EnumArgMinMaxValue> functor##rank; \
   functor##rank(dev_ctx, x, out, x_dims, new_axis, new_keepdims)

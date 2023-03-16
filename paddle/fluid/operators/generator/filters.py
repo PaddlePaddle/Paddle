@@ -14,6 +14,7 @@
 
 import itertools
 import re
+from typing import Dict, List
 
 from type_mapping import (
     attr_types_map,
@@ -137,17 +138,23 @@ def to_composite_grad_opmaker_name(backward_op_name):
     for i in range(len(words)):
         words[i] = words[i].strip()
         words[i] = words[i].capitalize()
-    composite_grad_opmaker_name = words[0] + "Composite"
-    composite_grad_opmaker_name += "".join(word for word in words[1:])
-    composite_grad_opmaker_name += "OpMaker"
+    composite_grad_opmaker_name = "".join(word for word in words[:-1])
+    composite_grad_opmaker_name += "CompositeGradOpMaker"
     return composite_grad_opmaker_name
+
+
+def to_variable_names(dict_list: List[Dict], key: str) -> List[str]:
+    names = []
+    for var in dict_list:
+        names.append(var[key])
+    return names
 
 
 def cartesian_prod_attrs(attrs):
     items = []
     for attr in attrs:
         type_name = attr["typename"]
-        name = attr["name"]
+        name = attr["fluid_name"]
         if type_name == "Scalar":
             items.append((name, to_scalar_tensor_name(attr)))
         elif type_name == "IntArray":
@@ -176,11 +183,15 @@ def cartesian_prod_attrs(attrs):
 def cartesian_prod_mapping(op):
     kernels = op["kernel"]["func"]
     inputs = [
-        x["name"] for x in op["inputs"] if x["name"] in op["kernel"]["param"]
+        x["fluid_name"]
+        for x in op["inputs"]
+        if x["fluid_name"] in op["kernel"]["param"]
     ]
     inputs = [to_opmaker_name_cstr(input) for input in inputs]
     attrs = cartesian_prod_attrs(op["attrs"])
-    outputs = [to_opmaker_name_cstr(output["name"]) for output in op["outputs"]]
+    outputs = [
+        to_opmaker_name_cstr(output["fluid_name"]) for output in op["outputs"]
+    ]
 
     def vec(items):
         return "{" + ', '.join(items) + "}"

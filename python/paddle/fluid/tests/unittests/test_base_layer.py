@@ -26,7 +26,7 @@ class L1(fluid.Layer):
     def __init__(self):
         super().__init__()
         self._param_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.1)
+            initializer=paddle.nn.initializer.Constant(value=0.1)
         )
         self.w1 = self.create_parameter(
             attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False

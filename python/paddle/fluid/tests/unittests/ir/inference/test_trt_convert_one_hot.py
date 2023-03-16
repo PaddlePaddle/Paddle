@@ -59,7 +59,7 @@ class TrtConvertOneHotTest(TrtLayerAutoScanTest):
                         },
                         "op_outputs": {"Out": ["output_data"]},
                         "op_attrs": dics[0],
-                        "outputs_dtype": {"output_data": np.int64},
+                        "outputs_dtype": {"output_data": np.int_},
                     },
                 ]
                 ops = self.generate_op_config(ops_config)

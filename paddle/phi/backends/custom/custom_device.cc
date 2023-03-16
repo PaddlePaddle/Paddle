@@ -146,13 +146,6 @@ class CustomDevice : public DeviceInterface {
                         stream::Stream::Priority::kNormal,
                     const stream::Stream::Flag& flag =
                         stream::Stream::Flag::kDefaultFlag) override {
-    if (priority != stream::Stream::Priority::kNormal ||
-        flag != stream::Stream::Flag::kDefaultFlag) {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "priority != stream::Stream::Priority::kNormal || flag != "
-          "stream::Stream::Flag::kDefaultFlag is not allowed on "
-          "CustomDevice."));
-    }
     const auto device = &devices_pool[dev_id];
     C_Stream c_stream;
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(

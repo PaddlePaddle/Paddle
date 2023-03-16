@@ -852,6 +852,27 @@ class TestInferShape(unittest.TestCase):
                 paddle.slice(x, 0, starts, ends)
 
 
+class TestSliceOpError(unittest.TestCase):
+    def test_dismatch_shape(self):
+        with fluid.dygraph.guard():
+            with self.assertRaises(ValueError):
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
+                paddle.slice(x, axes=[0], starts=[], ends=[])
+
+            with self.assertRaises(ValueError):
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
+                paddle.slice(x, axes=[0], starts=[0], ends=[])
+
+            # if shape match, pass
+            array = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
+            out = paddle.slice(x, axes=[0], starts=[0], ends=[0])
+            self.assertEqual(out.numel(), 0)
+            # self.assertEqual(out.shape)
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )

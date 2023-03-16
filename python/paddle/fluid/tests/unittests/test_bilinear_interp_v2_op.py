@@ -816,5 +816,80 @@ class TestBilinearInterpOpZoomInForFloat16(unittest.TestCase):
         np.testing.assert_allclose(x_g_np_1, x_g_np_2, atol=1e-2, rtol=1e-2)
 
 
+class TestBilinearInterpOpAPI_0DTensorScale(unittest.TestCase):
+    def test_case(self):
+        import paddle
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False
+            )
+            scale_0d = paddle.full([], 2)
+            out = interpolate(
+                x=input_x,
+                scale_factor=scale_0d,
+                mode="bilinear",
+                align_corners=False,
+            )
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+
+
+class TestBilinearInterpOpAPI_0DTensorScale2(unittest.TestCase):
+    def test_case(self):
+        import paddle
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False
+            )
+            scale_0d = [paddle.full([], 2), paddle.full([], 2)]
+            out = interpolate(
+                x=input_x,
+                scale_factor=scale_0d,
+                mode="bilinear",
+                align_corners=False,
+            )
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+
+
+class TestBilinearInterpOpAPI_0DTensorOutSize(unittest.TestCase):
+    def test_case(self):
+        import paddle
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with fluid.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False
+            )
+            output_size = [
+                paddle.full([], 12, dtype="int32"),
+                paddle.full([], 12, dtype="int32"),
+            ]
+            out = interpolate(
+                x=input_x,
+                size=output_size,
+                mode="bilinear",
+                align_corners=False,
+            )
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+
+
 if __name__ == "__main__":
     unittest.main()

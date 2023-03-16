@@ -59,7 +59,8 @@ class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
     auto share_argument_buffer_fn = [launch_context,
                                      &ctx](const std::string& var_name) {
       cinn_buffer_t* buffer = launch_context->GetCinnBufferOfVar(var_name);
-      framework::Variable* var = ctx.scope().GetVar(var_name);
+      std::string revise_var_name = launch_context->RedirectVarName(var_name);
+      framework::Variable* var = ctx.scope().GetVar(revise_var_name);
       auto* tensor = var->template GetMutable<phi::DenseTensor>();
       buffer->memory = reinterpret_cast<uint8_t*>(tensor->mutable_data(
           ctx.GetPlace(),

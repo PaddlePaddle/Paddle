@@ -77,12 +77,12 @@ class ConvBNPool(fluid.dygraph.Layer):
         filter_size = 3
         conv_std_0 = (2.0 / (filter_size**2 * channels[0])) ** 0.5
         conv_param_0 = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, conv_std_0)
+            initializer=paddle.nn.initializer.Normal(0.0, conv_std_0)
         )
 
         conv_std_1 = (2.0 / (filter_size**2 * channels[1])) ** 0.5
         conv_param_1 = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, conv_std_1)
+            initializer=paddle.nn.initializer.Normal(0.0, conv_std_1)
         )
 
         self.conv_0_layer = paddle.nn.Conv2D(
@@ -200,10 +200,11 @@ class EncoderNet(fluid.dygraph.Layer):
         super().__init__()
         self.rnn_hidden_size = rnn_hidden_size
         para_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, 0.02)
+            initializer=paddle.nn.initializer.Normal(0.0, 0.02)
         )
         bias_attr = fluid.ParamAttr(
-            initializer=fluid.initializer.Normal(0.0, 0.02), learning_rate=2.0
+            initializer=paddle.nn.initializer.Normal(0.0, 0.02),
+            learning_rate=2.0,
         )
         if fluid.framework._non_static_mode():
             h_0 = np.zeros(

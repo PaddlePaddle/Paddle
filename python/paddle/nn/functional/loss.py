@@ -20,10 +20,10 @@ from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.framework import core
 from paddle.utils import deprecated
 
+from ...common_ops_import import Variable
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.framework import _current_expected_place, in_dygraph_mode
 from ...fluid.layer_helper import LayerHelper
-from ...static import Variable
 from ...tensor.manipulation import reshape
 
 __all__ = []

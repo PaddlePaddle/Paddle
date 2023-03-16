@@ -48,7 +48,7 @@ class TestDoubleGrad(unittest.TestCase):
                 name='x',
                 shape=[1],
                 dtype='float32',
-                default_initializer=fluid.initializer.Constant(3),
+                default_initializer=paddle.nn.initializer.Constant(3),
             )
             (grad1,) = fluid.gradients(net(x), x)  # 2x = 6
             z = net(x - grad1)
@@ -69,7 +69,7 @@ class TestDoubleGrad(unittest.TestCase):
                 name='x',
                 shape=[1],
                 dtype='float32',
-                default_initializer=fluid.initializer.Constant(1),
+                default_initializer=paddle.nn.initializer.Constant(1),
             )
             y = x * x
             (dx1,) = fluid.gradients(y, x)

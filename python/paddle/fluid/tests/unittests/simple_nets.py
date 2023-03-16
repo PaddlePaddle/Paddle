@@ -26,7 +26,7 @@ def simple_fc_net_with_inputs(img, label, class_num=10):
             size=100,
             activation='relu',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
     prediction = paddle.static.nn.fc(
@@ -53,7 +53,7 @@ def batchnorm_fc_with_inputs(img, label, class_num=10):
             size=200,
             activation='relu',
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)
+                initializer=paddle.nn.initializer.Constant(value=1.0)
             ),
         )
 

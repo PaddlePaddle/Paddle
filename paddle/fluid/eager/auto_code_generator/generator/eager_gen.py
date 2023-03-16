@@ -280,8 +280,7 @@ FORWARD_BODY_TEMPLATE = """  if(require_any_grad) {{
 {}
     // SetGradOutMeta & SetEdges
 {}
-    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
-{}
+    // SetOutRank & SetHistory & SetGradInMeta
 {}
 {}
 {}
@@ -300,8 +299,7 @@ HIHGER_ORDER_DERIVATIVE_VALUE_TEMPLATE = """  if(trace_backward) {{
 {}
     // SetGradOutMeta & SetEdges
 {}
-    // SetOutRank & SetHistory & SetGradInMeta & RetainGrad
-{}
+    // SetOutRank & SetHistory & SetGradInMeta
 {}
 {}
 {}
@@ -987,7 +985,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_out_rank_list = []
         set_history_list = []
         set_grad_in_meta_list = []
-        set_retain_grad_list = []
         num_outputs = len(forward_outputs_position_map.keys())
         for name, (_, pos) in forward_outputs_position_map.items():
             output_autograd_meta_name = GetAutoGradMetaName(name)
@@ -1002,19 +999,14 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             set_grad_in_meta = (
                 f"{indent}grad_node->SetGradInMeta({name}, {pos});"
             )
-            set_retain_grad = (
-                f"{indent}egr::EagerUtils::CheckAndRetainGrad({name});"
-            )
 
             set_out_rank_list.append(set_out_rank)
             set_history_list.append(set_history)
             set_grad_in_meta_list.append(set_grad_in_meta)
-            set_retain_grad_list.append(set_retain_grad)
 
         set_out_rank_str = "\n".join(set_out_rank_list)
         set_history_str = "\n".join(set_history_list)
         set_grad_in_meta_str = "\n".join(set_grad_in_meta_list)
-        set_retain_grad_str = "\n".join(set_retain_grad_list)
 
         node_event_name = forward_api_name + " node_creation"
         node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
@@ -1029,7 +1021,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                 set_out_rank_str,
                 set_history_str,
                 set_grad_in_meta_str,
-                set_retain_grad_str,
                 set_output_tensor_wrappers_str,
             )
         else:
@@ -1043,7 +1034,6 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     set_out_rank_str,
                     set_history_str,
                     set_grad_in_meta_str,
-                    set_retain_grad_str,
                     set_output_tensor_wrappers_str,
                 )
             )

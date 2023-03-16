@@ -46,6 +46,11 @@ class GroupNormOpConverter : public OpConverter {
     std::string scale_name = op_desc.Input("Scale").front();
     std::string bias_name = op_desc.Input("Bias").front();
 
+    bool with_silu = false;
+    if (op_desc.HasAttr("with_silu")) {
+      with_silu = PADDLE_GET_CONST(bool, op_desc.GetAttr("with_silu"));
+    }
+
     // get the presistable var's data
     auto GetWeight = [&](const std::string& var_name,
                          framework::DDim* dims) -> TensorRTEngine::Weight {
@@ -77,6 +82,7 @@ class GroupNormOpConverter : public OpConverter {
               groups,
               mean_shape,
               variance_shape,
+              with_silu,
               with_fp16);
       nvinfer1::ILayer* groupnorm_layer =
           engine_->AddDynamicPlugin(&input_itensor, 1, plugin);

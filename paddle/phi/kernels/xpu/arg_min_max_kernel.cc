@@ -18,6 +18,7 @@
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -39,7 +40,15 @@ void ArgMaxKernel(const Context& dev_ctx,
           DataType::INT64,
           DataType::INT32,
           dtype));
+  // TODO(ZHUI): fix dtype of out
   dev_ctx.template Alloc<int64_t>(out);
+  if (x.dims().size() == 0) {
+    xpu::constant(dev_ctx.x_context(),
+                  out->data<int64_t>(),
+                  x.numel(),
+                  static_cast<int64_t>(0));
+    return;
+  }
 
   DDim x_dims;
   int axis_val = axis.to<int>();

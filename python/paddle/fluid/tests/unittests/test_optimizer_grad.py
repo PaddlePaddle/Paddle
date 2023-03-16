@@ -81,20 +81,20 @@ class SimpleNetWithCond:
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_x"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.x),
+            default_initializer=paddle.nn.initializer.Assign(self.x),
         )
 
         param_y = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_y"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.y),
+            default_initializer=paddle.nn.initializer.Assign(self.y),
         )
         param_z = paddle.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_z"),
-            default_initializer=fluid.initializer.NumpyArrayInitializer(self.z),
+            default_initializer=paddle.nn.initializer.Assign(self.z),
         )
 
         sum_xy = paddle.add(param_x, param_y, name='sum_xy')

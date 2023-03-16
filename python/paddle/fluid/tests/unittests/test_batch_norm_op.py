@@ -768,6 +768,10 @@ class TestBatchNormOpError(unittest.TestCase):
             )
             self.assertRaises(TypeError, paddle.static.nn.batch_norm, x2)
 
+            # the first dimension of input for batch_norm must between [2d, 5d].
+            x3 = paddle.static.data("", shape=[0], dtype="float32")
+            self.assertRaises(ValueError, paddle.static.nn.batch_norm, x3)
+
 
 class TestDygraphBatchNormAPIError(unittest.TestCase):
     def test_errors(self):

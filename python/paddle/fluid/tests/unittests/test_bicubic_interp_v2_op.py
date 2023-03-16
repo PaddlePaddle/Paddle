@@ -610,6 +610,20 @@ class TestBicubicOpError(unittest.TestCase):
                 x, size={2, 2}, mode='bicubic', align_corners=False
             )
 
+        def test_size_length():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            out = interpolate(x, size=[2], mode='bicubic', align_corners=False)
+
+        def test_size_tensor_ndim():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            size = paddle.to_tensor(np.array([[2, 2]]))
+            out = interpolate(x, size=size, mode='bicubic', align_corners=False)
+
+        def test_size_tensor_length():
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+            size = paddle.to_tensor(np.array([2]))
+            out = interpolate(x, size=size, mode='bicubic', align_corners=False)
+
         def test_input_shape_1():
             x = fluid.data(name="x", shape=[2, 1, 0, 0], dtype="float32")
             out = interpolate(
@@ -633,6 +647,9 @@ class TestBicubicOpError(unittest.TestCase):
         self.assertRaises(ValueError, test_size_and_scale)
         self.assertRaises(ValueError, test_size_and_scale2)
         self.assertRaises(TypeError, test_size_type)
+        self.assertRaises(ValueError, test_size_length)
+        self.assertRaises(ValueError, test_size_tensor_ndim)
+        self.assertRaises(ValueError, test_size_tensor_length)
         self.assertRaises(ValueError, test_input_shape_1)
 
     def test_errors(self):

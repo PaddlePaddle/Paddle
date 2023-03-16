@@ -14,6 +14,7 @@
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 
 #include <algorithm>
+#include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
@@ -24,6 +25,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace distributed {
@@ -59,7 +61,8 @@ void FleetExecutor::Init(
     int64_t num_micro_batches,
     const std::vector<TaskNode*>& task_nodes,
     const std::unordered_map<int64_t, int64_t>& task_id_to_rank,
-    const std::vector<std::string>& inference_root_scope_vars) {
+    const std::vector<std::string>& inference_root_scope_vars,
+    const std::vector<framework::Scope*>& micro_scope_list) {
   PADDLE_ENFORCE_GT(task_nodes.size(),
                     0,
                     platform::errors::InvalidArgument(
@@ -108,21 +111,22 @@ void FleetExecutor::Init(
     task_node->SetUnusedVars(unused_vars);
     if (task_node->type() == "Cond") {
       std::vector<std::string> while_block_vars;
-      std::vector<std::string> vars_in_parent;
-      std::vector<std::string> vars_in_sub;
-      for (auto& var : program_desc.Block(0).AllVars()) {
-        vars_in_parent.emplace_back(var->Name());
-      }
+      VLOG(3) << "Vars in while sub block:";
       for (auto& var : program_desc.Block(1).AllVars()) {
-        vars_in_sub.emplace_back(var->Name());
+        VLOG(3) << var->Name();
+        while_block_vars.emplace_back(var->Name());
       }
-      std::sort(vars_in_parent.begin(), vars_in_parent.end());
-      std::sort(vars_in_sub.begin(), vars_in_sub.end());
-      std::set_difference(vars_in_sub.begin(),
-                          vars_in_sub.end(),
-                          vars_in_parent.begin(),
-                          vars_in_parent.end(),
-                          std::back_inserter(while_block_vars));
+      for (const auto& pair : unused_vars) {
+        if (pair.first->Type() == "while") {
+          for (const auto& var_name : pair.second) {
+            while_block_vars.emplace_back(var_name);
+          }
+        }
+      }
+      VLOG(3) << "Vars below will be removed after while:";
+      for (const auto& name : while_block_vars) {
+        VLOG(3) << name;
+      }
       task_node->SetWhileBlockVars(while_block_vars);
     }
     int64_t interceptor_id = task_node->task_id();
@@ -144,7 +148,8 @@ void FleetExecutor::Init(
               place,
               num_micro_batches,
               program_desc,
-              inference_root_scope_vars);
+              inference_root_scope_vars,
+              micro_scope_list);
   GlobalVal<MessageBus>::Get()->Barrier();
 }
 
@@ -154,7 +159,8 @@ void FleetExecutor::InitCarrier(
     const platform::Place& place,
     int64_t num_micro_batches,
     const framework::ProgramDesc& program_desc,
-    const std::vector<std::string>& inference_root_scope_vars) {
+    const std::vector<std::string>& inference_root_scope_vars,
+    const std::vector<framework::Scope*>& micro_scope_list) {
   carrier->Init(exe_desc_.cur_rank(),
                 runtime_graph_->interceptor_id_to_rank(),
                 runtime_graph_->interceptor_id_to_node(),
@@ -162,7 +168,8 @@ void FleetExecutor::InitCarrier(
                 scope,
                 num_micro_batches,
                 place,
-                inference_root_scope_vars);
+                inference_root_scope_vars,
+                micro_scope_list);
 }
 
 void FleetExecutor::InitMessageBus() {

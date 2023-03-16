@@ -49,8 +49,8 @@ struct GroupNormNHWCParams {
   int32_t c;
   // The number of groups.
   int32_t groups;
-  // Do we apply the Swish activation function?
-  bool withSwish;
+  // Do we apply the Silu activation function?
+  bool withSilu;
 
   // Precomputed values and parameters to control the execution of the kernels.
 

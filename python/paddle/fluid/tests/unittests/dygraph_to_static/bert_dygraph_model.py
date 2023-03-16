@@ -203,8 +203,8 @@ class BertModelLayer(Layer):
         self._sent_emb_name = "sent_embedding"
         self._dtype = "float16" if use_fp16 else "float32"
 
-        self._param_initializer = fluid.initializer.TruncatedNormal(
-            scale=config['initializer_range']
+        self._param_initializer = paddle.nn.initializer.TruncatedNormal(
+            std=config['initializer_range']
         )
         paddle.set_default_dtype(self._dtype)
         self._src_emb = paddle.nn.Embedding(
@@ -317,8 +317,8 @@ class PretrainModelLayer(Layer):
         self._prepostprocess_dropout = config['hidden_dropout_prob']
 
         self._word_emb_name = "word_embedding"
-        self._param_initializer = fluid.initializer.TruncatedNormal(
-            scale=config['initializer_range']
+        self._param_initializer = paddle.nn.initializer.TruncatedNormal(
+            std=config['initializer_range']
         )
         self._weight_sharing = weight_sharing
         self.use_fp16 = use_fp16
@@ -343,7 +343,7 @@ class PretrainModelLayer(Layer):
 
         self.mask_lm_out_bias_attr = fluid.ParamAttr(
             name="mask_lm_out_fc.b_0",
-            initializer=fluid.initializer.Constant(value=0.0),
+            initializer=paddle.nn.initializer.Constant(value=0.0),
         )
 
         if not self._weight_sharing:

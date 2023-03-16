@@ -59,7 +59,7 @@ def conv_net(
         size=[dict_dim, emb_dim],
         is_sparse=False,
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -70,7 +70,7 @@ def conv_net(
         act="tanh",
         pool_type="max",
         param_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -78,7 +78,7 @@ def conv_net(
         x=[conv_3],
         size=fc0_dim,
         weight_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 
@@ -87,7 +87,7 @@ def conv_net(
         size=class_dim,
         activation="softmax",
         weight_attr=fluid.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)
+            initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
 

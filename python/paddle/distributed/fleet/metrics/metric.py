@@ -18,7 +18,7 @@ import math
 import numpy as np
 
 import paddle
-from paddle.static import Variable
+from paddle.common_ops_import import Variable
 
 __all__ = []
 

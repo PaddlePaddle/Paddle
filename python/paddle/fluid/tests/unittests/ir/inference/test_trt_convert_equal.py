@@ -23,7 +23,7 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 import paddle.inference as paddle_infer
 
 
-class TrtConvertElementwiseTest_one_input_corner_case(TrtLayerAutoScanTest):
+class TrtConvertEqualOneInputCornerCase(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))

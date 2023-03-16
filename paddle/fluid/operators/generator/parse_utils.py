@@ -294,14 +294,13 @@ def parse_composite(
     composite_config: str,
 ) -> Dict[str, Any]:
     # composite_config: func(args1, args2,.....)
-    fname = r'(.*?)'
-    wspace = r'\s*'
-    fargs = r'(.*?)'
-    pattern = fr'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
+    result = re.search(
+        r"(?P<func_name>[a-z][a-z0-9_]+)\s*\((?P<func_args>[^\)]+)\)",
+        composite_config,
+    )
 
-    m = re.search(pattern, composite_config)
-    func_name = m.group(1)
-    func_args = m.group(2)
+    func_name = result.group("func_name")
+    func_args = result.group("func_args")
 
     composite_dict = {}
     composite_dict["func_name"] = func_name

@@ -22,7 +22,6 @@ from .framework import (
     cpu_places,
 )
 from .param_attr import ParamAttr
-from .initializer import Constant
 from . import layers
 from . import backward
 from .dygraph import Layer
@@ -42,7 +41,9 @@ class SimpleLayer(Layer):
         self._linear1 = paddle.nn.Linear(
             input_size,
             3,
-            weight_attr=ParamAttr(initializer=Constant(value=0.1)),
+            weight_attr=ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.1)
+            ),
         )
 
     def forward(self, inputs):

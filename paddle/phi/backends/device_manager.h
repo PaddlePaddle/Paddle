@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
 
 #include <unordered_map>
 
@@ -285,12 +284,14 @@ class DeviceManager {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir);
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 void LoadCustomRuntimeLib(const std::string& dso_lib_path, void* dso_handle);
 
 void LoadCustomRuntimeLib(const CustomRuntimeParams& runtime_params,
                           std::unique_ptr<C_DeviceInterface> device_interface,
                           const std::string& dso_lib_path,
                           void* dso_handle);
+#endif
 
 class Registrar {
  public:
@@ -303,5 +304,3 @@ class Registrar {
 };
 
 }  // namespace phi
-
-#endif
