@@ -27,6 +27,23 @@ DECLARE_int64(cublaslt_exhaustive_search_times);
 namespace phi {
 namespace fusion {
 
+static cublasLtEpilogue_t GetEpilogueGradType(
+    const std::string& activation_grad) {
+  if (activation_grad == "relu_grad") {
+    return CUBLASLT_EPILOGUE_DRELU;
+  } else if (activation_grad == "gelu_grad") {
+    return CUBLASLT_EPILOGUE_DGELU;
+  } else if (activation_grad == "none") {
+    return CUBLASLT_EPILOGUE_DEFAULT;
+  } else {
+    PADDLE_THROW(errors::InvalidArgument(
+        "The activation_grad attribute of fused_gemm_epilogue op should "
+        "be one of {\"none\", \"relu\", \"gelu\"}. But received %s."
+        "But received activation_grad=%s.",
+        activation_grad));
+  }
+}
+
 class GemmEpilogueAlgoCache {
  public:
   static GemmEpilogueAlgoCache& Instance() {
@@ -98,7 +115,7 @@ class GemmEpilogueAlgoCache {
     PADDLE_ENFORCE_GT(
         returned_results,
         0,
-        phi::errors::Unavailable("No GEMM epilogue algorithm support!"));
+        errors::Unavailable("No GEMM epilogue algorithm support!"));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cublasLtMatmulPreferenceDestroy(preference));
@@ -131,7 +148,7 @@ class GemmEpilogueAlgoCache {
         warmup_algo_idx += 1;
         if (warmup_algo_idx == requested_algo_count_) {
           PADDLE_THROW(
-              phi::errors::Unavailable("No GEMM epilogue algorithm support!"));
+              errors::Unavailable("No GEMM epilogue algorithm support!"));
         }
       }
     }
@@ -186,8 +203,7 @@ class GemmEpilogueAlgoCache {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(stop_event));
 
     if (best_algo_idx == -1) {
-      PADDLE_THROW(
-          phi::errors::Unavailable("No GEMM epilogue algorithm support!"));
+      PADDLE_THROW(errors::Unavailable("No GEMM epilogue algorithm support!"));
     }
 
     ret = heuristic_results[best_algo_idx].algo;
@@ -307,7 +323,7 @@ static cublasLtEpilogue_t GetEpilogueType(const std::string& activation,
   } else if (activation == "none") {
     return CUBLASLT_EPILOGUE_BIAS;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(errors::InvalidArgument(
         "The activation attribute of fused_gemm_epilogue op should be"
         " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
         "But received activation=%s.",
@@ -423,7 +439,7 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
   // "enough". I just followed the settings from the NVIDIA MLPerf BERT code.
   size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
   cudaStream_t stream = dev_ctx.stream();
-  memory::allocation::AllocationPtr workspace = memory::Alloc(
+  phi::Allocator::AllocationPtr workspace = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       workspace_size,
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -667,7 +683,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
           sizeof(aux_ld)));
     }
 
-    auto dx_workspace = memory::Alloc(
+    auto dx_workspace = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
@@ -782,7 +798,7 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
           sizeof(dbias_data)));
     }
 
-    auto dy_workspace = memory::Alloc(
+    auto dy_workspace = phi::memory_utils::Alloc(
         dev_ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));

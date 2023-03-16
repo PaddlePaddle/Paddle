@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-
+#include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/operators/fused/attention_layer_norm.h"
+
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/fusion/fused_attention_kernel.h"
-#include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 #include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
+
+#include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 
 namespace phi {
 
@@ -69,7 +71,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
                           DenseTensor *out_linear_out,
                           DenseTensor *dropout_mask_out,
                           DenseTensor *ln_mean_2,
-                          DenseTensor *ln_var_2iance,
+                          DenseTensor *ln_var_2,
                           DenseTensor *bias_dropout_residual_out,
                           DenseTensor *cache_kv_out,
                           DenseTensor *out) {
@@ -83,24 +85,24 @@ void FusedAttentionKernel(const Context &dev_ctx,
 
   const bool has_attn_dropout = (attn_dropout_rate != 0.0f);
 
-  DropoutParam dropout_param2(dropout_rate,
-                              dropout_implementation,
-                              is_test,
-                              dropout_fix_seed,
-                              dropout_seed);
+  phi::fusion::DropoutParam dropout_param2(dropout_rate,
+                                           dropout_implementation,
+                                           is_test,
+                                           dropout_fix_seed,
+                                           dropout_seed);
   const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
 
   auto &dropout_implementation_1 = attn_dropout_implementation;
   bool is_upscale_in_train_1 = (dropout_implementation_1 == "upscale_in_train");
-  auto *seed_1 = nullptr;
+  phi::DenseTensor *seed_1 = nullptr;
 
   // get data ptr for qkv part.
-  const auto input_x_dims = x->dims();
-  const auto qkv_w_dims = qkv_weight->dims();
+  const auto input_x_dims = x.dims();
+  const auto qkv_w_dims = qkv_weight.dims();
 
-  auto *x_data = x->data<T>();
-  auto *qkv_weight_data = qkv_weight->data<T>();
-  auto *qkv_bias_data = (qkv_bias == nullptr) ? nullptr : qkv_bias->data<T>();
+  auto *x_data = x.data<T>();
+  auto *qkv_weight_data = qkv_weight.data<T>();
+  auto *qkv_bias_data = (qkv_bias == nullptr) ? nullptr : qkv_bias.data<T>();
   auto *qkv_out_data =
       dev_ctx.template Alloc<T>(qkv_out, qkv_out->numel() * sizeof(T));
   auto *qkv_bias_out_data =
@@ -142,9 +144,9 @@ void FusedAttentionKernel(const Context &dev_ctx,
       dev_ctx.template Alloc<T>(fmha_out, fmha_out->numel() * sizeof(T));
 
   // get data ptr for out_linear.
-  auto *out_linear_weight_data = out_linear_weight->data<T>();
+  auto *out_linear_weight_data = out_linear_weight.data<T>();
   auto *out_linear_bias_data =
-      (out_linear_bias == nullptr) ? nullptr : out_linear_bias->data<T>();
+      (out_linear_bias == nullptr) ? nullptr : out_linear_bias.data<T>();
   auto *out_linear_out_data = dev_ctx.template Alloc<T>(
       out_linear_out, out_linear_out->numel() * sizeof(T));
 
@@ -180,7 +182,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
   int input_size = dim_embed;
 
   auto layer_norm_compute =
-      AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
+      phi::fusion::AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
 
   bool compute_bias = true;
   if (qkv_bias == nullptr) {
@@ -188,17 +190,17 @@ void FusedAttentionKernel(const Context &dev_ctx,
   }
   // (transA, transB, compute_bias) = (false, true, true)
   bool transB = transpose_qkv_wb ? false : true;
-  auto qkv_compute = AttnMatMul<T>(
+  auto qkv_compute = phi::fusion::AttnMatMul<T>(
       dev_ctx, false, transB, bsz_seq, output_size, input_size, compute_bias);
 
-  AttnDropoutParam attn_dropout_param(is_test,
-                                      dropout_implementation_1,
-                                      attn_dropout_rate,
-                                      is_upscale_in_train_1,
-                                      attn_dropout_fix_seed,
-                                      attn_dropout_seed,
-                                      seed_1);
-  auto fmha_ref_compute = FMHARef<T>(
+  phi::fusion::AttnDropoutParam attn_dropout_param(is_test,
+                                                   dropout_implementation_1,
+                                                   attn_dropout_rate,
+                                                   is_upscale_in_train_1,
+                                                   attn_dropout_fix_seed,
+                                                   attn_dropout_seed,
+                                                   seed_1);
+  auto fmha_ref_compute = phi::fusion::FMHARef<T>(
       dev_ctx, batch_size, max_seq_len, num_head, dim_head, attn_dropout_param);
 
   output_size = hidden_size;
@@ -214,8 +216,8 @@ void FusedAttentionKernel(const Context &dev_ctx,
       dev_ctx, bsz_seq, dim_embed, dropout_param2, ln_epsilon);
 
   if (pre_layer_norm) {
-    auto *ln_scale_data = (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
-    auto *ln_bias_data = (ln_bias == nullptr ? nullptr : ln_bias->data<U>());
+    auto *ln_scale_data = (ln_scale == nullptr ? nullptr : ln_scale.data<U>());
+    auto *ln_bias_data = (ln_bias == nullptr ? nullptr : ln_bias.data<U>());
     auto *ln_mean_data =
         dev_ctx.template Alloc<U>(ln_mean, ln_mean->numel() * sizeof(U));
     auto *ln_var_data =
@@ -281,7 +283,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
   out_linear_compute.ComputeForward(
       out_linear_weight, fmha_out, nullptr, out_linear_out, nullptr);
   // tensor model parallel
-  AllReduce<T>(*out_linear_out, ring_id, ctx.cuda_device_context());
+  AllReduce<T>(*out_linear_out, ring_id, dev_ctx);
 
   const T *residual_ptr = add_residual ? x_data : nullptr;
   if (pre_layer_norm) {
@@ -295,14 +297,14 @@ void FusedAttentionKernel(const Context &dev_ctx,
         dropout_mask_out_data);
   } else {
     // TODO(Xreki): support post layer_norm case when add_residual is false.
-    PADDLE_ENFORCE_EQ(add_residual,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Attribute add_residual is expected to be true "
-                          "when pre_layer_norm is false."));
+    PADDLE_ENFORCE_EQ(
+        add_residual,
+        true,
+        errors::InvalidArgument("Attribute add_residual is expected to be true "
+                                "when pre_layer_norm is false."));
 
-    const U *ln_scale_2_ptr = ln_scale_2 ? ln_scale_2->data<U>() : nullptr;
-    const U *ln_bias_2_ptr = ln_bias_2 ? ln_bias_2->data<U>() : nullptr;
+    const U *ln_scale_2_ptr = ln_scale_2 ? ln_scale_2.data<U>() : nullptr;
+    const U *ln_bias_2_ptr = ln_bias_2 ? ln_bias_2.data<U>() : nullptr;
     T *bias_dropout_residual_out_ptr = dev_ctx.template Alloc<T>(
         bias_dropout_residual_out,
         bias_dropout_residual_out->numel() * sizeof(T));

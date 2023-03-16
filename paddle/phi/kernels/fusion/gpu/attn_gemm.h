@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"

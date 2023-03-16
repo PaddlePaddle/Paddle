@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 
 namespace phi {
