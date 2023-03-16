@@ -416,7 +416,12 @@ def meshgrid_composite(inputs):
     """
     define composite rule of op meshgrid
     If the input has N tensors of size S_0, ... S_n-1, then the output will also have N tensors, where
-    each tensor is of shape (S_0, ..., S_n-1)
+    each tensor is of shape (S_0, ..., S_n-1).
+    E.g. a1 is Tensor [1,2,3]
+         b1 is Tensor [4,5]
+         r1, r2 = paddle.meshgrid([a1, b1])
+         r1 is Tensor [[1,1], [2,2], [3,3]]
+         r2 is Tensor [[4,5], [4,5], [4,5]]
     """
     size = len(inputs)
     shape = [1 for i in range(size)]
