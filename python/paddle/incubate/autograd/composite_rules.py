@@ -492,3 +492,12 @@ def rsqrt_composite(x):
     # rsqrt(x) = x^(-0.5)
     y = full(x.shape, -0.5, x.dtype)
     return pow(x, y)
+
+
+@REGISTER_COMPOSITE('leaky_relu')
+def leaky_relu_composite(x, negative_slope=0.02):
+    """define composite rule of op leaky_relu."""
+    if negative_slope < 1.0:
+        return maximum(x, negative_slope * x)
+    else:
+        return minimum(x, negative_slope * x)
