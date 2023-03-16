@@ -72,8 +72,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "multiclass_nms3",
     "multinomial",
     "nanmedian",
-    "rnn",
-    "search_sort",
     "sync_batch_norm_grad",
     "unique",
     "unique_consecutive_flattened_tensor",
