@@ -192,11 +192,26 @@ class TestLogsumexp_FP16(TestLogsumexp):
 )
 class TestLogsumexpBF16Op(TestLogsumexp):
     def setUp(self):
+        self.op_type = 'logsumexp'
+        self.python_api = logsumexp_wrapper
         self.dtype = np.uint16
+        self.shape = [2, 3, 4, 5]
+        self.axis = [-1]
+        self.keepdim = False
+        self.reduce_all = False
+        self.set_attrs()
         x = np.random.uniform(-1, 1, self.shape).astype(np.float64)
         out = ref_logsumexp(x, self.axis, self.keepdim, self.reduce_all)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.attrs = {
+            'axis': self.axis,
+            'keepdim': self.keepdim,
+            'reduce_all': self.reduce_all,
+        }
+        self.user_defined_grads = None
+        self.user_defined_grad_outputs = None
+        self.set_attrs_addition()
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -216,6 +231,12 @@ class TestLogsumexpBF16Op(TestLogsumexp):
         x = self.inputs['X']
         y = self.outputs['Out']
         return dy * np.exp(x - y)
+
+    def set_attrs(self):
+        pass
+
+    def set_attrs_addition(self):
+        pass
 
 
 class TestLogsumexpError(unittest.TestCase):

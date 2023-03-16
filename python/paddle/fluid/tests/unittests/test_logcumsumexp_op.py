@@ -318,10 +318,18 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.dtype = np.uint16
         self.python_api = paddle.logcumsumexp
         self.axis = None
-        x = np.arange(12, dtype=np.float32).reshape(3, 4)
-        output = np_logcumsumexp(x)
-        self.inputs = {'X': convert_float_to_uint16(x)}
+        input, attrs = self.input_and_attrs()
+        self.attrs = attrs
+        output = np_logcumsumexp(input, **attrs)
+        self.inputs = {'X': convert_float_to_uint16(input)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def input_and_attrs(self):
+        return np.arange(100, dtype=np.float64).reshape(10, 10), {
+            'axis': 0,
+            'flatten': True,
+            'reverse': True,
+        }
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -329,7 +337,15 @@ class TestLogcumsumexpBF16Op(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[
+                np_logcumsumexp_grad(
+                    self.inputs['X'], 1 / self.inputs['X'].size, **self.attrs
+                )
+            ],
+        )
 
 
 if __name__ == '__main__':
