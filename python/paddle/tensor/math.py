@@ -4699,7 +4699,10 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             return _C_ops.subtract(input_back, input_front)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'bool', 'int32', 'int64'],
+            'diff',
         )
         check_type(axis, 'axis', (int), 'diff')
         helper = LayerHelper('diff', **locals())
