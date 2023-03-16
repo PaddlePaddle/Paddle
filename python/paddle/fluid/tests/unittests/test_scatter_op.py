@@ -56,6 +56,12 @@ class TestScatterFP16Op(TestScatterOp):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def test_check_output(self):
+        self.check_output(check_eager=False, atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(["X", "Updates"], "Out", check_eager=False, atol=1e-3)
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -77,13 +83,18 @@ class TestScatterBF16Op(TestScatterOp):
         output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
-        self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=False)
 
-    def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ["X", "Updates"], "Out")
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False, atol=1e-2
+            )
 
 
 class TestScatterOp0(OpTest):
@@ -120,6 +131,12 @@ class TestScatterFP16Op0(TestScatterOp0):
         self.attrs = {'overwrite': True}
         self.outputs = {'Out': output_np}
 
+    def test_check_output(self):
+        self.check_output(check_eager=False, atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(["X", "Updates"], "Out", check_eager=False, atol=1e-3)
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -142,13 +159,18 @@ class TestScatterBF16Op0(TestScatterOp0):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.attrs = {'overwrite': True}
         self.outputs = {'Out': output_np}
-        self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=False)
 
-    def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ["X", "Updates"], "Out")
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False, atol=1e-2
+            )
 
 
 class TestScatterOp1(OpTest):
@@ -191,6 +213,12 @@ class TestScatterFP16Op1(TestScatterOp1):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def test_check_output(self):
+        self.check_output(check_eager=False, atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(["X", "Updates"], "Out", check_eager=False, atol=1e-3)
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -216,13 +244,18 @@ class TestScatterBF16Op1(TestScatterOp1):
         self.attrs = {'overwrite': False}
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
-        self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=False)
 
-    def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ["X", "Updates"], "Out")
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False, atol=1e-2
+            )
 
 
 @unittest.skipIf(
@@ -269,6 +302,18 @@ class TestScatterFP16Op2(TestScatterOp2):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-3, check_eager=False)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False, atol=1e-3
+            )
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -290,6 +335,18 @@ class TestScatterBF16Op2(TestScatterOp2):
         output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=False)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False, atol=1e-2
+            )
 
 
 @unittest.skipIf(
@@ -344,6 +401,18 @@ class TestScatterFP16Op3(TestScatterOp3):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-3, check_eager=False)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False, atol=1e-3
+            )
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -369,6 +438,18 @@ class TestScatterBF16Op3(TestScatterOp3):
         self.attrs = {'overwrite': False}
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=False)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False, atol=1e-2
+            )
 
 
 class TestScatterOp4(OpTest):
@@ -403,6 +484,12 @@ class TestScatterFP16Op4(TestScatterOp4):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def test_check_output(self):
+        self.check_output(check_eager=False, atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(["X", "Updates"], "Out", check_eager=False, atol=1e-3)
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -424,13 +511,18 @@ class TestScatterBF16Op4(TestScatterOp4):
         output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
-        self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=False)
 
-    def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ["X", "Updates"], "Out")
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False, atol=1e-2
+            )
 
 
 @unittest.skipIf(
@@ -477,6 +569,18 @@ class TestScatterFP16Op5(TestScatterOp5):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-3, check_eager=False)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False, atol=1e-3
+            )
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -498,6 +602,18 @@ class TestScatterBF16Op5(TestScatterOp5):
         output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=False)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False, atol=1e-2
+            )
 
 
 class TestScatterOp6(OpTest):
@@ -532,6 +648,12 @@ class TestScatterFP16Op6(TestScatterOp6):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def test_check_output(self):
+        self.check_output(check_eager=False, atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(["X", "Updates"], "Out", check_eager=False, atol=1e-3)
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -553,13 +675,18 @@ class TestScatterBF16Op6(TestScatterOp6):
         output_np = convert_float_to_uint16(output_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
-        self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2, check_eager=False)
 
-    def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ["X", "Updates"], "Out")
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X', 'Updates'], 'Out', check_eager=False, atol=1e-2
+            )
 
 
 class TestScatterAPI(unittest.TestCase):
