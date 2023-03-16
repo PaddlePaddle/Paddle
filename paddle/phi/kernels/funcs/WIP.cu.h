@@ -25,6 +25,7 @@
 #include "paddle/phi/kernels/pad_kernel.h"
 
 namespace phi {
+namespace funcs {
 
 using phi::PADDLE_CUDA_NUM_THREADS;
 
@@ -75,4 +76,5 @@ phi::DenseTensor get_pad_lse(const phi::GPUContext& dev_ctx,
     return *lse;
   }
 }
+}  // namespace funcs
 }  // namespace phi
