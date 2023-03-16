@@ -44,7 +44,7 @@ class ReduceMaxCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
     paddle::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
     std::string x_grad_name = this->GetOutputName(x_grad_t);
-    VLOG(6) << "Runing max_grad composite func ";
+    VLOG(6) << "Runing max_grad composite func";
     prim::max_grad<prim::DescTensor>(
         x, out, out_grad, axis, keep_dim, reduce_all, x_grad);
     this->RecoverOutputName(x_grad_t, x_grad_name);
