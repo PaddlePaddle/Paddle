@@ -434,8 +434,9 @@ def squeeze2_composite(x, axis):
     otherwise, remove dims equal to 1 in axis
     axis can only be list, not int
     """
+    rank = len(x.shape)
     if len(axis) == 0:
-        dims = set(range(len(x.shape)))
+        dims = set(range(rank))
     else:
         dims = set([ax % rank for ax in axis])
     new_shape = []
