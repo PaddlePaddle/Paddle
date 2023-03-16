@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, skip_check_inplace_ci
+from eager_op_test import OpTest, skip_check_grad_ci, skip_check_inplace_ci
 
 import paddle
 import paddle.fluid.core as core
