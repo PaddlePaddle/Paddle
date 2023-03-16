@@ -34,7 +34,7 @@ class TestSwitch(unittest.TestCase):
             shape=[1], value=-1.0, dtype='float32', persistable=True
         )
 
-        with paddle.static.Switch() as switch:
+        with paddle.static.nn.control_flow.Switch() as switch:
             with switch.case(paddle.less_than(x, zero_var)):
                 paddle.assign(zero_var, result)
             with switch.case(paddle.less_than(x, one_var)):
@@ -77,7 +77,7 @@ class TestSwitchCaseError(unittest.TestCase):
 
             # 1. The type of 'condition' in case must be Variable.
             def test_condition_type():
-                with paddle.static.Switch() as switch:
+                with paddle.static.nn.control_flow.Switch() as switch:
                     with switch.case(1):
                         paddle.assign(zero_var, result)
 
@@ -85,7 +85,7 @@ class TestSwitchCaseError(unittest.TestCase):
 
             # 2. The dtype of 'condition' in case must be 'bool'.
             def test_condition_dtype():
-                with paddle.static.Switch() as switch:
+                with paddle.static.nn.control_flow.Switch() as switch:
                     with switch.case(cond):
                         paddle.assign(zero_var, result)
 

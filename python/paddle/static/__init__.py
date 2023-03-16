@@ -27,6 +27,13 @@ from .io import serialize_program  # noqa: F401
 from .io import load_from_file  # noqa: F401
 from .io import save_to_file  # noqa: F401
 from .io import normalize_program  # noqa: F401
+from .io import is_persistable  # noqa: F401
+from .io import save_vars  # noqa: F401
+from .io import load_vars  # noqa: F401
+from .io import save  # noqa: F401
+from .io import load  # noqa: F401
+from .io import load_program_state  # noqa: F401
+from .io import set_program_state  # noqa: F401
 from ..fluid import Scope  # noqa: F401
 from .input import data  # noqa: F401
 from .input import InputSpec  # noqa: F401
@@ -65,13 +72,6 @@ from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
 from ..fluid.optimizer import Optimizer  # noqa: F401
 from ..fluid.optimizer import Adam  # noqa: F401
 from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
-from ..fluid.io import save  # noqa: F401
-from ..fluid.io import load  # noqa: F401
-from ..fluid.io import load_program_state  # noqa: F401
-from ..fluid.io import set_program_state  # noqa: F401
-from ..fluid.io import load_vars  # noqa: F401
-from ..fluid.io import save_vars  # noqa: F401
-from ..fluid.io import batch  # noqa: F401
 
 from ..fluid.contrib.layers import ctr_metric_bundle  # noqa: F401
 from ..fluid.layers import exponential_decay  # noqa: F401
@@ -79,7 +79,7 @@ from ..fluid.layers import learning_rate_scheduler  # noqa: F401
 
 from .nn.metric import auc  # noqa: F401
 from .nn.metric import accuracy  # noqa: F401
-from .nn.control_flow import Print, Switch
+from .nn.control_flow import Print
 
 __all__ = [  # noqa
     'append_backward',

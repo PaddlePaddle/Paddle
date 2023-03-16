@@ -1458,7 +1458,7 @@ class Switch:
     .. code-block:: python
 
         '''
-        with paddle.static.Switch() as switch:
+        with paddle.static.nn.control_flow.Switch() as switch:
             with switch.case(cond1):
                 i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
             with switch.case(cond2):
@@ -1491,7 +1491,7 @@ class Switch:
 
             global_step = fluid.layers.autoincreased_step_counter(counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
 
-            with paddle.static.Switch() as switch:
+            with paddle.static.nn.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
                     fluid.layers.assign(input=one_var, output=lr)
                 with switch.default():
@@ -1517,7 +1517,7 @@ class Switch:
             condition,
             'condition',
             ['bool'],
-            'the member function case of fluid.layers.Switch',
+            'the member function case of paddle.static.nn.control_flow.Switch',
         )
 
         if len(self.pre_not_conditions) == 0:

@@ -2761,10 +2761,59 @@ class AdamaxOptimizer(Optimizer):
         self._beta1 = beta1
         self._beta2 = beta2
         self._epsilon = epsilon
+        self._multi_precision = False
+        self._master_weights = {}
+
+    def _create_master_weight(self, param):
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
+
+            var_name = param.name + '_fp32_master'
+            var_name = unique_name.generate(var_name)
+            var = paddle.static.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True,
+            )
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            self._master_weights[param.name] = var
+        return var
 
     def _create_accumulators(self, block, parameters):
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._moment_acc_str, master_p)
+                self._add_accumulator(self._inf_norm_acc_str, master_p)
+                self._add_accumulator(
+                    name=self._beta1_pow_acc_str,
+                    param=master_p,
+                    fill_value=self._beta1,
+                    shape=[1],
+                )
+                continue
+            if (
+                p.dtype == core.VarDesc.VarType.FP16
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Lars optimizer."
+                )
             self._add_accumulator(self._moment_acc_str, p)
             self._add_accumulator(self._inf_norm_acc_str, p)
             self._add_accumulator(
@@ -2773,6 +2822,34 @@ class AdamaxOptimizer(Optimizer):
                 fill_value=self._beta1,
                 shape=[1],
             )
+
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = (
+            self._multi_precision and core.VarDesc.VarType.FP16 == param.dtype
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
+        target_name = target_param.name
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name
+                )
+            )
+        return self._accumulators[name][target_name]
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -2785,6 +2862,15 @@ class AdamaxOptimizer(Optimizer):
             self._beta1_pow_acc_str, param_and_grad[0]
         )
 
+        find_master = (
+            self._multi_precision
+            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
         if in_dygraph_mode():
             _C_ops.adamax_(
                 param_and_grad[0],
@@ -2793,32 +2879,43 @@ class AdamaxOptimizer(Optimizer):
                 moment,
                 inf_norm,
                 beta1_pow_acc,
+                master_weight,
                 self._beta1,
                 self._beta2,
                 self._epsilon,
+                find_master,
             )
         else:
             # create the adamax optimize op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": self._create_param_lr(param_and_grad),
+                "Moment": moment,
+                "InfNorm": inf_norm,
+                "Beta1Pow": beta1_pow_acc,
+            }
+            outputs = {
+                "ParamOut": param_and_grad[0],
+                "MomentOut": moment,
+                "InfNormOut": inf_norm,
+            }
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+
+            attrs = {
+                "beta1": self._beta1,
+                "beta2": self._beta2,
+                "epsilon": self._epsilon,
+                "multi_precision": find_master,
+            }
+
             adamax_op = block.append_op(
                 type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "LearningRate": self._create_param_lr(param_and_grad),
-                    "Moment": moment,
-                    "InfNorm": inf_norm,
-                    "Beta1Pow": beta1_pow_acc,
-                },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "MomentOut": moment,
-                    "InfNormOut": inf_norm,
-                },
-                attrs={
-                    "beta1": self._beta1,
-                    "beta2": self._beta2,
-                    "epsilon": self._epsilon,
-                },
+                inputs=inputs,
+                outputs=outputs,
+                attrs=attrs,
                 stop_gradient=True,
             )
 
@@ -3181,14 +3278,87 @@ class AdadeltaOptimizer(Optimizer):
             name=name,
         )
         self.type = "adadelta"
+        self._multi_precision = False
+        self._master_weights = {}
         self._epsilon = epsilon
         self._rho = rho
+
+    def _create_master_weight(self, param):
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
+
+            var_name = param.name + '_fp32_master'
+            var_name = unique_name.generate(var_name)
+            var = paddle.static.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True,
+            )
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            self._master_weights[param.name] = var
+        return var
+
+    def _get_accumulator(self, name, param):
+        """Utility function to fetch an accumulator for a parameter
+        Args:
+            name: name of the accumulator
+            param: parameter variable for which accumulator is to be fetched
+        Returns:
+            accumulator variable for the parameter
+        """
+        if self._name is not None:
+            name = self._name + "_" + name
+        find_master = (
+            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
+        target_name = target_param.name
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name
+                )
+            )
+        return self._accumulators[name][target_name]
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
             raise TypeError("block is not instance of framework.Block.")
 
         for p in parameters:
+            if self._multi_precision and p.dtype == core.VarDesc.VarType.FP16:
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._avg_squared_grad_acc_str, master_p)
+                self._add_accumulator(
+                    self._avg_squared_update_acc_str, master_p
+                )
+                continue
+            if (
+                p.dtype == core.VarDesc.VarType.FP16
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Lars optimizer."
+                )
             self._add_accumulator(self._avg_squared_grad_acc_str, p)
             self._add_accumulator(self._avg_squared_update_acc_str, p)
 
@@ -3202,6 +3372,15 @@ class AdadeltaOptimizer(Optimizer):
         avg_squared_update_acc = self._get_accumulator(
             self._avg_squared_update_acc_str, param_and_grad[0]
         )
+        find_master = (
+            self._multi_precision
+            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
 
         if in_dygraph_mode():
             _C_ops.adadelta_(
@@ -3209,25 +3388,38 @@ class AdadeltaOptimizer(Optimizer):
                 param_and_grad[1],
                 avg_squared_grad_acc,
                 avg_squared_update_acc,
+                master_weight,
                 self._rho,
                 self._epsilon,
+                find_master,
             )
         else:
             # Create the adadelta optimizer op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "AvgSquaredGrad": avg_squared_grad_acc,
+                "AvgSquaredUpdate": avg_squared_update_acc,
+            }
+            outputs = {
+                "ParamOut": param_and_grad[0],
+                "AvgSquaredGradOut": avg_squared_grad_acc,
+                "AvgSquaredUpdateOut": avg_squared_update_acc,
+            }
+
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+
             adadelta_op = block.append_op(
                 type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "AvgSquaredGrad": avg_squared_grad_acc,
-                    "AvgSquaredUpdate": avg_squared_update_acc,
+                inputs=inputs,
+                outputs=outputs,
+                attrs={
+                    "epsilon": self._epsilon,
+                    "rho": self._rho,
+                    "multi_precision": find_master,
                 },
-                outputs={
-                    "ParamOut": param_and_grad[0],
-                    "AvgSquaredGradOut": avg_squared_grad_acc,
-                    "AvgSquaredUpdateOut": avg_squared_update_acc,
-                },
-                attrs={"epsilon": self._epsilon, "rho": self._rho},
                 stop_gradient=True,
             )
 
@@ -4409,7 +4601,7 @@ class ExponentialMovingAverage:
                 ema = block._clone_variable(self._ema_vars[param.name])
                 paddle.assign(param, output=tmp)
                 # bias correction
-                with paddle.static.Switch() as switch:
+                with paddle.static.nn.control_flow.Switch() as switch:
                     with switch.case(global_step > 0):
                         paddle.assign(ema / (1.0 - decay_pow), output=param)
                     with switch.default():
@@ -4435,7 +4627,7 @@ class ExponentialMovingAverage:
 
             if self._thres_steps is not None:
                 decay_t = (self._thres_steps + 1.0) / (self._thres_steps + 10.0)
-                with paddle.static.Switch() as switch:
+                with paddle.static.nn.control_flow.Switch() as switch:
                     with switch.case(decay_t < self._decay):
                         paddle.assign(decay_t, decay_var)
                     with switch.default():
@@ -7443,7 +7635,7 @@ class LookaheadOptimizer:
             )
 
             mod = paddle.remainder(step, k)
-            with paddle.static.Switch() as switch:
+            with paddle.static.nn.control_flow.Switch() as switch:
                 with switch.case(step == one_var):
                     for param_name in params:
                         fast_var = main_block.var(param_name)
