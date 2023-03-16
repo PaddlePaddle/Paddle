@@ -14,16 +14,25 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/fleet_executor/WIP.cu.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/kernels/uniform_kernel.h"
 
 namespace phi {
 
 TEST(WIPTest, WIP) {
-  phi::GPUPlace place;
-  phi::GPUContext gpu_context(place);
+  phi::GPUPlace gpu_place;
+  phi::GPUContext gpu_context(gpu_place);
   phi::DataType dtype = phi::DataType::FLOAT32;
   phi::DenseTensor lse(dtype);
-  phi::UniformKernel<float>(place, {2, 3, 4}, dtype, 0, 1, 1234, &lse);
+  phi::UniformKernel<float>(gpu_context, {2, 3, 4}, dtype, 0, 1, 1234, &lse);
+
+  phi::CPUPlace cpu_place;
+  phi::DenseTensor cpu_assert_tensor(dtype);
+  cpu_assert_tensor.Resize({2, 3, 4});
+  cpu_assert_tensor.mutable_data(cpu_place, dtype);
+  paddle::framework::TensorCopySync(lse, cpu_place, &cpu_assert_tensor);
+  auto cpu_data = cpu_assert_tensor.data<float>();
+  for (int i = 0; i < 2 * 3 * 4; ++i) std::cout << cpu_data[i] << std::endl;
   EXPECT_TRUE(true == false);
 }
 
