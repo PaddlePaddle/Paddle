@@ -2712,6 +2712,8 @@ class Resharder:
                 )
                 # simplified processing: ignore union process mesh and output reshard
                 dist_op = self.dist_context.get_dist_op_for_program(op)
+                if not dist_tensor or not dist_op:
+                    return reshard_op_cost
                 dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
                     tensor.name
                 )
