@@ -927,7 +927,7 @@ class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
 
 class TestSoftmaxWithCrossEntropyOpDivideZero(unittest.TestCase):
     def test_errors(self):
-        def divide_zero_case():
+        with self.assertRaises(ValueError):
             array = np.array([], dtype=np.float32)
             logits = paddle.to_tensor(
                 np.reshape(array, [1, 0]), dtype='float32'
@@ -937,8 +937,6 @@ class TestSoftmaxWithCrossEntropyOpDivideZero(unittest.TestCase):
             paddle.nn.functional.softmax_with_cross_entropy(
                 logits, label, soft_label=True, numeric_stable_mode=True, axis=0
             )
-
-        self.assertRaises(ValueError, divide_zero_case)
 
 
 if __name__ == "__main__":
