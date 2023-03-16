@@ -48,8 +48,17 @@ phi::DenseTensor get_pad_lse(const phi::GPUContext& dev_ctx,
                              phi::DenseTensor* lse,
                              int out_second_dim,
                              int pad_to,
+                             const std::string& data_format = "NCHW",
                              bool force_pad_inf = false) {
   int pad_amount = (pad_to - (lse->dims()[2] % pad_to)) % pad_to;
+  PADDLE_ENFORCE_EQ(
+      lse->dims().size(),
+      3,
+      phi::errors::InvalidArgument("The lse should be a 3d tensor"));
+  PADDLE_ENFORCE(
+      data_format == "NCHW" || data_format == "NHWC",
+      phi::errors::InvalidArgument("The data_format should be NCHW or NHWC"));
+  std::string pad3d_data_format = data_format == "NCHW" ? "NCDHW" : "NDHWC";
   if (pad_amount > 0) {
     phi::DenseTensor tmp = *lse;
     if (force_pad_inf) {
@@ -65,7 +74,7 @@ phi::DenseTensor get_pad_lse(const phi::GPUContext& dev_ctx,
                                          {0, 0, 0, 0, 0, pad_amount},
                                          "constant",
                                          std::numeric_limits<T>::infinity(),
-                                         "NCDHW",
+                                         pad3d_data_format,
                                          &out);
     out.Resize({out.dims()[0], out.dims()[1], out.dims()[2]});
     return out;
