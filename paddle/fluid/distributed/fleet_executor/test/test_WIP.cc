@@ -13,9 +13,18 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/distributed/fleet_executor/WIP.cu.h"
+#include "paddle/phi/kernels/uniform_kernel.h"
 
 namespace phi {
 
-TEST(WIPTest, WIP) { EXPECT_TRUE(true == false); }
+TEST(WIPTest, WIP) {
+  phi::GPUPlace place;
+  phi::GPUContext gpu_context(place);
+  phi::DataType dtype = phi::DataType::FLOAT32;
+  phi::DenseTensor lse(dtype);
+  phi::UniformKernel<float>(place, {2, 3, 4}, dtype, 0, 1, 1234, &lse);
+  EXPECT_TRUE(true == false);
+}
 
 }  // namespace phi
