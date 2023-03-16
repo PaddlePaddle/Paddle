@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/repeat_interleave_grad_kernel.h"
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -54,9 +55,9 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                     phi::errors::InvalidArgument(
                         "Input(Repeats) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        phi::DataTypeToString(index_type),
-                        phi::DataTypeToString(phi::DataType::INT32),
-                        phi::DataTypeToString(phi::DataType::INT64)));
+                        DataTypeToString(index_type),
+                        DataTypeToString(phi::DataType::INT32),
+                        DataTypeToString(phi::DataType::INT64)));
 
   phi::DeviceContextPool::Instance().Get(repeats_tensor.place());
   if (index_type == phi::DataType::INT32) {

@@ -1238,6 +1238,7 @@ class TestSqrtBF16(OpTest):
 class TestRsqrt(TestActivation):
     def setUp(self):
         self.op_type = "rsqrt"
+        self.prim_op_type = "comp"
         self.python_api = paddle.rsqrt
         self.init_dtype()
         self.init_shape()
@@ -1248,14 +1249,23 @@ class TestRsqrt(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
+        self.enable_cinn = True
 
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.0005,
+            check_prim=True,
+        )
 
 
 '''

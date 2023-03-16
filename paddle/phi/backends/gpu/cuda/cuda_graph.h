@@ -196,14 +196,6 @@ class CUDAGraph {
   // supported during capturing CUDA Graph.
   static bool IsValidCapturing();
 
-  static void SetIsCUDAGraphStreamCreated(bool create_cuda_graph_stream) {
-    capturing_graph_->is_cuda_graph_stream_created_ = create_cuda_graph_stream;
-  }
-
-  static bool IsCUDAGraphStreamCreated() {
-    return capturing_graph_->is_cuda_graph_stream_created_;
-  }
-
   static bool IsThreadLocalCapturing() {
 #if CUDA_VERSION >= 10010
     return IsCapturing() &&
@@ -253,8 +245,6 @@ class CUDAGraph {
   std::mutex func_mtx_;
 
   bool is_first_run_{true};
-
-  bool is_cuda_graph_stream_created_{false};
 
   static paddle::optional<std::thread::id> capturing_thread_id_;
   static std::unique_ptr<CUDAGraph> capturing_graph_;
