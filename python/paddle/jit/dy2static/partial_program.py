@@ -455,7 +455,8 @@ class PartialProgramLayer:
         """
         Return current train or eval program hash id.
         """
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+        _in_amp_guard = paddle.amp.auto_cast._in_amp_guard
+        _in_pure_fp16_guard = paddle.amp.auto_cast._in_pure_fp16_guard
 
         if self.training:
             if _in_amp_guard():
@@ -474,7 +475,8 @@ class PartialProgramLayer:
 
     @property
     def train_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+        _in_amp_guard = paddle.amp.auto_cast._in_amp_guard
+        _in_pure_fp16_guard = paddle.amp.auto_cast._in_pure_fp16_guard
 
         if _in_amp_guard():
             return self._train_amp_program
@@ -485,7 +487,8 @@ class PartialProgramLayer:
 
     @property
     def infer_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+        _in_amp_guard = paddle.amp.auto_cast._in_amp_guard
+        _in_pure_fp16_guard = paddle.amp.auto_cast._in_pure_fp16_guard
 
         if _in_amp_guard():
             return self._infer_amp_program
@@ -496,7 +499,8 @@ class PartialProgramLayer:
 
     @property
     def forward_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+        _in_amp_guard = paddle.amp.auto_cast._in_amp_guard
+        _in_pure_fp16_guard = paddle.amp.auto_cast._in_pure_fp16_guard
 
         if self.training:
             if _in_amp_guard():
@@ -511,7 +515,8 @@ class PartialProgramLayer:
 
     @property
     def backward_program(self):
-        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
+        _in_amp_guard = paddle.amp.auto_cast._in_amp_guard
+        _in_pure_fp16_guard = paddle.amp.auto_cast._in_pure_fp16_guard
 
         if self.training:
             if _in_amp_guard():
@@ -708,7 +713,7 @@ class PartialProgramLayer:
         return self._valid_vars(double_grads)
 
     def _cast_fp16_if_pure_fp16(self, in_vars):
-        from paddle.amp.auto_cast import _in_pure_fp16_guard
+        _in_pure_fp16_guard = paddle.amp.auto_cast._in_pure_fp16_guard
 
         if _in_pure_fp16_guard():
             for i, var in enumerate(in_vars):
