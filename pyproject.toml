@@ -29,6 +29,9 @@ exclude = [
 ]
 target-version = "py37"
 select = [
+    # Pyflakes
+    "F401",
+
     # Pyupgrade
     "UP001",
     "UP003",
