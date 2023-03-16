@@ -1995,7 +1995,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     For more information, Partial FC: Training 10 Million Identities on a Single Machine
     arxiv: https://arxiv.org/abs/2010.05222
 
-    .. hint::
+    Note:
         If the number of the positive class centers is greater than the input num_samples, it keeps all the positive
         class centers and the shape of sampled_class_center will be [num_positive_class_centers].
 

@@ -153,7 +153,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
   if (x < in_effective_thread_num) {
     // Read a tile from input using block.
     int x_i = x / TileY;
-    int x_j = x % TileY;
+    int x_j = x - x_i * TileY;
     IndexType input_ind =
         input_origin_block_flat_index + x_i * input_dims[2] + x_j;
     IndexType input_inc = BlockReadRows * input_dims[2];

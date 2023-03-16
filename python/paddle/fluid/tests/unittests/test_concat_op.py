@@ -58,7 +58,7 @@ class TestConcatOp(OpTest):
             place = core.CUDAPlace(0)
             self.check_output_with_place(place)
         else:
-            self.check_output(check_eager=True)
+            self.check_output()
 
     def test_check_grad(self):
         if self.dtype == np.uint16:
@@ -67,9 +67,9 @@ class TestConcatOp(OpTest):
             self.check_grad_with_place(place, ['x1'], 'Out', check_prim=True)
             self.check_grad_with_place(place, ['x2'], 'Out', check_prim=True)
         else:
-            self.check_grad(['x0'], 'Out', check_eager=True, check_prim=True)
-            self.check_grad(['x1'], 'Out', check_eager=True, check_prim=True)
-            self.check_grad(['x2'], 'Out', check_eager=True, check_prim=True)
+            self.check_grad(['x0'], 'Out', check_prim=True)
+            self.check_grad(['x1'], 'Out', check_prim=True)
+            self.check_grad(['x2'], 'Out', check_prim=True)
 
     def init_test_data(self):
         if self.dtype == np.uint16:
@@ -157,12 +157,12 @@ class TestConcatOp6(TestConcatOp):
         self.outputs = {'Out': (out, self.out_lod)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_eager=True)
-        self.check_grad(['x1'], 'Out', check_eager=True)
-        self.check_grad(['x2'], 'Out', check_eager=True)
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
 
     def init_test_data(self):
         self.x0 = np.random.random([100]).astype(self.dtype)
@@ -197,12 +197,12 @@ class TestConcatOp7(TestConcatOp):
         return "float64"
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['x0'], 'Out', check_eager=True, check_prim=True)
-        self.check_grad(['x1'], 'Out', check_eager=True, check_prim=True)
-        self.check_grad(['x2'], 'Out', check_eager=True, check_prim=True)
+        self.check_grad(['x0'], 'Out', check_prim=True)
+        self.check_grad(['x1'], 'Out', check_prim=True)
+        self.check_grad(['x2'], 'Out', check_prim=True)
 
     def init_test_data(self):
         if self.dtype == np.uint16:

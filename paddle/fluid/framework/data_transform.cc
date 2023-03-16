@@ -161,7 +161,7 @@ phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(
     const AttributeMap &fluid_attrs,
     phi::AttributeMap *phi_attrs,
     bool has_infer_varkernel_fn) {
-  // According to "GetKernelTypeForVar" in some ops those have MKLDNN codes,
+  // According to "GetKernelTypeForVar" in some ops executed with oneDNN,
   // the only "string" member, such as "data_layout" 、"data_format" of
   // AttibuteMap is useful. In the future the other args maybe used. Because the
   // "phi" module should not depend on the "fluid", transform
