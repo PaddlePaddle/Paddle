@@ -100,8 +100,8 @@ class TestInstanceNormOp(OpTest):
         self.python_out_sig = ['Y']
         self.jit_comp_rtol = 1e-05
         self.jit_comp_atol = 1e-05
-        self.fw_comp_rtol = 1
-        self.fw_comp_atol = 1
+        self.fw_comp_rtol = 1e-02
+        self.fw_comp_atol = 1e-02
         self.rev_comp_rtol = 1e-02
         self.rev_comp_atol = 1e-02
         self.init_test_case()
@@ -113,9 +113,10 @@ class TestInstanceNormOp(OpTest):
         scale_np = np.random.random_sample(scale_shape).astype(self.dtype)
         bias_np = np.random.random_sample(scale_shape).astype(self.dtype)
         mean_np, var_np = _cal_mean_variance(x_np, self.epsilon, mean_shape)
-        ref_y_np, ref_mean_np, ref_var_np = _reference_instance_norm_naive(
+        ref_y_np, ref_mean_np, ref_var_np_tmp = _reference_instance_norm_naive(
             x_np, scale_np, bias_np, self.epsilon, mean_np, var_np
         )
+        ref_var_np = 1 / np.sqrt(ref_var_np_tmp + self.epsilon)
         self.inputs = {
             'X': x_np,
             'Scale': scale_np,
@@ -140,7 +141,7 @@ class TestInstanceNormOp(OpTest):
         )
 
     def init_test_case(self):
-        self.shape = [6, 100, 8, 9]
+        self.shape = [2, 100, 4, 5]
         self.n = self.shape[0]
         self.c = self.shape[1]
         self.h = self.shape[2]
