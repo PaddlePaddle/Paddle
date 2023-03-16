@@ -18,6 +18,7 @@
 #include "paddle/phi/kernels/uniform_kernel.h"
 
 namespace phi {
+namespace funcs {
 
 TEST(WIPTest, WIP) {
   phi::GPUPlace gpu_place;
@@ -35,5 +36,5 @@ TEST(WIPTest, WIP) {
   for (int i = 0; i < 2 * 3 * 4; ++i) std::cout << cpu_data[i] << std::endl;
   EXPECT_TRUE(true == false);
 }
-
+}  // namespace funcs
 }  // namespace phi
