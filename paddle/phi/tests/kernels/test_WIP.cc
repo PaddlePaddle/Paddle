@@ -14,7 +14,7 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/phi/kernels/gpu/WIP.cu.h"
+#include "paddle/phi/kernels/funcs/WIP.cu.h"
 #include "paddle/phi/kernels/uniform_kernel.h"
 
 namespace phi {
