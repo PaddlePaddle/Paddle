@@ -752,6 +752,7 @@ class TestSplitFP16OP_2(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], ['out0', 'out1', 'out2'])
 
+
 class TestSplitBF16OP(OpTest):
     def setUp(self):
         self.python_api = paddle.split
@@ -774,7 +775,9 @@ class TestSplitBF16OP(OpTest):
             out = np.split(x, [2, 3], axis)
             self.inputs = {'X': convert_float_to_uint16(x)}
             self.outputs = {
-                'Out': convert_float_to_uint16([('out%d' % i, out[i]) for i in range(len(out))])
+                'Out': convert_float_to_uint16(
+                    [('out%d' % i, out[i]) for i in range(len(out))]
+                )
             }
         self.attrs = {'axis': axis, 'sections': [2, 1, 2]}
 
@@ -807,7 +810,11 @@ class TestSplitBF16OP_2(OpTest):
         }
 
         out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': convert_float_to_uint16([('out%d' % i, out[i]) for i in range(len(out))])}
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                [('out%d' % i, out[i]) for i in range(len(out))]
+            )
+        }
 
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype(self.dtype)

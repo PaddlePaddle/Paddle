@@ -324,7 +324,6 @@ class TestRandomValue(unittest.TestCase):
 
 
 class TestRandpermFP16OP(OpTest):
-
     def setUp(self):
         self.op_type = "randperm"
         self.python_api = paddle.randperm

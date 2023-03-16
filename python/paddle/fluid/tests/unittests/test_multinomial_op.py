@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -385,7 +385,6 @@ class TestMultinomialFP16OP3(TestMultinomialFP16OP):
         self.outputs = {"Out": np.zeros(100).astype("float16")}
         self.attrs = {"num_samples": 100, "replacement": False}
 
-
     def verify_output(self, outs):
         out = np.array(outs[0])
         unique_out = np.unique(out)
@@ -433,7 +432,7 @@ class TestMultinomialBF16OP(OpTest):
 class TestMultinomialBF16OP2(TestMultinomialBF16OP):
     def init_data(self):
         # input probability is a matrix
-        self.input_np = (np.random.rand(3, 4)*65535).astype("uint16")
+        self.input_np = (np.random.rand(3, 4) * 65535).astype("uint16")
         self.outputs = {"Out": np.zeros((3, 100000)).astype("uint16")}
         self.attrs = {"num_samples": 100000, "replacement": True}
 
@@ -444,7 +443,7 @@ class TestMultinomialBF16OP2(TestMultinomialBF16OP):
 class TestMultinomialBF16OP3(TestMultinomialBF16OP):
     def init_data(self):
         # replacement is False. number of samples must be less than number of categories.
-        self.input_np = (np.random.rand(1000)*65535).astype("uint16")
+        self.input_np = (np.random.rand(1000) * 65535).astype("uint16")
         self.outputs = {"Out": np.zeros(100).astype("uint16")}
         self.attrs = {"num_samples": 100, "replacement": False}
 
@@ -456,7 +455,6 @@ class TestMultinomialBF16OP3(TestMultinomialBF16OP):
             100,
             "replacement is False. categories can't be sampled repeatedly",
         )
-
 
 
 if __name__ == "__main__":

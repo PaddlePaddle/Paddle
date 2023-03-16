@@ -161,11 +161,13 @@ class TestOverlapAddFP16OP(OpTest):
         self.op_type = "overlap_add"
         self.python_api = paddle.signal.overlap_add
         self.shape, self.type, self.attrs = self.initTestCase()
-        self.inputs = {
-            'X': np.random.random(size=self.shape).astype(self.type)
-        }
+        self.inputs = {'X': np.random.random(size=self.shape).astype(self.type)}
 
-        self.outputs = {'Out': overlap_add(x=self.inputs['X'], **self.attrs).astype(self.type)}
+        self.outputs = {
+            'Out': overlap_add(x=self.inputs['X'], **self.attrs).astype(
+                self.type
+            )
+        }
 
     def initTestCase(self):
         input_shape = (50, 3)
@@ -178,12 +180,12 @@ class TestOverlapAddFP16OP(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_eager=True,atol=1e-3, rtol=1e-3)
+        self.check_output(check_eager=True, atol=1e-3, rtol=1e-3)
         paddle.disable_static()
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True,atol=1e-3, rtol=1e-3)
+        self.check_grad(['X'], 'Out', check_eager=True, atol=1e-3, rtol=1e-3)
         paddle.disable_static()
 
 
@@ -193,9 +195,15 @@ class TestOverlapAddBF16OP(OpTest):
         self.python_api = paddle.signal.overlap_add
         self.shape, self.type, self.attrs = self.initTestCase()
         self.inputs = {
-            'X': convert_float_to_uint16(np.random.random(size=self.shape).astype(self.type)),
+            'X': convert_float_to_uint16(
+                np.random.random(size=self.shape).astype(self.type)
+            ),
         }
-        self.outputs = {'Out': convert_float_to_uint16(overlap_add(x=self.inputs['X'], **self.attrs))}
+        self.outputs = {
+            'Out': convert_float_to_uint16(
+                overlap_add(x=self.inputs['X'], **self.attrs)
+            )
+        }
 
     def initTestCase(self):
         input_shape = (50, 3)

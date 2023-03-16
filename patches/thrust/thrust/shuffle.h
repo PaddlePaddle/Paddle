@@ -45,12 +45,12 @@
 namespace thrust {
 
 /*! \addtogroup reordering
-*  \ingroup algorithms
-*
-*  \addtogroup shuffling
-*  \ingroup reordering
-*  \{
-*/
+ *  \ingroup algorithms
+ *
+ *  \addtogroup shuffling
+ *  \ingroup reordering
+ *  \{
+ */
 
 /*! \p shuffle reorders the elements <tt>[first, last)</tt> by a uniform
  * pseudorandom permutation, defined by

@@ -149,12 +149,11 @@ static Counts &counts() {
 #include <intrin.h>
 #pragma intrinsic(ROBIN_HOOD(BITSCANFORWARD))
 #define ROBIN_HOOD_COUNT_TRAILING_ZEROES(x)                                   \
-  [](size_t mask) noexcept->int {                                             \
+  [](size_t mask) noexcept -> int {                                           \
     unsigned long index;                                                      \
     return ROBIN_HOOD(BITSCANFORWARD)(&index, mask) ? static_cast<int>(index) \
                                                     : ROBIN_HOOD(BITNESS);    \
-  }                                                                           \
-  (x)
+  }(x)
 #else
 #if ROBIN_HOOD(BITNESS) == 32
 #define ROBIN_HOOD_PRIVATE_DEFINITION_CTZ() __builtin_ctzl
@@ -247,8 +246,9 @@ namespace robin_hood {
 namespace ROBIN_HOOD_STD {
 template <class T>
 struct alignment_of
-    : std::integral_constant<
-          std::size_t, alignof(typename std::remove_all_extents<T>::type)> {};
+    : std::integral_constant<std::size_t,
+                             alignof(
+                                 typename std::remove_all_extents<T>::type)> {};
 
 template <class T, T... Ints>
 class integer_sequence {
@@ -278,9 +278,13 @@ struct IntSeqImpl {
   };
 
   using TResult = typename IntSeqCombiner<
-      typename IntSeqImpl<TValue, Begin, Begin + (End - Begin) / 2,
+      typename IntSeqImpl<TValue,
+                          Begin,
+                          Begin + (End - Begin) / 2,
                           (End - Begin) / 2 == 1>::TResult,
-      typename IntSeqImpl<TValue, Begin + (End - Begin) / 2, End,
+      typename IntSeqImpl<TValue,
+                          Begin + (End - Begin) / 2,
+                          End,
                           (End - Begin + 1) / 2 == 1>::TResult>::TResult;
 };
 
@@ -350,18 +354,18 @@ inline T reinterpret_cast_no_cast_align_warning(void const *ptr) noexcept {
 template <typename E, typename... Args>
 [[noreturn]] ROBIN_HOOD(NOINLINE)
 #if ROBIN_HOOD(HAS_EXCEPTIONS)
-    void doThrow(Args &&... args) {
+    void doThrow(Args &&...args) {
   // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
   throw E(std::forward<Args>(args)...);
 }
 #else
-    void doThrow(Args &&... ROBIN_HOOD_UNUSED(args) /*unused*/) {
+    void doThrow(Args &&...ROBIN_HOOD_UNUSED(args) /*unused*/) {
   abort();
 }
 #endif
 
 template <typename E, typename T, typename... Args>
-T *assertNotNull(T *t, Args &&... args) {
+T *assertNotNull(T *t, Args &&...args) {
   if (ROBIN_HOOD_UNLIKELY(nullptr == t)) {
     doThrow<E>(std::forward<Args>(args)...);
   }
@@ -388,13 +392,12 @@ class BulkPoolAllocator {
   BulkPoolAllocator() noexcept = default;
 
   // does not copy anything, just creates a new allocator.
-  BulkPoolAllocator(const BulkPoolAllocator &ROBIN_HOOD_UNUSED(
-      o) /*unused*/) noexcept : mHead(nullptr),
-                                mListForFree(nullptr) {}
+  BulkPoolAllocator(
+      const BulkPoolAllocator &ROBIN_HOOD_UNUSED(o) /*unused*/) noexcept
+      : mHead(nullptr), mListForFree(nullptr) {}
 
   BulkPoolAllocator(BulkPoolAllocator &&o) noexcept
-      : mHead(o.mHead),
-        mListForFree(o.mListForFree) {
+      : mHead(o.mHead), mListForFree(o.mListForFree) {
     o.mListForFree = nullptr;
     o.mHead = nullptr;
   }
@@ -614,36 +617,34 @@ struct pair {
   using first_type = T1;
   using second_type = T2;
 
-  template <typename U1 = T1, typename U2 = T2,
+  template <typename U1 = T1,
+            typename U2 = T2,
             typename = typename std::enable_if<
                 std::is_default_constructible<U1>::value &&
                 std::is_default_constructible<U2>::value>::type>
-  constexpr pair() noexcept(noexcept(U1()) && noexcept(U2()))
+  constexpr pair() noexcept(noexcept(U1()) &&noexcept(U2()))
       : first(), second() {}
 
   // pair constructors are explicit so we don't accidentally call this ctor when
   // we don't have to.
-  explicit constexpr pair(std::pair<T1, T2> const &o) noexcept(
-      noexcept(T1(std::declval<T1 const &>())) &&
-      noexcept(T2(std::declval<T2 const &>())))
+  explicit constexpr pair(std::pair<T1, T2> const &o) noexcept(noexcept(T1(
+      std::declval<T1 const &>())) &&noexcept(T2(std::declval<T2 const &>())))
       : first(o.first), second(o.second) {}
 
   // pair constructors are explicit so we don't accidentally call this ctor when
   // we don't have to.
-  explicit constexpr pair(std::pair<T1, T2> &&o) noexcept(
-      noexcept(T1(std::move(std::declval<T1 &&>()))) &&
-      noexcept(T2(std::move(std::declval<T2 &&>()))))
+  explicit constexpr pair(std::pair<T1, T2> &&o) noexcept(noexcept(T1(std::move(
+      std::declval<T1 &&>()))) &&noexcept(T2(std::move(std::declval<T2 &&>()))))
       : first(std::move(o.first)), second(std::move(o.second)) {}
 
-  constexpr pair(T1 &&a, T2 &&b) noexcept(
-      noexcept(T1(std::move(std::declval<T1 &&>()))) &&
-      noexcept(T2(std::move(std::declval<T2 &&>()))))
+  constexpr pair(T1 &&a, T2 &&b) noexcept(noexcept(T1(std::move(
+      std::declval<T1 &&>()))) &&noexcept(T2(std::move(std::declval<T2 &&>()))))
       : first(std::move(a)), second(std::move(b)) {}
 
   template <typename U1, typename U2>
   constexpr pair(U1 &&a, U2 &&b) noexcept(
-      noexcept(T1(std::forward<U1>(std::declval<U1 &&>()))) &&
-      noexcept(T2(std::forward<U2>(std::declval<U2 &&>()))))
+      noexcept(T1(std::forward<U1>(std::declval<U1 &&>()))) &&noexcept(
+          T2(std::forward<U2>(std::declval<U2 &&>()))))
       : first(std::forward<U1>(a)), second(std::forward<U2>(b)) {}
 
   template <typename... U1, typename... U2>
@@ -653,7 +654,8 @@ struct pair {
 #if !ROBIN_HOOD(BROKEN_CONSTEXPR)
   constexpr
 #endif
-      pair(std::piecewise_construct_t /*unused*/, std::tuple<U1...> a,
+      pair(std::piecewise_construct_t /*unused*/,
+           std::tuple<U1...> a,
            std::tuple<U2...>
                b) noexcept(noexcept(pair(std::declval<std::tuple<U1...> &>(),
                                          std::declval<std::tuple<U2...> &>(),
@@ -661,24 +663,27 @@ struct pair {
                                              U1...>(),
                                          ROBIN_HOOD_STD::index_sequence_for<
                                              U2...>())))
-      : pair(a, b, ROBIN_HOOD_STD::index_sequence_for<U1...>(),
+      : pair(a,
+             b,
+             ROBIN_HOOD_STD::index_sequence_for<U1...>(),
              ROBIN_HOOD_STD::index_sequence_for<U2...>()) {
   }
 
   // constructor called from the std::piecewise_construct_t ctor
   template <typename... U1, size_t... I1, typename... U2, size_t... I2>
-  pair(
-      std::tuple<U1...> &a, std::tuple<U2...> &b,
-      ROBIN_HOOD_STD::index_sequence<I1...> /*unused*/,
-      ROBIN_HOOD_STD::index_sequence<
-          I2...> /*unused*/) noexcept(noexcept(T1(std::
-                                                      forward<U1>(std::get<I1>(
-                                                          std::declval<
-                                                              std::tuple<U1...>
-                                                                  &>()))...)) &&
-                                      noexcept(T2(std::forward<U2>(std::get<I2>(
-                                          std::declval<
-                                              std::tuple<U2...> &>()))...)))
+  pair(std::tuple<U1...> &a,
+       std::tuple<U2...> &b,
+       ROBIN_HOOD_STD::index_sequence<I1...> /*unused*/,
+       ROBIN_HOOD_STD::index_sequence<
+           I2...> /*unused*/) noexcept(noexcept(T1(std::
+                                                       forward<U1>(std::get<I1>(
+                                                           std::declval<
+                                                               std::tuple<U1...>
+                                                                   &>()))...))
+                                           &&noexcept(
+                                               T2(std::forward<U2>(std::get<I2>(
+                                                   std::declval<std::tuple<
+                                                       U2...> &>()))...)))
       : first(std::forward<U1>(std::get<I1>(a))...),
         second(std::forward<U2>(std::get<I2>(b))...) {
     // make visual studio compiler happy about warning about unused a & b.
@@ -715,8 +720,9 @@ inline constexpr bool operator!=(pair<A, B> const &x, pair<A, B> const &y) {
 template <typename A, typename B>
 inline constexpr bool
 operator<(pair<A, B> const &x, pair<A, B> const &y) noexcept(
-    noexcept(std::declval<A const &>() < std::declval<A const &>()) &&
-    noexcept(std::declval<B const &>() < std::declval<B const &>())) {
+    noexcept(std::declval<A const &>() <
+             std::declval<A const &>()) &&noexcept(std::declval<B const &>() <
+                                                   std::declval<B const &>())) {
   return x.first < y.first || (!(y.first < x.first) && x.second < y.second);
 }
 template <typename A, typename B>
@@ -965,18 +971,25 @@ struct WrapKeyEqual : public T {
 // I've moved the
 // boolean to the front.
 // https://www.reddit.com/r/cpp/comments/ahp6iu/compile_time_binary_size_reductions_and_cs_future/eeguck4/
-template <bool IsFlat, size_t MaxLoadFactor100, typename Key, typename T,
-          typename Hash, typename KeyEqual>
+template <bool IsFlat,
+          size_t MaxLoadFactor100,
+          typename Key,
+          typename T,
+          typename Hash,
+          typename KeyEqual>
 class Table
     : public WrapHash<Hash>,
       public WrapKeyEqual<KeyEqual>,
       detail::NodeAllocator<
           typename std::conditional<
-              std::is_void<T>::value, Key,
+              std::is_void<T>::value,
+              Key,
               robin_hood::pair<
                   typename std::conditional<IsFlat, Key, Key const>::type,
                   T>>::type,
-          4, 16384, IsFlat> {
+          4,
+          16384,
+          IsFlat> {
  public:
   static constexpr bool is_flat = IsFlat;
   static constexpr bool is_map = !std::is_void<T>::value;
@@ -987,7 +1000,8 @@ class Table
   using key_type = Key;
   using mapped_type = T;
   using value_type = typename std::conditional<
-      is_set, Key,
+      is_set,
+      Key,
       robin_hood::pair<typename std::conditional<is_flat, Key, Key const>::type,
                        T>>::type;
   using size_type = size_t;
@@ -1033,9 +1047,9 @@ class Table
     template <typename... Args>
     explicit DataNode(
         M &ROBIN_HOOD_UNUSED(map) /*unused*/,
-        Args &&... args) noexcept(noexcept(value_type(std::
-                                                          forward<Args>(
-                                                              args)...)))
+        Args &&...args) noexcept(noexcept(value_type(std::
+                                                         forward<Args>(
+                                                             args)...)))
         : mData(std::forward<Args>(args)...) {}
 
     DataNode(
@@ -1075,8 +1089,8 @@ class Table
     }
     template <typename VT = value_type>
     ROBIN_HOOD(NODISCARD)
-    typename std::enable_if<is_set, VT const &>::type getFirst() const
-        noexcept {
+    typename std::enable_if<is_set, VT const &>::type
+        getFirst() const noexcept {
       return mData;
     }
 
@@ -1088,8 +1102,8 @@ class Table
 
     template <typename MT = mapped_type>
     ROBIN_HOOD(NODISCARD)
-    typename std::enable_if<is_set, MT const &>::type getSecond() const
-        noexcept {
+    typename std::enable_if<is_set, MT const &>::type
+        getSecond() const noexcept {
       return mData.second;
     }
 
@@ -1107,13 +1121,14 @@ class Table
   class DataNode<M, false> {
    public:
     template <typename... Args>
-    explicit DataNode(M &map, Args &&... args) : mData(map.allocate()) {
+    explicit DataNode(M &map, Args &&...args) : mData(map.allocate()) {
       ::new (static_cast<void *>(mData))
           value_type(std::forward<Args>(args)...);
     }
 
     DataNode(M &ROBIN_HOOD_UNUSED(map) /*unused*/,
-             DataNode<M, false> &&n) noexcept : mData(std::move(n.mData)) {}
+             DataNode<M, false> &&n) noexcept
+        : mData(std::move(n.mData)) {}
 
     void destroy(M &map) noexcept {
       // don't deallocate, just put it into list of datapool.
@@ -1151,8 +1166,8 @@ class Table
     }
     template <typename VT = value_type>
     ROBIN_HOOD(NODISCARD)
-    typename std::enable_if<is_set, VT const &>::type getFirst() const
-        noexcept {
+    typename std::enable_if<is_set, VT const &>::type
+        getFirst() const noexcept {
       return *mData;
     }
 
@@ -1164,8 +1179,8 @@ class Table
 
     template <typename MT = mapped_type>
     ROBIN_HOOD(NODISCARD)
-    typename std::enable_if<is_map, MT const &>::type getSecond() const
-        noexcept {
+    typename std::enable_if<is_map, MT const &>::type
+        getSecond() const noexcept {
       return mData->second;
     }
 
@@ -1214,8 +1229,8 @@ class Table
       auto *tgt = reinterpret_cast<char *>(target.mKeyVals);
       auto const numElementsWithBuffer =
           target.calcNumElementsWithBuffer(target.mMask + 1);
-      std::copy(src, src + target.calcNumBytesTotal(numElementsWithBuffer),
-                tgt);
+      std::copy(
+          src, src + target.calcNumBytesTotal(numElementsWithBuffer), tgt);
     }
   };
 
@@ -1224,7 +1239,8 @@ class Table
     void operator()(M const &s, M &t) const {
       auto const numElementsWithBuffer =
           t.calcNumElementsWithBuffer(t.mMask + 1);
-      std::copy(s.mInfo, s.mInfo + t.calcNumBytesInfo(numElementsWithBuffer),
+      std::copy(s.mInfo,
+                s.mInfo + t.calcNumBytesInfo(numElementsWithBuffer),
                 t.mInfo);
 
       for (size_t i = 0; i < numElementsWithBuffer; ++i) {
@@ -1294,10 +1310,10 @@ class Table
    public:
     using difference_type = std::ptrdiff_t;
     using value_type = typename Self::value_type;
-    using reference = typename std::conditional<IsConst, value_type const &,
-                                                value_type &>::type;
-    using pointer = typename std::conditional<IsConst, value_type const *,
-                                              value_type *>::type;
+    using reference = typename std::
+        conditional<IsConst, value_type const &, value_type &>::type;
+    using pointer = typename std::
+        conditional<IsConst, value_type const *, value_type *>::type;
     using iterator_category = std::forward_iterator_tag;
 
     // default constructed iterator can be compared to itself, but WON'T return
@@ -1311,24 +1327,26 @@ class Table
     // ctor.
 
     // Conversion constructor from iterator to const_iterator.
-    template <bool OtherIsConst, typename = typename std::enable_if<
-                                     IsConst && !OtherIsConst>::type>
+    template <
+        bool OtherIsConst,
+        typename = typename std::enable_if<IsConst && !OtherIsConst>::type>
     // NOLINTNEXTLINE(hicpp-explicit-conversions)
-    Iter(Iter<OtherIsConst> const &other) noexcept : mKeyVals(other.mKeyVals),
-                                                     mInfo(other.mInfo) {}
+    Iter(Iter<OtherIsConst> const &other) noexcept
+        : mKeyVals(other.mKeyVals), mInfo(other.mInfo) {}
 
-    Iter(NodePtr valPtr, uint8_t const *infoPtr) noexcept : mKeyVals(valPtr),
-                                                            mInfo(infoPtr) {}
+    Iter(NodePtr valPtr, uint8_t const *infoPtr) noexcept
+        : mKeyVals(valPtr), mInfo(infoPtr) {}
 
-    Iter(NodePtr valPtr, uint8_t const *infoPtr,
+    Iter(NodePtr valPtr,
+         uint8_t const *infoPtr,
          fast_forward_tag ROBIN_HOOD_UNUSED(tag) /*unused*/) noexcept
-        : mKeyVals(valPtr),
-          mInfo(infoPtr) {
+        : mKeyVals(valPtr), mInfo(infoPtr) {
       fastForward();
     }
 
-    template <bool OtherIsConst, typename = typename std::enable_if<
-                                     IsConst && !OtherIsConst>::type>
+    template <
+        bool OtherIsConst,
+        typename = typename std::enable_if<IsConst && !OtherIsConst>::type>
     Iter &operator=(Iter<OtherIsConst> const &other) noexcept {
       mKeyVals = other.mKeyVals;
       mInfo = other.mInfo;
@@ -1343,7 +1361,7 @@ class Table
       return *this;
     }
 
-    Iter operator++(int)noexcept {
+    Iter operator++(int) noexcept {
       Iter tmp = *this;
       ++(*this);
       return tmp;
@@ -1401,7 +1419,11 @@ class Table
 #endif
     }
 
-    friend class Table<IsFlat, MaxLoadFactor100, key_type, mapped_type, hasher,
+    friend class Table<IsFlat,
+                       MaxLoadFactor100,
+                       key_type,
+                       mapped_type,
+                       hasher,
                        key_equal>;
     NodePtr mKeyVals{nullptr};
     uint8_t const *mInfo{nullptr};
@@ -1570,7 +1592,7 @@ class Table
   using iterator = Iter<false>;
   using const_iterator = Iter<true>;
 
-  Table() noexcept(noexcept(Hash()) && noexcept(KeyEqual()))
+  Table() noexcept(noexcept(Hash()) &&noexcept(KeyEqual()))
       : WHash(), WKeyEqual() {
     ROBIN_HOOD_TRACE(this)
   }
@@ -1585,17 +1607,20 @@ class Table
   // dictated by the
   // standard, but we can ignore it.
   explicit Table(
-      size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/, const Hash &h = Hash{},
-      const KeyEqual &equal = KeyEqual{}) noexcept(noexcept(Hash(h)) &&
-                                                   noexcept(KeyEqual(equal)))
+      size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/,
+      const Hash &h = Hash{},
+      const KeyEqual &equal =
+          KeyEqual{}) noexcept(noexcept(Hash(h)) &&noexcept(KeyEqual(equal)))
       : WHash(h), WKeyEqual(equal) {
     ROBIN_HOOD_TRACE(this)
   }
 
   template <typename Iter>
-  Table(Iter first, Iter last,
+  Table(Iter first,
+        Iter last,
         size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
-        const Hash &h = Hash{}, const KeyEqual &equal = KeyEqual{})
+        const Hash &h = Hash{},
+        const KeyEqual &equal = KeyEqual{})
       : WHash(h), WKeyEqual(equal) {
     ROBIN_HOOD_TRACE(this)
     insert(first, last);
@@ -1603,15 +1628,17 @@ class Table
 
   Table(std::initializer_list<value_type> initlist,
         size_t ROBIN_HOOD_UNUSED(bucket_count) /*unused*/ = 0,
-        const Hash &h = Hash{}, const KeyEqual &equal = KeyEqual{})
+        const Hash &h = Hash{},
+        const KeyEqual &equal = KeyEqual{})
       : WHash(h), WKeyEqual(equal) {
     ROBIN_HOOD_TRACE(this)
     insert(initlist.begin(), initlist.end());
   }
 
-  Table(Table &&o) noexcept : WHash(std::move(static_cast<WHash &>(o))),
-                              WKeyEqual(std::move(static_cast<WKeyEqual &>(o))),
-                              DataPool(std::move(static_cast<DataPool &>(o))) {
+  Table(Table &&o) noexcept
+      : WHash(std::move(static_cast<WHash &>(o))),
+        WKeyEqual(std::move(static_cast<WKeyEqual &>(o))),
+        DataPool(std::move(static_cast<DataPool &>(o))) {
     ROBIN_HOOD_TRACE(this)
     if (o.mMask) {
       mHashMultiplier = std::move(o.mHashMultiplier);
@@ -1818,14 +1845,17 @@ class Table
 
       case InsertionState::new_node:
         ::new (static_cast<void *>(&mKeyVals[idxAndState.first]))
-            Node(*this, std::piecewise_construct, std::forward_as_tuple(key),
+            Node(*this,
+                 std::piecewise_construct,
+                 std::forward_as_tuple(key),
                  std::forward_as_tuple());
         break;
 
       case InsertionState::overwrite_node:
-        mKeyVals[idxAndState.first] =
-            Node(*this, std::piecewise_construct, std::forward_as_tuple(key),
-                 std::forward_as_tuple());
+        mKeyVals[idxAndState.first] = Node(*this,
+                                           std::piecewise_construct,
+                                           std::forward_as_tuple(key),
+                                           std::forward_as_tuple());
         break;
 
       case InsertionState::overflow_error:
@@ -1845,15 +1875,19 @@ class Table
         break;
 
       case InsertionState::new_node:
-        ::new (static_cast<void *>(&mKeyVals[idxAndState.first])) Node(
-            *this, std::piecewise_construct,
-            std::forward_as_tuple(std::move(key)), std::forward_as_tuple());
+        ::new (static_cast<void *>(&mKeyVals[idxAndState.first]))
+            Node(*this,
+                 std::piecewise_construct,
+                 std::forward_as_tuple(std::move(key)),
+                 std::forward_as_tuple());
         break;
 
       case InsertionState::overwrite_node:
-        mKeyVals[idxAndState.first] = Node(
-            *this, std::piecewise_construct,
-            std::forward_as_tuple(std::move(key)), std::forward_as_tuple());
+        mKeyVals[idxAndState.first] =
+            Node(*this,
+                 std::piecewise_construct,
+                 std::forward_as_tuple(std::move(key)),
+                 std::forward_as_tuple());
         break;
 
       case InsertionState::overflow_error:
@@ -1878,7 +1912,7 @@ class Table
   }
 
   template <typename... Args>
-  std::pair<iterator, bool> emplace(Args &&... args) {
+  std::pair<iterator, bool> emplace(Args &&...args) {
     ROBIN_HOOD_TRACE(this)
     Node n{*this, std::forward<Args>(args)...};
     auto idxAndState = insertKeyPrepareEmptySpot(getFirstConst(n));
@@ -1908,25 +1942,27 @@ class Table
   }
 
   template <typename... Args>
-  std::pair<iterator, bool> try_emplace(const key_type &key, Args &&... args) {
+  std::pair<iterator, bool> try_emplace(const key_type &key, Args &&...args) {
     return try_emplace_impl(key, std::forward<Args>(args)...);
   }
 
   template <typename... Args>
-  std::pair<iterator, bool> try_emplace(key_type &&key, Args &&... args) {
+  std::pair<iterator, bool> try_emplace(key_type &&key, Args &&...args) {
     return try_emplace_impl(std::move(key), std::forward<Args>(args)...);
   }
 
   template <typename... Args>
   std::pair<iterator, bool> try_emplace(const_iterator hint,
-                                        const key_type &key, Args &&... args) {
+                                        const key_type &key,
+                                        Args &&...args) {
     (void)hint;
     return try_emplace_impl(key, std::forward<Args>(args)...);
   }
 
   template <typename... Args>
-  std::pair<iterator, bool> try_emplace(const_iterator hint, key_type &&key,
-                                        Args &&... args) {
+  std::pair<iterator, bool> try_emplace(const_iterator hint,
+                                        key_type &&key,
+                                        Args &&...args) {
     (void)hint;
     return try_emplace_impl(std::move(key), std::forward<Args>(args)...);
   }
@@ -1952,7 +1988,8 @@ class Table
 
   template <typename Mapped>
   std::pair<iterator, bool> insert_or_assign(const_iterator hint,
-                                             key_type &&key, Mapped &&obj) {
+                                             key_type &&key,
+                                             Mapped &&obj) {
     (void)hint;
     return insertOrAssignImpl(std::move(key), std::forward<Mapped>(obj));
   }
@@ -2044,9 +2081,9 @@ class Table
 
   template <typename OtherKey, typename Self_ = Self>
   typename std::enable_if<
-      Self_::is_transparent,             // NOLINT(modernize-use-nodiscard)
-      const_iterator>::type              // NOLINT(modernize-use-nodiscard)
-      find(const OtherKey &key) const {  // NOLINT(modernize-use-nodiscard)
+      Self_::is_transparent,         // NOLINT(modernize-use-nodiscard)
+      const_iterator>::type          // NOLINT(modernize-use-nodiscard)
+  find(const OtherKey &key) const {  // NOLINT(modernize-use-nodiscard)
     ROBIN_HOOD_TRACE(this)
     const size_t idx = findIdx(key);
     return const_iterator{mKeyVals + idx, mInfo + idx};
@@ -2370,7 +2407,7 @@ class Table
   }
 
   template <typename OtherKey, typename... Args>
-  std::pair<iterator, bool> try_emplace_impl(OtherKey &&key, Args &&... args) {
+  std::pair<iterator, bool> try_emplace_impl(OtherKey &&key, Args &&...args) {
     ROBIN_HOOD_TRACE(this)
     auto idxAndState = insertKeyPrepareEmptySpot(key);
     switch (idxAndState.second) {
@@ -2379,14 +2416,16 @@ class Table
 
       case InsertionState::new_node:
         ::new (static_cast<void *>(&mKeyVals[idxAndState.first]))
-            Node(*this, std::piecewise_construct,
+            Node(*this,
+                 std::piecewise_construct,
                  std::forward_as_tuple(std::forward<OtherKey>(key)),
                  std::forward_as_tuple(std::forward<Args>(args)...));
         break;
 
       case InsertionState::overwrite_node:
         mKeyVals[idxAndState.first] =
-            Node(*this, std::piecewise_construct,
+            Node(*this,
+                 std::piecewise_construct,
                  std::forward_as_tuple(std::forward<OtherKey>(key)),
                  std::forward_as_tuple(std::forward<Args>(args)...));
         break;
@@ -2412,14 +2451,16 @@ class Table
 
       case InsertionState::new_node:
         ::new (static_cast<void *>(&mKeyVals[idxAndState.first]))
-            Node(*this, std::piecewise_construct,
+            Node(*this,
+                 std::piecewise_construct,
                  std::forward_as_tuple(std::forward<OtherKey>(key)),
                  std::forward_as_tuple(std::forward<Mapped>(obj)));
         break;
 
       case InsertionState::overwrite_node:
         mKeyVals[idxAndState.first] =
-            Node(*this, std::piecewise_construct,
+            Node(*this,
+                 std::piecewise_construct,
                  std::forward_as_tuple(std::forward<OtherKey>(key)),
                  std::forward_as_tuple(std::forward<Mapped>(obj)));
         break;
@@ -2513,9 +2554,10 @@ class Table
       // put at empty spot
       mInfo[insertion_idx] = static_cast<uint8_t>(insertion_info);
       ++mNumElements;
-      return std::make_pair(
-          insertion_idx, idx == insertion_idx ? InsertionState::new_node
-                                              : InsertionState::overwrite_node);
+      return std::make_pair(insertion_idx,
+                            idx == insertion_idx
+                                ? InsertionState::new_node
+                                : InsertionState::overwrite_node);
     }
 
     // enough attempts failed, so finally give up.
@@ -2564,10 +2606,10 @@ class Table
     }
 
     ROBIN_HOOD_LOG("mNumElements="
-                   << mNumElements
-                   << ", maxNumElementsAllowed=" << maxNumElementsAllowed
-                   << ", load=" << (static_cast<double>(mNumElements) * 100.0 /
-                                    (static_cast<double>(mMask) + 1)))
+                   << mNumElements << ", maxNumElementsAllowed="
+                   << maxNumElementsAllowed << ", load="
+                   << (static_cast<double>(mNumElements) * 100.0 /
+                       (static_cast<double>(mMask) + 1)))
 
     nextHashMultiplier();
     if (mNumElements * 2 < calcMaxNumElementsAllowed(mMask + 1)) {
@@ -2642,43 +2684,66 @@ class Table
 
 // map
 
-template <typename Key, typename T, typename Hash = hash<Key>,
-          typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
+template <typename Key,
+          typename T,
+          typename Hash = hash<Key>,
+          typename KeyEqual = std::equal_to<Key>,
+          size_t MaxLoadFactor100 = 80>
 using unordered_flat_map =
     detail::Table<true, MaxLoadFactor100, Key, T, Hash, KeyEqual>;
 
-template <typename Key, typename T, typename Hash = hash<Key>,
-          typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
+template <typename Key,
+          typename T,
+          typename Hash = hash<Key>,
+          typename KeyEqual = std::equal_to<Key>,
+          size_t MaxLoadFactor100 = 80>
 using unordered_node_map =
     detail::Table<false, MaxLoadFactor100, Key, T, Hash, KeyEqual>;
 
-template <typename Key, typename T, typename Hash = hash<Key>,
-          typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
+template <typename Key,
+          typename T,
+          typename Hash = hash<Key>,
+          typename KeyEqual = std::equal_to<Key>,
+          size_t MaxLoadFactor100 = 80>
 using unordered_map = detail::Table<
     sizeof(robin_hood::pair<Key, T>) <= sizeof(size_t) * 6 &&
         std::is_nothrow_move_constructible<robin_hood::pair<Key, T>>::value &&
         std::is_nothrow_move_assignable<robin_hood::pair<Key, T>>::value,
-    MaxLoadFactor100, Key, T, Hash, KeyEqual>;
+    MaxLoadFactor100,
+    Key,
+    T,
+    Hash,
+    KeyEqual>;
 
 // set
 
-template <typename Key, typename Hash = hash<Key>,
-          typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
+template <typename Key,
+          typename Hash = hash<Key>,
+          typename KeyEqual = std::equal_to<Key>,
+          size_t MaxLoadFactor100 = 80>
 using unordered_flat_set =
     detail::Table<true, MaxLoadFactor100, Key, void, Hash, KeyEqual>;
 
-template <typename Key, typename Hash = hash<Key>,
-          typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
+template <typename Key,
+          typename Hash = hash<Key>,
+          typename KeyEqual = std::equal_to<Key>,
+          size_t MaxLoadFactor100 = 80>
 using unordered_node_set =
     detail::Table<false, MaxLoadFactor100, Key, void, Hash, KeyEqual>;
 
-template <typename Key, typename Hash = hash<Key>,
-          typename KeyEqual = std::equal_to<Key>, size_t MaxLoadFactor100 = 80>
+template <typename Key,
+          typename Hash = hash<Key>,
+          typename KeyEqual = std::equal_to<Key>,
+          size_t MaxLoadFactor100 = 80>
 using unordered_set =
     detail::Table<sizeof(Key) <= sizeof(size_t) * 6 &&
                       std::is_nothrow_move_constructible<Key>::value &&
                       std::is_nothrow_move_assignable<Key>::value,
-                  MaxLoadFactor100, Key, void, Hash, KeyEqual>;
+                  MaxLoadFactor100,
+                  Key,
+                  void,
+                  Hash,
+                  KeyEqual>;
 
 }  // namespace robin_hood
 

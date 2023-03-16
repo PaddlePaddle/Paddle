@@ -175,9 +175,13 @@ class TestSignBF16OP(OpTest):
         self.op_type = "sign"
         self.python_api = paddle.sign
         self.inputs = {
-            'X': convert_float_to_uint16(np.random.uniform(-10, 10, (10, 10)).astype("float64"))
+            'X': convert_float_to_uint16(
+                np.random.uniform(-10, 10, (10, 10)).astype("float64")
+            )
         }
-        self.outputs = {'Out': convert_float_to_uint16(np.sign(self.inputs['X']))}
+        self.outputs = {
+            'Out': convert_float_to_uint16(np.sign(self.inputs['X']))
+        }
 
     def test_check_output(self):
         self.check_output()

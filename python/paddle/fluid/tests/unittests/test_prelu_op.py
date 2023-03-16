@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -428,6 +428,7 @@ create_test_fp16_class(TestModeChannelRank6NHWC)
 create_test_fp16_class(TestModeElementRank3NHWC)
 create_test_fp16_class(TestModeElementRank6NHWC)
 
+
 class PReluTestBF16(OpTest):
     def setUp(self):
         self.init_dtype()
@@ -457,7 +458,10 @@ class PReluTestBF16(OpTest):
             self.eager_mode = False
         alpha_np = alpha_np.astype(self.dtype)
 
-        self.inputs = {'X': convert_float_to_uint16(x_np), 'Alpha': convert_float_to_uint16(alpha_np)}
+        self.inputs = {
+            'X': convert_float_to_uint16(x_np),
+            'Alpha': convert_float_to_uint16(alpha_np),
+        }
 
         # NOTE(zhiqu): reshape inputs['Alpha'] from [1, 100, 1, 1] to [1, 100] + [1]*len(x.shape[2:])
         # since np operands could not be broadcast together with shapes (1,100,2,2,2,3) (1,100,1,1)
@@ -476,6 +480,7 @@ class PReluTestBF16(OpTest):
         out_np = out_np + np.minimum(self.inputs['X'], 0.0) * reshaped_alpha
         assert out_np is not self.inputs['X']
         self.outputs = {'Out': convert_float_to_uint16(out_np)}
+
 
 def create_test_bf16_class(
     parent, check_grad=True, atol=1e-3, max_relative_error=0.05
@@ -525,6 +530,7 @@ create_test_bf16_class(TestModeChannelRank3NHWC)
 create_test_bf16_class(TestModeChannelRank6NHWC)
 create_test_bf16_class(TestModeElementRank3NHWC)
 create_test_bf16_class(TestModeElementRank6NHWC)
+
 
 def prelu_t(x, mode, param_attr=None, name=None, data_format='NCHW'):
     helper = fluid.layer_helper.LayerHelper('prelu', **locals())

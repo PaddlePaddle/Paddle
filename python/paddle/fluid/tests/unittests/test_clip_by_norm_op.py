@@ -103,6 +103,7 @@ class TestClipByNormOpFp16Case3(TestClipByNormOpFp16):
         self.shape = (4, 8, 16)
         self.max_norm = 1.0
 
+
 class TestClipByNormOpBf16(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
@@ -133,6 +134,7 @@ class TestClipByNormOpBf16(OpTest):
 
     def init_dtype(self):
         self.dtype = np.uint16
+
 
 class TestClipByNormOpWithSelectedRows(unittest.TestCase):
     def check_with_place(self, place):

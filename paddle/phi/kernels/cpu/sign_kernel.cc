@@ -18,4 +18,11 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/sign_kernel_impl.h"
 
-PD_REGISTER_KERNEL(sign, CPU, ALL_LAYOUT, phi::SignKernel, float, double, phi::dtype::float16, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(sign,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SignKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
