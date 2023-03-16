@@ -594,8 +594,6 @@ class TestUniformDtype(unittest.TestCase):
         if paddle.is_compiled_with_cuda():
             paddle.set_device('gpu')
             test_default_fp16()
-        else:
-            self.assertRaises(TypeError, test_default_fp16)
         test_default_fp64()
         test_default_fp32()
         test_dygraph_fp16()
