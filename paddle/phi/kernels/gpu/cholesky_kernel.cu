@@ -22,7 +22,6 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -196,12 +195,12 @@ void CholeskyKernel(const Context& dev_ctx,
   std::vector<int> error_info;  // only for checking positive matrix
   error_info.resize(batch_count);
 
-  paddle::memory::Copy(CPUPlace(),
-                       error_info.data(),
-                       dev_ctx.GetPlace(),
-                       info_ptr,
-                       sizeof(int) * batch_count,
-                       dev_ctx.stream());
+  memory_utils::Copy(CPUPlace(),
+                     error_info.data(),
+                     dev_ctx.GetPlace(),
+                     info_ptr,
+                     sizeof(int) * batch_count,
+                     dev_ctx.stream());
 
   for (int i = 0; i < batch_count; ++i) {
     PADDLE_ENFORCE_EQ(error_info[i],

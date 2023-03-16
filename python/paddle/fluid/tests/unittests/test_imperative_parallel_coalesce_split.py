@@ -22,12 +22,6 @@ import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import (
-    DataParallel,
-    _coalesce_tensors,
-    _reshape_inplace,
-    _split_tensors,
-)
 
 
 class MyLayer(fluid.Layer):
@@ -43,10 +37,15 @@ class MyLayer(fluid.Layer):
 
 class TestImperativeParallelCoalesceSplit(unittest.TestCase):
     def test_coalesce_split(self):
+        from paddle.distributed.parallel import (
+            _coalesce_tensors,
+            _split_tensors,
+        )
+
         with fluid.dygraph.guard():
             test_layer = MyLayer("test_layer")
             strategy = core.ParallelStrategy()
-            test_layer = DataParallel(test_layer, strategy)
+            test_layer = paddle.DataParallel(test_layer, strategy)
 
             # test variables prepare
             vars = []
@@ -72,10 +71,12 @@ class TestImperativeParallelCoalesceSplit(unittest.TestCase):
                 self.assertEqual(orig_var_shape, var.shape)
 
     def test_reshape_inplace(self):
+        from paddle.distributed.parallel import _reshape_inplace
+
         with fluid.dygraph.guard():
             test_layer = MyLayer("test_layer")
             strategy = core.ParallelStrategy()
-            test_layer = DataParallel(test_layer, strategy)
+            test_layer = paddle.DataParallel(test_layer, strategy)
 
             ori_shape = [2, 25]
             new_shape = [5, 10]

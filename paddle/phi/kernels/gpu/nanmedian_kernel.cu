@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/nanmedian_kernel.h"
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -180,12 +179,12 @@ void ProcessMedianKernel(const Context& dev_ctx,
         phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 2);
     int64_t* nan_stat_cpu_ptr =
         reinterpret_cast<int64_t*>(nan_stat_mem_cpu->ptr());
-    paddle::memory::Copy(phi::CPUPlace(),
-                         nan_stat_cpu_ptr,
-                         dev_ctx.GetPlace(),
-                         nan_stat_mem,
-                         sizeof(int64_t) * 2,
-                         stream);
+    memory_utils::Copy(phi::CPUPlace(),
+                       nan_stat_cpu_ptr,
+                       dev_ctx.GetPlace(),
+                       nan_stat_mem,
+                       sizeof(int64_t) * 2,
+                       stream);
 
     // all elements are nan values
     T nan_val = std::numeric_limits<T>::quiet_NaN();

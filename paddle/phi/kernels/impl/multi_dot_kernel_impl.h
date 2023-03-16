@@ -224,7 +224,6 @@ void MultiDotKernel(const Context& ctx,
       phi::DDim tmp_dim = phi::make_ddim({Ka, Nc});
       tmp_out.Resize(tmp_dim);
       ctx.template Alloc<T>(&tmp_out);
-      std::cout << tmp_out << std::endl;
       blas.MatMul(
           *ins[1], mat_dim_b, *ins[2], mat_dim_c, scale, &tmp_out, T(0));
       auto mat_dim_tmp = phi::funcs::CreateMatrixDescriptor(tmp_dim, 0, false);

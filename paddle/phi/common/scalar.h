@@ -18,9 +18,10 @@ limitations under the License. */
 #include <limits>
 
 #include "paddle/phi/api/ext/exception.h"
-#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
+class Tensor;
 namespace experimental {
 
 template <typename T>
@@ -228,7 +229,7 @@ void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst) {
   dst->data_.c128 = src.data_.c128;
 }
 
-using Scalar = paddle::experimental::ScalarBase<paddle::experimental::Tensor>;
+using Scalar = paddle::experimental::ScalarBase<Tensor>;
 
 }  // namespace experimental
 }  // namespace paddle
