@@ -945,15 +945,18 @@ void max_grad(const Tensor& x,
   std::vector<int64_t> x_dim = phi::vectorize<int64_t>(x.dims());
   int64_t axis_size = axis.size();
   int64_t x_dim_size = x_dim.size();
+  reduce_all = false;
   if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
     reduce_all = true;
   } else {
     reduce_all = false;
   }
   auto x_grad_tmp = Tensor();
-  if (x_dim_size == 1 || keepdim) {
-    auto mask = equal<T>(x, out);
-    x_grad_tmp = where<T>(mask, out_grad, zero_tensor);
+  if (x_dim_size == 0 || x_dim_size == 1 || keepdim) {
+    auto out_grad_tmp = out_grad.expand(IntArray(x_dim));
+    auto out_tmp = out.expand(IntArray(x_dim));
+    auto mask = equal<T>(x, out_tmp);
+    x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
   } else {
     auto axis_ = std::vector<int64_t>();
     if (reduce_all) {
@@ -969,8 +972,10 @@ void max_grad(const Tensor& x,
       }
     }
     auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+    auto out_ = unsqueeze<T>(out, axis_);
     auto out_grad_tmp = out_grad_.expand(IntArray(x_dim));
-    auto mask = equal<T>(x, out);
+    auto out_tmp = out_.expand(IntArray(x_dim));
+    auto mask = equal<T>(x, out_tmp);
     x_grad_tmp = where<T>(mask, out_grad_tmp, zero_tensor);
   }
   set_output<T>(x_grad_tmp, x_grad);

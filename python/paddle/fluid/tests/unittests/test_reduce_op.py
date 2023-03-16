@@ -246,7 +246,13 @@ class TestMaxOp(OpTest):
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
-        self.check_grad(['X'], 'Out', check_eager=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_eager=True,
+            check_prim=True,
+            only_check_prim=True,
+        )
 
     def test_raise_error(self):
         if core.is_compiled_with_cuda():
@@ -279,7 +285,13 @@ class TestMaxOp_ZeroDim(OpTest):
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
-        self.check_grad(['X'], 'Out', check_eager=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_eager=True,
+            check_prim=True,
+            only_check_prim=True,
+        )
 
 
 class TestMaxOp_FP32(OpTest):
@@ -302,7 +314,13 @@ class TestMaxOp_FP32(OpTest):
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
-        self.check_grad(['X'], 'Out', check_eager=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_eager=True,
+            check_prim=True,
+            only_check_prim=True,
+        )
 
 
 @skip_check_grad_ci(
@@ -860,7 +878,13 @@ class TestReduceMaxOpMultiAxises(OpTest):
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
-        self.check_grad(['X'], 'Out', check_eager=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_eager=True,
+            check_prim=True,
+            only_check_prim=True,
+        )
 
 
 @skip_check_grad_ci(

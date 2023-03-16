@@ -36,7 +36,7 @@ class ReduceMaxCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
   void Apply() override {
     paddle::Tensor x = this->GetSingleForwardInput("X");
-    paddle::Tensor out = this->GetSingleForwardInput("Out");
+    paddle::Tensor out = this->GetSingleForwardOutput("Out");
     paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
     std::vector<int> axis = this->Attr<std::vector<int>>("dim");
     bool keep_dim = this->Attr<bool>("keep_dim");
