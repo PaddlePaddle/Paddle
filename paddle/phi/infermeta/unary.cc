@@ -141,9 +141,9 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "The attribute of dtype in argmin/argmax must be [%s] or [%s], but "
           "received [%s]",
-          phi::DataTypeToString(DataType::INT32),
-          phi::DataTypeToString(DataType::INT64),
-          phi::DataTypeToString(phi::TransToPhiDataType(dtype))));
+          DataTypeToString(DataType::INT32),
+          DataTypeToString(DataType::INT64),
+          DataTypeToString(phi::TransToPhiDataType(dtype))));
 
   if (!config.is_runtime && axis.FromTensor()) {
     std::vector<int64_t> vec;
@@ -769,7 +769,7 @@ void DirichletInferMeta(const MetaTensor& alpha, MetaTensor* out) {
 }
 
 void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
-  auto x_dims = x.dims();
+  phi::DDim x_dims = x.dims();
   int rank = x_dims.size();
   PADDLE_ENFORCE_GE(
       rank,
@@ -789,9 +789,13 @@ void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
   for (int i = 0; i < rank - 1; ++i) {
     batch_dims_vec.emplace_back(x_dims[i]);
   }
-
+  const DataType& x_dtype = x.dtype();
+  const DataType& out_dtype =
+      IsComplexType(x_dtype) ? x_dtype : ToComplexType(x_dtype);
   out_w->set_dims(phi::make_ddim(batch_dims_vec));
+  out_w->set_dtype(out_dtype);
   out_v->set_dims(x_dims);
+  out_v->set_dtype(out_dtype);
 }
 
 void EighInferMeta(const MetaTensor& x,
