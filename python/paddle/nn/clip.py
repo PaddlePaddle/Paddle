@@ -745,6 +745,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else:
                         sum_square_list.append(sum_square)
 
+            assert not (
+                len(sum_square_list_fp16) > 0 and len(sum_square_list_bf16) > 0
+            ), "list of fp16 and bf16 can not be nonempty simultaneously, do not use fp16 and bf16 amp mode"
+
             # all parameters have been filterd out
             if (
                 len(sum_square_list)
