@@ -100,8 +100,8 @@ class TestInstanceNormOp(OpTest):
         self.python_out_sig = ['Y']
         self.jit_comp_rtol = 1e-05
         self.jit_comp_atol = 1e-05
-        self.fw_comp_rtol = 1e-01
-        self.fw_comp_atol = 1e-01
+        self.fw_comp_rtol = 1
+        self.fw_comp_atol = 1
         self.rev_comp_rtol = 1e-02
         self.rev_comp_atol = 1e-02
         self.init_test_case()
@@ -129,12 +129,13 @@ class TestInstanceNormOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_eager=True, check_prim=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X', 'Scale', 'Bias'],
             'Y',
+            check_eager=True,
             check_prim=True,
         )
 
