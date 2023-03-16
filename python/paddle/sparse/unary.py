@@ -14,12 +14,13 @@
 
 import numpy as np
 
-from paddle import _C_ops
+from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.framework import (
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
 )
+from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
 
@@ -737,4 +738,13 @@ def isnan(x, name=None):
             #          [0, 1, 0, 1]],
             # values=[False, False, False, True ])
     """
-    return _C_ops.sparse_isnan(x)
+    if in_dynamic_mode():
+        return _C_ops.sparse_isnan(x)
+    else:
+        op_type = 'sparse_isnan'
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type=op_type, inputs={'x': x}, outputs={'out': out}, attrs={}
+        )
+        return out
