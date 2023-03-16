@@ -1263,12 +1263,68 @@ std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj) {
   return result;
 }
 
+std::vector<paddle::Tensor> GetOptionalTensorListFromPyObject(PyObject* obj) {
+  std::vector<paddle::Tensor> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_IsInstance(item,
+                              reinterpret_cast<PyObject*>(p_tensor_type))) {
+        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else if (item == Py_None) {
+        VLOG(4) << "Got None in Tensor list: " << i;
+        result.emplace_back();
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument must be "
+            "list of Tensor, but got %s at pos %d",
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (PyObject_IsInstance(item,
+                              reinterpret_cast<PyObject*>(p_tensor_type))) {
+        result.emplace_back(reinterpret_cast<TensorObject*>(item)->tensor);
+      } else if (item == Py_None) {
+        VLOG(4) << "Got None in Tensor list: " << i;
+        result.emplace_back();
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument must be "
+            "list of Tensor, but got %s at pos %d",
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument must be "
+        "list or tuple, but got %s",
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
 paddle::Tensor& GetTensorFromPyObject(PyObject* obj) {
   if (!PyCheckTensor(obj)) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument must be "
         "Tensor, but got %s",
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return reinterpret_cast<TensorObject*>(obj)->tensor;
+}
+
+paddle::Tensor& GetOptionalTensorFromPyObject(PyObject* obj) {
+  if (!PyCheckTensor(obj)) {
+    VLOG(4) << "Got None in GetOptionalTensorFromPyObject";
   }
   return reinterpret_cast<TensorObject*>(obj)->tensor;
 }

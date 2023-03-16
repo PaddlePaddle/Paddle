@@ -328,7 +328,7 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
 std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj);
 
 std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj);
-
+std::vector<paddle::Tensor> GetOptionalTensorListFromPyObject(PyObject* obj);
 paddle::Tensor& GetTensorFromPyObject(PyObject* obj);
 
 // end of Slice related methods
