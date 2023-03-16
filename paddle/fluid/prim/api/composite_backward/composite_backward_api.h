@@ -31,6 +31,17 @@ using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
+void relu_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto condition = greater_than<T>(
+        out, full<T>(phi::vectorize(out.dims()), 0.0, out.dtype()));
+    auto res = where<T>(condition,
+                        out_grad,
+                        full<T>(phi::vectorize(out.dims()), 0.0, out.dtype()));
+    set_output<T>(res, x_grad);
+  }
+}
+template <typename T>
 void cast_grad(const Tensor& out_grad, DataType dtype, Tensor* x_grad) {
   if (x_grad) {
     auto res = cast<T>(out_grad, dtype);
