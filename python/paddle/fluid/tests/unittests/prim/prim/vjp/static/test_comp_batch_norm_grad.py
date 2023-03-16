@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.fluid import core, framework
 
 np.random.seed(2023)
 
@@ -116,6 +116,8 @@ def expect_grad(
     use_global_stats,
 ):
     x.stop_gradient = False
+    weight.stop_gradient = False
+    bias.stop_gradient = False
     res = fn(
         x,
         running_mean,
@@ -128,7 +130,7 @@ def expect_grad(
         data_format,
         use_global_stats,
     )
-    gradients = paddle.grad(res, x)
+    gradients = paddle.grad(res, (x, weight, bias))
     return gradients
 
 
@@ -153,7 +155,9 @@ def cal_composite(inputs, running_mean, running_variance, weight, bias):
         x4 = paddle.static.data(
             'x4', shape=weight.shape, dtype=str(weight.dtype)
         )
+        x4.stop_gradient = False
         x5 = paddle.static.data('x5', shape=bias.shape, dtype=str(bias.dtype))
+        x5.stop_gradient = False
         y = fn(
             x1,
             x2,
@@ -168,7 +172,7 @@ def cal_composite(inputs, running_mean, running_variance, weight, bias):
         )
         blocks = main_program.blocks
         paddle.incubate.autograd.primapi.to_prim(blocks)
-        z = paddle.static.gradients([y], [x1])
+        z = paddle.static.gradients([y], [x1, x4, x5])
 
     exe = paddle.static.Executor()
     exe.run(startup_program)
@@ -189,29 +193,31 @@ def cal_composite(inputs, running_mean, running_variance, weight, bias):
 
 class TestCompositeBatchNorm(unittest.TestCase):
     def setUp(self):
-        self.dtypes = ["float32"]
+        self.dtypes = ["float32", "float64"]
         self.training = [False, True]
-        self.shapes = [[8, 8, 16, 16], [2, 1, 2, 3]]
+        self.shapes = [[8, 8, 16, 16], [2, 4, 3, 3]]
         self.momentum = [0.1, 0.9]
         self.epsilon = [1e-05, 2e-05]
-        self.data_formats = ["NCHW"]
+        self.data_formats = ["NCHW", "NHWC"]
         self.use_global_stats = [None, True, False]
 
     def compare_backward(self):
-        if attrs.training is True and attrs.use_global_stats is False:
-            # in this case, origin bn grad kernel is not the same as forward kernel.
-            return
         np_data = generate_data(attrs.shape, attrs.dtype)
         tensor_data = paddle.to_tensor(np_data)
         Arg.dout = np.random.random(np_data.shape).astype(attrs.dtype)
-        C = np_data.shape[1]
+        if attrs.data_format == 'NCHW':
+            C = np_data.shape[1]
+        elif attrs.data_format == 'NHWC':
+            C = np_data.shape[-1]
+        else:
+            raise TypeError
 
         running_mean = paddle.zeros(C, dtype=attrs.dtype)
         running_variance = paddle.ones(C, dtype=attrs.dtype)
         weight = paddle.ones(C, dtype=attrs.dtype) * 2
         bias = paddle.ones(C, dtype=attrs.dtype)
 
-        expect = expect_grad(
+        res_origin = expect_grad(
             tensor_data,
             running_mean,
             running_variance,
@@ -222,40 +228,62 @@ class TestCompositeBatchNorm(unittest.TestCase):
             attrs.epsilon,
             attrs.data_format,
             attrs.use_global_stats,
-        )[0].numpy()
+        )
         np_running_mean = np.zeros(C, dtype=attrs.dtype)
         np_running_variance = np.ones(C, dtype=attrs.dtype)
         np_weight = np.ones(C, dtype=attrs.dtype) * 2
         np_bias = np.ones(C, dtype=attrs.dtype)
 
-        actual = cal_composite(
+        res_prim = cal_composite(
             np_data, np_running_mean, np_running_variance, np_weight, np_bias
-        )[0]
-
-        assert expect.dtype == actual.dtype
-
-        np.testing.assert_allclose(
-            expect,
-            actual,
-            rtol=1e-5,
-            atol=1e-5,
         )
+
+        vars_name = ["x_grad", "weight_grad", "bias_grad"]
+        assert len(res_origin) == len(res_prim)
+        for idx in range(len(res_origin)):
+            origin_item = res_origin[idx].numpy()
+            prim_item = res_prim[idx]
+            assert origin_item.dtype == prim_item.dtype
+            rtol = 1e-5
+            atol = 1e-5
+            if (
+                not isinstance(
+                    framework._current_expected_place(), core.CPUPlace
+                )
+                and attrs.data_format == "NHWC"
+            ):
+                rtol = 1e-4
+                atol = 1e-4
+                if idx in (1, 2):
+                    continue
+
+            np.testing.assert_allclose(
+                origin_item,
+                prim_item,
+                rtol=rtol,
+                atol=atol,
+                err_msg=f"Check diff failed of output: {vars_name[idx]} with data_format: {attrs.data_format}",
+            )
 
     def test_backward_prim_static_vjp(self):
         core._set_prim_backward_enabled(True)
         for i in self.training:
             for j in self.dtypes:
-                for m in self.momentum:
-                    attrs.set_training(i)
-                    attrs.set_dtype(j)
-                    attrs.set_momentum(m)
-                    self.compare_backward()
+                for k in self.data_formats:
+                    for m in self.momentum:
+                        attrs.set_training(i)
+                        attrs.set_dtype(j)
+                        attrs.set_data_format(k)
+                        attrs.set_momentum(m)
+                        self.compare_backward()
 
-        for n in self.shapes:
-            for t in self.use_global_stats:
-                attrs.set_shape(n)
-                attrs.set_use_global_stats(t)
-                self.compare_backward()
+        for s in self.training:
+            for n in self.shapes:
+                for t in self.use_global_stats:
+                    attrs.set_training(s)
+                    attrs.set_shape(n)
+                    attrs.set_use_global_stats(t)
+                    self.compare_backward()
         core._set_prim_backward_enabled(False)
 
 

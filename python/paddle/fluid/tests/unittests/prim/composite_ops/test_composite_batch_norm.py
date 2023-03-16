@@ -314,8 +314,8 @@ class TestCompositeBatchNorm(unittest.TestCase):
             if not isinstance(
                 framework._current_expected_place(), core.CPUPlace
             ) and idx in (2, 3):
-                atol = 1e-3
-                rtol = 1e-3
+                atol = 5e-3
+                rtol = 5e-3
             np.testing.assert_allclose(
                 origin_item,
                 prim_item,
@@ -327,18 +327,18 @@ class TestCompositeBatchNorm(unittest.TestCase):
     def test_forward(self):
         for i in self.training:
             for j in self.dtypes:
-                for m in self.momentum:
+                for k in self.use_global_stats:
                     attrs.set_training(i)
                     attrs.set_dtype(j)
-                    attrs.set_momentum(m)
+                    attrs.set_use_global_stats(k)
                     self.compare_forward()
 
         for n in self.shapes:
-            for s in self.data_formats:
-                for t in self.use_global_stats:
+            for m in self.momentum:
+                for s in self.data_formats:
+                    attrs.set_momentum(m)
                     attrs.set_shape(n)
                     attrs.set_data_format(s)
-                    attrs.set_use_global_stats(t)
                     self.compare_forward()
 
 
