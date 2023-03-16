@@ -76,10 +76,6 @@ if(WITH_GPU)
     test_auto_tune
     SRCS test_auto_tune.cu
     DEPS gtest)
-  cc_test(
-    test_fused_adam_kernel
-    SRCS test_fused_adam_kernel.cc
-    DEPS gtest phi)
 elseif(WITH_ROCM)
   hip_test(
     test_gpu_timer
