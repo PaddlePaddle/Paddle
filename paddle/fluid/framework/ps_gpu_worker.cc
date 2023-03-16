@@ -208,7 +208,7 @@ PSGPUWorker::~PSGPUWorker() {
   }
 }
 
-int PSGPUWorker::OpRunAndShapeCheck(const OperatorBase& op,
+int PSGPUWorker::OpRunAndShapeCheck(OperatorBase& op,
                                     const Scope& scope,
                                     const platform::Place& place) {
   if (shape_check_flag_.load()) {
@@ -322,7 +322,6 @@ void PSGPUWorker::TrainFiles() {
           task.pack = pack;
           task.ins_num = pack->ins_num();
           device_reader_->PackToScope(task.pack, task.scope);
-          VLOG(1) << "begin infer shape";
           for (size_t i = 0; i < ops_.size(); i++) {
             auto& op = ops_[i];
             bool need_skip = false;
@@ -338,7 +337,6 @@ void PSGPUWorker::TrainFiles() {
               op->RuntimeInferShape(*task.scope, place_, ctx);
             }
           }
-          VLOG(1) << "push task to queue";
           using_task_queue_.Push(task);
         }
       }));

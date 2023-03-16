@@ -1263,9 +1263,8 @@ class DataFeed {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(PackToScope) is not implemented."));
   }
-#endif
-
   virtual void SetInsIdVec(MiniBatchGpuPack* pack) {}
+#endif
 
   virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -1889,7 +1888,6 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   virtual void InitGraphResource(void);
   virtual void InitGraphTrainResource(void);
   virtual void DoWalkandSage();
-#endif
   void SetInsIdVec(MiniBatchGpuPack* pack) override {
     if (parse_ins_id_) {
       size_t ins_num = pack->ins_num();
@@ -1900,6 +1898,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
       }
     }
   }
+#endif
   virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
 
   float sample_rate_ = 1.0f;

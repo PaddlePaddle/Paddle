@@ -583,7 +583,7 @@ class PSGPUWorker : public HogwildWorker {
     std::vector<std::vector<LoD>> after_lods;
   };
 
-  int OpRunAndShapeCheck(const OperatorBase& op,
+  int OpRunAndShapeCheck(OperatorBase& op,  // NOLINT
                          const Scope& scope,
                          const platform::Place& place);
 
