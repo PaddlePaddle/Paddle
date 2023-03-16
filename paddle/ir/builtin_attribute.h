@@ -23,12 +23,10 @@ namespace ir {
 /// file. The built-in Dialect will use this macro to quickly register all
 /// built-in attributes.
 ///
-#define GET_BUILT_IN_ATTRIBUTE_LIST ir::StrAttribute
+#define GET_BUILT_IN_ATTRIBUTE_LIST ir::StrAttribute, ir::DictionaryAttribute
 
 ///
-/// \brief Define built-in parameterless attributes. Please add the necessary
-/// interface functions for built-in attributes through the macro
-/// DECLARE_ATTRIBUTE_UTILITY_FUNCTOR.
+/// \brief Define built-in parameterless attributes.
 ///
 class StrAttribute : public ir::Attribute {
  public:

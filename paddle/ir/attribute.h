@@ -82,8 +82,7 @@ class Attribute {
 };
 
 ///
-/// \brief A combination of a Attribute name(StrAttribute) and an Attribute
-/// value.
+/// \brief Combination of Attribute name(StrAttribute) and value.
 ///
 class StrAttribute;
 
@@ -121,9 +120,7 @@ namespace std {
 static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
   return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
 }
-///
-/// \brief Enable hashing Attribute .
-///
+
 template <>
 struct hash<ir::Attribute> {
   std::size_t operator()(const ir::Attribute &obj) const {

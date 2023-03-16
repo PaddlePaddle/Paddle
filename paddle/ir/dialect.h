@@ -94,10 +94,6 @@ class Dialect {
 
   ///
   /// \brief Register abstract_attribute into context.
-  /// NOTE: It's not recommended to use this interface directly. This interface
-  /// only registers abstract_attribute. To register AttributeStorage into
-  /// context, you need to call ir::AttributeManager::RegisterAttribute<T>()
-  /// additionally, RegisterAttribute<T>() is recommended to use.
   ///
   void RegisterAttribute(ir::AbstractAttribute &&abstract_attribute);
 
