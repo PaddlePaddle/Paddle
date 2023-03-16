@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
@@ -112,7 +112,7 @@ class TestFullLikeOp1(OpTest):
         self.prim_op_type = "comp"
         self.python_api = fill_any_like_wrapper
         self.init_data()
-        self.if_skip_cinn()
+        self.if_enable_cinn()
 
         x = np.zeros(self.shape)
         out = np.full_like(x, self.fill_value, self.dtype)
@@ -130,9 +130,9 @@ class TestFullLikeOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_eager=True, check_prim=True)
+        self.check_output(check_prim=True)
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -142,7 +142,7 @@ class TestFullLikeOp2(TestFullLikeOp1):
         self.shape = [1024, 1024]
         self.dtype = np.float64
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -152,7 +152,7 @@ class TestFullLikeOp3(TestFullLikeOp1):
         self.shape = [5000, 5000]
         self.dtype = np.int64
 
-    def if_skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 

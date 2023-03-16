@@ -1073,7 +1073,7 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
             index_dims[index_dims_size - 1],
             ref_dims_size));
     PADDLE_ENFORCE_GE(index_dims_size,
-                      2UL,
+                      1UL,
                       phi::errors::InvalidArgument(
                           "The rank of Input(Index) should be greater than 1, "
                           "but received the rank of Input(Index) is %d.",
