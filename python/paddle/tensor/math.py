@@ -5139,7 +5139,7 @@ def frexp(x, name=None):
     return mantissa, exponent
 
 
-def vander(x, N=None, increasing=False, name=None):
+def vander(x, n=None, increasing=False, name=None):
     """
     Generate a Vandermonde matrix.
 
@@ -5151,7 +5151,7 @@ def vander(x, N=None, increasing=False, name=None):
 
     Args:
         x (Tensor): The input tensor, it must be 1-D Tensor, and it's data type should be ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'].
-        N (int): Number of columns in the output. If N is not specified, a square array is returned (N = len(x)).
+        n (int): Number of columns in the output. If n is not specified, a square array is returned (n = len(x)).
         increasing(bool): Order of the powers of the columns. If True, the powers increase from left to right, if False (the default) they are reversed.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
     Returns:
@@ -5198,17 +5198,17 @@ def vander(x, N=None, increasing=False, name=None):
             "But now the dims of Input(X) is %d." % x.dim()
         )
 
-    if N is None:
-        N = x.shape[0]
+    if n is None:
+        n = x.shape[0]
 
-    if N < 0:
+    if n < 0:
         raise ValueError("N must be non-negative.")
 
-    res = paddle.empty([x.shape[0], N], dtype=x.dtype)
+    res = paddle.empty([x.shape[0], n], dtype=x.dtype)
 
-    if N > 0:
+    if n > 0:
         res[:, 0] = paddle.to_tensor([1], dtype=x.dtype)
-    if N > 1:
+    if n > 1:
         res[:, 1:] = x[:, None]
         res[:, 1:] = paddle.cumprod(res[:, 1:], dim=-1)
     res = res[:, ::-1] if not increasing else res

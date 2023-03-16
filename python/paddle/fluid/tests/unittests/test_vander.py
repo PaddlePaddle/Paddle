@@ -49,12 +49,7 @@ class TestVanderAPI(unittest.TestCase):
         if N != 0:
             np.testing.assert_allclose(res[0], out_ref, rtol=1e-05)
         else:
-            if core.is_compiled_with_cuda():
-                np.testing.assert_allclose(
-                    res[0].size, out_ref.size, rtol=1e-05
-                )
-            else:
-                assert res[0] is None
+            np.testing.assert_allclose(res[0].size, out_ref.size, rtol=1e-05)
 
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x)
