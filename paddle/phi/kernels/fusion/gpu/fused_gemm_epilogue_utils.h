@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
+#include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"

@@ -1137,8 +1137,6 @@ void ReduceKernel(const KPDevice& dev_ctx,
       is_mean);
 }
 
-#endif
-
 template <typename Tx,
           typename Ty,
           template <typename>
@@ -1153,7 +1151,7 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
                       bool is_mean = false) {
   y->mutable_data<Ty>(x.place());
 
-  phi::funcs::ReduceKernel<Tx, Ty, ReduceOp, TransformOp>(
+  ReduceKernel<Tx, Ty, ReduceOp, TransformOp>(
       static_cast<const phi::GPUContext&>(dev_ctx),
       x,
       y,
@@ -1161,6 +1159,8 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
       origin_reduce_dims,
       is_mean);
 }
+
+#endif
 
 template <typename DeviceContext,
           typename T,

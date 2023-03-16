@@ -12,22 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// DropoutParam
-#include "paddle/fluid/operators/fused/fused_dropout_helper.h"
-// AttnDropoutParam
-#include "paddle/fluid/operators/fused/fmha_ref.h"
-// AttnMatMul
-#include "paddle/fluid/operators/fused/attn_gemm.h"
-// AttnLayerNorm
-#include "paddle/fluid/operators/fused/attention_layer_norm.h"
-
-#include "paddle/phi/kernels/fusion/fused_attention_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+
+#include "paddle/fluid/operators/fused/attention_layer_norm.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/diagonal.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
-#include "paddle/phi/kernels/gpu/fused_attention_helper.h"
+#include "paddle/phi/kernels/fusion/fused_attention_kernel.h"
+#include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
+#include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 
 namespace phi {
 
