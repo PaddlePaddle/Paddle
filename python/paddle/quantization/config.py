@@ -89,6 +89,7 @@ class QuantConfig(object):
         self._type2config = {}
         self._model = None
         self._qat_layer_mapping = copy.deepcopy(DEFAULT_QAT_LAYER_MAPPINGS)
+        self._customized_qat_layer_mapping = dict()
 
         self._customized_leaves = []
 
@@ -259,6 +260,7 @@ class QuantConfig(object):
             source, paddle.nn.Layer
         ), "The target layer should be a subclass of paddle.nn.qat.Layer"
         self._qat_layer_mapping[source] = target
+        self._customized_qat_layer_mapping[source] = target
 
     def add_customized_leaf(self, layer_type: type):
         r"""
@@ -296,7 +298,11 @@ class QuantConfig(object):
 
     def _get_qat_layer(self, layer: Layer):
         q_config = self._get_config_by_layer(layer)
-        return self.qat_layer_mappings[type(layer)](layer, q_config)
+
+        target_type = self._customized_qat_layer_mapping.get(
+            type(layer), self.qat_layer_mappings.get(type(layer))
+        )
+        return target_type(layer, q_config)
 
     def _has_observer_config(self, layer: Layer):
         r"""
@@ -397,6 +403,7 @@ class QuantConfig(object):
         for child in model.children():
             layer_prefix = child.full_name()
             config = self._layer2config.get(model, self.global_config)
+
             config = self._type2config.get(type(child), config)
             config = self._prefix2config.get(layer_prefix, config)
             if config is not None:
@@ -413,26 +420,21 @@ class QuantConfig(object):
         return self._details_helper(self._model)
 
     def _details_helper(self, layer: Layer):
-        extra_lines = []
         sublayer_lines = []
         for name, sublayer in layer.named_children():
             sublayer_str = self._details_helper(sublayer)
             sublayer_str = self._addindent(sublayer_str, 2)
-            sublayer_lines.append(
-                '('
-                + name
-                + '): '
-                + sublayer_str
-                + ', '
-                + str(self._layer2config[sublayer])
-            )
+            if sublayer in self._layer2config:
+                sublayer_lines.append(
+                    '('
+                    + name
+                    + '): '
+                    + sublayer_str
+                    + ', '
+                    + str(self._layer2config[sublayer])
+                )
 
         final_str = layer.__class__.__name__ + '('
-        if extra_lines:
-            if len(extra_lines) > 1:
-                final_str += '\n  ' + '\n  '.join(extra_lines) + '\n'
-            elif len(extra_lines) == 1:
-                final_str += extra_lines[0]
         if sublayer_lines:
             final_str += '\n  ' + '\n  '.join(sublayer_lines) + '\n'
 

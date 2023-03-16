@@ -205,4 +205,7 @@ void Conv3dCooKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(
     conv3d_coo, CPU, ALL_LAYOUT, phi::sparse::Conv3dCooKernel, float, double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
+  kernel->OutputAt(1).SetDataType(paddle::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(paddle::DataType::INT32);
 }
