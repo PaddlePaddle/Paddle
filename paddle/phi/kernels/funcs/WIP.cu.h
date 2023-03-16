@@ -24,7 +24,8 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice.h"
-#include "paddle/phi/kernels/pad_kernel.h"
+#include "paddle/phi/kernels/pad3d_kernel.h"
+#include "paddle/phi/kernels/unsqueeze_kernel.h"
 
 namespace phi {
 namespace funcs {
@@ -51,18 +52,22 @@ phi::DenseTensor get_pad_lse(const phi::GPUContext& dev_ctx,
                              bool force_pad_inf = false) {
   int pad_amount = (pad_to - (lse->dims()[2] % pad_to)) % pad_to;
   if (pad_amount > 0) {
-    phi::DenseTensor tmp;
+    phi::DenseTensor tmp = *lse;
     if (force_pad_inf) {
       tmp = phi::funcs::Slice<T, phi::GPUContext>(
           dev_ctx, *lse, {2}, {0}, {out_second_dim});
       pad_amount = (pad_to - (tmp.dims()[2] % pad_to)) % pad_to;
     }
+    tmp.Resize({tmp.dims()[0], tmp.dims()[1], tmp.dims()[2], 1, 1});
     phi::DenseTensor out;
-    phi::PadKernel<T, phi::GPUContext>(dev_ctx,
-                                       tmp,
-                                       {0, pad_amount},
-                                       std::numeric_limits<T>::infinity(),
-                                       &out);
+    phi::Pad3dKernel<T, phi::GPUContext>(dev_ctx,
+                                         tmp,
+                                         {0, 0, 0, 0, 0, pad_amount},
+                                         "constant",
+                                         std::numeric_limits<T>::infinity(),
+                                         "NCDHW",
+                                         &out);
+    out.Resize({out.dims()[0], out.dims()[1], out.dims()[2]});
     return out;
   } else if (force_pad_inf && out_second_dim != lse->dims()[2]) {
     auto in_dim = lse->dims();

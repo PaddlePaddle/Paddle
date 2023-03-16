@@ -21,12 +21,25 @@ namespace phi {
 namespace funcs {
 
 TEST(WIPTest, WIP) {
-  phi::GPUPlace gpu_place;
+  paddle::platform::CUDAPlace gpu_place = paddle::platform::CUDAPlace(0);
   phi::GPUContext gpu_context(gpu_place);
   gpu_context.SetAllocator(
       paddle::memory::allocation::AllocatorFacade::Instance()
           .GetAllocator(gpu_place, gpu_context.stream())
           .get());
+  gpu_context.SetHostAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CPUPlace())
+          .get());
+  gpu_context.SetZeroAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(gpu_place)
+          .get());
+  gpu_context.SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(paddle::platform::CUDAPinnedPlace())
+          .get());
+  gpu_context.PartialInitWithAllocator();
   phi::DataType dtype = phi::DataType::FLOAT32;
   phi::DenseTensor lse(dtype);
   phi::UniformKernel<float>(gpu_context, {2, 3, 4}, dtype, 0, 1, 1234, &lse);
