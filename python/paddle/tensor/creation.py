@@ -857,53 +857,6 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    """
-
-    This OP creates a Tensor with specified `shape` and `dtype`, and
-    initializes it with a constant specified by `value`.
-
-    The attribute `stop_gradient` of the created Tensor is set to True.
-
-    Args:
-        shape(list|tuple|Tensor): Shape of the output Tensor, the data type of ``shape`` is int32 or int64.
-            If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
-            If ``shape`` is an Tensor, it should be an 1-D Tensor with date type int32 or int64.
-        dtype(np.dtype|str): Data type of the output Tensor which can
-            be float16, float32, float64, uint8, int16, int32, int64.
-        value(bool|float|int|Tensor): The constant value used to initialize
-            the Tensor to be created. If ``value`` is an Tensor, it should be an 1-D Tensor.
-        force_cpu(bool, optional): data should be on CPU if it's true, default value is False.
-        out(Tensor, optional): Optional output which can be any created
-            Tensor that meets the requirements to store the result of operation.
-            if ``out`` is None, a new Tensor will be create to store the result.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this
-            property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Tensor which is created according to shape and dtype.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          # attr shape is a list which doesn't contain  Tensor.
-          data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') # data1=[[0],[0]]
-          data2 = paddle.tensor.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1)
-          # data1=[[5], [5]] data2=[[5], [5]]
-
-          # attr shape is a list which contains Tensor.
-          positive_2 = paddle.full([1], 2, "int32")
-          data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5) # data3=[[1.5, 1.5]]
-
-          # attr shape is a Tensor.
-          shape = paddle.full([2], 2, "int32") # shape=[2,2]
-          data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) # data4=[[True,True],[True,True]]
-
-          # attr value is a Tensor.
-          val = paddle.full([1], 2.0, "float32") # val=[2.0]
-          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32') #data5=[[2.0],[2.0]]
-    """
-
     if in_dygraph_mode():
         place = _current_expected_place()
         if force_cpu:
@@ -957,6 +910,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 'int64',
                 'complex64',
                 'complex128',
+                'uint16',
             ],
             'fill_constant',
         )
