@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import enum
 import os.path
 
@@ -40,16 +41,7 @@ from library import (
 class EmitGatherGemmScatterInstance(EmitGemmInstance):
     def __init__(self, operation_suffix=''):
         self.operation_suffix = operation_suffix
-        self.includes = [
-            "cutlass/cutlass.h",
-            "cutlass/numeric_types.h",
-            "cutlass/arch/arch.h",
-            "cutlass/arch/mma.h",
-            "cutlass/layout/matrix.h",
-            "cutlass/gemm/device/gemm.h",
-            "cutlass/gemm/device/gemm_universal_adapter.h",
-            "cutlass/gemm/kernel/default_gemm_universal.h",
-        ]
+        self.includes = []
         self.builtin_epilogue_functor_template = """
     ${epilogue_functor}<
       ${element_c},
@@ -246,6 +238,18 @@ namespace sparse {
 }  // namespace phi
 #endif
 """
+
+    def __enter__(self):
+        self.configuration_file = open(self.configuration_path, "w")
+        self.configuration_file.write(self.header_template)
+        self.configuration_file.write(self.separator)
+
+        self.includes = collections.OrderedDict([])
+        self.instance_definitions = []
+        self.instance_wrappers = []
+
+        self.operations = []
+        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
 
