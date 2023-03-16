@@ -25,7 +25,6 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice.h"
 #include "paddle/phi/kernels/pad3d_kernel.h"
-#include "paddle/phi/kernels/unsqueeze_kernel.h"
 
 namespace phi {
 namespace funcs {
@@ -60,6 +59,7 @@ phi::DenseTensor get_pad_lse(const phi::GPUContext& dev_ctx,
     }
     tmp.Resize({tmp.dims()[0], tmp.dims()[1], tmp.dims()[2], 1, 1});
     phi::DenseTensor out;
+    out.Resize({1, 1, 1, 1, 1});
     phi::Pad3dKernel<T, phi::GPUContext>(dev_ctx,
                                          tmp,
                                          {0, 0, 0, 0, 0, pad_amount},
