@@ -258,16 +258,14 @@ def _conv_nd(
                     attrs={'axis': -1, 'use_mkldnn': use_mkldnn},
                 )
             else:
-                if len(x_shape) > len(y_shape):
-                    padding = len(x_shape) - len(y_shape) - channel_dim
-                    bias = paddle.reshape(
-                        bias, [1] * channel_dim + y_shape + [1] * padding
-                    )
-                else:
-                    padding = len(y_shape) - len(x_shape) - channel_dim
-                    pre_bias = paddle.reshape(
-                        pre_bias, [1] * channel_dim + y_shape + [1] * padding
-                    )
+                assert len(x_shape) > len(
+                    y_shape
+                ), 'The length of pre_bias must greater than the length of bias'
+                padding = len(x_shape) - len(y_shape) - channel_dim
+                bias = paddle.reshape(
+                    bias, [1] * channel_dim + y_shape + [1] * padding
+                )
+
                 helper.append_op(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
@@ -1367,16 +1365,13 @@ def conv2d_transpose(
                     attrs={'axis': -1, 'use_mkldnn': False},
                 )
             else:
-                if len(x_shape) > len(y_shape):
-                    padding = len(x_shape) - len(y_shape) - channel_dim
-                    bias = paddle.reshape(
-                        bias, [1] * channel_dim + y_shape + [1] * padding
-                    )
-                else:
-                    padding = len(y_shape) - len(x_shape) - channel_dim
-                    pre_bias = paddle.reshape(
-                        pre_bias, [1] * channel_dim + y_shape + [1] * padding
-                    )
+                assert len(x_shape) > len(
+                    y_shape
+                ), 'The length of pre_bias must greater than the length of bias'
+                padding = len(x_shape) - len(y_shape) - channel_dim
+                bias = paddle.reshape(
+                    bias, [1] * channel_dim + y_shape + [1] * padding
+                )
                 helper.append_op(
                     type='elementwise_add',
                     inputs={'X': [pre_bias], 'Y': [bias]},
