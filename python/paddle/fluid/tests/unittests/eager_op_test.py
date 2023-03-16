@@ -1492,6 +1492,10 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
+                if actual_np.ndim < expect_np.ndim:
+                    actual_np = np.broadcast_to(actual_np, expect_np.shape)
+                elif actual_np.ndim > expect_np.ndim:
+                    expect_np = np.broadcast_to(expect_np, actual_np.shape)
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -1629,6 +1633,10 @@ class OpTest(unittest.TestCase):
                 ):
                     pass
                 else:
+                    if actual_np.ndim < expect_np.ndim:
+                        actual_np = np.broadcast_to(actual_np, expect_np.shape)
+                    elif actual_np.ndim > expect_np.ndim:
+                        expect_np = np.broadcast_to(expect_np, actual_np.shape)
                     np.testing.assert_allclose(
                         actual_np,
                         expect_np,
