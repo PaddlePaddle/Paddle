@@ -30,60 +30,71 @@ def fill_wrapper(shape, value=0.0):
 
 
 # Situation 1: Attr(shape) is a list(without tensor)
-class TestFillConstantOp1(OpTest):
-    def setUp(self):
-        '''Test fill_constant op with specified value'''
-        self.op_type = "fill_constant"
-        self.python_api = fill_wrapper
-
-        self.inputs = {}
-        self.attrs = {'shape': [123, 92], 'value': 3.8}
-        self.outputs = {'Out': np.full((123, 92), 3.8)}
-
-    def test_check_output(self):
-        self.check_output()
-
-
-class TestFillConstantOp2(OpTest):
+# Base case
+class TestFillConstantOp(OpTest):
     def setUp(self):
         '''Test fill_constant op with default value'''
         self.op_type = "fill_constant"
         self.python_api = fill_wrapper
+        self.init_dtype()
+        self.init_shape()
+        self.init_value()
 
         self.inputs = {}
-        self.attrs = {'shape': [123, 92]}
-        self.outputs = {'Out': np.full((123, 92), 0.0)}
+        self.attrs = {'shape': self.shape, 'value': self.value}
+        self.outputs = {'Out': np.full(self.shape, self.value)}
 
     def test_check_output(self):
         self.check_output()
 
+    def init_dtype(self):
+        self.dtype = np.float64
 
-class TestFillConstantOp3(OpTest):
-    def setUp(self):
-        '''Test fill_constant op with specified int64 value'''
-        self.op_type = "fill_constant"
-        self.python_api = fill_wrapper
+    def init_shape(self):
+        self.shape = [123, 92]
 
-        self.inputs = {}
-        self.attrs = {'shape': [123, 92], 'value': 10000000000}
-        self.outputs = {'Out': np.full((123, 92), 10000000000)}
-
-    def test_check_output(self):
-        self.check_output()
+    def init_value(self):
+        self.value = 0.0
 
 
-class TestFillConstantOp4(OpTest):
-    def setUp(self):
-        '''Test fill_constant op with specified int value'''
-        self.op_type = "fill_constant"
-        self.python_api = fill_wrapper
+class TestFillConstantFP32Op(TestFillConstantOp):
+    '''Test fill_constant op with specified value'''
 
-        self.inputs = {}
-        self.attrs = {'shape': [123, 92], 'value': 3}
-        self.outputs = {'Out': np.full((123, 92), 3)}
+    def init_dtype(self):
+        self.dtype = np.float32
 
-    def test_check_output(self):
-        self.check_output()
+    def init_value(self):
+        self.value = 3.8
+
+
+class TestFillConstantFP16Op(TestFillConstantOp):
+    '''Test fill_constant op with specified value'''
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def init_value(self):
+        self.value = 3.8
+
+
+class TestFillConstantINT64Op(TestFillConstantOp):
+    '''Test fill_constant op with specified int64 value'''
+
+    def init_dtype(self):
+        self.dtype = np.int64
+
+    def init_value(self):
+        self.value = 10000000000
+
+
+class TestFillConstantINT32Op(TestFillConstantOp):
+    '''Test fill_constant op with specified int value'''
+
+    def init_dtype(self):
+        self.dtype = np.int32
+
+    def init_value(self):
+        self.value = 3
 
 
 @unittest.skipIf(
