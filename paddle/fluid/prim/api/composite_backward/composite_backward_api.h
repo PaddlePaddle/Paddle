@@ -931,6 +931,13 @@ void gather_nd_grad(const Tensor& x,
 }
 
 template <typename T>
+void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    by_pass<T>(out_grad, x_grad);
+  }
+}
+
+template <typename T>
 void erf_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto m_2_sqrt_pi = full<T>(phi::vectorize(x.dims()), M_2_SQRTPI, x.dtype());

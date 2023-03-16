@@ -355,10 +355,14 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
 
 
 def bernoulli(shape, dtype, p, seed=0):
+    from paddle.fluid.data_feeder import convert_dtype
+
+    # TODO(jiabin) Fix uniform doesn't support float16 error in CINN
+    new_dtype = "float32" if convert_dtype(dtype) == "float16" else dtype
     return cast(
         greater_equal(
-            uniform(shape, dtype, min=0.0, max=1.0, seed=seed),
-            fill_constant(shape, dtype, p),
+            uniform(shape, new_dtype, min=0.0, max=1.0, seed=seed),
+            fill_constant(shape, new_dtype, p),
         ),
         dtype,
     )
@@ -386,6 +390,15 @@ def hard_swish_composite(x):
         * x
         / full(x.shape, scale, dtype=x.dtype)
     )
+    return res
+
+
+@REGISTER_COMPOSITE('index_select')
+def index_select_composite(x, index, axis):
+    """define composite rule of op index_select."""
+    if axis < 0:
+        axis = len(x.shape) + axis
+    res = gather(x, index, axis=axis)
     return res
 
 
