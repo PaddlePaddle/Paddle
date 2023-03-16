@@ -23,12 +23,13 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle.fluid.tests.unittests.nets as nets
 import paddle.nn.functional as F
 from paddle.fluid import core
 from paddle.fluid.dygraph import base, to_variable
 from paddle.fluid.framework import Program, default_main_program, program_guard
 from paddle.tensor import random
+
+from . import nets
 
 
 class LayerTest(unittest.TestCase):

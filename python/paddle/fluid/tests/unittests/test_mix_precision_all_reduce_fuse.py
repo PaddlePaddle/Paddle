@@ -21,7 +21,8 @@ from simple_nets import init_data
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.tests.unittests.nets as nets
+
+from . import nets
 
 batch_size = 12
 img_shape = [1, 28, 28]

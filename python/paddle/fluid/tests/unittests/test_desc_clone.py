@@ -18,8 +18,9 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.tests.unittests.nets as nets
 from paddle.fluid import core
+
+from . import nets
 
 SEED = 1
 DTYPE = "float32"

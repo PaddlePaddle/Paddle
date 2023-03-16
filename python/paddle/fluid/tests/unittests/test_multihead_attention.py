@@ -19,7 +19,8 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.tests.unittests.nets as nets
+
+from . import nets
 
 
 class TestMultiheadAttention(unittest.TestCase):

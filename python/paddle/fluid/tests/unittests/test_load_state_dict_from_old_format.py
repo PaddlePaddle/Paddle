@@ -21,8 +21,9 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.tests.unittests.nets as nets
 from paddle.fluid import core
+
+from . import nets
 
 
 def convolutional_neural_network(img):

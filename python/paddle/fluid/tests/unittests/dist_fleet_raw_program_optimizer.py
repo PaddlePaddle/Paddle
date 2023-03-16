@@ -20,7 +20,8 @@ import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
-import paddle.fluid.tests.unittests.nets as nets
+
+from . import nets
 
 paddle.enable_static()
 

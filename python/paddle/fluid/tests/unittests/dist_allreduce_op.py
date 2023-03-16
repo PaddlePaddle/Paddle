@@ -19,7 +19,8 @@ from test_dist_base import TestDistRunnerBase, runtime_main
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
-import paddle.fluid.tests.unittests.nets as nets
+
+from . import nets
 
 paddle.enable_static()
 

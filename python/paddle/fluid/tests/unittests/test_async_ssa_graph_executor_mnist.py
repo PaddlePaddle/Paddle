@@ -20,7 +20,8 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.tests.unittests.nets as nets
+
+from . import nets
 
 BATCH_SIZE = 64
 
