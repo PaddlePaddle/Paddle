@@ -340,15 +340,12 @@ def squeeze2_composite(x, axis):
     determine new shape after squeeze op
     if axis not specified, remove all dims equal to 1
     otherwise, remove dims equal to 1 in axis
+    axis can only be list, not int
     """
-    rank = len(x.shape)
-    if isinstance(axis, int):
-        dims = set((axis + rank) % rank)
+    if len(axis) == 0:
+        dims = set(range(len(x.shape)))
     else:
-        if len(axis) == 0:
-            dims = set(range(len(x.shape)))
-        else:
-            dims = set([(ax + rank) % rank for ax in axis])
+        dims = set([ax % rank for ax in axis])
     new_shape = []
     for d, s in enumerate(x.shape):
         if not (s == 1 and (d in dims)):
