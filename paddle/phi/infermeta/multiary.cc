@@ -848,11 +848,12 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
                              std::vector<MetaTensor*> output,
                              MetaTensor* fused_output,
                              MetaConfig config) {
-  if (config.is_runtime) {
-    return;
-  }
   if (size_of_dtype == -1) {
     size_of_dtype = paddle::experimental::SizeOf(dtype);
+  }
+
+  if (use_align && align_size <= 0) {
+    align_size = size_of_dtype;
   }
 
   auto alignment = [](size_t size, size_t align_size) {

@@ -610,6 +610,34 @@ RuntimeInferShapeContext::GetPhiDefaultKernelSignature() const {
 
 void RuntimeInferShapeContext::SetSkipLoD(bool skip) { can_skip_lod_ = skip; }
 
+std::vector<LoD> RuntimeInferShapeContext::GetOutputsLod(
+    const std::string& out) const {
+  auto out_it = ctx_.outputs.find(out);
+  auto& out_var_list = out_it->second;
+
+  std::vector<LoD> ret;
+  for (size_t i = 0; i < out_var_list.size(); ++i) {
+    Variable* out_var = out_var_list[i];
+    if (out_var != nullptr) {
+      auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+      ret.push_back(out_tensor->lod());
+    }
+  }
+  return ret;
+}
+
+std::vector<DDim> RuntimeInferShapeContext::GetOutputsDim(
+    const std::string& name) const {
+  const std::vector<Variable*>& vars = OutputVars(name);
+  std::vector<Variable*> vars_res;
+  for (auto var : vars) {
+    if (var != nullptr) {
+      vars_res.push_back(var);
+    }
+  }
+  return GetDims(vars_res);
+}
+
 DDim RuntimeInferShapeContext::GetDim(Variable* var) const {
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::InvalidArgument("Input variable is nullptr."));

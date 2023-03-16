@@ -218,6 +218,9 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     if (size_of_dtype == -1) {
       size_of_dtype = framework::SizeOfType(dtype);
     }
+    if (use_align && align_size <= 0) {
+      align_size = size_of_dtype;
+    }
     GetMemSizeAndDtype(in_tensors,
                        in_var_names,
                        &numel,
@@ -365,9 +368,6 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    if (ctx->IsRuntime()) {
-      return;
-    }
     auto use_align = ctx->Attrs().Get<bool>("use_align");
     auto align_size = ctx->Attrs().Get<int>("align_size");
     auto size_of_dtype = ctx->Attrs().Get<int>("user_defined_size_of_dtype");
@@ -376,6 +376,10 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
         ctx->Attrs().Get<int>("dtype"));
     if (size_of_dtype == -1) {
       size_of_dtype = framework::SizeOfType(dtype);
+    }
+
+    if (use_align && align_size <= 0) {
+      align_size = size_of_dtype;
     }
 
     auto alignment = [](size_t size, size_t align_size) {

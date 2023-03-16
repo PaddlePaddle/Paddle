@@ -1154,6 +1154,10 @@ class DataFeed {
   // This function is used for binding feed_vec memory in a given scope
   virtual void AssignFeedVar(const Scope& scope);
 
+  virtual std::vector<std::string> GetInputVarNames() {
+    return std::vector<std::string>();
+  }
+
   // This function will do nothing at default
   virtual void SetInputPvChannel(void* channel) {}
   // This function will do nothing at default
@@ -1200,6 +1204,9 @@ class DataFeed {
   }
   virtual const std::vector<std::string>& GetInsContentVec() const {
     return ins_content_vec_;
+  }
+  virtual void SetCurBatchSize(const int batch_size) {
+    batch_size_ = batch_size;
   }
   virtual int GetCurBatchSize() { return batch_size_; }
   virtual int GetGraphPathNum() {
@@ -1248,11 +1255,15 @@ class DataFeed {
   virtual const paddle::platform::Place& GetPlace() const { return place_; }
 
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  virtual MiniBatchGpuPack* get_pack(MiniBatchGpuPack* last_pack) {
+    return nullptr;
+  }
   virtual void PackToScope(MiniBatchGpuPack* pack, const Scope* scope) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(PackToScope) is not implemented."));
   }
 #endif
+  virtual void SetInsIdVec(MiniBatchGpuPack* pack) {}
 
   virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -1832,9 +1843,17 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   bool ParseOneInstance(const std::string& line, SlotRecord* rec);
   virtual void PutToFeedVec(const SlotRecord* ins_vec, int num);
   virtual void AssignFeedVar(const Scope& scope);
+  std::vector<std::string> GetInputVarNames() override {
+    std::vector<std::string> var_names;
+    for (int i = 0; i < use_slot_size_; ++i) {
+      var_names.push_back(used_slots_info_[i].slot);
+    }
+    return var_names;
+  }
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   void BuildSlotBatchGPU(const int ins_num, MiniBatchGpuPack* pack);
 
+  virtual MiniBatchGpuPack* get_pack(MiniBatchGpuPack* last_pack);
   virtual void PackToScope(MiniBatchGpuPack* pack,
                            const Scope* scope = nullptr);
 
@@ -1868,6 +1887,16 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   virtual void InitGraphTrainResource(void);
   virtual void DoWalkandSage();
 #endif
+  void SetInsIdVec(MiniBatchGpuPack* pack) override {
+    if (parse_ins_id_) {
+      size_t ins_num = pack->ins_num();
+      ins_id_vec_.clear();
+      ins_id_vec_.resize(ins_num);
+      for (size_t i = 0; i < ins_num; i++) {
+        ins_id_vec_[i] = pack->get_lineid(i);
+      }
+    }
+  }
   virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
 
   float sample_rate_ = 1.0f;
