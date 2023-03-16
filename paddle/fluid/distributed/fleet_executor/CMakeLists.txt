@@ -44,7 +44,8 @@ cc_library(
        message_bus.cc
        dist_model_tensor_wrapper.cc
        WIP.cu.h
-  DEPS proto_desc
+  DEPS phi
+       proto_desc
        standalone_executor
        fleet_executor_desc_proto
        interceptor_message_proto
