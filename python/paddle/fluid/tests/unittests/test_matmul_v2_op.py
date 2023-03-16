@@ -377,6 +377,8 @@ create_test_fp16_class(TestMatMulOp14)
 create_test_fp16_class(TestMatMulOp15)
 create_test_fp16_class(TestMatMulOp16)
 create_test_fp16_class(TestMatMulOp17)
+create_test_fp16_class(TestMatMulOpBroadcast1)
+create_test_fp16_class(TestMatMulOpBroadcast2)
 
 # --------------------test matmul bf16--------------------
 
