@@ -93,6 +93,7 @@ def extract_args(func):
 def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
     output = []
     dist.all_gather(output, x)
+    output = paddle.concat(output, axis=0)
     return output
 
 
