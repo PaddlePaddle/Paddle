@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-
 #include <cuda_runtime_api.h>
 #include "cuda.h"  // NOLINT
 #include "paddle/phi/backends/dynload/cublasLt.h"
@@ -26,6 +24,8 @@ limitations under the License. */
 
 namespace phi {
 namespace funcs {
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
 // Set this enum according to
 // https://docs.nvidia.com/cuda/cublas/index.html#cublasltepilogue-t
@@ -536,7 +536,11 @@ struct MatmulWithCublasLt {
   }
 };
 
+#else
+// A void structure just for successfully complile.
+struct MatmulPlanner {};
+
+#endif  // (PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+
 }  // namespace funcs
 }  // namespace phi
-
-#endif
