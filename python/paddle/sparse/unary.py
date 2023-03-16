@@ -22,7 +22,7 @@ from paddle.fluid.framework import (
     core,
     dygraph_only,
 )
-from paddle.fluid.layers import utils
+from paddle.fluid.layers.utils import _contain_var, _convert_to_tensor_list
 from paddle.framework import LayerHelper, in_dygraph_mode
 
 
@@ -59,8 +59,8 @@ def _get_reduce_axis_with_tensor(axis, x):
             reduce_all = False
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)
-        if utils._contain_var(axis):
-            axis = utils._convert_to_tensor_list(axis)
+        if _contain_var(axis):
+            axis = _convert_to_tensor_list(axis)
     return reduce_all, axis
 
 
