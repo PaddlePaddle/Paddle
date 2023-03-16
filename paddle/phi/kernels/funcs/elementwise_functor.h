@@ -141,7 +141,7 @@ struct DivGradXYNewFunctor {
     outs[0] = static_cast<OutT>(static_cast<AccT>(a) / static_cast<AccT>(c));
     outs[1] =
         -static_cast<OutT>((static_cast<AccT>(a)) * (static_cast<AccT>(b)) /
-                           (static_cast<AccT>(c) * static_cast<AccT>(c)));
+                           static_cast<AccT>(c) / static_cast<AccT>(c));
     return outs;
   }
 };
