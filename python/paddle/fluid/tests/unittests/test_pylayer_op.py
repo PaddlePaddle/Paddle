@@ -269,8 +269,8 @@ class TestPyLayer(unittest.TestCase):
         input2.stop_gradient = False
         z = Layer_bk_none1.apply(input2)
 
-        with self.assertRaises(ValueError):
-            z.sum().backward()
+        z.sum().backward()
+        self.assertEqual(input2.grad, None)
 
         class Layer_bk_none2(PyLayer):
             @staticmethod
