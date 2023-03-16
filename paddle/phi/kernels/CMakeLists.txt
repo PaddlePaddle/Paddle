@@ -85,7 +85,11 @@ endif()
 
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group)
 if(WITH_NCCL OR WITH_RCCL)
-  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} process_group_nccl
+                         nccl_comm_context)
+endif()
+if(WITH_GLOO)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} gloo_comm_context)
 endif()
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
 if(WITH_CUDNN_FRONTEND)
@@ -110,7 +114,15 @@ file(
   "fusion/gpu/*.cu")
 
 if(WITH_CUTLASS)
-  file(GLOB cutlass_cu "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
+
+  file(GLOB cutlass_cu "fusion/cutlass/conv2d/generated/*.cu"
+       "fusion/cutlass/conv2d/*.cu" "fusion/cutlass/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
@@ -150,13 +162,21 @@ file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
 
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
-target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
+if(WITH_MKLDNN)
+  target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS}
+                        get_kerneltype_forvar_utils)
+else()
+  target_link_libraries(phi_cpu ${COMMON_KERNEL_DEPS})
+endif()
 
 set(ADD_PHI_KERNELS phi_cpu)
 
 if(WITH_GPU OR WITH_ROCM)
   if(WITH_GPU)
     add_library(phi_gpu ${kernel_cu})
+    if(WITH_CUTLASS)
+      add_dependencies(phi_gpu cutlass_codegen)
+    endif()
   elseif(WITH_ROCM)
     hip_add_library(phi_gpu STATIC ${kernel_cu})
   endif()

@@ -32,7 +32,7 @@ void PutAlongAxisKernel(const Context& dev_ctx,
                         const std::string& reduce,
                         DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
       true,
       errors::PreconditionNotMet("PutAlongAxisOpKernel only runs on CPU."));
 

@@ -648,6 +648,5 @@ struct ElementwiseInversePowFunctor<dtype::float16> {
     return static_cast<dtype::float16>(std::pow(f_b, f_a));
   }
 };
-
 }  // namespace funcs
 }  // namespace phi

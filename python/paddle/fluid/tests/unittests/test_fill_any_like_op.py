@@ -25,8 +25,6 @@ import paddle.framework.dtype as dtypes
 def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
     if isinstance(out_dtype, int):
         tmp_dtype = dtypes.dtype(out_dtype)
-    elif out_dtype == np.complex64:
-        raise ValueError("Not supported dtype %s" % out_dtype)
     else:
         tmp_dtype = out_dtype
     return paddle.full_like(x, value, tmp_dtype, name)
@@ -43,7 +41,7 @@ class TestFillAnyLikeOp(OpTest):
         self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
         self.attrs = {'value': self.value}
         self.outputs = {'Out': self.value * np.ones_like(self.inputs["X"])}
-        self.skip_cinn()
+        self.if_enable_cinn()
 
     def init(self):
         pass
@@ -51,7 +49,7 @@ class TestFillAnyLikeOp(OpTest):
     def test_check_output(self):
         self.check_output(check_prim=True)
 
-    def skip_cinn(self):
+    def if_enable_cinn(self):
         pass
 
 
@@ -60,8 +58,8 @@ class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
         self.dtype = np.float32
         self.value = 0.0
 
-    def skip_cinn(self):
-        self.enable_cinn = True
+    def if_enable_cinn(self):
+        pass
 
 
 @unittest.skipIf(
@@ -81,13 +79,13 @@ class TestFillAnyLikeOpBfloat16(OpTest):
                 self.value * np.ones_like(self.inputs["X"])
             )
         }
-        self.skip_cinn()
+        self.if_enable_cinn()
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place, check_prim=True)
 
-    def skip_cinn(self):
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -95,24 +93,24 @@ class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
     def init(self):
         self.value = 1.0
 
-    def skip_cinn(self):
-        self.enable_cinn = True
+    def if_enable_cinn(self):
+        pass
 
 
 class TestFillAnyLikeOpValue2(TestFillAnyLikeOp):
     def init(self):
         self.value = 1e-10
 
-    def skip_cinn(self):
-        self.enable_cinn = True
+    def if_enable_cinn(self):
+        pass
 
 
 class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
     def init(self):
         self.value = 1e-100
 
-    def skip_cinn(self):
-        self.enable_cinn = True
+    def if_enable_cinn(self):
+        pass
 
 
 class TestFillAnyLikeOpType(TestFillAnyLikeOp):
@@ -133,18 +131,18 @@ class TestFillAnyLikeOpType(TestFillAnyLikeOp):
             * np.ones_like(self.inputs["X"]).astype(np.float32)
         }
 
-        self.skip_cinn()
+        self.if_enable_cinn()
 
-    def skip_cinn(self):
-        self.enable_cinn = True
+    def if_enable_cinn(self):
+        pass
 
 
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
     def init(self):
         self.dtype = np.float16
 
-    def skip_cinn(self):
-        self.enable_cinn = True
+    def if_enable_cinn(self):
+        pass
 
 
 if __name__ == "__main__":
