@@ -189,22 +189,22 @@ TEST(EagerPrim, CompareOperantsTest) {
   // 3. Run Forward once
   paddle::Tensor out0 = (tensor0 < tensor1);
   paddle::Tensor out1 = less_than_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
   out0 = (tensor0 <= tensor1);
   out1 = less_equal_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
   out0 = (tensor0 == tensor1);
   out1 = equal_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
   out0 = (tensor0 != tensor1);
   out1 = not_equal_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
   out0 = (tensor0 > tensor1);
   out1 = greater_than_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
   out0 = (tensor0 >= tensor1);
   out1 = greater_equal_ad_func(tensor0, tensor1);
-  EXPECT_EQ(out0.data<int>()[0], out1.data<int>()[0]);
+  EXPECT_EQ(out0.data<bool>()[0], out1.data<bool>()[0]);
 }
 
 TEST(EagerPrim, TestFlags) {

@@ -376,16 +376,16 @@ class TestJITLoad(unittest.TestCase):
             pd_out = paddle.equal(x, y)
             np.testing.assert_equal(out.numpy(), pd_out.numpy())
 
-            out = self.custom_module.custom_not_equal(x)
-            pd_out = paddle.not_equal(x)
+            out = self.custom_module.custom_not_equal(x, y)
+            pd_out = paddle.not_equal(x, y)
             np.testing.assert_equal(out.numpy(), pd_out.numpy())
 
             out = self.custom_module.custom_greater_than(x, y)
             pd_out = paddle.greater_than(x, y)
             np.testing.assert_equal(out.numpy(), pd_out.numpy())
 
-            out = self.custom_module.custom_greater_equal(x)
-            pd_out = paddle.greater_equal(x)
+            out = self.custom_module.custom_greater_equal(x, y)
+            pd_out = paddle.greater_equal(x, y)
             np.testing.assert_equal(out.numpy(), pd_out.numpy())
 
 
