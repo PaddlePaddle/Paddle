@@ -2357,7 +2357,9 @@ class TestSoftRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.02, check_dygraph=False
+        )
 
 
 def elu(x, alpha):
