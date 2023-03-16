@@ -237,15 +237,17 @@ class TestBert(unittest.TestCase):
 
     def test_train_composite(self):
         core._set_prim_backward_enabled(True)
+        core._add_skip_comp_ops("layer_norm")
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader
         )
         core._set_prim_backward_enabled(False)
+        core._add_skip_comp_ops("layer_norm")
         dygraph_loss, dygraph_ppl = self.train_dygraph(
             self.bert_config, self.data_reader
         )
-        np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-03)
-        np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-03)
+        np.testing.assert_allclose(static_loss, dygraph_loss, rtol=1e-05)
+        np.testing.assert_allclose(static_ppl, dygraph_ppl, rtol=1e-05)
 
     def verify_predict(self):
         for data in self.data_reader.data_generator()():
