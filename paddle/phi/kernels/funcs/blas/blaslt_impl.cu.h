@@ -14,8 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-
+#if defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime_api.h>
 #include "cuda.h"  // NOLINT
 #include "paddle/phi/backends/dynload/cublasLt.h"
@@ -72,6 +71,14 @@ struct MatmulPlanner {
   MatmulFusedType type;
   size_t key;
 };
+
+}  // namespace funcs
+}  // namespace phi
+#endif
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+namespace phi {
+namespace funcs {
 
 template <typename T>
 cublasComputeType_t GetCudaComputeType() {
