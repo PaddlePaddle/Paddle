@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -24,6 +24,8 @@ from paddle.fluid import Program, core, program_guard
 
 class TestSplitOp(OpTest):
     def setUp(self):
+        self.python_api = paddle.split
+        self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.dtype = self.get_dtype()
         axis = 1
@@ -62,6 +64,8 @@ class TestSplitOp(OpTest):
 # test with attr(num)
 class TestSplitOp_2(OpTest):
     def setUp(self):
+        self.python_api = paddle.split
+        self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.dtype = self.get_dtype()
         self.init_data()
@@ -98,6 +102,8 @@ class TestSplitOp_2(OpTest):
 # attr(axis) is Tensor
 class TestSplitOp_AxisTensor(OpTest):
     def setUp(self):
+        self.python_api = paddle.split
+        self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.dtype = self.get_dtype()
         self.init_data()
@@ -133,6 +139,8 @@ class TestSplitOp_AxisTensor(OpTest):
 # attr(sections) is list containing Tensor
 class TestSplitOp_SectionsTensor(OpTest):
     def setUp(self):
+        self.python_api = paddle.split
+        self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.dtype = self.get_dtype()
         self.init_data()
@@ -178,6 +186,8 @@ class TestSplitOp_SectionsTensor(OpTest):
 
 class TestSplitOp_unk_section(OpTest):
     def setUp(self):
+        self.python_api = paddle.split
+        self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
         self.dtype = self.get_dtype()
         self.init_data()

@@ -138,6 +138,7 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+    custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc)

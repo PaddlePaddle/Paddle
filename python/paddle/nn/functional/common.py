@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy
+
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.common_ops_import import Variable, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core, in_dynamic_mode
-from paddle.static import Variable, default_main_program
 from paddle.tensor.creation import full
 
 from ...fluid.data_feeder import (
@@ -102,6 +104,10 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             y = F.unfold(x, [3, 3], 1, 1, 1)
     """
 
+    helper = LayerHelper("unfold", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
+
     assert len(x.shape) == 4, "input should be the format of [N, C, H, W]"
 
     if isinstance(kernel_sizes, int):
@@ -145,9 +151,6 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     if in_dygraph_mode():
         return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
-    helper = LayerHelper("unfold", **locals())
-
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="unfold",
@@ -397,6 +400,23 @@ def interpolate(
     if size is None and scale_factor is None:
         raise ValueError("One of size and scale_factor must not be None.")
 
+    if (isinstance(size, list) or isinstance(size, tuple)) and len(
+        size
+    ) != x.ndim - 2:
+        raise ValueError(
+            'The x and size should satisfy rank(x) - 2 == len(size).'
+        )
+
+    if isinstance(size, Variable):
+        if size.ndim != 1:
+            raise ValueError(
+                f"If size is a tensor, it's rank must be 1, but received {size.ndim}."
+            )
+        if size.shape[0] != x.ndim - 2:
+            raise ValueError(
+                'The x and size should satisfy rank(x) - 2 == size.shape[0].'
+            )
+
     if not isinstance(align_corners, bool):
         raise TypeError("Attr align_corners should be a bool value")
 
@@ -415,9 +435,12 @@ def interpolate(
         ):
             if len(size) == 0:
                 raise ValueError("output size can not be empty")
+        if size is None:
+            raise ValueError("output size can not be None in AREA mode")
         if len(x.shape) == 3:
             return paddle.nn.functional.adaptive_avg_pool1d(x, size)
         elif len(x.shape) == 4:
+            print("size :", size)
             return paddle.nn.functional.adaptive_avg_pool2d(x, size)
         elif len(x.shape) == 5:
             return paddle.nn.functional.adaptive_avg_pool3d(x, size)
@@ -477,9 +500,10 @@ def interpolate(
                     out_shape = list(out_shape.numpy())
                 else:
                     out_shape = list(out_shape)
+
                 for i, dim in enumerate(out_shape):
                     if isinstance(dim, Variable):
-                        out_shape[i] = dim.numpy()[0]
+                        out_shape[i] = dim.numpy().item()
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
@@ -551,11 +575,18 @@ def interpolate(
 
     else:
         if in_dynamic_mode() and isinstance(scale, Variable):
-            scale = list(scale.numpy())
+            if scale.shape == []:
+                scale = float(scale)
+            else:
+                scale = list(scale.numpy())
         if isinstance(scale, Variable):
             scale.stop_gradient = True
             inputs["Scale"] = scale
-        elif isinstance(scale, float) or isinstance(scale, int):
+        elif (
+            isinstance(scale, float)
+            or isinstance(scale, int)
+            or isinstance(scale, numpy.ndarray)
+        ):
             if scale <= 0:
                 raise ValueError("Attr(scale) should be greater than zero.")
             scale_list = []
@@ -2236,6 +2267,11 @@ def fold(
             # y.shape = [2,3,4,5]
 
     """
+
+    helper = LayerHelper("fold", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fold')
+
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
 
     def _is_list_or_turple_(data):
@@ -2305,9 +2341,6 @@ def fold(
             dilations,
         )
     else:
-        helper = LayerHelper("fold", **locals())
-
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fold')
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
             type="fold",

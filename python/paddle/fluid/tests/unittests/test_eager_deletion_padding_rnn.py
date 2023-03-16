@@ -129,7 +129,7 @@ def lm_model(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             )
@@ -138,7 +138,7 @@ def lm_model(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             bias_arr.append(bias_1)
 
@@ -250,7 +250,7 @@ def lm_model(
                 [hidden_size * 2, hidden_size * 4],
                 dtype="float32",
                 name="fc_weight1_" + str(i),
-                default_initializer=fluid.initializer.UniformInitializer(
+                default_initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 ),
             )
@@ -259,7 +259,7 @@ def lm_model(
                 [hidden_size * 4],
                 dtype="float32",
                 name="fc_bias1_" + str(i),
-                default_initializer=fluid.initializer.Constant(0.0),
+                default_initializer=paddle.nn.initializer.Constant(0.0),
             )
             bias_arr.append(bias_1)
 
@@ -368,7 +368,7 @@ def lm_model(
         is_sparse=False,
         param_attr=fluid.ParamAttr(
             name='embedding_para',
-            initializer=fluid.initializer.UniformInitializer(
+            initializer=paddle.nn.initializer.Uniform(
                 low=-init_scale, high=init_scale
             ),
         ),
@@ -406,7 +406,7 @@ def lm_model(
         [hidden_size, vocab_size],
         dtype="float32",
         name="softmax_weight",
-        default_initializer=fluid.initializer.UniformInitializer(
+        default_initializer=paddle.nn.initializer.Uniform(
             low=-init_scale, high=init_scale
         ),
     )
@@ -414,7 +414,7 @@ def lm_model(
         [vocab_size],
         dtype="float32",
         name='softmax_bias',
-        default_initializer=fluid.initializer.UniformInitializer(
+        default_initializer=paddle.nn.initializer.Uniform(
             low=-init_scale, high=init_scale
         ),
     )

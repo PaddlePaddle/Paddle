@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid.dygraph as dg
-import paddle.fluid.initializer as I
 import paddle.nn.functional as F
 from paddle import fluid
 
@@ -97,10 +96,10 @@ class TestFunctionalConv3D(TestCase):
                     padding=self.padding,
                     dilation=self.dilation,
                     groups=self.groups,
-                    param_attr=I.NumpyArrayInitializer(self.weight),
+                    param_attr=paddle.nn.initializer.Assign(self.weight),
                     bias_attr=False
                     if self.no_bias
-                    else I.NumpyArrayInitializer(self.bias),
+                    else paddle.nn.initializer.Assign(self.bias),
                     act=self.act,
                     data_format=self.data_format,
                 )
@@ -490,10 +489,10 @@ class TestFunctionalConv3DErrorCase11(TestCase):
                     padding=self.padding,
                     dilation=self.dilation,
                     groups=self.groups,
-                    param_attr=I.NumpyArrayInitializer(self.filter),
+                    param_attr=paddle.nn.initializer.Assign(self.filter),
                     bias_attr=False
                     if self.bias is None
-                    else I.NumpyArrayInitializer(self.bias),
+                    else paddle.nn.initializer.Assign(self.bias),
                     act=None,
                     data_format=self.data_format,
                 )

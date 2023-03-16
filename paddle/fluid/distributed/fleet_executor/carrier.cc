@@ -15,6 +15,7 @@
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 
 #include <algorithm>
+#include <vector>
 
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
@@ -24,6 +25,7 @@
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
 
 namespace paddle {
@@ -55,23 +57,34 @@ void Carrier::Init(
     framework::Scope* scope,
     int64_t num_micro_batches,
     const platform::Place& place,
-    const std::vector<std::string>& inference_root_scope_vars) {
+    const std::vector<std::string>& inference_root_scope_vars,
+    const std::vector<framework::Scope*>& micro_scope_list) {
   rank_ = rank;
   interceptor_id_to_rank_ = interceptor_id_to_rank;
   interceptor_id_to_node_ = interceptor_id_to_node;
   place_ = place;
   root_scope_ = scope;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
+  bool need_create_scope = micro_scope_list.empty();
 
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_,
       platform::errors::InvalidArgument("root_scope can not be nullptr"));
-  minibatch_scope_ = &root_scope_->NewScope();
-  microbatch_scopes_.resize(num_micro_batches);
-  for (int i = 0; i < num_micro_batches; ++i) {
-    microbatch_scopes_[i] = &minibatch_scope_->NewScope();
-    CopyParameters(i, program, inference_root_scope_vars);
+
+  if (need_create_scope) {
+    minibatch_scope_ = &root_scope_->NewScope();
+    microbatch_scopes_.resize(num_micro_batches);
+    for (int i = 0; i < num_micro_batches; ++i) {
+      microbatch_scopes_[i] = &minibatch_scope_->NewScope();
+      CopyParameters(i, program, inference_root_scope_vars);
+    }
+  } else {
+    microbatch_scopes_ = micro_scope_list;
+    for (int i = 0; i < num_micro_batches; ++i) {
+      CopyParameters(i, program, inference_root_scope_vars);
+    }
   }
+
   // Add source and sink interceptor id to rank
   interceptor_id_to_rank_.emplace(SOURCE_ID, rank);
   interceptor_id_to_rank_.emplace(SINK_ID, rank);
@@ -166,6 +179,7 @@ void Carrier::Start() {
                         "Using carrier before initialized."));
   InterceptorMessage start_msg;
   start_msg.set_dst_id(SOURCE_ID);
+  start_msg.set_src_id(SOURCE_ID);
   start_msg.set_message_type(START);
   Send(start_msg);
   // TODO(wangxi): async step

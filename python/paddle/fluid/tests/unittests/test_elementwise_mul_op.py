@@ -15,14 +15,24 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    skip_check_grad_ci,
-)
+
+
+def mul(x, y, axis=-1, use_mkldnn=False):
+    return x * y
+
+
+setattr(paddle, "mul", mul)
+
+
+def broadcast_wrapper(shape=[1, 10, 12, 1]):
+    def mul_wrapper(x, y, axis=-1):
+        return x * y.reshape(shape)
+
+    return mul_wrapper
 
 
 class ElementwiseMulOp(OpTest):
@@ -31,6 +41,7 @@ class ElementwiseMulOp(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = paddle.mul
         self.dtype = np.float64
         self.axis = -1
         self.init_dtype()
@@ -107,6 +118,7 @@ class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
 class TestBF16ElementwiseMulOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = paddle.mul
         self.dtype = np.uint16
 
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float32)
@@ -145,6 +157,7 @@ class TestBF16ElementwiseMulOp(OpTest):
 class TestElementwiseMulOp_scalar(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = paddle.mul
         self.inputs = {
             'X': np.random.rand(10, 3, 4).astype(np.float64),
             'Y': np.random.rand(1).astype(np.float64),
@@ -156,6 +169,7 @@ class TestElementwiseMulOp_scalar(ElementwiseMulOp):
 class TestElementwiseMulOp_Vector(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = paddle.mul
         self.inputs = {
             'X': np.random.random((100,)).astype("float64"),
             'Y': np.random.random((100,)).astype("float64"),
@@ -168,6 +182,7 @@ class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
+        self.python_api = broadcast_wrapper(shape=[100, 1, 1])
         self.out = self.x * self.y.reshape(100, 1, 1)
 
     def init_axis(self):
@@ -177,6 +192,7 @@ class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
 class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = broadcast_wrapper(shape=[1, 100, 1])
         self.inputs = {
             'X': np.random.rand(2, 100, 3).astype(np.float64),
             'Y': np.random.rand(100).astype(np.float64),
@@ -192,6 +208,7 @@ class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
 class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = broadcast_wrapper(shape=[1, 1, 100])
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
             'Y': np.random.rand(100).astype(np.float64),
@@ -206,6 +223,7 @@ class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
 class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = broadcast_wrapper(shape=[1, 10, 12, 1])
         self.inputs = {
             'X': np.random.rand(2, 10, 12, 3).astype(np.float64),
             'Y': np.random.rand(10, 12).astype(np.float64),
@@ -221,6 +239,7 @@ class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
 class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = paddle.mul
         self.inputs = {
             'X': np.random.rand(10, 2, 11).astype(np.float64),
             'Y': np.random.rand(10, 1, 11).astype(np.float64),
@@ -232,6 +251,7 @@ class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
 class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = paddle.mul
         self.inputs = {
             'X': np.random.rand(10, 4, 2, 3).astype(np.float64),
             'Y': np.random.rand(10, 4, 1, 3).astype(np.float64),
@@ -251,6 +271,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
 class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = paddle.mul
         self.inputs = {
             'X': np.random.rand(2, 3, 100).astype(np.float64),
             'Y': np.random.rand(1, 1, 100).astype(np.float64),
@@ -262,6 +283,7 @@ class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
 class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = paddle.mul
         self.inputs = {
             'X': np.random.rand(30, 3, 1, 5).astype(np.float64),
             'Y': np.random.rand(30, 1, 4, 1).astype(np.float64),
@@ -273,6 +295,7 @@ class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
 class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = paddle.mul
         self.inputs = {
             'X': np.random.rand(10, 10).astype(np.float64),
             'Y': np.random.rand(2, 2, 10, 10).astype(np.float64),
@@ -289,6 +312,7 @@ class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
 class TestComplexElementwiseMulOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.python_api = paddle.mul
         self.init_base_dtype()
         self.init_input_output()
         self.init_grad_input_output()

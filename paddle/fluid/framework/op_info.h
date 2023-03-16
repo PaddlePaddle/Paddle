@@ -43,7 +43,7 @@ class OpInfo {
  public:
   OpCreator creator_;
   GradOpMakerFN grad_op_maker_;
-  GradCompositeOpMakerFN grad_comp_op_maker_;
+  CompositeGradOpMakerFN grad_comp_op_maker_;
   proto::OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
@@ -84,7 +84,7 @@ class OpInfo {
 
   const GradOpMakerFN& GradOpMaker() const { return grad_op_maker_; }
 
-  const GradCompositeOpMakerFN& GradCompOpMaker() const {
+  const CompositeGradOpMakerFN& CompGradOpMaker() const {
     return grad_comp_op_maker_;
   }
 

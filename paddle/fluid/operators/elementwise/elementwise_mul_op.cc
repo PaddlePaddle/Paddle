@@ -66,9 +66,9 @@ class ElementwiseMulOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class ElementwiseMulGradCompositeOpMaker
-    : public prim::GradCompositeOpMakerBase {
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+class ElementwiseMulCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
  public:
   void Apply() override {
@@ -155,7 +155,7 @@ REGISTER_OPERATOR(elementwise_mul,
                   ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>,
-                  ops::ElementwiseMulGradCompositeOpMaker);
+                  ops::ElementwiseMulCompositeGradOpMaker);
 REGISTER_OPERATOR(
     elementwise_mul_grad,
     ops::ElementwiseOpGrad,

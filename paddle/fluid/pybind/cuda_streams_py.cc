@@ -243,6 +243,10 @@ void BindCudaStream(py::module *m_ptr) {
             print(ptr)
 
            )DOC")
+      .def_property_readonly("place",
+                             [](phi::CUDAStream &self) {
+                               return platform::CUDAPlace(self.place());
+                             })
 #endif
       .def(
           "__init__",

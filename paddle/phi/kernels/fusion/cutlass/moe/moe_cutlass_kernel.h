@@ -42,6 +42,7 @@
 #include "cutlass/gemm/kernel/grouped_problem_visitor.h"
 #include "cutlass/layout/matrix.h"
 #include "cutlass/trace.h"
+
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace cutlass {
@@ -350,14 +351,16 @@ template <typename ThreadblockShape,
           int ThreadCount,
           bool Transposed = false>
 struct GemmMoeProblemVisitor
-    : public MoeProblemVisitor<detail::GemmGroupedProblemSizeHelper<Transposed>,
-                               ThreadblockShape,
-                               GroupScheduleMode_,
-                               PrefetchTileCount,
-                               ThreadCount> {
+    : public MoeProblemVisitor<
+          detail::GemmGroupedProblemSizeHelper<ThreadblockShape, Transposed>,
+          ThreadblockShape,
+          GroupScheduleMode_,
+          PrefetchTileCount,
+          ThreadCount> {
   static bool const kTransposed = Transposed;
 
-  using ProblemSizeHelper = detail::GemmGroupedProblemSizeHelper<Transposed>;
+  using ProblemSizeHelper =
+      detail::GemmGroupedProblemSizeHelper<ThreadblockShape, Transposed>;
   using Base = MoeProblemVisitor<ProblemSizeHelper,
                                  ThreadblockShape,
                                  GroupScheduleMode_,

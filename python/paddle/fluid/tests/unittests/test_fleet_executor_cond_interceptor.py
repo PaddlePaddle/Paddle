@@ -14,6 +14,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 import paddle.fluid.core as core
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
@@ -21,13 +23,26 @@ from paddle.distributed.fleet.fleet_executor_utils import TaskNode
 paddle.enable_static()
 
 
-def cond(i, ten):
+def cond(i, ten, data):
     return i < ten
 
 
-def body(i, ten):
+def body(i, ten, data):
     i = i + 1
-    return [i, ten]
+    data = data + 1
+    return [i, ten, data]
+
+
+num_micro_batches = 3
+
+
+def batch_generator_creator():
+    def __reader__():
+        for i in range(num_micro_batches):
+            data = np.full(shape=[1, 1], fill_value=i, dtype=np.float32)
+            yield data
+
+    return __reader__
 
 
 class TestFleetExecutor(unittest.TestCase):
@@ -41,7 +56,16 @@ class TestFleetExecutor(unittest.TestCase):
             ten = paddle.full(
                 shape=[1], fill_value=10, dtype='int64'
             )  # loop length
-            i, ten = paddle.static.nn.while_loop(cond, body, [i, ten])
+            data = paddle.static.data(name='x', shape=[1])
+
+            loader = paddle.fluid.io.DataLoader.from_generator(
+                feed_list=[data], capacity=num_micro_batches * 4, iterable=False
+            )
+            loader.set_batch_generator(
+                batch_generator_creator(), paddle.CUDAPlace(0)
+            )
+
+            paddle.static.nn.while_loop(cond, body, [i, ten, data])
 
         program_a = paddle.static.Program()
         program_b = paddle.static.Program()
@@ -49,18 +73,27 @@ class TestFleetExecutor(unittest.TestCase):
         for var_name in main_program.block(0).vars:
             if var_name != "_generated_var_0":
                 var = main_program.block(0).var(var_name)
-                program_a.block(0).create_var(
-                    name=var_name,
-                    shape=var.shape,
-                    dtype=var.dtype,
-                    stop_gradient=var.stop_gradient,
-                )
-                program_b.block(0).create_var(
-                    name=var_name,
-                    shape=var.shape,
-                    dtype=var.dtype,
-                    stop_gradient=var.stop_gradient,
-                )
+                if (
+                    var_name == "create_py_reader_0"
+                    or var_name == "double_buffer_0"
+                ):
+                    program_a.block(0).create_var(
+                        name=var_name,
+                        persistable=var.persistable,
+                    )
+                else:
+                    program_a.block(0).create_var(
+                        name=var_name,
+                        shape=var.shape,
+                        dtype=var.dtype,
+                        stop_gradient=var.stop_gradient,
+                    )
+                    program_b.block(0).create_var(
+                        name=var_name,
+                        shape=var.shape,
+                        dtype=var.dtype,
+                        stop_gradient=var.stop_gradient,
+                    )
 
         for op in main_program.block(0).ops:
             if op.type != "while":
@@ -89,7 +122,6 @@ class TestFleetExecutor(unittest.TestCase):
             )
 
         cond_var_name = "tmp_0"
-        num_micro_batches = 3
 
         task_a = TaskNode(
             0,
@@ -133,19 +165,24 @@ class TestFleetExecutor(unittest.TestCase):
             lazy_initialize=True,
         )
 
+        infinite_buff_size = -1
         task_a.add_downstream_task(task_b.task_id(), 2)
         task_b.add_upstream_task(task_a.task_id(), 2)
-        task_b.add_downstream_task(task_c.task_id(), 100)
-        task_c.add_upstream_task(task_b.task_id(), 100)
+        task_b.add_downstream_task(task_c.task_id(), infinite_buff_size)
+        task_c.add_upstream_task(task_b.task_id(), infinite_buff_size)
         task_c.add_downstream_task(task_d.task_id(), 2)
         task_d.add_upstream_task(task_c.task_id(), 2)
-        task_d.add_downstream_task(task_b.task_id(), 100, core.DependType.LOOP)
-        task_b.add_upstream_task(task_d.task_id(), 100, core.DependType.LOOP)
+        task_d.add_downstream_task(
+            task_b.task_id(), infinite_buff_size, core.DependType.LOOP
+        )
+        task_b.add_upstream_task(
+            task_d.task_id(), infinite_buff_size, core.DependType.LOOP
+        )
         task_b.add_downstream_task(
-            task_e.task_id(), 100, core.DependType.STOP_LOOP
+            task_e.task_id(), infinite_buff_size, core.DependType.STOP_LOOP
         )
         task_e.add_upstream_task(
-            task_b.task_id(), 100, core.DependType.STOP_LOOP
+            task_b.task_id(), infinite_buff_size, core.DependType.STOP_LOOP
         )
 
         main_program._pipeline_opt = {
@@ -159,12 +196,19 @@ class TestFleetExecutor(unittest.TestCase):
                     task_e.task_id(): 0,
                 },
                 'num_micro_batches': num_micro_batches,
+                'inference_generation': True,
+                'fetch_var': ['x'],
             },
         }
 
-        place = paddle.fluid.CUDAPlace(0)
-        exe = paddle.fluid.Executor(place)
-        exe.run(main_program)
+        place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        loader.start()
+        res = exe.run(main_program)
+        ref_res = np.full([1], 10, dtype="float32")
+        for data in res:
+            np.testing.assert_allclose(data, ref_res, rtol=1e-05)
+            ref_res = ref_res + 1
 
 
 if __name__ == "__main__":

@@ -64,9 +64,9 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class ReduceSumCompositeGradOpMaker : public prim::GradCompositeOpMakerBase {
+class ReduceSumCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
  public:
-  using prim::GradCompositeOpMakerBase::GradCompositeOpMakerBase;
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
   void Apply() override {
     // get inputs
     paddle::experimental::Tensor x = this->GetSingleForwardInput("X");

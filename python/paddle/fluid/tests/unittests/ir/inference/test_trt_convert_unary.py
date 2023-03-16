@@ -42,6 +42,14 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             else:
                 return np.random.random([batch, 3, 32, 32]).astype(np.float32)
 
+        def generate_int_input(dims, batch, attrs: List[Dict[str, Any]]):
+            if dims == 2:
+                return np.random.random([3, 32]).astype(np.int32)
+            elif dims == 3:
+                return np.random.random([3, 32, 32]).astype(np.int32)
+            else:
+                return np.random.random([batch, 3, 32, 32]).astype(np.int32)
+
         for dims in [2, 3, 4]:
             for batch in [1, 4]:
                 for op_type in [
@@ -88,6 +96,39 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                             "input_data": TensorConfig(
                                 data_gen=partial(
                                     generate_input1, dims, batch, dics
+                                )
+                            )
+                        },
+                        outputs=["output_data"],
+                    )
+
+                    yield program_config
+
+                for op_type in [
+                    "exp",
+                    "abs",
+                ]:
+                    self.dims = dims
+                    self.op_type = op_type
+                    dics = [{}]
+
+                    ops_config = [
+                        {
+                            "op_type": op_type,
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": {"Out": ["output_data"]},
+                            "op_attrs": dics[0],
+                        }
+                    ]
+                    ops = self.generate_op_config(ops_config)
+
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "input_data": TensorConfig(
+                                data_gen=partial(
+                                    generate_int_input, dims, batch, dics
                                 )
                             )
                         },

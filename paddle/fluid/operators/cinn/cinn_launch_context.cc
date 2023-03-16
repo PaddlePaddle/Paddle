@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 
+#include "cinn/frontend/op_mapper_registry.h"
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/hlir/framework/instruction.h"
 #include "cinn/hlir/framework/scope.h"
@@ -50,6 +51,8 @@ using framework::ParallelExecutor;
 using framework::Scope;
 using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnRuntimeProgram = ::cinn::hlir::framework::Program;
+using ::cinn::frontend::paddle::InplaceOutSuffix;
+using framework::paddle2cinn::kInplaceVarNames;
 using framework::paddle2cinn::kMemOptVarInfoFromMainGraph;
 using framework::paddle2cinn::kSkipGcVarNames;
 using framework::paddle2cinn::Name2VarInfoMap;
@@ -72,6 +75,8 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       graph.Get<std::vector<std::string>>(framework::paddle2cinn::kInputVars);
   const auto& output_var_names =
       graph.Get<std::vector<std::string>>(framework::paddle2cinn::kOutputVars);
+  inplace_var_names_ =
+      graph.Get<std::unordered_set<std::string>>(kInplaceVarNames);
   internal_var_names_ =
       ExtractInternalVarNames(input_var_names, output_var_names);
   // initialize all execution arguments
@@ -83,7 +88,13 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
     }
   }
   for (auto&& var_name : output_var_names) {
-    AssignExternalVariable(var_name);
+    if (inplace_var_names_.count(var_name)) {
+      VLOG(4) << "Inplaced variable:" << var_name << " -> "
+              << var_name + InplaceOutSuffix << " as paddle2cinn varmap key";
+      AssignExternalVariable(var_name + InplaceOutSuffix);
+    } else {
+      AssignExternalVariable(var_name);
+    }
   }
   for (auto&& var_name : internal_var_names_) {
     AssignInternalVariable(var_name);
@@ -108,12 +119,16 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
   // collect variables name list to be skipped in GC
   skip_eager_vars_.reserve(input_var_names.size() + output_var_names.size());
   auto add_skip_var_fn = [&outer_varinfo, this](const std::string& var_name) {
+    // Always consider Input/Output of Graph as skip_gc_vars, because
+    // InterpreterCore has no eager_deletion_op to deal with it.
+
+    VLOG(4) << "Append a skip_gc_var for InterpreterCore:" << var_name;
+    skip_gc_vars_.insert(var_name);
     // if a var exists at the outer_varinfo map, that means it will be
     // erased by the following eager_deletion_op of current cinn_launch op
     if (!outer_varinfo.count(var_name)) {
       skip_eager_vars_.emplace_back(var_name);
-      skip_gc_vars_.insert(var_name);
-      VLOG(4) << "Append a skip_gc_var:" << var_name;
+      VLOG(4) << "Append a skip_gc_var for PE:" << var_name;
     }
   };
   std::for_each(
@@ -124,14 +139,13 @@ CinnLaunchContext::CinnLaunchContext(const framework::ir::Graph& graph,
       "Distribution of variables in the graph compiled:"
       "input[%lu],internal[%lu],output[%lu],"
       "outer_eager_deletion[%lu],skip_eager_deletion[%lu],"
-      "skip_gc_vars_[%lu],initialized_beforehand[%lu]",
+      "skip_gc_vars_[%lu]",
       input_var_names.size(),
       internal_var_names_.size(),
       output_var_names.size(),
       outer_varinfo.size(),
       skip_eager_vars_.size(),
-      skip_gc_vars_.size(),
-      initialized_beforehand_vars_.size());
+      skip_gc_vars_.size());
 }
 
 void CinnLaunchContext::BuildVarNameMap(
@@ -214,8 +228,12 @@ std::unordered_set<std::string> CinnLaunchContext::ExtractInternalVarNames(
                  [](const auto& name_pair) { return name_pair.first; });
 
   // exclude the input variables and output variables
-  auto exclude_names_fn = [&remain_var_names](const std::string& var_name) {
+  auto exclude_names_fn = [this,
+                           &remain_var_names](const std::string& var_name) {
     remain_var_names.erase(var_name);
+    if (inplace_var_names_.count(var_name)) {
+      remain_var_names.erase(var_name + InplaceOutSuffix);
+    }
   };
   std::for_each(
       input_var_names.begin(), input_var_names.end(), exclude_names_fn);
@@ -281,11 +299,12 @@ void CinnLaunchContext::AssignExternalVariable(const std::string& var_name) {
                     platform::errors::InvalidArgument(
                         "Variable(%s) not applied in cinn", var_name));
   auto* cinn_buffer = GetCinnBufferOfVar(var_name);
+  std::string revise_var_name = RedirectVarName(var_name);
   // assign external malloc/free callbacks of cinn_buffer_t
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
-      [this, var_name](void* ctx, cinn_buffer_t* buffer) {
-        auto* tensor =
-            cached_scope_->GetVar(var_name)->GetMutable<phi::DenseTensor>();
+      [this, revise_var_name](void* ctx, cinn_buffer_t* buffer) {
+        auto* tensor = cached_scope_->GetVar(revise_var_name)
+                           ->GetMutable<phi::DenseTensor>();
         tensor->Resize(framework::DDim(buffer->dims, buffer->dimensions));
         buffer->memory = reinterpret_cast<uint8_t*>(tensor->mutable_data(
             *cached_place_,
@@ -307,11 +326,12 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
                     platform::errors::InvalidArgument(
                         "Variable(%s) not applied in cinn", var_name));
   auto* cinn_buffer = GetCinnBufferOfVar(var_name);
+  std::string revise_var_name = RedirectVarName(var_name);
   // assign external malloc/free callbacks of cinn_buffer_t
   cinn_buffer->external_malloc = new std::function<int(void*, cinn_buffer_t*)>(
-      [this, var_name](void* ctx, cinn_buffer_t* buffer) {
-        auto* tensor =
-            cached_temp_scope_->Var(var_name)->GetMutable<phi::DenseTensor>();
+      [this, revise_var_name](void* ctx, cinn_buffer_t* buffer) {
+        auto* tensor = cached_temp_scope_->Var(revise_var_name)
+                           ->GetMutable<phi::DenseTensor>();
         tensor->Resize(framework::DDim(buffer->dims, buffer->dimensions));
         buffer->memory = reinterpret_cast<uint8_t*>(tensor->mutable_data(
             *cached_place_,
@@ -322,8 +342,8 @@ void CinnLaunchContext::AssignInternalVariable(const std::string& var_name) {
   // internal variables should release its buffer immediately
   // if no instruction use it
   cinn_buffer->external_free = new std::function<int(void*, cinn_buffer_t*)>(
-      [this, var_name](void* ctx, cinn_buffer_t* buffer) {
-        auto* tensor = cached_temp_scope_->GetVar(var_name)
+      [this, revise_var_name](void* ctx, cinn_buffer_t* buffer) {
+        auto* tensor = cached_temp_scope_->GetVar(revise_var_name)
                            ->GetMutable<phi::DenseTensor>();
         tensor->clear();
         return 0;
@@ -359,7 +379,6 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
   //   are set by values of the corresponding compiled tensors,
   //   including the in/out variables where the equiality between their tensors
   //   and the CINN compiled ones is verified in corresponding cinn_launch_op.
-  std::unordered_set<std::string> has_refer_vars;
   for (auto&& arg : cinn_argument_names_) {
     const std::string& var_name = cinn2paddle_varmap_.at(arg);
     framework::VarDesc* var_desc = block->Var(var_name);
@@ -370,7 +389,6 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
       auto* ori_desc = res->second;
       var_desc->SetPersistable(ori_desc->Persistable());
       var_desc->SetIsParameter(ori_desc->IsParameter());
-      has_refer_vars.insert(var_name);
     }
 
     auto cinn_tensor = GetCinnTensorOfVar(var_name);
@@ -404,13 +422,6 @@ std::unique_ptr<framework::ProgramDesc> CinnLaunchContext::BuildCompiledProgram(
     auto* ins = instructions.at(ins_idx).get();
     auto in_args = trans_and_pack_args_fn(ins->GetInArgs());
     auto out_args = trans_and_pack_args_fn(ins->GetOutArgs());
-    for (auto&& var_name : in_args) {
-      if (!has_refer_vars.count(var_name)) {
-        initialized_beforehand_vars_.emplace_back(var_name);
-      }
-    }
-    has_refer_vars.insert(out_args.begin(), out_args.end());
-
     auto* op_desc = block->AppendOp();
     op_desc->SetType("cinn_instruction_run");
     op_desc->SetInput(kX, in_args);
@@ -453,14 +464,6 @@ ParallelExecutor* CinnLaunchContext::InitializePE(const platform::Place& place,
                                   framework::proto::VarType::LOD_TENSOR);
   }
 
-  for (auto&& var_name : initialized_beforehand_vars_) {
-    auto* var = scope->GetVar(var_name);
-    auto* buffer = GetCinnBufferOfVar(var_name);
-    auto dim = framework::DDim(buffer->dims, buffer->dimensions);
-    var->GetMutable<phi::DenseTensor>()->Resize(dim);
-    var->GetMutable<phi::DenseTensor>()->mutable_data(
-        place, framework::paddle2cinn::TransToPaddleDataType(buffer->type));
-  }
   return parallel_executor_.get();
 }
 
@@ -493,15 +496,22 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
     }
     UpdateCapturedEnv(*scope, place);
   }
-  for (auto&& var_name : initialized_beforehand_vars_) {
-    auto* var = scope->GetVar(var_name);
-    auto* buffer = GetCinnBufferOfVar(var_name);
-    auto dim = framework::DDim(buffer->dims, buffer->dimensions);
-    var->GetMutable<phi::DenseTensor>()->Resize(dim);
-    var->GetMutable<phi::DenseTensor>()->mutable_data(
-        place, framework::paddle2cinn::TransToPaddleDataType(buffer->type));
-  }
   return interpreter_core_.get();
+}
+
+std::string CinnLaunchContext::RedirectVarName(const std::string& var_name) {
+  auto pos = var_name.find(InplaceOutSuffix);
+  if (pos == std::string::npos) {
+    return var_name;
+  }
+  std::string remove_suffix_name = var_name.substr(0, pos);
+  if (!inplace_var_names_.count(remove_suffix_name)) {
+    LOG(WARNING) << "Variable:" << remove_suffix_name
+                 << " was not marked as inplaced by Paddle, but CINN does";
+  }
+  VLOG(4) << "Inplaced variable:" << var_name << " redirect to "
+          << remove_suffix_name;
+  return remove_suffix_name;
 }
 
 cinn_buffer_t* CinnLaunchContext::GetCinnBufferOfVar(

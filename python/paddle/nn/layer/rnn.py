@@ -20,15 +20,20 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
+from paddle.common_ops_import import Variable
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import (
+    _non_static_mode,
+    default_startup_program,
+    in_dygraph_mode,
+    program_guard,
+)
 from paddle.fluid.layers import control_flow, sequence_lod, utils
 from paddle.fluid.layers.utils import flatten, map_structure
 from paddle.framework import core
 from paddle.nn import Layer
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
-from paddle.static import Variable, default_startup_program, program_guard
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 from .container import LayerList

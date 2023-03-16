@@ -2464,6 +2464,7 @@ class Executor:
         program=None,
         scope=None,
         fleet_opt=None,
+        micro_scope_list=[],
         with_standalone_executor=False,
     ):
         num_micro_batches = (
@@ -2532,8 +2533,10 @@ class Executor:
             fleet_opt['task_id_to_rank'] = task_id_to_rank
         place = core.Place()
         place.set_place(self.place)
-        # NOTE: the last argument is used to force create some vars in root scope,
-        # won't be used during train.
+
+        inference_root_scope_vars = (
+            fleet_opt["fetch_var"] if "fetch_var" in fleet_opt else []
+        )
         self._fleet_executor.init(
             carrier_id,
             program.desc,
@@ -2542,7 +2545,8 @@ class Executor:
             num_micro_batches,
             tasks,
             task_id_to_rank,
-            [],
+            inference_root_scope_vars,
+            micro_scope_list,
         )
 
     def _run_using_fleet_executor(
@@ -2624,11 +2628,20 @@ class Executor:
                         )
                 fetch_task.set_program(fetch_program)
 
+            micro_scope_list = []
+            if (
+                "inference_generation" in fleet_opt
+                and fleet_opt["inference_generation"]
+            ):
+                for i in range(int(fleet_opt["num_micro_batches"])):
+                    micro_scope_list.append(cached_scope.new_scope())
+
             self._prepare_fleet_executor_carrier(
                 cache_key,
                 program=cached_program,
                 scope=cached_scope,
                 fleet_opt=fleet_opt,
+                micro_scope_list=micro_scope_list,
                 with_standalone_executor=with_standalone_executor,
             )
 
@@ -2652,6 +2665,18 @@ class Executor:
             tensor.set(data, self.place)
 
         self._fleet_executor.run(cache_key)
+
+        if "fetch_var" in fleet_opt:
+            # If we speed up the generation in evaluation, we need to generate
+            # multiple queries at the same time. Each query will in separate scope in order
+            # not mix up. It indicate that final result will in multiple scopes and need to
+            # fetch each.
+            result_list = []
+            for scope in micro_scope_list:
+                for var in fleet_opt["fetch_var"]:
+                    tensor = core.get_variable_tensor(scope, var)
+                result_list.append(as_numpy(tensor))
+            return result_list
 
         if fetch_list:
             arr = cached_scope.find_var(fetch_var_name).get_fetch_list()

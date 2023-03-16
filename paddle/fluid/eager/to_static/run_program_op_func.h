@@ -122,6 +122,5 @@ inline void run_program_ad_func(
 
     // Set History for output set current Grad Node for
     egr::EagerUtils::SetHistory(&p_autograd_outs, grad_node);
-    egr::EagerUtils::CheckAndRetainGrad(deref_out);
   }
 }

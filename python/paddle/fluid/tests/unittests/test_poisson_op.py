@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -41,6 +41,7 @@ def output_hist(out, lam, a, b):
 class TestPoissonOp1(OpTest):
     def setUp(self):
         self.op_type = "poisson"
+        self.python_api = paddle.tensor.poisson
         self.config()
 
         self.attrs = {}

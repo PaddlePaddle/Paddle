@@ -15,10 +15,10 @@
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 
+from ...common_ops_import import Variable
 from ...device import get_cudnn_version, is_compiled_with_rocm
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
-from ...static import Variable
 
 __all__ = []
 

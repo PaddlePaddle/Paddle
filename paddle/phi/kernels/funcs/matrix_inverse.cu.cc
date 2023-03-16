@@ -55,11 +55,14 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
     cpu_ptrs[i + batch_size] = a_inv->data<T>() + i * n * n;
   }
 
-  // Copy the addresses of A and A_inv from host to device.
+  // Copy the addresses of A and A_inv from host to device,
+  // and allocate device memory for info and pivots.
+  int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
+  size_t total_bytes = cpu_ptrs.size() * sizeof(T*) + num_ints * sizeof(int);
   paddle::memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
       paddle::memory::Alloc(
           dev_ctx.GetPlace(),
-          cpu_ptrs.size() * sizeof(T*),
+          total_bytes,
           phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
@@ -67,20 +70,12 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
                        static_cast<void*>(cpu_ptrs.data()),
                        cpu_ptrs.size() * sizeof(T*),
                        dev_ctx.stream());
-  T** gpu_inv_ptrs =
-      reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()) + batch_size;
-
-  // Allocate device memory for info and pivots.
-  int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
-  paddle::memory::allocation::AllocationPtr tmp_gpu_info_data =
-      paddle::memory::Alloc(
-          dev_ctx.GetPlace(),
-          num_ints * sizeof(int),
-          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
+  T** gpu_inv_pivot_info = reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr());
+  T** gpu_inv_ptrs = gpu_inv_pivot_info + batch_size;
+  int* gpu_info_ptr =
+      reinterpret_cast<int*>(gpu_inv_pivot_info + cpu_ptrs.size());
 
   auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
-
   std::vector<int> info;  // only for singular checking
   info.resize(batch_size);
   // This functions in cuBLAS is intended to be used for matrices of small
@@ -100,8 +95,7 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
     // This function performs the LU factorization of each matrix A by the
     // equation P * A = L * U. L and U are written back to original matrix A,
     // and diagonal elements of L are discarded.
-    int* gpu_pivot_ptr =
-        reinterpret_cast<int*>(tmp_gpu_info_data->ptr()) + batch_size;
+    int* gpu_pivot_ptr = gpu_info_ptr + batch_size;
     blas.BatchedGETRF(n,
                       reinterpret_cast<T**>(tmp_gpu_ptrs_data->ptr()),
                       gpu_pivot_ptr,

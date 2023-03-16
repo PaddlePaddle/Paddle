@@ -322,12 +322,12 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
         label_np = np.random.randint(2, size=(2, 1)).astype('int64')
         weight_attr1 = paddle.ParamAttr(
             name="weight1",
-            initializer=fluid.initializer.Constant(value=1.0),
+            initializer=paddle.nn.initializer.Constant(value=1.0),
             trainable=True,
         )
         weight_attr2 = paddle.ParamAttr(
             name="weight2",
-            initializer=fluid.initializer.Constant(value=2.0),
+            initializer=paddle.nn.initializer.Constant(value=2.0),
             trainable=True,
         )
         clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)

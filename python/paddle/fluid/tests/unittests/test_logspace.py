@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -23,6 +23,7 @@ import paddle
 class TestLogspaceOpCommonCase(OpTest):
     def setUp(self):
         self.op_type = "logspace"
+        self.python_api = paddle.logspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([0]).astype(dtype),
@@ -41,6 +42,7 @@ class TestLogspaceOpCommonCase(OpTest):
 class TestLogspaceOpReverseCase(OpTest):
     def setUp(self):
         self.op_type = "logspace"
+        self.python_api = paddle.logspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
@@ -59,6 +61,7 @@ class TestLogspaceOpReverseCase(OpTest):
 class TestLogspaceOpNumOneCase(OpTest):
     def setUp(self):
         self.op_type = "logspace"
+        self.python_api = paddle.logspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
@@ -77,6 +80,7 @@ class TestLogspaceOpNumOneCase(OpTest):
 class TestLogspaceOpMinusBaseCase(OpTest):
     def setUp(self):
         self.op_type = "logspace"
+        self.python_api = paddle.logspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([0]).astype(dtype),
@@ -95,6 +99,7 @@ class TestLogspaceOpMinusBaseCase(OpTest):
 class TestLogspaceOpZeroBaseCase(OpTest):
     def setUp(self):
         self.op_type = "logspace"
+        self.python_api = paddle.logspace
         dtype = 'float32'
         self.inputs = {
             'Start': np.array([0]).astype(dtype),

@@ -51,9 +51,11 @@ static void UniqueConsecutiveFlattenedTensor(const Context& context,
     }
   }
 
-  int64_t output_size = p - out_vec.data() + 1;
+  bool is_empty = in.numel() == 0;
+  int64_t output_size = is_empty ? 0 : (p - out_vec.data() + 1);
+
   if (return_counts) {
-    *q = in.numel() - last;
+    if (!is_empty) *q = in.numel() - last;
     counts_vec.resize(output_size);
   }
   out_vec.resize(output_size);

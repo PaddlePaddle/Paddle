@@ -37,11 +37,11 @@ class TestFuseBatchNormActPass(unittest.TestCase):
             )
             param_attr = fluid.ParamAttr(
                 name='batch_norm_w',
-                initializer=fluid.initializer.Constant(value=1.0),
+                initializer=paddle.nn.initializer.Constant(value=1.0),
             )
             bias_attr = fluid.ParamAttr(
                 name='batch_norm_b',
-                initializer=fluid.initializer.Constant(value=0.0),
+                initializer=paddle.nn.initializer.Constant(value=0.0),
             )
             hidden2 = paddle.static.nn.batch_norm(
                 input=hidden1,
