@@ -678,6 +678,7 @@ class AMPPass(PassBase):
         self.set_attr("use_dynamic_loss_scaling", False)
         self.set_attr("input_data", [])
         self.set_attr("params_grads", [])
+        self.set_attr("dtype", "")  # fp16/bf16
         self._loss = None
         self._loss_scaling = None
         self._num_good_steps = None
