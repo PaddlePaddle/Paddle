@@ -12,13 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fused_attention_kernel.h"
-#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
+// DropoutParam
+#include "paddle/fluid/operators/fused/fused_dropout_helper.h"
+// AttnDropoutParam
+#include "paddle/fluid/operators/fused/fmha_ref.h"
+// AttnMatMul
+#include "paddle/fluid/operators/fused/attn_gemm.h"
+// AttnLayerNorm
+#include "paddle/fluid/operators/fused/attention_layer_norm.h"
+
+#include "paddle/phi/kernels/fusion/fused_attention_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/gpu/fused_attention_helper.h"
 
 namespace phi {
 
@@ -80,14 +89,17 @@ void FusedAttentionKernel(const Context &dev_ctx,
   // y: qkv's weight: [dim_embed, 3 * dim_embed]
 
   const bool has_attn_dropout = (attn_dropout_rate != 0.0f);
-  DropoutParam dropout_param2(ctx, 0);
+
+  DropoutParam dropout_param2(dropout_rate,
+                              dropout_implementation,
+                              is_test,
+                              dropout_fix_seed,
+                              dropout_seed);
   const bool has_dropout = (dropout_param2.dropout_prob != 0.0f);
 
   auto &dropout_implementation_1 = attn_dropout_implementation;
   bool is_upscale_in_train_1 = (dropout_implementation_1 == "upscale_in_train");
-  auto *seed_1 = dev_ctx.HasInput("Seed1")
-                     ? dev_ctx.Input<phi::DenseTensor>("Seed1")
-                     : nullptr;
+  auto *seed_1 = nullptr;
 
   // get data ptr for qkv part.
   const auto input_x_dims = x->dims();
@@ -175,7 +187,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
   int input_size = dim_embed;
 
   auto layer_norm_compute =
-      AttnLayerNorm<T>(ctx.cuda_device_context(), epsilon, bsz_seq, dim_embed);
+      AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
 
   bool compute_bias = true;
   if (qkv_bias == nullptr) {
@@ -183,13 +195,8 @@ void FusedAttentionKernel(const Context &dev_ctx,
   }
   // (transA, transB, compute_bias) = (false, true, true)
   bool transB = transpose_qkv_wb ? false : true;
-  auto qkv_compute = AttnMatMul<T>(ctx.cuda_device_context(),
-                                   false,
-                                   transB,
-                                   bsz_seq,
-                                   output_size,
-                                   input_size,
-                                   compute_bias);
+  auto qkv_compute = AttnMatMul<T>(
+      dev_ctx, false, transB, bsz_seq, output_size, input_size, compute_bias);
 
   AttnDropoutParam attn_dropout_param(is_test,
                                       dropout_implementation_1,
@@ -198,12 +205,8 @@ void FusedAttentionKernel(const Context &dev_ctx,
                                       attn_dropout_fix_seed,
                                       attn_dropout_seed,
                                       seed_1);
-  auto fmha_ref_compute = FMHARef<T>(ctx.cuda_device_context(),
-                                     batch_size,
-                                     max_seq_len,
-                                     num_head,
-                                     dim_head,
-                                     attn_dropout_param);
+  auto fmha_ref_compute = FMHARef<T>(
+      dev_ctx, batch_size, max_seq_len, num_head, dim_head, attn_dropout_param);
 
   output_size = hidden_size;
   // (transA, transB, compute_bias) = (false, false, false)
@@ -212,19 +215,10 @@ void FusedAttentionKernel(const Context &dev_ctx,
   // which is actually the input size. While the input size is hidden size,
   // which is actually the output size. So for out linear, switch the
   // input size and output size.
-  auto out_linear_compute = AttnMatMul<T>(ctx.cuda_device_context(),
-                                          false,
-                                          false,
-                                          bsz_seq,
-                                          input_size,
-                                          output_size,
-                                          false);
+  auto out_linear_compute = AttnMatMul<T>(
+      dev_ctx, false, false, bsz_seq, input_size, output_size, false);
   FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
-      ctx.cuda_device_context(),
-      bsz_seq,
-      dim_embed,
-      dropout_param2,
-      ln_epsilon);
+      dev_ctx, bsz_seq, dim_embed, dropout_param2, ln_epsilon);
 
   if (pre_layer_norm) {
     auto *ln_scale_data = (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
@@ -296,7 +290,6 @@ void FusedAttentionKernel(const Context &dev_ctx,
   // tensor model parallel
   AllReduce<T>(*out_linear_out, ring_id, ctx.cuda_device_context());
 
-  bool add_residual = ctx.Attr<bool>("add_residual");
   const T *residual_ptr = add_residual ? x_data : nullptr;
   if (pre_layer_norm) {
     // output = (residual + dropout(input + bias))
