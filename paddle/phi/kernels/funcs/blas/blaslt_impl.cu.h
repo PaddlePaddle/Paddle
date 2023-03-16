@@ -73,14 +73,6 @@ struct MatmulPlanner {
   size_t key;
 };
 
-}  // namespace funcs
-}  // namespace phi
-#endif
-
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-namespace phi {
-namespace funcs {
-
 template <typename T>
 cublasComputeType_t GetCudaComputeType() {
   if (std::is_same<T, double>::value) {
