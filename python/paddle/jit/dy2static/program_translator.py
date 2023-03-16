@@ -1081,7 +1081,7 @@ class ParametersRecorder:
         return id(program)
 
 
-class FallbackProgramLayer(object):
+class FallbackProgramLayer:
     __slots__ = [
         '_instance',
         '_dy_func',
