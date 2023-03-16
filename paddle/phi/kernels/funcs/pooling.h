@@ -384,9 +384,8 @@ inline int PoolOutputSize(int input_size,
         (input_size - filter_size + padding_1 + padding_2) / stride + 1;
   } else {
     output_size =
-        (input_size - filter_size + padding_1 + padding_2 + stride - 1) /
-            stride +
-        1;
+        (input_size - filter_size + padding_1 + padding_2 - 1) / stride + 1 +
+        (input_size - filter_size + padding_1 + padding_2) % stride;
   }
   PADDLE_ENFORCE_GT(
       output_size,
