@@ -116,7 +116,7 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
     auto pos_data = pos->mutable_data<int>(context.GetPlace());
 
     int offset = 0;
-    framework::Vector<size_t> vec_out_lod;
+    phi::Vector<size_t> vec_out_lod;
     vec_out_lod.reserve(batch_size + 1);
     for (int i = 0; i <= batch_size; ++i) {
       offset = row_lod[i];

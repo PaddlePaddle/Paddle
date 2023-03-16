@@ -38,7 +38,7 @@ class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
             flatt1 = paddle.flatten(trans1, 1, -1)
             flatt2 = paddle.flatten(trans2, 1, -1)
 
-            concat_out = fluid.layers.concat([flatt1, flatt2], axis=1)
+            concat_out = paddle.concat([flatt1, flatt2], axis=1)
             # There is no parameters for above structure.
             # Hence, append a batch_norm to avoid failure caused by load_combined.
             reshape_out = paddle.reshape(concat_out, [-1, 0, 1, 1])

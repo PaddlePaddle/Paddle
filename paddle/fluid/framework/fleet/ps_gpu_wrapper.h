@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #ifdef PADDLE_WITH_HETERPS
 
+#include <google/protobuf/text_format.h>
 #include <atomic>
 #include <ctime>
 #include <map>
@@ -35,7 +36,9 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#endif
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/framework/heter_util.h"
@@ -59,9 +62,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 #endif
 #ifdef PADDLE_WITH_PSLIB
-#include "afs_api.h"  // NOLINT
-#endif
-#ifdef PADDLE_WITH_PSLIB
+#include "afs_api.h"            // NOLINT
 #include "downpour_accessor.h"  // NOLINT
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
@@ -354,6 +355,14 @@ class PSGPUWrapper {
       // start build cpu&gpu ps thread
       start_build_thread();
     }
+#ifdef PADDLE_WITH_PSCORE
+    cpu_table_accessor_ = fleet_ptr_->worker_ptr_->GetTableAccessor(0);
+#endif
+#ifdef PADDLE_WITH_PSLIB
+    cpu_table_accessor_ =
+        fleet_ptr_->pslib_ptr_->_worker_ptr->table_accessor(0);
+#endif
+    InitializeGPUServer(fleet_ptr_->GetDistDesc());
   }
 
   void SetSparseSGD(float nonclk_coeff,
@@ -425,27 +434,11 @@ class PSGPUWrapper {
     }
   }
 
-  void InitializeGPUServer(paddle::distributed::PSParameter ps_param) {
+  void InitializeGPUServer(const std::string& dist_desc) {
+    paddle::distributed::PSParameter ps_param;
+    google::protobuf::TextFormat::ParseFromString(dist_desc, &ps_param);
     auto sparse_table =
         ps_param.server_param().downpour_server_param().downpour_table_param(0);
-    // set build thread_num and shard_num
-    thread_keys_thread_num_ = sparse_table.shard_num();
-    thread_keys_shard_num_ = sparse_table.shard_num();
-    VLOG(1) << "ps_gpu build phase thread_num:" << thread_keys_thread_num_
-            << " shard_num:" << thread_keys_shard_num_;
-
-    pull_thread_pool_.resize(thread_keys_shard_num_);
-    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
-      pull_thread_pool_[i].reset(new ::ThreadPool(1));
-    }
-    hbm_thread_pool_.resize(device_num_);
-    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
-      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
-    }
-    cpu_work_pool_.resize(device_num_);
-    for (size_t i = 0; i < cpu_work_pool_.size(); i++) {
-      cpu_work_pool_[i].reset(new ::ThreadPool(cpu_device_thread_num_));
-    }
 
     auto sparse_table_accessor = sparse_table.accessor();
     auto sparse_table_accessor_parameter =
@@ -469,6 +462,7 @@ class PSGPUWrapper {
       add_sparse_optimizer(
           config, sparse_table_accessor.embedx_sgd_param(), "mf_");
     }
+    config["sparse_shard_num"] = sparse_table.shard_num();
 
     fleet_config_ = config;
     GlobalAccessorFactory::GetInstance().Init(accessor_class_);
@@ -478,7 +472,199 @@ class PSGPUWrapper {
   }
 #endif
 
+#ifdef PADDLE_WITH_PSLIB
+  void add_sparse_optimizer(
+      std::unordered_map<std::string, float>& config,  // NOLINT
+      const paddle::SparseCommonSGDRuleParameter& sgd_param,
+      const std::string& prefix = "") {
+    auto optimizer_name = sgd_param.name();
+    if (optimizer_name == "naive") {
+      config[prefix + "optimizer_type"] = 0;
+      config[prefix + "learning_rate"] = sgd_param.naive().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.naive().initial_range();
+      if (sgd_param.naive().weight_bounds_size() == 2) {
+        config[prefix + "min_bound"] = sgd_param.naive().weight_bounds()[0];
+        config[prefix + "max_bound"] = sgd_param.naive().weight_bounds()[1];
+      }
+    } else if (optimizer_name == "adagrad") {
+      config[prefix + "optimizer_type"] = 1;
+      config[prefix + "learning_rate"] = sgd_param.adagrad().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.adagrad().initial_range();
+      config[prefix + "initial_g2sum"] = sgd_param.adagrad().initial_g2sum();
+      if (sgd_param.adagrad().weight_bounds_size() == 2) {
+        config[prefix + "min_bound"] = sgd_param.adagrad().weight_bounds()[0];
+        config[prefix + "max_bound"] = sgd_param.adagrad().weight_bounds()[1];
+      }
+    } else if (optimizer_name == "std_adagrad") {
+      config[prefix + "optimizer_type"] = 2;
+      config[prefix + "learning_rate"] = sgd_param.adagrad().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.adagrad().initial_range();
+      config[prefix + "initial_g2sum"] = sgd_param.adagrad().initial_g2sum();
+      if (sgd_param.adagrad().weight_bounds_size() == 2) {
+        config[prefix + "min_bound"] = sgd_param.adagrad().weight_bounds()[0];
+        config[prefix + "max_bound"] = sgd_param.adagrad().weight_bounds()[1];
+      }
+    } else if (optimizer_name == "adam") {
+      config[prefix + "optimizer_type"] = 3;
+      config[prefix + "learning_rate"] = sgd_param.adam().learning_rate();
+      config[prefix + "initial_range"] = sgd_param.adam().initial_range();
+      if (sgd_param.adam().weight_bounds_size() == 2) {
+        config[prefix + "min_bound"] = sgd_param.adam().weight_bounds()[0];
+        config[prefix + "max_bound"] = sgd_param.adam().weight_bounds()[1];
+      }
+    }
+  }
+
+  void InitializeGPUServer(const std::string& dist_desc) {
+    // optimizer config for hbmps
+    paddle::PSParameter ps_param;
+    google::protobuf::TextFormat::ParseFromString(dist_desc, &ps_param);
+    auto sparse_table =
+        ps_param.server_param().downpour_server_param().downpour_table_param(0);
+    auto sparse_table_accessor = sparse_table.accessor();
+    auto sparse_table_accessor_parameter =
+        sparse_table_accessor.downpour_accessor_param();
+    accessor_class_ = sparse_table_accessor.accessor_class();
+
+    // NOTE(zhangminxu): gpups' sparse table optimizer config,
+    // now only support single sparse table
+    // auto sparse_table = param_.sparse_table(0);
+    std::unordered_map<std::string, float> config;
+    if (accessor_class_ == "DownpourFeatureValueAccessor" ||
+        accessor_class_ == "DownpourCtrAccessor" ||
+        accessor_class_ == "DownpourCtrDoubleAccessor") {
+      config["nonclk_coeff"] = sparse_table_accessor_parameter.nonclk_coeff();
+      config["clk_coeff"] = sparse_table_accessor_parameter.click_coeff();
+      config["learning_rate"] =
+          sparse_table_accessor.sparse_sgd_param().learning_rate();
+      config["initial_g2sum"] =
+          sparse_table_accessor.sparse_sgd_param().initial_g2sum();
+      config["initial_range"] =
+          sparse_table_accessor.sparse_sgd_param().initial_range();
+      if (sparse_table_accessor.sparse_sgd_param().weight_bounds_size() == 2) {
+        config["min_bound"] =
+            sparse_table_accessor.sparse_sgd_param().weight_bounds()[0];
+        config["max_bound"] =
+            sparse_table_accessor.sparse_sgd_param().weight_bounds()[1];
+      }
+      // NOTE(zhangminxu): for DownpourCtrAccessor & DownpourCtrDoubleAccessor,
+      // optimizer config for embed_w & embedx_w is the same
+      config["mf_create_thresholds"] =
+          sparse_table_accessor.embedx_threshold();  // default = 10
+      config["mf_learning_rate"] = config["learning_rate"];
+      config["mf_initial_g2sum"] = config["initial_g2sum"];
+      config["mf_initial_range"] = config["initial_range"];
+      config["mf_min_bound"] = config["min_bound"];
+      config["mf_max_bound"] = config["max_bound"];
+      config["mf_embedx_dim"] =
+          sparse_table_accessor.embedx_dim();  // default = 8
+
+    } else if (accessor_class_ == "DownpourSparseValueAccessor") {
+      auto optimizer_name =
+          sparse_table_accessor.sparse_commonsgd_param().name();
+      if (optimizer_name == "naive") {
+        config["learning_rate"] = sparse_table_accessor.sparse_commonsgd_param()
+                                      .naive()
+                                      .learning_rate();
+        config["initial_range"] = sparse_table_accessor.sparse_commonsgd_param()
+                                      .naive()
+                                      .initial_range();
+        if (sparse_table_accessor.sparse_commonsgd_param()
+                .naive()
+                .weight_bounds_size() == 2) {
+          config["min_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                    .naive()
+                                    .weight_bounds()[0];
+          config["max_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                    .naive()
+                                    .weight_bounds()[1];
+        }
+      } else if (optimizer_name == "adagrad") {
+        config["learning_rate"] = sparse_table_accessor.sparse_commonsgd_param()
+                                      .adagrad()
+                                      .learning_rate();
+        config["initial_range"] = sparse_table_accessor.sparse_commonsgd_param()
+                                      .adagrad()
+                                      .initial_range();
+        config["initial_g2sum"] = sparse_table_accessor.sparse_commonsgd_param()
+                                      .adagrad()
+                                      .initial_g2sum();
+        if (sparse_table_accessor.sparse_commonsgd_param()
+                .adagrad()
+                .weight_bounds_size() == 2) {
+          config["min_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                    .adagrad()
+                                    .weight_bounds()[0];
+          config["max_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                    .adagrad()
+                                    .weight_bounds()[1];
+        }
+      } else if (optimizer_name == "adam") {
+        config["learning_rate"] = sparse_table_accessor.sparse_commonsgd_param()
+                                      .adam()
+                                      .learning_rate();
+        config["initial_range"] = sparse_table_accessor.sparse_commonsgd_param()
+                                      .adam()
+                                      .initial_range();
+        if (sparse_table_accessor.sparse_commonsgd_param()
+                .adam()
+                .weight_bounds_size() == 2) {
+          config["min_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                    .adam()
+                                    .weight_bounds()[0];
+          config["max_bound"] = sparse_table_accessor.sparse_commonsgd_param()
+                                    .adam()
+                                    .weight_bounds()[1];
+        }
+      }
+    } else if (accessor_class_ == "DownpourUnitAccessor" ||
+               accessor_class_ == "DownpourDoubleUnitAccessor" ||
+               accessor_class_ == "DownpourCtrDymfAccessor" ||
+               accessor_class_ == "DownpourCtrDoubleDymfAccessor") {
+      config["nonclk_coeff"] = sparse_table_accessor_parameter.nonclk_coeff();
+      config["clk_coeff"] = sparse_table_accessor_parameter.click_coeff();
+      config["mf_create_thresholds"] = sparse_table_accessor.embedx_threshold();
+      // optimizer config for embed_w and embedx
+      add_sparse_optimizer(config, sparse_table_accessor.embed_sgd_param());
+      add_sparse_optimizer(
+          config, sparse_table_accessor.embedx_sgd_param(), "mf_");
+      config["mf_embedx_dim"] =
+          sparse_table_accessor.embedx_dim();  // default = 8
+    }
+    config["sparse_shard_num"] = sparse_table.shard_num();
+
+    GlobalAccessorFactory::GetInstance().Init(accessor_class_);
+
+    GlobalAccessorFactory::GetInstance().GetAccessorWrapper()->Configure(
+        config);
+
+    InitializeGPUServer(config);
+  }
+#endif
+
   void InitializeGPUServer(std::unordered_map<std::string, float> config) {
+    // set build thread_num and shard_num
+    int sparse_shard_num = (config.find("sparse_shard_num") == config.end())
+                               ? 37
+                               : config["sparse_shard_num"];
+    thread_keys_thread_num_ = sparse_shard_num;
+    thread_keys_shard_num_ = sparse_shard_num;
+    VLOG(1) << "ps_gpu build phase thread_num:" << thread_keys_thread_num_
+            << " shard_num:" << thread_keys_shard_num_;
+
+    pull_thread_pool_.resize(thread_keys_shard_num_);
+    for (size_t i = 0; i < pull_thread_pool_.size(); i++) {
+      pull_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+    hbm_thread_pool_.resize(device_num_);
+    for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
+      hbm_thread_pool_[i].reset(new ::ThreadPool(1));
+    }
+    cpu_work_pool_.resize(device_num_);
+    for (size_t i = 0; i < cpu_work_pool_.size(); i++) {
+      cpu_work_pool_[i].reset(new ::ThreadPool(cpu_device_thread_num_));
+    }
+
     float nonclk_coeff = (config.find("nonclk_coeff") == config.end())
                              ? 1.0
                              : config["nonclk_coeff"];
@@ -708,11 +894,6 @@ class PSGPUWrapper {
                   const std::string& conf);
 #endif
 
-#ifdef PADDLE_WITH_PSCORE
-  void SetTableAccessor(paddle::distributed::ValueAccessor* accessor) {
-    cpu_table_accessor_ = accessor;
-  }
-#endif
   // for node rank
   int PartitionKeyForRank(const uint64_t& key) {
     return ((key / device_num_) % node_size_);
@@ -782,7 +963,14 @@ class PSGPUWrapper {
   std::string accessor_class_;
   std::unordered_map<std::string, float> fleet_config_;
 #ifdef PADDLE_WITH_PSCORE
+  std::shared_ptr<paddle::distributed::FleetWrapper> fleet_ptr_ =
+      paddle::distributed::FleetWrapper::GetInstance();
   paddle::distributed::ValueAccessor* cpu_table_accessor_;
+#endif
+
+#ifdef PADDLE_WITH_PSLIB
+  std::shared_ptr<FleetWrapper> fleet_ptr_ = FleetWrapper::GetInstance();
+  paddle::ps::ValueAccessor* cpu_table_accessor_;
 #endif
 
 #ifdef PADDLE_WITH_CUDA

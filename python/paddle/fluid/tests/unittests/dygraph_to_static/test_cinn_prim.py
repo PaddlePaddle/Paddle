@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import platform
 import unittest
 
 import numpy as np
@@ -78,7 +77,14 @@ class TestPrimForward(unittest.TestCase):
     def check_prim(self, net, use_prim):
         if not use_prim:
             return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+        # Please use PartialProgramLayer(second output parameter of get_concrete_program) rather than
+        # main_program here, as main_program is original program before to_prim.
+        fwd_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(self.x)[1]
+            .train_program.block(0)
+            .ops
+        ]
         # Ensure that softmax is splitted into small ops
         self.assertTrue('softmax' not in fwd_ops)
 
@@ -129,22 +135,32 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def check_prim(self, net, use_prim):
         if not use_prim:
             return
-        fwd_ops = [op.type for op in net.forward.main_program.block(0).ops]
+        fwd_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(self.x)[1]
+            .train_program.block(0)
+            .ops
+        ]
+        all_ops = [
+            op.type
+            for op in net.forward.program_cache.last()[-1][-1]
+            .train_program.block(0)
+            .ops
+        ]
         # Ensure that softmax is splitted into small ops
         self.assertTrue('softmax' not in fwd_ops)
+        for op in all_ops:
+            if op != "matmul_v2_grad":
+                self.assertTrue("_grad" not in op)
 
     def test_cinn_prim(self):
-        plat = platform.system()
-        if plat == "Linux":
-            dy_res = self.train(use_prim=False)
-            cinn_res = self.train(use_prim=True)
+        dy_res = self.train(use_prim=False)
+        cinn_res = self.train(use_prim=True)
 
-            for i in range(len(dy_res)):
-                np.testing.assert_allclose(
-                    cinn_res[i], dy_res[i], rtol=1e-6, atol=1e-6
-                )
-        else:
-            pass
+        for i in range(len(dy_res)):
+            np.testing.assert_allclose(
+                cinn_res[i], dy_res[i], rtol=1e-6, atol=1e-6
+            )
 
 
 if __name__ == '__main__':

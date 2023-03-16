@@ -28,7 +28,7 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.incubate.fleet.collective import (
+from paddle.incubate.distributed.fleet.collective import (
     CollectiveOptimizer,
     DistributedStrategy,
 )
@@ -72,4 +72,5 @@ class CollectiveOptimizerTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

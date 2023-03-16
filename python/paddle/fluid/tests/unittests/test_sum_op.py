@@ -15,6 +15,7 @@
 import os
 import tempfile
 import unittest
+import warnings
 
 import gradient_checker
 import numpy as np
@@ -30,6 +31,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.inference as paddle_infer
 from paddle import enable_static
+from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.op import Operator
 
 
@@ -354,9 +356,7 @@ class TestSumBF16Op(OpTest):
 
     def test_check_grad(self):
         # new dynamic graph mode does not support unit16 type
-        self.check_grad(
-            ['x0'], 'Out', numeric_grad_delta=0.5, check_dygraph=False
-        )
+        self.check_grad(['x0'], 'Out', check_dygraph=False)
 
 
 class API_Test_Add_n(unittest.TestCase):
@@ -453,27 +453,28 @@ class TestRaiseSumError(unittest.TestCase):
 class TestRaiseSumsError(unittest.TestCase):
     def test_errors(self):
         def test_type():
-            fluid.layers.sums([11, 22])
+            paddle.add_n([11, 22])
 
         self.assertRaises(TypeError, test_type)
 
         def test_dtype():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
             data2 = fluid.data(name="input2", shape=[10], dtype="int8")
-            fluid.layers.sums([data1, data2])
+            paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
 
         def test_dtype1():
             data1 = fluid.data(name="input1", shape=[10], dtype="int8")
-            fluid.layers.sums(data1)
+            paddle.add_n(data1)
 
         self.assertRaises(TypeError, test_dtype1)
 
         def test_out_type():
             data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
             data2 = fluid.data(name="input2", shape=[10], dtype="float32")
-            fluid.layers.sums([data1, data2], out=[10])
+            out = [10]
+            out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_type)
 
@@ -481,7 +482,7 @@ class TestRaiseSumsError(unittest.TestCase):
             data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
             data2 = fluid.data(name="input2", shape=[10], dtype="float32")
             out = fluid.data(name="out", shape=[10], dtype="int8")
-            fluid.layers.sums([data1, data2], out=out)
+            out = paddle.add_n([data1, data2])
 
         self.assertRaises(TypeError, test_out_dtype)
 
@@ -748,6 +749,31 @@ class TestSumTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestSumAPIWarnings(unittest.TestCase):
+    def test_warnings(self):
+        with warnings.catch_warnings(record=True) as context:
+            warnings.simplefilter("always")
+            paddle.enable_static()
+            helper = LayerHelper("sum")
+            data = paddle.static.data(
+                name='data', shape=[32, 32], dtype='float32'
+            )
+            out = helper.create_variable_for_type_inference(dtype=data.dtype)
+            attrs = {'dim': [1], 'keep_dim': True, 'reduce_all': True}
+            os.environ["FLAGS_print_extra_attrs"] = '1'
+            helper.append_op(
+                type="reduce_sum",
+                inputs={'X': data},
+                outputs={'Out': out},
+                attrs=attrs,
+            )
+            self.assertTrue(
+                "op reduce_sum's attr reduce_all = True is not the default value: False"
+                in str(context[-1].message)
+            )
+            os.environ["FLAGS_print_extra_attrs"] = '0'
 
 
 if __name__ == "__main__":

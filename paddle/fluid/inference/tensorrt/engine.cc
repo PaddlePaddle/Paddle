@@ -344,8 +344,9 @@ void TensorRTEngine::FreezeNetwork() {
         .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
-
-  GetEngineInfo();
+  if (use_inspector_) {
+    GetEngineInfo();
+  }
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
@@ -552,8 +553,9 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
         .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
                                  predictor_id_per_thread);
   }
-
-  GetEngineInfo();
+  if (use_inspector_) {
+    GetEngineInfo();
+  }
 }
 
 void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
@@ -828,7 +830,7 @@ void TensorRTEngine::GetEngineInfo() {
   auto *infer_context = context();
   infer_inspector->setExecutionContext(infer_context);
   LOG(INFO) << infer_inspector->getEngineInformation(
-      nvinfer1::LayerInformationFormat::kONELINE);
+      nvinfer1::LayerInformationFormat::kJSON);
   LOG(INFO) << "====== engine info end ======";
 #else
   LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";

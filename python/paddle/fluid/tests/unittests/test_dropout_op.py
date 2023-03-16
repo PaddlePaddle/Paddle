@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 import paddle.fluid as fluid
@@ -25,9 +25,30 @@ from paddle import _C_ops
 from paddle.fluid import Program, program_guard
 
 
+def dropout_wapper(
+    X,
+    Seed=None,
+    dropout_prob=0.5,
+    is_test=False,
+    dropout_implementation="downgrade_in_infer",
+    seed=0,
+    fix_seed=False,
+):
+    return paddle._C_ops.dropout(
+        X,
+        Seed,
+        dropout_prob,
+        is_test,
+        dropout_implementation,
+        seed,
+        fix_seed,
+    )
+
+
 class TestDropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
@@ -45,6 +66,7 @@ class TestDropoutOp(OpTest):
 class TestDropoutOpInput1d(OpTest):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.inputs = {'X': np.random.random((2000,)).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
@@ -62,6 +84,7 @@ class TestDropoutOpInput1d(OpTest):
 class TestDropoutOp2(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
@@ -73,6 +96,7 @@ class TestDropoutOp2(TestDropoutOp):
 class TestDropoutOp3(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
         self.outputs = {
@@ -85,6 +109,7 @@ class TestDropoutOp3(TestDropoutOp):
 class TestDropoutOp4(OpTest):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {'dropout_prob': 0.35, 'fix_seed': True, 'is_test': True}
         self.outputs = {
@@ -99,6 +124,7 @@ class TestDropoutOp4(OpTest):
 class TestDropoutOp5(OpTest):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
         self.attrs = {'dropout_prob': 0.75, 'is_test': True}
         self.outputs = {
@@ -112,6 +138,7 @@ class TestDropoutOp5(OpTest):
 class TestDropoutOp6(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {
             'dropout_prob': 1.0,
@@ -128,6 +155,7 @@ class TestDropoutOp6(TestDropoutOp):
 class TestDropoutOp7(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
         self.attrs = {
             'dropout_prob': 0.0,
@@ -145,6 +173,7 @@ class TestDropoutOp7(TestDropoutOp):
 class TestDropoutOp8(OpTest):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {
             'dropout_prob': 0.35,
@@ -162,6 +191,7 @@ class TestDropoutOp8(OpTest):
 class TestDropoutOp9(OpTest):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
         self.attrs = {
             'dropout_prob': 0.75,
@@ -177,6 +207,7 @@ class TestDropoutOp9(OpTest):
 class TestDropoutOpWithSeed(OpTest):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.inputs = {
             "X": np.random.random((32, 64)).astype("float32"),
             "Seed": np.asarray([125], dtype="int32"),
@@ -204,6 +235,7 @@ class TestDropoutOpWithSeed(OpTest):
 class TestFP16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.init_test_case()
 
         x = np.random.random(self.input_size).astype("float16")
@@ -240,6 +272,7 @@ class TestFP16DropoutOp2(TestFP16DropoutOp):
 class TestBF16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
+        self.python_api = dropout_wapper
         self.dtype = np.uint16
 
         x = np.random.random((32, 64)).astype("float32")
@@ -769,6 +802,29 @@ class TestDropout2DCAPI(unittest.TestCase):
                     result.numpy(), result_np, rtol=1e-05
                 )
 
+    def test_static_fp16_with_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = paddle.static.data(
+                    name="input", shape=[2, 3, 4, 5], dtype="float16"
+                )
+
+                m = paddle.nn.Dropout2D(p=0.5)
+                res1 = m(input)
+
+                in_np = np.random.random([2, 3, 4, 5]).astype("float16")
+                res_np = in_np
+
+                exe = paddle.static.Executor(place)
+                fetches = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"input": in_np},
+                    fetch_list=[res1],
+                )
+
 
 class TestDropout3DFAPI(unittest.TestCase):
     def setUp(self):
@@ -979,6 +1035,30 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
                 np.testing.assert_allclose(
                     result.numpy(), result_np, rtol=1e-05
                 )
+
+    def test_static_fp16_gpu(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([2, 3]).astype("float16")
+
+                x = paddle.static.data(name="x", shape=[2, 3], dtype="float16")
+
+                m = paddle.nn.AlphaDropout(p=0.0)
+                y = m(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
+
+                np.testing.assert_allclose(res[0], input, rtol=1e-05)
 
 
 class TestDropoutWithDeterminateSeedGenerator(unittest.TestCase):

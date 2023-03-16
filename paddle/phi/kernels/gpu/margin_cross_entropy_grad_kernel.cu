@@ -28,6 +28,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/impl/softmax_kernel_impl.h"
 #include "paddle/phi/kernels/margin_cross_entropy_grad_kernel.h"
 
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
@@ -88,16 +89,14 @@ void GetClassInterval(const gpuStream_t& stream,
         paddle::platform::NCCLCommContext::Instance().Get(rid, place);
     // use global calculate stream
     const auto calcu_stream =
-        static_cast<GPUContext*>(
-            paddle::platform::DeviceContextPool::Instance().Get(place))
+        static_cast<GPUContext*>(phi::DeviceContextPool::Instance().Get(place))
             ->stream();
 
-    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         num_classes_per_device_ptr,
         num_classes_per_device_ptr,
         num_classes_per_device.numel(),
-        paddle::platform::ToNCCLDataType(paddle::framework::TransToProtoVarType(
-            num_classes_per_device.dtype())),
+        phi::ToNCCLDataType(num_classes_per_device.dtype()),
         ncclSum,
         comm->comm(),
         calcu_stream));
@@ -109,7 +108,8 @@ void GetClassInterval(const gpuStream_t& stream,
   size_t cub_temp_storage_bytes = 0;
   cub::DeviceScan::InclusiveSum<int*, int*>(
       nullptr, cub_temp_storage_bytes, nullptr, nullptr, nranks + 1, stream);
-  auto cub_temp_storage = paddle::memory::Alloc(place, cub_temp_storage_bytes);
+  auto cub_temp_storage =
+      phi::memory_utils::Alloc(place, cub_temp_storage_bytes);
   cub::DeviceScan::InclusiveSum<int*, int*>(cub_temp_storage->ptr(),
                                             cub_temp_storage_bytes,
                                             num_classes_per_device_ptr,
@@ -187,8 +187,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
 
   int blocks = NumBlocks(N * D);
   int threads = kNumCUDAThreads;
-  const auto& label_type =
-      paddle::framework::TransToProtoVarType(label.dtype());
+  const auto& label_type = label.dtype();
 
   DenseTensor class_interval;
   GetClassInterval<T, Context>(dev_ctx.stream(),
@@ -200,7 +199,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
                                D,
                                &class_interval);
 
-  if (label_type == paddle::framework::proto::VarType::INT32) {
+  if (label_type == phi::DataType::INT32) {
     typedef int32_t LabelT;
     CalculateGrad<T, LabelT>
         <<<blocks, threads, 0, dev_ctx.stream()>>>(logits_grad->data<T>(),
@@ -214,7 +213,7 @@ void MarginCrossEntropyGradKernel(const Context& dev_ctx,
                                                    N,
                                                    D,
                                                    class_interval.data<int>());
-  } else if (label_type == paddle::framework::proto::VarType::INT64) {
+  } else if (label_type == phi::DataType::INT64) {
     typedef int64_t LabelT;
     CalculateGrad<T, LabelT>
         <<<blocks, threads, 0, dev_ctx.stream()>>>(logits_grad->data<T>(),

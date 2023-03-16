@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -508,54 +507,28 @@ class TestLRScheduler(unittest.TestCase):
             num += 1
 
         if isinstance(place, paddle.CPUPlace):
-            compiled_train_prog = paddle.static.CompiledProgram(
-                main_prog
-            ).with_data_parallel(
-                loss_name=loss.name, places=fluid.cpu_places(4)
-            )
+            compiled_train_prog = main_prog
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(
+                    out = exe.run(
                         compiled_train_prog,
-                        feed={'x': np.random.randn(12, 4, 5).astype('float32')},
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=lr_var.name,
                     )
-                scopes = compiled_train_prog._executor.local_scopes()
-                out = np.array(scopes[0].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[1].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[2].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[3].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
                 scheduler.step()
                 num += 1
 
-            compiled_test_prog = paddle.static.CompiledProgram(
-                test_prog
-            ).with_data_parallel(
-                loss_name=loss.name,
-                share_vars_from=compiled_train_prog,
-                places=fluid.cpu_places(4),
-            )
+            compiled_test_prog = test_prog
             for epoch in range(5):
                 python_result = python_func(num, **kwarg)
                 for batch_id in range(2):
-                    _ = exe.run(
+                    out = exe.run(
                         compiled_test_prog,
-                        feed={'x': np.random.randn(12, 4, 5).astype('float32')},
+                        feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=lr_var.name,
                     )
-                scopes = compiled_test_prog._executor.local_scopes()
-                out = np.array(scopes[0].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[1].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[2].var(lr_var.name).get_tensor())
-                self.assertEqual(out, np.array(python_result))
-                out = np.array(scopes[3].var(lr_var.name).get_tensor())
                 self.assertEqual(out, np.array(python_result))
                 scheduler.step()
                 num += 1

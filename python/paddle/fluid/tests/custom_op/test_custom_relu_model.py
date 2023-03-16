@@ -213,7 +213,7 @@ class TestStaticModel(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_save_dir = os.path.join(self.temp_dir.name, 'infer_model')
         self.model_path_template = os.path.join(
-            self.model_save_dir, 'custom_relu_static_model_{}_{}'
+            self.model_save_dir, 'custom_relu_static_model_{}'
         )
 
         paddle.enable_static()
@@ -229,19 +229,9 @@ class TestStaticModel(unittest.TestCase):
                 device, use_custom_op=False
             )
             custom_relu_train_out = self.train_model(device, use_custom_op=True)
-            # using PE
-            original_relu_train_pe_out = self.train_model(
-                device, use_custom_op=False, use_pe=True
-            )
-            custom_relu_train_pe_out = self.train_model(
-                device, use_custom_op=True, use_pe=True
-            )
 
             np.testing.assert_array_equal(
                 original_relu_train_out, custom_relu_train_out
-            )
-            np.testing.assert_array_equal(
-                original_relu_train_pe_out, custom_relu_train_pe_out
             )
 
             # for eval
@@ -249,22 +239,12 @@ class TestStaticModel(unittest.TestCase):
                 device, use_custom_op=False
             )
             custom_relu_eval_out = self.eval_model(device, use_custom_op=True)
-            # using PE
-            original_relu_eval_pe_out = self.eval_model(
-                device, use_custom_op=False, use_pe=True
-            )
-            custom_relu_eval_pe_out = self.eval_model(
-                device, use_custom_op=True, use_pe=True
-            )
 
             np.testing.assert_array_equal(
                 original_relu_eval_out, custom_relu_eval_out
             )
-            np.testing.assert_array_equal(
-                original_relu_eval_pe_out, custom_relu_eval_pe_out
-            )
 
-    def train_model(self, device, use_custom_op=False, use_pe=False):
+    def train_model(self, device, use_custom_op=False):
         # reset random seed
         paddle.seed(self.seed)
         np.random.seed(self.seed)
@@ -292,18 +272,7 @@ class TestStaticModel(unittest.TestCase):
                 exe = exe = paddle.static.Executor()
                 exe.run(paddle.static.default_startup_program())
 
-                # For PE
-                if use_pe:
-                    places = (
-                        paddle.static.cpu_places()
-                        if device == 'cpu'
-                        else paddle.static.cuda_places()
-                    )
-                    main_program = paddle.static.CompiledProgram(
-                        paddle.static.default_main_program()
-                    ).with_data_parallel(loss_name=loss.name, places=places)
-                else:
-                    main_program = paddle.static.default_main_program()
+                main_program = paddle.static.default_main_program()
 
                 for batch_id in range(self.batch_num):
                     x_data = self.datas[batch_id]
@@ -317,7 +286,7 @@ class TestStaticModel(unittest.TestCase):
 
                 # save model
                 paddle.static.save_inference_model(
-                    self.model_path_template.format(use_custom_op, use_pe),
+                    self.model_path_template.format(use_custom_op),
                     [x],
                     [out],
                     exe,
@@ -325,7 +294,7 @@ class TestStaticModel(unittest.TestCase):
 
                 return res[0]
 
-    def eval_model(self, device, use_custom_op=False, use_pe=False):
+    def eval_model(self, device, use_custom_op=False):
         paddle.set_device(device)
 
         with paddle.static.scope_guard(paddle.static.Scope()):
@@ -337,7 +306,7 @@ class TestStaticModel(unittest.TestCase):
                     feed_target_names,
                     fetch_targets,
                 ] = paddle.static.load_inference_model(
-                    self.model_path_template.format(use_custom_op, use_pe), exe
+                    self.model_path_template.format(use_custom_op), exe
                 )
 
                 x_data = self.datas[0]

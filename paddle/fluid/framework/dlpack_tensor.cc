@@ -15,6 +15,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace framework {

@@ -21,12 +21,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 // only can include the headers in paddle/phi/api dirs
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__) || defined(__xpu__)
@@ -628,10 +627,11 @@ class ReduceOp : public framework::OperatorWithKernel {
           platform::is_gpu_place(ctx.GetPlace()) ||
               platform::is_npu_place(ctx.GetPlace()) ||
               platform::is_mlu_place(ctx.GetPlace()) ||
+              platform::is_xpu_place(ctx.GetPlace()) ||
               platform::is_custom_place(ctx.GetPlace()),
           true,
           platform::errors::InvalidArgument(
-              "float16 can only be used on GPU or NPU or MLU place"));
+              "float16 can only be used on GPU or NPU or MLU or XPU place"));
     }
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }

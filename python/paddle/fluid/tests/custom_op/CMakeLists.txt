@@ -19,14 +19,27 @@ if(WITH_GPU OR APPLE)
   endif()
 endif()
 
-if(WITH_XPU)
+if(WITH_GPU AND WITH_DISTRIBUTE)
+  py_test(test_custom_op_relu_model_static_multidevice
+          SRCS test_custom_op_relu_model_static_multidevice.py)
+  set_tests_properties(test_custom_op_relu_model_static_multidevice
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 180)
+endif()
+if(WITH_XPU AND WITH_DISTRIBUTE)
   set(CUSTOM_XPU_ENVS FLAGS_init_allocated_mem=0)
   py_test(test_custom_relu_op_xpu_setup SRCS test_custom_relu_op_xpu_setup.py
                                              ENVS ${CUSTOM_XPU_ENVS})
+  py_test(test_custom_op_relu_model_static_multidevice
+          SRCS test_custom_op_relu_model_static_multidevice.py ENVS
+               ${CUSTOM_XPU_ENVS})
+  set_tests_properties(test_custom_op_relu_model_static_multidevice
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 180)
 endif()
 
 py_test(test_custom_raw_op_kernel_op SRCS test_custom_raw_op_kernel_op.py)
 set_tests_properties(test_custom_raw_op_kernel_op PROPERTIES TIMEOUT 180)
+py_test(test_custom_tensor_operator SRCS test_custom_tensor_operator.py)
+set_tests_properties(test_custom_tensor_operator PROPERTIES TIMEOUT 180)
 
 # CPU custom op tests: only compile .cc file
 py_test(test_dispatch_jit SRCS test_dispatch_jit.py)

@@ -30,7 +30,7 @@ class TestCollectiveIdentity(TestCollectiveRunnerBase):
         nranks = 2
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
-                name="tindata", shape=[-1, 10, 1000], dtype='float32'
+                name="tindata", shape=[10, 1000], dtype='float32'
             )
             toutdata = main_prog.current_block().create_var(
                 name="outofgather",

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -32,7 +33,7 @@ class ConcatMLUKernel : public framework::OpKernel<T> {
     bool need_resize_out_dims = false;
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
-      axis = GetDataFromTensor<int>(axis_tensor)[0];
+      axis = phi::GetVectorFromTensor<int>(axis_tensor)[0];
       need_resize_out_dims = true;
     }
     axis = ComputeAxis(static_cast<int64_t>(axis),
@@ -97,7 +98,7 @@ class ConcatGradMLUKernel : public framework::OpKernel<T> {
 
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<phi::DenseTensor>("AxisTensor");
-      axis = GetDataFromTensor<int>(axis_tensor)[0];
+      axis = phi::GetVectorFromTensor<int>(axis_tensor)[0];
     }
 
     axis = ComputeAxis(static_cast<int64_t>(axis),

@@ -55,7 +55,7 @@ def _decay_step_counter(begin=0):
     global_step = nn.autoincreased_step_counter(
         counter_name='@LR_DECAY_COUNTER@', begin=begin, step=1
     )
-    global_step = tensor.cast(global_step, 'float32')
+    global_step = paddle.cast(global_step, 'float32')
     return global_step
 
 
@@ -361,7 +361,7 @@ def polynomial_decay(
 
                 with control_flow.Switch() as switch:
                     with switch.case(global_step == zero_var):
-                        tensor.assign(input=one_var, output=div_res)
+                        paddle.assign(one_var, output=div_res)
                 decay_steps = decay_steps * div_res
             else:
                 decay_steps_var = tensor.fill_constant(
@@ -595,11 +595,11 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
                     decayed_lr = start_lr + linear_step * (
                         global_step / float(warmup_steps)
                     )
-                    tensor.assign(decayed_lr, lr)
+                    paddle.assign(decayed_lr, lr)
                 with switch.default():
                     if not isinstance(learning_rate, Variable):
                         learning_rate = tensor.fill_constant(
                             shape=[1], dtype=dtype, value=float(learning_rate)
                         )
-                    tensor.assign(learning_rate, lr)
+                    paddle.assign(learning_rate, lr)
             return lr

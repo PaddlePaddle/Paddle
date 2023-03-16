@@ -78,10 +78,8 @@ void BincountCUDAInner(const Context& dev_ctx,
   input_min_scala.device(*place) = input_x.minimum();
 
   DenseTensor input_min_cpu, input_max_cpu;
-  paddle::framework::TensorCopySync(
-      input_max_t, phi::CPUPlace(), &input_max_cpu);
-  paddle::framework::TensorCopySync(
-      input_min_t, phi::CPUPlace(), &input_min_cpu);
+  phi::Copy(dev_ctx, input_min_t, phi::CPUPlace(), true, &input_min_cpu);
+  phi::Copy(dev_ctx, input_max_t, phi::CPUPlace(), true, &input_max_cpu);
 
   InputT input_min = input_min_cpu.data<InputT>()[0];
 
@@ -111,9 +109,6 @@ void BincountCUDAInner(const Context& dev_ctx,
         <<<GET_BLOCKS(input_numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
             input_data, input_numel, has_weights, weights_data, output_data);
   } else {
-    const auto& weights_type =
-        paddle::framework::TransToProtoVarType(weights->dtype());
-
     if (weights->dtype() == DataType::FLOAT32) {
       float* output_data = dev_ctx.template Alloc<float>(output);
       phi::funcs::SetConstant<Context, float>()(
@@ -163,4 +158,6 @@ PD_REGISTER_KERNEL(bincount,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

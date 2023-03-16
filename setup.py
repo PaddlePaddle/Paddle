@@ -22,12 +22,12 @@ import re
 import shutil
 import subprocess
 import sys
-import sysconfig
 from contextlib import contextmanager
 from distutils.spawn import find_executable
 from subprocess import CalledProcessError
 
 from setuptools import Command, Extension, setup
+from setuptools.command.develop import develop as DevelopCommandBase
 from setuptools.command.egg_info import egg_info
 from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.install_lib import install_lib
@@ -43,6 +43,19 @@ else:
         print("export PY_VERSION = %s" % platform.python_version())
         python_version = platform.python_version()
         os.environ["PY_VERSION"] = python_version
+    else:
+        if os.getenv("PY_VERSION") != str(sys.version_info.major) + '.' + str(
+            sys.version_info.minor
+        ):
+            raise RuntimeError(
+                "You set PY_VERSION=%s, but your current python environment is %s, you should keep them consistent!"
+                % (
+                    os.getenv("PY_VERSION"),
+                    str(sys.version_info.major)
+                    + '.'
+                    + str(sys.version_info.minor),
+                )
+            )
 
 # check cmake
 CMAKE = find_executable('cmake3') or find_executable('cmake')
@@ -50,27 +63,6 @@ assert (
     CMAKE
 ), 'The "cmake" executable is not found. Please check if Cmake is installed.'
 
-# CMAKE: full path to python library
-if platform.system() == "Windows":
-    cmake_python_library = "{}/libs/python{}.lib".format(
-        sysconfig.get_config_var("prefix"), sysconfig.get_config_var("VERSION")
-    )
-    # Fix virtualenv builds
-    if not os.path.exists(cmake_python_library):
-        cmake_python_library = "{}/libs/python{}.lib".format(
-            sys.base_prefix, sysconfig.get_config_var("VERSION")
-        )
-else:
-    cmake_python_library = "{}/{}".format(
-        sysconfig.get_config_var("LIBDIR"),
-        sysconfig.get_config_var("INSTSONAME"),
-    )
-    if not os.path.exists(cmake_python_library):
-        libname = sysconfig.get_config_var("INSTSONAME")
-        libdir = sysconfig.get_config_var('LIBDIR') + (
-            sysconfig.get_config_var("multiarchsubdir") or ""
-        )
-        cmake_python_library = os.path.join(libdir, libname)
 
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -161,7 +153,11 @@ def get_header_install_dir(header):
         install_dir = re.sub(
             env_dict.get("THIRD_PARTY_PATH") + '/', 'third_party', header
         )
-        patterns = ['install/mkldnn/include']
+        patterns = [
+            'install/mkldnn/include',
+            'pybind/src/extern_pybind/include',
+            'third_party/xpu/src/extern_xpu/xpu/include/',
+        ]
         for pattern in patterns:
             install_dir = re.sub(pattern, '', install_dir)
     return install_dir
@@ -225,6 +221,55 @@ class InstallCommand(InstallCommandBase):
         )
         print("install_headers:", self.install_headers)
         return ret
+
+
+class DevelopCommand(DevelopCommandBase):
+    def run(self):
+        # copy proto and .so to python_source_dir
+        fluid_proto_binary_path = (
+            paddle_binary_dir + '/python/paddle/fluid/proto/'
+        )
+        fluid_proto_source_path = (
+            paddle_source_dir + '/python/paddle/fluid/proto/'
+        )
+        distributed_proto_binary_path = (
+            paddle_binary_dir + '/python/paddle/distributed/fleet/proto/'
+        )
+        distributed_proto_source_path = (
+            paddle_source_dir + '/python/paddle/distributed/fleet/proto/'
+        )
+        os.system("rm -rf {}".format(fluid_proto_source_path))
+        shutil.copytree(fluid_proto_binary_path, fluid_proto_source_path)
+        os.system("rm -rf {}".format(distributed_proto_source_path))
+        shutil.copytree(
+            distributed_proto_binary_path, distributed_proto_source_path
+        )
+        shutil.copy(
+            paddle_binary_dir + '/python/paddle/fluid/libpaddle.so',
+            paddle_source_dir + '/python/paddle/fluid/',
+        )
+        dynamic_library_binary_path = paddle_binary_dir + '/python/paddle/libs/'
+        dynamic_library_source_path = paddle_source_dir + '/python/paddle/libs/'
+        for lib_so in os.listdir(dynamic_library_binary_path):
+            shutil.copy(
+                dynamic_library_binary_path + lib_so,
+                dynamic_library_source_path,
+            )
+        # write version.py and cuda_env_config_py to python_source_dir
+        write_version_py(
+            filename='{}/python/paddle/version/__init__.py'.format(
+                paddle_source_dir
+            )
+        )
+        write_cuda_env_config_py(
+            filename='{}/python/paddle/cuda_env.py'.format(paddle_source_dir)
+        )
+        write_parameter_server_version_py(
+            filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
+                paddle_source_dir
+            )
+        )
+        DevelopCommandBase.run(self)
 
 
 class EggInfo(egg_info):
@@ -585,13 +630,13 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 
 
 def write_parameter_server_version_py(
-    filename='paddle/fluid/incubate/fleet/parameter_server/version.py',
+    filename='paddle/incubate/distributed/fleet/parameter_server/version.py',
 ):
     cnt = '''
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 
-from paddle.fluid.incubate.fleet.base.mode import Mode
+from paddle.incubate.distributed.fleet.base import Mode
 
 BUILD_MODE=Mode.%(mode)s
 
@@ -642,16 +687,6 @@ def options_process(args, build_options):
     for key, value in sorted(build_options.items()):
         if value is not None:
             args.append("-D{}={}".format(key, value))
-    if 'PYTHON_EXECUTABLE:FILEPATH' not in build_options.keys():
-        args.append("-D{}={}".format('PYTHON_EXECUTABLE', sys.executable))
-    if 'PYTHON_INCLUDE_DIR:PATH' not in build_options.keys():
-        args.append(
-            '-D{}={}'.format(
-                'PYTHON_INCLUDE_DIR', sysconfig.get_path("include")
-            )
-        )
-    if 'PYTHON_LIBRARY:FILEPATH' not in build_options.keys():
-        args.append('-D{}={}'.format('PYTHON_LIBRARY', cmake_python_library))
 
 
 def get_cmake_generator():
@@ -693,6 +728,7 @@ def cmake_run(build_path):
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
                 "GENERATOR",
+                "CINN_GIT_TAG",
             )
         }
     )
@@ -842,18 +878,7 @@ def get_package_data_and_package_dir():
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
     if 'develop' in sys.argv:
-        package_dir = {
-            '': paddle_binary_dir.split('/')[-1] + '/python',
-            # '':'build/python',
-            # The paddle.fluid.proto will be generated while compiling.
-            # So that package points to other directory.
-            'paddle.fluid.proto.profiler': paddle_binary_dir.split('/')[-1]
-            + '/paddle/fluid/platform',
-            'paddle.fluid.proto': paddle_binary_dir.split('/')[-1]
-            + '/paddle/fluid/framework',
-            'paddle.fluid': paddle_binary_dir.split('/')[-1]
-            + '/python/paddle/fluid',
-        }
+        package_dir = {'': 'python'}
     else:
         package_dir = {
             '': env_dict.get("PADDLE_BINARY_DIR") + '/python',
@@ -933,6 +958,11 @@ def get_package_data_and_package_dir():
                 shutil.copy(env_dict.get("OPENBLAS_LIB") + '.0', libs_path)
                 package_data['paddle.libs'] += ['libopenblas.so.0']
 
+    if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
+        package_data['paddle.libs'] += [
+            os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
+        ]
+        shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
     if env_dict.get("WITH_LITE") == 'ON':
         shutil.copy(env_dict.get("LITE_SHARED_LIB"), libs_path)
         package_data['paddle.libs'] += [
@@ -984,13 +1014,15 @@ def get_package_data_and_package_dir():
                 )
     if env_dict.get("WITH_PSLIB") == 'ON':
         shutil.copy(env_dict.get("PSLIB_LIB"), libs_path)
+        shutil.copy(env_dict.get("JVM_LIB"), libs_path)
         if os.path.exists(env_dict.get("PSLIB_VERSION_PY")):
             shutil.copy(
                 env_dict.get("PSLIB_VERSION_PY"),
                 paddle_binary_dir
-                + '/python/paddle/fluid/incubate/fleet/parameter_server/pslib/',
+                + '/python/paddle/incubate/distributed/fleet/parameter_server/pslib/',
             )
         package_data['paddle.libs'] += ['libps' + ext_suffix]
+        package_data['paddle.libs'] += ['libjvm' + ext_suffix]
     if env_dict.get("WITH_MKLDNN") == 'ON':
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             # only change rpath in Release mode.
@@ -1062,6 +1094,9 @@ def get_package_data_and_package_dir():
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_BKCL_LIB_NAME")]
 
+    if env_dict.get("WITH_XPU_XFT") == 'ON':
+        shutil.copy(env_dict.get("XPU_XFT_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XFT_LIB_NAME")]
     # remove unused paddle/libs/__init__.py
     if os.path.isfile(libs_path + '/__init__.py'):
         os.remove(libs_path + '/__init__.py')
@@ -1228,6 +1263,18 @@ def get_headers():
         headers += list(
             find_files('*.pb', env_dict.get("externalError_INCLUDE_DIR"))
         )
+
+    if env_dict.get("WITH_XDNN_API") == 'ON':
+        headers += list(
+            find_files(
+                '*.h',
+                paddle_binary_dir + '/third_party/xpu/src/extern_xpu/xpu',
+                recursive=True,
+            )
+        )  # xdnn api headers
+
+    # pybind headers
+    headers += list(find_files('*.h', env_dict.get("PYBIND_INCLUDE_DIR"), True))
     return headers
 
 
@@ -1295,6 +1342,8 @@ def get_setup_parameters():
         'paddle.distributed.passes',
         'paddle.distributed.models',
         'paddle.distributed.models.moe',
+        'paddle.distributed.transpiler',
+        'paddle.distributed.transpiler.details',
         'paddle.framework',
         'paddle.jit',
         'paddle.jit.dy2static',
@@ -1310,19 +1359,9 @@ def get_setup_parameters():
         'paddle.fluid.contrib',
         'paddle.fluid.contrib.extend_optimizer',
         'paddle.fluid.contrib.layers',
-        'paddle.fluid.transpiler',
-        'paddle.fluid.transpiler.details',
         'paddle.fluid.incubate',
-        'paddle.fluid.incubate.data_generator',
-        'paddle.fluid.incubate.fleet',
+        'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',
-        'paddle.fluid.incubate.fleet.base',
-        'paddle.fluid.incubate.fleet.parameter_server',
-        'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
-        'paddle.fluid.incubate.fleet.parameter_server.pslib',
-        'paddle.fluid.incubate.fleet.parameter_server.ir',
-        'paddle.fluid.incubate.fleet.collective',
-        'paddle.fluid.incubate.fleet.utils',
         'paddle.amp',
         'paddle.cost_model',
         'paddle.hapi',
@@ -1350,8 +1389,13 @@ def get_setup_parameters():
         'paddle.incubate.distributed.models',
         'paddle.incubate.distributed.models.moe',
         'paddle.incubate.distributed.models.moe.gate',
+        'paddle.incubate.distributed.fleet.parameter_server',
+        'paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler',
+        'paddle.incubate.distributed.fleet.parameter_server.ir',
+        'paddle.incubate.distributed.fleet.parameter_server.pslib',
         'paddle.quantization',
         'paddle.quantization.quanters',
+        'paddle.quantization.observers',
         'paddle.sparse',
         'paddle.sparse.nn',
         'paddle.sparse.nn.layer',
@@ -1405,9 +1449,40 @@ def get_setup_parameters():
     )
 
 
+def check_build_dependency():
+
+    missing_modules = '''Missing build dependency: {dependency}
+Please run 'pip install -r python/requirements.txt' to make sure you have all the dependencies installed.
+'''.strip()
+
+    with open(TOP_DIR + '/python/requirements.txt') as f:
+        build_dependencies = (
+            f.read().splitlines()
+        )  # Specify the dependencies to install
+
+    python_dependcies_module = []
+    installed_packages = []
+
+    for dependency in build_dependencies:
+        python_dependcies_module.append(
+            re.sub("_|-", '', re.sub(r"==.*|>=.*|<=.*", '', dependency))
+        )
+    reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
+
+    for r in reqs.split():
+        installed_packages.append(re.sub("_|-", '', r.decode().split('==')[0]))
+
+    for dependency in python_dependcies_module:
+        if dependency not in installed_packages:
+            raise RuntimeError(missing_modules.format(dependency=dependency))
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
+
+    # check build dependency
+    check_build_dependency()
 
     # Execute the build process,cmake and make
     if cmake_and_build:
@@ -1434,6 +1509,7 @@ def main():
     # preparing parameters for setup()
     paddle_version = env_dict.get("PADDLE_VERSION")
     package_name = env_dict.get("PACKAGE_NAME")
+
     write_version_py(
         filename='{}/python/paddle/version/__init__.py'.format(
             paddle_binary_dir
@@ -1443,7 +1519,7 @@ def main():
         filename='{}/python/paddle/cuda_env.py'.format(paddle_binary_dir)
     )
     write_parameter_server_version_py(
-        filename='{}/python/paddle/fluid/incubate/fleet/parameter_server/version.py'.format(
+        filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
             paddle_binary_dir
         )
     )
@@ -1498,6 +1574,7 @@ def main():
             'install': InstallCommand,
             'egg_info': EggInfo,
             'install_lib': InstallLib,
+            'develop': DevelopCommand,
         },
         entry_points={
             'console_scripts': [

@@ -21,15 +21,17 @@ import unittest
 
 class GpuBoxTest(unittest.TestCase):
     def test_gpubox(self):
-        exitcode = os.system('sh gpubox_run.sh')
-        os.system('rm *_train_desc.prototxt')
+        if not os.path.exists('./train_data'):
+            os.system('bash download_criteo_data.sh')
+
+        exitcode = os.system('bash gpubox_run.sh')
         if os.path.exists('./train_data'):
             os.system('rm -rf train_data')
-        if os.path.exists('./log'):
-            os.system('rm -rf log')
+        if exitcode:
+            os.system('cat ./log/worker.0.log')
+
+        assert exitcode == 0
 
 
 if __name__ == '__main__':
-    if not os.path.exists('./train_data'):
-        os.system('sh download_criteo_data.sh')
     unittest.main()

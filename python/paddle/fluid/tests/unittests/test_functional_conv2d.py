@@ -569,6 +569,20 @@ class TestFunctionalConv2DErrorCase13(TestFunctionalConv2DErrorCase12):
         self.data_format = "NCHW"
 
 
+class TestFunctionalConv2DErrorCase14(TestFunctionalConv2DErrorCase12):
+    def setUp(self):
+        self.input = np.random.randn(0, 0, 0, 0)
+        self.filter = np.random.randn(1, 0, 0, 0)
+        self.num_filters = 0
+        self.filter_size = 0
+        self.bias = None
+        self.padding = 0
+        self.stride = 1
+        self.dilation = 1
+        self.groups = 1
+        self.data_format = "NCHW"
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

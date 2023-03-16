@@ -36,7 +36,7 @@ def create_test_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=False)
+            self.check_output()
 
         def test_errors(self):
             paddle.enable_static()
@@ -450,8 +450,8 @@ class API_TestElementwise_Equal(unittest.TestCase):
     def test_api(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
-            limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
+            label = paddle.assign(np.array([3, 3], dtype="int32"))
+            limit = paddle.assign(np.array([3, 2], dtype="int32"))
             out = paddle.equal(x=label, y=limit)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -459,13 +459,41 @@ class API_TestElementwise_Equal(unittest.TestCase):
         self.assertEqual((res == np.array([True, False])).all(), True)
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
-            limit = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+            label = paddle.assign(np.array([3, 3], dtype="int32"))
+            limit = paddle.assign(np.array([3, 3], dtype="int32"))
             out = paddle.equal(x=label, y=limit)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             (res,) = exe.run(fetch_list=[out])
         self.assertEqual((res == np.array([True, True])).all(), True)
+
+    def test_api_fp16(self):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            label = paddle.to_tensor([3, 3], dtype="float16")
+            limit = paddle.to_tensor([3, 2], dtype="float16")
+            out = paddle.equal(x=label, y=limit)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = fluid.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
+                self.assertEqual((res == np.array([True, False])).all(), True)
+
+
+class API_TestElementwise_Greater_Than(unittest.TestCase):
+    def test_api_fp16(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            label = paddle.to_tensor([3, 3], dtype="float16")
+            limit = paddle.to_tensor([3, 2], dtype="float16")
+            out = paddle.greater_than(x=label, y=limit)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
+                self.assertEqual((res == np.array([False, True])).all(), True)
 
 
 class TestCompareOpPlace(unittest.TestCase):
@@ -474,8 +502,8 @@ class TestCompareOpPlace(unittest.TestCase):
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
-        label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
-        limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
+        label = paddle.assign(np.array([3, 3], dtype="int32"))
+        limit = paddle.assign(np.array([3, 2], dtype="int32"))
         out = paddle.less_than(label, limit)
         exe = fluid.Executor(place)
         (res,) = exe.run(fetch_list=[out])

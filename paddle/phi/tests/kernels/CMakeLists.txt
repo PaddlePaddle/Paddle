@@ -76,6 +76,10 @@ if(WITH_GPU)
     test_auto_tune
     SRCS test_auto_tune.cu
     DEPS gtest)
+  cc_test(
+    test_fused_adam_kernel
+    SRCS test_fused_adam_kernel.cc
+    DEPS gtest phi phi_api_utils)
 elseif(WITH_ROCM)
   hip_test(
     test_gpu_timer
@@ -91,3 +95,13 @@ cc_test(
   test_cache
   SRCS test_cache.cc
   DEPS gtest cache)
+
+cc_test(
+  strided_memcpy_test
+  SRCS strided_memcpy_test.cc
+  DEPS phi_backends memory)
+
+cc_test(
+  sequence_padding_test
+  SRCS sequence_padding_test.cc
+  DEPS sequence_padding)

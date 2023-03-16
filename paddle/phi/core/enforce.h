@@ -101,8 +101,6 @@ limitations under the License. */
 
 #include "paddle/utils/variant.h"
 
-DECLARE_int32(call_stack_level);
-
 namespace phi {
 class ErrorSummary;
 }  // namespace phi
@@ -235,6 +233,7 @@ struct BinaryCompareMessageConverter<false> {
 };
 }  // namespace details
 
+int GetCallStackLevel();
 std::string GetCurrentTraceBackString(bool for_signal = false);
 std::string SimplifyErrorTypeFormat(const std::string& str);
 
@@ -243,7 +242,7 @@ static std::string GetErrorSumaryString(StrType&& what,
                                         const char* file,
                                         int line) {
   std::ostringstream sout;
-  if (FLAGS_call_stack_level > 1) {
+  if (GetCallStackLevel() > 1) {
     sout << "\n----------------------\nError Message "
             "Summary:\n----------------------\n";
   }
@@ -270,7 +269,7 @@ template <typename StrType>
 static std::string GetTraceBackString(StrType&& what,
                                       const char* file,
                                       int line) {
-  if (FLAGS_call_stack_level > 1) {
+  if (GetCallStackLevel() > 1) {
     // FLAGS_call_stack_level>1 means showing c++ call stack
     return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
   } else {
@@ -317,7 +316,7 @@ struct EnforceNotMet : public std::exception {
   }
 
   const char* what() const noexcept override {
-    if (FLAGS_call_stack_level > 1) {
+    if (GetCallStackLevel() > 1) {
       return err_str_.c_str();
     } else {
       return simple_err_str_.c_str();
@@ -331,7 +330,7 @@ struct EnforceNotMet : public std::exception {
   const std::string& simple_error_str() const { return simple_err_str_; }
 
   void set_error_str(std::string str) {
-    if (FLAGS_call_stack_level > 1) {
+    if (GetCallStackLevel() > 1) {
       err_str_ = str;
     } else {
       simple_err_str_ = str;
@@ -468,6 +467,59 @@ struct EnforceNotMet : public std::exception {
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
 /** EXTENDED TOOL FUNCTIONS WITH CHECKING **/
+
+/*
+ * Summary: This macro is used to get Variable or internal type
+ *   data (such as LoDTensor or SelectedRows) of the Input and
+ *   Output in op, generally used when call scope.FindVar(Input/
+ *   Output("Name")) or ctx.Input<LoDTensor>().
+ *   Firstly this macro check whether the obtained pointer is null,
+ *   and then return data if it is not null.
+ *
+ * Note: This macro is only suitable for specific scenarios and
+ *   does not intended to be widely used. If it cannot meet the
+ *   requirements, please use other PADDLE_ENFORCE** check macro.
+ *
+ * Parameters:
+ *     __PTR: pointer
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *
+ * Return: The data pointed to by the pointer.
+ *
+ * Examples:
+ *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
+ */
+#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)               \
+  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {      \
+    auto* __ptr = (__PTR);                                              \
+    if (UNLIKELY(nullptr == __ptr)) {                                   \
+      auto __summary__ = phi::errors::NotFound(                         \
+          "Unable to get %s data of %s %s in operator %s. "             \
+          "Possible reasons are:\n"                                     \
+          "  1. The %s is not the %s of operator %s;\n"                 \
+          "  2. The %s has no corresponding variable passed in;\n"      \
+          "  3. The %s corresponding variable is not initialized.",     \
+          phi::demangle(                                                \
+              typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
+                  .name()),                                             \
+          __ROLE,                                                       \
+          __NAME,                                                       \
+          __OP_TYPE,                                                    \
+          __NAME,                                                       \
+          __ROLE,                                                       \
+          __OP_TYPE,                                                    \
+          __NAME,                                                       \
+          __NAME);                                                      \
+      auto __message__ = ::paddle::string::Sprintf(                     \
+          "%s\n  [Hint: pointer " #__PTR " should not be null.]",       \
+          __summary__.error_message());                                 \
+      __THROW_ERROR_INTERNAL__(                                         \
+          phi::ErrorSummary(__summary__.code(), __message__));          \
+    }                                                                   \
+    return *__ptr;                                                      \
+  })())
 
 /*
  * Summary: This PADDLE_GET(_**) series macros are used to call paddle::get

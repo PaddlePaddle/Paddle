@@ -18,7 +18,6 @@ import numpy as np
 import op_test
 
 import paddle
-import paddle.fluid as fluid
 
 
 def create_test_not_equal_class(op_type, typename, callback):
@@ -33,7 +32,7 @@ def create_test_not_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output()
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'not_equal_all')
     Cls.__name__ = cls_name
@@ -52,7 +51,7 @@ def create_test_not_shape_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output()
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'not_shape_equal_all')
     Cls.__name__ = cls_name
@@ -70,7 +69,7 @@ def create_test_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output()
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name
@@ -90,7 +89,7 @@ def create_test_dim1_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output()
 
     cls_name = "{0}_{1}_{2}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name
@@ -107,8 +106,8 @@ for _type_name in {'float32', 'float64', 'int32', 'int64', 'bool'}:
 
 class TestEqualReduceAPI(unittest.TestCase):
     def test_name(self):
-        x = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-        y = fluid.layers.assign(np.array([3, 4], dtype="int32"))
+        x = paddle.assign(np.array([3, 4], dtype="int32"))
+        y = paddle.assign(np.array([3, 4], dtype="int32"))
         out = paddle.equal_all(x, y, name='equal_res')
         assert 'equal_res' in out.name
 

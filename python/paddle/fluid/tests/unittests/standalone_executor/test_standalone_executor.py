@@ -235,9 +235,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         exe.run(startup_program)
 
         if use_compiled:
-            main_program = paddle.static.CompiledProgram(
-                main_program
-            ).with_data_parallel(fetch_vars[0].name, places=[self.place])
+            main_program = paddle.static.CompiledProgram(main_program)
 
         if use_str:  # test for fetch name
             fetch_vars = [x.name for x in fetch_vars]
@@ -284,24 +282,6 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         with self.assertRaises(TypeError):
             with framework._enable_standalone_executor():
                 self._run(feed[0], add_wrong_fetch=True)
-
-    def test_compiled_program(self):
-        data = np.ones([2, 2], dtype="float32")
-        feed = {"a": data}
-
-        res = self.run_new_executor(feed, use_compiled=True)
-        gt = self.run_raw_executor(feed, use_compiled=True)
-        for x, y in zip(gt, res):
-            np.testing.assert_array_equal(x, y)
-
-    def test_compiled_program_convert_graph_to_program(self):
-        data = np.ones([2, 2], dtype="float32")
-        feed = {"a": data}
-
-        res = self.run_new_executor(feed, use_compiled=True)
-        gt = self.run_raw_executor(feed, use_compiled=True)
-        for x, y in zip(gt, res):
-            np.testing.assert_array_equal(x, y)
 
     def test_empty_program(self):
         program = paddle.static.Program()

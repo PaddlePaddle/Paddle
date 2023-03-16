@@ -70,6 +70,9 @@ class QuanterFactory(ClassWithArguments):
         return self.partial_class(layer)
 
 
+ObserverFactory = QuanterFactory
+
+
 def quanter(class_name):
     r"""
     Annotation to declare a factory class for quanter.

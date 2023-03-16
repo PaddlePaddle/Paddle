@@ -207,34 +207,45 @@ void ArgsortKernel(const Context& dev_ctx,
     }
   }
 
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
   if (int64_need_cast) {
-    XPUArgsort<T, true, true>()(dev_ctx.x_context(),
-                                input_data,
-                                output_data,
-                                indices_data,
-                                data_shape,
-                                permute_vec,
-                                descending);
+    XPUArgsort<XPUType, true, true>()(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(input_data),
+        reinterpret_cast<XPUType*>(output_data),
+        indices_data,
+        data_shape,
+        permute_vec,
+        descending);
   } else if (index_need_cast) {
-    XPUArgsort<T, false, true>()(dev_ctx.x_context(),
-                                 input_data,
-                                 output_data,
-                                 indices_data,
-                                 data_shape,
-                                 permute_vec,
-                                 descending);
+    XPUArgsort<XPUType, false, true>()(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(input_data),
+        reinterpret_cast<XPUType*>(output_data),
+        indices_data,
+        data_shape,
+        permute_vec,
+        descending);
   } else {
-    XPUArgsort<T, false, false>()(dev_ctx.x_context(),
-                                  input_data,
-                                  output_data,
-                                  indices_data,
-                                  data_shape,
-                                  permute_vec,
-                                  descending);
+    XPUArgsort<XPUType, false, false>()(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(input_data),
+        reinterpret_cast<XPUType*>(output_data),
+        indices_data,
+        data_shape,
+        permute_vec,
+        descending);
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    argsort, XPU, ALL_LAYOUT, phi::ArgsortKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(argsort,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ArgsortKernel,
+                   float,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}

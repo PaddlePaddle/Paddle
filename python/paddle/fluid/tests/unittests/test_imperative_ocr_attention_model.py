@@ -189,7 +189,7 @@ class DynamicGRU(fluid.dygraph.Layer):
                 res = [hidden_] + res
             else:
                 res.append(hidden_)
-        res = fluid.layers.concat(res, axis=1)
+        res = paddle.concat(res, axis=1)
         return res
 
 
@@ -270,9 +270,7 @@ class EncoderNet(fluid.dygraph.Layer):
 
         gru_backward = self.gru_backward_layer(fc_2)
 
-        encoded_vector = fluid.layers.concat(
-            input=[gru_forward, gru_backward], axis=2
-        )
+        encoded_vector = paddle.concat([gru_forward, gru_backward], axis=2)
 
         encoded_proj = self.encoded_proj_fc(encoded_vector)
 
@@ -356,7 +354,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
             out = paddle.nn.functional.softmax(out)
             res.append(out)
 
-        res1 = fluid.layers.concat(res, axis=1)
+        res1 = paddle.concat(res, axis=1)
 
         return res1
 

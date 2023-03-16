@@ -207,7 +207,7 @@ class Upsample(fluid.dygraph.Layer):
         shape_nchw = paddle.shape(inputs)
         shape_hw = paddle.slice(shape_nchw, axes=[0], starts=[2], ends=[4])
         shape_hw.stop_gradient = True
-        in_shape = fluid.layers.cast(shape_hw, dtype='int32')
+        in_shape = paddle.cast(shape_hw, dtype='int32')
         out_shape = in_shape * self.scale
         out_shape.stop_gradient = True
 
@@ -295,9 +295,7 @@ class YOLOv3(fluid.dygraph.Layer):
         blocks = self.block(inputs)
         for i, block in enumerate(blocks):
             if i > 0:
-                block = fluid.layers.concat(
-                    input=[route, block], axis=1  # noqa: F821
-                )
+                block = paddle.concat([route, block], axis=1)  # noqa: F821
             route, tip = self.yolo_blocks[i](block)
             block_out = self.block_outputs[i](tip)
             self.outputs.append(block_out)
@@ -349,8 +347,8 @@ class YOLOv3(fluid.dygraph.Layer):
 
         if not self.is_train:
             # get pred
-            yolo_boxes = fluid.layers.concat(self.boxes, axis=1)
-            yolo_scores = fluid.layers.concat(self.scores, axis=2)
+            yolo_boxes = paddle.concat(self.boxes, axis=1)
+            yolo_scores = paddle.concat(self.scores, axis=2)
 
             pred = _legacy_C_ops.multiclass_nms(
                 bboxes=yolo_boxes,

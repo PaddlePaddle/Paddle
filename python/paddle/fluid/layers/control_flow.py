@@ -15,7 +15,7 @@
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import templatedoc
-from .tensor import assign, cast, fill_constant
+from .tensor import fill_constant
 from .. import core
 from ..framework import (
     Program,
@@ -25,12 +25,11 @@ from ..framework import (
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
-from .utils import (
+from ...utils import (
     assert_same_structure,
     map_structure,
     hold_mutable_vars,
     copy_mutable_vars,
-    padding_to_same_structure,
     is_sequence,
     pack_sequence_as,
     flatten,
@@ -1058,7 +1057,7 @@ def assign_skip_lod_tensor_array(input, output):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):
-            assign(input, output)
+            paddle.assign(input, output)
         else:
             output = input
         return
@@ -1069,7 +1068,7 @@ def assign_skip_lod_tensor_array(input, output):
             main_program.current_block().parent_idx
         )
         if parent_block and not parent_block._find_var_recursive(input.name):
-            assign(input, output)
+            paddle.assign(input, output)
     else:
         if (
             isinstance(output, Variable)
@@ -1081,7 +1080,7 @@ def assign_skip_lod_tensor_array(input, output):
                     input.shape, output.shape
                 )
             )
-        assign(input, output)
+        paddle.assign(input, output)
 
 
 # (TODO: Mine) There exists dependency (jit.dy2static.convert_operators). It will be removed later.
@@ -1151,7 +1150,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         )
 
     if in_dygraph_mode():
-        now_cond = pre_cond.numpy()[0]
+        now_cond = pre_cond.numpy().item()
         while now_cond:
             output_vars = body(*loop_vars)
             if not isinstance(output_vars, (list, tuple)):
@@ -1161,7 +1160,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars"
                 )
-            now_cond = cond(*output_vars).numpy()[0]
+            now_cond = cond(*output_vars).numpy().item()
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
     else:
@@ -1195,7 +1194,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 )
             now_cond = cond(*output_vars)
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
-            assign(now_cond, pre_cond)
+            paddle.assign(now_cond, pre_cond)
         return loop_vars
 
 

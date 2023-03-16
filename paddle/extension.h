@@ -16,3 +16,7 @@ limitations under the License. */
 
 // All paddle apis in C++ frontend
 #include "paddle/phi/api/all.h"
+// Python bindings for the C++ frontend (includes Python.h)
+#if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
+#include "paddle/utils/pybind.h"
+#endif

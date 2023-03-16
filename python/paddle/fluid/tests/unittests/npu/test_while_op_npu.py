@@ -38,7 +38,7 @@ class TestWhileOp(unittest.TestCase):
         )
         # fill_constant npu op doesn't support int64
         i = layers.zeros(shape=[1], dtype='int32')
-        i = layers.cast(i, 'int64')
+        i = paddle.cast(i, 'int64')
         i.stop_gradient = True
         init = layers.zeros(shape=[10], dtype='float32')
         mem_array = paddle.tensor.array_write(x=init, i=i)
@@ -48,28 +48,28 @@ class TestWhileOp(unittest.TestCase):
         i = paddle.increment(i)
         paddle.tensor.array_write(d2, i, array=data_array)
         i = layers.zeros(shape=[1], dtype='int32')
-        i = layers.cast(i, 'int64')
+        i = paddle.cast(i, 'int64')
         i.stop_gradient = True
         array_len = layers.fill_constant(shape=[1], dtype='int32', value=5)
-        array_len = layers.cast(array_len, 'int64')
+        array_len = paddle.cast(array_len, 'int64')
         array_len.stop_gradient = True
         cond = paddle.ones(shape=[1], dtype='int32')
-        cond = layers.cast(cond, 'bool')
+        cond = paddle.cast(cond, 'bool')
         j = layers.fill_constant(shape=[1], dtype='int32', value=1)
-        j = layers.cast(j, 'int64')
+        j = paddle.cast(j, 'int64')
         j.stop_gradient = True
         array_len2 = layers.fill_constant(shape=[1], dtype='int32', value=3)
-        array_len2 = layers.cast(array_len2, 'int64')
+        array_len2 = paddle.cast(array_len2, 'int64')
         array_len2.stop_gradient = True
         cond2 = paddle.logical_or(x=j, y=array_len2)
         cond2 = paddle.ones(shape=[1], dtype='int32')
-        cond2 = layers.cast(cond2, 'bool')
+        cond2 = paddle.cast(cond2, 'bool')
         while_op = paddle.static.nn.control_flow.While(cond=cond)
         while_op2 = paddle.static.nn.control_flow.While(cond=cond2)
         with while_op.block():
             d = paddle.tensor.array_read(array=data_array, i=i)
             prev = paddle.tensor.array_read(array=mem_array, i=i)
-            result = layers.sums(input=[d, prev])
+            result = paddle.add_n([d, prev])
 
             i = paddle.increment(x=i)
             paddle.tensor.array_write(result, i=i, array=mem_array)
@@ -78,7 +78,7 @@ class TestWhileOp(unittest.TestCase):
             with while_op2.block():
                 d2 = paddle.tensor.array_read(array=data_array, i=j)
                 prev2 = paddle.tensor.array_read(array=mem_array, i=j)
-                result2 = layers.sums(input=[d2, prev2])
+                result2 = paddle.add_n([d2, prev2])
 
                 j = paddle.increment(x=j)
                 paddle.tensor.array_write(result2, i=j, array=mem_array)

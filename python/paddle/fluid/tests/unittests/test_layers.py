@@ -1645,8 +1645,8 @@ class TestBook(LayerTest):
                 param_attr='shared_w',
             )
 
-            concat_embed = layers.concat(
-                input=[embed_first, embed_second, embed_third, embed_forth],
+            concat_embed = paddle.concat(
+                [embed_first, embed_second, embed_third, embed_forth],
                 axis=1,
             )
 
@@ -1722,7 +1722,7 @@ class TestBook(LayerTest):
 
             embs.append(emb)
 
-        embs = layers.concat(input=embs, axis=1)
+        embs = paddle.concat(embs, axis=1)
         loss = paddle.static.nn.nce(
             input=embs,
             label=words[label_word],

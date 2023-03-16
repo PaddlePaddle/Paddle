@@ -170,7 +170,7 @@ void BindDistCommunicator(py::module* m) {
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
-              "unsuported communicator MODE"));
+              "unsupported communicator MODE"));
         }
         return Communicator::GetInstantcePtr();
       }))

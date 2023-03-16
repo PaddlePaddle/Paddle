@@ -23,9 +23,11 @@ limitations under the License. */
 #include <thrust/shuffle.h>
 #include <sstream>
 #include "cub/cub.cuh"
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#endif
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
@@ -318,11 +320,8 @@ void SlotRecordInMemoryDataFeed::FillSlotValueOffset(
     const int uint64_slot_size,
     const int *float_offsets,
     const int float_slot_size,
-    const UsedSlotGpuType *used_slots) {
-  auto stream =
-      dynamic_cast<phi::GPUContext *>(
-          paddle::platform::DeviceContextPool::Instance().Get(this->place_))
-          ->stream();
+    const UsedSlotGpuType *used_slots,
+    cudaStream_t stream) {
   FillSlotValueOffsetKernel<<<GET_BLOCKS(used_slot_num),
                               CUDA_NUM_THREADS,
                               0,
@@ -397,12 +396,8 @@ void SlotRecordInMemoryDataFeed::CopyForTensor(
     const int *float_offsets,
     const int *float_ins_lens,
     const int float_slot_size,
-    const UsedSlotGpuType *used_slots) {
-  auto stream =
-      dynamic_cast<phi::GPUContext *>(
-          paddle::platform::DeviceContextPool::Instance().Get(this->place_))
-          ->stream();
-
+    const UsedSlotGpuType *used_slots,
+    cudaStream_t stream) {
   CopyForTensorKernel<<<GET_BLOCKS(used_slot_num * ins_num),
                         CUDA_NUM_THREADS,
                         0,
@@ -435,6 +430,7 @@ __global__ void CopyDuplicateKeys(int64_t *dist_tensor,
   }
 }
 
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
 int GraphDataGenerator::AcquireInstance(BufState *state) {
   if (state->GetNextStep()) {
     DEBUG_STATE(state);
@@ -2938,6 +2934,7 @@ void GraphDataGenerator::SetConfig(
     infer_node_type_ = graph_config.infer_node_type();
   }
 }
+#endif
 
 void GraphDataGenerator::DumpWalkPath(std::string dump_path, size_t dump_rate) {
 #ifdef _LINUX

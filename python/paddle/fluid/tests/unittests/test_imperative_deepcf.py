@@ -105,9 +105,7 @@ class MLP(fluid.Layer):
     def forward(self, users, items):
         users = self._user_latent(users)
         items = self._item_latent(items)
-        match_vec = fluid.layers.concat(
-            [users, items], axis=len(users.shape) - 1
-        )
+        match_vec = paddle.concat([users, items], axis=len(users.shape) - 1)
         for l in self._match_layers:
             match_vec = l(match_vec)
         return match_vec
@@ -144,7 +142,7 @@ class DeepCF(fluid.Layer):
 
         mlp_predictive = self._mlp(users_emb, items_emb)
         dmf_predictive = self._dmf(users_emb, items_emb)
-        predictive = fluid.layers.concat(
+        predictive = paddle.concat(
             [mlp_predictive, dmf_predictive], axis=len(mlp_predictive.shape) - 1
         )
         prediction = self._match_fc(predictive)

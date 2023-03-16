@@ -14,14 +14,37 @@
 
 #pragma once
 
-#include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
+#include <vector>
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/optional.h"
-// TODO(jiabin): Make this Header only for handwritten api, instead of include
-// prim_generated_api.h
+
 namespace paddle {
-namespace prim {}  // namespace prim
+namespace prim {
+
+using Tensor = paddle::Tensor;
+using Scalar = paddle::experimental::Scalar;
+using IntArray = paddle::experimental::IntArray;
+using DataType = paddle::experimental::DataType;
+
+template <typename T>
+Tensor reshape(const Tensor& x, const IntArray& shape);
+
+template <typename T>
+Tensor full(const IntArray& shape,
+            const Scalar& value,
+            DataType dtype = DataType::FLOAT32,
+            const Place& place = CPUPlace());
+
+template <typename T>
+std::vector<Tensor> split(const Tensor& x,
+                          const IntArray& sections,
+                          const Scalar& axis);
+
+template <typename T>
+Tensor cast(const Tensor& x, DataType dtype);
+
+}  // namespace prim
 }  // namespace paddle

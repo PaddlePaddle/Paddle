@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layers.utils import map_structure
 
 SEED = 2020
 np.random.seed(SEED)
@@ -94,7 +93,7 @@ def test_list_append_in_for_loop_with_concat(x, iter_num):
     )  # TODO(liym27): Delete it if the type of parameter iter_num can be resolved
     for i in range(iter_num):
         a.append(x)
-    a = fluid.layers.concat(a, axis=0)
+    a = paddle.concat(a, axis=0)
     return a
 
 
@@ -231,7 +230,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
 
     def varbase_to_numpy(self, res):
         if isinstance(res, (list, tuple)):
-            res = map_structure(lambda x: x.numpy(), res)
+            res = paddle.utils.map_structure(lambda x: x.numpy(), res)
         else:
             res = [res.numpy()]
         return res
@@ -338,8 +337,10 @@ class ListWithCondNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
+    # Add *args to test function.__self__ in FunctionSpec.
+    # DO NOT remove *args.
     @paddle.jit.to_static
-    def forward(self, x, index):
+    def forward(self, x, index, *args):
         y = paddle.nn.functional.relu(x)
         a = []
 
