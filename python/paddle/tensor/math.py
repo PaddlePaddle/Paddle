@@ -1657,14 +1657,21 @@ def add_n(inputs, name=None):
                     check_variable_and_dtype(
                         input,
                         "inputs",
-                        ['float16', 'float32', 'float64', 'int32', 'int64'],
+                        [
+                            'float16',
+                            'float32',
+                            'float64',
+                            'int32',
+                            'int64',
+                            'uint16',
+                        ],
                         'add_n',
                     )
         else:
             check_variable_and_dtype(
                 inputs,
                 "inputs",
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
                 'add_n',
             )
 
