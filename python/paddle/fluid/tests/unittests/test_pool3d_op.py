@@ -271,7 +271,38 @@ def avg_pool3D_forward_naive(
     return out
 
 
-def pool3d_warpper(
+def pool3d_warpper_not_use_cudnn(
+    X,
+    ksize=[],
+    strides=[],
+    paddings=[],
+    ceil_mode=False,
+    exclusive=True,
+    data_format="NCDHW",
+    pooling_type="max",
+    global_pooling=False,
+    adaptive=False,
+    padding_algorithm="EXPLICIT",
+):
+    tmp = X._use_gpudnn(False)
+    if data_format == "AnyLayout":
+        data_format = "NCDHW"
+    return paddle._C_ops.pool3d(
+        tmp,
+        ksize,
+        strides,
+        paddings,
+        ceil_mode,
+        exclusive,
+        data_format,
+        pooling_type,
+        global_pooling,
+        adaptive,
+        padding_algorithm,
+    )
+
+
+def pool3d_warpper_use_cudnn(
     X,
     ksize=[],
     strides=[],
@@ -304,7 +335,6 @@ def pool3d_warpper(
 class TestPool3D_Op(OpTest):
     def setUp(self):
         self.op_type = "pool3d"
-        self.python_api = pool3d_warpper
         self.init_kernel_type()
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.init_test_case()
@@ -352,6 +382,11 @@ class TestPool3D_Op(OpTest):
         }
 
         self.outputs = {'Out': output}
+
+        if self.use_cudnn:
+            self.python_api = pool3d_warpper_use_cudnn
+        else:
+            self.python_api = pool3d_warpper_not_use_cudnn
 
     def has_cudnn(self):
         return core.is_compiled_with_cuda() and self.use_cudnn
