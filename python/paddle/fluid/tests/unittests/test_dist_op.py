@@ -113,14 +113,13 @@ class TestDistOp(OpTest):
         return x_grad, y_grad
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
             ["X", "Y"],
             "Out",
             user_defined_grads=self.gradient,
-            check_eager=True,
         )
 
 
