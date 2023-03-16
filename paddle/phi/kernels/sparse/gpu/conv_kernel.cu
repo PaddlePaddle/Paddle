@@ -125,12 +125,16 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
 #ifdef PADDLE_WITH_CUTLASS
   bool cutlass = true;
-  if (dev_ctx.GetComputeCapability() < 75) cutlass = false;
-  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
+  if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
+  if (in_channels % 8 != 0 || out_channels % 8 != 0) {
     if (std::is_same<T, phi::dtype::float16>::value) cutlass = false;
+  }
+  if (in_channels % 4 != 0 || out_channels % 4 != 0) {
     if (std::is_same<T, float>::value) cutlass = false;
   }
+  if (std::is_same<T, double>::value) cutlass = false;
   if (!std::is_same<IntT, int32_t>::value) cutlass = false;
+
   if (cutlass) {
     auto* out_values = out->mutable_non_zero_elements();
     T* out_values_ptr = out_values->data<T>();
@@ -150,18 +154,18 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
       const IntT* scatter_indices =
           rulebook_ptr + rulebook_len + h_offsets_ptr[i];
-      dispatchKernel(dev_ctx,
-                     x.non_zero_elements().data<T>(),
-                     tmp_kernel_ptr,
-                     out_values_ptr,
-                     out_values_ptr,
-                     M,
-                     N,
-                     K,
-                     gather_indices,
-                     scatter_indices,
-                     cutlass,
-                     x.dtype());
+      GatherGemmScatterDriver(dev_ctx,
+                              x.non_zero_elements().data<T>(),
+                              tmp_kernel_ptr,
+                              out_values_ptr,
+                              out_values_ptr,
+                              M,
+                              N,
+                              K,
+                              gather_indices,
+                              scatter_indices,
+                              static_cast<T>(1.0),
+                              static_cast<T>(1.0));
     }
   } else {
 #endif
@@ -295,4 +299,7 @@ PD_REGISTER_KERNEL(conv3d_coo,
                    double,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+  kernel->OutputAt(0).SetDataType(paddle::DataType::UNDEFINED);
+  kernel->OutputAt(1).SetDataType(paddle::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(paddle::DataType::INT32);
 }

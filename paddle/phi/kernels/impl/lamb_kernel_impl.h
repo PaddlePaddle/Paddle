@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/lamb_functors.h"
 
@@ -148,7 +149,7 @@ void ComputeImpl(const Context& dev_ctx,
                                      ? skip_update->data<bool>()
                                      : nullptr;
   if (skip_update_flag &&
-      paddle::platform::is_cpu_place(skip_update->place()) &&
+      skip_update->place().GetType() == phi::AllocationType::CPU &&
       (*skip_update_flag)) {
     return;
   }
@@ -176,7 +177,7 @@ void ComputeImpl(const Context& dev_ctx,
            << " , Beta2Pow place: " << beta2_pow.place();
   // Diff from here
 
-  if (paddle::platform::is_gpu_place(dev_ctx.GetPlace()) &&
+  if (dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU &&
       beta1_pow.place() == phi::CPUPlace() &&
       beta2_pow.place() == phi::CPUPlace()) {
     LambMomentREGUpdateFunctor<T, IsMultiPrecision> moment_update_functor(
@@ -255,8 +256,8 @@ void ComputeImpl(const Context& dev_ctx,
     auto pn = phi::funcs::ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
     auto tn =
         phi::funcs::ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
-    auto dtype = paddle::framework::DataTypeToString(
-        paddle::framework::DataTypeTrait<T>::DataType());
+    auto dtype =
+        DataTypeToString(paddle::experimental::CppTypeToDataType<T>::Type());
     VLOG(1) << "Param " << dtype << " " << name << " pn = " << pn[0]
             << " , tn = " << tn[0];
   }

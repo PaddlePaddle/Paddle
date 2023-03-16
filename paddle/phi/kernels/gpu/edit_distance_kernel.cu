@@ -21,6 +21,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -183,4 +184,6 @@ void EditDistanceKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    edit_distance, GPU, ALL_LAYOUT, phi::EditDistanceKernel, float) {}
+    edit_distance, GPU, ALL_LAYOUT, phi::EditDistanceKernel, float) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}

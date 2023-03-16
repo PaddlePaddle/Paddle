@@ -32,18 +32,6 @@ cc_test(
   SRCS os_info_test.cc
   DEPS phi_os_info)
 
-if(WITH_GPU)
-  nv_library(
-    cuda_graph_with_memory_pool
-    SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator phi_backends)
-else()
-  cc_library(
-    cuda_graph_with_memory_pool
-    SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator)
-endif()
-
 cc_library(
   place
   SRCS place.cc
@@ -159,7 +147,6 @@ cc_library(
        cudnn_workspace_helper
        ${XPU_CTX_DEPS}
        ${MLU_CTX_DEPS}
-       eigen3
        phi_backends
        phi_device_context
        generator)
@@ -240,6 +227,10 @@ if(WITH_GPU)
       SRCS device_event_test.cc
       DEPS device_event_gpu)
   endif()
+  nv_library(
+    cuda_graph_with_memory_pool
+    SRCS cuda_graph_with_memory_pool.cc
+    DEPS ${DEVICE_EVENT_LIBS} device_context allocator phi_backends)
   nv_test(
     device_context_test
     SRCS device_context_test.cu
@@ -248,6 +239,11 @@ if(WITH_GPU)
     device_context_test_cuda_graph
     SRCS device_context_test_cuda_graph.cu
     DEPS device_context gpu_info cuda_graph_with_memory_pool)
+else()
+  cc_library(
+    cuda_graph_with_memory_pool
+    SRCS cuda_graph_with_memory_pool.cc
+    DEPS device_context allocator)
 endif()
 
 if(WITH_ROCM)

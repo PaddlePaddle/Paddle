@@ -97,7 +97,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
 
     memory_utils::Copy(dev_ctx.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
-                       paddle::platform::CPUPlace(),
+                       phi::CPUPlace(),
                        static_cast<void*>(cpu_ptrs.data()),
                        cpu_ptrs.size() * sizeof(T*),
                        dev_ctx.stream());

@@ -32,7 +32,7 @@ from paddle.fluid.layers.control_flow import (
     ConditionalBlockGuard,
     select_input,
 )
-from paddle.fluid.layers.utils import (
+from paddle.utils import (
     assert_same_structure,
     copy_mutable_vars,
     flatten,

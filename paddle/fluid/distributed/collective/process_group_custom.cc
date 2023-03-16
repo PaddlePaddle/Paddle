@@ -38,8 +38,8 @@ void SyncDefaultStream(
   for (size_t i = 0; i < places.size(); ++i) {
     auto* default_ctx = static_cast<platform::CustomDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(places[i]));
-    cclEvents[i].Record(*dev_ctx[i]);
-    cclEvents[i].Block(*default_ctx);
+    cclEvents[i].Record(*default_ctx);
+    cclEvents[i].Block(*dev_ctx[i]);
   }
 }
 
@@ -74,8 +74,7 @@ void ProcessGroupCustom::CustomTask::SynchronizeStreams() {
     auto* default_ctx = static_cast<platform::CustomDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(places_[i]));
     phi::DeviceGuard guard(default_ctx->GetPlace());
-    phi::stream::Stream stream(default_ctx->GetPlace(), default_ctx->stream());
-    stream.WaitEvent(control_events_[i].GetCustomEvent());
+    control_events_[i].Block(*default_ctx);
   }
 }
 
@@ -100,13 +99,25 @@ bool ProcessGroupCustom::CustomTask::Wait(std::chrono::milliseconds timeout) {
 // Same as Wait
 void ProcessGroupCustom::CustomTask::Synchronize() { Wait(kWaitTimeout); }
 
+void ProcessGroupCustom::CustomTask::UpdateWaitChain(
+    const phi::DeviceContext& ctx) {
+  PADDLE_ENFORCE_NE(
+      std::find(places_.cbegin(), places_.cend(), ctx.GetPlace()),
+      places_.cend(),
+      phi::errors::NotFound("Cannot find the device context in this task."));
+  auto index = std::find(places_.cbegin(), places_.cend(), ctx.GetPlace()) -
+               places_.cbegin();
+  control_events_[index].Record(
+      reinterpret_cast<const phi::CustomContext&>(ctx));
+}
+
 ProcessGroupCustom::ProcessGroupCustom(
     const std::shared_ptr<phi::distributed::Store>& store,
     const std::string& device_type,
     int rank,
     int size,
     int gid)
-    : ProcessGroupWithoutStream(rank, size, gid),
+    : ProcessGroupWithStream(rank, size, gid),
       store_(store),
       device_type_(device_type) {}
 
@@ -243,11 +254,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
       numel > 0
           ? paddle::distributed::GetPartialTensor(in_tensor, offset, numel)
           : in_tensor;
-  phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
-                                                     in_tensor_maybe_partial,
-                                                     /*dst_rank*/ rank_,
-                                                     /*cur_rank*/ rank_,
-                                                     size_);
+  phi::distributed::CommStaticCheck::GatherLikeShape(
+      *out_tensor,
+      in_tensor_maybe_partial,
+      /*dst_rank*/ rank_,
+      /*cur_rank*/ rank_,
+      size_,
+      phi::AllocationType::CUSTOM);
   std::vector<phi::DenseTensor> in_wrapper{in_tensor_maybe_partial};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
 
@@ -276,7 +289,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
     int64_t offset,
     int64_t numel,
     bool sync_op) {
-  return AllGather(out_tensor, in_tensor, offset, numel, sync_op);
+  return AllGather(out_tensor, in_tensor, offset, numel, sync_op, false);
 }
 
 // TODO(sunyilun): methods below will be removed later

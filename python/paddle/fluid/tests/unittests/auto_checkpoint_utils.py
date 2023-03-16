@@ -82,9 +82,7 @@ class AutoCheckpointBase(unittest.TestCase):
             sgd, loss, image, label = simple_net()
 
             if minimize:
-                compiled = fluid.CompiledProgram(main_prog).with_data_parallel(
-                    loss_name=loss.name
-                )
+                compiled = fluid.CompiledProgram(main_prog)
             else:
                 compiled = None
             loader = fluid.io.DataLoader.from_generator(
