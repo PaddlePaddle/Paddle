@@ -35,10 +35,6 @@ cc_test_old(
   interceptor_pipeline_long_path_test SRCS
   interceptor_pipeline_long_path_test.cc DEPS fleet_executor ${BRPC_DEPS})
 
-set_source_files_properties(test_WIP.cc PROPERTIES COMPILE_FLAGS
-                                                   ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test_old(test_WIP SRCS test_WIP.cc DEPS fleet_executor ${BRPC_DEPS})
-
 set_source_files_properties(
   compute_interceptor_run_op_test.cc PROPERTIES COMPILE_FLAGS
                                                 ${DISTRIBUTE_COMPILE_FLAGS})

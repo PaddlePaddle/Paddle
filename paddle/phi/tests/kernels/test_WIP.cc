@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/distributed/fleet_executor/WIP.cu.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/kernels/gpu/WIP.cu.h"
 #include "paddle/phi/kernels/uniform_kernel.h"
 
 namespace phi {

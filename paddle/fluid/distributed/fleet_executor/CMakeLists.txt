@@ -43,9 +43,7 @@ cc_library(
        message_service.cc
        message_bus.cc
        dist_model_tensor_wrapper.cc
-       WIP.cu.h
-  DEPS phi
-       proto_desc
+  DEPS proto_desc
        standalone_executor
        fleet_executor_desc_proto
        interceptor_message_proto
@@ -83,8 +81,6 @@ if(WITH_DISTRIBUTE)
     message_bus.h PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set_source_files_properties(
     message_bus.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  set_source_files_properties(WIP.cu.h PROPERTIES COMPILE_FLAGS
-                                                  ${DISTRIBUTE_COMPILE_FLAGS})
   set_source_files_properties(
     fleet_executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set_source_files_properties(carrier.cc PROPERTIES COMPILE_FLAGS
