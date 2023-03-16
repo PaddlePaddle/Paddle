@@ -30,6 +30,19 @@ def to_named_dict(items: List[Dict]) -> Dict[str, Dict]:
     return named_dict
 
 
+def to_named_dict_for_op(items: List[Dict]) -> Dict[str, Dict]:
+    named_dict = {}
+    for item in items:
+        if "name" not in item:
+            raise KeyError(f"name not in {item}")
+        item["name"] = (
+            item["name"] if item["name"][-1] != '_' else item["name"][:-1]
+        )
+        name = item["name"]
+        named_dict[name] = item
+    return named_dict
+
+
 def parse_arg(op_name: str, s: str) -> Dict[str, str]:
     """parse an argument in following formats:
     1. typename name

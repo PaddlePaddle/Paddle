@@ -38,6 +38,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : adadelta_
+  inputs :
+    {param : Param, grad : Grad, avg_squared_grad : AvgSquaredGrad, avg_squared_update : AvgSquaredUpdate, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, moment_out : AvgSquaredGradOut, inf_norm_out : AvgSquaredUpdateOut, master_param_out : MasterParamOut}
+
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
   extra :
@@ -968,6 +974,12 @@
   outputs :
     out : Out
 
+- op : lamb_
+  inputs :
+    {param : Param, grad : Grad, learning_rate : LearningRate, moment1 : Moment1, moment2 : Moment2, beta1_pow : Beta1Pow, beta2_pow : Beta2Pow, master_param : MasterParam, skip_update : SkipUpdate}
+  outputs :
+    {param_out : ParamOut, moment1_out : Moment1Out, moment2_out : Moment2Out, beta1_pow_out : Beta1PowOut, beta2_pow_out : Beta2PowOut, master_param_outs : MasterParamOut}
+
 - op : layer_norm
   backward : layer_norm_grad
   inputs :
@@ -1554,6 +1566,16 @@
   backward : sequence_softmax_grad
   extra :
     attrs : [str data_format = "AnyLayout"]
+
+- op : sgd_
+  inputs :
+    {param : Param, learning_rate : LearningRate, grad : Grad, master_param : MasterParam}
+  outputs :
+    {param_out : ParamOut, master_param_out : MasterParamOut}
+  get_expected_kernel_type :
+    sgd_ : GetSgdExpectedKernelType
+  extra :
+    attrs : [bool use_mkldnn=false]
 
 - op : shape
   extra :

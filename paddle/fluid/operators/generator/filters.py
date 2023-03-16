@@ -14,6 +14,7 @@
 
 import itertools
 import re
+import sys
 from typing import Dict, List, Sequence
 
 from type_mapping import (
@@ -63,6 +64,19 @@ def to_dense_input_type(s, optional=False):
         return dense_input_types_map[s]
     else:
         return dense_optional_input_types_map[s]
+
+
+def find_first_selected_rows_param(inputs, kernel):
+    for index, input in enumerate(inputs):
+        if input == "selected_rows":
+            return index
+    sys.stderr(
+        "Inputs of kernel {} don't have 'selected_rows' param!".format(kernel)
+    )
+
+
+def to_name_without_underline(op_name):
+    return op_name if op_name[-1] != '_' else op_name[:-1]
 
 
 # ------------------------------ output  ----------------------------------
