@@ -932,8 +932,8 @@ void layer_norm_grad(const Tensor& x,
     }
   }
   auto x_sub_mean = x_cast - mean_;
-  auto tmp = (1.0 / variance_);
-  auto sqrt_var_1 = sqrt<T>(1.0 / variance_);
+  auto tmp = (1.0 / (variance_ + epsilon));
+  auto sqrt_var_1 = sqrt<T>(tmp);
   if (scale_grad) {
     if (scale_ptr) {
       auto scale_grad_tmp =
@@ -955,9 +955,8 @@ void layer_norm_grad(const Tensor& x,
     auto d_mean_0 = (-sqrt_var_1 * out_grad_cast * scale_cast)
                         .sum(std::vector<int64_t>({1}), x_cast.dtype(), true);
     auto d_mean = 1.0 / shape_2 * d_mean_0;
-    auto d_std_1 =
-        (-(1.0 / variance_) * x_sub_mean * out_grad_cast * scale_cast)
-            .sum(std::vector<int64_t>({1}), x_cast.dtype(), true);
+    auto d_std_1 = (-tmp * x_sub_mean * out_grad_cast * scale_cast)
+                       .sum(std::vector<int64_t>({1}), x_cast.dtype(), true);
     auto d_std_2 = (1.0 / shape_2) * sqrt_var_1;
     d_std_2 = reshape<T>(d_std_2, std::vector<int64_t>({shape_1, 1}));
     d_std_2 = d_std_2 * x_sub_mean;
