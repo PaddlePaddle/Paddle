@@ -3751,7 +3751,6 @@ class Block:
         self.vars = collections.OrderedDict()  # var_name --> var
         self.ops = list()  # operator list
         self.program = program
-        self.removed_vars = collections.OrderedDict()
 
     def __str__(self):
         return self._to_readable_code()
