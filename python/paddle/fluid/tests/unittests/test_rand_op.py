@@ -136,10 +136,8 @@ class TestRandDtype(unittest.TestCase):
             out = paddle.tensor.random.rand([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
-        if (
-            core.is_compiled_with_cuda()
-            and paddle.device.get_device() == "gpu:0"
-        ):
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
             test_default_fp16()
         else:
             self.assertRaises(TypeError, test_default_fp16)
