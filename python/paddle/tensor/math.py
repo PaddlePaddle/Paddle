@@ -5286,7 +5286,6 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
 
             import paddle
 
-            paddle.set_device('cpu')
             y = paddle.to_tensor([4, 5, 6], dtype='float32')
 
             print(paddle.cumulative_trapezoid(y))
