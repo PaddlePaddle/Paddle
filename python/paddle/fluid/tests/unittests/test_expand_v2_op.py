@@ -239,7 +239,7 @@ class TestExpandV2ErrCornerRank2(TestExpandV2ErrCorner):
 
 class TestExpandV2Error(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.fluid.framework._static_guard():
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
