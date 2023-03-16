@@ -195,7 +195,7 @@ paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
   std::vector<uint64_t> edge_array[task_pool_size_];  // edge id list
 
   // get edge weight
-  std::vector<float> weight_array[task_pool_size_];   // neighbor weight list
+  std::vector<float> weight_array[task_pool_size_];  // neighbor weight list
 
   for (size_t i = 0; i < bags.size(); i++) {
     if (bags[i].size() > 0) {
@@ -252,7 +252,6 @@ paddle::framework::GpuPsCommGraph GraphTable::make_gpu_ps_graph(
       if (is_weighted_) {
         res.weight_list[offset + j] = weight_array[i][j];
       }
-
     }
     offset += edge_array[i].size();
   }
@@ -1782,7 +1781,9 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_node_file(
     }
     uint64_t id = std::strtoul(vals[0].ptr, NULL, 10);
     if (FLAGS_graph_edges_split_mode == "hard" ||
-        FLAGS_graph_edges_split_mode == "HARD") {
+        FLAGS_graph_edges_split_mode == "HARD" ||
+        FLAGS_graph_edges_split_mode == "dbh" ||
+        FLAGS_graph_edges_split_mode == "DBH") {
       if (!is_key_for_self_rank(id)) {
         VLOG(2) << "id " << id << " not matched, node_id: " << node_id_
                 << " , node_num:" << node_num_;
@@ -1859,7 +1860,9 @@ std::pair<uint64_t, uint64_t> GraphTable::parse_node_file(
     }
     local_count++;
     if (FLAGS_graph_edges_split_mode == "hard" ||
-        FLAGS_graph_edges_split_mode == "HARD") {
+        FLAGS_graph_edges_split_mode == "HARD" ||
+        FLAGS_graph_edges_split_mode == "dbh" ||
+        FLAGS_graph_edges_split_mode == "DBH") {
       if (!is_key_for_self_rank(id)) {
         VLOG(2) << "id " << id << " not matched, node_id: " << node_id_
                 << " , node_num:" << node_num_;
