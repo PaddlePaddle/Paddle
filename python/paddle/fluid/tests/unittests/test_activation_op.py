@@ -1428,7 +1428,7 @@ class TestCos(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestCos_ZeroDim(TestCos):
@@ -1562,7 +1562,7 @@ class TestSin(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', cheack_prim=True)
 
 
 class TestSin_ZeroDim(TestSin):

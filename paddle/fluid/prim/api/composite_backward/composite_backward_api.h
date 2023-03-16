@@ -1022,5 +1022,18 @@ void dropout_grad(const Tensor& mask,
     }
   }
 }
+
+template <typename T>
+void sin_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  auto x_grad_tmp = cos<T>(x) * out_grad;
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
+void cos_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  auto x_grad_tmp = -sin<T>(x) * out_grad;
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
 }  // namespace prim
 }  // namespace paddle
