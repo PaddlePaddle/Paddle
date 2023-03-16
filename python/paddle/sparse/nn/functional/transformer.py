@@ -26,6 +26,7 @@ def attention(
     sparse_mask,
     key_padding_mask=None,
     attn_mask=None,
+    scale_qk_coeff=1.0,
     name=None,
 ):
     r"""
@@ -56,6 +57,7 @@ def attention(
             2D tensor with shape: [batch_size, seq_len]. dtype can be float32 or float64. Default: None.
         attn_mask(DenseTensor, optional): The attention mask tensor in the Attention module.
             2D tensor with shape: [seq_len, seq_len]. dtype can be float32 or float64. Default: None.
+        scale_qk_coeff(float, optional): scale the result of Q*K. Default:1.0.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -92,5 +94,11 @@ def attention(
             output.backward()
     """
     return _C_ops.sparse_fused_attention(
-        query, key, value, sparse_mask, key_padding_mask, attn_mask
+        query,
+        key,
+        value,
+        sparse_mask,
+        key_padding_mask,
+        attn_mask,
+        scale_qk_coeff,
     )
