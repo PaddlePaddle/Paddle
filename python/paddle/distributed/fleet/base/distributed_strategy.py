@@ -902,6 +902,7 @@ class DistributedStrategy(object):
 
             use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
                    Default True. Only takes effect when `use_pure_fp16` is turned on.
+            use_bfp16(bool): Whether to use bfp16 for amp. default use fp16.
 
         Examples 1:
             .. code-block:: python

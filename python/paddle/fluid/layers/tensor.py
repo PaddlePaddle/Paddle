@@ -829,6 +829,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     check_shape(shape)
     check_dtype(dtype, 'dtype', [
         'bool', 'float16', 'float32', 'float64', 'uint8', 'int16', 'int32',
+        'uint16',
         'int64', 'complex64', 'complex128'
     ], 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')

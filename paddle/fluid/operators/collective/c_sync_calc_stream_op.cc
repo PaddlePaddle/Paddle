@@ -39,10 +39,6 @@ REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream,
 
 REGISTER_OP_CUDA_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);
 
-#if NCCL_VERSION_CODE >= 21000
-//REGISTER_OP_CUDA_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<paddle::platform::bfloat16>);
-#endif
-
 REGISTER_OP_NPU_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);
 
 REGISTER_OP_MLU_KERNEL(c_sync_calc_stream, ops::CSyncCalcStreamKernel<float>);
