@@ -63,32 +63,68 @@ generate_unify_header(kernels SKIP_SUFFIX grad_kernel)
 file(
   GLOB
   PHI_SRCS
-  "./api/lib/api*.cc"
-  "./api/lib/context_pool.cc"
-  "./api/lib/data_transform.cc"
-  "./api/lib/dygraph_api.cc"
-  "./api/lib/int_array.cc"
-  "./api/lib/kernel_dispatch.cc"
-  "./api/lib/op*.cc"
-  "./api/lib/scalar.cc"
-  "./api/lib/sparse_api.cc"
-  "./api/lib/strings_api.cc"
-  "./api/lib/tensor*.cc"
-  "./backends/*.cc"
-  "./backends/cpu/*.cc"
-  "./backends/onednn/*.cc"
-  "./common/*.cc"
-  "./core/*.cc"
-  "./kernels/*.cc"
-  "./kernels/cpu/*.cc"
-  "./kernels/funcs/*.cc"
-  "./kernels/fusion/onednn/*.cc"
-  "./kernels/onednn/*.cc"
-  "./kernels/selected_rows/*.cc"
-  "./kernels/sparse/*.cc"
-  "./kernels/sparse/cpu/*.cc"
-  "./kernels/strings/*.cc"
-  "./kernels/strings/cpu/*.cc")
+  "api/lib/api*.cc"
+  "api/lib/context_pool.cc "
+  "api/lib/data_transform.cc"
+  "api/lib/dygraph_api.cc"
+  "api/lib/int_array.cc"
+  "api/lib/kernel_dispatch.cc"
+  "api/lib/op*.cc"
+  "api/lib/scalar.cc"
+  "api/lib/sparse_api.cc"
+  "api/lib/strings_api.cc"
+  "api/lib/tensor*.cc"
+  "backends/all_context.cc"
+  "backends/callback_manager.cc"
+  "backends/context_pool.cc"
+  "backends/device_base.cc"
+  "backends/device_guard.cc"
+  "backends/device_manager.cc"
+  "backends/event.cc"
+  "backends/stream.cc"
+  "backends/cpu/*.cc"
+  "core/*.cc"
+  "kernels/*.cc"
+  "kernels/cpu/*.cc"
+  "kernels/funcs/*.cc"
+  "kernels/selected_rows/*.cc"
+  "kernels/sparse/*.cc"
+  "kernels/sparse/cpu/*.cc"
+  "kernels/strings/*.cc"
+  "kernels/strings/cpu/*.cc")
 
-cc_library(phi_shared SHARED SRCS ${PHI_SRCS})
+if(WITH_MKLDNN)
+  file(GLOB PHI_SRCS ${PHI_SRCS} "backends/onednn/*.cc"
+       "kernels/fusion/onednn/*.cc" "kernels/onednn/*.cc")
+endif()
+
+#Distributed lib is not supported now
+#list(REMOVE_ITEM PHI_SHARED_DEPS ${CMAKE_CURRENT_SOURCE_DIR}/backends/processgroup_comm_utils.cc)
+
+set(PHI_SHARED_DEPS
+    flags
+    eigen3
+    simple_threadpool
+    mklml
+    warpctc
+    warprnnt
+    pocketfft
+    utf8proc)
+
+if(WITH_GPU)
+  set(PHI_SHARED_DEPS ${PHI_SHARED_DEPS} external_error_proto)
+endif()
+
+if(WITH_XBYAK)
+  list(APPEND PHI_SHARED_DEPS xbyak)
+endif()
+
+if(WITH_MKLDNN)
+  list(APPEND PHI_SHARED_DEPS mkldnn)
+endif()
+
+cc_library(
+  phi_shared SHARED
+  SRCS ${PHI_SRCS}
+  DEPS ${PHI_SHARED_DEPS})
 set_target_properties(phi_shared PROPERTIES OUTPUT_NAME phi)
