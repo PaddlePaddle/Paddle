@@ -29,6 +29,7 @@
 - tile
 - transpose
 - pad
+- sqrt
 - cumsum
 - put_along_axis
 - greater_than
