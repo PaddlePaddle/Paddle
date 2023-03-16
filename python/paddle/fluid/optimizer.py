@@ -5009,7 +5009,11 @@ class PipelineOptimizer:
             assert device, "Please put you program within device_guard scope."
             for i in range(offset):
                 block.ops[idx + i]._set_attr(self._op_device_key, device)
-        elif self._is_optimize_op(op) and self._is_gradient_clip_op(op) and op.type == "cast":
+        elif (
+            self._is_optimize_op(op)
+            and self._is_gradient_clip_op(op)
+            and op.type == "cast"
+        ):
             # For fp16-->fp32 cast added by AMP in grad clip phase
             grad_name = op.desc.input('X')
             assert len(grad_name) == 1
