@@ -68,5 +68,10 @@ PD_REGISTER_KERNEL(sync_batch_norm_grad,
                    phi::SyncBatchNormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+      kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
+      kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
+    }
+}
 #endif
