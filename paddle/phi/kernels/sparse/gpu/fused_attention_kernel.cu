@@ -106,7 +106,7 @@ void FusedAttentionCsrKernel(
     const float scale_qk_coeff,
     DenseTensor* out,
     SparseCsrTensor* softmax) {
-#if CUDA_VERSION >= 11070
+#if CUDA_VERSION >= 11080
   /* Check Shape */
   auto q_dim = query.dims();
   auto q_rank = q_dim.size();
@@ -224,8 +224,6 @@ void FusedAttentionCsrKernel(
       scale_qk_coeff);
 
   softmax->set_dims(phi::make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
-
-  // dropout
 
   MatmulCsrDenseKernel<T, Context>(dev_ctx, *softmax, value, out);
 
