@@ -929,7 +929,14 @@ class OpTest(unittest.TestCase):
                 args, len(inputs_sig)
             )
             ret_tuple = python_api(*args)
-            return construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
+            result = construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
+            if hasattr(self, "python_out_sig_sub_name"):
+                for key in self.python_out_sig_sub_name.keys():
+                    for i in range(len(self.python_out_sig_sub_name[key])):
+                        result[key][0][i].name = self.python_out_sig_sub_name[
+                            key
+                        ][i]
+            return result
 
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
@@ -1519,7 +1526,14 @@ class OpTest(unittest.TestCase):
                     return dygraph_outs[name][0]
                 var_list = dygraph_outs[name]
                 for i, var in enumerate(var_list):
-                    if var.name == target_name:
+                    if isinstance(var, list):
+                        for tensor in var:
+                            if tensor.name == target_name:
+                                return tensor
+                    elif (
+                        isinstance(var, paddle.Tensor)
+                        and var.name == target_name
+                    ):
                         return dygraph_outs[name][i]
             self.assertTrue(
                 False,
@@ -2414,8 +2428,14 @@ class OpTest(unittest.TestCase):
         else:
             for output_vars_index in output_vars:
                 for output_vars_selected in output_vars[output_vars_index]:
-                    if output_vars_selected.name == name:
-                        return output_vars_selected
+                    if isinstance(output_vars_selected, list):
+                        for tensor in output_vars_selected:
+                            if tensor.name == name:
+                                return [tensor]
+                    elif isinstance(output_vars_selected, paddle.Tensor):
+                        if output_vars_selected.name == name:
+                            return [output_vars_selected]
+        raise AssertionError(name, " not in outputs:", output_vars.keys())
 
     def _get_dygraph_grad(
         self,
