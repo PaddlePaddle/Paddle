@@ -44,7 +44,6 @@ namespace operators {
 template <typename T>
 static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
                       const int ring_id,
-                      const int ring_id,
                       const phi::GPUContext &ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
