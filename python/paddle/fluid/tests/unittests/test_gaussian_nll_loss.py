@@ -24,25 +24,25 @@ np.random.seed(10)
 
 
 def ref_gaussian_nll_loss(
-    input, label, variance, full=False, eps=1e-6, reduction='none'
+    input, label, var, full=False, eps=1e-6, reduction='none'
 ):
-    if variance.shape != input.shape:
-        if input.shape[:-1] == variance.shape:
-            variance = np.expand_dims(variance, -1)
-        elif input.shape[:-1] == variance.shape[:-1] and variance.shape[-1] == 1:
+    if var.shape != input.shape:
+        if input.shape[:-1] == var.shape:
+            var = np.expand_dims(var, -1)
+        elif input.shape[:-1] == var.shape[:-1] and var.shape[-1] == 1:
             pass
         else:
-            raise ValueError("variance is of incorrect size")
+            raise ValueError("var is of incorrect size")
     if reduction != 'none' and reduction != 'mean' and reduction != 'sum':
         raise ValueError(reduction + " is not valid")
 
-    if np.any(variance < 0):
+    if np.any(var < 0):
         raise ValueError("var has negative entry/entries")
 
-    variance = variance.copy()
-    variance = np.clip(variance, a_min=eps, a_max=None)
+    var = var.copy()
+    var = np.clip(var, a_min=eps, a_max=None)
 
-    loss = 0.5 * (np.log(variance) + (input - label) ** 2 / variance)
+    loss = 0.5 * (np.log(var) + (input - label) ** 2 / var)
     if full:
         loss += 0.5 * np.log(2 * np.pi)
 
@@ -63,26 +63,26 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
             dtype = np.dtype(type)
             self.input_np = np.random.random(self.shape).astype(dtype)
             self.label_np = np.random.random(self.shape).astype(dtype)
-            self.variance_np = np.ones(self.shape).astype(dtype)
+            self.var_np = np.ones(self.shape).astype(dtype)
         elif type == 'broadcast1':
             self.shape = [10, 2, 3]
             self.broadcast_shape = [10, 2]
             self.input_np = np.random.random(self.shape).astype(np.float32)
             self.label_np = np.random.random(self.shape).astype(np.float32)
-            self.variance_np = np.ones(self.broadcast_shape).astype(np.float32)
+            self.var_np = np.ones(self.broadcast_shape).astype(np.float32)
         elif type == 'broadcast2':
             self.shape = [10, 2, 3]
             self.broadcast_shape = [10, 2, 1]
             self.input_np = np.random.random(self.shape).astype(np.float32)
             self.label_np = np.random.random(self.shape).astype(np.float32)
-            self.variance_np = np.ones(self.broadcast_shape).astype(np.float32)
+            self.var_np = np.ones(self.broadcast_shape).astype(np.float32)
         else:
             dtype = np.dtype('float32')
             self.input_np = np.random.random(self.shape).astype(dtype)
             self.label_np = np.random.random(self.shape).astype(dtype)
-            self.variance_np = np.ones(self.shape).astype(dtype)
+            self.var_np = np.ones(self.shape).astype(dtype)
         if type == 'test_err':
-            self.variance_np = -np.ones(self.shape).astype(np.float32)
+            self.var_np = -np.ones(self.shape).astype(np.float32)
 
         self.place = (
             paddle.CUDAPlace(0)
@@ -96,30 +96,30 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
 
         input_x = paddle.to_tensor(self.input_np)
         label = paddle.to_tensor(self.label_np)
-        variance = paddle.to_tensor(self.variance_np)
+        var = paddle.to_tensor(self.var_np)
         if type in ['test_err', 'int32', 'int64']:
             self.assertRaises(
                 ValueError,
                 paddle.nn.functional.gaussian_nll_loss,
                 input=input_x,
                 label=label,
-                variance=variance,
+                var=var,
             )
         else:
             out_ref = ref_gaussian_nll_loss(
                 self.input_np,
                 self.label_np,
-                self.variance_np,
+                self.var_np,
                 full=full,
                 reduction=reduction,
             )
             out1 = F.gaussian_nll_loss(
-                input_x, label, variance, full=full, reduction=reduction
+                input_x, label, var, full=full, reduction=reduction
             )
             gaussian_nll_loss = paddle.nn.GaussianNLLLoss(
                 full, reduction=reduction
             )
-            out2 = gaussian_nll_loss(input_x, label, variance)
+            out2 = gaussian_nll_loss(input_x, label, var)
 
             for r in [out1, out2]:
                 np.allclose(out_ref, r.numpy(), rtol=1e-5, atol=1e-5)
@@ -132,28 +132,28 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
             if type in ['int32', 'int64', 'float64']:
                 input_x = paddle.static.data('Input_x', self.shape, type)
                 label = paddle.static.data('Label', self.shape, type)
-                variance = paddle.static.data('Variance', self.shape, type)
+                var = paddle.static.data('Var', self.shape, type)
             elif type in ['broadcast1', 'broadcast2']:
                 input_x = paddle.static.data('Input_x', self.shape)
                 label = paddle.static.data('Label', self.shape)
-                variance = paddle.static.data('Variance', self.broadcast_shape)
+                var = paddle.static.data('Var', self.broadcast_shape)
             else:
                 input_x = paddle.static.data('Input_x', self.shape, 'float32')
                 label = paddle.static.data('Label', self.shape, 'float32')
-                variance = paddle.static.data('Variance', self.shape, 'float32')
+                var = paddle.static.data('Var', self.shape, 'float32')
             out1 = F.gaussian_nll_loss(
-                input_x, label, variance, full=full, reduction=reduction
+                input_x, label, var, full=full, reduction=reduction
             )
             gaussian_nll_loss = paddle.nn.GaussianNLLLoss(
                 full, reduction=reduction
             )
-            out2 = gaussian_nll_loss(input_x, label, variance)
+            out2 = gaussian_nll_loss(input_x, label, var)
             exe = paddle.static.Executor(self.place)
             if type not in ['test_err', 'int32', 'int64']:
                 out_ref = ref_gaussian_nll_loss(
                     self.input_np,
                     self.label_np,
-                    self.variance_np,
+                    self.var_np,
                     full=full,
                     reduction=reduction,
                 )
@@ -161,7 +161,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
                     feed={
                         'Input_x': self.input_np,
                         'Label': self.label_np,
-                        'Variance': self.variance_np,
+                        'Var': self.var_np,
                     },
                     fetch_list=[out1, out2],
                 )
@@ -173,7 +173,7 @@ class TestGaussianNLLLossAPI(unittest.TestCase):
                         feed={
                             'Input_x': self.input_np,
                             'Label': self.label_np,
-                            'Variance': self.variance_np,
+                            'Var': self.var_np,
                         },
                         fetch_list=[out1, out2],
                     )
