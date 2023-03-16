@@ -493,6 +493,13 @@ void exp_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
 }
 
 template <typename T>
+void sigmoid_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    set_output<T>(out_grad * (out * (1 - out)), x_grad);
+  }
+}
+
+template <typename T>
 void abs_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto abs_tmp = abs<T>(x);
