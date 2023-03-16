@@ -109,7 +109,6 @@ def apply_build_strategy(
         apply_pass(
             [
                 "coalesce_grad_tensor_pass",
-                "fuse_adam_op_pass",
                 "fuse_sgd_op_pass",
                 "fuse_momentum_op_pass",
             ]

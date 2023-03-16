@@ -206,7 +206,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     // if the number is zero, fuse_all_reduce_ops will do nothing.
     // Currently, only one type of optimization algorithm can be fused.
     if (strategy_.fuse_all_optimizer_ops_ == true) {
-      AppendPass("fuse_adam_op_pass");
       AppendPass("fuse_sgd_op_pass");
       AppendPass("fuse_momentum_op_pass");
     }
@@ -516,7 +515,6 @@ USE_PASS(modify_op_lock_and_record_event_pass);
 USE_PASS(lock_free_optimize_pass);
 USE_PASS(coalesce_grad_tensor_pass);
 USE_PASS(graph_to_program_pass);
-USE_PASS(fuse_adam_op_pass);
 USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);

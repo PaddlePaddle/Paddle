@@ -105,7 +105,6 @@ class FuseOptimizerPass(CPPPassWrapper):
     @property
     def cpp_name(self):
         return [
-            "fuse_adam_op_pass",
             "fuse_sgd_op_pass",
             "fuse_momentum_op_pass",
         ]
