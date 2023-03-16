@@ -23,8 +23,11 @@ from .layer.conv import Conv3D
 from .layer.conv import SubmConv3D
 from .layer.pooling import MaxPool3D
 from .layer.transformer import (
-    SparseTransformerEncoder,
-    SparseTransformerEncoderLayer,
+    Transformer,
+    TransformerDecoder,
+    TransformerDecoderLayer,
+    TransformerEncoder,
+    TransformerEncoderLayer,
 )
 
 __all__ = [
@@ -37,6 +40,9 @@ __all__ = [
     'Conv3D',
     'SubmConv3D',
     'MaxPool3D',
-    'SparseTransformerEncoder',
-    'SparseTransformerEncoderLayer',
+    'Transformer',
+    'TransformerDecoder',
+    'TransformerDecoderLayer',
+    'TransformerEncoder',
+    'TransformerEncoderLayer',
 ]
