@@ -68,13 +68,13 @@ class AttnMatMul {
               "The output (= input * weight) is expected to be nullptr or the "
               "same as bias_out when fused is true."));
 
-      auto fused_impl = phi::autotune::MatmulPlanner(
+      auto fused_impl = phi::funcs::MatmulPlanner(
           vectorize(input->dims()),
           vectorize(weight->dims()),
           transA_,
           transB_,
           paddle::experimental::CppTypeToDataType<T>::Type(),
-          static_cast<size_t>(phi::funcs::MatmulFusedType::kMatmulBias),
+          phi::funcs::MatmulFusedType::kMatmulBias,
           static_cast<const void*>(bias->data<T>()),
           nullptr);
       phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx_,

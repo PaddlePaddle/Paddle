@@ -60,38 +60,6 @@ size_t GenKey(Args&&... args) {
   return seed;
 }
 
-struct MatmulPlanner {
- public:
-  const void* bias{nullptr};
-  void* aux_data{nullptr};
-
-  MatmulPlanner() {}
-  MatmulPlanner(const std::vector<int64_t>& x_dims,
-                const std::vector<int64_t>& y_dims,
-                const bool trans_x,
-                const bool trans_y,
-                phi::DataType dtype,
-                size_t impl_type,
-                const void* bias_data = nullptr,
-                void* reserve_data = nullptr)
-      : bias(bias_data), aux_data(reserve_data) {
-    type = impl_type;
-    key = GenKey(x_dims,
-                 y_dims,
-                 static_cast<int64_t>(trans_x),
-                 static_cast<int64_t>(trans_y),
-                 static_cast<int64_t>(dtype));
-  }
-
-  int ImplType() const { return type; }
-  size_t GetKey() const { return key; }
-  size_t GenSubKey(int idx) const { return GenKey(key, idx); }
-
- private:
-  size_t type;
-  size_t key;
-};
-
 struct ConvCacheKey {
   ConvCacheKey() {}
   ConvCacheKey(const std::vector<int64_t>& arg_x_dims,

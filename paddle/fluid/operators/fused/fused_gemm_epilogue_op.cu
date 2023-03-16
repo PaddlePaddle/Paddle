@@ -26,27 +26,28 @@ namespace operators {
 #if CUDA_VERSION >= 11060
 
 template <typename T>
-size_t GetFwdFusedEpilogueType(const phi::GPUContext& ctx,
-                               const std::string& activation,
-                               phi::DenseTensor* reserve_space) {
+phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
+    const phi::GPUContext& ctx,
+    const std::string& activation,
+    phi::DenseTensor* reserve_space) {
   using FusedType = phi::funcs::MatmulFusedType;
 
-  auto fuse_type = FusedType::kMatmulBias;
+  FusedType fused_type = FusedType::kMatmulBias;
   if (activation != "none") {
     if (activation == "relu") {
       if (reserve_space == nullptr) {
-        fuse_type = FusedType::kMatmulBiasRelu;
+        fused_type = FusedType::kMatmulBiasRelu;
       } else {
-        fuse_type = FusedType::kMatmulBiasReluWithReservedData;
+        fused_type = FusedType::kMatmulBiasReluWithReservedData;
         int64_t reserve_size =
             SizeOf(phi::DataType::BOOL) * phi::product(reserve_space->dims());
         ctx.Alloc(reserve_space, phi::DataType::BOOL, reserve_size);
       }
     } else if (activation == "gelu") {
       if (reserve_space == nullptr) {
-        fuse_type = FusedType::kMatmulBiasGelu;
+        fused_type = FusedType::kMatmulBiasGelu;
       } else {
-        fuse_type = FusedType::kMatmulBiasGeluWithReservedData;
+        fused_type = FusedType::kMatmulBiasGeluWithReservedData;
         int64_t reserve_size = sizeof(T) * phi::product(reserve_space->dims());
         ctx.Alloc<T>(reserve_space, reserve_size);
       }
@@ -57,7 +58,7 @@ size_t GetFwdFusedEpilogueType(const phi::GPUContext& ctx,
           activation));
     }
   }
-  return static_cast<size_t>(fuse_type);
+  return fused_type;
 }
 
 template <typename DeviceContext, typename T>
@@ -86,22 +87,22 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     int64_t N = trans_y ? y->dims()[0] : y->dims()[1];
 
     void* reserve_data = reserve_space ? reserve_space->data() : nullptr;
-    size_t fuse_type =
+    auto fused_type =
         GetFwdFusedEpilogueType<T>(dev_ctx, activation, reserve_space);
 
     VLOG(6) << "x.shape={" << x->dims() << "}, y.shape={" << y->dims()
             << "}, out.shape={" << out->dims() << "}, M=" << M << ", N=" << N
             << ", K=" << K << ", trans_x=" << trans_x << ", trans_y=" << trans_y
-            << ", activation=" << activation << ", fuse_type=" << fuse_type
+            << ", activation=" << activation << ", fused_type=" << fused_type
             << ", reserve_space=" << reserve_space;
 
-    auto fused_impl = phi::autotune::MatmulPlanner(
+    auto fused_impl = phi::funcs::MatmulPlanner(
         vectorize(x->dims()),
         vectorize(y->dims()),
         trans_x,
         trans_y,
         paddle::experimental::CppTypeToDataType<T>::Type(),
-        fuse_type,
+        fused_type,
         static_cast<const void*>(bias->data<T>()),
         reserve_data);
 

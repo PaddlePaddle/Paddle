@@ -101,7 +101,7 @@ void MatMulFunctionImplWithBlas(
     bool trans_x,
     bool trans_y,
     bool flag = false,
-    phi::autotune::MatmulPlanner* matmul_planner = nullptr) {
+    phi::funcs::MatmulPlanner* matmul_planner = nullptr) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
 
@@ -493,7 +493,7 @@ void MatMulFunctionImplWithCublasLt(
     bool trans_x,
     bool trans_y,
     bool flag = false,
-    phi::autotune::MatmulPlanner* matmul_planner = nullptr) {
+    phi::funcs::MatmulPlanner* matmul_planner = nullptr) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
   const T* x_data = X.data<T>();
@@ -918,13 +918,13 @@ struct MatMulDispatcher<phi::GPUContext, T> {
     auto* tuner = phi::autotune::MakeMatmulTuner<T>(
         MatMulFunctionImplWithBlas<phi::GPUContext, T>);
     tuner->AddCallBack(MatMulFunctionImplWithCublasLt<phi::GPUContext, T>);
-    phi::autotune::MatmulPlanner matmul_planner(
+    phi::funcs::MatmulPlanner matmul_planner(
         x_dims,
         y_dims,
         trans_x,
         trans_y,
         paddle::experimental::CppTypeToDataType<T>::Type(),
-        static_cast<size_t>(funcs::MatmulFusedType::kMatmul));
+        funcs::MatmulFusedType::kMatmul);
     tuner->Run(ctx,
                matmul_planner.GetKey(),
                ctx,
