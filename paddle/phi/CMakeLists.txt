@@ -105,14 +105,19 @@ set(PHI_SHARED_DEPS
     flags
     eigen3
     simple_threadpool
-    mklml
     warpctc
     warprnnt
     pocketfft
-    utf8proc)
+    utf8proc
+    cblas)
 
 if(WITH_GPU)
   set(PHI_SHARED_DEPS ${PHI_SHARED_DEPS} external_error_proto)
+endif()
+
+if(WITH_MKLML)
+  file(GLOB PHI_SRCS ${PHI_SRCS} "backends/dynload/mklml.cc")
+  set(PHI_SHARED_DEPS ${PHI_SHARED_DEPS} mklml)
 endif()
 
 if(WITH_XBYAK)
@@ -121,6 +126,10 @@ endif()
 
 if(WITH_MKLDNN)
   list(APPEND PHI_SHARED_DEPS mkldnn)
+endif()
+
+if(WITH_GLOO)
+  list(APPEND PHI_SHARED_DEPS gloo)
 endif()
 
 cc_library(
