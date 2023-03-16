@@ -18,6 +18,7 @@ from hybrid_parallel_mp_model import TestDistMPTraning
 
 import paddle
 import paddle.distributed.fleet as fleet
+from paddle.framework import core
 
 
 class TestMPFP16(TestDistMPTraning):
@@ -50,6 +51,48 @@ class TestMPFP16(TestDistMPTraning):
         scaler.update()
         optimizer.clear_grad()
         return scaled
+
+
+class TestMPFP16MainGrad(TestMPFP16):
+    def build_optimizer(self, model):
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(1.0)
+        scheduler = paddle.optimizer.lr.ExponentialDecay(
+            learning_rate=0.001, gamma=0.999, verbose=True
+        )
+        optimizer = paddle.optimizer.SGD(
+            scheduler, grad_clip=grad_clip, parameters=model.parameters()
+        )
+
+        for param in model.parameters():
+            if not param.stop_gradient and not hasattr(param, "main_grad"):
+                setattr(param, "main_grad", None)
+                param._register_grad_hook(self._update_main_grad_hook(param))
+
+        model, optimizer = paddle.amp.decorate(
+            models=model, optimizers=optimizer, level='O2', save_dtype='float32'
+        )
+
+        return optimizer
+
+    def _update_main_grad_hook(self, param):
+        @paddle.autograd.no_grad()
+        def param_hook(tmp_grad):
+            assert (
+                param.grad is None
+            ), "In main_grad node, param.grad should be None, but find param[{}] has grad.".format(
+                param.name
+            )
+            if param.main_grad is None:
+                param.main_grad = core.eager.Tensor(
+                    value=tmp_grad.detach().value(),
+                    place=tmp_grad.place,
+                    name="main_grad@" + param.name,
+                )
+            else:
+                param.main_grad.add_(tmp_grad.detach())
+
+            tmp_grad._clear_data()
+            return None
 
 
 if __name__ == "__main__":

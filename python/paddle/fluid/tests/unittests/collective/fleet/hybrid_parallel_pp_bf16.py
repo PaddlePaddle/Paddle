@@ -21,6 +21,7 @@ from hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
+from paddle.distributed.utils.nccl_utils import check_nccl_version_for_bf16
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -164,4 +165,5 @@ class TestDistPPTraning(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    if check_nccl_version_for_bf16():
+        unittest.main()
