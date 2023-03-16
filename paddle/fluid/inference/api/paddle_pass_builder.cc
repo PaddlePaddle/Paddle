@@ -108,6 +108,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_flash_multihead_matmul_fuse_pass",         //
       "trt_cross_multihead_matmul_fuse_pass",         //
       "vit_attention_fuse_pass",                      //
+      "flash_attention_fuse_pass",                    //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
       "trt_skip_layernorm_fuse_pass",          //

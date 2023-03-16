@@ -95,40 +95,106 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                              static_cast<void*>(weight_data),
                              static_cast<int32_t>(weight_t->numel())};
-    nvinfer1::Weights bias{};
-    // add shuffle for FullyConnected layer
-    std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
+    // merge matmul+element
+    nvinfer1::ILayer* merge_matmul_layer = nullptr;
+    nvinfer1::ILayer* merge_element_layer = nullptr;
     nvinfer1::ITensor* input_shape_tensor = Shape(input);
+    auto inputs = op_desc.Inputs();
+    if (inputs.find("Bias") == inputs.end()) {
+      nvinfer1::Weights bias{};
+      std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
 
-    for (int i = 0; i < 5; i++) {
-      reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
+      for (int i = 0; i < 5; i++) {
+        reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
+      }
+      for (int i = 0; i < 3; i++) {
+        reshape_before_fc_shape_tensor[i] =
+            GetEleTensorOfShape(input_shape_tensor, i);
+      }
+
+      merge_matmul_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      merge_matmul_layer->setInput(1, *Concat(reshape_before_fc_shape_tensor));
+      merge_matmul_layer->setName(
+          ("shuffle_before_fc_multihead_matmul(Output: " + output_name + ")")
+              .c_str());
+      merge_element_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               FullyConnected,
+                               *merge_matmul_layer->getOutput(0),
+                               n,
+                               weight,
+                               bias);
+      merge_element_layer->setName(
+          ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
+    } else {
+      // [length, 3, head_number, head_size]->[length, head_number, 3,
+      // head_size]
+      auto transpose_bias_v2 =
+          [](const float* src, float* dst, int length, int N, int H) {
+            for (int l = 0; l < length; l++) {
+              for (int i = 0; i < 3; ++i) {
+                for (int n = 0; n < N; ++n) {
+                  for (int h = 0; h < H; ++h) {
+                    dst[l * 3 * N * H + n * 3 * H + i * H + h] =
+                        src[l * 3 * N * H + i * N * H + n * H + h];
+                  }
+                }
+              }
+            }
+          };
+
+      auto bias_name = op_desc.Input("Bias").front();
+      auto* bias_v = scope.FindVar(bias_name);
+      auto* bias_t = bias_v->GetMutable<phi::DenseTensor>();
+      float* bias_data = const_cast<float*>(static_cast<const float*>(
+          engine_->GetFp32TrtWeight(bias_name, *bias_t).get().values));
+
+      const auto& bias_dims = bias_t->dims();
+      int bias_length = bias_dims[0];
+
+      std::vector<float> bias_data_tmp;
+      bias_data_tmp.reserve(bias_t->numel());
+      memcpy(bias_data_tmp.data(), bias_data, bias_t->numel() * sizeof(float));
+      transpose_bias_v2(
+          bias_data_tmp.data(), bias_data, bias_length, head_number, head_size);
+
+      auto weight_shape = nvinfer1::Dims3{1, n, hidden_in};
+      auto* weight_tensor = AddConstantLayer(weight_data, weight_shape, " ");
+      auto bias_shape = nvinfer1::Dims3{1, bias_length, n};
+      auto* bias_tensor = AddConstantLayer(bias_data, bias_shape, " ");
+
+      // add MatrixMultiplyLayer layer
+
+      nvinfer1::MatrixOperation matrix_operation_X =
+          nvinfer1::MatrixOperation::kNONE;
+      nvinfer1::MatrixOperation matrix_operation_Y =
+          nvinfer1::MatrixOperation::kTRANSPOSE;
+      merge_matmul_layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                                MatrixMultiply,
+                                                *input,
+                                                matrix_operation_X,
+                                                *weight_tensor,
+                                                matrix_operation_Y);
+      merge_matmul_layer->setName(
+          ("flash_attention_matrix_multiply(Output: " + output_name + ")")
+              .c_str());
+
+      // add ElementWiseLayer layer
+      nvinfer1::ElementWiseOperation elementwise_operation =
+          nvinfer1::ElementWiseOperation::kSUM;
+      merge_element_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               ElementWise,
+                               *merge_matmul_layer->getOutput(0),
+                               *bias_tensor,
+                               elementwise_operation);
+      merge_element_layer->setName(
+          ("flash_attention_elementwise(Output: " + output_name + ")").c_str());
     }
-    for (int i = 0; i < 3; i++) {
-      reshape_before_fc_shape_tensor[i] =
-          GetEleTensorOfShape(input_shape_tensor, i);
-    }
+    // add shuffle
 
-    auto* reshape_before_fc_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    reshape_before_fc_layer->setInput(1,
-                                      *Concat(reshape_before_fc_shape_tensor));
-    reshape_before_fc_layer->setName(
-        ("shuffle_before_fc_multihead_matmul(Output: " + output_name + ")")
-            .c_str());
-    nvinfer1::ILayer* fc_layer = nullptr;
-    fc_layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                    FullyConnected,
-                                    *reshape_before_fc_layer->getOutput(0),
-                                    n,
-                                    weight,
-                                    bias);
-    fc_layer->setName(
-        ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
-
-    // add shuffle for fc layer
-
-    auto* reshape_after_fc_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
+    auto* reshape_after_fc_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Shuffle, *merge_element_layer->getOutput(0));
     std::vector<nvinfer1::ITensor*> mha_input_tensor_shape;
     for (int i = 0; i < 5; i++) {
       mha_input_tensor_shape.push_back(Add1DConstantLayer(1));
