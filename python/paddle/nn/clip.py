@@ -14,6 +14,7 @@
 
 import copy
 import warnings
+from sqlite3 import NotSupportedError
 
 import paddle
 import paddle.autograd as imperative_base
@@ -559,6 +560,20 @@ def _allow_pure_fp16_global_norm_clip(*args):
         return old_value
 
 
+_allow_pure_bf16_global_norm_clip_flag = False
+
+
+def _allow_pure_bf16_global_norm_clip(*args):
+    global _allow_pure_bf16_global_norm_clip_flag
+    if len(args) == 0:
+        return _allow_pure_bf16_global_norm_clip_flag
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        old_value = _allow_pure_bf16_global_norm_clip_flag
+        _allow_pure_bf16_global_norm_clip_flag = args[0]
+        return old_value
+
+
 class ClipGradByGlobalNorm(ClipGradBase):
     r"""
     Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in
@@ -745,14 +760,20 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else:
                         sum_square_list.append(sum_square)
 
-            assert not (
-                len(sum_square_list_fp16) > 0 and len(sum_square_list_bf16) > 0
-            ), "list of fp16 and bf16 can not be nonempty simultaneously, do not use fp16 and bf16 amp mode"
+            if len(sum_square_list_fp16) > 0 and len(sum_square_list_bf16) > 0:
+                raise NotSupportedError(
+                    'FP16 and BF16 are not supported at the same time.'
+                )
 
             # all parameters have been filterd out
             if (
                 len(sum_square_list)
                 + len(sum_square_list_fp16)
+                + len(sum_square_list_fp32)
+                == 0
+            ) and (
+                len(sum_square_list)
+                + len(sum_square_list_bf16)
                 + len(sum_square_list_fp32)
                 == 0
             ):
@@ -779,7 +800,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if (
                         sum_square_list_fp32
                         or sum_square_list
-                        or not _allow_pure_fp16_global_norm_clip()
+                        or not _allow_pure_bf16_global_norm_clip()
                     ):
                         global_norm_var.append(
                             global_norm_var_bf16.astype(sum_dtype)
