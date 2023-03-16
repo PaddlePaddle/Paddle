@@ -162,46 +162,33 @@ PD_REGISTER_KERNEL(fused_elementwise_add,
                    ONEDNN,
                    phi::FusedAddKernel,
                    float,
-                   double,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}
 
 PD_REGISTER_KERNEL(fused_elementwise_sub,
                    OneDNN,
                    ONEDNN,
                    phi::FusedSubtractKernel,
                    float,
-                   double,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}
 
 PD_REGISTER_KERNEL(fused_elementwise_mul,
                    OneDNN,
                    ONEDNN,
                    phi::FusedMultiplyKernel,
                    float,
-                   double,
-                   int,
-                   int64_t,
-                   bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}
 
 PD_REGISTER_KERNEL(fused_elementwise_div,
                    OneDNN,
                    ONEDNN,
                    phi::FusedDivideKernel,
                    float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}

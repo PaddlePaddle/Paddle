@@ -13,4 +13,16 @@ def {
     name: "axis"
     type: INT
   }
+  attrs {
+    name: "Scale_x"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_y"
+    type: FLOAT
+  }
+  attrs {
+    name: "Scale_out"
+    type: FLOAT
+  }
 }
