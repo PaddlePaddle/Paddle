@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest,convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
@@ -160,6 +160,7 @@ class TestUnfoldAPI(TestUnfoldOp):
     def test_info(self):
         str(paddle.nn.Unfold(**self.attrs))
 
+
 class TestunfoldFP16OP(OpTest):
     def init_data(self):
         self.batch_size = 3
@@ -267,6 +268,7 @@ class TestunfoldFP16OP(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Y')
 
+
 class TestunfoldBF16(OpTest):
     def init_data(self):
         self.batch_size = 3
@@ -353,7 +355,7 @@ class TestunfoldBF16(OpTest):
         self.init_data()
         self.calc_unfold()
 
-        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.inputs = {'X ': convert_float_to_uint16(self.x)}
         self.attrs = {
             'kernel_sizes': self.kernel_sizes,
             'paddings': self.paddings,
@@ -361,6 +363,7 @@ class TestunfoldBF16(OpTest):
             'strides': self.strides,
         }
         self.outputs = {'Y': convert_float_to_uint16(self.outputs)}
+
     def setUp(self):
         self.op_type = 'unfold'
         self.dtype = np.uint16
@@ -372,6 +375,7 @@ class TestunfoldBF16(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y')
+
 
 if __name__ == '__main__':
     unittest.main()
