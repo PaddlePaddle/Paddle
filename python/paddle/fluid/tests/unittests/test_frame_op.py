@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 from numpy.lib.stride_tricks import as_strided
-from op_test import OpTest
 
 import paddle
 
@@ -68,12 +68,12 @@ class TestFrameOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output(check_eager=True)
+        self.check_output()
         paddle.disable_static()
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
         paddle.disable_static()
 
 
