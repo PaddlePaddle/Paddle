@@ -23,6 +23,7 @@
 #include "paddle/phi/kernels/cum_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
+#include "paddle/phi/kernels/funcs/WIP.cu.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
@@ -389,7 +390,17 @@ void MemoryEfficientAttentionBackwardKernel(
     p.query_ptr = SafeGetTensorPtr<scalar_t>(query);
     p.key_ptr = SafeGetTensorPtr<scalar_t>(key);
     p.value_ptr = SafeGetTensorPtr<scalar_t>(value);
-    p.logsumexp_ptr = SafeGetTensorPtr<float>(logsumexp);
+
+    bool force_pad_inf = (compute_capacity == 75);
+    const std::string data_format = "NCHW";
+    DenseTensor padded_lse =
+        phi::funcs::get_pad_lse<float>(ctx,
+                                       const_cast<DenseTensor*>(&logsumexp),
+                                       static_cast<int>(output.dims()[1]),
+                                       32,
+                                       data_format,
+                                       force_pad_inf);
+    p.logsumexp_ptr = SafeGetTensorPtr<float>(padded_lse);
     VLOG(3) << "logsumexp_ptr" << p.logsumexp_ptr;
     p.output_ptr = SafeGetTensorPtr<scalar_t>(output);
     p.grad_output_ptr = SafeGetTensorPtr<scalar_t>(output_grad);
