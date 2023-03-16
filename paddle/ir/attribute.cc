@@ -13,9 +13,34 @@
 // limitations under the License.
 
 #include "paddle/ir/attribute.h"
+#include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/dialect.h"
 
 namespace ir {
 IrContext *Attribute::ir_context() const { return dialect().ir_context(); }
 
+NamedAttribute::NamedAttribute(StrAttribute name, Attribute value)
+    : name_(name), value_(value) {}
+
+StrAttribute NamedAttribute::name() const {
+  return name_.dyn_cast<StrAttribute>();
+}
+
+Attribute NamedAttribute::value() const { return value_; }
+
+void NamedAttribute::SetName(StrAttribute name) { name_ = name; }
+
+void NamedAttribute::SetValue(Attribute value) { value_ = value; }
+
+bool NamedAttribute::operator<(const NamedAttribute &right) const {
+  return name().compare(right.name()) < 0;
+}
+
+bool NamedAttribute::operator==(const NamedAttribute &right) const {
+  return name() == right.name() && value() == right.value();
+}
+
+bool NamedAttribute::operator!=(const NamedAttribute &right) const {
+  return !(*this == right);
+}
 }  // namespace ir

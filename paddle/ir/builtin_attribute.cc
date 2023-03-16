@@ -18,4 +18,23 @@ namespace ir {
 std::string StrAttribute::data() const { return storage()->data_; }
 
 const uint32_t& StrAttribute::size() const { return storage()->size_; }
+
+Attribute DictionaryAttribute::GetValue(const StrAttribute& name) {
+  size_t left = 0;
+  size_t right = storage()->size_ - 1;
+  size_t mid = 0;
+  while (left <= right) {
+    mid = (left + right) / 2;
+    if (storage()->data_[mid].name().compare(name) < 0) {
+      left = mid + 1;
+    } else if (storage()->data_[mid].name().compare(name) > 0) {
+      right = mid - 1;
+    } else {
+      return storage()->data_[mid].value();
+    }
+  }
+  return nullptr;
+}
+
+const uint32_t& DictionaryAttribute::size() const { return storage()->size_; }
 }  // namespace ir

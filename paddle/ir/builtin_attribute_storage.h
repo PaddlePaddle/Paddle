@@ -22,10 +22,6 @@ namespace ir {
 ///
 /// \brief Define Parameteric AttributeStorage for StrAttribute.
 ///
-/// NOTE(zhangbo9674): The derived AttributeStorage class needs to implement the
-/// following methods: (1)declare ParamKey, (2)define Construction method,
-/// (3)define HashValue method, (4)overload operator==.
-///
 struct StrAttributeStorage : public ir::AttributeStorage {
   ///
   /// \brief Declare ParamKey according to parameter type.
@@ -37,8 +33,8 @@ struct StrAttributeStorage : public ir::AttributeStorage {
   ~StrAttributeStorage() { free(data_); }
 
   ///
-  /// \brief Each derived AttributeStorage must define a Construc method, which
-  /// StorageManager uses to construct a derived AttributeStorage.
+  /// \brief Define a Construc method, which StorageManager uses to construct a
+  /// derived AttributeStorage.
   ///
   static StrAttributeStorage *Construct(ParamKey key) {
     uint32_t size = std::get<1>(key);
@@ -48,29 +44,22 @@ struct StrAttributeStorage : public ir::AttributeStorage {
   }
 
   ///
-  /// \brief Each derived AttributeStorage must provide a HashValue method.
+  /// \brief Provide a HashValue method.
   ///
   static std::size_t HashValue(const ParamKey &key) {
-    std::size_t hash_value = 0;
-    hash_value = hash_combine(hash_value,
-                              std::hash<std::string>()(std::string(
-                                  std::get<0>(key), std::get<1>(key))));
-    return hash_value;
+    return hash_combine(0,
+                        std::hash<std::string>()(
+                            std::string(std::get<0>(key), std::get<1>(key))));
   }
 
-  ///
-  /// \brief Each derived TypeStorage needs to overload operator==.
-  ///
   bool operator==(const ParamKey &key) const {
-    return std::string(std::get<0>(key), std::get<1>(key)) ==
-           std::string(data_, size_);
+    return std::equal(data_, data_ + size_, std::get<0>(key));
   }
 
   ParamKey GetAsKey() const { return ParamKey(data_, size_); }
 
   ///
-  /// \brief StrAttributeStorage include two parameters: data, size,
-  /// layout, lod, offset.
+  /// \brief StrAttributeStorage include two parameters: data, size.
   ///
   char *data_;
   uint32_t size_;
@@ -81,4 +70,56 @@ struct StrAttributeStorage : public ir::AttributeStorage {
   }
 };
 
+///
+/// \brief Define Parameteric AttributeStorage for DictionaryAttributeStorage.
+///
+struct DictionaryAttributeStorage : public AttributeStorage {
+  using ParamKey = std::tuple<NamedAttribute *, uint32_t>;
+
+  DictionaryAttributeStorage(NamedAttribute *data, uint32_t size)
+      : data_(data), size_(size) {}
+
+  ~DictionaryAttributeStorage() { free(data_); }
+
+  static DictionaryAttributeStorage *Construct(ParamKey key) {
+    auto value = std::get<0>(key);
+    uint32_t size = std::get<1>(key);
+    NamedAttribute *data = reinterpret_cast<NamedAttribute *>(
+        malloc(sizeof(NamedAttribute) * size));
+    memcpy(data, value, sizeof(NamedAttribute) * size);
+    return new DictionaryAttributeStorage(data, size);
+  }
+
+  static std::size_t HashValue(const ParamKey &key) {
+    std::size_t hash_value = 0;
+    hash_value =
+        hash_combine(hash_value, std::hash<uint32_t>()(std::get<1>(key)));
+    for (size_t i = 0; i < std::get<1>(key); i++) {
+      hash_value = hash_combine(
+          hash_value, std::hash<NamedAttribute>()(std::get<0>(key)[i]));
+    }
+    return hash_value;
+  }
+
+  bool operator==(const ParamKey &key) const {
+    if (size_ != std::get<1>(key)) return false;
+    for (size_t i = 0; i < size_; i++) {
+      if (data_[i] != std::get<0>(key)[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  ParamKey GetAsKey() const { return ParamKey(data_, size_); }
+
+  NamedAttribute *data_;
+
+  uint32_t size_;
+
+ private:
+  static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
+    return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  }
+};
 }  // namespace ir

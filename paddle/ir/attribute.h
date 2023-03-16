@@ -35,9 +35,6 @@ class Attribute {
 
   Attribute &operator=(const Attribute &other) = default;
 
-  ///
-  /// \brief Some operators are overloaded.
-  ///
   bool operator==(Attribute other) const { return storage_ == other.storage_; }
 
   bool operator!=(Attribute other) const { return storage_ != other.storage_; }
@@ -78,25 +75,71 @@ class Attribute {
     return ir::dyn_cast<U>(*this);
   }
 
-  ///
-  /// \brief Enable hashing Type.
-  ///
   friend struct std::hash<Attribute>;
 
  protected:
   Storage *storage_{nullptr};
 };
 
+///
+/// \brief A combination of a Attribute name(StrAttribute) and an Attribute
+/// value.
+///
+class StrAttribute;
+
+class NamedAttribute {
+ public:
+  NamedAttribute(StrAttribute name, Attribute value);
+
+  StrAttribute name() const;
+
+  Attribute value() const;
+
+  void SetName(StrAttribute name);
+
+  void SetValue(Attribute value);
+
+  bool operator<(const NamedAttribute &right) const;
+
+  bool operator==(const NamedAttribute &right) const;
+
+  bool operator!=(const NamedAttribute &right) const;
+
+  friend struct std::hash<NamedAttribute>;
+
+ private:
+  NamedAttribute(Attribute name, Attribute value)
+      : name_(name), value_(value) {}
+
+  Attribute name_;
+
+  Attribute value_;
+};
 }  // namespace ir
 
 namespace std {
+static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
+  return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+}
 ///
-/// \brief Enable hashing Attribute.
+/// \brief Enable hashing Attribute .
 ///
 template <>
 struct hash<ir::Attribute> {
   std::size_t operator()(const ir::Attribute &obj) const {
     return std::hash<ir::Attribute::Storage *>()(obj.storage_);
+  }
+};
+
+template <>
+struct hash<ir::NamedAttribute> {
+  std::size_t operator()(const ir::NamedAttribute &obj) const {
+    std::size_t hash_value = 0;
+    hash_value =
+        hash_combine(hash_value, std::hash<ir::Attribute>()(obj.name_));
+    hash_value =
+        hash_combine(hash_value, std::hash<ir::Attribute>()(obj.value_));
+    return hash_value;
   }
 };
 }  // namespace std

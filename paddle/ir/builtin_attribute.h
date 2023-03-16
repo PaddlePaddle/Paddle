@@ -30,17 +30,6 @@ namespace ir {
 /// interface functions for built-in attributes through the macro
 /// DECLARE_ATTRIBUTE_UTILITY_FUNCTOR.
 ///
-/// NOTE(zhangbo9674): If you need to directly
-/// cache the object of this built-in attribute in IrContext, please overload
-/// the get method, and construct and cache the object in IrContext. For the
-/// specific implementation method, please refer to StrAttribute.
-///
-/// The built-in attribute object get method is as follows:
-/// \code{cpp}
-///   ir::IrContext *ctx = ir::IrContext::Instance();
-///   Attribute bool_attr = StrAttribute::get(ctx);
-/// \endcode
-///
 class StrAttribute : public ir::Attribute {
  public:
   using Attribute::Attribute;
@@ -52,7 +41,35 @@ class StrAttribute : public ir::Attribute {
         ctx, const_cast<char *>(data.c_str()), data.size());
   }
 
+  static int CompareMemory(const char *left, const char *right, size_t length) {
+    if (length == 0) return 0;
+    return memcmp(left, right, length);
+  }
+
+  int compare(const StrAttribute &right) const {
+    if (*this == right) return 0;
+    if (int compare =
+            CompareMemory(storage()->data_,
+                          right.storage()->data_,
+                          std::min(storage()->size_, right.storage()->size_)))
+      return compare < 0 ? -1 : 1;
+    if (storage()->size_ == right.storage()->size_) return 0;
+    return storage()->size_ < right.storage()->size_ ? -1 : 1;
+  }
+
   std::string data() const;
+
+  const uint32_t &size() const;
+};
+
+class DictionaryAttribute : public ir::Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(DictionaryAttribute,
+                                    DictionaryAttributeStorage);
+
+  Attribute GetValue(const StrAttribute &name);
 
   const uint32_t &size() const;
 };
