@@ -555,8 +555,7 @@ class BatchNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     paddle::Tensor saved_mean = this->GetSingleForwardOutput("SavedMean");
     paddle::Tensor saved_variance =
         this->GetSingleForwardOutput("SavedVariance");
-    paddle::optional<paddle::Tensor> reserve_space =
-        this->GetOptionalSingleForwardOutput("ReserveSpace");
+    paddle::optional<paddle::Tensor> reserve_space;
 
     paddle::Tensor y_grad = this->GetSingleOutputGrad("Y");
     paddle::Tensor x_grad = this->GetSingleInputGrad("X");
@@ -578,7 +577,7 @@ class BatchNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     auto use_global_stats = this->Attr<bool>("use_global_stats");
     auto trainable_statistics = this->Attr<bool>("trainable_statistics");
 
-    VLOG(0) << "Runing batch_norm composite func";
+    VLOG(3) << "Runing batch_norm composite func";
     prim::batch_norm_grad<prim::DescTensor>(x,
                                             scale,
                                             bias,
