@@ -1119,7 +1119,7 @@ def get_package_data_and_package_dir():
 
 def get_headers():
     headers = (
-        # paddle level api headers
+        # paddle level api headers (high level api, for both training and inference)
         list(find_files('*.h', paddle_source_dir + '/paddle'))
         + list(find_files('*.h', paddle_source_dir + '/paddle/phi/api'))
         + list(  # phi unify api header
@@ -1131,73 +1131,61 @@ def get_headers():
         + list(  # phi api
             find_files('*.h', paddle_source_dir + '/paddle/phi/common')
         )
-        + list(
-            find_files('*.h', paddle_source_dir + '/paddle/phi')
-        )  # phi common headers
-        # phi level api headers (low level api)
+        # phi level api headers (low level api, for training only)
         + list(  # phi extension header
+            find_files('*.h', paddle_source_dir + '/paddle/phi')
+        )
+        + list(  # phi include header
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/include', recursive=True
             )
         )
-        + list(  # phi include headers
+        + list(  # phi backends headers
             find_files(
                 '*.h',
                 paddle_source_dir + '/paddle/phi/backends',
                 recursive=True,
             )
         )
-        + list(  # phi backends headers
+        + list(  # phi core headers
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/core', recursive=True
             )
         )
-        + list(  # phi core headers
+        + list(  # phi infermeta headers
             find_files(
                 '*.h',
                 paddle_source_dir + '/paddle/phi/infermeta',
                 recursive=True,
             )
         )
-        + list(  # phi infermeta headers
-            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels')
-        )
-        + list(  # phi kernels headers
-            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels/sparse')
-        )
-        + list(  # phi sparse kernels headers
+        + list(  # phi kernel headers
             find_files(
-                '*.h', paddle_source_dir + '/paddle/phi/kernels/selected_rows'
+                '*.h',
+                paddle_source_dir + '/paddle/phi/kernels',
+                recursive=True,
             )
         )
-        + list(  # phi selected_rows kernels headers
-            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels/strings')
-        )
-        + list(  # phi sparse kernels headers
-            find_files(
-                '*.h', paddle_source_dir + '/paddle/phi/kernels/primitive'
-            )
-        )
-        + list(  # phi kernel primitive api headers
-            # capi headers
+        # phi capi headers
+        + list(
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/capi', recursive=True
             )
         )
-        + list(  # phi capi headers
-            # profiler headers
+        # profiler headers
+        + list(
             find_files(
                 'trace_event.h',
                 paddle_source_dir + '/paddle/fluid/platform/profiler',
             )
         )
-        + list(  # phi profiler headers
-            # utils api headers
+        # paddle utils headers
+        + list(
             find_files(
                 '*.h', paddle_source_dir + '/paddle/utils', recursive=True
             )
         )
-    )  # paddle utils headers
+    )
 
     jit_layer_headers = [
         'layer.h',
