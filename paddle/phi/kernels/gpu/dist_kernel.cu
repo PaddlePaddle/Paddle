@@ -41,7 +41,9 @@ struct OtherOrderFunctor {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     MPType mptx = static_cast<MPType>(x);
     MPType mpty = static_cast<MPType>(y);
-    return static_cast<T>(pow(abs(static_cast<T>(mptx - mpty)), p_order_));
+    MPType mp_order_ = static_cast<MPType>(p_order);
+    return static_cast<T>(
+        pow(abs(static_cast<T>(mptx - mpty)), static_cast<T>(mp_order_)));
   }
 
  private:
@@ -62,16 +64,17 @@ struct PowFunctor {
 template <typename T, typename Functor>
 __global__ void ReduceSumWithSubtract(
     const T* x, const T* y, T* out, int64_t N, Functor func) {
-  T sum_val = 0;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType sum_val = static_cast<MPType>(0);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    sum_val += func(x[i], y[i]);
+    sum_val += static_cast<MT>(func(x[i], y[i]));
   }
 
   __syncthreads();
-  sum_val = phi::funcs::BlockReduceSum<T>(sum_val, FULL_MASK);
+  sum_val = phi::funcs::BlockReduceSum<T>(static_cast<T>(sum_val), FULL_MASK);
   if (threadIdx.x == 0) {
-    out[blockIdx.x] = sum_val;
+    out[blockIdx.x] = static_cast<T>(sum_val);
   }
 }
 
@@ -80,16 +83,17 @@ __global__ void ReduceMaxWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T max_val = -1e10f;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType max_val = static_cast<MT>(-1e10f);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    max_val = max(max_val, abs(x[i] - y[i]));
+    max_val = max(max_val, static_cast<MT>(abs(x[i] - y[i])));
   }
 
   __syncthreads();
-  max_val = phi::funcs::BlockReduceMax<T>(max_val, FULL_MASK);
+  max_val = phi::funcs::BlockReduceMax<T>(static_cast<T>(max_val), FULL_MASK);
   if (threadIdx.x == 0) {
-    out[blockIdx.x] = max_val;
+    out[blockIdx.x] = static_cast<T>(max_val);
   }
 }
 
@@ -98,16 +102,17 @@ __global__ void ReduceMinWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T min_val = 1e10f;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType min_val = static_cast<MT>(1e10f);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    min_val = min(min_val, abs(x[i] - y[i]));
+    min_val = min(min_val, static_cast<MT>(abs(x[i] - y[i])));
   }
 
   __syncthreads();
-  min_val = phi::funcs::BlockReduceMin(min_val, FULL_MASK);
+  min_val = phi::funcs::BlockReduceMin<T>(static_cast<T>(min_val), FULL_MASK);
   if (threadIdx.x == 0) {
-    out[blockIdx.x] = min_val;
+    out[blockIdx.x] = static_cast<T>(min_val);
   }
 }
 
