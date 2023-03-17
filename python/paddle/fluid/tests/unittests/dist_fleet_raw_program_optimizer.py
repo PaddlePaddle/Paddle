@@ -14,14 +14,13 @@
 
 from functools import reduce
 
+import nets
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
-
-from . import nets
 
 paddle.enable_static()
 

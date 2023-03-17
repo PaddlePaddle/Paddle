@@ -17,12 +17,11 @@ import re
 import string
 import tarfile
 
+import nets
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-
-from . import nets
 
 DTYPE = "float32"
 VOCAB_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/imdb.vocab'

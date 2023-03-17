@@ -14,13 +14,12 @@
 
 from functools import reduce
 
+import nets
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
 from paddle.incubate.distributed.fleet.collective import fleet
-
-from . import nets
 
 paddle.enable_static()
 

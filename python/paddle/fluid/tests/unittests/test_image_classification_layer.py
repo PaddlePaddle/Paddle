@@ -14,11 +14,11 @@
 
 import unittest
 
+import nets
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program
-
-from . import nets
 
 
 def conv_block(input, num_filter, groups, dropouts):

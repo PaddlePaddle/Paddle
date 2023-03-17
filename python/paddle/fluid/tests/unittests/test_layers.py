@@ -16,6 +16,7 @@ import contextlib
 import inspect
 import unittest
 
+import nets
 import numpy as np
 from decorator_helper import prog_scope
 from test_imperative_base import new_program_scope
@@ -28,8 +29,6 @@ from paddle.fluid import core
 from paddle.fluid.dygraph import base, to_variable
 from paddle.fluid.framework import Program, default_main_program, program_guard
 from paddle.tensor import random
-
-from . import nets
 
 
 class LayerTest(unittest.TestCase):

@@ -16,11 +16,11 @@ import collections
 import functools
 import unittest
 
+import nets
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-
-from . import nets
 
 SEED = 1
 DTYPE = "float32"
