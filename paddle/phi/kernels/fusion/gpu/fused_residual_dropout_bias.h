@@ -283,7 +283,8 @@ __global__ void FusedResidualDropoutBias(
   }
   T factor;
   if (HasDropout) {
-    factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+    factor =
+        phi::fusion::GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
   } else {
     factor = static_cast<T>(1);
   }

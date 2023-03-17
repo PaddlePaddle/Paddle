@@ -215,8 +215,12 @@ class FusedDropoutHelper {
     auto increment = GetIncrement(ctx);
     if (act_method == "gelu") {
       if (FLAGS_use_fast_math) {
-        FastGeluFunctor<T> fast_gelu;
-        LaunchDropoutActBias<T, MaskType, FastGeluFunctor<T>, InType, OutType>(
+        phi::fusion::FastGeluFunctor<T> fast_gelu;
+        phi::fusion::LaunchDropoutActBias<T,
+                                          MaskType,
+                                          phi::fusion::FastGeluFunctor<T>,
+                                          InType,
+                                          OutType>(
             fast_gelu,
             dropout_param_.seed,
             rows_,
@@ -237,8 +241,12 @@ class FusedDropoutHelper {
             quant_max_bound,
             quant_min_bound);
       } else {
-        GeluFunctor<T> gelu;
-        LaunchDropoutActBias<T, MaskType, GeluFunctor<T>, InType, OutType>(
+        phi::fusion::GeluFunctor<T> gelu;
+        phi::fusion::LaunchDropoutActBias<T,
+                                          MaskType,
+                                          phi::fusion::GeluFunctor<T>,
+                                          InType,
+                                          OutType>(
             gelu,
             dropout_param_.seed,
             rows_,
@@ -261,29 +269,30 @@ class FusedDropoutHelper {
       }
     } else if (act_method == "relu") {
       phi::funcs::ReluFunctor<T> relu;
-      LaunchDropoutActBias<T,
-                           MaskType,
-                           phi::funcs::ReluFunctor<T>,
-                           InType,
-                           OutType>(relu,
-                                    dropout_param_.seed,
-                                    rows_,
-                                    cols_,
-                                    increment,
-                                    dropout_param_.dropout_prob,
-                                    dropout_param_.is_upscale_in_train,
-                                    dropout_param_.is_test,
-                                    src,
-                                    bias,
-                                    out,
-                                    mask,
-                                    ctx,
-                                    quant_last_in_scale,
-                                    dequant_out_scale_data,
-                                    quant_next_in_scale,
-                                    quant_round_type,
-                                    quant_max_bound,
-                                    quant_min_bound);
+      phi::fusion::LaunchDropoutActBias<T,
+                                        MaskType,
+                                        phi::funcs::ReluFunctor<T>,
+                                        InType,
+                                        OutType>(
+          relu,
+          dropout_param_.seed,
+          rows_,
+          cols_,
+          increment,
+          dropout_param_.dropout_prob,
+          dropout_param_.is_upscale_in_train,
+          dropout_param_.is_test,
+          src,
+          bias,
+          out,
+          mask,
+          ctx,
+          quant_last_in_scale,
+          dequant_out_scale_data,
+          quant_next_in_scale,
+          quant_round_type,
+          quant_max_bound,
+          quant_min_bound);
     } else {
       PADDLE_THROW(errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));
@@ -299,35 +308,37 @@ class FusedDropoutHelper {
                           T* d_bias,
                           const std::string& act_method) {
     if (act_method == "gelu") {
-      GeluGradFunctor<T> gelu_grad;
-      LaunchDropoutActBiasGrad<T, MaskType, GeluGradFunctor<T>>(
-          gelu_grad,
-          dout,
-          mask,
-          src,
-          bias,
-          dropout_param_.dropout_prob,
-          dropout_param_.is_upscale_in_train,
-          rows_,
-          cols_,
-          d_src,
-          d_bias,
-          ctx);
+      phi::funcs::GeluGradFunctor<T> gelu_grad;
+      phi::fusion::
+          LaunchDropoutActBiasGrad<T, MaskType, phi::funcs::GeluGradFunctor<T>>(
+              gelu_grad,
+              dout,
+              mask,
+              src,
+              bias,
+              dropout_param_.dropout_prob,
+              dropout_param_.is_upscale_in_train,
+              rows_,
+              cols_,
+              d_src,
+              d_bias,
+              ctx);
     } else if (act_method == "relu") {
       phi::funcs::ReluGradFunctor<T> relu_grad;
-      LaunchDropoutActBiasGrad<T, MaskType, phi::funcs::ReluGradFunctor<T>>(
-          relu_grad,
-          dout,
-          mask,
-          src,
-          bias,
-          dropout_param_.dropout_prob,
-          dropout_param_.is_upscale_in_train,
-          rows_,
-          cols_,
-          d_src,
-          d_bias,
-          ctx);
+      phi::fusion::
+          LaunchDropoutActBiasGrad<T, MaskType, phi::funcs::ReluGradFunctor<T>>(
+              relu_grad,
+              dout,
+              mask,
+              src,
+              bias,
+              dropout_param_.dropout_prob,
+              dropout_param_.is_upscale_in_train,
+              rows_,
+              cols_,
+              d_src,
+              d_bias,
+              ctx);
     } else {
       PADDLE_THROW(errors::InvalidArgument(
           "Currently only supports gelu or relu activation functions!"));

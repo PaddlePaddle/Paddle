@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/kernels/fusion/gpu/fused_dropout_common.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_residual_dropout_bias.h"
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
 
@@ -99,34 +100,35 @@ __global__ void FusedDropoutActBias(
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
     for (int i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
-      FusedResidualDropoutBiasOneThread<T,
-                                        MaskType,
-                                        VecSize,
-                                        false,
-                                        true,
-                                        Functor,
-                                        InType,
-                                        OutType>(r,
-                                                 i,
-                                                 cols,
-                                                 &state,
-                                                 dropout_prob,
-                                                 factor,
-                                                 src,
-                                                 nullptr,
-                                                 bias,
-                                                 dst,
-                                                 mask,
-                                                 is_test,
-                                                 nullptr,
-                                                 nullptr,
-                                                 act,
-                                                 quant_last_in_scale,
-                                                 dequant_out_scale_data,
-                                                 quant_next_in_scale,
-                                                 quant_round_type,
-                                                 quant_max_bound,
-                                                 quant_min_bound);
+      phi::fusion::FusedResidualDropoutBiasOneThread<T,
+                                                     MaskType,
+                                                     VecSize,
+                                                     false,
+                                                     true,
+                                                     Functor,
+                                                     InType,
+                                                     OutType>(
+          r,
+          i,
+          cols,
+          &state,
+          dropout_prob,
+          factor,
+          src,
+          nullptr,
+          bias,
+          dst,
+          mask,
+          is_test,
+          nullptr,
+          nullptr,
+          act,
+          quant_last_in_scale,
+          dequant_out_scale_data,
+          quant_next_in_scale,
+          quant_round_type,
+          quant_max_bound,
+          quant_min_bound);
     }
   }
 }
@@ -228,14 +230,15 @@ void LaunchDropoutActBias(Functor act_functor,
                           const float quant_min_bound = -127.0) {
   // dropout_prob == 1.0f
   if (std::abs(dropout_prob - 1.0f) < 1e-5) {
-    SetZero<T>(ctx, reinterpret_cast<T *>(dst), rows * cols);
-    SetZero<MaskType>(ctx, mask_data, rows * cols);
+    phi::fusion::SetZero<T>(ctx, reinterpret_cast<T *>(dst), rows * cols);
+    phi::fusion::SetZero<MaskType>(ctx, mask_data, rows * cols);
     return;
   }
 
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
   const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
-  const auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
+  const auto config =
+      phi::fusion::Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
   if (cols % VecSize == 0) {
     if (is_test) {
       const int32_t elem_cnt = rows * cols;
@@ -387,7 +390,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void FusedDropoutActBiasGrad(
     }
   }
 
-  CalculateDBias<T, VecSize, BlockSizeX, BlockSizeY>(tmp_sum, dbias, cols);
+  phi::fusion::CalculateDBias<T, VecSize, BlockSizeX, BlockSizeY>(
+      tmp_sum, dbias, cols);
 }
 
 /**

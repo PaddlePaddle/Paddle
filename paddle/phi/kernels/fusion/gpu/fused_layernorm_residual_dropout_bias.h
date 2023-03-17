@@ -138,7 +138,8 @@ __global__ void FusedLayernormResidualDropoutBias(
     curand_init(seed, idx, increment, &state);
   }
 
-  T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+  T factor =
+      phi::fusion::GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
 
   __shared__ U mean_share;
   __shared__ U var_share;
@@ -325,7 +326,8 @@ __global__ void FusedLayernormResidualDropoutBiasInfer(
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
 
-  T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+  T factor =
+      phi::fusion::GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
 
   __shared__ U mean_share;
   __shared__ U var_share;
@@ -559,7 +561,8 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
     curand_init(seed, idx, increment, &state);
   }
 
-  T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+  T factor =
+      phi::fusion::GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
 
   // bias
   Vec bias[LDGS];

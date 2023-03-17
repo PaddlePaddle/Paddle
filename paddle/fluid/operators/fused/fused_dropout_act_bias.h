@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
 
-namespace phi {
-namespace fusion {
+namespace paddle {
+namespace operators {
 
 template <typename T>
 struct GeluFunctor {
@@ -468,5 +468,5 @@ void LaunchDropoutActBiasGrad(Functor act_functor,
   }
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace operators
+}  // namespace paddle
