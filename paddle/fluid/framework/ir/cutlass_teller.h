@@ -26,7 +26,7 @@ class CutlassTeller {
     return &global;
   }
 
-  // Determine this NCHW conv2d_fusion can be fused for cutlass?
+  // Determine this NCHW conv2d_fusion can be computed by cutlass?
   bool Conv2dFusionCanSupport(ir::Node *conv2d_fusion_node,
                               Scope *scope,
                               int device_id) {
