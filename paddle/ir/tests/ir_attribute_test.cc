@@ -25,7 +25,6 @@
 TEST(attribute_test, attribute_base) {
   // Define two empty classes, just for testing.
   class AttributeA {};
-
   // Define a FakeDialect without registering any types.
   struct FakeDialect : ir::Dialect {
     explicit FakeDialect(ir::IrContext *context)
@@ -50,8 +49,6 @@ TEST(attribute_test, attribute_base) {
 }
 
 TEST(attribute_test, built_in_attribute) {
-  // Test the interfaces of class Attribute: judgment, type_id,
-  // abstract_attribute, classof.
   ir::IrContext *ctx = ir::IrContext::Instance();
 
   // Test 1: Test the parameteric built-in attribute of IrContext.
@@ -74,4 +71,37 @@ TEST(attribute_test, built_in_attribute) {
       string_attr_1.dyn_cast<ir::StrAttribute>();
   EXPECT_EQ(string_attr_cast_1.isa<ir::StrAttribute>(), true);
   EXPECT_EQ(string_attr_cast_1.size() == 8, 1);
+}
+
+TEST(attribute_test, dictionary_attribute) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+
+  std::string str_attr1_name = "attr1_name";
+  std::string str_attr1_value = "attr1_value";
+  ir::StrAttribute attr1_name = ir::StrAttribute::get(ctx, str_attr1_name);
+  ir::Attribute attr1_value = ir::StrAttribute::get(ctx, str_attr1_value);
+  std::string str_attr2_name = "attr2_name";
+  std::string str_attr2_value = "attr2_value";
+  ir::StrAttribute attr2_name = ir::StrAttribute::get(ctx, str_attr2_name);
+  ir::Attribute attr2_value = ir::StrAttribute::get(ctx, str_attr2_value);
+  std::string str_attr3_name = "attr3_name";
+  std::string str_attr3_value = "attr3_value";
+  ir::StrAttribute attr3_name = ir::StrAttribute::get(ctx, str_attr3_name);
+  ir::Attribute attr3_value = ir::StrAttribute::get(ctx, str_attr3_value);
+
+  std::vector<ir::NamedAttribute> named_attr_vec1;
+  named_attr_vec1.push_back(ir::NamedAttribute(attr3_name, attr3_value));
+  named_attr_vec1.push_back(ir::NamedAttribute(attr1_name, attr1_value));
+  named_attr_vec1.push_back(ir::NamedAttribute(attr2_name, attr2_value));
+  ir::DictionaryAttribute dic_attr1 =
+      ir::DictionaryAttribute::get(ctx, named_attr_vec1);
+
+  std::vector<ir::NamedAttribute> named_attr_vec2;
+  named_attr_vec2.push_back(ir::NamedAttribute(attr3_name, attr3_value));
+  named_attr_vec2.push_back(ir::NamedAttribute(attr2_name, attr2_value));
+  named_attr_vec2.push_back(ir::NamedAttribute(attr1_name, attr1_value));
+  ir::DictionaryAttribute dic_attr2 =
+      ir::DictionaryAttribute::get(ctx, named_attr_vec2);
+
+  EXPECT_EQ(dic_attr1, dic_attr2);
 }

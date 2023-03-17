@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <type_traits>
 
 #include "paddle/ir/attribute.h"
@@ -84,6 +85,7 @@ struct DictionaryAttributeStorage : public AttributeStorage {
   static DictionaryAttributeStorage *Construct(ParamKey key) {
     auto value = std::get<0>(key);
     uint32_t size = std::get<1>(key);
+    std::sort(value, value + size);
     NamedAttribute *data = reinterpret_cast<NamedAttribute *>(
         malloc(sizeof(NamedAttribute) * size));
     memcpy(data, value, sizeof(NamedAttribute) * size);
@@ -91,20 +93,25 @@ struct DictionaryAttributeStorage : public AttributeStorage {
   }
 
   static std::size_t HashValue(const ParamKey &key) {
+    auto value = std::get<0>(key);
+    uint32_t size = std::get<1>(key);
+    std::sort(value, value + size);
     std::size_t hash_value = 0;
-    hash_value =
-        hash_combine(hash_value, std::hash<uint32_t>()(std::get<1>(key)));
-    for (size_t i = 0; i < std::get<1>(key); i++) {
-      hash_value = hash_combine(
-          hash_value, std::hash<NamedAttribute>()(std::get<0>(key)[i]));
+    hash_value = hash_combine(hash_value, std::hash<uint32_t>()(size));
+    for (size_t i = 0; i < size; i++) {
+      hash_value =
+          hash_combine(hash_value, std::hash<NamedAttribute>()(value[i]));
     }
     return hash_value;
   }
 
   bool operator==(const ParamKey &key) const {
-    if (size_ != std::get<1>(key)) return false;
+    uint32_t size = std::get<1>(key);
+    if (size_ != size) return false;
+    auto value = std::get<0>(key);
+    std::sort(value, value + size);
     for (size_t i = 0; i < size_; i++) {
-      if (data_[i] != std::get<0>(key)[i]) {
+      if (data_[i] != value[i]) {
         return false;
       }
     }

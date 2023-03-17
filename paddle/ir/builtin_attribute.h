@@ -66,6 +66,13 @@ class DictionaryAttribute : public ir::Attribute {
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(DictionaryAttribute,
                                     DictionaryAttributeStorage);
+  static DictionaryAttribute get(ir::IrContext *ctx,
+                                 const std::vector<NamedAttribute> &attr) {
+    uint32_t size = attr.size();
+    NamedAttribute *data = const_cast<NamedAttribute *>(attr.data());
+    return ir::AttributeManager::template get<DictionaryAttribute>(
+        ctx, data, size);
+  }
 
   Attribute GetValue(const StrAttribute &name);
 
