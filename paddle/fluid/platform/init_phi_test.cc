@@ -17,8 +17,9 @@ limitations under the License. */
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 
-TEST(InitExtension, InitExtension) {
+TEST(InitPhi, InitPhi) {
   phi::MemoryUtils::Instance().CheckMemoryMethod();
+  phi::MemoryUtils::Instance().InitDevices();
   ASSERT_EQ(phi::DeviceContextPool::IsInitialized(), true);
 }
 

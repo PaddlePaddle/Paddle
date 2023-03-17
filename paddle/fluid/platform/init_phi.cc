@@ -11,20 +11,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#pragma once
-#include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/fluid/platform/init_phi.h"
+#include "glog/logging.h"
+#include "paddle/fluid/platform/init.h"
+
+REGISTER_FILE_SYMBOLS(init_phi)
+
 namespace paddle {
 
-class PADDLE_API InitExtension {
- public:
-  InitExtension();
-};
-
-#define REGISTER_FILE_SYMBOLS(name) \
-  int RegisterSymbolsFor##name() { return 0; }
-
-#define DECLARE_FILE_SYMBOLS(name)       \
-  extern int RegisterSymbolsFor##name(); \
-  UNUSED static int use_file_##name = RegisterSymbolsFor##name()
+InitPhi::InitPhi() {
+  paddle::framework::InitMemoryMethod();
+  LOG(INFO) << "Init MemoryMethod success.";
+}
 
 }  // namespace paddle

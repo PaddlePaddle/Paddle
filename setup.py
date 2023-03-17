@@ -1229,7 +1229,7 @@ def get_headers():
         )
         + list(  # phi init headers
             find_files(
-                'init_extension.h',
+                'init_phi.h',
                 paddle_source_dir + '/paddle/fluid/platform',
                 recursive=True,
             )

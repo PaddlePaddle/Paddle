@@ -414,11 +414,11 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 cc_library(
-  init_extension
-  SRCS init_extension.cc
+  init_phi
+  SRCS init_phi.cc
   DEPS init)
 
 cc_test(
-  init_extension_test
-  SRCS init_extension_test.cc
-  DEPS phi_tensor init_extension)
+  init_phi_test
+  SRCS init_phi_test.cc
+  DEPS phi_tensor init_phi)

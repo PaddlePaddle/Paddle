@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/api/include/context_pool.h"
 
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -33,6 +34,9 @@ DeviceContextPool& DeviceContextPool::Instance() {
 const phi::DeviceContext* DeviceContextPool::Get(const Place& place) {
   auto it = context_map_.find(place);
   if (it == context_map_.end()) {
+    if (!phi::DeviceContextPool::IsInitialized()) {
+      phi::memory_utils::InitDevices();
+    }
     // only when we need the specific DeviceContext, get and cache it
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     {

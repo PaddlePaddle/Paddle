@@ -472,6 +472,7 @@ void InitMemoryMethod() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
 #endif
+    memory_method->init_devices = InitDevices;
     memory_utils.Init(std::move(memory_method));
   });
 }
