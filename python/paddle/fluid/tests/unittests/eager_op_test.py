@@ -775,7 +775,13 @@ class OpTest(unittest.TestCase):
     def append_input_output_for_dygraph(
         self, op_proto, np_list, is_input, if_return_inputs_grad_dict, block
     ):
-        def create_var(np_value, name, is_input, if_return_inputs_grad_dict):
+        def create_var(
+            np_value,
+            name,
+            is_input,
+            if_return_inputs_grad_dict,
+            is_calc_ref=False,
+        ):
             np_value_temp = np_value
             has_lod = False
             lod_temp = None
@@ -785,7 +791,6 @@ class OpTest(unittest.TestCase):
                 lod_temp = np_value[1]
 
             if is_input:
-
                 if self.is_calc_ref and np_value_temp.dtype == np.float16:
                     v = self._create_var_from_numpy(
                         np_value_temp.astype(np.float32)
