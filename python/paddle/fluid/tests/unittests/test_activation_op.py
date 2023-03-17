@@ -1414,6 +1414,8 @@ class TestCos(TestActivation):
         self.python_api = paddle.cos
         self.init_dtype()
         self.init_shape()
+        # prim not support now
+        self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1562,7 +1564,7 @@ class TestSin(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', cheack_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestSin_ZeroDim(TestSin):
