@@ -250,7 +250,7 @@ FusedMultiTransformerPattern::FusedMultiTransformerPattern(
 1. transpose and quantify the weights of fused_multi_transformer op from fp32 to
 int16
 */
-class FusedMultiTransformerQuantPass : public FusePassBase {
+class FusedMultiTransformerXPUQuantPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
@@ -263,32 +263,30 @@ class FusedMultiTransformerQuantPass : public FusePassBase {
                 bool with_seq_lengths,
                 bool with_src_mask) const;
 
-  const std::string name_scope_{"fused_multi_transformer_quant_pass"};
+  const std::string name_scope_{"fused_multi_transformer_xpu_quant_pass"};
 };
 
-void FusedMultiTransformerQuantPass::ApplyImpl(ir::Graph* graph) const {
+void FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
-  VLOG(3) << "DEBUG: in FusedMultiTransformerQuantPass::ApplyImpl";
+  VLOG(3) << "in FusedMultiTransformerXPUQuantPass::ApplyImpl";
 
   int found_subgraph_count = 0;
-  for (bool with_cache_kv : {true, false}) {
-    for (bool with_time_step : {true, false}) {
-      found_subgraph_count += ApplyImpl(
-          graph, with_cache_kv, false, false, with_time_step, false, true);
-    }
+  for (bool with_time_step : {true, false}) {
+    found_subgraph_count +=
+        ApplyImpl(graph, true, false, false, with_time_step, false, true);
   }
   AddStatis(found_subgraph_count);
 }
 
-int FusedMultiTransformerQuantPass::ApplyImpl(ir::Graph* graph,
-                                              bool with_cache_kv,
-                                              bool with_pre_caches,
-                                              bool with_rotary_pos_emb,
-                                              bool with_time_step,
-                                              bool with_seq_lengths,
-                                              bool with_src_mask) const {
+int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
+                                                 bool with_cache_kv,
+                                                 bool with_pre_caches,
+                                                 bool with_rotary_pos_emb,
+                                                 bool with_time_step,
+                                                 bool with_seq_lengths,
+                                                 bool with_src_mask) const {
   GraphPatternDetector gpd;
   patterns::FusedMultiTransformerPattern pattern(gpd.mutable_pattern(),
                                                  name_scope_,
@@ -302,7 +300,7 @@ int FusedMultiTransformerQuantPass::ApplyImpl(ir::Graph* graph,
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle FusedMultiTransformerQuantPass fuse";
+    VLOG(4) << "handle FusedMultiTransformerXPUQuantPass fuse";
 
     GET_IR_NODE(x);
     GET_IR_NODE(ln_scale);
@@ -544,5 +542,5 @@ int FusedMultiTransformerQuantPass::ApplyImpl(ir::Graph* graph,
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fused_multi_transformer_quant_pass,
-              paddle::framework::ir::FusedMultiTransformerQuantPass);
+REGISTER_PASS(fused_multi_transformer_xpu_quant_pass,
+              paddle::framework::ir::FusedMultiTransformerXPUQuantPass);
