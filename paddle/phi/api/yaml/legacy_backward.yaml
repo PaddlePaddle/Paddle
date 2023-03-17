@@ -131,6 +131,7 @@
     func : batch_norm_grad
     data_type : out_grad
   optional : mean_out, variance_out, reserve_space
+  composite: batch_norm_grad(x, scale, bias, mean_out, variance_out, saved_mean, saved_variance, reserve_space, out_grad, momentum, epsilon, data_layout, is_test, use_global_stats, trainable_statistics)
   backward : batch_norm_double_grad
 
 - backward_op : bce_loss_grad
