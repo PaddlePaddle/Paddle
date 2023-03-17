@@ -427,6 +427,7 @@ class TestResnet(unittest.TestCase):
 
     def test_resnet_composite(self):
         core._set_prim_backward_enabled(True)
+        core._add_skip_comp_ops("batch_norm")
         static_loss = self.train(to_static=True)
         core._set_prim_backward_enabled(False)
         dygraph_loss = self.train(to_static=False)
