@@ -405,14 +405,27 @@ class Fleet:
 
         self.dp_degree = max(self.dp_degree, 1)
 
+        d_hybrid_degree = {
+            "dp": ["data", self.dp_degree],
+            "pp": ['pipe', self.pp_degree],
+            "sharding": ['sharding', self.sharding_degree],
+            "mp": ['model', self.mp_degree],
+        }
+
+        order = self.hybrid_configs["order"]
+        assert (
+            order[:].sort() == d_hybrid_degree.keys()[:].sort()
+        ), "The order setting is incorrect"
+
+        hybrid_group_names = []
+        dims = []
+        for h_name in order:
+            name, degree = d_hybrid_degree[h_name]
+            hybrid_group_names.append(name)
+            dims.append(degree)
+
         self._topology = tp.CommunicateTopology(
-            hybrid_group_names=["data", "pipe", "sharding", "model"],
-            dims=[
-                self.dp_degree,
-                self.pp_degree,
-                self.sharding_degree,
-                self.mp_degree,
-            ],
+            hybrid_group_names=hybrid_group_names, dims=dims
         )
 
         self._hcg = tp.HybridCommunicateGroup(self._topology)
