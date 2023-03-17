@@ -28,8 +28,8 @@ class TestStrategy(unittest.TestCase):
 
         amp = strategy.amp
         self.assertEqual(amp.enable, False)
-        self.assertAlmostEqual(amp.dtype, "float16")
-        self.assertAlmostEqual(amp.level, "o1")
+        self.assertEqual(amp.dtype, "float16")
+        self.assertEqual(amp.level, "o1")
         self.assertAlmostEqual(amp.init_loss_scaling, 32768.0)
         self.assertEqual(amp.incr_every_n_steps, 1000)
         self.assertEqual(amp.decr_every_n_nan_or_inf, 2)
@@ -40,10 +40,6 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(amp.custom_white_list, [])
         self.assertEqual(amp.custom_black_varnames, [])
         self.assertEqual(amp.use_fp16_guard, False)
-        self.assertEqual(amp.use_optimizer_fp16, False)
-        self.assertEqual(amp.custom_bf16_list, [])
-        self.assertEqual(amp.custom_fp32_list, [])
-        self.assertEqual(amp.custom_fp32_varnames, [])
         self.assertEqual(amp.use_bf16_guard, False)
 
         sharding = strategy.sharding
@@ -100,6 +96,7 @@ class TestStrategy(unittest.TestCase):
         amp.custom_white_list = ["x"]
         amp.custom_black_list = ["y"]
         amp.custom_black_varnames = ["z"]
+        amp.use_pure_fp16 = True
         amp.use_fp16_guard = False
         amp.use_optimizer_fp16 = True
         self.assertEqual(amp.enable, True)
@@ -112,6 +109,7 @@ class TestStrategy(unittest.TestCase):
         self.assertEqual(amp.custom_white_list, ["x"])
         self.assertEqual(amp.custom_black_list, ["y"])
         self.assertEqual(amp.custom_black_varnames, ["z"])
+        self.assertEqual(amp.use_pure_fp16, True)
         self.assertEqual(amp.use_fp16_guard, False)
         self.assertEqual(amp.use_optimizer_fp16, True)
 
