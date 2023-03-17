@@ -30,7 +30,7 @@ struct ZeroOrderFunctor {
   __device__ T operator()(const T& x, const T& y) const {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     return static_cast<T>((static_cast<MPType>(x) - static_cast<MPType>(y)) !=
-                          0);
+                          static_cast<MPType>(0));
   }
 };
 
@@ -56,7 +56,8 @@ struct PowFunctor {
   HOSTDEVICE inline T operator()(const T x) const {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     MPType mptx = static_cast<MPType>(x);
-    return static_cast<T>(pow(static_cast<T>(mptx), p_order_));
+    MPType mp_order_ = static_cast<MPType>(p_order_);
+    return static_cast<T>(pow(static_cast<T>(mptx), static_cast<T>(mp_order_)));
   }
   T p_order_;
 };
@@ -72,7 +73,7 @@ __global__ void ReduceSumWithSubtract(
   }
 
   __syncthreads();
-  sum_val = phi::funcs::BlockReduceSum<T>(static_cast<T>(sum_val), FULL_MASK);
+  sum_val = phi::funcs::BlockReduceSum<MT>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = static_cast<T>(sum_val);
   }
@@ -91,7 +92,7 @@ __global__ void ReduceMaxWithSubtract(const T* x,
   }
 
   __syncthreads();
-  max_val = phi::funcs::BlockReduceMax<T>(static_cast<T>(max_val), FULL_MASK);
+  max_val = phi::funcs::BlockReduceMax<MT>(max_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = static_cast<T>(max_val);
   }
@@ -110,7 +111,7 @@ __global__ void ReduceMinWithSubtract(const T* x,
   }
 
   __syncthreads();
-  min_val = phi::funcs::BlockReduceMin<T>(static_cast<T>(min_val), FULL_MASK);
+  min_val = phi::funcs::BlockReduceMin<MT>(min_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = static_cast<T>(min_val);
   }
