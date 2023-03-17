@@ -163,9 +163,8 @@ class TestNNPReluAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-def prelu_api_wrapper(x, weight, data_format="NCHW"):
-    weight = weight.reshape([-1])
-    return paddle.nn.functional.prelu(x, weight, data_format, name=None)
+def prelu_api_wrapper(x, alpha, data_format="NCHW", mode="all"):
+    return paddle._C_ops.prelu(x, alpha, data_format, mode)
 
 
 class PReluTest(OpTest):
