@@ -5149,27 +5149,27 @@ def frexp(x, name=None):
     return mantissa, exponent
 
 
-def _trapezoid(y, x=None, dx=None, axis=-1, sum_mode='sum'):
+def _trapezoid(y, x=None, dx=None, axis=-1, mode='sum'):
     """
     Integrate along the given axis using the composite trapezoidal rule.
 
     Args:
         y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
-        x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
-            It's data type should be float16, float32, float64. If :attr:`x` is None,
-            the sample points are assumed to be evenly spaced :attr:`dx` apart. The
-            default is None.
-        dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1.
+        x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
+            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and `axis=k`, then the size of x can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
+            If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
+        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither x nor dx is provided then the default is :attr:`dx` = 1.
         axis (int, optional): The axis along which to integrate. The default is -1.
-        sum_mode (str): use a different summation.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        sum_mode (str): use a different summation. The default is `sum`.
 
     Returns:
         Tensor, Definite integral of :attr:`y` = n-dimensional array as approximated along a single axis by the trapezoidal rule.
     """
-    if sum_mode == 'sum':
-        sum = paddle.sum
-    elif sum_mode == 'cumsum':
-        sum = paddle.cumsum
+    if mode == 'sum':
+        sum_mode = paddle.sum
+    elif mode == 'cumsum':
+        sum_mode = paddle.cumsum
 
     if not (x is None or dx is None):
         raise ValueError("Not permitted to specify both x and dx input args.")
@@ -5205,7 +5205,7 @@ def _trapezoid(y, x=None, dx=None, axis=-1, sum_mode='sum'):
             dx = dx.reshape(shape)
         else:
             dx = paddle.diff(x, axis=axis)
-    return 0.5 * sum(
+    return 0.5 * sum_mode(
         (
             paddle.gather(y, paddle.arange(1, length), axis=axis)
             + paddle.gather(y, paddle.arange(0, length - 1), axis=axis)
@@ -5221,12 +5221,11 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
 
     Args:
         y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
-        x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
-            It's data type should be float16, float32, float64. If :attr:`x` is None,
-            the sample points are assumed to be evenly spaced :attr:`dx` apart. The
-            default is None.
-        dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1.
-        axis (int, optional): The axis along which to integrate.The default is -1.
+        x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
+            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and `axis=k`, then the size of x can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
+            If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
+        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither x nor dx is provided then the default is :attr:`dx` = 1.
+        axis (int, optional): The axis along which to integrate. The default is -1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -5271,7 +5270,7 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
             # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             #        [2., 8.])
     """
-    return _trapezoid(y, x, dx, axis, sum_mode='sum')
+    return _trapezoid(y, x, dx, axis, mode='sum')
 
 
 def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
@@ -5280,12 +5279,11 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
 
     Args:
         y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
-        x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
-            It's data type should be float16, float32, float64.If :attr:`x` is None,
-            the sample points are assumed to be evenly spaced :attr:`dx` apart. The
-            default is None.
-        dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1.
-        axis (int, optional): The axis along which to integrate.The default is -1.
+        x (Tensor, optional): The sample points corresponding to the :attr:`y` values, the same type as :attr:`y`.
+            It is known that the size of :attr:`y` is `[d_1, d_2, ... , d_n]` and `axis=k`, then the size of x can only be `[d_k]` or `[d_1, d_2, ... , d_n ]`.
+            If :attr:`x` is None, the sample points are assumed to be evenly spaced :attr:`dx` apart. The default is None.
+        dx (float, optional): The spacing between sample points when :attr:`x` is None. If neither x nor dx is provided then the default is :attr:`dx` = 1.
+        axis (int, optional): The axis along which to integrate. The default is -1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -5330,4 +5328,4 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
             #        [[0.50000000, 2.        ],
             #         [3.50000000, 8.        ]])
     """
-    return _trapezoid(y, x, dx, axis, sum_mode='cumsum')
+    return _trapezoid(y, x, dx, axis, mode='cumsum')
