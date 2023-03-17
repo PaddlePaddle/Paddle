@@ -412,7 +412,7 @@ class Fleet:
             "mp": ['model', self.mp_degree],
         }
 
-        order = self.hybrid_configs["order"]
+        order = self.hybrid_configs["order"].split('->')
         assert (
             order[:].sort() == d_hybrid_degree.keys()[:].sort()
         ), "The order setting is incorrect"
