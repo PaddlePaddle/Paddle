@@ -1684,7 +1684,7 @@ class DistributedStrategy:
                     "dp_degree": 1,
                     "mp_degree": 2,
                     "pp_degree": 1,
-                    "order":"dp->pp->sharding->mp"}
+                    "order":"dp,pp,sharding,mp"}
 
         """
         return get_msg_dict(self.strategy.hybrid_configs)
