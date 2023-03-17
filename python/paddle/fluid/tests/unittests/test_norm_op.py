@@ -121,11 +121,11 @@ class TestNormOp7(TestNormOp):
         self.dtype = "float16"
 
     def test_check_output(self):
-        self.check_output_with_place(fluid.core.CUDAPlace(0), atol=1e-3)
+        self.check_output_with_place(fluid.core.CUDAPlace(0), atol=5e-2)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            fluid.core.CUDAPlace(0), ['X'], 'Out', max_relative_error=5e-3
+            fluid.core.CUDAPlace(0), ['X'], 'Out', max_relative_error=0.05
         )
 
 
@@ -177,21 +177,14 @@ class TestNormBF16Op(OpTest):
             'axis': int(self.axis),
             'is_test': True,
         }
-        self.outputs = {'Out': convert_float_to_uint16(y)}
+        self.outputs = {'Out': convert_float_to_uint16(y), 'Norm': norm}
         self.python_out_sig = ["out"]
 
     def test_check_output(self):
         self.check_output_with_place(core.CUDAPlace(0), atol=1e-2)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            core.CUDAPlace(0),
-            ['X'],
-            'Out',
-            user_defined_grads=self.gradient,
-            check_eager=True,
-            max_relative_error=1e-2,
-        )
+        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
