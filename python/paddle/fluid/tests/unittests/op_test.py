@@ -1598,24 +1598,37 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                if actual_np.ndim < expect_np.ndim:
-                    actual_np = np.broadcast_to(actual_np, expect_np.shape)
-                elif actual_np.ndim > expect_np.ndim:
-                    expect_np = np.broadcast_to(expect_np, actual_np.shape)
-                np.testing.assert_allclose(
-                    actual_np,
-                    expect_np,
-                    atol=atol,
-                    rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
-                    equal_nan=equal_nan,
-                    err_msg=(
-                        "Output ("
-                        + name
-                        + ") has diff at "
-                        + str(place)
-                        + " in "
-                        + self.checker_name
+                if actual_np.shape == expect_np.shape:
+                    np.testing.assert_allclose(
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        equal_nan=equal_nan,
+                        err_msg=(
+                            "Output ("
+                            + name
+                            + ") has diff at "
+                            + str(place)
+                            + " in "
+                            + self.checker_name
+                        ),
+                    )
+                    return
+                self.op_test.assertTrue(
+                    np.allclose(
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        equal_nan=equal_nan,
                     ),
+                    "Output ("
+                    + name
+                    + ") has diff at "
+                    + str(place)
+                    + " in "
+                    + self.checker_name,
                 )
 
             def _compare_list(self, name, actual, expect):
@@ -1813,24 +1826,37 @@ class OpTest(unittest.TestCase):
                 ):
                     pass
                 else:
-                    if actual_np.ndim < expect_np.ndim:
-                        actual_np = np.broadcast_to(actual_np, expect_np.shape)
-                    elif actual_np.ndim > expect_np.ndim:
-                        expect_np = np.broadcast_to(expect_np, actual_np.shape)
-                    np.testing.assert_allclose(
-                        actual_np,
-                        expect_np,
-                        atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
-                        equal_nan=equal_nan,
-                        err_msg=(
-                            "Output ("
-                            + name
-                            + ") has diff at "
-                            + str(place)
-                            + " in "
-                            + self.checker_name
+                    if actual_np.shape == expect_np.shape:
+                        np.testing.assert_allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan,
+                            err_msg=(
+                                "Output ("
+                                + name
+                                + ") has diff at "
+                                + str(place)
+                                + " in "
+                                + self.checker_name
+                            ),
+                        )
+                        return
+                    self.op_test.assertTrue(
+                        np.allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan,
                         ),
+                        "Output ("
+                        + name
+                        + ") has diff at "
+                        + str(place)
+                        + " in "
+                        + self.checker_name,
                     )
 
         class EagerChecker(DygraphChecker):
