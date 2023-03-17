@@ -148,6 +148,12 @@ void BindGraph(py::module *m) {
            &Graph::OriginProgram,
            return_value_policy::reference)
       .def("sub_graph_size", &Graph::SubGraphsSize)
+      .def("to_desc",
+           [](const Graph &self) {
+             auto program = new framework::ProgramDesc;
+             GraphToProgram(self, program, nullptr);
+             return program;
+           })
       .def("get_sub_graph", [](Graph &self, int i) {
         /* Here we use a lambda function as an empty deleter to avoid the double
         free of smart pointer.

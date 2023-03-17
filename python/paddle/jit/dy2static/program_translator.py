@@ -306,7 +306,7 @@ class StaticFunction:
 
     """
 
-    def __init__(self, function, input_spec=None, **kwargs):
+    def __init__(self, function, input_spec=None, compiler_fn=None, **kwargs):
         """
         Initializes a `StaticFunction`.
 
@@ -348,7 +348,7 @@ class StaticFunction:
 
         self._input_spec = input_spec
         self._function_spec = FunctionSpec(function, input_spec)
-        self._program_cache = ProgramCache()
+        self._program_cache = ProgramCache(compiler_fn)
         self._descriptor_cache = weakref.WeakKeyDictionary()
         # Note: Hold a reference to ProgramTranslator for switching `enable_to_static`.
         self._program_trans = ProgramTranslator()
@@ -358,6 +358,8 @@ class StaticFunction:
         self._cuda_graph_pool_id = 0
 
         self._property = kwargs.get("property", False)
+
+        self._compiler_fn = compiler_fn
 
     @property
     def is_property(self):
@@ -426,7 +428,10 @@ class StaticFunction:
 
     def _clone(self):
         return self.__class__(
-            self.dygraph_function, self._input_spec, **self._kwargs
+            self.dygraph_function,
+            self._input_spec,
+            compiler_fn=self._compiler_fn,
+            **self._kwargs,
         )
 
     def __call__(self, *args, **kwargs):
@@ -1174,12 +1179,13 @@ class ProgramCache:
 
     dy2static_error_file = "to_static.error"
 
-    def __init__(self):
+    def __init__(self, compiler_fn=None):
         # {hash_id : (concrete_program, partial_layer)}
         self._caches = collections.OrderedDict()
         # trace mostly recent used program
         self._recent_key = None
         self._recent_cache_key = None
+        self.compiler_fn = compiler_fn
 
     def _build_once(self, cache_key):
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
@@ -1226,7 +1232,7 @@ class ProgramCache:
                     )
 
         partial_program = partial_program_from(
-            concrete_program, cache_key.class_instance is not None
+            concrete_program, cache_key.class_instance is not None, self.compiler_fn
         )
         if core._is_fwd_prim_enabled() and not _in_amp_guard():
             partial_program.set_hooker(

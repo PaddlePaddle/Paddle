@@ -605,6 +605,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       }
     }
   }
+
+  std::string name() override { return "RunProgramGradNode"; }
+
   // Functor: perform backward computations
   virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>

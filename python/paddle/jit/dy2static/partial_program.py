@@ -165,7 +165,13 @@ class PartialProgramLayer:
     """
 
     def __init__(
-        self, main_program, inputs, outputs, parameters=None, **kwargs
+        self,
+        main_program,
+        inputs,
+        outputs,
+        parameters=None,
+        compiler_fn=None,
+        **kwargs
     ):
         super().__init__()
         self._inputs = NestSequence(inputs)
@@ -198,10 +204,77 @@ class PartialProgramLayer:
         self._scope_cache = {}
         self._hooker = None
 
+        self.compiler_fn = compiler_fn
+        self.input_names = [x.name for x in inputs]
+        self.fetch_list = [x.name for x in outputs]
+        if self.compiler_fn is not None:
+            if paddle.fluid.dygraph.enabled():
+                paddle.enable_static()
+                self.compiled_forward_fn = compiler_fn(
+                    paddle.fluid.core.Graph(self.forward_program.desc),
+                    self._params,
+                )
+                self.compiled_backward_fn = compiler_fn(
+                    paddle.fluid.core.Graph(self.backward_program.desc),
+                    self._params,
+                )
+                paddle.disable_static()
+            else:
+                self.compiled_forward_fn = compiler_fn(
+                    paddle.fluid.core.Graph(self.forward_program.desc),
+                    self._params,
+                )
+                self.compiled_backward_fn = compiler_fn(
+                    paddle.fluid.core.Graph(self.backward_program.desc),
+                    self._params,
+                )
+
     def __call__(self, inputs):
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
+        if self.compiler_fn is not None:
+            forward_fetch_list = self.fetch_list
+
+            class pylayer_wrapper(paddle.autograd.PyLayer):
+                @staticmethod
+                def forward(ctx, *input_and_params):
+                    forward_feed = {}
+                    for t in input_and_params:
+                        forward_feed[t.name] = t
+                    outputs = self.compiled_forward_fn(
+                        feed=forward_feed, fetch_list=forward_fetch_list
+                    )
+                    ctx.save_for_backward(input_and_params, outputs)
+                    ctx.set_materialize_grads(True)
+                    return tuple(outputs)
+
+                @staticmethod
+                def backward(ctx, *grad_outputs):
+                    input_and_params, outputs = ctx.saved_tensor()
+                    backward_feed = {}
+                    backward_fetch_list = []
+                    for t in input_and_params:
+                        if t.stop_gradient is False:
+                            backward_fetch_list.append(t.name + '@GRAD')
+                        backward_feed[t.name] = t
+                    for i, name in enumerate(forward_fetch_list):
+                        backward_feed[name] = outputs[i]
+                        backward_feed[name + '@GRAD'] = grad_outputs[i]
+
+                    outputs = self.compiled_backward_fn(
+                        feed=backward_feed, fetch_list=backward_fetch_list
+                    )
+                    grads = []
+                    for v in input_and_params:
+                        if v.stop_gradient is False:
+                            grads.append(outputs.pop(0))
+                        else:
+                            grads.append(None)
+                    return tuple(grads)
+
+            return pylayer_wrapper.apply(*inputs, *self._params)
+
         in_vars, out_vars = self._prepare(inputs)
         self._cast_fp16_if_pure_fp16(in_vars)
         attrs = self._prepare_attributes()
@@ -1055,7 +1128,7 @@ class PartialProgramLayer:
         return vars if vars else None
 
 
-def partial_program_from(concrete_program, from_method=False):
+def partial_program_from(concrete_program, from_method=False, compiler_fn=None):
     inputs = concrete_program.inputs
 
     # NOTE(SigureMo): Remove the first arg `self` from method args.
@@ -1067,6 +1140,7 @@ def partial_program_from(concrete_program, from_method=False):
         inputs,
         concrete_program.outputs,
         concrete_program.parameters,
+        compiler_fn=compiler_fn,
         **concrete_program.kwargs
     )
 
