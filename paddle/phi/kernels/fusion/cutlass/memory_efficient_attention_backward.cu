@@ -56,7 +56,6 @@ void MemoryEfficientAttentionBackwardKernel(
     DenseTensor* value_grad,
     DenseTensor* bias_grad) {
   bool kernel_launched = false;
-
   auto launchKernel = [&](auto k_, auto kernel_fn) {
     // ndim
     PADDLE_ENFORCE_EQ(
@@ -282,13 +281,6 @@ void MemoryEfficientAttentionBackwardKernel(
     }
     VLOG(3) << "max_seqlen_q_tmp has been set " << max_seqlen_q_tmp
             << " max_seqlen_k_tmp " << max_seqlen_k_tmp;
-
-    // ctx.template SafeAllocTensor<T>(query_grad);
-    // ctx.template SafeAllocTensor<T>(key_grad);
-    // ctx.template SafeAllocTensor<T>(value_grad);
-    // if (bias && bias_grad) {
-    //   ctx.template SafeAllocTensor<T>(bias_grad);
-    // }
 
     auto use_dropout = dropout_p != 0.0;
     const auto maxK = std::max(q_dims[3], v_dims[3]);

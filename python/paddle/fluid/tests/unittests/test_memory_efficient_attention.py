@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
-import re
 import unittest
 from typing import List, Sequence, Tuple
 
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 import paddle.incubate.nn.attn_bias as ab
 import paddle.nn.functional as F
 from paddle.incubate.nn.memory_efficient_attention import (
@@ -29,18 +26,6 @@ from paddle.incubate.nn.memory_efficient_attention import (
 )
 
 paddle.seed(2023)
-
-
-def get_cuda_version():
-    result = os.popen("nvcc --version").read()
-    regex = r'release (\S+),'
-    match = re.search(regex, result)
-    if match:
-        num = str(match.group(1))
-        integer, decimal = num.split('.')
-        return int(integer) * 1000 + int(float(decimal) * 10)
-    else:
-        return -1
 
 
 def create_attn_bias(
@@ -88,21 +73,6 @@ def create_attn_bias(
     assert False, f"Unsupported bias type: {bias_type}"
 
 
-def _rand_seqlens_padded_k(
-    r: random.Random, bs: int, q_len: int, kv_len: int
-) -> Tuple[Sequence[int], Sequence[int]]:
-    # we need qk_seqlens to be of len bsz. k_seqlens must be <= kv_len
-    # no constraints on q_seqlens, but they must still sum to total_len
-    k_seqlens = [r.randint(1, kv_len - 1) for _ in range(bs)]
-    q_len *= bs
-    q_idx = {0, q_len}
-    while len(q_idx) < bs + 1:
-        q_idx.add(r.randint(1, q_len - 1))
-    s = sorted(q_idx)
-    q_seqlens = [e - b for b, e in zip(s[:-1], s[1:])]
-    return q_seqlens, k_seqlens
-
-
 def _rand_seqlens(
     r: random.Random, bs: int, q_len: int, kv_len: int
 ) -> Tuple[Sequence[int], Sequence[int]]:
@@ -143,6 +113,8 @@ def attention_naive(q, k, v, attn_bias, dropout_prob, scale, seed):
             (q.shape[0], q.shape[2], q.shape[1], k.shape[1]), q.dtype
         )
         dropout_input = F.softmax(s + bias)
+    elif isinstance(attn_bias, paddle.Tensor):
+        dropout_input = F.softmax(s + attn_bias)
 
     paddle.seed(seed)
     dropout_output = F.dropout(
@@ -156,10 +128,6 @@ def attention_naive(q, k, v, attn_bias, dropout_prob, scale, seed):
     return paddle.transpose(o, [0, 2, 1, 3])
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11070,
-    "core is not compiled with CUDA and cuda version need larger than or equal to 11.7",
-)
 class TestMemEffAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.name = "MemEffAPI_fp32"
@@ -364,6 +332,29 @@ class TestMemEffAPIMask2(TestMemEffAttentionAPI):
             False,
             "BMHK",
         )
+        self.training = True
+        self.scale = 1.0 / np.sqrt(self.shape[-1])
+        self.seed = 2023
+
+
+class TestMemEffAPIMask3(TestMemEffAttentionAPI):
+    def setUp(self):
+        self.name = "MemEffAPI_fp32_AnyTensor"
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (1, 32, 128, 128)
+        self.dtype = paddle.float32
+        self.dropout = 0.0
+        self.attention_bias = (
+            paddle.randn(
+                (self.shape[0], self.shape[2], 1, self.shape[1]),
+                dtype=self.dtype,
+            )
+            * 3
+        )
+        self.attention_bias = self.attention_bias.expand(
+            [self.shape[0], self.shape[2], self.shape[1], self.shape[1]]
+        )
+        self.attention_bias.stop_gradient = False
         self.training = True
         self.scale = 1.0 / np.sqrt(self.shape[-1])
         self.seed = 2023
