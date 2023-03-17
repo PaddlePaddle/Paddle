@@ -359,7 +359,7 @@ def polynomial_decay(
                     shape=[1], dtype='float32', value=1.0
                 )
 
-                with control_flow.Switch() as switch:
+                with paddle.static.nn.control_flow.Switch() as switch:
                     with switch.case(global_step == zero_var):
                         paddle.assign(one_var, output=div_res)
                 decay_steps = decay_steps * div_res
@@ -433,29 +433,24 @@ def piecewise_decay(boundaries, values):
                 name="learning_rate",
             )
 
-            with control_flow.Switch() as switch:
-                for i in range(len(boundaries)):
-                    boundary_val = tensor.fill_constant(
-                        shape=[1],
-                        dtype='float32',
-                        value=float(boundaries[i]),
-                        force_cpu=True,
-                    )
-                    with switch.case(global_step < boundary_val):
-                        tensor.fill_constant(
-                            shape=[1],
-                            dtype="float32",
-                            value=float(values[i]),
-                            out=lr,
-                        )
-                with switch.default():
-                    tensor.fill_constant(
-                        shape=[1],
-                        dtype="float32",
-                        value=float(values[len(values) - 1]),
-                        out=lr,
-                    )
+            pred_fns = []
+            for i in range(len(boundaries)):
+                boundary_val = tensor.fill_constant(
+                    shape=[1],
+                    dtype='float32',
+                    value=float(boundaries[i]),
+                    force_cpu=True,
+                )
 
+                pred_fns.append((global_step < boundary_val, lambda: values[i]))
+
+            lr_tmp = paddle.static.nn.case(
+                pred_fn_pairs=pred_fns, default=lambda: values[len(values) - 1]
+            )
+
+            tensor.fill_constant(
+                shape=[1], dtype="float32", value=lr_tmp, out=lr
+            )
             return lr
 
 
@@ -590,7 +585,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
 
             global_step = _decay_step_counter()
 
-            with control_flow.Switch() as switch:
+            with paddle.static.nn.control_flow.Switch() as switch:
                 with switch.case(global_step < warmup_steps):
                     decayed_lr = start_lr + linear_step * (
                         global_step / float(warmup_steps)
