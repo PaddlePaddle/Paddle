@@ -33,9 +33,9 @@ class TestPad3dOp(OpTest):
         self.op_type = "pad3d"
         self.python_api = paddle.nn.functional.pad
         self.inputs = {
-            'X': np.random.random(self.shape).astype("float32")
+            'X': np.random.uniform(-1.0, 1.0, self.shape).astype("float32")
             if self.dtype == np.uint16
-            else np.random.random(self.shape).astype(self.dtype)
+            else np.random.uniform(-1.0, 1.0, self.shape).astype(self.dtype)
         }
         self.attrs = {}
         if self.variable_paddings:
@@ -212,7 +212,7 @@ def create_test_fp16(parent):
             self.check_output(check_eager=True, atol=1e-3)
 
         def test_check_grad(self):
-            self.check_grad(['X'], 'Out', max_relative_error=0.3)
+            self.check_grad(['X'], 'Out', max_relative_error=1e-3)
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
     TestPad3dFp16.__name__ = cls_name
