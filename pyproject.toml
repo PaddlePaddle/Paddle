@@ -54,6 +54,10 @@ select = [
 
     # NumPy-specific rules
     "NPY001",
+
+    # Bugbear
+    "B009",
+    "B010",
 ]
 unfixable = [
     "NPY001"

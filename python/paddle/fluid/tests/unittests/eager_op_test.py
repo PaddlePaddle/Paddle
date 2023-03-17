@@ -449,7 +449,7 @@ class OpTest(unittest.TestCase):
             )
             or (
                 hasattr(self, 'mkldnn_data_type')
-                and getattr(self, 'mkldnn_data_type') == "bfloat16"
+                and self.mkldnn_data_type == "bfloat16"
             )
             or (
                 hasattr(self, 'attrs')
@@ -469,7 +469,7 @@ class OpTest(unittest.TestCase):
             )
             or (
                 hasattr(self, 'mkldnn_data_type')
-                and getattr(self, 'mkldnn_data_type') == "float16"
+                and self.mkldnn_data_type == "float16"
             )
             or (
                 hasattr(self, 'attrs')
@@ -1713,7 +1713,7 @@ class OpTest(unittest.TestCase):
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
         # set some flags by the combination of arguments.
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -1728,8 +1728,9 @@ class OpTest(unittest.TestCase):
             if self.is_mkldnn_op():
                 check_dygraph = False
 
-                if hasattr(self, 'force_fp32_output') and getattr(
-                    self, 'force_fp32_output'
+                if (
+                    hasattr(self, 'force_fp32_output')
+                    and self.force_fp32_output
                 ):
                     atol = 1e-2 if atol < 1e-2 else atol
                 else:
@@ -2078,7 +2079,7 @@ class OpTest(unittest.TestCase):
             )
             prim_grad_checker.check()
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self._check_grad_helper()
             if only_check_prim:
                 return
