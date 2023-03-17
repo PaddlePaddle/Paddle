@@ -98,9 +98,6 @@ if(WITH_MKLDNN)
        "kernels/fusion/onednn/*.cc" "kernels/onednn/*.cc")
 endif()
 
-#Distributed lib is not supported now
-#list(REMOVE_ITEM PHI_SHARED_DEPS ${CMAKE_CURRENT_SOURCE_DIR}/backends/processgroup_comm_utils.cc)
-
 set(PHI_SHARED_DEPS
     flags
     eigen3
@@ -109,7 +106,15 @@ set(PHI_SHARED_DEPS
     warprnnt
     pocketfft
     utf8proc
-    cblas)
+    cblas
+    #we need add below target for generating src code
+    phi_function_api
+    sparse_api
+    phi_dygraph_api
+    strings_api
+    phi_tensor_operants
+    operants_manager
+    tensor_api)
 
 if(WITH_GPU)
   set(PHI_SHARED_DEPS ${PHI_SHARED_DEPS} external_error_proto)
