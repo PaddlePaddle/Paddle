@@ -203,6 +203,8 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
     auto row_dims_lens = row_dims.size();
     auto col_dims = dst_count->dims();
     auto col_dims_lens = col_dims.size();
+    auto x_dims = vertices->dims();
+    auto x_dims_lens = x_dims.size();
     for (int i = 0; i < row_dims_lens; i++) {
       PADDLE_ENFORCE_NE(
           row_dims[i],
@@ -214,6 +216,12 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
                         0,
                         phi::errors::InvalidArgument(
                             "The size of Col_Ptr(X) should not be 0."));
+    }
+    for (int i = 0; i < x_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(x_dims[i],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The size of Input_Node(X) should not be 0."));
     }
 
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
