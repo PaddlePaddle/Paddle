@@ -41,7 +41,7 @@ struct OtherOrderFunctor {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     MPType mptx = static_cast<MPType>(x);
     MPType mpty = static_cast<MPType>(y);
-    MPType mp_order_ = static_cast<MPType>(p_order);
+    MPType mp_order_ = static_cast<MPType>(p_order_);
     return static_cast<T>(
         pow(abs(static_cast<T>(mptx - mpty)), static_cast<T>(mp_order_)));
   }
