@@ -119,16 +119,19 @@ def composite_batchnorm(
     if is_amp:
         y = cast(y, "float16")
 
+    # As the same with op kernel, indeed return inverse std
+    inv_std = 1.0 / sqrt(batch_var + epsilon)
+
     # add op assign to detach tensor in void unsafe change outside the rule.
     batch_mean_ = assign(reshape(batch_mean, run_mean.shape))
-    batch_var_ = assign(reshape(batch_var, run_var.shape))
+    inv_std_ = assign(reshape(inv_std, run_var.shape))
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
 
     # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op definition.
     reserve_space = None
 
-    return y, run_mean_, run_var_, batch_mean_, batch_var_, reserve_space
+    return y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space
 
 
 @REGISTER_COMPOSITE('layer_norm')
