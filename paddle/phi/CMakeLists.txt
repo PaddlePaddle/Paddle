@@ -28,6 +28,7 @@ endif()
 set(PHI_DEPS
     convert_utils
     dense_tensor
+    phi_os_info
     phi_backends
     kernel_factory
     kernel_context
@@ -39,8 +40,7 @@ set(PHI_DEPS
     string_tensor
     api_scalar
     api_int_array
-    extended_tensor
-    phi_os_info)
+    extended_tensor)
 
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(PHI_DEPS ${PHI_DEPS} ${phi_kernels})
