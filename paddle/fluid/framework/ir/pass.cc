@@ -44,6 +44,7 @@ static const std::vector<std::string> support_subgraph_passes = {
     "fused_multi_transformer_decoder_pass",
     "fused_multi_transformer_encoder_fuse_qkv_pass",
     "fused_multi_transformer_decoder_fuse_qkv_pass",
+    "fused_multi_transformer_cachekv_layout_trans_pass",
     "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",
     "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",
     "fuse_multi_transformer_layer_pass",
