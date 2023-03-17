@@ -127,6 +127,10 @@ T *Tensor::mutable_data(PlaceType place) {
     case static_cast<int>(PlaceType::kNPU): {
       return tensor->mutable_data<T>(paddle::platform::NPUPlace(device_));
     }
+    case static_cast<int>(PlaceType::kCUSTOM): {
+      return tensor->mutable_data<T>(
+          paddle::platform::CustomPlace(device_type_, device_));
+    }
     default:
       PADDLE_THROW(paddle::platform::errors::Unavailable(
           "Only CPU / CUDA / XPU / NPU places is supported. The place `%d` is "
@@ -150,6 +154,8 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kXPU;
   } else if (paddle::platform::is_npu_place(tensor->place())) {
     *place = PlaceType::kNPU;
+  } else if (paddle::platform::is_custom_place(tensor->place())) {
+    *place = PlaceType::kCUSTOM;
   } else {
     *place = PlaceType::kUNK;
   }
@@ -741,9 +747,12 @@ void Tensor::SetName(const std::string &name) { name_ = name; }
 
 const std::string &Tensor::name() const { return name_; }
 
-void Tensor::SetPlace(PlaceType place, int device) {
+void Tensor::SetPlace(PlaceType place,
+                      int device,
+                      const std::string device_type) {
   place_ = place;
   device_ = device;
+  device_type_ = device_type;
 }
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
