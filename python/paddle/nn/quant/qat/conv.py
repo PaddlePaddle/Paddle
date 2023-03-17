@@ -30,18 +30,18 @@ class QuantedConv2D(ConvertibleQuantedLayer):
         super(QuantedConv2D, self).__init__()
 
         # For Conv2D
-        self._groups = getattr(layer, '_groups')
-        self._stride = getattr(layer, '_stride')
-        self._padding = getattr(layer, '_padding')
-        self._padding_mode = getattr(layer, '_padding_mode')
+        self._groups = layer._groups
+        self._stride = layer._stride
+        self._padding = layer._padding
+        self._padding_mode = layer._padding_mode
         if self._padding_mode != 'zeros':
-            self._reversed_padding_repeated_twice = getattr(
-                layer, '_reversed_padding_repeated_twice'
+            self._reversed_padding_repeated_twice = (
+                layer._reversed_padding_repeated_twice
             )
-        self._dilation = getattr(layer, '_dilation')
-        self._data_format = getattr(layer, '_data_format')
-        self.weight = getattr(layer, 'weight')
-        self.bias = getattr(layer, 'bias')
+        self._dilation = layer._dilation
+        self._data_format = layer._data_format
+        self.weight = layer.weight
+        self.bias = layer.bias
 
         self.weight_quanter = None
         self.activation_quanter = None
