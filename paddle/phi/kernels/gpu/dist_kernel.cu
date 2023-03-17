@@ -73,7 +73,7 @@ __global__ void ReduceSumWithSubtract(
   }
 
   __syncthreads();
-  sum_val = phi::funcs::BlockReduceSum<MT>(sum_val, FULL_MASK);
+  sum_val = phi::funcs::BlockReduceSum<MPType>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = static_cast<T>(sum_val);
   }
@@ -92,7 +92,7 @@ __global__ void ReduceMaxWithSubtract(const T* x,
   }
 
   __syncthreads();
-  max_val = phi::funcs::BlockReduceMax<MT>(max_val, FULL_MASK);
+  max_val = phi::funcs::BlockReduceMax<MPType>(max_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = static_cast<T>(max_val);
   }
@@ -111,7 +111,7 @@ __global__ void ReduceMinWithSubtract(const T* x,
   }
 
   __syncthreads();
-  min_val = phi::funcs::BlockReduceMin<MT>(min_val, FULL_MASK);
+  min_val = phi::funcs::BlockReduceMin<MPType>(min_val, FULL_MASK);
   if (threadIdx.x == 0) {
     out[blockIdx.x] = static_cast<T>(min_val);
   }
