@@ -29,11 +29,12 @@
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
-#define CUTLASS_CHECK(status)                                                \
-  if (status != cutlass::Status::kSuccess) {                                 \
-    VLOG(3)                                                                  \
-        << "Cutlass can not deal with this problem size, skip this kernel!"; \
-    return status;                                                           \
+#define CUTLASS_CHECK(status)                                               \
+  if (status != cutlass::Status::kSuccess) {                                \
+    std::cout                                                               \
+        << "Cutlass can not deal with this problem size, skip this kernel!" \
+        << std::endl;                                                       \
+    return status;                                                          \
   }
 
 typedef enum {
@@ -42,7 +43,12 @@ typedef enum {
   CONV2D_BIAS_ADD_RELU,
   CONV2D_BIAS_SILU,
   CONV2D_BIAS_LEAKY_RELU,
-  CONV2D_BIAS_SILU_ADD
+  CONV2D_BIAS_SIGMOID,
+  CONV2D_BIAS_SILU_ADD,
+  CONV2D_DEPTHWISE_BIAS,
+  CONV2D_DEPTHWISE_BIAS_RELU,
+  CONV2D_DEPTHWISE_BIAS_SIGMOID,
+  CONV2D_DEPTHWISE_BIAS_SILU,
 } OpType;
 
 // conv2d_diff_gpu calculate diff of cutlass output and baseline output, you can

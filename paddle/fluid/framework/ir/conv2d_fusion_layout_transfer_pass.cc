@@ -142,7 +142,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   std::unordered_set<ir::Node *> valid_ops;
 
   // Determine if this conv2d_fusion can run in cuDNN's NHWC mode,
-  // will not setting or changing anything
+  // will not set or change any attribute in op_desc
   auto cuDNNIsValid = [&](ir::Node *op_node) -> bool {
     if (op_node->Op()->Type() != target_op_type) return false;
     auto data_format =

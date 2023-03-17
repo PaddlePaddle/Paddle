@@ -49,7 +49,7 @@ void Conv2dFusionKernel(const Context& ctx,
   const int ic = in_dims[3];
   const int ih = in_dims[1];
   const int iw = in_dims[2];
-  CHECK_EQ(groups == 1, true);
+
   CHECK_EQ(ic == groups * filter_dims[3], true);
   int pad_h0 = 0;
   int pad_h1 = 0;
@@ -109,6 +109,28 @@ void Conv2dFusionKernel(const Context& ctx,
                           groups,
                           &ctx};
 
+  // conv2d_depthwise
+  if (groups == ic && ic == oc) {
+    // cutlass conv2d_depthwise not support residual
+    CHECK_EQ(residual == nullptr, true);
+    if (activation == "relu") {
+      conv2d_depthwise_bias_relu(params);
+    } else if (activation == "identity") {
+      conv2d_depthwise_bias(params);
+    } else if (activation == "sigmoid") {
+      conv2d_depthwise_bias_sigmoid(params);
+    } else if (activation == "swish") {
+      conv2d_depthwise_bias_silu(params);
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Cutlass conv2d_depthwise does not support this activation: %s.",
+          activation.c_str()));
+    }
+    return;
+  }
+
+  // below: conv2d_fusion && groups == 1
+  CHECK_EQ(groups == 1, true);
   if (residual) {
     if (activation == "relu") {
       params.residual = reinterpret_cast<const half*>(residual->data<T>());
@@ -126,6 +148,8 @@ void Conv2dFusionKernel(const Context& ctx,
   } else if (activation == "leaky_relu") {
     params.alpha = fuse_alpha;
     Conv2dBiasLeakyRelu(params);
+  } else if (activation == "sigmoid") {
+    Conv2dBiasSigmoid(params);
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Cutlass does not support this activation: %s.", activation.c_str()));

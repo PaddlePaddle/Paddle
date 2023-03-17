@@ -58,6 +58,12 @@ void Conv2dBiasRelu(const ConvAllParams &params);
 void Conv2dBiasLeakyRelu(const ConvAllParams &params);
 void Conv2dBiasSilu(const ConvAllParams &params);
 void Conv2dBias(const ConvAllParams &params);
+void Conv2dBiasSigmoid(const ConvAllParams &params);
+void TwoConv2dFusion(const ConvAllParams &p0, const ConvAllParams &p1);
+void conv2d_depthwise_bias_relu(const ConvAllParams &params);
+void conv2d_depthwise_bias_sigmoid(const ConvAllParams &params);
+void conv2d_depthwise_bias(const ConvAllParams &params);
+void conv2d_depthwise_bias_silu(const ConvAllParams &params);
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi

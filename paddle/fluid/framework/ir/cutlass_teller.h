@@ -27,6 +27,7 @@ class CutlassTeller {
   }
 
   // Determine this NCHW conv2d_fusion can be computed by cutlass?
+  // will not set or change any attribute in op_desc
   bool Conv2dFusionCanSupport(ir::Node *conv2d_fusion_node,
                               Scope *scope,
                               int device_id) {
@@ -71,26 +72,30 @@ class CutlassTeller {
     if (!cutlass_sm.count(sm_version)) {
       return false;
     }
-    if (oc % CUTLASS_NHWC_ALIGNMENT != 0) {
+
+    if (oc % CUTLASS_NHWC_ALIGNMENT != 0 && groups == 1) {
       return false;
     }
 
-    if (ic % CUTLASS_NHWC_ALIGNMENT != 0) {
+    if (ic % CUTLASS_NHWC_ALIGNMENT != 0 && groups == 1) {
       return false;
     }
 
     if (groups == 1) {
+      // conv + bias + act
       if (!has_residual && !cba_act_set.count(activation)) {
         return false;
       }
+      // conv + bias + elementwise_add + act
       if (has_residual && !cbaa_act_set.count(activation)) {
         return false;
       }
     } else if (groups == ic && ic == oc) {
+      // conv2d_depthwise not support residual input
       if (has_residual) {
         return false;
       }
-      // conv2d_depthwise
+      // conv2d_depthwise + bias + act
       if (!cdba_act_set.count(activation)) {
         return false;
       }

@@ -24,7 +24,7 @@ from util import SubstituteTemplate
 CommonCutlassConvKernelDeclare = """
 cutlass::Status ${kernel_func_name}(const ConvAllParams& params) {
   using kernel_base =
-  typename cutlass::conv::kernel::DefaultConv2d${conv_kind_name}<
+  typename cutlass::conv::kernel::${conv_kind_name}<
     ${element_a},
     ${layout_a},
     ${element_b},
@@ -202,3 +202,20 @@ def GenerateFunctionForPhi(
         op_dicts["op_name"] = camel_names[epi_func]
         generated_code += SubstituteTemplate(CommonWrapperForPhi, op_dicts)
     return generated_code
+
+
+# we modify some template parameters based on CommonCutlassConvKernelDeclare.
+CommonCutlassConv2dDepthwiseKernelDeclare = (
+    CommonCutlassConvKernelDeclare.replace(
+        "${align_a}", "cutlass::MatrixShape<${strided_shape}>"
+    )
+    .replace("${align_b}", "cutlass::MatrixShape<${dilation_shape}>")
+    .replace("ImplicitGemmConvolution", "DirectConvolution")
+    .replace(
+        "cutlass::gemm::GemmShape<${Tshape}>,",
+        '''cutlass::gemm::GemmShape<${Tshape}>,
+       cutlass::conv::TensorNHWCShape<${T_output_shape}>,
+       cutlass::MatrixShape<${filter_shape}>,
+     ''',
+    )
+)
