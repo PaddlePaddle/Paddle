@@ -424,17 +424,15 @@ def meshgrid_composite(inputs):
          r2 is Tensor [[4,5], [4,5], [4,5]]
     """
     size = len(inputs)
-    shape = [1 for i in range(size)]
+    shape = [1] * size
     for i in range(size):
         dim = inputs[i].dim()
         assert dim == 0 or dim == 1
-        if dim == 0:
-            shape[i] = 1
-        else:
+        if dim == 1:
             shape[i] = inputs[i].shape[0]
     outputs = []
     for i in range(size):
-        view_shape = [1 for i in range(size)]
+        view_shape = [1] * size
         view_shape[i] = shape[i]
         outputs.append(inputs[i].reshape(view_shape).broadcast_to(shape))
     return outputs
