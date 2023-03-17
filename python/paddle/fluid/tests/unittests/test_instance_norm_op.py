@@ -126,12 +126,13 @@ class TestInstanceNormOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_eager=True, check_prim=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X', 'Scale', 'Bias'],
             'Y',
+            check_eager=True,
             check_prim=True,
         )
 
