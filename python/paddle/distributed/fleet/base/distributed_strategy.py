@@ -1673,7 +1673,7 @@ class DistributedStrategy:
 
             **pp_degree(int)**: set number of GPUs in a pipeline parallel group. Default 1
 
-            **order(string)**: set hybrid parallel dimensions, the order is from outside to inside. Default dp->pp->sharding->mp
+            **order(string)**: set hybrid parallel dimensions, the order is from outside to inside. Default dp,pp,sharding,mp
 
         Examples:
             .. code-block:: python
