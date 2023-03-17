@@ -93,5 +93,5 @@ PD_REGISTER_KERNEL(nonzero,
                    bool,
                    float,
                    double) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::INT64);
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }

@@ -31,6 +31,35 @@ using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 //  This function should have as same signature as phi, which defined in
 //  paddle/phi/api/backward/backward_api.h
 template <typename T>
+void softmax_grad(const Tensor& out,
+                  const Tensor& out_grad,
+                  int axis,
+                  Tensor* x_grad) {
+  if (x_grad) {
+    if (out_grad.dims().size() > 0) {
+      if (axis >= 0) {
+        auto new_out_grad = out_grad * out;
+        auto tmp_x_grad = new_out_grad -
+                          out * sum<T>(new_out_grad, {axis}, out.dtype(), true);
+        set_output<T>(tmp_x_grad, x_grad);
+      } else {
+        auto new_out_grad = out_grad * out;
+        auto tmp_x_grad =
+            new_out_grad - out * sum<T>(new_out_grad,
+                                        {out.dims().size() + axis},
+                                        out.dtype(),
+                                        true);
+        set_output<T>(tmp_x_grad, x_grad);
+      }
+    } else {
+      set_output<T>(
+          full<T>(phi::vectorize(out_grad.dims()), 0.0, out_grad.dtype()),
+          x_grad);
+    }
+  }
+}
+
+template <typename T>
 void cast_grad(const Tensor& out_grad, DataType dtype, Tensor* x_grad) {
   if (x_grad) {
     auto res = cast<T>(out_grad, dtype);
@@ -59,7 +88,11 @@ void gather_grad(const Tensor& x,
   std::vector<int> reverse_perm(tmp_perm);
   // make origin ranks
   for (int i = 0; i < static_cast<int>(tmp_perm.size()); ++i) {
-    reverse_perm[tmp_perm[i]] = i;
+    if (tmp_perm[i] >= 0) {
+      reverse_perm[tmp_perm[i]] = i;
+    } else {
+      reverse_perm[tmp_perm[i] + tmp_perm.size()] = i;
+    }
   }
 
   // transpose out_grad and zero grad to target rank.
@@ -860,6 +893,16 @@ void cumsum_grad(const Tensor& x,
 }
 
 template <typename T>
+void split_grad(const std::vector<Tensor>& out_grad,
+                const Scalar& axis,
+                Tensor* x_grad) {
+  if (x_grad) {
+    auto grad = concat<T>(out_grad, axis);
+    set_output<T>(grad, x_grad);
+  }
+}
+
+template <typename T>
 void topk_grad(const Tensor& x,
                const Tensor& indices,
                const Tensor& out_grad,
@@ -888,6 +931,13 @@ void gather_nd_grad(const Tensor& x,
 }
 
 template <typename T>
+void assign_grad(const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    by_pass<T>(out_grad, x_grad);
+  }
+}
+
+template <typename T>
 void erf_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto m_2_sqrt_pi = full<T>(phi::vectorize(x.dims()), M_2_SQRTPI, x.dtype());
@@ -898,5 +948,79 @@ void erf_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void maximum_grad(const Tensor& x,
+                  const Tensor& y,
+                  const Tensor& out_grad,
+                  int axis,
+                  Tensor* x_grad,
+                  Tensor* y_grad) {
+  if (x_grad) {
+    auto x_tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
+    auto dx_res = out_grad * x_tmp;
+    if (y.dims() != x.dims()) {
+      // Maybe need reduce here
+      auto reduce_dim = get_reduce_dims(x.dims(), y.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dx_res, x_grad);
+      } else {
+        auto dx_reduce_res =
+            dx_res.sum(phi::vectorize(reduce_dim), x.dtype(), false);
+        auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
+        set_output<T>(dx_tmp, x_grad);
+      }
+    } else {
+      set_output<T>(dx_res, x_grad);
+    }
+  }
+
+  if (y_grad) {
+    auto y_tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
+    auto dy_res = out_grad * y_tmp;
+    if (x.dims() != y.dims()) {
+      // Maybe need reduce here
+      phi::DDim reduce_dim = get_reduce_dims(y.dims(), x.dims());
+      if (!reduce_dim.size()) {
+        set_output<T>(dy_res, y_grad);
+      } else {
+        auto dy_reduce_res =
+            dy_res.sum(phi::vectorize(reduce_dim), y.dtype(), false);
+        auto dy_tmp = reshape<T>(dy_reduce_res, phi::vectorize(y.dims()));
+        set_output<T>(dy_tmp, y_grad);
+      }
+    } else {
+      set_output<T>(dy_res, y_grad);
+    }
+  }
+}
+
+template <typename T>
+void dropout_grad(const Tensor& mask,
+                  const Tensor& out_grad,
+                  const Scalar& p,
+                  bool is_test,
+                  const std::string& mode,
+                  Tensor* x_grad) {
+  if (!x_grad) return;
+  if (is_test) {
+    if (mode == "upscale_in_train") {
+      by_pass<T>(out_grad, x_grad);
+    } else {
+      set_output<T>(out_grad * (1.0 - p.to<float>()), x_grad);
+    }
+  } else {
+    if (mode == "upscale_in_train") {
+      if (p.to<float>() == 1.0f) {
+        set_output<T>(out_grad * 0.0, x_grad);
+      } else {
+        set_output<T>(
+            out_grad * cast<T>(mask, out_grad.dtype()) / (1.0 - p.to<float>()),
+            x_grad);
+      }
+    } else {
+      set_output<T>(out_grad * cast<T>(mask, out_grad.dtype()), x_grad);
+    }
+  }
+}
 }  // namespace prim
 }  // namespace paddle
