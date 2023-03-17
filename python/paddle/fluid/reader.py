@@ -1550,7 +1550,7 @@ class GeneratorLoader(DataLoaderBase):
             feeder = DataFeeder(
                 feed_list=self._feed_list, place=core.CPUPlace()
             )
-            paddle_reader = feeder.decorate_reader(reader, multi_devices=False)
+            paddle_reader = feeder.feed(reader())
 
         def __tensor_reader_impl__():
             for slots in paddle_reader():
