@@ -312,7 +312,7 @@ def convert_call(func):
                 # Bound mothod will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
-                setattr(func, 'forward', forward_func.__get__(func))
+                func.forward = forward_func.__get__(func)
             except (IOError, OSError, TypeError):
                 # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self
