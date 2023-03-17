@@ -159,7 +159,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         config.enable_mkldnn()
         if target == 'int8':
             config.enable_mkldnn_int8(self._quantized_ops)
-        config.delete_pass("constant_folding_pass")
+        config.delete_pass("constant_folding_pass") # same reason as in analyzer_ernie_int8_tester.cc
         return config
 
     def _predict(
