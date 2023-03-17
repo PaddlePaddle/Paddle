@@ -56,6 +56,7 @@ void MemoryEfficientAttentionBackwardKernel(
     DenseTensor* value_grad,
     DenseTensor* bias_grad) {
   bool kernel_launched = false;
+
   auto launchKernel = [&](auto k_, auto kernel_fn) {
     // ndim
     PADDLE_ENFORCE_EQ(
