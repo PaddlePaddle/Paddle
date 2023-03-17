@@ -112,7 +112,9 @@ void Conv2dFusionKernel(const Context& ctx,
   // conv2d_depthwise
   if (groups == ic && ic == oc) {
     // cutlass conv2d_depthwise not support residual
-    CHECK_EQ(residual == nullptr, true);
+    if (residual) {
+      CHECK_EQ(residual->data<T>() == nullptr, true);
+    }
     if (activation == "relu") {
       conv2d_depthwise_bias_relu(params);
     } else if (activation == "identity") {

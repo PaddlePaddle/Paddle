@@ -204,7 +204,7 @@ def GenerateFunctionForPhi(
     return generated_code
 
 
-# we modify some template parameters based on CommonCutlassConvKernelDeclare.
+# We modify some template parameters based on CommonCutlassConvKernelDeclare.
 CommonCutlassConv2dDepthwiseKernelDeclare = (
     CommonCutlassConvKernelDeclare.replace(
         "${align_a}", "cutlass::MatrixShape<${strided_shape}>"
