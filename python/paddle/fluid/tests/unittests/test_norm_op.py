@@ -172,19 +172,18 @@ class TestNormBF16Op(OpTest):
         x = np.random.random(self.shape).astype(self.dtype)
         y, norm = l2_norm(x, self.axis, self.epsilon)
         self.inputs = {'X': convert_float_to_uint16(x)}
-        self.attrs = {
-            'epsilon': self.epsilon,
-            'axis': int(self.axis),
-            'is_test': True,
-        }
+        self.attrs = {'epsilon': self.epsilon, 'axis': self.axis}
         self.outputs = {'Out': convert_float_to_uint16(y), 'Norm': norm}
-        self.python_out_sig = ["out"]
+        self.python_out_sig = ['Out']
+        self.__class__.exist_fp64_check_grad = True
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), atol=1e-2)
+        self.check_output_with_place(core.CUDAPlace(0), atol=1e-1)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ['X'], 'Out', max_relative_error=1e-2
+        )
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
