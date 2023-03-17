@@ -398,6 +398,7 @@ class LayerHelperBase:
                     )
             else:
                 if dtype not in [
+                    'bfloat16',
                     'float16',
                     'float32',
                     'float64',
