@@ -3111,28 +3111,27 @@ void MemoryEfficientAttentionInferMeta(const MetaTensor& query,
   const int64_t value_num_head = value.dims()[2];
   const int64_t value_head_size = value.dims()[3];
 
-  PADDLE_ENFORCE_EQ(
-      ((query_batch_size == key_batch_size) &&
-       (key_batch_size == value_batch_size)),
-      true,
-      phi::errors::InvalidArgument(
-          "The batchsize of Query, Key, Value should be equal. "));
+  PADDLE_ENFORCE_EQ(((query_batch_size == key_batch_size) &&
+                     (key_batch_size == value_batch_size)),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The batchsize of Query, Key, Value should be equal."));
 
   PADDLE_ENFORCE_EQ(
       ((query_num_head == key_num_head) && (key_num_head == value_num_head)),
       true,
       phi::errors::InvalidArgument(
-          "The head number of Query, Key, Value should be equal. "));
+          "The head number of Query, Key, Value should be equal."));
 
   PADDLE_ENFORCE_EQ(query_head_size == key_head_size,
                     true,
                     phi::errors::InvalidArgument(
-                        "The head size of Query, Key should be equal. "));
+                        "The head size of Query, Key should be equal."));
 
   PADDLE_ENFORCE_EQ(key_seq_length == value_seq_length,
                     true,
                     phi::errors::InvalidArgument(
-                        "The seq length of Key, Value should be equal. "));
+                        "The seq length of Key, Value should be equal."));
   std::vector<int64_t> out_dims(
       {query_batch_size, query_seq_length, query_num_head, value_head_size});
   std::vector<int64_t> logsumexp_dims({query_num_head, query_batch_size});
