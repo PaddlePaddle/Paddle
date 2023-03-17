@@ -277,7 +277,7 @@ Tensor PhiTensorOperants::subtract(const Tensor& x, const Scalar& y) {
 }
 
 Tensor PhiTensorOperants::multiply(const Tensor& x, const Scalar& y) {
-  return paddle::experimental::multiply(x, paddle::experimental::full_like(x, y));
+  return paddle::experimental::scale(x, y, 0.0f, true);
 }
 
 Tensor PhiTensorOperants::divide(const Tensor& x, const Scalar& y) {
@@ -293,7 +293,7 @@ Tensor PhiTensorOperants::subtract(const Scalar& x, const Tensor& y) {
 }
 
 Tensor PhiTensorOperants::multiply(const Scalar& x, const Tensor& y) {
-  return paddle::experimental::multiply(paddle::experimental::full_like(y, x), y);
+  return paddle::experimental::scale(y, x, 0.0f, true);
 }
 
 Tensor PhiTensorOperants::divide(const Scalar& x, const Tensor& y) {
