@@ -12,17 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #include "paddle/fluid/framework/ir/xpu/fused_multi_transformer_cachekv_layout_trans_pass.h"
 #include <string>
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -125,13 +114,6 @@ void FusedMultiTransformerCacheKVLayoutTransPass::FillConstantReshapePass(
     GET_IR_NODE(fill_constant_reduce_out);
     auto fill_constant_reduce_input_names =
         fill_constant_reduce->Op()->Input("ShapeTensorList");
-    if (fill_constant_reduce_input_names.size() !=
-        fill_constant_shape_tensor_list_names_size) {
-      VLOG(3) << "fill constant Input['ShapeTensorList'] names size should be "
-              << fill_constant_shape_tensor_list_names_size << ", but received "
-              << fill_constant_reduce_input_names.size();
-      return;
-    }
     auto fill_constant_reduce_trans_input_names =
         std::vector<std::string>{fill_constant_reduce_input_names[0],
                                  fill_constant_reduce_input_names[3],
