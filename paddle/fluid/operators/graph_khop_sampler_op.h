@@ -199,6 +199,23 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
     auto* src = ctx.Input<phi::DenseTensor>("Row");
     auto* dst_count = ctx.Input<phi::DenseTensor>("Col_Ptr");
     auto* vertices = ctx.Input<phi::DenseTensor>("X");
+    auto row_dims = src->dims();
+    auto row_dims_lens = row_dims.size();
+    auto col_dims = dst_count->dims();
+    auto col_dims_lens = col_dims.size();
+    for (int i = 0; i < row_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(
+          row_dims[i],
+          0,
+          phi::errors::InvalidArgument("The size of Row(X) should not be 0."));
+    }
+    for (int i = 0; i < col_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(col_dims[i],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The size of Col_Ptr(X) should not be 0."));
+    }
+
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
     bool return_eids = ctx.Attr<bool>("return_eids");
 

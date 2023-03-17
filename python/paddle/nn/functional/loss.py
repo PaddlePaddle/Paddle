@@ -2338,8 +2338,6 @@ def softmax_with_cross_entropy(
             # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1.15328646])
     """
-    if 0 in logits.shape:
-        raise ValueError("The dims of Input(X) should be greater than 0.")
     return fluid_softmax_with_cross_entropy(
         logits,
         label,
