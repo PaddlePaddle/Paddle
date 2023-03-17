@@ -1,4 +1,4 @@
-set(COMMON_API_TEST_DEPS phi_tensor phi_api phi_api_utils)
+set(COMMON_API_TEST_DEPS phi_tensor phi_api api_tensor_utils)
 
 if(WITH_GPU)
   nv_test(
