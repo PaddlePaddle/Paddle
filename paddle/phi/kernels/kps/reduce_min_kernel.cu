@@ -23,9 +23,7 @@ namespace phi {
  */
 template <typename T>
 struct CudaFastMinFunctor {
-  inline T initial() {
-    return static_cast<T>(std::numeric_limits<T>::lowest());
-  }
+  inline T initial() { return static_cast<T>(std::numeric_limits<T>::max()); }
 
   __device__ __forceinline__ T operator()(const T a, const T b) const {
     return min(a, b);
