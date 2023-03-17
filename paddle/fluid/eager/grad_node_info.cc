@@ -474,6 +474,7 @@ void GradNodeBase::HandleComplexGradToRealGrad(
       const paddle::Tensor& grad = slot_out_grads[rank_id];
 
       if (paddle::framework::IsComplexType(fwd_data_type)) continue;
+      if (!grad.impl()) continue;
 
       // Only Handle Complex To Real for DenseTensor for now
       if (phi::DenseTensor::classof(grad.impl().get())) {

@@ -306,10 +306,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "deformable_conv") {
-      if (with_dynamic_shape) {
-        VLOG(3) << "Deformable conv trt plugin does not support dynamic shape";
-        return false;
-      }
       if (!desc.HasAttr("groups") || !desc.HasAttr("strides") ||
           !desc.HasAttr("paddings"))
         return false;
