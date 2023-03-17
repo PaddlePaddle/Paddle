@@ -1412,6 +1412,7 @@ class TestCos(TestActivation):
     def setUp(self):
         self.op_type = "cos"
         self.python_api = paddle.cos
+        self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
         # prim not support now
@@ -1546,6 +1547,7 @@ class TestSin(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sin"
         self.python_api = paddle.sin
+        self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
         # prim not support now
