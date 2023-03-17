@@ -16,10 +16,18 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/fft_kernel_impl.h"
 
-PD_REGISTER_KERNEL(fft_c2c, CPU, ALL_LAYOUT, phi::FFTC2CKernel,
-                   phi::dtype::complex<float>, phi::dtype::complex<double>) {}
-PD_REGISTER_KERNEL(fft_c2r, CPU, ALL_LAYOUT, phi::FFTC2RKernel,
-                   phi::dtype::complex<float>, phi::dtype::complex<double>) {
+PD_REGISTER_KERNEL(fft_c2c,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FFTC2CKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(fft_c2r,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FFTC2RKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 PD_REGISTER_KERNEL(fft_r2c, CPU, ALL_LAYOUT, phi::FFTR2CKernel, float, double) {
