@@ -65,7 +65,7 @@ class TestMPFP16MainGrad(TestMPFP16):
 
         for param in model.parameters():
             if not param.stop_gradient and not hasattr(param, "main_grad"):
-                setattr(param, "main_grad", None)
+                param.main_grad = None
                 param._register_grad_hook(self._update_main_grad_hook(param))
 
         model, optimizer = paddle.amp.decorate(
