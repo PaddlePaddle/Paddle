@@ -16,8 +16,9 @@ import unittest
 
 import numpy as np
 
+import paddle
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_elementwise_mul_op import (
     ElementwiseMulOp,
 )
@@ -83,6 +84,25 @@ class TestOneDNNElementwiseMulOp5(TestOneDNNElementwiseMulOp):
     reason="oneDNN's int8 elementwise_ops don't implemend grad kernel."
 )
 class TestInt8(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "fused_elementwise_mul"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.multiply
+        self.dtype = np.float64
+        self.axis = -1
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+        self.if_enable_cinn()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self._cpu_only = True

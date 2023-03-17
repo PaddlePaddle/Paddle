@@ -237,9 +237,9 @@ class TestInt8(TestOneDNNElementwiseSubOp):
         self.out = np.subtract(self.x, self.y)
 
     def init_scales(self):
-        self.attrs['scale_x'] = 1.0
-        self.attrs['scale_y'] = 1.0
-        self.attrs['scale_out'] = 1.0
+        self.attrs['Scale_x'] = 1.0
+        self.attrs['Scale_y'] = 1.0
+        self.attrs['Scale_out'] = 1.0
 
     def test_check_output(self):
         self.init_scales()
