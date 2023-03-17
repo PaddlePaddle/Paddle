@@ -19,6 +19,7 @@
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/fusion/fused_attention_kernel.h"
