@@ -122,9 +122,7 @@ class TestExpandV2Corner(OpTest):
         self.bcast_dims = [1, 1]
 
     def test_check_output(self):
-        self.assertRaises(
-            ValueError, self.check_output, check_eager=True, check_prim=True
-        )
+        self.assertRaises(ValueError, self.check_output, check_prim=True)
 
     def test_check_grad(self):
         self.assertRaises(
@@ -132,7 +130,6 @@ class TestExpandV2Corner(OpTest):
             self.check_grad,
             ['X'],
             'Out',
-            check_eager=True,
             check_prim=True,
         )
 
