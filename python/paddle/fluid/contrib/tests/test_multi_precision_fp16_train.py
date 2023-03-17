@@ -293,12 +293,10 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 one_var = fluid.layers.fill_constant(
                     shape=[1], dtype='int64', value=1
                 )
-                with fluid.layers.control_flow.Switch() as switch:
-                    with switch.case(label != zero_var):
-                        paddle.assign(zero_var, output=label)
-                    with switch.default():
-                        paddle.assign(one_var, output=label)
-
+                label_val = paddle.static.nn.case(
+                    label != zero_var, lambda: zero_var, lambda: one_var
+                )
+                paddle.assign(label_val, output=label)
                 net = resnet_cifar10(image)
                 logits = paddle.static.nn.fc(
                     x=net, size=10, activation="softmax"
