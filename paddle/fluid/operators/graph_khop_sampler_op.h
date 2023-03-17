@@ -81,6 +81,12 @@ void SampleNeighbors(const T* src,
                      bool is_first_layer,
                      bool is_last_layer,
                      bool return_eids) {
+  PADDLE_ENFORCE_NOT_NULL(
+      src, platform::errors::InvalidArgument("The src is null pointer"));
+  PADDLE_ENFORCE_NOT_NULL(
+      dst_count,
+      platform::errors::InvalidArgument("The dst_count is null pointer"));
+
   const size_t bs = inputs->size();
   // Allocate the memory of outputs
   // Collect the neighbors size
@@ -286,6 +292,10 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
 
     // 4. Concat intermediate sample results.
     int64_t unique_dst_size = 0, src_size = 0;
+    PADDLE_ENFORCE_GE(outputs_vec.size(),
+                      num_layers,
+                      platform::errors::InvalidArgument(
+                          "The outputs_vec.size() is less than num_layers."));
     for (size_t i = 0; i < num_layers; i++) {
       unique_dst_size += dst_vec[i].size();
       src_size += outputs_vec[i].size();

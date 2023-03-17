@@ -259,6 +259,23 @@ class TestGraphKhopSampler(unittest.TestCase):
                 in_neighbors = np.isin(edge_src_n, self.dst_src_dict[n])
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
+    def test_graph_khop_sampler_null_pointer(self):
+        paddle.enable_static()
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0]), dtype='int32')
+        with self.assertRaises(ValueError):
+            y = paddle.to_tensor([10], dtype='int32')
+            layer = paddle.incubate.graph_khop_sampler(
+                row=x,
+                colptr=x,
+                input_nodes=y,
+                sample_sizes=[0],
+            )
+        with self.assertRaises(ValueError):
+            layer = paddle.incubate.graph_khop_sampler(
+                row=x, colptr=x, input_nodes=x, sample_sizes=[0]
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
