@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/conv2d_fusion_layout_transfer_pass.h"
-
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include "paddle/fluid/framework/ir/cutlass_teller.h"
 
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -112,17 +112,6 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
           phi::DataType::FLOAT16 ||
       Get<bool>("enable_gpu_mixed");
   bool cutlass_enable = Get<bool>("use_cutlass");
-
-#ifdef PADDLE_WITH_CUTLASS
-  const auto &prop = platform::GetDeviceProperties(Get<int>("gpu_device_id"));
-  int sm_version = prop.major * 10 + prop.minor;
-  // Now we only implement cutlass kernel on SM75.
-  if (sm_version == 75) {
-  } else {
-    cutlass_enable = false;
-  }
-#endif
-
   if (!is_fp16_precision) return;
 
   PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
@@ -158,8 +147,9 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
         op_node->Op()->GetAttrIfExists<std::string>("data_format");
     if (data_format != "NCHW") return false;
     auto filter_names = op_node->Op()->Input("Filter");
-    constexpr int NHWC_ALIGNMENT = 8;
-    // If filter's channel is not multiple of 8, conv2d_fusion not run at nhwc.
+    constexpr int CUDNN_ALIGNMENT = 8;
+    // If filter's channel is not multiple of CUDNN_ALIGNMENT, conv2d_fusion not
+    // run at nhwc.
     for (const auto &filter_name : filter_names) {
       if (weights_shape_nhwc.count(filter_name)) {
         continue;
@@ -168,10 +158,11 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       CHECK_EQ(filter_tensor.dims().size() == 4UL, true);
       int oc = filter_tensor.dims()[0];
-      int ic = filter_tensor.dims()[1];
-      bool cutlass_can_support =
-          oc % NHWC_ALIGNMENT == 0 && ic % NHWC_ALIGNMENT == 0;
-      if (!cutlass_can_support) {
+      auto groups = op_node->Op()->GetAttrIfExists<int>("groups");
+      int ic = filter_tensor.dims()[1] * groups;
+      bool cudnn_can_support =
+          oc % CUDNN_ALIGNMENT == 0 && ic % CUDNN_ALIGNMENT == 0;
+      if (!cudnn_can_support) {
         return false;
       }
     }
@@ -179,39 +170,32 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   };
 
   auto CutlassIsValid = [&](ir::Node *op_node) -> bool {
-    auto act_type = op_node->Op()->GetAttrIfExists<std::string>("activation");
-    // conv2d_fusion has two forms: conv + bias + act, conv + bias +
-    // elmentwise_add + act.
-    std::unordered_set<std::string> cutlass_cba_act_set = {
-        "relu", "swish", "identity", "leaky_relu"};
-    std::unordered_set<std::string> cutlass_cbaa_act_set = {"relu"};
-    bool is_residual = op_node->Op()->Input("ResidualData").size() >= 1UL;
-
-    if (is_residual) {
-      if (!cutlass_cbaa_act_set.count(act_type)) {
-        return false;
-      }
-    } else {
-      if (!cutlass_cba_act_set.count(act_type)) {
-        return false;
-      }
-    }
-    return true;
+    return CutlassTeller::Instance()->Conv2dFusionCanSupport(
+               op_node, scope, Get<int>("gpu_device_id")) &&
+           cutlass_enable;
   };
 
   for (auto *op_node : op_nodes) {
     CHECK_EQ(op_node->IsOp(), true);
-    if (cuDNNIsValid(op_node)) {
+    if (cuDNNIsValid(op_node) || CutlassIsValid(op_node)) {
       valid_ops.insert(op_node);
       auto *op_desc = op_node->Op();
-      op_desc->SetAttr("data_format", std::string{"NHWC"});
-      if (cutlass_enable && CutlassIsValid(op_node)) {
+      // const auto &filter_tensor =
+      // scope->FindLocalVar(op_desc->Input("Filter")[0])->Get<phi::DenseTensor>();
+      // int kh = filter_tensor.dims()[2];
+
+      // auto groups = op_desc->GetAttrIfExists<int>("groups");
+      // auto strides = op_desc->GetAttrIfExists<std::vector<int>>("strides");
+      // (groups <= 1 || kh == 3)
+
+      if (CutlassIsValid(op_node)) {
         op_desc->SetType("conv2d_fusion_cutlass");
         // conv2d_fusion_cutlass must have this attribute because of signature.
         if (!op_desc->HasAttr("fuse_alpha")) {
           op_desc->SetAttr("fuse_alpha", 0.f);
         }
       }
+      op_desc->SetAttr("data_format", std::string{"NHWC"});
       op_desc->Flush();
 
       // transfer weights
