@@ -2081,7 +2081,11 @@ class AdagradOptimizer(Optimizer):
         for p in parameters:
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
-                self._add_accumulator(self._moment_acc_str, master_p)
+                self._add_accumulator(
+                    self._moment_acc_str,
+                    master_p,
+                    fill_value=self.initial_accumulator_value,
+                )
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
