@@ -4611,7 +4611,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     Only n=1 is currently supported.
 
     Args:
-        x (Tensor): The input tensor to compute the forward difference on
+        x (Tensor): The input tensor to compute the forward difference on, the data type is float16(GPU), float32, float64, bool, int32, int64.
         n (int, optional): The number of times to recursively compute the difference.
                           Only support n=1. Default:1
         axis (int, optional): The axis to compute the difference along. Default:-1
@@ -4706,7 +4706,10 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             return _C_ops.subtract(input_back, input_front)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'bool', 'int32', 'int64'],
+            'diff',
         )
         check_type(axis, 'axis', (int), 'diff')
         helper = LayerHelper('diff', **locals())

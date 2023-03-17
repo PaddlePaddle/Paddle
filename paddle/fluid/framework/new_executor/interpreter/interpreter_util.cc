@@ -70,7 +70,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "merged_adam",
     "momentum",
     "multiclass_nms3",
-    "multinomial",
     "nanmedian",
     "sync_batch_norm_grad",
     "unique",
