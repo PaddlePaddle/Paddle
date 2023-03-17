@@ -81,12 +81,12 @@ class PreservedAnalyses {
 
   bool IsPreserved(mlir::TypeID id) const { return preserved_ids_.count(id); }
 
- private:
   template <typename AnalysisT>
   void Unpreserve() {
     preserved_ids_.erase(mlir::TypeID::get<AnalysisT>());
   }
 
+ private:
   template <typename>
   friend struct AnalysisModel;
 

@@ -55,8 +55,8 @@ mlir::LogicalResult AdaptorPass::RunPipeline(PassManager& pm,
                                              int opt_level,
                                              bool verify) {
   auto* instrumentor = am.GetPassInstrumentor();
-  if (instrumentor) {
-    instrumentor->RunBeforePipeline(op->getName());
+  if (instrumentor && op->getNumRegions()) {
+    instrumentor->RunBeforePipeline(op);
   }
 
   for (Pass& pass : pm.GetPasses()) {
@@ -69,8 +69,8 @@ mlir::LogicalResult AdaptorPass::RunPipeline(PassManager& pm,
     }
   }
 
-  if (instrumentor) {
-    instrumentor->RunAfterPipeline(op->getName());
+  if (instrumentor && op->getNumRegions()) {
+    instrumentor->RunAfterPipeline(op);
   }
 
   // Apply pass manager on all nested ir.
@@ -97,12 +97,16 @@ mlir::LogicalResult AdaptorPass::RunPass(Pass* pass,
     return mlir::failure(pass->pass_state_->pass_failed);
   }
 
-  if (instrumentor) instrumentor->RunBeforePass(pass, op);
+  if (instrumentor && op->getNumRegions())
+    instrumentor->RunBeforePass(pass, op);
   pass->Run(op);
+
+  // Invalidate any non preserved analyses.
+  am.Invalidate(pass->pass_state_->preserved_analyses);
 
   // TODO(wilber): failed?
 
-  if (instrumentor) instrumentor->RunAfterPass(pass, op);
+  if (instrumentor && op->getNumRegions()) instrumentor->RunAfterPass(pass, op);
 
   if (verify) {
     bool verify_recursively = !dynamic_cast<AdaptorPass*>(pass);
@@ -179,11 +183,9 @@ void PassManager::AddInstrumentation(std::unique_ptr<PassInstrumentation> pi) {
 // PassInstrumentation
 //===----------------------------------------------------------------------===//
 
-void PassInstrumentation::RunBeforePipeline(
-    std::optional<mlir::OperationName> name) {}
+void PassInstrumentation::RunBeforePipeline(mlir::Operation* op) {}
 
-void PassInstrumentation::RunAfterPipeline(
-    std::optional<mlir::OperationName> name) {}
+void PassInstrumentation::RunAfterPipeline(mlir::Operation* op) {}
 
 void PassInstrumentation::RunBeforePass(Pass* pass, mlir::Operation* op) {}
 
@@ -196,6 +198,8 @@ void PassInstrumentation::RunBeforeAnalysis(const std::string& name,
 void PassInstrumentation::RunAfterAnalysis(const std::string& name,
                                            mlir::TypeID id,
                                            mlir::Operation* op) {}
+
+PassInstrumentation::~PassInstrumentation() = default;
 
 //===----------------------------------------------------------------------===//
 // PassInstrumentor
@@ -211,17 +215,16 @@ PassInstrumentor::PassInstrumentor()
     : impl(new detail::PassInstrumentorImpl()) {}
 PassInstrumentor::~PassInstrumentor() = default;
 
-void PassInstrumentor::RunBeforePipeline(
-    std::optional<mlir::OperationName> name) {
+void PassInstrumentor::RunBeforePipeline(mlir::Operation* op) {
+  if (op->getNumRegions() == 0) return;
   for (auto& instr : impl->instrumentations) {
-    instr->RunBeforePipeline(name);
+    instr->RunBeforePipeline(op);
   }
 }
 
-void PassInstrumentor::RunAfterPipeline(
-    std::optional<mlir::OperationName> name) {
+void PassInstrumentor::RunAfterPipeline(mlir::Operation* op) {
   for (auto& instr : llvm::reverse(impl->instrumentations)) {
-    instr->RunAfterPipeline(name);
+    instr->RunAfterPipeline(op);
   }
 }
 

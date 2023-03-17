@@ -68,7 +68,7 @@ class TestPass : public infra::Pass {
     llvm::outs() << "In TestPass: " << op->getName() << "\n";
 
     GetAnalysisManager().GetAnalysis<CountOpAnalysis>();
-    // this->pass_state_->preserved_analyses.Preserve<CountOpAnalysis>();
+    this->pass_state_->preserved_analyses.Preserve<CountOpAnalysis>();
 
     for (auto& region : op->getRegions()) {
       for (auto& block : region.getBlocks()) {
@@ -159,6 +159,7 @@ class TestPatternDriver : public infra::Pass {
       llvm::outs() << "In TestPatternDriverPass, last pass analysis "
                    << an->get().count << " ops.\n";
     }
+    this->pass_state_->preserved_analyses.Unpreserve<CountOpAnalysis>();
 
     infra::GreedyRewriteConfig config;
     config.use_top_down_traversal = true;
@@ -184,6 +185,7 @@ int main(int argc, char** argv) {
   module->dump();
 
   infra::PassManager pm(&context, opt_level);
+  pm.EnableTiming();
   auto pass = std::make_unique<TestPass>();
   pm.addPass(std::move(pass));
 

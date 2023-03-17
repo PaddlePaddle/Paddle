@@ -85,6 +85,8 @@ class PassManager {
     passes_.emplace_back(std::move(pass));
   }
 
+  void EnableTiming();
+
   void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
 
  private:

@@ -48,9 +48,13 @@ add_definitions(${LLVM_DEFINITIONS})
 
 add_library(
   pass_infra
-  Pass/Pass.cc Pass/PassRegistry.cc IR/PatternMatch.cc
-  Rewrite/FrozenRewritePatternSet.cc Rewrite/PatternApplicator.cc
-  Transforms/GreedyPatternRewriteDriver.cc)
+  Pass/Pass.cc
+  Pass/PassRegistry.cc
+  IR/PatternMatch.cc
+  Rewrite/FrozenRewritePatternSet.cc
+  Rewrite/PatternApplicator.cc
+  Transforms/GreedyPatternRewriteDriver.cc
+  Pass/PassTiming.cc)
 
 add_executable(demo test/demo.cc)
 target_link_libraries(demo ${mlir_libs} pass_infra)

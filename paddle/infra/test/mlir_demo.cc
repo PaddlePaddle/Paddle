@@ -207,6 +207,7 @@ int main(int argc, char** argv) {
   module->dump();
 
   mlir::PassManager pm(&context);
+  pm.enableTiming();
   auto& opm = pm.nest<mlir::func::FuncOp>();
   opm.addPass(std::make_unique<FusionPass>());
 

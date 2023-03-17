@@ -29,12 +29,12 @@ struct PassInstrumentorImpl;
 
 class PassInstrumentation {
  public:
-  virtual ~PassInstrumentation() = 0;
+  virtual ~PassInstrumentation();
 
   /// A callback to run before a pass pipeline is executed.
-  virtual void RunBeforePipeline(std::optional<mlir::OperationName> name);
+  virtual void RunBeforePipeline(mlir::Operation* op);
 
-  virtual void RunAfterPipeline(std::optional<mlir::OperationName> name);
+  virtual void RunAfterPipeline(mlir::Operation* op);
 
   virtual void RunBeforePass(Pass* pass, mlir::Operation* op);
 
@@ -60,9 +60,9 @@ class PassInstrumentor {
 
   void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
 
-  void RunBeforePipeline(std::optional<mlir::OperationName> name);
+  void RunBeforePipeline(mlir::Operation* op);
 
-  void RunAfterPipeline(std::optional<mlir::OperationName> name);
+  void RunAfterPipeline(mlir::Operation* op);
 
   void RunBeforePass(Pass* pass, mlir::Operation* op);
 
