@@ -454,36 +454,24 @@ void MemoryEfficientAttentionBackwardKernel(
     p.gK_strideB = DimStride(key_grad->dims(), 0);
     p.gV_strideB = DimStride(value_grad->dims(), 0);
     p.gQKV_strideM_multiplier = 1;
-    PADDLE_ENFORCE_EQ(
-        p.gQ_strideM(),
-        DimStride(query_grad->dims(), 1),
-        paddle::platform::errors::InvalidArgument(
-            "The strideM of grad query"
-            "should be euqal to the first dimension size of query grad's stride"
-            " But received the strideM = %d, the first dimension size of query "
-            "grad's stride = %d",
-            p.gQ_strideM(),
-            DimStride(query_grad->dims(), 1)));
-    PADDLE_ENFORCE_EQ(
-        p.gK_strideM(),
-        DimStride(key_grad->dims(), 1),
-        paddle::platform::errors::InvalidArgument(
-            "The strideM of grad key"
-            "should be euqal to the first dimension size of key grad's stride"
-            " But received the strideM = %d, the first dimension size of key "
-            "grad's stride = %d",
-            p.gK_strideM(),
-            DimStride(key_grad->dims(), 1)));
-    PADDLE_ENFORCE_EQ(
-        p.gV_strideM(),
-        DimStride(value_grad->dims(), 1),
-        paddle::platform::errors::InvalidArgument(
-            "The strideM of grad value"
-            "should be euqal to the first dimension size of value grad's stride"
-            " But received the strideM = %d, the first dimension size of value "
-            "grad's stride = %d",
-            p.gV_strideM(),
-            DimStride(value_grad->dims(), 1)));
+    PADDLE_ENFORCE_EQ(q_dims[2] * q_dims[3],
+                      DimStride(query_grad->dims(), 1),
+                      paddle::platform::errors::InvalidArgument(
+                          "The strideM of grad query"
+                          "should be euqal to the first dimension size of "
+                          "query grad's stride"));
+    PADDLE_ENFORCE_EQ(k_dims[2] * k_dims[3],
+                      DimStride(key_grad->dims(), 1),
+                      paddle::platform::errors::InvalidArgument(
+                          "The strideM of grad key"
+                          "should be euqal to the first dimension size of key "
+                          "grad's stride"));
+    PADDLE_ENFORCE_EQ(v_dims[2] * v_dims[3],
+                      DimStride(value_grad->dims(), 1),
+                      paddle::platform::errors::InvalidArgument(
+                          "The strideM of grad value"
+                          "should be euqal to the first dimension size of "
+                          "value grad's stride"));
 
     p.q_strideB = DimStride(query.dims(), 0);
     p.k_strideB = DimStride(key.dims(), 0);
