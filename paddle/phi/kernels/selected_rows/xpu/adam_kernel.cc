@@ -24,8 +24,6 @@
 namespace phi {
 namespace sr {
 
-using float16 = dtype::float16;
-
 template <typename T, typename Context>
 void AdamDenseParamSparseGradKernel(
     const Context& dev_ctx,
