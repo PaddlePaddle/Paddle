@@ -20,7 +20,6 @@
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/declarations.h"
 
 // print names of kernel function params with json format:
 // {

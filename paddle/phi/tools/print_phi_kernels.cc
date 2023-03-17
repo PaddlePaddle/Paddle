@@ -13,7 +13,7 @@
 // limitations under the License.
 #include <iostream>
 #include <string>
-
+// declarations
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_registry.h"
 
