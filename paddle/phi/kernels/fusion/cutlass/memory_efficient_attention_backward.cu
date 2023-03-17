@@ -189,18 +189,18 @@ void MemoryEfficientAttentionBackwardKernel(
             output_grad.dims()[3]));
 
     if (cu_seqlens_q) {
-      PADDLE_ENFORCE_EQ(
-          cu_seqlens_k,
-          true,
-          paddle::platform::errors::InvalidArgument(
-              "cu_seqlens_q and cu_seqlens_k should be same condition"));
-      PADDLE_ENFORCE_EQ(bias,
+      PADDLE_ENFORCE_EQ((cu_seqlens_q && bias),
                         false,
                         paddle::platform::errors::InvalidArgument(
                             "cu_seqlens_q or bias should be None"));
+      PADDLE_ENFORCE_EQ(
+          (cu_seqlens_k && cu_seqlens_q),
+          true,
+          paddle::platform::errors::InvalidArgument(
+              "cu_seqlens_q and cu_seqlens_k should be same condition"));
     } else {
       PADDLE_ENFORCE_EQ(
-          cu_seqlens_k,
+          (cu_seqlens_k || cu_seqlens_q),
           false,
           paddle::platform::errors::InvalidArgument(
               "cu_seqlens_q and cu_seqlens_k should be same condition"));
@@ -244,15 +244,15 @@ void MemoryEfficientAttentionBackwardKernel(
               "The batch number of query"
               "should be one. But received batch number of query = %d.",
               q_dims[0]));
-      PADDLE_ENFORCE_LT(max_seqlen_q_tmp,
-                        0,
+      PADDLE_ENFORCE_LT(0,
+                        max_seqlen_q_tmp,
                         paddle::platform::errors::InvalidArgument(
                             "The max sequence length of query"
                             "should more than zero. But received the max "
                             "sequence length of query = %d.",
                             max_seqlen_q_tmp));
-      PADDLE_ENFORCE_LT(max_seqlen_k_tmp,
-                        0,
+      PADDLE_ENFORCE_LT(0,
+                        max_seqlen_k_tmp,
                         paddle::platform::errors::InvalidArgument(
                             "The max sequence length of key"
                             "should more than zero. But received the max "
