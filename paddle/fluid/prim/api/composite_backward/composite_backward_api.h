@@ -924,7 +924,7 @@ void layer_norm_grad(const Tensor& x,
   if (bias_grad) {
     if (bias_ptr) {
       auto bias_grad_tmp =
-          out_grad_cast.sum(std::vector<int64_t>({0}), x.dtype(), true);
+          out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
       bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
       set_output<T>(bias_grad_tmp, bias_grad);
     } else {
@@ -938,7 +938,7 @@ void layer_norm_grad(const Tensor& x,
     if (scale_ptr) {
       auto scale_grad_tmp =
           (x_sub_mean * sqrt_var_1 * out_grad_cast)
-              .sum(std::vector<int64_t>({0}), x.dtype(), true);
+              .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
       scale_grad_tmp = reshape<T>(scale_grad_tmp, scale_ptr->shape());
       set_output<T>(scale_grad_tmp, scale_grad);
     } else {
