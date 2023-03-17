@@ -24,13 +24,12 @@ class Conv2dGradNodeFinal : public egr::GradNodeBase {
       : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
   ~Conv2dGradNodeFinal() override = default;
 
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
-  operator()(
-      paddle::small_vector<std::vector<paddle::experimental::Tensor>,  // NOLINT
-                           egr::kSlotSmallVectorSize>& grads,          // NOLINT
-      bool create_graph = false,                                       // NOLINT
-      bool is_new_grad = false) override;                              // NOLINT
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,        // NOLINT
+                                  egr::kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,                               // NOLINT
+             bool is_new_grad = false) override;                      // NOLINT
   std::string name() override { return "Conv2dGradNodeFinal"; }
 
   void ClearTensorWrappers() override {
@@ -49,10 +48,10 @@ class Conv2dGradNodeFinal : public egr::GradNodeBase {
   }
 
   // SetTensorWrapperX, SetTensorWrapperY, ...
-  void SetTensorWrapperinput(const paddle::experimental::Tensor& input) {
+  void SetTensorWrapperinput(const paddle::Tensor& input) {
     input_ = egr::TensorWrapper(input, false);
   }
-  void SetTensorWrapperfilter(const paddle::experimental::Tensor& filter) {
+  void SetTensorWrapperfilter(const paddle::Tensor& filter) {
     filter_ = egr::TensorWrapper(filter, false);
   }
 
@@ -95,13 +94,12 @@ class Conv2dDoubleGradNodeFinal : public egr::GradNodeBase {
       : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
   ~Conv2dDoubleGradNodeFinal() override = default;
 
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
-  operator()(
-      paddle::small_vector<std::vector<paddle::experimental::Tensor>,  // NOLINT
-                           egr::kSlotSmallVectorSize>& grads,          // NOLINT
-      bool create_graph = false,                                       // NOLINT
-      bool is_new_grad = false) override;                              // NOLINT
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,        // NOLINT
+                                  egr::kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,                               // NOLINT
+             bool is_new_grad = false) override;                      // NOLINT
   std::string name() override { return "Conv2dDoubleGradNodeFinal"; }
 
   void ClearTensorWrappers() override {
@@ -119,13 +117,13 @@ class Conv2dDoubleGradNodeFinal : public egr::GradNodeBase {
   }
 
   // SetTensorWrapperX, SetTensorWrapperY, ...
-  void SetTensorWrapperinput(const paddle::experimental::Tensor& input) {
+  void SetTensorWrapperinput(const paddle::Tensor& input) {
     input_ = egr::TensorWrapper(input, false);
   }
-  void SetTensorWrapperfilter(const paddle::experimental::Tensor& filter) {
+  void SetTensorWrapperfilter(const paddle::Tensor& filter) {
     filter_ = egr::TensorWrapper(filter, false);
   }
-  void SetTensorWrappergrad_out(const paddle::experimental::Tensor& grad_out) {
+  void SetTensorWrappergrad_out(const paddle::Tensor& grad_out) {
     grad_out_ = egr::TensorWrapper(grad_out, false);
   }
 
@@ -169,13 +167,12 @@ class AddNGradNodeFinal : public egr::GradNodeBase {
       : egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
   ~AddNGradNodeFinal() override = default;
 
-  virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+  virtual paddle::small_vector<std::vector<paddle::Tensor>,
                                egr::kSlotSmallVectorSize>
-  operator()(
-      paddle::small_vector<std::vector<paddle::experimental::Tensor>,  // NOLINT
-                           egr::kSlotSmallVectorSize>& grads,          // NOLINT
-      bool create_graph = false,
-      bool is_new_grad = false) override;
+  operator()(paddle::small_vector<std::vector<paddle::Tensor>,        // NOLINT
+                                  egr::kSlotSmallVectorSize>& grads,  // NOLINT
+             bool create_graph = false,
+             bool is_new_grad = false) override;
   std::string name() override { return "AddNGradNodeFinal"; }
 
   void ClearTensorWrappers() override {
@@ -193,7 +190,7 @@ class AddNGradNodeFinal : public egr::GradNodeBase {
   }
 
   // SetTensorWrapperX, SetTensorWrapperY, ...
-  void SetTensorWrapperx(const std::vector<paddle::experimental::Tensor>& x) {
+  void SetTensorWrapperx(const std::vector<paddle::Tensor>& x) {
     for (const auto& eager_tensor : x) {
       x_.emplace_back(egr::TensorWrapper(eager_tensor, true));
     }

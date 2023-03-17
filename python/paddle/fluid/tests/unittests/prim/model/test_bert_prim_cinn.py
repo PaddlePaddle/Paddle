@@ -58,23 +58,9 @@ def train(to_static, enable_prim, enable_cinn):
         worker_init=None,
     )
 
-    bert = Bert()
+    # Now only apply dy2st for encoder
+    bert = Bert(to_static, enable_cinn)
     criterion = BertPretrainingCriterion()
-    if to_static:
-        # input_sepc = [
-        #     InputSpec(shape=(-1, -1), dtype=paddle.int64, name='input_ids'),
-        #     InputSpec(shape=(-1, -1), dtype=paddle.int64, name='segment_ids'),
-        #     None,
-        #     InputSpec(shape=(-1, 1, 1, -1), dtype=paddle.float32, name='input_mask'),
-        #     InputSpec(shape=(-1,), dtype=paddle.int32, name='masked_lm_positions'),
-        # ]
-        input_sepc = None
-        build_strategy = paddle.static.BuildStrategy()
-        if enable_cinn:
-            build_strategy.build_cinn_pass = True
-        bert = paddle.jit.to_static(
-            bert, input_sepc, build_strategy=build_strategy
-        )
 
     optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
 

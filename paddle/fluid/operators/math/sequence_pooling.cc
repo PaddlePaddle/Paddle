@@ -16,8 +16,9 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -382,12 +383,12 @@ class SequencePoolFunctor<phi::CPUContext, T> {
               "Sequence_pool should run on CPU Device when pooltype is SUM"));
       const T* src = input.data<T>();
       T* dst = output->mutable_data<T>(place);
-      jit::seq_pool_attr_t attr(
+      phi::jit::seq_pool_attr_t attr(
           static_cast<int>(input.numel() / input.dims()[0]),
-          jit::SeqPoolType::kSum);
-      auto seqpool =
-          jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache()
-              .At(attr);
+          phi::jit::SeqPoolType::kSum);
+      auto seqpool = phi::jit::KernelFuncs<phi::jit::SeqPoolTuple<T>,
+                                           platform::CPUPlace>::Cache()
+                         .At(attr);
       for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
         attr.h = static_cast<int>(lod[i + 1] - lod[i]);
         if (attr.h == 0) {

@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -137,9 +137,9 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     phi::DenseTensor track;
     int* track_value =
         track.mutable_data<int>(emission_dims, platform::CPUPlace());
-    auto ker =
-        jit::KernelFuncs<jit::CRFDecodingTuple<T>, platform::CPUPlace>::Cache()
-            .At(tag_num);
+    auto ker = phi::jit::KernelFuncs<phi::jit::CRFDecodingTuple<T>,
+                                     platform::CPUPlace>::Cache()
+                   .At(tag_num);
     ker(static_cast<int>(seq_len), x, w, alpha_value, track_value, tag_num);
     T max_score = -std::numeric_limits<T>::max();
     int max_i = 0;

@@ -141,9 +141,9 @@ class StorageManager {
   ir::SpinLock parametric_instance_lock_;
 
   // This map is a mapping between type id and parameterless type storage.
-  std::unordered_map<TypeId, StorageBase *> parameterless_instances_;
+  std::unordered_map<TypeId, StorageBase *> parameterless_instance_;
 
-  ir::SpinLock parameterless_instances_lock_;
+  ir::SpinLock parameterless_instance_lock_;
 };
 
 }  // namespace ir

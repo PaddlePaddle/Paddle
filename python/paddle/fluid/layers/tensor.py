@@ -27,7 +27,6 @@ from ..framework import Variable
 from ..core import VarDesc
 from .. import core
 from .layer_function_generator import templatedoc
-from . import utils
 from ..data_feeder import (
     check_variable_and_dtype,
     check_type,
@@ -36,7 +35,6 @@ from ..data_feeder import (
 )
 from paddle.utils import deprecated
 
-from .utils import check_shape
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
@@ -99,7 +97,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):
-            shape = utils.convert_shape_to_list(shape)
+            shape = paddle.utils.convert_shape_to_list(shape)
 
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -132,7 +130,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 value = paddle.cast(value, dtype)
             inputs['ValueTensor'] = value
 
-        check_shape(shape)
+        paddle.utils.check_shape(shape)
         check_dtype(
             dtype,
             'dtype',
@@ -147,6 +145,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
                 'int64',
                 'complex64',
                 'complex128',
+                'uint16',
             ],
             'fill_constant',
         )
@@ -158,7 +157,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             )
 
         helper = LayerHelper("fill_constant", **locals())
-        utils.get_shape_tensor_inputs(
+        paddle.utils.get_shape_tensor_inputs(
             inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
         )
 

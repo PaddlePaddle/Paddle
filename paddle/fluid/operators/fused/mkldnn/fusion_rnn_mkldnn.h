@@ -191,9 +191,7 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
     return memory_p;
   }
 
-  // TODO(grygielski) H0 is for now persistable
-  // TODO(jczaja) H0 should be updated each iter and of T type (Fusion pass does
-  // not support in yet)
+  // H0 is for now persistable
   template <typename U>
   std::shared_ptr<dnnl::memory> AcquireH0Memory(const phi::DenseTensor* h0) {
     const std::string h0_key = memory_key_ + "@h0";
