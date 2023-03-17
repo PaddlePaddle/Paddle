@@ -1657,14 +1657,21 @@ def add_n(inputs, name=None):
                     check_variable_and_dtype(
                         input,
                         "inputs",
-                        ['float16', 'float32', 'float64', 'int32', 'int64'],
+                        [
+                            'float16',
+                            'float32',
+                            'float64',
+                            'int32',
+                            'int64',
+                            'uint16',
+                        ],
                         'add_n',
                     )
         else:
             check_variable_and_dtype(
                 inputs,
                 "inputs",
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
                 'add_n',
             )
 
@@ -4604,7 +4611,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     Only n=1 is currently supported.
 
     Args:
-        x (Tensor): The input tensor to compute the forward difference on
+        x (Tensor): The input tensor to compute the forward difference on, the data type is float16, float32, float64, bool, int32, int64.
         n (int, optional): The number of times to recursively compute the difference.
                           Only support n=1. Default:1
         axis (int, optional): The axis to compute the difference along. Default:-1
@@ -4699,7 +4706,10 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             return _C_ops.subtract(input_back, input_front)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'bool', 'int32', 'int64'],
+            'diff',
         )
         check_type(axis, 'axis', (int), 'diff')
         helper = LayerHelper('diff', **locals())
@@ -5144,9 +5154,9 @@ def _trapezoid(y, x=None, dx=None, axis=-1, sum_mode='sum'):
     Integrate along the given axis using the composite trapezoidal rule.
 
     Args:
-        y (Tensor): Input array to integrate. It's data type should be float16(GPU), float32, float64.
+        y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
-            It's data type should be float16(GPU), float32, float64. If :attr:`x` is None,
+            It's data type should be float16, float32, float64. If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
             default is None.
         dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1
@@ -5210,12 +5220,12 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
     Integrate along the given axis using the composite trapezoidal rule. Use the sum method.
 
     Args:
-        y (Tensor): Input array to integrate. It's data type should be float16(GPU), float32, float64.
+        y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
-            It's data type should be float16(GPU), float32, float64. If :attr:`x` is None,
+            It's data type should be float16, float32, float64. If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
             default is None.
-        dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1
+        dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1.
         axis (int, optional): The axis along which to integrate.The default is -1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -5269,12 +5279,12 @@ def cumulative_trapezoid(y, x=None, dx=None, axis=-1, name=None):
     Integrate along the given axis using the composite trapezoidal rule. Use the cumsum method
 
     Args:
-        y (Tensor): Input array to integrate. It's data type should be float16(GPU), float32, float64.
+        y (Tensor): Input array to integrate. It's data type should be float16, float32, float64.
         x (Tensor, optional): The sample points corresponding to the :attr:`y` values.
-            It's data type should be float16(GPU), float32, float64.If :attr:`x` is None,
+            It's data type should be float16, float32, float64.If :attr:`x` is None,
             the sample points are assumed to be evenly spaced :attr:`dx` apart. The
             default is None.
-        dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1
+        dx (float, optional): The spacing between sample points when x is None. If neither x nor dx is provided then the default is dx = 1.
         axis (int, optional): The axis along which to integrate.The default is -1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
