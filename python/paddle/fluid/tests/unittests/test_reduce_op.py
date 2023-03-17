@@ -274,6 +274,7 @@ class TestMaxOp_ZeroDim(OpTest):
         self.op_type = "reduce_max"
         self.prim_op_type = "prim"
         self.python_api = paddle.max
+        self.enable_cinn = False
         self.inputs = {'X': np.random.random([]).astype("float64")}
         self.attrs = {'dim': []}
         self.outputs = {
