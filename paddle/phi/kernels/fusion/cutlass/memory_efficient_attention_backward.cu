@@ -188,15 +188,23 @@ void MemoryEfficientAttentionBackwardKernel(
             value.dims()[3],
             output_grad.dims()[3]));
 
-    PADDLE_ENFORCE_EQ(
-        ((cu_seqlens_q && cu_seqlens_k) || (!cu_seqlens_q && !cu_seqlens_k)),
-        true,
-        paddle::platform::errors::InvalidArgument(
-            "cu_seqlens_q and cu_seqlens_k should be same condition"));
-    PADDLE_ENFORCE_EQ((!(cu_seqlens_q && bias)),
-                      true,
-                      paddle::platform::errors::InvalidArgument(
-                          "cu_seqlens_q or bias should be None"));
+    if (cu_seqlens_q) {
+      PADDLE_ENFORCE_EQ(
+          cu_seqlens_k,
+          true,
+          paddle::platform::errors::InvalidArgument(
+              "cu_seqlens_q and cu_seqlens_k should be same condition"));
+      PADDLE_ENFORCE_EQ(bias,
+                        false,
+                        paddle::platform::errors::InvalidArgument(
+                            "cu_seqlens_q or bias should be None"));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          cu_seqlens_k,
+          false,
+          paddle::platform::errors::InvalidArgument(
+              "cu_seqlens_q and cu_seqlens_k should be same condition"));
+    }
 
     const auto& k_dims = key.dims();
     const auto& q_dims = query.dims();
@@ -212,12 +220,14 @@ void MemoryEfficientAttentionBackwardKernel(
                         DataType::INT32,
                         paddle::platform::errors::InvalidArgument(
                             "data type of cu_seqlens_k should be INT32"));
-      PADDLE_ENFORCE_EQ(
-          (cu_seqlens_q.get().dims().size() == 1 &&
-           cu_seqlens_k.get().dims().size() == 1),
-          true,
-          paddle::platform::errors::InvalidArgument(
-              "dims of cu_seqlens_q and cu_seqlens_k should be one"));
+      PADDLE_ENFORCE_EQ(cu_seqlens_q.get().dims().size(),
+                        1,
+                        paddle::platform::errors::InvalidArgument(
+                            "dims of cu_seqlens_q should be one"));
+      PADDLE_ENFORCE_EQ(cu_seqlens_k.get().dims().size(),
+                        1,
+                        paddle::platform::errors::InvalidArgument(
+                            "dims of cu_seqlens_k should be one"));
       max_seqlen_q_tmp = max_seqlen_q.to<int64_t>();
       max_seqlen_k_tmp = max_seqlen_k.to<int64_t>();
       VLOG(3) << "max_seqlen_q_tmp" << max_seqlen_q_tmp;
@@ -226,11 +236,7 @@ void MemoryEfficientAttentionBackwardKernel(
                         cu_seqlens_k.get().dims()[0],
                         paddle::platform::errors::InvalidArgument(
                             "The first dimension of cu_seqlens_q"
-                            "should be euqal to cu_seqlens_q. But received "
-                            "cu_seqlens_q's first dimension = %d, "
-                            "cu_seqlens_k's first dimension = %d.",
-                            cu_seqlens_q.get().dims()[0],
-                            cu_seqlens_k.get().dims()[0]));
+                            "should be euqal to cu_seqlens_q."));
       PADDLE_ENFORCE_EQ(
           q_dims[0],
           1,
@@ -238,15 +244,15 @@ void MemoryEfficientAttentionBackwardKernel(
               "The batch number of query"
               "should be one. But received batch number of query = %d.",
               q_dims[0]));
-      PADDLE_ENFORCE_LT(0,
-                        max_seqlen_q_tmp,
+      PADDLE_ENFORCE_LT(max_seqlen_q_tmp,
+                        0,
                         paddle::platform::errors::InvalidArgument(
                             "The max sequence length of query"
                             "should more than zero. But received the max "
                             "sequence length of query = %d.",
                             max_seqlen_q_tmp));
-      PADDLE_ENFORCE_LT(0,
-                        max_seqlen_k_tmp,
+      PADDLE_ENFORCE_LT(max_seqlen_k_tmp,
+                        0,
                         paddle::platform::errors::InvalidArgument(
                             "The max sequence length of key"
                             "should more than zero. But received the max "
