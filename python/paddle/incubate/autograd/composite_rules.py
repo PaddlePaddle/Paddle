@@ -457,8 +457,8 @@ def squeeze2_composite(x, axis):
             new_shape.append(s)
     out = reshape(x, new_shape)
     return [out, None]
-    
-    
+
+
 @REGISTER_COMPOSITE('sqrt')
 def sqrt_composite(x):
     """
