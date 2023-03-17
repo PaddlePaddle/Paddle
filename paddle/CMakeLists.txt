@@ -1,6 +1,3 @@
-set(CC_TESTS_DIR
-    ${PADDLE_BINARY_DIR}/test
-    CACHE INTERNAL "c++ tests directory")
 set(PYTHON_TESTS_DIR
     ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests
     CACHE INTERNAL "python tests directory")
@@ -36,15 +33,3 @@ add_subdirectory(ir)
 # (2) naturally, and configure tests in only one `CMakeLists.txt`,
 # (3) cc tests support linking pre-built dynamic libraries. For example, use the dynamic
 # library in the installed paddle by `pip`.
-
-# add all tests here
-get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
-get_property(test_names GLOBAL PROPERTY TEST_NAMES)
-# message("test_srcs ${test_srcs}")
-
-get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
-
-set(POSTFIX ".so")
-if(WIN32)
-  set(POSTFIX ".dll")
-endif()

@@ -118,7 +118,7 @@ ProgramDesc load_from_file(const std::string& file_name) {
 }
 
 ProgramDesc GetLmMainProgram() {
-  ProgramDesc main_prog = load_from_file("../lm_main_program");
+  ProgramDesc main_prog = load_from_file("lm_main_program");
 
   auto& global_block = main_prog.Block(0);
   int64_t batch_size = 20;
@@ -142,7 +142,7 @@ ProgramDesc GetLmMainProgram() {
 
 TEST(StandaloneExecutor, run) {
   auto place = platform::CUDAPlace(0);
-  ProgramDesc startup_prog = load_from_file("../lm_startup_program");
+  ProgramDesc startup_prog = load_from_file("lm_startup_program");
   ProgramDesc main_prog = GetLmMainProgram();
 
   Scope scope;
@@ -168,7 +168,7 @@ TEST(StandaloneExecutor, run) {
 
 TEST(InterpreterCore, skip_gc_vars) {
   auto place = platform::CUDAPlace(0);
-  ProgramDesc startup_prog = load_from_file("../lm_startup_program");
+  ProgramDesc startup_prog = load_from_file("lm_startup_program");
   ProgramDesc main_prog = GetLmMainProgram();
 
   Scope scope;
