@@ -26,7 +26,7 @@ class CutlassTeller {
     return &global;
   }
 
-  // 判断这个NCHW conv2d_fusion是否可以转成NHWC 让 cutlass 来处理！
+  // Determine this NCHW conv2d_fusion can be fused for cutlass?
   bool Conv2dFusionCanSupport(ir::Node *conv2d_fusion_node,
                               Scope *scope,
                               int device_id) {
@@ -56,7 +56,8 @@ class CutlassTeller {
     return true;
   }
 
-  // 判断这个conv+bias能否和act融合，然后让cutlass来处理！
+  // Determine whether this conv can be fused with the activation by cutlass
+  // backend.
   bool Conv2dCanSupport(int oc,
                         int kc,
                         int kh,
@@ -112,15 +113,12 @@ class CutlassTeller {
   };
   const std::unordered_set<std::string> cba_act_set = {
       "relu", "swish", "identity", "leaky_relu", "sigmoid"};
+
+  // conv2d_depthwise act
   const std::unordered_set<std::string> cdba_act_set = {
       "identity", "relu", "swish", "sigmoid"};
   const std::unordered_set<std::string> cbaa_act_set = {"relu"};
 };
-
-// const std::unordered_set<std::string> CutlassTeller::cutlass_cba_act_set =
-// {"relu", "swish", "identity", "leaky_relu"}; const
-// std::unordered_set<std::string> CutlassTeller::cutlass_cbaa_act_set =
-// {"relu"};
 
 }  // namespace ir
 }  // namespace framework

@@ -141,8 +141,8 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   std::string target_op_type = "conv2d_fusion";
   std::unordered_set<ir::Node *> valid_ops;
 
-  // 确定这个conv2d_fuison 能否以cuDNN 的NHWC方式运行
-  // 不会设置或更改任何东西
+  // Determine if this conv2d_fusion can run in cuDNN's NHWC mode,
+  // will not setting or changing anything
   auto cuDNNIsValid = [&](ir::Node *op_node) -> bool {
     if (op_node->Op()->Type() != target_op_type) return false;
     auto data_format =
@@ -160,8 +160,7 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
       const auto &filter_tensor = filter_var->Get<phi::DenseTensor>();
       CHECK_EQ(filter_tensor.dims().size() == 4UL, true);
       int oc = filter_tensor.dims()[0];
-      auto groups = op_node->Op()->GetAttrIfExists<int>("groups");
-      int ic = filter_tensor.dims()[1] * groups;
+      int ic = filter_tensor.dims()[1];
       bool cudnn_can_support =
           oc % CUDNN_ALIGNMENT == 0 && ic % CUDNN_ALIGNMENT == 0;
       if (!cudnn_can_support) {
@@ -182,13 +181,6 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     if (cuDNNIsValid(op_node) || CutlassIsValid(op_node)) {
       valid_ops.insert(op_node);
       auto *op_desc = op_node->Op();
-      // const auto &filter_tensor =
-      // scope->FindLocalVar(op_desc->Input("Filter")[0])->Get<phi::DenseTensor>();
-      // int kh = filter_tensor.dims()[2];
-
-      // auto groups = op_desc->GetAttrIfExists<int>("groups");
-      // auto strides = op_desc->GetAttrIfExists<std::vector<int>>("strides");
-      // (groups <= 1 || kh == 3)
 
       if (CutlassIsValid(op_node)) {
         op_desc->SetType("conv2d_fusion_cutlass");
