@@ -1821,29 +1821,29 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
  public:
   SlotRecordInMemoryDataFeed() {}
   virtual ~SlotRecordInMemoryDataFeed();
-  virtual void Init(const DataFeedDesc& data_feed_desc);
-  virtual void LoadIntoMemory();
+  void Init(const DataFeedDesc& data_feed_desc) override;
+  void LoadIntoMemory() override;
   void ExpandSlotRecord(SlotRecord* ins);
 
  protected:
-  virtual bool Start();
-  virtual int Next();
-  virtual bool ParseOneInstance(SlotRecord* instance) { return false; }
-  virtual bool ParseOneInstanceFromPipe(SlotRecord* instance) { return false; }
+  bool Start() override;
+  int Next() override;
+  bool ParseOneInstance(SlotRecord* instance) override { return false; }
+  bool ParseOneInstanceFromPipe(SlotRecord* instance) override { return false; }
   // virtual void ParseOneInstanceFromSo(const char* str, T* instance,
   //                                    CustomParser* parser) {}
-  virtual void PutToFeedVec(const std::vector<SlotRecord>& ins_vec) {}
+  void PutToFeedVec(const std::vector<SlotRecord>& ins_vec) override {}
 
   virtual void LoadIntoMemoryByCommand(void);
   virtual void LoadIntoMemoryByLib(void);
   virtual void LoadIntoMemoryByLine(void);
   virtual void LoadIntoMemoryByFile(void);
-  virtual void SetInputChannel(void* channel) {
+  void SetInputChannel(void* channel) override {
     input_channel_ = static_cast<ChannelObject<SlotRecord>*>(channel);
   }
   bool ParseOneInstance(const std::string& line, SlotRecord* rec);
-  virtual void PutToFeedVec(const SlotRecord* ins_vec, int num);
-  virtual void AssignFeedVar(const Scope& scope);
+  void PutToFeedVec(const SlotRecord* ins_vec, int num) override;
+  void AssignFeedVar(const Scope& scope) override;
   std::vector<std::string> GetInputVarNames() override {
     std::vector<std::string> var_names;
     for (int i = 0; i < use_slot_size_; ++i) {
@@ -1899,7 +1899,7 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
     }
   }
 #endif
-  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
+  void DumpWalkPath(std::string dump_path, size_t dump_rate) override;
 
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;

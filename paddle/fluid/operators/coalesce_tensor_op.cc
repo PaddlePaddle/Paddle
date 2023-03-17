@@ -218,9 +218,12 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     if (size_of_dtype == -1) {
       size_of_dtype = framework::SizeOfType(dtype);
     }
+#if defined(PADDLE_WITH_DISTRIBUTE) && \
+    (defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE))
     if (use_align && align_size <= 0) {
       align_size = size_of_dtype;
     }
+#endif
     GetMemSizeAndDtype(in_tensors,
                        in_var_names,
                        &numel,
@@ -377,11 +380,12 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
     if (size_of_dtype == -1) {
       size_of_dtype = framework::SizeOfType(dtype);
     }
-
+#if defined(PADDLE_WITH_DISTRIBUTE) && \
+    (defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE))
     if (use_align && align_size <= 0) {
       align_size = size_of_dtype;
     }
-
+#endif
     auto alignment = [](size_t size, size_t align_size) {
       size_t remaining = size % align_size;
       auto aligned_size =
