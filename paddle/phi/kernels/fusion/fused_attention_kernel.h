@@ -79,7 +79,7 @@ namespace phi {
  *                               ["downgrade_in_infer"|"upscale_in_train"] The
  *                               meaning is the same as
  * 'attn_dropout_implementation'
- * @param ln2_epsilon         Constant for numerical stability [default 1e-5].
+ * @param ln_epsilon          Constant for numerical stability [default 1e-5].
  * @param add_residual        Whether to add residual.
  * @param ring_id             ring id for tensor model parallel. distributed
  *                            training and inference
@@ -130,7 +130,7 @@ void FusedAttentionKernel(const Context& ctx,
                           bool dropout_fix_seed,
                           int dropout_seed,
                           std::string dropout_implementation,
-                          float ln2_epsilon,
+                          float ln_epsilon,
                           bool add_residual,
                           int ring_id,
                           DenseTensor* ln_mean,

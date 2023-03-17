@@ -21,6 +21,8 @@
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_act_bias.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_common.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_layernorm_residual_dropout_bias.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_residual_dropout_bias.h"
 #include "paddle/phi/kernels/layer_norm_kernel.h"
 
 namespace phi {
@@ -235,7 +237,7 @@ class FusedDropoutHelper {
             quant_max_bound,
             quant_min_bound);
       } else {
-        phi::fusion::GeluFunctor<T> gelu;
+        GeluFunctor<T> gelu;
         LaunchDropoutActBias<T, MaskType, GeluFunctor<T>, InType, OutType>(
             gelu,
             dropout_param_.seed,
@@ -297,7 +299,7 @@ class FusedDropoutHelper {
                           T* d_bias,
                           const std::string& act_method) {
     if (act_method == "gelu") {
-      phi::fusion::GeluGradFunctor<T> gelu_grad;
+      GeluGradFunctor<T> gelu_grad;
       LaunchDropoutActBiasGrad<T, MaskType, GeluGradFunctor<T>>(
           gelu_grad,
           dout,
