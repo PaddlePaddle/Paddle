@@ -36,6 +36,8 @@ class TestElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         # If x and y have the same value, the min() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
@@ -66,6 +68,8 @@ class TestElementwiseMinOp_ZeroDim1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.uniform(0.1, 1, []).astype("float64")
         y = np.random.uniform(0.1, 1, []).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -76,6 +80,8 @@ class TestElementwiseMinOp_ZeroDim2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         y = np.random.uniform(0.1, 1, []).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -86,6 +92,8 @@ class TestElementwiseMinOp_ZeroDim3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.uniform(0.1, 1, []).astype("float64")
         y = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -99,6 +107,8 @@ class TestElementwiseMinOp_scalar(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.random_integers(-5, 5, [10, 3, 4]).astype("float64")
         y = np.array([0.5]).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -109,6 +119,8 @@ class TestElementwiseMinOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
         x = np.random.random((100,)).astype("float64")
         sgn = np.random.choice([-1, 1], (100,)).astype("float64")
         y = x + sgn * np.random.uniform(0.1, 1, (100,)).astype("float64")
@@ -120,6 +132,7 @@ class TestElementwiseMinOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = broadcast_wrapper(shape=[100, 1, 1])
+        self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (100, 3, 2)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -139,6 +152,7 @@ class TestElementwiseMinOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = broadcast_wrapper(shape=[1, 100, 1])
+        self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -158,6 +172,7 @@ class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = broadcast_wrapper(shape=[1, 1, 100])
+        self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 3, 100)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[0, 0, :] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -176,6 +191,7 @@ class TestElementwiseMinOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = broadcast_wrapper(shape=[1, 25, 4, 1])
+        self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 25, 4, 1)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (25, 4)).astype(np.float64)
         y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (25, 4)).astype(
@@ -195,6 +211,7 @@ class TestElementwiseMinOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
+        self.prim_op_type = "prim"
         x = np.random.uniform(0.5, 1, (2, 10, 2, 5)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (2, 10, 1, 5)).astype(np.float64)
         y = x + sgn * np.random.uniform(1, 2, (2, 10, 1, 5)).astype(np.float64)

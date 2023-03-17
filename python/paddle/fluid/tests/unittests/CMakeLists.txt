@@ -1215,7 +1215,8 @@ set(TEST_CINN_OPS
     test_reshape_op
     test_mean_op
     test_unsqueeze2_op
-    test_gather_op)
+    test_gather_op
+    test_elementwise_min_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
