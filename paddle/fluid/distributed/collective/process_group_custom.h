@@ -23,7 +23,7 @@
 
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/collective/process_group_without_stream.h"
+#include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/fluid/platform/device/npu/npu_stream.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -36,7 +36,7 @@ namespace distributed {
 using Place = paddle::platform::Place;
 using CustomDeviceContext = paddle::platform::CustomDeviceContext;
 
-class ProcessGroupCustom : public ProcessGroupWithoutStream {
+class ProcessGroupCustom : public ProcessGroupWithStream {
  public:
   class CustomTask : public ProcessGroup::Task,
                      public std::enable_shared_from_this<CustomTask> {
@@ -46,10 +46,11 @@ class ProcessGroupCustom : public ProcessGroupWithoutStream {
                CommType CommType,
                const std::vector<phi::DenseTensor>& inputs);
 
-    bool IsCompleted();
+    bool IsCompleted() override;
     void SynchronizeStreams();
-    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
-    void Synchronize();
+    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout) override;
+    void Synchronize() override;
+    void UpdateWaitChain(const phi::DeviceContext& ctx) override;
     void SetOutputs(std::vector<phi::DenseTensor>& outputs);  // NOLINT
     virtual ~CustomTask();
 

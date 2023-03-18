@@ -174,6 +174,9 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
       egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
   auto grad_outputs_names = paddle::framework::OpMetaInfoHelper::GetOutputs(
       egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
+  const auto& grad_inplace_map =
+      paddle::framework::OpMetaInfoHelper::GetInplaceMap(
+          egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
   auto map = egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
   auto kernel_map = egr::Controller::Instance().GetOpMetaInfoMap();
 
@@ -205,6 +208,9 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   }
   VLOG(6) << "Prepare Grad attrs";
   ctx.EmplaceBackAttrs(attrs_);
+  // NOTE(HongyuJia): grad_outputs_names.size() <= OutputMeta().size():
+  // OutputMeta().size() indicates input size of forward op,
+  // grad_outputs_names.size() indicates output size of backward op.
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize> outs(
       OutputMeta().size());
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
@@ -234,8 +240,10 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   }
   VLOG(7) << "Run Kernel of Grad Custom Op: " << op_type_ << "_grad";
 
+  ctx.MapPlainOutputs(grad_inputs_name, grad_outputs_names, grad_inplace_map);
   (*paddle::framework::OpMetaInfoHelper::GetKernelFn(
       kernel_map.at(op_type_)[1]))(&ctx);
+  ctx.AssignInplaceOutputs();
 
   VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
   std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
@@ -353,6 +361,8 @@ RunCustomOpDoubleGradNode::operator()(
       paddle::framework::OpMetaInfoHelper::GetInputs(vec_map[2]);
   auto grad_outputs_names =
       paddle::framework::OpMetaInfoHelper::GetOutputs(vec_map[2]);
+  const auto& grad_inplace_map =
+      paddle::framework::OpMetaInfoHelper::GetInplaceMap(vec_map[2]);
   auto map = egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
   auto kernel_map = egr::Controller::Instance().GetOpMetaInfoMap();
 
@@ -419,8 +429,10 @@ RunCustomOpDoubleGradNode::operator()(
   }
   VLOG(7) << "Run Kernel of Grad Custom Op: " << name();
 
+  ctx.MapPlainOutputs(grad_inputs_name, grad_outputs_names, grad_inplace_map);
   (*paddle::framework::OpMetaInfoHelper::GetKernelFn(
       kernel_map.at(op_type_)[2]))(&ctx);
+  ctx.AssignInplaceOutputs();
 
   return outs;
 }

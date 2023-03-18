@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cupti.h"
@@ -468,6 +469,9 @@ void InitMemoryMethod() {
     memory_method->copy = paddle::memory::Copy<phi::Place, phi::Place>;
     memory_method->device_memory_stat_current_value =
         paddle::memory::DeviceMemoryStatCurrentValue;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
+#endif
     memory_utils.Init(std::move(memory_method));
   });
 }

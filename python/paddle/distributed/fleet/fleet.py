@@ -18,9 +18,9 @@ import os
 import paddle
 from paddle.fluid import compiler
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.ir import apply_build_strategy
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.framework import _global_flags
+from paddle.framework.ir import apply_build_strategy
 
 from .base import topology as tp
 from .base.distributed_strategy import DistributedStrategy
@@ -1282,7 +1282,7 @@ class Fleet:
             self.origin_main_program = loss.block.program
             # add distributed attr
             if not hasattr(self.origin_main_program, "distributed_info_"):
-                setattr(self.origin_main_program, "distributed_info_", dict())
+                self.origin_main_program.distributed_info_ = dict()
                 self.origin_main_program.distributed_info_[
                     "dp_degree"
                 ] = self._user_defined_strategy.sharding_configs["dp_degree"]
