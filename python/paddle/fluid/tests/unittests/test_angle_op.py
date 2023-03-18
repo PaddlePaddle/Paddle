@@ -16,11 +16,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op_test import convert_float_to_uint16
 
 import paddle
 from paddle import static
 from paddle.fluid import dygraph
-from op_test import OpTest, convert_float_to_uint16
 from python.paddle.fluid import core
 
 paddle.enable_static()
@@ -111,13 +111,11 @@ class TestAngleAPI(unittest.TestCase):
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
 
-
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_float16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the float16",
 )
-
 class TestAngleOpFP16(OpTest):
     def setUp(self):
         self.op_type = "angle"
@@ -145,6 +143,7 @@ class TestAngleOpFP16(OpTest):
                 angle_grad(self.x, np.ones_like(self.x) / self.x.size)
             ],
         )
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -177,8 +176,6 @@ class TestAngleBF16Op(OpTest):
                 angle_grad(self.x, np.ones_like(self.x) / self.x.size)
             ],
         )
-
-
 
 
 if __name__ == "__main__":

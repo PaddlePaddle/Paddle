@@ -16,12 +16,12 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op_test import convert_float_to_uint16
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from python.paddle.fluid import core
-from op_test import OpTest, convert_float_to_uint16,convert_uint16_to_float
 
 
 class TestAddMMOp(OpTest):
@@ -413,29 +413,25 @@ class TestAddMMAPI(unittest.TestCase):
     or not core.is_float16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the float16",
 )
-
-
 class TestAddMMFP16Op(OpTest):
     def setUp(self):
         self.op_type = "addmm"
         self.python_api = paddle.addmm
         self.dtype = np.float16
         self.init_dtype_type()
-        input=np.random.random((100, 1)).astype(np.float32)
-        x=np.random.random((100, 10)).astype(np.float32)
-        y=np.random.random((10, 20)).astype(np.float32)
-        out=input+np.dot(x,y)
+        input = np.random.random((100, 1)).astype(np.float32)
+        x = np.random.random((100, 10)).astype(np.float32)
+        y = np.random.random((10, 20)).astype(np.float32)
+        out = input + np.dot(x, y)
         self.inputs = {
             'Input': input.astype(self.dtype),
             'X': x.astype(self.dtype),
             'Y': y.astype(self.dtype),
         }
-        self.outputs = {
-            'Out': out
-        }
+        self.outputs = {'Out': out}
 
     def init_dtype_type(self):
-        self.dtype=np.float16
+        self.dtype = np.float16
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -467,24 +463,21 @@ class TestAddMMFP16Op(OpTest):
     or not core.is_float16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the float16",
 )
-
 class TestAddMMBP16Op(OpTest):
     def setUp(self):
         self.op_type = "addmm"
         self.python_api = paddle.addmm
-        self.dtype=np.uint16
+        self.dtype = np.uint16
         input = np.random.random((100, 1)).astype(np.float32)
         x = np.random.random((100, 10)).astype(np.float32)
         y = np.random.random((10, 20)).astype(np.float32)
-        out=input+np.dot(x,y)
+        out = input + np.dot(x, y)
         self.inputs = {
             'Input': convert_float_to_uint16(input),
             'X': convert_float_to_uint16(x),
             'Y': convert_float_to_uint16(y),
         }
-        self.outputs = {
-            'Out': convert_float_to_uint16(out)
-        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)

@@ -23,8 +23,6 @@ limitations under the License. */
 
 namespace phi {
 
-
-
 template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
@@ -125,7 +123,8 @@ void AddmmKernel(const Context& dev_ctx,
             y.data<T>(),
             y_dims[1],
             Eigen::half(beta),
-            reinterpret_cast<const Eigen::half*>(x.data<float16_t>(dev_ctx.GetPlace())),
+            reinterpret_cast<const Eigen::half*>(
+                x.data<float16_t>(dev_ctx.GetPlace())),
             out->mutable_data<float16_t>(dev_ctx.GetPlace()),
             y_dims[1]);
 }
