@@ -545,7 +545,7 @@ void InterpreterCore::PrepareForCUDAGraphCapture() {
       platform::IsCUDAGraphCapturing(),
       false,
       platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
-                                         "when running the first batch."));
+                                         "before prepare."));
   PADDLE_ENFORCE_EQ(platform::is_gpu_place(place_),
                     true,
                     platform::errors::InvalidArgument(
@@ -684,8 +684,16 @@ void InterpreterCore::Convert(
       if (op_type == interpreter::kMemcpyD2H ||
           op_type == interpreter::kMemcpyH2D) {
         PADDLE_THROW(paddle::platform::errors::Fatal(
-            "op_type can't be memcpy d2h or h2d while using cuda graph."));
+            "Cuda memory copy d2h/h2d is not allowed while using cuda graph."));
       }
+      PADDLE_ENFORCE_EQ(typeid(*dev_ctx_) == typeid(phi::GPUContext),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "Device context of op %s must be [%s] while using "
+                            "cuda graph, but got [%s].",
+                            op_type,
+                            typeid(phi::GPUContext).name(),
+                            typeid(*dev_ctx_).name()));
       // cuda graph needs to record all stream
       phi::backends::gpu::CUDAGraphContextManager::Instance()
           .RecordCapturingDeviceContext(dev_ctx_);
