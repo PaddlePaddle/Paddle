@@ -23,7 +23,7 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.tests.unittests import nets
+from paddle.fluid.tests.unittests.nets import img_conv_group
 
 paddle.enable_static()
 
@@ -75,7 +75,7 @@ def resnet_cifar10(input, depth=32):
 
 def vgg16_bn_drop(input):
     def conv_block(input, num_filter, groups, dropouts):
-        return nets.img_conv_group(
+        return img_conv_group(
             input=input,
             pool_size=2,
             pool_stride=2,
