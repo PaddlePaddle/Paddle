@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -209,8 +209,6 @@ class TestLogsumexpBF16Op(TestLogsumexp):
             'keepdim': self.keepdim,
             'reduce_all': self.reduce_all,
         }
-        self.user_defined_grads = None
-        self.user_defined_grad_outputs = None
         self.set_attrs_addition()
 
     def test_check_output(self):
@@ -218,19 +216,8 @@ class TestLogsumexpBF16Op(TestLogsumexp):
         self.check_output_with_place(place)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            ['Out'],
-            user_defined_grads=self.user_defined_grads,
-            user_defined_grad_outputs=self.user_defined_grad_outputs,
-            check_eager=True,
-        )
-
-    def calc_grad(self):
-        dy = np.ones(1, dtype=self.dtype)
-        x = self.inputs['X']
-        y = self.outputs['Out']
-        return dy * np.exp(x - y)
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
     def set_attrs(self):
         pass
