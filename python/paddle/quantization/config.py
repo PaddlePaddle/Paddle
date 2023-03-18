@@ -118,7 +118,7 @@ class QuantConfig(object):
 
              class Model(paddle.nn.Layer):
                  def __init__(self):
-                     super(Model, self).__init__()
+                     super().__init__()
                      self.fc = Linear(576, 120)
              model = Model()
              quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
@@ -162,7 +162,7 @@ class QuantConfig(object):
 
              class Model(paddle.nn.Layer):
                  def __init__(self):
-                     super(Model, self).__init__()
+                     super().__init__()
                      self.fc = Linear(576, 120)
              model = Model()
              quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
@@ -207,7 +207,7 @@ class QuantConfig(object):
 
             class Model(paddle.nn.Layer):
                 def __init__(self):
-                    super(Model, self).__init__()
+                    super().__init__()
                     self.fc = Linear(576, 120)
             model = Model()
             quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
@@ -388,7 +388,7 @@ class QuantConfig(object):
 
             class Model(paddle.nn.Layer):
                 def __init__(self):
-                    super(Model, self).__init__()
+                    super().__init__()
                     self.fc = Sequential(Linear(576, 120),Linear(576, 120))
             model = Model()
             quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
