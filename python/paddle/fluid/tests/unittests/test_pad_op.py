@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -98,7 +98,7 @@ def create_test_fp16(parent):
             return np.float16
 
         def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out', max_relative_error=1e-2)
+            self.check_grad(['X'], 'Out', max_relative_error=1e-3)
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
     TestPadFp16.__name__ = cls_name
@@ -109,31 +109,6 @@ create_test_fp16(TestPadOp)
 create_test_fp16(TestCase1)
 create_test_fp16(TestCase2)
 create_test_fp16(TestCase3)
-
-
-def create_test_bp16(parent):
-    @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-    )
-    class TestPadBp16(parent):
-        def get_dtype(self):
-            return paddle.bfloat16
-
-        def test_check_output(self):
-            self.check_output(['X'], 'Out', atol=1e-2)
-
-        def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out', max_relative_error=1e-2)
-
-    cls_name = "{0}_{1}".format(parent.__name__, "Bp16")
-    TestPadBp16.__name__ = cls_name
-    globals()[cls_name] = TestPadBp16
-
-
-create_test_bp16(TestPadOp)
-create_test_bp16(TestCase1)
-create_test_bp16(TestCase2)
-create_test_bp16(TestCase3)
 
 
 class TestPadOpError(unittest.TestCase):
@@ -227,6 +202,41 @@ class TestPaddingValueTensor3(unittest.TestCase):
         pd_out = res[0]
         np_out = np.pad(np_x, [(0, 1), (2, 3)], constant_values=0.0)
         np.testing.assert_allclose(pd_out, np_out)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestPadBP16Op(OpTest):
+    def setUp(self):
+        self.initTestCase()
+        self.dtype = np.uint16
+        self.op_type = "pad"
+        self.python_api = pad_wrapper
+        x = np.random.random(self.shape).astype(np.float32)
+        self.attrs = {}
+        self.attrs['paddings'] = np.array(self.paddings).flatten()
+        self.attrs['pad_value'] = self.pad_value
+        out = np.pad(
+            x, self.paddings, mode='constant', constant_values=self.pad_value
+        )
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def initTestCase(self):
+        self.shape = (16, 16)
+        self.paddings = [(0, 1), (2, 3)]
+        self.pad_value = 0.0
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == '__main__':

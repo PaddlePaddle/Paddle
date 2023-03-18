@@ -29,14 +29,14 @@ void ExponentialKernel(const Context& dev_ctx,
                        float lambda,
                        DenseTensor* out) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  MT* out_data = dev_ctx.template Alloc<MT>(out);
+  T* out_data = dev_ctx.template Alloc<T>(out);
   auto engine = dev_ctx.GetGenerator()->GetCPUEngine();
 
   std::uniform_real_distribution<MT> uniform(0.0, 1.0);
   phi::funcs::exponential_transform<MT> trans(lambda);
 
   for (int64_t i = 0; i < out->numel(); ++i) {
-    out_data[i] = trans(uniform(*engine));
+    out_data[i] = static_cast<T>(trans(uniform(*engine)));
   }
 }
 
