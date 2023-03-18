@@ -499,7 +499,6 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-
 REGISTER_OP_CUDA_KERNEL(fused_attention_grad,
                         ops::FusedAttentionGradKernel<float>,
                         ops::FusedAttentionGradKernel<double>,

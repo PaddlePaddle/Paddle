@@ -367,6 +367,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
         ln_var_2_ptr);
   }
 }
+
 }  // namespace fusion
 }  // namespace phi
 
@@ -374,11 +375,10 @@ PD_REGISTER_KERNEL(fused_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedAttentionKernel,
-                   float,
+                   phi::dtype::float16,
                    double,
-                   phi::dtype::float16) {
+                   float) {
   phi::DataType data_type;
-
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::FLOAT32) {
     data_type = phi::DataType::FLOAT32;
