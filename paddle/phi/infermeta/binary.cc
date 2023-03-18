@@ -166,6 +166,8 @@ void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   if (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64 ||
       y.dtype() == DataType::INT32 || y.dtype() == DataType::INT64) {
     out->set_dtype(DataType::FLOAT64);
+  } else {
+    out->set_dtype(x.dtype());
   }
 }
 

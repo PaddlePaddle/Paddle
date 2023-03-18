@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
-import inspect
-from os import path
-import paddle
+from ..fluid.framework import _apply_pass
 from . import core
-from .framework import _apply_pass
 
 
 def get_data_vars(program):
