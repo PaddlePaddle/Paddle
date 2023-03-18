@@ -188,7 +188,7 @@ class TestRemainderFP16Op(OpTest):
     def setUp(self):
         self.op_type = "remainder"
         self.dtype = np.float16
-        x = np.random.uniform(-10, 10, [20, 30]).astype(self.dtype)
+        x = np.random.uniform(-10, 20, [20, 30]).astype(self.dtype)
         y = np.random.uniform(-10, 10, [20, 30]).astype(self.dtype)
         self.inputs = {'X': x, 'Y': y}
         out = np.remainder(self.inputs['X'], self.inputs['Y'])
