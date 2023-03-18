@@ -223,7 +223,7 @@ class TestKthvalueBP16Op(OpTest):
         self.op_type = 'kthvalue'
         self.python_api = paddle.kthvalue
         self.dtype = np.uint16
-        x = np.random.rand((1, 3, 2, 4, 10)).astype(np.float32)
+        x = np.random.random((2, 1, 2, 4, 10))
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {'k': self.k, 'axis': self.axis}
         out, indices = cal_kthvalue(x, k=self.k, axis=self.axis)
