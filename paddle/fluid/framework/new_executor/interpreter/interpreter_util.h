@@ -99,21 +99,6 @@ void BuildVariableScope(const framework::BlockDesc& block,
                         const ExecutionConfig& execution_config,
                         VariableScope* var_scope);
 
-void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
-                                          const platform::Place& place,
-                                          Scope* scope);
-
-void FakeInitializeOutputsForFunctionKernel(
-    const framework::OperatorBase& op,
-    const phi::Kernel& phi_kernel,
-    const phi::KernelSignature& kernel_sig,
-    const RuntimeContext& ctx,
-    const platform::DeviceContext& dev_ctx);
-
-void FakeInitializeOutputsForStructureKernel(
-    const framework::OpKernelType& op_kernel_type,
-    ExecutionContext* execution_context);
-
 void LogDeviceMemoryStats(const platform::Place& place);
 
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
