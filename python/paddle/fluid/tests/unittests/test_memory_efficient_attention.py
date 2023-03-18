@@ -144,7 +144,7 @@ def attention_naive(q, k, v, attn_bias, dropout_prob, scale, seed):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11000,
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11030,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
 )
 class TestMemEffAttentionAPI(unittest.TestCase):
