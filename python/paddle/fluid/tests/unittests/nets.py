@@ -13,8 +13,7 @@
 # limitations under the License.
 
 import paddle
-
-from ...data_feeder import check_variable_and_dtype
+from paddle.fluid.data_feeder import check_variable_and_dtype
 
 
 def simple_img_conv_pool(

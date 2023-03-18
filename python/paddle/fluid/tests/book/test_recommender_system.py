@@ -25,8 +25,7 @@ import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGDOptimizer
-
-from ..unittests import nets
+from paddle.fluid.tests.unittests import nets
 
 paddle.enable_static()
 

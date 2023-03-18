@@ -22,8 +22,7 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-
-from ..unittests import nets
+from paddle.fluid.tests.unittests import nets
 
 paddle.enable_static()
 

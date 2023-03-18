@@ -22,8 +22,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-
-from ..unittests import nets
+from paddle.fluid.tests.unittests import nets
 
 
 def convolution_net(
