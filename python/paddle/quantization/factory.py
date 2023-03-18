@@ -104,7 +104,7 @@ def quanter(class_name):
     def wrapper(target_class):
         init_function_str = f"""
 def init_function(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
+    super(type(self), self).__init__(*args, **kwargs)
     import importlib
     module = importlib.import_module("{target_class.__module__}")
     my_class = getattr(module, "{target_class.__name__}")
