@@ -116,7 +116,7 @@ class TestFullLikeOp1(OpTest):
         self.prim_op_type = "comp"
         self.python_api = fill_any_like_wrapper
         self.init_data()
-        # self.if_enable_cinn()
+        self.if_enable_cinn()
 
         bf16_flag = self.dtype == np.uint16
         x = np.zeros(self.shape).astype(np.float32 if bf16_flag else self.dtype)
@@ -146,7 +146,7 @@ class TestFullLikeOp1(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], ['Out'], max_relative_error=100)
+        self.check_grad(['X'], ['Out'])
 
     def if_enable_cinn(self):
         pass
