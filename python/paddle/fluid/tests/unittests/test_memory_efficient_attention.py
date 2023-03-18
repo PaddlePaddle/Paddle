@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
+import re
 import unittest
 from typing import List, Sequence, Tuple
 
 import numpy as np
 
 import paddle
+import paddle.fluid.core as core
 import paddle.incubate.nn.attn_bias as ab
 import paddle.nn.functional as F
 from paddle.incubate.nn.memory_efficient_attention import (
@@ -26,6 +29,18 @@ from paddle.incubate.nn.memory_efficient_attention import (
 )
 
 paddle.seed(2023)
+
+
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
 
 
 def create_attn_bias(
@@ -128,6 +143,10 @@ def attention_naive(q, k, v, attn_bias, dropout_prob, scale, seed):
     return paddle.transpose(o, [0, 2, 1, 3])
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11000,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.3",
+)
 class TestMemEffAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.name = "MemEffAPI_fp32"
