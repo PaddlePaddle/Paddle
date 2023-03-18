@@ -101,22 +101,19 @@ class TestInstanceNormOp(OpTest):
         self.rev_comp_rtol = 1e-04
         self.rev_comp_atol = 1e-04
         self.init_test_case()
-        self.init_dtype()
-        scale_shape = [self.c]
-        mean_shape = [self.n * self.c]
-        np.random.seed()
-        x_np = np.random.random_sample(self.shape).astype(self.dtype)
-        scale_np = np.random.random_sample(scale_shape).astype(self.dtype)
-        bias_np = np.random.random_sample(scale_shape).astype(self.dtype)
-        mean_np, var_np = _cal_mean_variance(x_np, self.epsilon, mean_shape)
         ref_y_np, ref_mean_np, ref_var_np_tmp = _reference_instance_norm_naive(
-            x_np, scale_np, bias_np, self.epsilon, mean_np, var_np
+            self.x_np,
+            self.scale_np,
+            self.bias_np,
+            self.epsilon,
+            self.mean_np,
+            self.var_np,
         )
         ref_var_np = 1 / np.sqrt(ref_var_np_tmp + self.epsilon)
         self.inputs = {
-            'X': x_np,
-            'Scale': scale_np,
-            'Bias': bias_np,
+            'X': self.x_np,
+            'Scale': self.scale_np,
+            'Bias': self.bias_np,
         }
         self.attrs = {'epsilon': self.epsilon}
         self.outputs = {
@@ -137,49 +134,36 @@ class TestInstanceNormOp(OpTest):
         )
 
     def init_test_case(self):
-        self.shape = [2, 100, 4, 5]
-        self.n = self.shape[0]
-        self.c = self.shape[1]
-        self.h = self.shape[2]
-        self.w = self.shape[3]
+        x_shape = [2, 100, 4, 5]
+        n, c, h, w = x_shape[0], x_shape[1], x_shape[2], x_shape[3]
         self.epsilon = 1e-05
-
-    def init_dtype(self):
-        self.dtype = np.float32
+        dtype = np.float32
+        scale_shape = [c]
+        mean_shape = [n * c]
+        np.random.seed()
+        self.x_np = np.random.random_sample(x_shape).astype(dtype)
+        self.scale_np = np.random.random_sample(scale_shape).astype(dtype)
+        self.bias_np = np.random.random_sample(scale_shape).astype(dtype)
+        self.mean_np, self.var_np = _cal_mean_variance(
+            self.x_np, self.epsilon, mean_shape
+        )
 
 
 class TestInstanceNormCase1(TestInstanceNormOp):
-    def setUp(self):
-        self.op_type = "instance_norm"
-        self.prim_op_type = "comp"
-        self.python_api = instance_norm_wrapper
-        self.python_out_sig = ['Y']
-        self.rev_comp_rtol = 1e-04
-        self.rev_comp_atol = 1e-04
-        self.init_test_case()
-        self.init_dtype()
-        scale_shape = [self.c]
-        mean_shape = [self.n * self.c]
+    def init_test_case(self):
+        x_shape = [2, 100, 4, 5]
+        n, c, h, w = x_shape[0], x_shape[1], x_shape[2], x_shape[3]
+        self.epsilon = 1e-05
+        dtype = np.float32
+        scale_shape = [c]
+        mean_shape = [n * c]
         np.random.seed()
-        x_np = np.random.random_sample(self.shape).astype(self.dtype)
-        scale_np = np.ones(scale_shape).astype(self.dtype)
-        bias_np = np.zeros(scale_shape).astype(self.dtype)
-        mean_np, var_np = _cal_mean_variance(x_np, self.epsilon, mean_shape)
-        ref_y_np, ref_mean_np, ref_var_np_tmp = _reference_instance_norm_naive(
-            x_np, scale_np, bias_np, self.epsilon, mean_np, var_np
+        self.x_np = np.random.random_sample(x_shape).astype(dtype)
+        self.scale_np = np.ones(scale_shape).astype(dtype)
+        self.bias_np = np.zeros(scale_shape).astype(dtype)
+        self.mean_np, self.var_np = _cal_mean_variance(
+            self.x_np, self.epsilon, mean_shape
         )
-        ref_var_np = 1 / np.sqrt(ref_var_np_tmp + self.epsilon)
-        self.inputs = {
-            'X': x_np,
-            'Scale': scale_np,
-            'Bias': bias_np,
-        }
-        self.attrs = {'epsilon': self.epsilon}
-        self.outputs = {
-            'Y': ref_y_np,
-            'SavedMean': ref_mean_np,
-            'SavedVariance': ref_var_np,
-        }
 
 
 class TestInstanceNormOpTraining(unittest.TestCase):
