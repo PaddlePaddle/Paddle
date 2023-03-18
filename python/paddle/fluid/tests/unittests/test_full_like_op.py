@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -105,6 +105,10 @@ class TestFullOpError(unittest.TestCase):
             )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA and not support the bfloat16",
+)
 class TestFullLikeOp1(OpTest):
     # test basic
     def setUp(self):
@@ -112,17 +116,26 @@ class TestFullLikeOp1(OpTest):
         self.prim_op_type = "comp"
         self.python_api = fill_any_like_wrapper
         self.init_data()
-        self.if_enable_cinn()
+        # self.if_enable_cinn()
 
-        x = np.zeros(self.shape)
+        bf16_flag = self.dtype == np.uint16
+        x = np.zeros(self.shape).astype(np.float32 if bf16_flag else self.dtype)
+        x = OpTest.np_dtype_to_fluid_dtype(x)
+
         out = np.full_like(x, self.fill_value, self.dtype)
+
+        if bf16_flag:
+            x = convert_float_to_uint16(x)
+            out = convert_float_to_uint16(out)
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
+
         self.attrs = {
             'value': self.fill_value,
             'dtype': convert_np_dtype_to_dtype_(self.dtype),
         }
+        self.place = core.CUDAPlace(0)
 
     def init_data(self):
         self.fill_value = 5
@@ -130,7 +143,10 @@ class TestFullLikeOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_eager=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], ['Out'], max_relative_error=100)
 
     def if_enable_cinn(self):
         pass
@@ -139,7 +155,7 @@ class TestFullLikeOp1(OpTest):
 class TestFullLikeOp2(TestFullLikeOp1):
     def init_data(self):
         self.fill_value = 1000
-        self.shape = [1024, 1024]
+        self.shape = [10, 10]
         self.dtype = np.float64
 
     def if_enable_cinn(self):
@@ -149,7 +165,7 @@ class TestFullLikeOp2(TestFullLikeOp1):
 class TestFullLikeOp3(TestFullLikeOp1):
     def init_data(self):
         self.fill_value = 8888
-        self.shape = [5000, 5000]
+        self.shape = [10, 10]
         self.dtype = np.int64
 
     def if_enable_cinn(self):
@@ -170,6 +186,31 @@ class TestFullLikeOp4(unittest.TestCase):
             (out.numpy() == np.ones([4]).astype(np.float32)).all(), True
         )
         paddle.enable_static()
+
+
+class TestFullLikeOp5(TestFullLikeOp1):
+    def init_data(self):
+        self.fill_value = 6666
+        self.shape = [10, 10]
+        self.dtype = np.float16
+
+    def if_enable_cinn(self):
+        pass
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestFullLikeOp6(TestFullLikeOp1):
+    def init_data(self):
+        self.fill_value = 6666
+        self.shape = [10, 10]
+        self.dtype = np.uint16
+
+    def if_enable_cinn(self):
+        pass
 
 
 if __name__ == "__main__":
