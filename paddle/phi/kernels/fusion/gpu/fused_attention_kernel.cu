@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 
@@ -46,8 +45,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     auto task = pg_nccl->AllReduce(&tensor, tensor, opts, true, true);
     task->Wait();
   } else {
-    auto dtype = paddle::platform::ToNCCLDataType(
-        paddle::framework::TransToProtoVarType(tensor.dtype()));
+    auto dtype = phi::ToNCCLDataType(tensor.dtype());
     int64_t numel = tensor.numel();
     const void *sendbuff = tensor.data<T>();
     auto place = dev_ctx.GetPlace();
