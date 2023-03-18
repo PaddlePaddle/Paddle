@@ -87,7 +87,7 @@ class TestLogsumexp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -95,7 +95,6 @@ class TestLogsumexp(OpTest):
             ['Out'],
             user_defined_grads=self.user_defined_grads,
             user_defined_grad_outputs=self.user_defined_grad_outputs,
-            check_eager=True,
         )
 
     def calc_grad(self):
