@@ -1120,11 +1120,26 @@ void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
   }
 }
 
-phi::DataType InferMPDType(const RuntimeContext& runtime_ctx,
-                           const std::string parameter_name) {
+phi::DataType GetInputDType(const RuntimeContext& runtime_ctx,
+                            const std::string parameter_name) {
   phi::TensorBase* in_tensor =
       GetTensorFormVar(runtime_ctx.inputs.find(parameter_name)->second.at(0));
-  phi::DataType in_dtype = in_tensor->dtype();
+  return in_tensor->dtype();
+}
+
+phi::DataType InferDTypeFromAttr(const framework::OperatorBase& op,
+                                 const RuntimeContext& runtime_ctx,
+                                 const std::string& attr_name) {
+  int dtype_attr = op.Attr<int>(attr_name);
+  if (dtype_attr == -1) {  // -1 means the dtype is same as intput
+    return GetInputDType(runtime_ctx, "X");
+  }
+  return phi::TransToPhiDataType(dtype_attr);
+}
+
+phi::DataType InferMPDType(const RuntimeContext& runtime_ctx,
+                           const std::string parameter_name) {
+  phi::DataType in_dtype = GetInputDType(runtime_ctx, parameter_name);
   return (in_dtype == phi::DataType::BFLOAT16 ||
           in_dtype == phi::DataType::FLOAT16)
              ? phi::DataType::FLOAT32
@@ -1194,19 +1209,16 @@ void FakeInitializeOutputsForFunctionKernel(
                 std::string(op_type))) {
           // Some OP's InferMeta is sensitive to DDim, so we cannot get their
           // output dtype from InferMeta
-          if (op_type == "reduce_sum") {
-            int out_dtype = op.Attr<int>("out_dtype");
-            if (out_dtype == -1) {  // -1 means the dtype is same as intput
-              phi::TensorBase* in_tensor =
-                  GetTensorFormVar(runtime_ctx.inputs.find("X")->second.at(0));
-              dtype = in_tensor->dtype();
-            } else {
-              dtype = phi::TransToPhiDataType(out_dtype);
-            }
+          if (op_type == "adam" || op_type == "adamw") {
+            dtype = InferMPDType(runtime_ctx, "Param");
+          } else if (op_type == "arg_min" || op_type == "arg_max") {
+            dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
+          } else if (op_type == "bincount") {
+            dtype = GetInputDType(runtime_ctx, "X");
           } else if (op_type == "layer_norm") {
             dtype = InferMPDType(runtime_ctx, "X");
-          } else if (op_type == "adam" || op_type == "adamw") {
-            dtype = InferMPDType(runtime_ctx, "Param");
+          } else if (op_type == "reduce_sum") {
+            dtype = InferDTypeFromAttr(op, runtime_ctx, "out_dtype");
           } else {
             VLOG(4) << "Get dtype result from InferMeta";
             RuntimeInferShapeContext infer_shape_ctx(op, runtime_ctx);
@@ -1271,6 +1283,13 @@ void FakeInitializeOutputsForStructureKernel(
         phi::DataType dtype =
             phi::TransToPhiDataType(op_kernel_type.data_type_);
         phi::Place place = execution_context->GetPlace();
+
+        if (op_type == "fake_quantize_range_abs_max" &&
+            execution_context->GetOp().Attr<bool>("is_test")) {
+          if (parameter_name == "OutScale" || parameter_name == "OutScales") {
+            continue;
+          }
+        }
 
         VLOG(4) << parameter_name << " fake alloc with type " << dtype
                 << " on place " << place << " " << out_tensor;
