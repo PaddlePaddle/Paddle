@@ -21,6 +21,7 @@
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_gemm_epilogue_utils.h"
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {

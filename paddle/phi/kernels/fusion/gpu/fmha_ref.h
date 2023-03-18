@@ -243,13 +243,13 @@ class FMHARef {
     int softmax_axis = -1;
     if (src_mask_tensor != nullptr) {
       if (src_mask_out_tensor == nullptr && seq_len_ == out_seq_len) {
-        LaunchFusedSoftmaxMaskKernel<T>(qk_out_data,
-                                        src_mask_tensor->data<T>(),
-                                        softmax_out_data,
-                                        batch_size_,
-                                        num_head_,
-                                        seq_len_,
-                                        dev_ctx_.stream());
+        phi::fusion::LaunchFusedSoftmaxMaskKernel<T>(qk_out_data,
+                                                     src_mask_tensor->data<T>(),
+                                                     softmax_out_data,
+                                                     batch_size_,
+                                                     num_head_,
+                                                     seq_len_,
+                                                     dev_ctx_.stream());
       } else {
         std::vector<const phi::DenseTensor*> ins;
         std::vector<phi::DenseTensor*> outs;
@@ -420,13 +420,13 @@ class FMHARef {
     int softmax_axis = -1;
     if (src_mask_tensor != nullptr) {
       if (src_mask_out_tensor == nullptr && seq_len_ == out_seq_len) {
-        LaunchFusedSoftmaxMaskKernel<T>(qk_out_data,
-                                        src_mask_tensor->data<T>(),
-                                        softmax_out_data,
-                                        batch_size_,
-                                        num_head_,
-                                        seq_len_,
-                                        dev_ctx_.stream());
+        phi::fusion::LaunchFusedSoftmaxMaskKernel<T>(qk_out_data,
+                                                     src_mask_tensor->data<T>(),
+                                                     softmax_out_data,
+                                                     batch_size_,
+                                                     num_head_,
+                                                     seq_len_,
+                                                     dev_ctx_.stream());
       } else {
         std::vector<const phi::DenseTensor*> ins;
         std::vector<phi::DenseTensor*> outs;
