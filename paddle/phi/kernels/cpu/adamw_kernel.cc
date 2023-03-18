@@ -16,13 +16,13 @@
 
 #include <vector>
 
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/adam_kernel.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace phi {
 
@@ -141,9 +141,8 @@ void AdamwDenseKernel(const Context& dev_ctx,
   const T* grad_ptr = grad.data<T>();
 
   auto adamw =
-      paddle::operators::jit::KernelFuncs<paddle::operators::jit::AdamWTuple<T>,
-                                          phi::CPUPlace>::Cache()
-          .At(1);
+      phi::jit::KernelFuncs<phi::jit::AdamWTuple<T>, phi::CPUPlace>::Cache().At(
+          1);
 
   static constexpr int64_t chunk_size = 512;
 

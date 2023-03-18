@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -50,8 +50,8 @@ TEST(math_function, notrans_mul_trans_fp32) {
   phi::DenseTensor out_gpu;
   phi::DenseTensor out;
 
-  paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDAPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
@@ -83,8 +83,8 @@ TEST(math_function, notrans_mul_trans_fp16) {
   phi::DenseTensor out_gpu;
   phi::DenseTensor out;
 
-  paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDAPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
@@ -127,8 +127,8 @@ TEST(math_function, trans_mul_notrans_fp32) {
   phi::DenseTensor out_gpu;
   phi::DenseTensor out;
 
-  paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDAPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
@@ -166,8 +166,8 @@ TEST(math_function, trans_mul_notrans_fp16) {
   phi::DenseTensor out_gpu;
   phi::DenseTensor out;
 
-  paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDAPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
@@ -216,8 +216,8 @@ TEST(math_function, gemm_notrans_cublas_fp32) {
   phi::DenseTensor input2_gpu;
   phi::DenseTensor input3_gpu;
 
-  paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDAPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
@@ -271,8 +271,8 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
   phi::DenseTensor input2_gpu;
   phi::DenseTensor input3_gpu;
 
-  paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDAPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
@@ -345,8 +345,8 @@ TEST(math_function, gemm_trans_cublas_fp32) {
   phi::DenseTensor input2_gpu;
   phi::DenseTensor input3_gpu;
 
-  paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDAPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
@@ -394,8 +394,8 @@ TEST(math_function, gemm_trans_cublas_fp16) {
   phi::DenseTensor input2_gpu;
   phi::DenseTensor input3_gpu;
 
-  paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDAPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 
@@ -460,8 +460,8 @@ void GemvTest(int m, int n, bool trans) {
   phi::DenseTensor vec_b;
   phi::DenseTensor vec_c;
 
-  paddle::platform::CPUPlace cpu_place;
-  paddle::platform::CUDAPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
 

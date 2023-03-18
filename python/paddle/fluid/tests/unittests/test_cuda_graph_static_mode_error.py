@@ -52,9 +52,7 @@ class TestCUDAGraphInFirstBatch(unittest.TestCase):
             build_strategy = paddle.static.BuildStrategy()
             build_strategy.allow_cuda_graph_capture = True
             compiled_program = paddle.static.CompiledProgram(
-                main
-            ).with_data_parallel(
-                loss_name=loss.name, build_strategy=build_strategy, places=place
+                main, build_strategy=build_strategy
             )
 
             cuda_graph = None

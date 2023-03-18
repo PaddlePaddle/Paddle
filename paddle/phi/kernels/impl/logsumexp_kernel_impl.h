@@ -71,6 +71,13 @@ void LogsumexpKernel(const Context& dev_ctx,
 
   reduce_all = recompute_reduce_all(x, axis, reduce_all);
 
+  auto x_dim = x.dims();
+  for (int i = 0; i < x_dim.size(); i++) {
+    PADDLE_ENFORCE_LT(0,
+                      x_dim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+  }
   if (reduce_all) {
     // Flatten and reduce 1-D tensor
     auto input = phi::EigenVector<T>::Flatten(x);

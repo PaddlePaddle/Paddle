@@ -15,6 +15,7 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <functional>
 #include <memory>
 #include <unordered_map>
 
@@ -23,6 +24,7 @@ class IrContextImpl;
 class StorageManager;
 class AbstractType;
 class TypeId;
+class Dialect;
 
 ///
 /// \brief IrContext is a global parameterless class used to store and manage
@@ -68,6 +70,63 @@ class IrContext {
   /// instances.
   ///
   std::unordered_map<TypeId, AbstractType *> &registed_abstracted_type();
+
+  ///
+  /// \brief Get the dialect of the DialectT class in the context, ff not found,
+  /// create and register to context.
+  ///
+  /// \param DialectT The Dialect class that needs to be found or register.
+  ///
+  /// \return The dialect of the DialectT class in the context.
+  ///
+  template <typename DialectT>
+  DialectT *GetOrRegisterDialect() {
+    return static_cast<DialectT *>(
+        GetOrRegisterDialect(DialectT::name(), [this]() {
+          DialectT *dialect = new DialectT(this);
+          return dialect;
+        }));
+  }
+
+  ///
+  /// \brief Get the dialect of the DialectT class in the context, ff not found,
+  /// create and register to context.
+  ///
+  /// \param dialect_name The dialect name.
+  /// \param dialect_id The TypeId of the dialect.
+  /// \param constructor The dialect constructor.
+  ///
+  /// \return The dialect named "dialect_name" in the context.
+  ///
+  Dialect *GetOrRegisterDialect(std::string dialect_name,
+                                std::function<Dialect *()> constructor);
+
+  ///
+  /// \brief Get the dialect list registered to the context.
+  ///
+  /// \return The dialect list registered to the context.
+  ///
+  std::vector<Dialect *> GetRegisteredDialects();
+
+  ///
+  /// \brief Get the dialect named "name" from the context.
+  ///
+  /// \param name The name of the dialect to be obtained.
+  ///
+  /// \return The dialect named "name" from the context.
+  ///
+  Dialect *GetRegisteredDialect(const std::string &dialect_name);
+
+  ///
+  /// \brief Get a registered dialect for the given dialect type T. The
+  /// Dialect must provide a static 'name' method.
+  ///
+  /// \return The registered dialect for the given dialect type T.
+  ///
+  template <typename T>
+  T *GetRegisteredDialect() {
+    return static_cast<T *>(GetRegisteredDialect(T::name()));
+  }
 
   IrContext(const IrContext &) = delete;
 

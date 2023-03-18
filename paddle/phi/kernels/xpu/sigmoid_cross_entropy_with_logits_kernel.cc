@@ -20,7 +20,7 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 
@@ -62,11 +62,11 @@ void SigmoidCrossEntropyWithLogitsKernel(const Context& dev_ctx,
                                x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "nonzero_count");
     int non_zero_cpu = 0;
-    paddle::memory::Copy(CPUPlace(),
-                         static_cast<void*>(&non_zero_cpu),
-                         dev_ctx.GetPlace(),
-                         static_cast<void*>(non_zero),
-                         sizeof(int));
+    memory_utils::Copy(CPUPlace(),
+                       static_cast<void*>(&non_zero_cpu),
+                       dev_ctx.GetPlace(),
+                       static_cast<void*>(non_zero),
+                       sizeof(int));
 
     r = xpu::scale(dev_ctx.x_context(),
                    reinterpret_cast<const XPUType*>(out->data<T>()),
