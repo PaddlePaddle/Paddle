@@ -5,16 +5,19 @@ Imperative Programming is easier to learn, debug and try new ideas.
 # Related Works
 
 ## Pytorch
+
 https://pytorch.org/
 
 ## TensorFlow Eager
+
 https://www.tensorflow.org/guide/eager
 
 # Design
 
 ## API
+
 ```python
-class Layer(object):
+class Layer:
 
   def __call__(inputs):
     # build some parameter once.
@@ -40,16 +43,16 @@ class PyLayer(core.PyLayer):
 
 ```
 
-
 ## Tracer
 
 Current: Python Variable -> C++ VarBase -> C++ Variable -> C++ Tensor
 
 Longer term.
+
 ```python
 
 # Parent class.
-class PyVarBase(object):
+class PyVarBase:
   pass
 
 # Current python variable.
@@ -71,8 +74,6 @@ class IVariable(PyVarBase):
   # operators to override.
 ```
 
-
-
 ```cpp
 class Tracer {
  public:
@@ -90,11 +91,11 @@ class Tracer {
 };
 ```
 
-* Trace forward operations
-* Perform quick shape/type infer, push kernel execution engine and return to user.
-* Perform autograd to generate gradients.
-* Clear trace.
-* Apply gradients with optimizers
+- Trace forward operations
+- Perform quick shape/type infer, push kernel execution engine and return to user.
+- Perform autograd to generate gradients.
+- Clear trace.
+- Apply gradients with optimizers
 
 ## Autodiff
 
@@ -105,9 +106,9 @@ https://en.wikipedia.org/wiki/Automatic_differentiation
 Basically, trace the forward execution, and perform autodiff
 when needed.
 
-* Can be triggered by `backward()`.
-* Can select a block of code to trace and autodiff.
-* Use `require_grad` to drop some forward subgraph that doesn't need autodiff.
+- Can be triggered by `backward()`.
+- Can select a block of code to trace and autodiff.
+- Use `require_grad` to drop some forward subgraph that doesn't need autodiff.
 
 ## Execution Engine
 
@@ -115,9 +116,9 @@ Lazy execution of pushed C++ operations.
 
 ## Device Placement
 
-* Operator executes on the inputs' device.
-* All inputs should live on the same device.
-* use `Var.to()` to explicitly move var to a device.
+- Operator executes on the inputs' device.
+- All inputs should live on the same device.
+- use `Var.to()` to explicitly move var to a device.
 
 ## Save/Load Models
 
@@ -129,9 +130,9 @@ TODO
 
 ## Refactor
 
-* All function layers with parameters converted to class Layers.
-* Existing models converted to imperative mode.
-* All op tests run once in static graph, once in imperative mode.
+- All function layers with parameters converted to class Layers.
+- Existing models converted to imperative mode.
+- All op tests run once in static graph, once in imperative mode.
 
 # Examples
 
