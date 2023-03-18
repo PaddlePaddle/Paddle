@@ -15,7 +15,7 @@
 from .utils import saw, UndefinedVar, ast_to_source_code
 from .convert_operators import convert_logical_and as And  # noqa: F401
 from .convert_operators import convert_var_dtype as AsDtype  # noqa: F401
-from .convert_operators import convert_assert as Assert  # noqa: F401
+from .convert_assert import convert_assert as Assert  # noqa: F401
 from .convert_call_func import convert_call as Call  # noqa: F401
 from .convert_operators import convert_ifelse as IfElse  # noqa: F401
 from .convert_operators import convert_len as Len  # noqa: F401
