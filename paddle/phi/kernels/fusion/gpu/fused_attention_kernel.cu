@@ -67,17 +67,17 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
 
 template <typename T, typename Context>
 void FusedAttentionKernel(const Context &dev_ctx,
-                          const DenseTensor *x,
-                          const DenseTensor *ln_scale,
-                          const DenseTensor *ln_bias,
-                          const DenseTensor *qkv_weight,
-                          const DenseTensor *qkv_bias,
-                          const DenseTensor *cache_kv,
-                          const DenseTensor *src_mask,
-                          const DenseTensor *out_linear_weight,
-                          const DenseTensor *out_linear_bias,
-                          const DenseTensor *ln_scale_2,
-                          const DenseTensor *ln_bias_2,
+                          const DenseTensor &x,
+                          const DenseTensor &ln_scale,
+                          const DenseTensor &ln_bias,
+                          const DenseTensor &qkv_weight,
+                          const DenseTensor &qkv_bias,
+                          const DenseTensor &cache_kv,
+                          const DenseTensor &src_mask,
+                          const DenseTensor &out_linear_weight,
+                          const DenseTensor &out_linear_bias,
+                          const DenseTensor &ln_scale_2,
+                          const DenseTensor &ln_bias_2,
                           int num_heads,
                           bool transpose_qkv_wb,
                           bool pre_layer_norm,
@@ -136,17 +136,31 @@ void FusedAttentionKernel(const Context &dev_ctx,
   bool is_upscale_in_train_1 = (dropout_implementation_1 == "upscale_in_train");
   phi::DenseTensor *seed_1 = nullptr;
 
-  // get data ptr for qkv part.
-  const auto input_x_dims = x->dims();
-  const auto qkv_w_dims = qkv_weight->dims();
+  auto *x_p = const_cast<phi::DenseTensor *>(&x);
+  auto *ln_scale_p = const_cast<phi::DenseTensor *>(&ln_scale);
+  auto *ln_bias_p = const_cast<phi::DenseTensor *>(&ln_bias);
+  auto *qkv_weight_p = const_cast<phi::DenseTensor *>(&qkv_weight);
+  auto *qkv_bias_p = const_cast<phi::DenseTensor *>(&qkv_bias);
+  auto *cache_kv_p = const_cast<phi::DenseTensor *>(&cache_kv);
+  auto *src_mask_p = const_cast<phi::DenseTensor *>(&src_mask);
+  auto *out_linear_weight_p =
+      const_cast<phi::DenseTensor *>(&out_linear_weight);
+  auto *out_linear_bias_p = const_cast<phi::DenseTensor *>(&out_linear_bias);
+  auto *ln_scale_2_p = const_cast<phi::DenseTensor *>(&ln_scale_2);
+  auto *ln_bias_2_p = const_cast<phi::DenseTensor *>(&ln_bias_2);
 
-  auto *x_data = x->data<T>();
-  auto *qkv_weight_data = qkv_weight->data<T>();
-  auto *qkv_bias_data = (qkv_bias == nullptr) ? nullptr : qkv_bias->data<T>();
+  // get data ptr for qkv part.
+  const auto input_x_dims = x_p->dims();
+  const auto qkv_w_dims = qkv_weight_p->dims();
+
+  auto *x_data = x_p->data<T>();
+  auto *qkv_weight_data = qkv_weight_p->data<T>();
+  auto *qkv_bias_data =
+      (qkv_bias_p == nullptr) ? nullptr : qkv_bias_p->data<T>();
   auto *qkv_out_data =
       dev_ctx.template Alloc<T>(qkv_out, qkv_out->numel() * sizeof(T));
   auto *qkv_bias_out_data =
-      (qkv_bias == nullptr)
+      (qkv_bias_p == nullptr)
           ? nullptr
           : dev_ctx.template Alloc<T>(qkv_bias_out,
                                       qkv_bias_out->numel() * sizeof(T));
@@ -164,7 +178,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
   auto *qktv_out_data =
       dev_ctx.template Alloc<T>(qktv_out, qktv_out->numel() * sizeof(T));
   auto *src_mask_out_data =
-      (src_mask == nullptr)
+      (src_mask_p == nullptr)
           ? nullptr
           : dev_ctx.template Alloc<T>(src_mask_out,
                                       src_mask_out->numel() * sizeof(T));
@@ -184,9 +198,9 @@ void FusedAttentionKernel(const Context &dev_ctx,
       dev_ctx.template Alloc<T>(fmha_out, fmha_out->numel() * sizeof(T));
 
   // get data ptr for out_linear.
-  auto *out_linear_weight_data = out_linear_weight->data<T>();
+  auto *out_linear_weight_data = out_linear_weight_p->data<T>();
   auto *out_linear_bias_data =
-      (out_linear_bias == nullptr) ? nullptr : out_linear_bias->data<T>();
+      (out_linear_bias_p == nullptr) ? nullptr : out_linear_bias_p->data<T>();
   auto *out_linear_out_data = dev_ctx.template Alloc<T>(
       out_linear_out, out_linear_out->numel() * sizeof(T));
 
@@ -225,7 +239,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
       phi::fusion::AttnLayerNorm<T>(dev_ctx, epsilon, bsz_seq, dim_embed);
 
   bool compute_bias = true;
-  if (qkv_bias == nullptr) {
+  if (qkv_bias_p == nullptr) {
     compute_bias = false;
   }
   // (transA, transB, compute_bias) = (false, true, true)
@@ -257,8 +271,10 @@ void FusedAttentionKernel(const Context &dev_ctx,
           dev_ctx, bsz_seq, dim_embed, dropout_param2, ln_epsilon);
 
   if (pre_layer_norm) {
-    auto *ln_scale_data = (ln_scale == nullptr ? nullptr : ln_scale->data<U>());
-    auto *ln_bias_data = (ln_bias == nullptr ? nullptr : ln_bias->data<U>());
+    auto *ln_scale_data =
+        (ln_scale_p == nullptr ? nullptr : ln_scale_p->data<U>());
+    auto *ln_bias_data =
+        (ln_bias_p == nullptr ? nullptr : ln_bias_p->data<U>());
     auto *ln_mean_data =
         dev_ctx.template Alloc<U>(ln_mean, ln_mean->numel() * sizeof(U));
     auto *ln_var_data =
@@ -273,9 +289,10 @@ void FusedAttentionKernel(const Context &dev_ctx,
                                       ln_mean_data,
                                       ln_var_data);
     qkv_compute.ComputeForward(
-        qkv_weight, ln_out, qkv_bias, qkv_out, qkv_bias_out);
+        qkv_weight_p, ln_out, qkv_bias_p, qkv_out, qkv_bias_out);
   } else {
-    qkv_compute.ComputeForward(qkv_weight, x, qkv_bias, qkv_out, qkv_bias_out);
+    qkv_compute.ComputeForward(
+        qkv_weight_p, x_p, qkv_bias_p, qkv_out, qkv_bias_out);
   }
 
   if (transpose_qkv_wb) {
@@ -284,10 +301,10 @@ void FusedAttentionKernel(const Context &dev_ctx,
     qkv_bias_out->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
   }
 
-  if (qkv_bias == nullptr) {
+  if (qkv_bias_p == nullptr) {
     fmha_ref_compute.ComputeForward(*qkv_out,
-                                    cache_kv,
-                                    src_mask,
+                                    cache_kv_p,
+                                    src_mask_p,
                                     transpose_out_2,
                                     cache_kv_out,
                                     qk_out,
@@ -299,8 +316,8 @@ void FusedAttentionKernel(const Context &dev_ctx,
                                     fmha_out);
   } else {
     fmha_ref_compute.ComputeForward(*qkv_bias_out,
-                                    cache_kv,
-                                    src_mask,
+                                    cache_kv_p,
+                                    src_mask_p,
                                     transpose_out_2,
                                     cache_kv_out,
                                     qk_out,
@@ -322,7 +339,7 @@ void FusedAttentionKernel(const Context &dev_ctx,
   // weight:   [embed_dim, embed_dim]
   // out_linear_out: [batch_size, seq_len, embed_dim]
   out_linear_compute.ComputeForward(
-      out_linear_weight, fmha_out, nullptr, out_linear_out, nullptr);
+      out_linear_weight_p, fmha_out, nullptr, out_linear_out, nullptr);
   // tensor model parallel
   AllReduce<T>(*out_linear_out, ring_id, dev_ctx);
 
@@ -343,8 +360,8 @@ void FusedAttentionKernel(const Context &dev_ctx,
         errors::InvalidArgument("Attribute add_residual is expected to be true "
                                 "when pre_layer_norm is false."));
 
-    const U *ln_scale_2_ptr = ln_scale_2 ? ln_scale_2->data<U>() : nullptr;
-    const U *ln_bias_2_ptr = ln_bias_2 ? ln_bias_2->data<U>() : nullptr;
+    const U *ln_scale_2_ptr = ln_scale_2_p ? ln_scale_2_p->data<U>() : nullptr;
+    const U *ln_bias_2_ptr = ln_bias_2_p ? ln_bias_2_p->data<U>() : nullptr;
     T *bias_dropout_residual_out_ptr = dev_ctx.template Alloc<T>(
         bias_dropout_residual_out,
         bias_dropout_residual_out->numel() * sizeof(T));

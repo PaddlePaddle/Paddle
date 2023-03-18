@@ -16,6 +16,7 @@
 
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/declarations.h"
 
 int main(int argc, char** argv) {
   std::cout << phi::KernelFactory::Instance() << std::endl;
