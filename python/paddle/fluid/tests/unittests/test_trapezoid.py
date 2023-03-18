@@ -226,6 +226,10 @@ class TestTrapezoidError(unittest.TestCase):
 
 
 class Testfp16Trapezoid(TestTrapezoidAPI):
+    def set_api(self):
+        self.paddle_api = paddle.trapezoid
+        self.ref_api = np.trapz
+
     def test_fp16_with_gpu(self):
         paddle.enable_static()
         if paddle.fluid.core.is_compiled_with_cuda():
@@ -251,10 +255,6 @@ class Testfp16Trapezoid(TestTrapezoidAPI):
                     },
                     fetch_list=[out],
                 )
-
-    def set_api(self):
-        self.paddle_api = paddle.trapezoid
-        self.ref_api = np.trapz
 
     def test_fp16_func_dygraph(self):
         if paddle.fluid.core.is_compiled_with_cuda():
