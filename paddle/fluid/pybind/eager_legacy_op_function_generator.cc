@@ -33,6 +33,9 @@
 #endif
 #include "paddle/fluid/pybind/eager_generator.h"
 
+// phi
+#include "paddle/phi/kernels/declarations.h"
+
 static std::string LegalizeVarName(const std::string& var_name) {
   std::string ret = var_name;
   std::replace(ret.begin(), ret.end(), '@', '_');  // replace all '-' to '_'
