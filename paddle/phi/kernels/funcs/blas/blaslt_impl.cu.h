@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <cuda_runtime_api.h>
-#include "cuda.h"  // NOLINT
+#include <cuda_runtime_api.h>  // NOLINT
+#include "cuda.h"              // NOLINT
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -125,7 +125,7 @@ struct MatmulDescriptor {
               const int K,
               const bool trans_x,
               const bool trans_y,
-              phi::funcs::MatmulPlanner* planner,
+              MatmulPlanner* planner,
               const int batch_size = 1,
               int64_t stride_x = 0,
               int64_t stride_y = 0,
@@ -175,7 +175,7 @@ struct MatmulDescriptor {
   }
 
   template <typename T>
-  void SetFusedEpiloguePtr(phi::funcs::MatmulPlanner* planner) {
+  void SetFusedEpiloguePtr(MatmulPlanner* planner) {
     if (planner->bias != nullptr) {
       const T* bias_data = static_cast<const T*>(planner->bias);
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
@@ -248,8 +248,7 @@ struct MatmulDescriptor {
         sizeof(stride)));
   }
 
-  void SetFusedEpilogueOpDescriptor(phi::funcs::MatmulPlanner* planner,
-                                    int64_t lead_dim) {
+  void SetFusedEpilogueOpDescriptor(MatmulPlanner* planner, int64_t lead_dim) {
     if (planner->bias) {
       auto fuse_type = static_cast<cublasLtEpilogue_t>(planner->ImplType());
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -273,7 +272,7 @@ struct DescriptorSetter {
   MatmulDescriptor desc;
   size_t sub_key{std::numeric_limits<size_t>::min()};
 
-  DescriptorSetter(phi::funcs::MatmulPlanner* planner,
+  DescriptorSetter(MatmulPlanner* planner,
                    const int M,
                    const int N,
                    const int K,
@@ -326,7 +325,7 @@ struct MatmulWithCublasLt {
                   const int K,
                   const bool trans_x,
                   const bool trans_y,
-                  phi::funcs::MatmulPlanner* planner = nullptr) {
+                  MatmulPlanner* planner = nullptr) {
     auto setter = DescriptorSetter<T>(planner, M, N, K, trans_x, trans_y);
     RunImpl(
         ctx, &setter.desc, setter.sub_key, x_data, y_data, out_data, planner);
@@ -345,7 +344,7 @@ struct MatmulWithCublasLt {
                            int64_t stride_x,
                            int64_t stride_y,
                            int64_t stride_out,
-                           phi::funcs::MatmulPlanner* planner = nullptr) {
+                           MatmulPlanner* planner = nullptr) {
     auto setter = DescriptorSetter<T>(planner,
                                       M,
                                       N,
@@ -370,7 +369,7 @@ struct MatmulWithCublasLt {
                            bool trans_x,
                            bool trans_y,
                            int batch_size,
-                           phi::funcs::MatmulPlanner* planner = nullptr) {
+                           MatmulPlanner* planner = nullptr) {
     for (int i = 0; i < batch_size; ++i) {
       Run(ctx,
           x_data[i],
@@ -400,7 +399,7 @@ struct MatmulWithCublasLt {
                       const T* x_ptr,
                       const T* y_ptr,
                       T* out_ptr,
-                      phi::funcs::MatmulPlanner* planner) {
+                      MatmulPlanner* planner) {
     MT alpha = static_cast<MT>(1);
     MT beta = static_cast<MT>(0);
 
@@ -539,7 +538,6 @@ struct MatmulWithCublasLt {
 #else
 // A void structure just for successfully complile.
 struct MatmulPlanner {};
-
 #endif  // (PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
 }  // namespace funcs
