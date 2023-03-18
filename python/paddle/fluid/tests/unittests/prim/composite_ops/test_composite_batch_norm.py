@@ -137,72 +137,96 @@ def expect_forward(
     )
 
 
+def cal_static(inputs, running_mean, running_variance, weight, bias, mode=None):
+    paddle.enable_static()
+    core._set_prim_all_enabled(True)
+    startup_program = paddle.static.Program()
+    main_program = paddle.static.Program()
+    with paddle.static.program_guard(main_program, startup_program):
+        x1 = paddle.static.data(
+            'x1', shape=inputs.shape, dtype=str(inputs.dtype)
+        )
+        x2 = paddle.static.data(
+            'x2', shape=running_mean.shape, dtype=str(running_mean.dtype)
+        )
+        x3 = paddle.static.data(
+            'x3',
+            shape=running_variance.shape,
+            dtype=str(running_variance.dtype),
+        )
+        x4 = paddle.static.data(
+            'x4', shape=weight.shape, dtype=str(weight.dtype)
+        )
+        x5 = paddle.static.data('x5', shape=bias.shape, dtype=str(bias.dtype))
+        y = fn(
+            x1,
+            x2,
+            x3,
+            x4,
+            x5,
+            attrs.training,
+            attrs.momentum,
+            attrs.epsilon,
+            attrs.data_format,
+            attrs.use_global_stats,
+        )
+        blocks = main_program.blocks
+
+        names = dict(
+            zip(
+                blocks[0].ops[0].output_names, blocks[0].ops[0].output_arg_names
+            )
+        )
+        vars_list = [
+            names[key]
+            for key in [
+                "Y",
+                "MeanOut",
+                "VarianceOut",
+                "SavedMean",
+                "SavedVariance",
+            ]
+        ]
+
+        fwd_ops = [op.type for op in blocks[0].ops]
+        # Ensure that batch_norm in original block
+        assert 'batch_norm' in fwd_ops
+
+        if mode:
+            primapi.to_prim(blocks)
+            fwd_ops_new = [op.type for op in blocks[0].ops]
+            # Ensure that batch_norm is splitted into small ops
+            assert 'batch_norm' not in fwd_ops_new
+
+    exe = paddle.static.Executor()
+    exe.run(startup_program)
+
+    # indeed SavedVariance is 1/sqrt(batch_var+eps)
+    Y, MeanOut, VarianceOut, SavedMean, SavedVariance = exe.run(
+        main_program,
+        feed={
+            'x1': inputs,
+            'x2': running_mean,
+            'x3': running_variance,
+            'x4': weight,
+            'x5': bias,
+        },
+        fetch_list=vars_list,
+    )
+    paddle.disable_static()
+    core._set_prim_all_enabled(False)
+
+    return Y, MeanOut, VarianceOut, SavedMean, SavedVariance
+
+
 class TestCompositeBatchNorm(unittest.TestCase):
     def setUp(self):
         self.dtypes = ["float32", "float64"]
         self.training = [False, True]
-        self.shapes = [[8, 8, 16, 16], [2, 1, 2, 3]]
+        self.shapes = [[8, 8, 16, 16], [2, 3, 4, 4]]
         self.momentum = [0.1, 0.9]
         self.data_formats = ["NCHW", "NHWC"]
         self.use_global_stats = [None, True, False]
-
-    def cal_composite(
-        self, inputs, running_mean, running_variance, weight, bias
-    ):
-        paddle.enable_static()
-        core._set_prim_all_enabled(True)
-        startup_program = paddle.static.Program()
-        main_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program, startup_program):
-            x1 = paddle.static.data(
-                'x1', shape=inputs.shape, dtype=str(inputs.dtype)
-            )
-            x2 = paddle.static.data(
-                'x2', shape=running_mean.shape, dtype=str(running_mean.dtype)
-            )
-            x3 = paddle.static.data(
-                'x3',
-                shape=running_variance.shape,
-                dtype=str(running_variance.dtype),
-            )
-            x4 = paddle.static.data(
-                'x4', shape=weight.shape, dtype=str(weight.dtype)
-            )
-            x5 = paddle.static.data(
-                'x5', shape=bias.shape, dtype=str(bias.dtype)
-            )
-            y = fn(
-                x1,
-                x2,
-                x3,
-                x4,
-                x5,
-                attrs.training,
-                attrs.momentum,
-                attrs.epsilon,
-                attrs.data_format,
-                attrs.use_global_stats,
-            )
-            blocks = main_program.blocks
-            primapi.to_prim(blocks)
-
-        exe = paddle.static.Executor()
-        exe.run(startup_program)
-        res = exe.run(
-            main_program,
-            feed={
-                'x1': inputs,
-                'x2': running_mean,
-                'x3': running_variance,
-                'x4': weight,
-                'x5': bias,
-            },
-            fetch_list=[y],
-        )
-        paddle.disable_static()
-        core._set_prim_all_enabled(False)
-
-        return res
 
     def compare_forward(self):
         np_data = generate_data(attrs.shape, attrs.dtype)
@@ -234,32 +258,87 @@ class TestCompositeBatchNorm(unittest.TestCase):
         np_running_variance = np.ones(C, dtype=attrs.dtype)
         np_weight = np.ones(C, dtype=attrs.dtype) * 2
         np_bias = np.ones(C, dtype=attrs.dtype)
-        actual = self.cal_composite(
+        res_origin = cal_static(
             np_data, np_running_mean, np_running_variance, np_weight, np_bias
-        )[0]
-        assert expect.dtype == actual.dtype
+        )
+        res_prim = cal_static(
+            np_data,
+            np_running_mean,
+            np_running_variance,
+            np_weight,
+            np_bias,
+            mode="prim",
+        )
+
+        # prim out vs dygraph mode out
+        assert expect.dtype == res_prim[0].dtype
         np.testing.assert_allclose(
             expect,
-            actual,
+            res_prim[0],
             rtol=attrs.get_rtol("forward"),
             atol=attrs.get_atol("forward"),
         )
 
+        # prim all outs vs origin static all outs
+        use_global_stats = attrs.use_global_stats
+        if use_global_stats is None:
+            use_global_stats = not attrs.training
+            trainable_statistics = False
+        else:
+            trainable_statistics = not use_global_stats
+        test_mode = (not attrs.training) and (not trainable_statistics)
+
+        global_stats = test_mode or use_global_stats
+        vars_name = [
+            "Y",
+            "MeanOut",
+            "VarianceOut",
+            "SavedMean",
+            "SavedVariance",
+        ]
+
+        assert len(res_origin) == len(res_prim)
+        for idx in range(len(res_origin)):
+            if global_stats and idx >= 3:
+                # In this case saved_mean and saved_var are not expected.
+                continue
+            origin_item = res_origin[idx]
+            prim_item = res_prim[idx]
+
+            assert origin_item.dtype == prim_item.dtype
+            rtol = attrs.get_rtol("forward")
+            atol = attrs.get_atol("forward")
+            if attrs.dtype == "float64" and idx in (1, 2, 3):
+                atol = 1e-7
+                rtol = 1e-7
+            if not isinstance(
+                framework._current_expected_place(), core.CPUPlace
+            ) and idx in (2, 3):
+                atol = 5e-3
+                rtol = 5e-3
+            np.testing.assert_allclose(
+                origin_item,
+                prim_item,
+                rtol=atol,
+                atol=rtol,
+                err_msg=f"Check diff failed of output: {vars_name[idx]}",
+            )
+
     def test_forward(self):
         for i in self.training:
             for j in self.dtypes:
-                for m in self.momentum:
+                for k in self.use_global_stats:
                     attrs.set_training(i)
                     attrs.set_dtype(j)
-                    attrs.set_momentum(m)
+                    attrs.set_use_global_stats(k)
                     self.compare_forward()
 
         for n in self.shapes:
-            for s in self.data_formats:
-                for t in self.use_global_stats:
+            for m in self.momentum:
+                for s in self.data_formats:
+                    attrs.set_momentum(m)
                     attrs.set_shape(n)
                     attrs.set_data_format(s)
-                    attrs.set_use_global_stats(t)
                     self.compare_forward()
 
 

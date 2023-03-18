@@ -1022,5 +1022,168 @@ void dropout_grad(const Tensor& mask,
     }
   }
 }
+
+template <typename T>
+void batch_norm_grad(const Tensor& x,
+                     const Tensor& scale,
+                     const Tensor& bias,
+                     const paddle::optional<Tensor>& mean_out,
+                     const paddle::optional<Tensor>& variance_out,
+                     const Tensor& saved_mean,
+                     const Tensor& saved_variance,
+                     const paddle::optional<Tensor>& reserve_space,
+                     const Tensor& out_grad,
+                     float momentum,
+                     float epsilon,
+                     const std::string& data_layout,
+                     bool is_test,
+                     bool use_global_stats,
+                     bool trainable_statistics,
+                     Tensor* x_grad,
+                     Tensor* scale_grad,
+                     Tensor* bias_grad) {
+  use_global_stats = is_test || use_global_stats;
+
+  DataLayout data_layout_ = phi::StringToDataLayout(data_layout);
+
+  Tensor x_data = x;
+  Tensor out_grad_data = out_grad;
+  if (x.dtype() == phi::DataType::FLOAT16) {
+    x_data = cast<T>(x, phi::DataType::FLOAT32);
+  }
+  if (out_grad.dtype() == phi::DataType::FLOAT16) {
+    out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
+  }
+  auto x_dims = x_data.dims();
+  const int C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
+                                                   : x_dims[x_dims.size() - 1]);
+  int nume = 1;
+  for (auto i = 0; i < x_dims.size(); i++) {
+    nume = nume * x_dims[i];
+  }
+
+  const int nhw = nume / C;
+
+  if (x_dims.size() == 2 && data_layout_ == DataLayout::kNCHW) {
+    data_layout_ = DataLayout::kNHWC;
+  }
+
+  auto run_var = variance_out.get();
+  auto run_mean = mean_out.get();
+
+  Tensor mean_data;
+  Tensor rsqrt_var;
+
+  if (use_global_stats) {
+    auto eps =
+        full<T>(phi::vectorize(run_var.dims()), epsilon, run_var.dtype());
+    mean_data = run_mean;
+    rsqrt_var = 1 / (run_var + eps).pow(0.5);
+  } else {
+    mean_data = saved_mean;
+    rsqrt_var = saved_variance;
+  }
+
+  // inv_var = 1 / sqrt(var + eps)
+  // reduce_axis = [0, 2, 3] (NCHW) [0, 1, 2] (NHWC)
+  //
+  // d_bias = np.sum(d_y, reduce_axis)
+  // d_scale = np.sum((X - mean) / inv_var * dy, reduce_axis)
+  //
+  // train mode
+  // d_x = (1. / nhw) * scale * inv_var
+  // *(nhw * d_y - np.sum(d_y, reduce_axis) - (X - mean) * inv_var * inv_var *
+  // np.sum(d_y * (X - mean), reduce_axis))
+  //
+  // test mode
+  // d_x = d_y * scale * inv_var
+
+  std::vector<int> nchw_to_nhwc_dim = {0, 2, 3, 1};
+  std::vector<int> nhwc_to_nchw_dim = {0, 3, 1, 2};
+  auto reduce_axis = IntArray(std::vector<int>{0, 1, 2});
+  auto dtype = x_data.dtype();
+
+  switch (data_layout_) {
+    case DataLayout::kNCHW: {
+      auto nhwc_x = transpose<T>(x_data, nchw_to_nhwc_dim);
+      auto nhwc_out_grad = transpose<T>(out_grad_data, nchw_to_nhwc_dim);
+
+      auto x_sub_mean = nhwc_x - mean_data;
+
+      if (x_grad) {
+        if (use_global_stats) {
+          auto nhwc_x_grad = scale * rsqrt_var * nhwc_out_grad;
+          auto nchw_x_grad = transpose<T>(nhwc_x_grad, nhwc_to_nchw_dim);
+          set_output<T>(nchw_x_grad, x_grad);
+        } else {
+          auto part1 = scale * rsqrt_var;
+          auto mean_temp1 =
+              sum<T>(nhwc_out_grad, reduce_axis, dtype, false) / nhw;
+
+          auto tmp = nhwc_out_grad * x_sub_mean * rsqrt_var * rsqrt_var / nhw;
+          auto mean_temp2 = sum<T>(tmp, reduce_axis, dtype, false);
+          auto part2 = nhwc_out_grad - mean_temp1 - x_sub_mean * mean_temp2;
+
+          auto x_grad_data = part1 * part2;
+          auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
+          if (x.dtype() == phi::DataType::FLOAT16) {
+            nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
+          }
+          set_output<T>(nchw_x_grad, x_grad);
+        }
+      }
+      if (scale_grad) {
+        auto scale_grad_data = sum<T>(
+            nhwc_out_grad * x_sub_mean * rsqrt_var, reduce_axis, dtype, false);
+        set_output<T>(scale_grad_data, scale_grad);
+      }
+      if (bias_grad) {
+        auto bias_grad_data = sum<T>(nhwc_out_grad, reduce_axis, dtype, false);
+        set_output<T>(bias_grad_data, bias_grad);
+      }
+      break;
+    }
+    case DataLayout::kNHWC: {
+      if (x_grad) {
+        auto x_sub_mean = x_data - mean_data;
+        if (use_global_stats) {
+          auto x_grad_data = scale * rsqrt_var * out_grad_data;
+          set_output<T>(x_grad_data, x_grad);
+        } else {
+          auto part1 = scale * rsqrt_var;
+          auto mean_temp1 =
+              sum<T>(out_grad_data, reduce_axis, dtype, false) / nhw;
+
+          auto tmp = out_grad_data * x_sub_mean * rsqrt_var * rsqrt_var / nhw;
+          auto mean_temp2 = sum<T>(tmp, reduce_axis, dtype, false);
+          auto part2 = out_grad - mean_temp1 - x_sub_mean * mean_temp2;
+
+          auto x_grad_data = part1 * part2;
+          if (x.dtype() == phi::DataType::FLOAT16) {
+            x_grad_data = cast<T>(x_grad_data, x.dtype());
+          }
+          set_output<T>(x_grad_data, x_grad);
+        }
+        if (scale_grad) {
+          auto scale_grad_data = sum<T>(out_grad_data * x_sub_mean * rsqrt_var,
+                                        reduce_axis,
+                                        dtype,
+                                        false);
+          set_output<T>(scale_grad_data, scale_grad);
+        }
+        if (bias_grad) {
+          auto bias_grad_data =
+              sum<T>(out_grad_data, reduce_axis, dtype, false);
+          set_output<T>(bias_grad_data, bias_grad);
+        }
+        break;
+      }
+    }
+    default:
+      PADDLE_THROW(phi::errors::InvalidArgument("Unknown storage order: %s",
+                                                data_layout));
+  }
+}
+
 }  // namespace prim
 }  // namespace paddle
