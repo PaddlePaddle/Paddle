@@ -392,8 +392,7 @@ void ComputeFusedGemmEpilogueForward(const phi::GPUContext& dev_ctx,
     // Note (Ming Huang): The initialization of ReseveSpace is happened in the
     // dev_ctx.Alloc. Therefore, we set real date type up here.
     if (activation == "relu") {
-      paddle::experimental::DataType rs_type =
-          paddle::experimental::DataType::BOOL;
+      phi::DataType rs_type = phi::DataType::BOOL;
       size_t reserve_space_size =
           phi::product(reserve_space->dims()) * SizeOf(rs_type);
       dev_ctx.Alloc<T>(reserve_space, rs_type, reserve_space_size);

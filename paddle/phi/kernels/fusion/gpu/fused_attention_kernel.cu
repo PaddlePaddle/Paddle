@@ -28,6 +28,7 @@
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 
 namespace phi {
+namespace fusion {
 
 template <typename T>
 static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
@@ -366,17 +367,28 @@ void FusedAttentionKernel(const Context &dev_ctx,
         ln_var_2_ptr);
   }
 }
-
+}  // namespace fusion
 }  // namespace phi
 
-// PD_REGISTER_KERNEL(trace,
-//                    GPU,
-//                    ALL_LAYOUT,
-//                    phi::FusedAttention,
-//                    float,
-//                    double,
-//                    int,
-//                    int64_t,
-//                    phi::dtype::float16,
-//                    phi::dtype::complex<float>,
-//                    phi::dtype::complex<double>) {}
+PD_REGISTER_KERNEL(fused_attention,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedAttentionKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {
+  phi::DataType data_type;
+
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::FLOAT32) {
+    data_type = phi::DataType::FLOAT32;
+  } else {
+    data_type = phi::DataType::FLOAT64;
+  }
+  kernel->OutputAt(0).SetDataType(data_type);
+  kernel->OutputAt(1).SetDataType(data_type);
+  kernel->OutputAt(3).SetDataType(data_type);
+  kernel->OutputAt(4).SetDataType(data_type);
+  kernel->OutputAt(15).SetDataType(data_type);
+  kernel->OutputAt(16).SetDataType(data_type);
+}

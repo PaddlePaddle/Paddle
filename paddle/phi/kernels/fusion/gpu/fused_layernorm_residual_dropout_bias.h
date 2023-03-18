@@ -775,11 +775,12 @@ __global__ __launch_bounds__(THREADS_PER_CTA) void fused_fast_ln_fwd_kernel(
                                    static_cast<U>(beta[it][jt]));
 
         if (std::is_same<OutType, int8_t>::value)
-          x_output[it][jt] = quant_helper(x[it][jt],
-                                          quant_next_in_scale,
-                                          quant_round_type,
-                                          quant_max_bound,
-                                          quant_min_bound);
+          x_output[it][jt] =
+              paddle::operators::quant_helper(x[it][jt],
+                                              quant_next_in_scale,
+                                              quant_round_type,
+                                              quant_max_bound,
+                                              quant_min_bound);
       }
     }
 

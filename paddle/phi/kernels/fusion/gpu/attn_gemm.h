@@ -68,18 +68,18 @@ class AttnMatMul {
           phi::errors::InvalidArgument(
               "The output (= input * weight) is expected to be nullptr or the "
               "same as bias_out when fused is true."));
-      ComputeFusedGemmEpilogueForward<T>(dev_ctx_,
-                                         input,
-                                         weight,
-                                         bias,
-                                         bsz_seq_,      // M
-                                         output_size_,  // N
-                                         input_size_,   // K
-                                         transA_,
-                                         transB_,
-                                         "none",
-                                         bias_out,
-                                         nullptr);
+      phi::fusion::ComputeFusedGemmEpilogueForward<T>(dev_ctx_,
+                                                      input,
+                                                      weight,
+                                                      bias,
+                                                      bsz_seq_,      // M
+                                                      output_size_,  // N
+                                                      input_size_,   // K
+                                                      transA_,
+                                                      transB_,
+                                                      "none",
+                                                      bias_out,
+                                                      nullptr);
       return;
     }
 #endif
