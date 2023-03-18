@@ -23,6 +23,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
+from ..unittests.nets import simple_img_conv_pool
+
 paddle.enable_static()
 
 BATCH_SIZE = 64
@@ -45,7 +47,7 @@ def mlp(img, label):
 
 
 def conv_net(img, label):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = simple_img_conv_pool(
         input=img,
         filter_size=5,
         num_filters=20,
@@ -54,7 +56,7 @@ def conv_net(img, label):
         act="relu",
     )
     conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,

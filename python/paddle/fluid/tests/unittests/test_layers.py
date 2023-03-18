@@ -18,12 +18,12 @@ import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
+from nets import simple_img_conv_pool
 from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle.fluid.nets as nets
 import paddle.nn.functional as F
 from paddle.fluid import core
 from paddle.fluid.dygraph import base, to_variable
@@ -1566,7 +1566,7 @@ class TestBook(LayerTest):
                 name='pixel', shape=[1, 28, 28], dtype='float32'
             )
             label = self._get_data(name='label', shape=[1], dtype='int64')
-            conv_pool_1 = nets.simple_img_conv_pool(
+            conv_pool_1 = simple_img_conv_pool(
                 input=images,
                 filter_size=5,
                 num_filters=2,
@@ -1574,7 +1574,7 @@ class TestBook(LayerTest):
                 pool_stride=2,
                 act="relu",
             )
-            conv_pool_2 = nets.simple_img_conv_pool(
+            conv_pool_2 = simple_img_conv_pool(
                 input=conv_pool_1,
                 filter_size=5,
                 num_filters=4,

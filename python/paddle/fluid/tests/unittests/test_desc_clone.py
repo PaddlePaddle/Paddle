@@ -16,6 +16,8 @@ import collections
 import functools
 import unittest
 
+from nets import simple_img_conv_pool
+
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -29,7 +31,7 @@ paddle.enable_static()
 # random seed must set before configuring the network.
 # fluid.default_startup_program().random_seed = SEED
 def cnn_model(data):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = simple_img_conv_pool(
         input=data,
         filter_size=5,
         num_filters=20,
@@ -37,7 +39,7 @@ def cnn_model(data):
         pool_stride=2,
         act="relu",
     )
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,
