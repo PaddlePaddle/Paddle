@@ -15,7 +15,11 @@ import unittest
 
 import numpy as np
 from scipy.integrate import cumulative_trapezoid
-from test_trapezoid import TestTrapezoidAPI, TestTrapezoidError
+from test_trapezoid import (
+    Testfp16Trapezoid,
+    TestTrapezoidAPI,
+    TestTrapezoidError,
+)
 
 import paddle
 
@@ -87,10 +91,10 @@ class TestCumulativeTrapezoidError(TestTrapezoidError):
         self.paddle_api = paddle.cumulative_trapezoid
 
 
-# class Testfp16CumulativeTrapezoid(Testfp16Trapezoid):
-#     def set_api(self):
-#         self.ref_api = cumulative_trapezoid
-#         self.paddle_api = paddle.cumulative_trapezoid
+class Testfp16CumulativeTrapezoid(Testfp16Trapezoid):
+    def set_api(self):
+        self.paddle_api = paddle.cumulative_trapezoid
+        self.ref_api = cumulative_trapezoid
 
 
 if __name__ == '__main__':
