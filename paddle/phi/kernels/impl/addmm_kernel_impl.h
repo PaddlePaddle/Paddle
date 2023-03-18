@@ -27,19 +27,19 @@ template <typename T,
           size_t D,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using PhiEigenTensor = EigenTensor<Eigen::half, D, MajorType, IndexType>;
+using PhiEigenTensor = EigenTensor<T, D, MajorType, IndexType>;
 
 using Array1 = Eigen::DSizes<Eigen::DenseIndex, 1>;
 using Array2 = Eigen::DSizes<Eigen::DenseIndex, 2>;
 
 template <typename T, typename Context>
 void AddmmKernel(const Context& dev_ctx,
-                 const DenseTensorplatform::float16& input,
-                 const DenseTensorplatform::float16& x,
-                 const DenseTensorplatform::float16& y,
-                 float16_t beta,
-                 float16_t alpha,
-                 DenseTensorplatform::float16* out) {
+                 const DenseTensor& input,
+                 const DenseTensor& x,
+                 const DenseTensor& y,
+                 float beta,
+                 float alpha,
+                 DenseTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
   auto y_dims = y.dims();
@@ -115,17 +115,14 @@ void AddmmKernel(const Context& dev_ctx,
             x_dims[0],
             y_dims[1],
             x_dims[1],
-            Eigen::half(alpha),
-            reinterpret_cast<const Eigen::half*>(x.data<float16_t>()),
+            alpha,
             x.data<T>(),
             x_dims[1],
             reinterpret_cast<const Eigen::half*>(y.data<float16_t>()),
             y.data<T>(),
             y_dims[1],
-            Eigen::half(beta),
-            reinterpret_cast<const Eigen::half*>(
-                x.data<float16_t>(dev_ctx.GetPlace())),
-            out->mutable_data<float16_t>(dev_ctx.GetPlace()),
+            beta,
+            out->data<T>(),
             y_dims[1]);
 }
 
