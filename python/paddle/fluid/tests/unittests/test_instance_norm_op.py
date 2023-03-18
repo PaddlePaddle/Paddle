@@ -148,6 +148,40 @@ class TestInstanceNormOp(OpTest):
         self.dtype = np.float32
 
 
+class TestInstanceNormCase1(TestInstanceNormOp):
+    def setUp(self):
+        self.op_type = "instance_norm"
+        self.prim_op_type = "comp"
+        self.python_api = instance_norm_wrapper
+        self.python_out_sig = ['Y']
+        self.rev_comp_rtol = 1e-04
+        self.rev_comp_atol = 1e-04
+        self.init_test_case()
+        self.init_dtype()
+        scale_shape = [self.c]
+        mean_shape = [self.n * self.c]
+        np.random.seed()
+        x_np = np.random.random_sample(self.shape).astype(self.dtype)
+        scale_np = np.ones(scale_shape).astype(self.dtype)
+        bias_np = np.zeros(scale_shape).astype(self.dtype)
+        mean_np, var_np = _cal_mean_variance(x_np, self.epsilon, mean_shape)
+        ref_y_np, ref_mean_np, ref_var_np_tmp = _reference_instance_norm_naive(
+            x_np, scale_np, bias_np, self.epsilon, mean_np, var_np
+        )
+        ref_var_np = 1 / np.sqrt(ref_var_np_tmp + self.epsilon)
+        self.inputs = {
+            'X': x_np,
+            'Scale': scale_np,
+            'Bias': bias_np,
+        }
+        self.attrs = {'epsilon': self.epsilon}
+        self.outputs = {
+            'Y': ref_y_np,
+            'SavedMean': ref_mean_np,
+            'SavedVariance': ref_var_np,
+        }
+
+
 class TestInstanceNormOpTraining(unittest.TestCase):
     def setUp(self):
         self.epsilon = 1e-5
