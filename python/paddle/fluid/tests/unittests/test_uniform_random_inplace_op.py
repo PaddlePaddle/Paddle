@@ -15,9 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest,convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
+
 import paddle
 import paddle.fluid as fluid
+
 
 class TestUniformInplaceOp(OpTest):
     def init_args(self):
@@ -34,8 +36,15 @@ class TestUniformInplaceOp(OpTest):
         np.random.seed(self.seed)
         x = np.random.randn(*self.shape).astype(self.dtype)
         self.inputs = {'X': x}
-        self.attrs = {'shape': self.shape, 'low': self.low, 'high': self.high, 'seed': self.seed}
-        out = np.random.uniform(self.low, self.high, self.shape).astype(self.dtype)
+        self.attrs = {
+            'shape': self.shape,
+            'low': self.low,
+            'high': self.high,
+            'seed': self.seed,
+        }
+        out = np.random.uniform(self.low, self.high, self.shape).astype(
+            self.dtype
+        )
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -45,6 +54,7 @@ class TestUniformInplaceOp(OpTest):
     def test_check_grad(self):
         paddle.enable_static()
         self.check_grad(set(['X']), 'Out', check_dygraph=False)
+
 
 class TestUniformInplaceFP16Op(OpTest):
     def init_args(self):
@@ -61,8 +71,15 @@ class TestUniformInplaceFP16Op(OpTest):
         np.random.seed(self.seed)
         x = np.random.randn(*self.shape).astype(self.dtype)
         self.inputs = {'X': x}
-        self.attrs = {'shape': self.shape, 'low': self.low, 'high': self.high, 'seed': self.seed}
-        out = np.random.uniform(self.low, self.high, self.shape).astype(self.dtype)
+        self.attrs = {
+            'shape': self.shape,
+            'low': self.low,
+            'high': self.high,
+            'seed': self.seed,
+        }
+        out = np.random.uniform(self.low, self.high, self.shape).astype(
+            self.dtype
+        )
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -72,6 +89,7 @@ class TestUniformInplaceFP16Op(OpTest):
     def test_check_grad(self):
         paddle.enable_static()
         self.check_grad(set(['X']), 'Out', check_dygraph=False)
+
 
 class TestUniformInplaceBF16(OpTest):
     def init_args(self):
@@ -88,7 +106,12 @@ class TestUniformInplaceBF16(OpTest):
         np.random.seed(self.seed)
         x = np.random.randn(*self.shape).astype(np.float32)
         self.inputs = {'X': convert_float_to_uint16(x)}
-        self.attrs = {'shape': self.shape, 'low': self.low, 'high': self.high, 'seed': self.seed}
+        self.attrs = {
+            'shape': self.shape,
+            'low': self.low,
+            'high': self.high,
+            'seed': self.seed,
+        }
         out = np.random.uniform(self.low, self.high, self.shape)
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
@@ -99,6 +122,8 @@ class TestUniformInplaceBF16(OpTest):
     def test_check_grad(self):
         paddle.enable_static()
         self.check_grad(set(['X']), 'Out', check_dygraph=False)
+
+
 class TestUniformRandomInplaceOpDtype(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)

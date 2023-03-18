@@ -408,6 +408,7 @@ class TestLogSigmoid(TestActivation):
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
+
 class TestLogSigmoidFP16OP(TestActivation):
     def setUp(self):
         self.op_type = "logsigmoid"
@@ -430,6 +431,7 @@ class TestLogSigmoidFP16OP(TestActivation):
     def test_check_output(self):
         self.check_output(atol=1e-2)
 
+
 class TestLogSigmoidBF16(TestActivation):
     def setUp(self):
         self.op_type = "logsigmoid"
@@ -450,6 +452,8 @@ class TestLogSigmoidBF16(TestActivation):
 
     def test_check_output(self):
         self.check_output(atol=1e-2)
+
+
 class TestLogSigmoid_ZeroDim(TestLogSigmoid):
     def init_shape(self):
         self.shape = []

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest,convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -121,6 +121,7 @@ class TestSegmentOps(OpTest):
     def test_check_grad(self):
         self.check_grad(["X"], "Out", check_eager=True)
 
+
 class TestSegmentFP16Op(OpTest):
     def set_data(self):
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -160,6 +161,7 @@ class TestSegmentFP16Op(OpTest):
     def test_check_grad(self):
         self.check_grad(["X"], "Out", check_eager=True)
 
+
 class TestSegmentBF16(OpTest):
     def set_data(self):
         x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
@@ -198,6 +200,8 @@ class TestSegmentBF16(OpTest):
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", check_eager=True)
+
+
 class TestSegmentSum2(TestSegmentOps):
     def prepare(self):
         super().prepare()

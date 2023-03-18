@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest,convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle.fluid as fluid
 import paddle.static.amp.amp_nn as amp_nn
@@ -96,6 +96,7 @@ class TestUpdateLossScalingOp(OpTest):
     def test_check_output(self):
         self.check_output(no_check_set=['Out'], check_eager=True)
 
+
 class TestUpdateLossScalingFP16Op(OpTest):
     def setUp(self):
         self.op_type = "update_loss_scaling"
@@ -144,6 +145,7 @@ class TestUpdateLossScalingFP16Op(OpTest):
     def test_check_output(self):
         self.check_output(no_check_set=['Out'], check_eager=True)
 
+
 class TestUpdateLossScalingBF16(OpTest):
     def setUp(self):
         self.op_type = "update_loss_scaling"
@@ -191,6 +193,7 @@ class TestUpdateLossScalingBF16(OpTest):
 
     def test_check_output(self):
         self.check_output(no_check_set=['Out'], check_eager=True)
+
 
 class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
     def setUp(self):

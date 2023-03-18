@@ -35,6 +35,13 @@ void MinKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out);
 
-}  // namespace phi
+};  // namespace phi
 
-PD_REGISTER_KERNEL(unfold, GPU, ALL_LAYOUT, phi::MINKernel, float, double, phi::dtype::float16, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(min,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MINKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -34,4 +34,11 @@ void UniformInplaceKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(unfold, GPU, ALL_LAYOUT, phi::UniformInplaceKernel, float, double, phi::dtype::float16, phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(uniform_inplace,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::UniformInplaceKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
