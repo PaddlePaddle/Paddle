@@ -41,6 +41,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
                         int axis,
                         bool keepdim,
                         DenseTensor* d_x) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   const auto& in_dims = x.dims();
   auto out_dims = indices.dims();
   T* x_grad_data = dev_ctx.template Alloc<T>(d_x);

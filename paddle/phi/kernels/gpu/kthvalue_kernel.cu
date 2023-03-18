@@ -43,6 +43,7 @@ bool SortKthvalue(const phi::GPUContext& dev_ctx,
                   const int k,
                   DenseTensor* out_tensor,
                   DenseTensor* indices_tensor) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   auto cu_stream = dev_ctx.stream();
   DenseTensor input_indices;
   const std::vector<int64_t> dims = {num_rows, num_cols};
@@ -160,6 +161,7 @@ void KthvalueKernel(const Context& dev_ctx,
                     bool keepdim,
                     DenseTensor* output,
                     DenseTensor* indices) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   const auto& in_dims = x.dims();
   if (axis < 0) axis += in_dims.size();
   auto out_dims = output->dims();
@@ -185,7 +187,7 @@ void KthvalueKernel(const Context& dev_ctx,
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
     const int64_t& input_width = in_dims[in_dims.size() - 1];
     PADDLE_ENFORCE_EQ(
-        SortKthvalue<T>(
+        SortKthvalue<MT>(
             dev_ctx, &x, input_width, input_height, k, output, indices),
         true,
         phi::errors::External("KthvalueOP: Error when use cub sorting"));
@@ -235,13 +237,13 @@ void KthvalueKernel(const Context& dev_ctx,
         phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
     PADDLE_ENFORCE_EQ(
-        SortKthvalue<T>(dev_ctx,
-                        &trans_input,
-                        input_width,
-                        input_height,
-                        k,
-                        &trans_out,
-                        &trans_ind),
+        SortKthvalue<MT>(dev_ctx,
+                         &trans_input,
+                         input_width,
+                         input_height,
+                         k,
+                         &trans_out,
+                         &trans_ind),
         true,
         phi::errors::External("KthvalueOP: Error when use cub sorting"));
     funcs::TransCompute<phi::GPUContext, int64_t>(
