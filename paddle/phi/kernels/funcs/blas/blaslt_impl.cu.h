@@ -14,19 +14,20 @@ limitations under the License. */
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include <cuda_runtime_api.h>  // NOLINT
 #include "cuda.h"              // NOLINT
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+#endif
 
 namespace phi {
 namespace funcs {
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
-
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
 // Set this enum according to
 // https://docs.nvidia.com/cuda/cublas/index.html#cublasltepilogue-t
 enum MatmulFusedType {
@@ -125,7 +126,7 @@ struct MatmulDescriptor {
               const int K,
               const bool trans_x,
               const bool trans_y,
-              MatmulPlanner* planner,
+              phi::funcs::MatmulPlanner* planner,
               const int batch_size = 1,
               int64_t stride_x = 0,
               int64_t stride_y = 0,
@@ -175,7 +176,7 @@ struct MatmulDescriptor {
   }
 
   template <typename T>
-  void SetFusedEpiloguePtr(MatmulPlanner* planner) {
+  void SetFusedEpiloguePtr(phi::funcs::MatmulPlanner* planner) {
     if (planner->bias != nullptr) {
       const T* bias_data = static_cast<const T*>(planner->bias);
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmulDescSetAttribute(
@@ -248,7 +249,8 @@ struct MatmulDescriptor {
         sizeof(stride)));
   }
 
-  void SetFusedEpilogueOpDescriptor(MatmulPlanner* planner, int64_t lead_dim) {
+  void SetFusedEpilogueOpDescriptor(phi::funcs::MatmulPlanner* planner,
+                                    int64_t lead_dim) {
     if (planner->bias) {
       auto fuse_type = static_cast<cublasLtEpilogue_t>(planner->ImplType());
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -272,7 +274,7 @@ struct DescriptorSetter {
   MatmulDescriptor desc;
   size_t sub_key{std::numeric_limits<size_t>::min()};
 
-  DescriptorSetter(MatmulPlanner* planner,
+  DescriptorSetter(phi::funcs::MatmulPlanner* planner,
                    const int M,
                    const int N,
                    const int K,
@@ -325,7 +327,7 @@ struct MatmulWithCublasLt {
                   const int K,
                   const bool trans_x,
                   const bool trans_y,
-                  MatmulPlanner* planner = nullptr) {
+                  phi::funcs::MatmulPlanner* planner = nullptr) {
     auto setter = DescriptorSetter<T>(planner, M, N, K, trans_x, trans_y);
     RunImpl(
         ctx, &setter.desc, setter.sub_key, x_data, y_data, out_data, planner);
@@ -344,7 +346,7 @@ struct MatmulWithCublasLt {
                            int64_t stride_x,
                            int64_t stride_y,
                            int64_t stride_out,
-                           MatmulPlanner* planner = nullptr) {
+                           phi::funcs::MatmulPlanner* planner = nullptr) {
     auto setter = DescriptorSetter<T>(planner,
                                       M,
                                       N,
@@ -369,7 +371,7 @@ struct MatmulWithCublasLt {
                            bool trans_x,
                            bool trans_y,
                            int batch_size,
-                           MatmulPlanner* planner = nullptr) {
+                           phi::funcs::MatmulPlanner* planner = nullptr) {
     for (int i = 0; i < batch_size; ++i) {
       Run(ctx,
           x_data[i],
@@ -387,7 +389,7 @@ struct MatmulWithCublasLt {
  private:
   static phi::Allocator::AllocationPtr GetWorkspace(const phi::GPUContext& ctx,
                                                     size_t workspace_size) {
-    return phi::memory_utils::Alloc(
+    return paddle::memory::Alloc(
         ctx.GetPlace(),
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -399,7 +401,7 @@ struct MatmulWithCublasLt {
                       const T* x_ptr,
                       const T* y_ptr,
                       T* out_ptr,
-                      MatmulPlanner* planner) {
+                      phi::funcs::MatmulPlanner* planner) {
     MT alpha = static_cast<MT>(1);
     MT beta = static_cast<MT>(0);
 
@@ -534,7 +536,6 @@ struct MatmulWithCublasLt {
         dynload::cublasLtMatmulPreferenceDestroy(preference));
   }
 };
-
 #else
 // A void structure just for successfully complile.
 struct MatmulPlanner {};
