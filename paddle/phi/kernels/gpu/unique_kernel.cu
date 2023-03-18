@@ -617,4 +617,6 @@ PD_REGISTER_KERNEL(unique_raw,
                    float,
                    double,
                    int64_t,
-                   int) {}
+                   int) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
