@@ -337,15 +337,7 @@ class TestLogcumsumexpBF16Op(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad(
-            ['X'],
-            'Out',
-            user_defined_grads=[
-                np_logcumsumexp_grad(
-                    self.inputs['X'], 1 / self.inputs['X'].size, **self.attrs
-                )
-            ],
-        )
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == '__main__':
