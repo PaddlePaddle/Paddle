@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/sgd_kernel.h"
 
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 
 namespace phi {
 
@@ -27,7 +27,7 @@ void sgd_dense_param_dense_grad_impl(const DenseTensor& param,
                                      const DenseTensor& grad,
                                      DenseTensor* param_out) {
   const auto sz = param_out->numel();
-  paddle::operators::jit::sgd_attr_t attr(1, sz, 1, sz, 1);
+  phi::jit::sgd_attr_t attr(1, sz, 1, sz, 1);
   const T* lr = learning_rate.data<T>();
   const T* param_data = param.data<T>();
   const T* grad_data = grad.data<T>();
@@ -35,9 +35,8 @@ void sgd_dense_param_dense_grad_impl(const DenseTensor& param,
   T* out_data = param_out->data<T>();
 
   auto sgd =
-      paddle::operators::jit::KernelFuncs<paddle::operators::jit::SgdTuple<T>,
-                                          phi::CPUPlace>::Cache()
-          .At(attr);
+      phi::jit::KernelFuncs<phi::jit::SgdTuple<T>, phi::CPUPlace>::Cache().At(
+          attr);
   sgd(lr, param_data, grad_data, &rows_idx, out_data, &attr);
 }
 
@@ -68,7 +67,7 @@ void sgd_dense_param_sparse_grad_impl(const DenseTensor& param,
   const int64_t* rows_data = grad_rows.data();
   T* out_data = param_out->data<T>();
 
-  paddle::operators::jit::sgd_attr_t attr;
+  phi::jit::sgd_attr_t attr;
   attr.param_height = param_out->dims()[0];
   attr.param_width = param_out->numel() / attr.param_height;
   attr.grad_height = grad_rows.size();  // note: it is not grad->height()
@@ -76,9 +75,8 @@ void sgd_dense_param_sparse_grad_impl(const DenseTensor& param,
   attr.selected_rows_size = grad_rows.size();
 
   auto sgd =
-      paddle::operators::jit::KernelFuncs<paddle::operators::jit::SgdTuple<T>,
-                                          phi::CPUPlace>::Cache()
-          .At(attr);
+      phi::jit::KernelFuncs<phi::jit::SgdTuple<T>, phi::CPUPlace>::Cache().At(
+          attr);
   sgd(lr, param_data, grad_data, rows_data, out_data, &attr);
 }
 

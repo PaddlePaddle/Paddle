@@ -18,7 +18,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
