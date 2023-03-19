@@ -1573,7 +1573,7 @@
   outputs :
     {param_out : ParamOut, master_param_out : MasterParamOut}
   get_expected_kernel_type :
-    sgd_ : GetSgdExpectedKernelType
+    sgd : GetSgdExpectedKernelType #"sgd_" becomes "sgd"
   extra :
     attrs : [bool use_mkldnn=false]
 
