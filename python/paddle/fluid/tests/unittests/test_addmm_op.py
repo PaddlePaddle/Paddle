@@ -16,11 +16,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
-
+from op_test import convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-
+import paddle.fluid.core as core
 
 class TestAddMMOp(OpTest):
     # test basic
