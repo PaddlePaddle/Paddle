@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import math
 import unittest
 
 import numpy as np
@@ -391,6 +391,7 @@ class TestArgsort(unittest.TestCase):
         self.data = np.random.rand(*self.input_shape)
 
     def test_api(self):
+        paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
             input = fluid.data(
                 name="input", shape=self.input_shape, dtype="float64"
@@ -500,17 +501,85 @@ class TestArgsortWithInputNaN(unittest.TestCase):
 
 
 class TestArgsortOpFp16(unittest.TestCase):
+
+    def setUp(self):
+        self.op_type = "argsort"
+        self.dtype = "float16"
+        self.inputs = {'X': np.random.randn(2, 8).astype(self.dtype)}
+        self.outputs = {'Out': np.argsort(self.inputs['X'])}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    max_relative_error=0.01,
+                    user_defined_grads=[self.inputs['X']],
+                    user_defined_grad_outputs=[self.outputs['Out']],
+                )
+
     def test_fp16(self):
         x_np = np.random.random((2, 8)).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(shape=[2, 8], name='x', dtype='float16')
-            out = paddle.argsort(x)
+            out = np.argsort(x)
+            out = paddle.to_tensor(out)
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
+
+class TestArgsortOpBF16(unittest.TestCase):
+    def setUp(self):
+        self.op_type = "argsort"
+        self.dtype = "uint16"
+        self.inputs = {'X': np.random.randn(11, 17).astype(self.dtype)}
+        self.outputs = {'Out': np.argsort(self.inputs['X'])}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    max_relative_error=0.01,
+                    user_defined_grads=[self.inputs['X']],
+                    user_defined_grad_outputs=[self.outputs['Out']],
+                )
+
+    def test_check_grad_ingore_order(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    max_relative_error=0.01,
+                    user_defined_grads=[self.inputs['X']],
+                    user_defined_grad_outputs=[self.outputs['Out']],
+                    no_grad_set=set(),
+                    grad_check_mode=2,
+                )
 
 if __name__ == "__main__":
     unittest.main()
