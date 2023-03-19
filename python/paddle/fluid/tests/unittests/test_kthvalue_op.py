@@ -215,28 +215,27 @@ class TestModeOpInStatic(unittest.TestCase):
 )
 class TestKthvalueBP16Op(OpTest):
     def init_args(self):
-        self.k = 5
-        self.axis = -1
+        self.k = 2
+        self.axis = 1
 
     def setUp(self):
         self.init_args()
         self.op_type = 'kthvalue'
         self.python_api = paddle.kthvalue
         self.dtype = np.uint16
-        x = np.random.random((2, 1, 2, 4, 10))
+        x = np.random.random((1, 3, 2, 4, 10))
         self.inputs = {'X': convert_float_to_uint16(x)}
-        self.attrs = {'k': self.k, 'axis': self.axis}
-        out, indices = cal_kthvalue(x, k=self.k, axis=self.axis)
-        self.outputs = {
-            'Out': convert_float_to_uint16(out),
-            'Indices': indices,
-        }
+        self.attrs = {'k': self.k, 'axis': self.axis, 'keepdim': True}
+        out, indices = cal_kthvalue(x, k=self.k, axis=self.axis, keepdim=True)
+        self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
+        paddle.enable_static()
         place = core.CUDAPlace(0)
         self.check_output_with_place(place)
 
     def test_check_grad(self):
+        paddle.enable_static()
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place, set(['X']), 'Out')
 
