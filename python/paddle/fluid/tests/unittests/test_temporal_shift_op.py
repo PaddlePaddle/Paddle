@@ -44,6 +44,7 @@ def temporal_shift(x, seg_num, shift_ratio, data_format):
 class TestTemporalShift(OpTest):
     def setUp(self):
         self.initTestCase()
+        self.init_dtype()
         self.op_type = 'temporal_shift'
         self.python_api = paddle.nn.functional.temporal_shift
         x = np.random.random(self.x_shape).astype(self.dtype)
@@ -64,6 +65,9 @@ class TestTemporalShift(OpTest):
         self.outputs = {"Out": output}
         self.python_out_sig = ["Out"]
 
+    def init_dtype(self):
+        self.dtype = 'float64'
+
     def test_check_output(self):
         self.check_output(check_eager=True)
 
@@ -74,7 +78,6 @@ class TestTemporalShift(OpTest):
         self.x_shape = (6, 4, 4, 4)
         self.seg_num = 3
         self.shift_ratio = 0.25
-        self.dtype = 'float64'
         self.data_format = 'NCHW'
 
 
@@ -103,105 +106,25 @@ class TestTemporalShift4(TestTemporalShift):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the float16",
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestTemporalShiftFP16OP(OpTest):
+class TestTemporalShiftFP16(TestTemporalShift):
     def initTestCase(self):
         self.x_shape = (3, 10, 5, 5)
         self.seg_num = 1
         self.shift_ratio = 0.3
-        self.dtype = np.float16
+        self.dtype = 'float16'
         self.data_format = 'NCHW'
-
-    def setUp(self):
-        self.initTestCase()
-        self.op_type = 'temporal_shift'
-        self.python_api = paddle.nn.functional.temporal_shift
-        self.__class__.op_type = self.op_type
-        x = np.random.random(self.x_shape).astype(np.float32)
-
-        self.attrs = {
-            "seg_num": self.seg_num,
-            "shift_ratio": self.shift_ratio,
-            "data_format": self.data_format,
-        }
-
-        self.inputs = {
-            "X": x.astype(self.dtype),
-        }
-
-        output = temporal_shift(
-            x, self.seg_num, self.shift_ratio, self.data_format
-        )
-        self.outputs = {"Out": output}
-        self.python_out_sig = ["Out"]
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True, atol=1e-3)
+        if core.is_float16_supported(place):
+            self.check_output_with_place(place)
 
     def test_check_grad_ignore_uv(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-            check_eager=True,
-            max_relative_error=1e-2,
-        )
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestTemporalShiftBF16(OpTest):
-    def initTestCase(self):
-        self.x_shape = (3, 10, 5, 5)
-        self.seg_num = 1
-        self.shift_ratio = 0.3
-        self.dtype = np.uint16
-        self.data_format = 'NCHW'
-
-    def setUp(self):
-        self.initTestCase()
-        self.op_type = 'temporal_shift'
-        self.python_api = paddle.nn.functional.temporal_shift
-        self.__class__.op_type = self.op_type
-        x = np.random.random(self.x_shape).astype(np.float32)
-
-        self.attrs = {
-            "seg_num": self.seg_num,
-            "shift_ratio": self.shift_ratio,
-            "data_format": self.data_format,
-        }
-
-        self.inputs = {
-            "X": convert_float_to_uint16(x),
-        }
-
-        output = temporal_shift(
-            x, self.seg_num, self.shift_ratio, self.data_format
-        )
-        self.outputs = {"Out": convert_float_to_uint16(output)}
-        self.python_out_sig = ["Out"]
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True, atol=1e-3)
-
-    def test_check_grad_ignore_uv(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-            check_eager=True,
-            max_relative_error=1e-2,
-        )
+        if core.is_float16_supported(place):
+            self.check_grad_with_place(place, ['X'], 'Out')
 
 
 class TestTemporalShiftAPI(unittest.TestCase):
@@ -252,6 +175,56 @@ class TestTemporalShiftAPI(unittest.TestCase):
             )
 
         self.assertRaises(ValueError, attr_data_format)
+
+
+class TestTemporalShiftFP16OP(TestTemporalShift):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestTemporalShiftBF16(OpTest):
+    def initTestCase(self):
+        self.x_shape = (3, 10, 5, 5)
+        self.seg_num = 1
+        self.shift_ratio = 0.3
+        self.dtype = np.uint16
+        self.data_format = 'NCHW'
+
+    def setUp(self):
+        self.initTestCase()
+        self.op_type = 'temporal_shift'
+        self.python_api = paddle.nn.functional.temporal_shift
+
+        x = np.random.random(self.x_shape).astype(np.float32)
+
+        self.attrs = {
+            "seg_num": self.seg_num,
+            "shift_ratio": self.shift_ratio,
+            "data_format": self.data_format,
+        }
+
+        self.inputs = {
+            "X": convert_float_to_uint16(x),
+        }
+
+        output = temporal_shift(
+            x, self.seg_num, self.shift_ratio, self.data_format
+        )
+        self.outputs = {"Out": convert_float_to_uint16(output)}
+        self.python_out_sig = ["Out"]
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad_ignore_uv(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":
