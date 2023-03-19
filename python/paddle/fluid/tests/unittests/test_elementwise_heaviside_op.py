@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -38,16 +38,16 @@ class TestElementwiseOp(OpTest):
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_eager=True)
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_eager=True)
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestHeavisideBroadcast(unittest.TestCase):
@@ -183,7 +183,6 @@ class TestHeavisideAPI_float16(OpTest):
             user_defined_grads=Heaviside_grad(
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
-            check_eager=True,
         )
 
 
@@ -226,7 +225,6 @@ class TestHeavisideAPI_bfloat16(OpTest):
             user_defined_grads=Heaviside_grad(
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
-            check_eager=True,
         )
 
 

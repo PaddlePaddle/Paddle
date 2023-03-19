@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gumbel_softmax_kernel.h"
-
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/impl/gumbel_softmax_kernel_impl.h"
@@ -116,17 +116,18 @@ struct OneHotGenerator<GPUContext, T> {
   }
 };
 
-template <typename T>
+template <typename T, typename MPType>
 __global__ void AddGumbelNoiseCUDAKernel(const T* input_data,
                                          T* output_data,
-                                         T* noise,
+                                         MPType* noise,
                                          const float temperature,
                                          int64_t n) {
   int index = threadIdx.x + blockIdx.x * blockDim.x;
   int step = blockDim.x * gridDim.x;
   for (int64_t i = index; i < n; i += step) {
-    T gumbel_noise = -log(-log(noise[i]));
-    output_data[i] = (gumbel_noise + input_data[i]) / temperature;
+    MPType gumbel_noise = -log(-log(noise[i]));
+    output_data[i] = static_cast<T>(
+        (gumbel_noise + static_cast<MPType>(input_data[i])) / temperature);
   }
 }
 
@@ -141,7 +142,8 @@ struct GumbleNoiseGenerator<GPUContext, T> {
     DenseTensor random_tensor;
     int64_t size = size_to_axis * size_from_axis;
     random_tensor.Resize(make_ddim({size}));
-    T* random_data = ctx.template Alloc<T>(&random_tensor);
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    MPType* random_data = ctx.template Alloc<MPType>(&random_tensor);
 
     // generate gumbel noise
     int device_id = ctx.GetPlace().GetDeviceId();
@@ -152,10 +154,11 @@ struct GumbleNoiseGenerator<GPUContext, T> {
     uint64_t offset = seed_offset.second;
 
     thrust::counting_iterator<int64_t> index_sequence_begin(0);
-    thrust::transform(index_sequence_begin,
-                      index_sequence_begin + size,
-                      thrust::device_ptr<T>(random_data),
-                      UniformCUDAGenerator<T>(0.00001, 1, seed, size * offset));
+    thrust::transform(
+        index_sequence_begin,
+        index_sequence_begin + size,
+        thrust::device_ptr<MPType>(random_data),
+        UniformCUDAGenerator<MPType>(0.00001, 1, seed, size * offset));
 
     // add gumbel noise to X
     const int thread_size = 512;
@@ -168,5 +171,10 @@ struct GumbleNoiseGenerator<GPUContext, T> {
 }  // namespace phi
 #endif
 
-PD_REGISTER_KERNEL(
-    gumbel_softmax, GPU, ALL_LAYOUT, phi::GumbelSoftmaxKernel, float, double) {}
+PD_REGISTER_KERNEL(gumbel_softmax,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::GumbelSoftmaxKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}
