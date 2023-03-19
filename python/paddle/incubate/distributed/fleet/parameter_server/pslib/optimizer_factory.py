@@ -13,7 +13,7 @@
 # limitations under the License.
 """Optimizer Factory."""
 
-__all__ = ["DistributedAdam", "FLEET_GLOBAL_DICT"]
+__all__ = []
 import copy
 import logging
 import os

@@ -69,6 +69,9 @@ inline OneDNNMemoryFormat OneDNNFormatForSize(size_t dims_size,
 
 inline dnnl::memory::format_tag GetPlainOneDNNFormat(int tensor_rank) {
   switch (tensor_rank) {
+    case 0:
+      // use 1D to represent 0D
+      return dnnl::memory::format_tag::a;
     case 1:
       return dnnl::memory::format_tag::a;
     case 2:

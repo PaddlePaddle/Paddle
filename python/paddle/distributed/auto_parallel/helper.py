@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import logging
 from collections import defaultdict
 
 from paddle.jit import not_to_static, to_static
 from paddle.jit.dy2static.program_translator import StaticFunction
+from paddle.jit.dy2static.utils import as_not_paddle_func
 from paddle.nn import Layer
 from paddle.static import Parameter, global_scope, program_guard
 
@@ -46,6 +48,12 @@ class ProxyLayer(Layer):
         self._output_vars = defaultdict(list)
         self._loss_vars = defaultdict(list)
         self._metric_vars = defaultdict(list)
+
+        # Consider ProxyLayer as not Paddle inner function because it contains
+        # user-defined layer.
+        as_not_paddle_func(
+            inspect.getmodule(ProxyLayer).__name__ + ".ProxyLayer"
+        )
 
     def _train(self, inputs, labels):
         """
