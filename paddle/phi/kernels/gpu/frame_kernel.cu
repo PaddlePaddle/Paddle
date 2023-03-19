@@ -29,6 +29,5 @@ PD_REGISTER_KERNEL(frame,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
