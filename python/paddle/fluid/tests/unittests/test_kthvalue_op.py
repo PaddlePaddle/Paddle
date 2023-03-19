@@ -215,8 +215,8 @@ class TestModeOpInStatic(unittest.TestCase):
 )
 class TestKthvalueBP16Op(OpTest):
     def init_args(self):
-        self.k = 2
-        self.axis = 1
+        self.k = 5
+        self.axis = -1
 
     def setUp(self):
         self.init_args()
