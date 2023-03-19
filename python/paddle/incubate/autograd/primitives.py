@@ -34,6 +34,7 @@ from paddle.tensor import erfinv  # noqa: F401
 from paddle.tensor import exp  # noqa: F401
 from paddle.tensor import expm1  # noqa: F401
 from paddle.tensor import full  # noqa: F401
+from paddle.tensor import gather  # noqa: F401
 from paddle.tensor import greater_equal  # noqa: F401
 from paddle.tensor import lgamma  # noqa: F401
 from paddle.tensor import log  # noqa: F401
@@ -57,6 +58,7 @@ from paddle.tensor import subtract  # noqa: F401
 from paddle.tensor import sum  # noqa: F401
 from paddle.tensor import tan  # noqa: F401
 from paddle.tensor import tanh  # noqa: F401
+from paddle.tensor import tile  # noqa: F401
 from paddle.tensor import uniform  # noqa: F401
 from paddle.tensor import zeros  # noqa: F401
 from paddle.tensor.creation import assign  # noqa: F401
@@ -123,7 +125,9 @@ others = [
     'cast',
     'fill_constant',
     'reshape',
+    'gather'
     'full',
+    'tile',
     'concat',
     'uniform',
     'greater_equal',

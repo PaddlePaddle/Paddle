@@ -32,9 +32,9 @@ from ..fluid.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from ..fluid.layers import utils
 from ..framework import (
     LayerHelper,
+    _dygraph_tracer,
     convert_np_dtype_to_dtype_,
     core,
     in_dygraph_mode,
@@ -65,6 +65,8 @@ from .ops import round  # noqa: F401
 from .ops import round_  # noqa: F401
 from .ops import rsqrt  # noqa: F401
 from .ops import rsqrt_  # noqa: F401
+from .ops import sigmoid  # noqa: F401
+from .ops import sigmoid_  # noqa: F401
 from .ops import sin  # noqa: F401
 from .ops import sinh  # noqa: F401
 from .ops import sqrt  # noqa: F401
@@ -121,8 +123,8 @@ def _get_reduce_axis_with_tensor(axis, x):
             reduce_all = False
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)
-        if utils._contain_var(axis):
-            axis = utils._convert_to_tensor_list(axis)
+        if paddle.utils._contain_var(axis):
+            axis = paddle.utils._convert_to_tensor_list(axis)
     return reduce_all, axis
 
 
@@ -894,6 +896,28 @@ def multiply(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
+@inplace_apis_in_dygraph_only
+def multiply_(x, y, name=None):
+    """
+    Inplace version of ``multiply`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_tensor_multiply`.
+    """
+
+    assert (
+        _dygraph_tracer()._has_grad is False
+    ), "The current inplace version of multiply_ needs to be used in the context of paddle.no_grad() since inplace multiply_grad is not yet supported."
+
+    out_shape = broadcast_shape(x.shape, y.shape)
+    if out_shape != x.shape:
+        raise ValueError(
+            "The shape of broadcast output {} is different from that of inplace tensor {} in the Inplace operation.".format(
+                out_shape, x.shape
+            )
+        )
+
+    return _C_ops.multiply_(x, y)
+
+
 @dygraph_only
 def _elementwise_op_with_axis_in_dygraph(
     x, y, axis=-1, name=None, op_type="Undifined"
@@ -1633,14 +1657,21 @@ def add_n(inputs, name=None):
                     check_variable_and_dtype(
                         input,
                         "inputs",
-                        ['float16', 'float32', 'float64', 'int32', 'int64'],
+                        [
+                            'float16',
+                            'float32',
+                            'float64',
+                            'int32',
+                            'int64',
+                            'uint16',
+                        ],
                         'add_n',
                     )
         else:
             check_variable_and_dtype(
                 inputs,
                 "inputs",
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
                 'add_n',
             )
 
@@ -2319,8 +2350,8 @@ def max(x, axis=None, keepdim=False, name=None):
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'int32', 'int64'], 'max'
         )
-        if not isinstance(axis, Variable) and utils._contain_var(axis):
-            axis = utils._convert_to_tensor_list(axis)
+        if not isinstance(axis, Variable) and paddle.utils._contain_var(axis):
+            axis = paddle.utils._convert_to_tensor_list(axis)
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(
@@ -4201,15 +4232,12 @@ def lerp(x, y, weight, name=None):
             # out: [5.5, 6., 6.5, 7.]
 
     """
-    if in_dygraph_mode():
-        if isinstance(weight, float):
-            weight = paddle.to_tensor(weight, dtype=x.dtype)
+    if isinstance(weight, float):
+        weight = paddle.full(shape=[], fill_value=weight, dtype=x.dtype)
 
+    if in_dygraph_mode():
         return _C_ops.lerp(x, y, weight)
     else:
-        if isinstance(weight, float):
-            weight = paddle.full(shape=[1], fill_value=weight, dtype=x.dtype)
-
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'lerp')
         check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'lerp')
         check_variable_and_dtype(
@@ -4583,7 +4611,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     Only n=1 is currently supported.
 
     Args:
-        x (Tensor): The input tensor to compute the forward difference on
+        x (Tensor): The input tensor to compute the forward difference on, the data type is float16(GPU), float32, float64, bool, int32, int64.
         n (int, optional): The number of times to recursively compute the difference.
                           Only support n=1. Default:1
         axis (int, optional): The axis to compute the difference along. Default:-1
@@ -4678,7 +4706,10 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
             return _C_ops.subtract(input_back, input_front)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'bool', 'int32', 'int64'], 'diff'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'bool', 'int32', 'int64'],
+            'diff',
         )
         check_type(axis, 'axis', (int), 'diff')
         helper = LayerHelper('diff', **locals())
