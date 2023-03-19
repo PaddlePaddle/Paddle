@@ -43,9 +43,6 @@ PADDLE_DEFINE_EXPORTED_bool(
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(check_nan_inf);
 
-static std::set<std::string> OperatorBasesMustRunInStaticBuild = {
-    "create_double_buffer_reader", "create_py_reader"};
-
 namespace paddle {
 namespace framework {
 namespace interpreter {

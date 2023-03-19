@@ -17,22 +17,21 @@
 #include "paddle/fluid/framework/reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
-static std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
+std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
 
-static std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
+std::set<std::string> OperatorBasesMustRunInStaticBuild = {
+    "create_double_buffer_reader", "create_py_reader"};
+
+std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader", "fetch_v2"};
 
 // These Op needs set output dtype when register phi kernel, but they didn't
-static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
-    "abs",
-    "argsort",
+std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "atan2",
     "clip_by_norm",
     "eig",
     "eig_grad",
     "eigh",
-    "ftt_c2r",
-    "ftt_r2c",
     "generate_proposals",
     "graph_sample_neighbors",
     "group_norm",
@@ -40,7 +39,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "lamb",
     "less_equal",
     "less_than",
-    "merged_adam",
     "momentum",
     "multiclass_nms3",
     "multinomial",
@@ -54,15 +52,14 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
 
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
-static std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
+std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
     "fused_attention",
     "fused_attention_grad",
     "fused_batch_norm_act",
     "fused_batch_norm_act_grad",
     "sequence_pool"};
 
-static std::set<std::string> StaticBuildBlackList = {
-    "sparse_sparse_coo_tensor"};
+std::set<std::string> StaticBuildBlackList = {"sparse_sparse_coo_tensor"};
 
 namespace paddle {
 namespace framework {

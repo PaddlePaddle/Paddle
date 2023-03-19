@@ -17,6 +17,8 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 
+extern std::set<std::string> OperatorBasesMustRunInStaticBuild;
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
