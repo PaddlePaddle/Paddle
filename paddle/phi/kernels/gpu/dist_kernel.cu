@@ -17,7 +17,6 @@
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
-#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/p_norm_kernel.h"
@@ -44,24 +43,25 @@ struct ZeroOrderFunctor {
   }
 };
 
-template <typename T>
+template <typename Tx, typename Ty>
 struct OtherOrderFunctor {
-  explicit OtherOrderFunctor(const T& p_order) : p_order_(p_order) {}
-  __device__ T operator()(const T& x, const T& y) const {
-    return static_cast<T>(pow(abs(x - y), p_order_));
+  explicit OtherOrderFunctor(const Ty& p_order) : p_order_(p_order) {}
+  __device__ Tx operator()(const Tx& x, const Tx& y) const {
+    return static_cast<Tx>(
+        pow(abs(static_cast<Ty>(x) - static_cast<Ty>(y)), p_order_));
   }
 
  private:
-  T p_order_;
+  Ty p_order_;
 };
 
-template <typename T>
+template <typename Tx, typename Ty>
 struct PowFunctor {
-  explicit PowFunctor(const T& p_order) : p_order_(p_order) {}
-  HOSTDEVICE inline T operator()(const T x) const {
-    return static_cast<T>(pow(x, p_order_));
+  explicit PowFunctor(const Ty& p_order) : p_order_(p_order) {}
+  HOSTDEVICE inline Tx operator()(const Tx x) const {
+    return static_cast<Tx>(pow(static_cast<Ty>(x), p_order_));
   }
-  T p_order_;
+  Ty p_order_;
 };
 
 template <typename T, typename Functor>
@@ -162,19 +162,20 @@ void DistKernel(const Context& dev_ctx,
           dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else {
-      T p_order = static_cast<T>(p);
+      using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+      MT p_order = static_cast<MT>(p);
       ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T>(p_order));
+              x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T, MT>(p_order));
       phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
       const DenseTensor* tmp_norm = out;
       std::vector<const DenseTensor*> ins = {tmp_norm};
       std::vector<DenseTensor*> outs = {out};
-      T p_order_ = static_cast<T>(T(1.) / p_order);
+      MT p_order_ = static_cast<MT>(static_cast<MT>(1.) / p_order);
       phi::funcs::ElementwiseKernel<T>(
-          dev_ctx, ins, &outs, PowFunctor<T>(p_order_));
+          dev_ctx, ins, &outs, PowFunctor<T, MT>(p_order_));
     }
 
   } else {
