@@ -477,8 +477,7 @@ class PartialProgramLayer:
         from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 
         if _in_amp_guard():
-            k = self._train_amp_program
-            return k
+            return self._train_amp_program
         elif _in_pure_fp16_guard():
             return self._train_pure_fp16_program
         else:
