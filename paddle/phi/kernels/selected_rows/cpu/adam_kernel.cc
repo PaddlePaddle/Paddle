@@ -242,7 +242,4 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
                    ALL_LAYOUT,
                    phi::sr::AdamDenseParamSparseGradKernel,
                    float,
-                   double) {
-  kernel->OutputAt(3).SetDataType(phi::DataType::UNDEFINED);
-  kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
-}
+                   double) {}

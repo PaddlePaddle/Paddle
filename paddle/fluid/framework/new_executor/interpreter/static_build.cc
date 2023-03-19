@@ -38,7 +38,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "group_norm",
     "instance_norm",
     "lamb",
-    "layer_norm_grad",
     "less_equal",
     "less_than",
     "merged_adam",
@@ -53,10 +52,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "unique_consecutive_flattened_tensor",
     "unique_raw"};
 
-// These Ops can use InferMeta to infer the output dtype
-static std::set<std::string> OpsWithAvailablePhiInferMeta = {
-    "abs", "layer_norm_grad", "merged_adam"};
-
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
 static std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
@@ -66,11 +61,15 @@ static std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
     "fused_batch_norm_act_grad",
     "sequence_pool"};
 
+static std::set<std::string> StaticBuildBlackList = {
+    "sparse_sparse_coo_tensor"};
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
 
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
+  // in_black_list = (kernelCode >> 5) & 1
   // is_operator_base = (kernelCode >> 4) & 1
   // has_fluid_kernel = (kernelCode >> 3) & 1
   // has_structed_kernel = (kernelCode >> 2) & 1
@@ -84,6 +83,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     auto op_base =
         info.Creator()(op_type, op->Inputs(), op->Outputs(), op->GetAttrMap());
 
+    bool in_black_list = StaticBuildBlackList.count(op_type);
     bool is_operator_base =
         (dynamic_cast<framework::OperatorWithKernel*>(op_base) == nullptr);
     bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
@@ -93,17 +93,19 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
                             OpsWithFluidKernelNeedMoveToPhi.count(op_type);
     bool need_set_dtype =
         !has_fluid_kernel && !has_structured_kernel &&
-        OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_type) &&
-        !OpsWithAvailablePhiInferMeta.count(op_type);
+        OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_type);
 
-    KernelCode kernel_code = (is_operator_base << 4) + (has_fluid_kernel << 3) +
+    KernelCode kernel_code = (in_black_list << 5) + (is_operator_base << 4) +
+                             (has_fluid_kernel << 3) +
                              (has_structured_kernel << 2) +
                              (need_move_to_phi << 1) + need_set_dtype;
-    if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type) &&
-        ((is_operator_base &&
-          !OperatorBasesHandledInStaticBuild.count(op_type)) ||
-         need_move_to_phi || need_set_dtype)) {
-      invalid_ops.insert(std::make_pair(op_type, kernel_code));
+    if (!OpsCanSkipedFakeAllocInStaticBuild.count(op_type)) {
+      if (in_black_list ||
+          (is_operator_base &&
+           !OperatorBasesHandledInStaticBuild.count(op_type)) ||
+          need_move_to_phi || need_set_dtype) {
+        invalid_ops.insert(std::make_pair(op_type, kernel_code));
+      }
     }
   }
 
@@ -111,7 +113,8 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     std::stringstream ss;
     ss << "The following OPs are unable to static build:\n";
     for (auto& item : invalid_ops) {
-      ss << item.first << " [is_operator_base = " << (item.second >> 4 & 1)
+      ss << item.first << " [in_blace_list = " << (item.second >> 5 & 1)
+         << ", is_operator_base = " << (item.second >> 4 & 1)
          << ", has_fluid_kernel = " << (item.second >> 3 & 1)
          << ", has_structed_kerenl = " << (item.second >> 2 & 1)
          << ", need_move_to_phi = " << (item.second >> 1 & 1)
@@ -153,8 +156,14 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     }
   }
 
-  return tensor && !IsExtendedTensor(*tensor) &&
-         (!tensor->initialized() || !tensor->numel());
+  if (op_type == "segment_pool" && parameter_name == "SummedIds") {
+    return op.Attr<std::string>("pooltype") == "MEAN" &&
+           dynamic_cast<const OperatorWithKernel*>(&op)
+                   ->kernel_type()
+                   ->place_ != phi::CPUPlace();
+  }
+
+  return tensor && !IsExtendedTensor(*tensor) && !tensor->initialized();
 }
 
 phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
@@ -291,18 +300,6 @@ void FakeInitializeOutputsForFunctionKernel(
     const RuntimeContext& runtime_ctx,
     const platform::DeviceContext& dev_ctx) {
   std::string op_type = op.Type();
-  if (OpsNeedSetOutputDtypeWhenRegisterPhiKernel.count(op_type)) {
-    PADDLE_ENFORCE_GT(
-        OpsWithAvailablePhiInferMeta.count(op_type),
-        0,
-        phi::errors::Unavailable(
-            "Cannot static build for op %s because it did not set output dtype "
-            "in phi kernel register. Please set its output dtype and remove it "
-            "from OpsNeedSetOutputDtypeWhenRegisterPhiKernel set, or add it to "
-            " OpsWithAvailablePhiInferMeta set if its InferMeta is available.",
-            op_type));
-  }
-
   auto output_names = kernel_sig.output_names;
   auto output_defs = phi_kernel.args_def().output_defs();
   PADDLE_ENFORCE_EQ(output_names.size(),
@@ -339,14 +336,24 @@ void FakeInitializeOutputsForFunctionKernel(
           // output dtype from InferMeta
           if (op_type == "adam" || op_type == "adamw") {
             dtype = InferMPDType(runtime_ctx, "Param");
-          } else if (op_type == "arg_min" || op_type == "arg_max") {
+          } else if (op_type == "arg_min" || op_type == "arg_max" ||
+                     op_type == "one_hot_v2") {
             dtype = InferDTypeFromAttr(op, runtime_ctx, "dtype");
           } else if (op_type == "bincount") {
             dtype = GetInputDType(runtime_ctx, "X");
           } else if (op_type == "layer_norm") {
             dtype = InferMPDType(runtime_ctx, "X");
           } else if (op_type == "reduce_sum") {
-            dtype = InferDTypeFromAttr(op, runtime_ctx, "out_dtype");
+            int dtype_attr = op.Attr<int>("out_dtype");
+            if (dtype_attr != -1) {
+              dtype = phi::TransToPhiDataType(dtype_attr);
+            } else {
+              phi::DataType in_dtype = GetInputDType(runtime_ctx, "X");
+              dtype =
+                  (in_dtype == DataType::BOOL || in_dtype == DataType::INT32)
+                      ? DataType::INT64
+                      : in_dtype;
+            }
           } else {
             VLOG(4) << "Get dtype result from InferMeta";
             RuntimeInferShapeContext infer_shape_ctx(op, runtime_ctx);

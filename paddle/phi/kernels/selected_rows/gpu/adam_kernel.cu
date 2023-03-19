@@ -298,7 +298,6 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
   }
-
   kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
   kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
 }

@@ -65,8 +65,6 @@ class AsyncWorkQueue {
   std::unique_ptr<WorkQueueGroup> queue_group_;
 };
 
-bool BlockCanBeStaticBuilt(const framework::BlockDesc& block);
-
 bool IsCommunicationOp(const std::string& op_name);
 
 bool IsCommunicationOp(const Instruction& instr);
