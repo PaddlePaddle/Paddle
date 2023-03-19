@@ -31,6 +31,7 @@ import astor
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid  # noqa: F401
 from paddle.fluid import core, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
@@ -307,7 +308,6 @@ def is_paddle_func(func, ignore_white_list=True):
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
-    import paddle.fluid as fluid  # noqa: F401
 
     full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
@@ -388,7 +388,6 @@ def update_args_of_func(node, dygraph_node, method_name):
         )
 
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
-    import paddle.fluid as fluid  # noqa: F401
 
     if method_name == "__init__" or eval(
         "issubclass({}, fluid.dygraph.Layer)".format(class_src)
