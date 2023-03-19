@@ -27,7 +27,7 @@ def set_default_dtype(d):
 
     Args:
         d(string|np.dtype): the dtype to make the default. It only
-                            supports float16, float32 and float64.
+                            supports float16, bfloat16, float32 and float64.
 
     Returns:
         None.
@@ -50,14 +50,14 @@ def set_default_dtype(d):
             )
     else:
         # This branch is for np.dtype and str
-        if d in ['float16', 'float32', 'float64']:
+        if d in ['float16', 'float32', 'float64', 'bfloat16']:
             # NOTE(SigureMo): Since the np.dtype object is not an instance of
             # type, so it will not be handled by the previous branch. We need
             # to convert it to str here.
             d = str(d)
         else:
             raise TypeError(
-                "set_default_dtype only supports [float16, float32, float64] "
+                "set_default_dtype only supports [float16, float32, float64, bfloat16] "
                 ", but received %s" % str(d)
             )
 
