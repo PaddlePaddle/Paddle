@@ -30,6 +30,16 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
+__device__ T max(T a, T b) {
+  return a > b ? a : b;
+}
+
+template <typename T>
+__device__ T min(T a, T b) {
+  return a < b ? a : b;
+}
+
+template <typename T>
 __device__ __forceinline__ T FromFloat(float a);
 
 template <typename T>
