@@ -47,6 +47,7 @@ class XPUTestReduceMinOp(XPUOpTestWrapper):
                 'use_xpu': True,
                 'reduce_all': self.reduce_all,
                 'keep_dim': self.keep_dim,
+                'dim': self.axis,
             }
             self.inputs = {'X': np.random.random(self.shape).astype("float32")}
             if self.attrs['reduce_all']:
@@ -68,14 +69,49 @@ class XPUTestReduceMinOp(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            pass
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class XPUTestReduceMinCase1(XPUTestReduceMinBase):
         def init_case(self):
             self.shape = (5, 6, 10)
             self.axis = (0,)
             self.reduce_all = False
+            self.keep_dim = False
+
+    class XPUTestReduceMinCase2(XPUTestReduceMinBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (0,)
+            self.reduce_all = False
             self.keep_dim = True
+
+    class XPUTestReduceMinCase3(XPUTestReduceMinBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (0,)
+            self.reduce_all = True
+            self.keep_dim = False
+
+    class XPUTestReduceMinCase4(XPUTestReduceMinBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (1,)
+            self.reduce_all = False
+            self.keep_dim = False
+
+    class XPUTestReduceMinCase5(XPUTestReduceMinBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (1,)
+            self.reduce_all = False
+            self.keep_dim = True
+
+    class XPUTestReduceMinCase6(XPUTestReduceMinBase):
+        def init_case(self):
+            self.shape = (5, 6, 10)
+            self.axis = (1,)
+            self.reduce_all = True
+            self.keep_dim = False
 
 
 support_types = get_xpu_op_support_types('reduce_min')

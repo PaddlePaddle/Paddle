@@ -451,7 +451,7 @@ class OpTest(unittest.TestCase):
             )
             or (
                 hasattr(self, 'mkldnn_data_type')
-                and getattr(self, 'mkldnn_data_type') == "bfloat16"
+                and self.mkldnn_data_type == "bfloat16"
             )
             or (
                 hasattr(self, 'attrs')
@@ -471,7 +471,7 @@ class OpTest(unittest.TestCase):
             )
             or (
                 hasattr(self, 'mkldnn_data_type')
-                and getattr(self, 'mkldnn_data_type') == "float16"
+                and self.mkldnn_data_type == "float16"
             )
             or (
                 hasattr(self, 'attrs')
@@ -1502,7 +1502,7 @@ class OpTest(unittest.TestCase):
             prim_checker = PrimForwardChecker(self, place)
             prim_checker.check()
             # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self.__class__.op_type = self.op_type
         # disable legacy dygraph check when check_eager is True
         if check_eager:
@@ -1907,17 +1907,18 @@ class OpTest(unittest.TestCase):
             if self.is_mkldnn_op():
                 check_dygraph = False
                 check_eager = False
-                if hasattr(self, 'force_fp32_output') and getattr(
-                    self, 'force_fp32_output'
+                if (
+                    hasattr(self, 'force_fp32_output')
+                    and self.force_fp32_output
                 ):
-                    atol = 1e-2
+                    atol = 1e-2 if atol < 1e-2 else atol
                 else:
-                    atol = 2
+                    atol = 2 if atol < 2 else atol
             else:
-                atol = 1e-1
+                atol = 1e-2 if atol < 1e-2 else atol
 
         if self.is_float16_op():
-            atol = 1e-3
+            atol = 1e-3 if atol < 1e-3 else atol
 
         if no_check_set is not None:
             if (
@@ -2185,7 +2186,7 @@ class OpTest(unittest.TestCase):
                     else:
                         abs_a = 1 if abs_a < 1e-3 else abs_a
 
-                if self.dtype == np.bool:
+                if self.dtype == np.bool_:
                     diff_mat = np.abs(a ^ b) / abs_a
                 else:
                     diff_mat = np.abs(a - b) / abs_a
@@ -2288,7 +2289,7 @@ class OpTest(unittest.TestCase):
             )
             prim_grad_checker.check()
             # Support operators which not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            setattr(self.__class__, 'check_prim', True)
+            self.__class__.check_prim = True
             self._check_grad_helper()
             if only_check_prim:
                 return
@@ -2415,7 +2416,7 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
@@ -2425,10 +2426,15 @@ class OpTest(unittest.TestCase):
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
                 max_relative_error = (
-                    0.04 if max_relative_error < 0.04 else max_relative_error
+                    0.01 if max_relative_error < 0.01 else max_relative_error
                 )
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
+
+        if self.is_float16_op():
+            max_relative_error = (
+                0.001 if max_relative_error < 0.001 else max_relative_error
+            )
 
         self._assert_is_close(
             numeric_grads,

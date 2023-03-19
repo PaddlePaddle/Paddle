@@ -1295,81 +1295,6 @@ class Executor:
                 del trainer_instance
             self._default_executor.close()
 
-    def _run_parallel(
-        self, program, scope, feed, fetch_list, fetch_var_name, return_numpy
-    ):
-        from paddle.optimizer.lr import LRScheduler
-
-        exe = program._executor
-        # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
-        # instead of program. We will add support for checking Vars in Graph
-        need_check_feed = program._program is not None
-        if need_check_feed:
-            global_block = program._program.global_block()
-        if isinstance(feed, dict):
-            feed_tensor_dict = dict()
-            for feed_name in feed:
-                feed_tensor = feed[feed_name]
-                var = global_block.var(feed_name) if need_check_feed else None
-                if not isinstance(feed_tensor, core.LoDTensor):
-                    # always set to CPU place, since the tensor need to be split
-                    # it is fast in CPU
-                    feed_tensor = _as_lodtensor(
-                        feed[feed_name],
-                        core.CPUPlace(),
-                        var.dtype if var else None,
-                    )
-                if need_check_feed:
-                    check_feed_shape_type(var, feed_tensor, exe.device_count())
-                feed_tensor_dict[feed_name] = feed_tensor
-            exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
-
-        elif isinstance(feed, list) or isinstance(feed, tuple):
-            res = list()
-            for i, each in enumerate(feed):
-                if not isinstance(each, dict):
-                    raise TypeError(
-                        "Each element of feed list should be a dict"
-                    )
-                res_dict = dict()
-                for feed_name in each:
-                    tensor = each[feed_name]
-                    var = (
-                        global_block.var(feed_name) if need_check_feed else None
-                    )
-                    if not isinstance(tensor, core.LoDTensor):
-                        tensor = _as_lodtensor(
-                            each[feed_name],
-                            program._places[i],
-                            var.dtype if var else None,
-                        )
-                    if need_check_feed:
-                        check_feed_shape_type(var, tensor)
-                    res_dict[feed_name] = tensor
-                res.append(res_dict)
-
-            exe.feed_tensors_into_local_scopes(res)
-
-        if hasattr(program._program, 'lr_sheduler'):
-            lr_sheduler = program._program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-            lr_value = lr_sheduler()
-            lr_var = program._program.global_block().vars[lr_sheduler._var_name]
-            lr_tensor = _as_lodtensor(lr_value, core.CPUPlace(), lr_var.dtype)
-            if core.is_cuda_graph_capturing():
-                warnings.warn(
-                    "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
-                    "take any effect! Please set the learning rate manually before each batch!"
-                )
-            else:
-                exe.feed_and_split_tensor_into_local_scopes(
-                    {lr_sheduler._var_name: lr_tensor}
-                )
-
-        fetch_var_names = list(map(_to_name_str, fetch_list))
-        tensors = exe.run(fetch_var_names, True)._move_to_list()
-        return as_numpy(tensors) if return_numpy else tensors
-
     def run(
         self,
         program=None,
@@ -1673,37 +1598,7 @@ class Executor:
                     else program._graph
                 )
 
-                # Unsupported case 1: data parallel
-                if (
-                    compiled_program._is_data_parallel
-                    and len(
-                        compiled_program._get_places(
-                            place, compiled_program._places
-                        )
-                    )
-                    != 1
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for data parallel",
-                        UserWarning,
-                    )
-                    return False
-
-                # Unsupported case 2: parallel graph
-                if core.globals()['FLAGS_enable_parallel_graph'] in [
-                    1,
-                    '1',
-                    True,
-                    'True',
-                    'true',
-                ]:
-                    warnings.warn(
-                        "Standalone executor is not used for parallel graph",
-                        UserWarning,
-                    )
-                    return False
-
-                # Unsupported case 3: inference
+                # Unsupported case 1: inference
                 if compiled_program._is_inference:
                     warnings.warn(
                         "Standalone executor is not used for inference",
@@ -1711,7 +1606,7 @@ class Executor:
                     )
                     return False
 
-                # Unsupported case 4: async mode
+                # Unsupported case 2: async mode
                 if (
                     compiled_program._build_strategy is not None
                     and compiled_program._build_strategy.async_mode
@@ -1722,7 +1617,7 @@ class Executor:
                     )
                     return False
 
-                # Unsupported case 5: CUDA Graph
+                # Unsupported case 3: CUDA Graph
                 if (
                     compiled_program._build_strategy is not None
                     and compiled_program._build_strategy.allow_cuda_graph_capture
@@ -1817,24 +1712,6 @@ class Executor:
 
         # For backward compatibility, run directly.
         if not compiled:
-            # In distributed training, the compiled program is saved in Program._graph
-            has_compiled_graph = isinstance(
-                program._graph, compiler.CompiledProgram
-            )
-
-            if has_compiled_graph:
-                program._graph._compile(scope, self.place)
-                # _graph in program does not support inference since the _graph is optimized
-                # through optimizer.minimize function and should not be used as inference graph
-                # assert not program._graph._is_inference
-                return self._run_parallel(
-                    program._graph,
-                    scope=scope,
-                    feed=feed,
-                    fetch_list=fetch_list,
-                    fetch_var_name=fetch_var_name,
-                    return_numpy=return_numpy,
-                )
 
             return self._run_program(
                 program,
@@ -1848,17 +1725,10 @@ class Executor:
             )
 
         program._compile(scope, self.place)
-        if program._is_inference:
-            return self._run_inference(program._executor, feed)
-        else:
-            return self._run_parallel(
-                program,
-                scope=scope,
-                feed=feed,
-                fetch_list=fetch_list,
-                fetch_var_name=fetch_var_name,
-                return_numpy=return_numpy,
-            )
+        assert (
+            program._is_inference
+        ), f"Program must have _is_inference = True, but get {program._is_inference}"
+        return self._run_inference(program._executor, feed)
 
     def _run_program(
         self,

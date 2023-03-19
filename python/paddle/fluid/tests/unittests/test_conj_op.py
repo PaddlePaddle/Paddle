@@ -20,8 +20,9 @@ import numpy as np
 import paddle
 
 sys.path.append("..")
+from eager_op_test import OpTest, convert_float_to_uint16
 from numpy.random import random as rand
-from op_test import OpTest, convert_float_to_uint16
+
 
 import paddle.fluid.core as core
 import paddle.fluid.dygraph as dg
@@ -57,7 +58,7 @@ class TestConjOp(OpTest):
         self.grad_in = np.conj(self.grad_out)
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -65,7 +66,6 @@ class TestConjOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_in],
             user_defined_grad_outputs=[self.grad_out],
-            check_eager=True,
         )
 
 
