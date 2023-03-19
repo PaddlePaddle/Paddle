@@ -294,38 +294,9 @@ class TestEmbedOpError(unittest.TestCase):
             )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the float16",
-)
-class TestEmbeddingFP16OP(OpTest):
-    def setUp(self):
-        self.op_type = "lookup_table_v2"
-        self.dtype = np.float16
-        self.python_api = paddle.nn.functional.embedding
-        self.__class__.op_type = self.op_type
-        table = np.random.random((17, 31)).astype(np.float32)
-        ids = np.random.randint(0, 17, 4).astype(self.id_dtype())
-        self.inputs = {'W': table.astype(self.dtype), 'Ids': ids}
-        self.outputs = {'Out': table[ids]}
-
+class TestEmbeddingFP16OP(TestLookupTableOp):
     def id_dtype(self):
-        return "int64"
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-3)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['W'],
-            'Out',
-            no_grad_set=set('Ids'),
-            max_relative_error=1e-2,
-        )
+        return np.float16
 
 
 if __name__ == "__main__":
