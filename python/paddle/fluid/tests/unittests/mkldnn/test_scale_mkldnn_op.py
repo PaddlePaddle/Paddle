@@ -68,7 +68,6 @@ class TestScaleOpBiasNotAfterScale(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-# FIXME(xx) no use_mkldnn attr, does this case run into oneDNN?
 class TestScaleOpScaleTensor(OpTest):
     def setUp(self):
         self.op_type = "scale"
@@ -87,7 +86,6 @@ class TestScaleOpScaleTensor(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-# FIXME(xx) no use_mkldnn attr, does this case run into oneDNN?
 class TestScaleOpScaleTensorNotBiasAfterScale(OpTest):
     def setUp(self):
         self.op_type = "scale"
