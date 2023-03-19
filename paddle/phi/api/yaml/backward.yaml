@@ -1,3 +1,6 @@
+# This file is designed for backward C++ operators associated with
+# the operator in ops.yaml.
+
 - backward_op : acos_grad
   forward : acos (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
