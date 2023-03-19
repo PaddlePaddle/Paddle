@@ -158,40 +158,40 @@ class TestDistOpCase5(TestDistOp):
         self.p = 1.5
 
 
-class TestDistOpWithFP16(TestDistOp):
+class TestDistFP16Op(OpTest):
     def init_data_type(self):
         self.data_type = 'float16'
 
 
-class TestDistOpWithFP16Case1(TestDistOpWithFP16):
+class TestDistFP16OpCase1(TestDistFP16Op):
     def init_case(self):
         self.x_shape = (3, 5, 5, 6)
         self.y_shape = (5, 5, 6)
         self.p = 1.0
 
 
-class TestDistOpWithFP16Case2(TestDistOpWithFP16):
+class TestDistFP16OpCase2(TestDistFP16Op):
     def init_case(self):
         self.x_shape = (10, 10)
         self.y_shape = (4, 10, 10)
         self.p = 2.0
 
 
-class TestDistOpWithFP16Case3(TestDistOpWithFP16):
+class TestDistFP16OpCase3(TestDistFP16Op):
     def init_case(self):
         self.x_shape = (15, 10)
         self.y_shape = (15, 10)
         self.p = float("inf")
 
 
-class TestDistOpWithFP16Case4(TestDistOpWithFP16):
+class TestDistFP16OpCase4(TestDistFP16Op):
     def init_case(self):
         self.x_shape = (2, 3, 4, 5, 8)
         self.y_shape = (3, 1, 5, 8)
         self.p = float("-inf")
 
 
-class TestDistOpWithFP16Case5(TestDistOpWithFP16):
+class TestDistFP16OpCase5(TestDistFP16Op):
     def init_case(self):
         self.x_shape = (4, 1, 4, 8)
         self.y_shape = (2, 2, 1, 4, 4, 8)
@@ -240,11 +240,6 @@ class TestDistAPI(unittest.TestCase):
         c = paddle.dist(a, b, 2)
         c.backward()
         paddle.enable_static()
-
-
-class TestDistAPIWithFP16(unittest.TestCase):
-    def init_data_type(self):
-        self.data_type = 'float16'
 
 
 if __name__ == '__main__':
