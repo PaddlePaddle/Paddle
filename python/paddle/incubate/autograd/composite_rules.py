@@ -98,7 +98,6 @@ def composite_batchnorm(
         1 if i in reduce_axes else s for i, s in enumerate(x.shape)
     )
 
-    # half = full(x.shape, -0.5, x.dtype)
     half = -0.5
 
     if not use_run_stat:
