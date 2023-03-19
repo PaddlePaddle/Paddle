@@ -378,6 +378,19 @@ class TestException(unittest.TestCase):
         )
 
 
+class TestFetchEmptyTensor(unittest.TestCase):
+    def test_fetch(self):
+        places = [paddle.CPUPlace()]
+        if paddle.fluid.core.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+        for place in places:
+            with paddle.static.program_guard(paddle.static.Program()):
+                out = paddle.empty([3, 0])
+                exe = paddle.static.Executor(place)
+                res = exe.run(fetch_list=[out])
+            self.assertEqual(res[0].shape, (3, 0))
+
+
 class TestInplaceApiWithDataTransform(unittest.TestCase):
     def test_increment(self):
         if paddle.fluid.core.is_compiled_with_cuda():

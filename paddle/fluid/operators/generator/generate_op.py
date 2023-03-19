@@ -35,7 +35,7 @@ from filters import (
 )
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict, to_named_dict_for_op
-from tests import (
+from tests_utils import (
     is_base_op,
     is_composite_op,
     is_initializer_list,
