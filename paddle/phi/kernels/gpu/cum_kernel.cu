@@ -440,7 +440,8 @@ PD_REGISTER_KERNEL(cumsum,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(logcumsumexp,
                    GPU,
