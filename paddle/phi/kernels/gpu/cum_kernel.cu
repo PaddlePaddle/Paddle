@@ -448,5 +448,6 @@ PD_REGISTER_KERNEL(logcumsumexp,
                    phi::LogcumsumexpKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif
