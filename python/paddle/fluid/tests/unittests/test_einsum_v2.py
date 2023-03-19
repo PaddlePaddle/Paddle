@@ -196,7 +196,7 @@ class TestEinsum(unittest.TestCase):
         self.equation = self.sample["paradigm"]
 
     def init_dtype(self):
-        self.dtype = "float"
+        self.dtype = "float32"
 
     def init_sample(self):
         self.sample = {"paradigm": "i->", "data": ["x"]}
