@@ -33,4 +33,10 @@ void DistKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(dist, CPU, ALL_LAYOUT, phi::DistKernel, float, double) {}
+PD_REGISTER_KERNEL(dist,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::DistKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}

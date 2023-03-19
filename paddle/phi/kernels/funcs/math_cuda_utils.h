@@ -23,6 +23,9 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
+
 namespace phi {
 namespace funcs {
 
@@ -178,6 +181,18 @@ __inline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
   return val;
 }
 
+template <>
+__inline__ __device__ phi::dtype::float16 WarpReduceSum(phi::dtype::float16 val,
+                                                        unsigned lane_mask) {
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+    val += __shfl_xor_sync(lane_mask, val.to_half(), mask, warpSize);
+#else
+    val += __shfl_xor(val.to_half(), mask, warpSize);
+#endif
+  return phi::dtype::float16(val);
+}
+
 /* Calculate the sum of all elements in a block */
 template <typename T>
 __inline__ __device__ T BlockReduceSum(T val, unsigned mask) {
@@ -251,6 +266,18 @@ __inline__ __device__ T WarpReduceMax(T val, unsigned lane_mask) {
   return val;
 }
 
+template <>
+__inline__ __device__ phi::dtype::float16 WarpReduceMax(phi::dtype::float16 val,
+                                                        unsigned lane_mask) {
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+    val = max(val, __shfl_xor_sync(lane_mask, val.to_half(), mask, warpSize));
+#else
+    val = max(val, __shfl_xor(val.to_half(), mask, warpSize));
+#endif
+  return phi::dtype::float16(val);
+}
+
 template <typename T, int NUM>
 __inline__ __device__ T WarpReduceMaxV2(T *val) {
 #pragma unroll
@@ -271,6 +298,18 @@ __inline__ __device__ T WarpReduceMin(T val, unsigned lane_mask) {
     val = min(val, __shfl_xor(val, mask, warpSize));
 #endif
   return val;
+}
+
+template <>
+__inline__ __device__ phi::dtype::float16 WarpReduceMin(phi::dtype::float16 val,
+                                                        unsigned lane_mask) {
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
+    val = min(val, __shfl_xor_sync(lane_mask, val.to_half(), mask, warpSize));
+#else
+    val = min(val, __shfl_xor(val.to_half(), mask, warpSize));
+#endif
+  return phi::dtype::float16(val);
 }
 
 /* Calculate the minimum of all elements in a warp when actual quantity of
@@ -310,7 +349,7 @@ __inline__ __device__ T BlockReduceMax(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (lane < block_span) ? shared[lane] : -1e10f;
+  val = (lane < block_span) ? shared[lane] : T(-1e10f);
   val = WarpReduceMax(val, mask);
 
   return val;
@@ -358,7 +397,7 @@ __inline__ __device__ T BlockReduceMin(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (lane < block_span) ? shared[lane] : 1e10f;
+  val = (lane < block_span) ? shared[lane] : T(1e10f);
   val = WarpReduceMin(val, mask);
 
   return val;

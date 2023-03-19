@@ -14,8 +14,10 @@
 
 #include "paddle/phi/kernels/dist_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/p_norm_kernel.h"
@@ -25,10 +27,20 @@ namespace phi {
 #define FULL_MASK 0xffffffff
 
 template <typename T>
+__device__ T max(T a, T b) {
+  return a > b ? a : b;
+}
+
+template <typename T>
+__device__ T min(T a, T b) {
+  return a < b ? a : b;
+}
+
+template <typename T>
 struct ZeroOrderFunctor {
  public:
   __device__ T operator()(const T& x, const T& y) const {
-    return static_cast<T>((x - y) != 0);
+    return static_cast<T>((x - y) != T(0));
   }
 };
 
@@ -55,7 +67,7 @@ struct PowFunctor {
 template <typename T, typename Functor>
 __global__ void ReduceSumWithSubtract(
     const T* x, const T* y, T* out, int64_t N, Functor func) {
-  T sum_val = 0;
+  T sum_val = T(0);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     sum_val += func(x[i], y[i]);
@@ -73,7 +85,7 @@ __global__ void ReduceMaxWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T max_val = -1e10f;
+  T max_val = T(-1e10f);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     max_val = max(max_val, abs(x[i] - y[i]));
@@ -91,7 +103,7 @@ __global__ void ReduceMinWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T min_val = 1e10f;
+  T min_val = T(1e10f);
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
     min_val = min(min_val, abs(x[i] - y[i]));
@@ -160,7 +172,7 @@ void DistKernel(const Context& dev_ctx,
       const DenseTensor* tmp_norm = out;
       std::vector<const DenseTensor*> ins = {tmp_norm};
       std::vector<DenseTensor*> outs = {out};
-      T p_order_ = static_cast<T>(1. / p_order);
+      T p_order_ = static_cast<T>(T(1.) / p_order);
       phi::funcs::ElementwiseKernel<T>(
           dev_ctx, ins, &outs, PowFunctor<T>(p_order_));
     }
@@ -173,4 +185,10 @@ void DistKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(dist, GPU, ALL_LAYOUT, phi::DistKernel, float, double) {}
+PD_REGISTER_KERNEL(dist,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DistKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}
