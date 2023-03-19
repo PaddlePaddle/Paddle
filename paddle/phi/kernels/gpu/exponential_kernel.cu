@@ -28,7 +28,7 @@ void ExponentialKernel(const Context &dev_ctx,
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   phi::funcs::uniform_distribution<MT> dist;
   phi::funcs::exponential_transform<MT> trans(lambda);
-  phi::funcs::distribution_and_transform<MT>(dev_ctx, out, dist, trans);
+  phi::funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
 }
 
 }  // namespace phi
