@@ -252,13 +252,13 @@ typename std::enable_if<!std::is_same<T>::value>::type ThrustCumsumKernel(
 }
 
 template <typename Context, typename T>
-    typename std::enable_if<std::is_same<T>>::value >
-    ::type ThrustCumsumKernel(const Context& dev_ctx,
-                              const T* in_data,
-                              T* out_data,
-                              int64_t size,
-                              bool reverse,
-                              bool exclusive) {}
+typename std::enable_if<std::is_same<T>::value>::type ThrustCumsumKernel(
+    const Context& dev_ctx,
+    const T* in_data,
+    T* out_data,
+    int64_t size,
+    bool reverse,
+    bool exclusive) {}
 
 template <typename T, typename Context, typename Op>
 void ScanKernel(const Context& dev_ctx,
