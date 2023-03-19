@@ -228,6 +228,36 @@ class TestDiffOpPreAppendAxis(TestDiffOp):
         self.append = np.array([[2, 3, 4, 7], [1, 3, 5, 6]]).astype('float32')
 
 
+class TestDiffOpFp16(TestDiffOp):
+    def test_fp16_with_gpu(self):
+        paddle.enable_static()
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([4, 4]).astype("float16")
+                x = paddle.static.data(
+                    name="input", shape=[4, 4], dtype="float16"
+                )
+                exe = paddle.static.Executor(place)
+                out = paddle.diff(
+                    x,
+                    n=self.n,
+                    axis=self.axis,
+                    prepend=self.prepend,
+                    append=self.append,
+                )
+                fetches = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "input": input,
+                    },
+                    fetch_list=[out],
+                )
+        paddle.disable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

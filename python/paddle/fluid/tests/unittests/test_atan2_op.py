@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.fluid.core as core
@@ -127,6 +127,35 @@ class TestAtan2API(unittest.TestCase):
 
         for place in self.place:
             run(place)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestAtan2BF16OP(OpTest):
+    def setUp(self):
+        self.op_type = 'atan2'
+        self.python_api = paddle.atan2
+        self.dtype = np.uint16
+        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
+        x2 = np.random.uniform(0.1, 1, [15, 17]).astype('float32')
+        out = np.arctan2(x1, x2)
+
+        self.inputs = {
+            'X1': convert_float_to_uint16(x1),
+            'X2': convert_float_to_uint16(x2),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X1', 'X2'], 'Out')
 
 
 class TestAtan2Error(unittest.TestCase):

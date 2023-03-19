@@ -320,7 +320,7 @@ def grid_sample(
             'use_cudnn',
             use_cudnn,
         )
-        out = getattr(_legacy_C_ops, 'grid_sampler')(x, grid, *attrs)
+        out = _legacy_C_ops.grid_sampler(x, grid, *attrs)
     else:
         helper = LayerHelper("grid_sample", **locals())
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sample')

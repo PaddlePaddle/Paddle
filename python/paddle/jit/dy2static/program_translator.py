@@ -314,8 +314,8 @@ class StaticFunction:
         # save the instance `self` while decorating a method of class.
 
         if inspect.ismethod(function):
-            self._dygraph_function = getattr(function, '__func__')
-            self._class_instance = getattr(function, '__self__')
+            self._dygraph_function = function.__func__
+            self._class_instance = function.__self__
 
             if not hasattr(self._class_instance, '_original_funcs'):
                 raise TypeError(
@@ -885,7 +885,7 @@ class HookHelper:
         self.need_apply_hook = (
             with_hook
             and isinstance(self.class_instance, layers.Layer)
-            and getattr(func, "__name__") == "forward"
+            and func.__name__ == "forward"
         )
 
     def apply_pre_hooks(self, inputs):
