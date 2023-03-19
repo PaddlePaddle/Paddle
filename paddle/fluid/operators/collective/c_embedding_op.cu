@@ -61,24 +61,32 @@ __global__ void CEmbedding(T *out,
   }
 }
 
-template <typename T, typename IndexT>
+template <typename T, typename IdT>
 __global__ void CEmbeddingGrad(T *table,
                                const T *output,
-                               const IndexT *ids,
-                               const int rows,
-                               const int columns,
+                               const IdT *ids,
                                const int64_t N,
+                               const int64_t K,
+                               const int64_t D,
                                const int64_t start_idx,
-                               const int64_t end_idx,
-                               const int64_t limit) {
-  CUDA_KERNEL_LOOP(i, limit) {
-    size_t row = i / columns;
-    size_t col = i % columns;
-    auto id = ids[row];
-    if (id >= start_idx && id < end_idx) {
-      auto real_idx = id - start_idx;
-      phi::CudaAtomicAdd(&table[real_idx * columns + col], output[i]);
+                               const int64_t end_idx) {
+  int idx = threadIdx.x;
+  int idy = blockIdx.x + threadIdx.y * gridDim.x;
+  while (idy < K) {
+    auto id = static_cast<int64_t>(ids[idy]);
+    if (id < start_idx || id >= end_idx) {
+      return;
     }
+    const T *out = output + idy * D;
+    T *tab = table + id * D;
+#ifdef PADDLE_WITH_CUDA
+    phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
+#else
+    for (int i = idx; i < D; i += blockDim.x) {
+      phi::CudaAtomicAdd(&tab[i], out[i]);
+    }
+#endif
+    idy += blockDim.y * gridDim.x;
   }
 }
 
@@ -153,9 +161,6 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
     int K = ids_t->numel();
 
     const int64_t end_idx = start_idx + N;
-    auto limit = K * D;
-    int blocks = NumBlocks(limit);
-    int threads = kNumCUDAThreads;
 
     const T *d_output = d_output_t->data<T>();
     T *d_table = d_table_t->mutable_data<T>(context.GetPlace());
@@ -163,29 +168,31 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
     auto t = framework::EigenVector<T>::Flatten(*d_table_t);
     t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
+    const int gridx = 2 * dev_ctx.GetSMCount();
+    dim3 threads(128, 8);
+    dim3 grids(gridx, 1);
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
+
     if (index_type == framework::proto::VarType::INT32) {
       CEmbeddingGrad<T, int32_t>
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
-                                                     d_output,
-                                                     ids_t->data<int32_t>(),
-                                                     K,
-                                                     D,
-                                                     N,
-                                                     start_idx,
-                                                     end_idx,
-                                                     limit);
+          <<<grids, threads, 0, dev_ctx.stream()>>>(d_table,
+                                                    d_output,
+                                                    ids_t->data<int32_t>(),
+                                                    N,
+                                                    K,
+                                                    D,
+                                                    start_idx,
+                                                    end_idx);
     } else if (index_type == framework::proto::VarType::INT64) {
       CEmbeddingGrad<T, int64_t>
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
-                                                     d_output,
-                                                     ids_t->data<int64_t>(),
-                                                     K,
-                                                     D,
-                                                     N,
-                                                     start_idx,
-                                                     end_idx,
-                                                     limit);
+          <<<grids, threads, 0, dev_ctx.stream()>>>(d_table,
+                                                    d_output,
+                                                    ids_t->data<int64_t>(),
+                                                    N,
+                                                    K,
+                                                    D,
+                                                    start_idx,
+                                                    end_idx);
     }
   }
 };
