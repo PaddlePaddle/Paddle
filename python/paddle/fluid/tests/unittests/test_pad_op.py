@@ -98,7 +98,7 @@ def create_test_fp16(parent):
             return np.float16
 
         def test_check_grad_normal(self):
-            self.check_grad(['X'], 'Out', max_relative_error=1e-3)
+            self.check_grad(['X'], 'Out')
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
     TestPadFp16.__name__ = cls_name
