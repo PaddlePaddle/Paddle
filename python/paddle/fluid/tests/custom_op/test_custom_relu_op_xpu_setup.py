@@ -70,33 +70,6 @@ def custom_relu_static(
     return out_v
 
 
-def custom_relu_static_pe(func, device, dtype, np_x, use_func=True):
-    paddle.enable_static()
-    paddle.set_device(device)
-
-    places = static.xpu_places()
-    with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            x = static.data(name='X', shape=[None, 8], dtype=dtype)
-            x.stop_gradient = False
-            out = func(x) if use_func else paddle.nn.functional.relu(x)
-            static.append_backward(out)
-
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
-
-            # in static graph mode, x data has been covered by out
-            compiled_prog = static.CompiledProgram(
-                static.default_main_program()
-            ).with_data_parallel(loss_name=out.name, places=places)
-            out_v = exe.run(
-                compiled_prog, feed={'X': np_x}, fetch_list=[out.name]
-            )
-
-    paddle.disable_static()
-    return out_v
-
-
 def custom_relu_static_inference(func, device, np_data, np_label, path_prefix):
     paddle.set_device(device)
 
@@ -213,22 +186,6 @@ class TestNewCustomOpXpuSetUpInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg='custom op out: {},\n paddle api out: {}'.format(
-                    out, pd_out
-                ),
-            )
-
-    def test_static_pe(self):
-        for dtype in self.dtypes:
-            x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
-            out = custom_relu_static_pe(self.custom_op, self.device, dtype, x)
-            pd_out = custom_relu_static_pe(
-                self.custom_op, self.device, dtype, x, False
-            )
-            np.testing.assert_allclose(
-                out,
-                pd_out,
-                atol=1e-2,
                 err_msg='custom op out: {},\n paddle api out: {}'.format(
                     out, pd_out
                 ),

@@ -576,6 +576,30 @@ void CeluDoubleGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void SoftplusDoubleGradKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& dout,
+                              const DenseTensor& ddx,
+                              float beta,
+                              float threshold,
+                              DenseTensor* dx,
+                              DenseTensor* ddout) {
+  if (dx) {
+    dx->Resize(x.dims());
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (ddout) {
+    dev_ctx.template Alloc<T>(ddout);
+  }
+
+  phi::funcs::SoftplusDoubleGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = beta;
+  *(attrs[1].second) = threshold;
+  functor(dev_ctx, &x, &dout, &ddx, dx, ddout);
+}
+
+template <typename T, typename Context>
 void SquareDoubleGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& dout,
