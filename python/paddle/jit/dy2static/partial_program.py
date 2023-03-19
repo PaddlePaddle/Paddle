@@ -455,29 +455,19 @@ class PartialProgramLayer:
         """
         Return current train or eval program hash id.
         """
+        from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 
-        def inner_test():
-            from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-
-            if _in_amp_guard():
-                return 1
-            elif _in_pure_fp16_guard():
-                return 2
-            else:
-                return 3
-
-        k = inner_test()
         if self.training:
-            if k == 1:
+            if _in_amp_guard():
                 return self._train_amp_program_id
-            elif k == 2:
+            elif _in_pure_fp16_guard():
                 return self._train_pure_fp16_program_id
             else:
                 return self._train_program_id
         else:
-            if k == 1:
+            if _in_amp_guard():
                 return self._infer_amp_program_id
-            elif k == 2:
+            elif _in_pure_fp16_guard():
                 return self._infer_pure_fp16_program_id
             else:
                 return self._infer_program_id
