@@ -48,10 +48,16 @@ class TestLookupTableOp(OpTest):
     def setUp(self):
         self.op_type = "lookup_table_v2"
         self.python_api = paddle.nn.functional.embedding
-        table = np.random.random((17, 31)).astype("float64")
+        self.init_dtype()
+
+        table = np.random.random((17, 31)).astype(self.dtype)
         ids = np.random.randint(0, 17, 4).astype(self.id_dtype())
+
         self.inputs = {'W': table, 'Ids': ids}
         self.outputs = {'Out': table[ids]}
+
+    def init_dtype(self):
+        self.dtype = "float64"
 
     def id_dtype(self):
         return "int64"
@@ -295,8 +301,8 @@ class TestEmbedOpError(unittest.TestCase):
 
 
 class TestEmbeddingFP16OP(TestLookupTableOp):
-    def id_dtype(self):
-        return np.float16
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 if __name__ == "__main__":
