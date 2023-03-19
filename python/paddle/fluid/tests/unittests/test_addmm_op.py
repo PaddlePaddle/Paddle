@@ -57,6 +57,104 @@ class TestAddMMOp(OpTest):
     def test_check_grad_input(self):
         self.check_grad(['Input'], 'Out', no_grad_set=None)
 
+@unittest.skipIf(not core.is_compiled_with_cuda()
+                 or not core.is_float16_supported(core.CUDAPlace(0)),
+                 "core is not compiled with CUDA and not support the float16")
+class TestAddMMOpFP16(OpTest):
+    def setUp(self):
+        self.op_type = "addmm"
+        self.python_api = paddle.addmm
+        self.dtype = np.float16
+        self.init_dtype_type()
+        self.inputs = {
+            'Input': np.random.random((100, 1)).astype(self.dtype),
+            'X': np.random.random((100, 10)).astype(self.dtype),
+            'Y': np.random.random((10, 20)).astype(self.dtype),
+        }
+        self.outputs = {
+            'Out': self.inputs['Input']
+            + np.dot(self.inputs['X'], self.inputs['Y'])
+        }
+
+    def init_dtype_type(self):
+        pass
+
+    def test_check_output(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3, rtol=1e-3)
+
+    def test_check_grad_normal(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Input', 'X', 'Y'], 'Out',
+                                   max_relative_error=1e-2)
+
+    def test_check_grad_x(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=None)
+
+    def test_check_grad_y(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Y'], 'Out', no_grad_set=None)
+
+    def test_check_grad_input(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Input'], 'Out', no_grad_set=None)
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestAddMMOpBF16(OpTest):
+    # test basic
+    def setUp(self):
+        self.op_type = "addmm"
+        self.python_api = paddle.addmm
+        self.dtype = np.uint16
+        self.init_dtype_type()
+        self.inputs = {
+            'Input': convert_float_to_uint16(np.random.random((100, 1))),
+            'X': convert_float_to_uint16(np.random.random((100, 10))),
+            'Y': convert_float_to_uint16(np.random.random((10, 20))),
+        }
+        self.outputs = {
+            'Out': convert_float_to_uint16(self.inputs['Input'])
+            + np.dot(self.inputs['X'], self.inputs['Y'])
+        }
+
+    def init_dtype_type(self):
+        pass
+
+    def test_check_output(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-3, rtol=1e-3)
+
+    def test_check_grad_normal(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Input', 'X', 'Y'], 'Out',
+                                   max_relative_error=1e-2)
+
+    def test_check_grad_x(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=None)
+
+    def test_check_grad_y(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Y'], 'Out', no_grad_set=None)
+
+    def test_check_grad_input(self):
+        paddle.enable_static()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['Input'], 'Out', no_grad_set=None)
 
 class TestAddMMOpError(unittest.TestCase):
     # test error

@@ -13,9 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/addmm_kernel.h"
-
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/addmm_kernel_impl.h"
 
-PD_REGISTER_KERNEL(addmm, GPU, ALL_LAYOUT, phi::AddmmKernel, float, double) {}
+PD_REGISTER_KERNEL(addmm, GPU, ALL_LAYOUT, phi::AddmmKernel, phi::dtype::float16,
+                   phi::dtype::bfloat16,float, double) {}
