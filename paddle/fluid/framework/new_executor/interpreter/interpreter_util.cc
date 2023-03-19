@@ -54,7 +54,6 @@ static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
     "adam",
     "adamw",
     "any_raw",
-    "arg_sort",
     "clip_by_norm",
     "eig_grad",
     "eigh",
