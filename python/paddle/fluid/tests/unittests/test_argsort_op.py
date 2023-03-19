@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import math
 import unittest
 
 import numpy as np
@@ -501,7 +500,6 @@ class TestArgsortWithInputNaN(unittest.TestCase):
 
 
 class TestArgsortOpFp16(unittest.TestCase):
-
     def setUp(self):
         self.op_type = "argsort"
         self.dtype = "float16"
@@ -580,6 +578,7 @@ class TestArgsortOpBF16(unittest.TestCase):
                     no_grad_set=set(),
                     grad_check_mode=2,
                 )
+
 
 if __name__ == "__main__":
     unittest.main()
