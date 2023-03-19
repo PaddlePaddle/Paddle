@@ -159,63 +159,75 @@ class TestEinsum(unittest.TestCase):
                 return core.CUDAPlace(0)
             return core.CPUPlace()
 
-    def check_output_equal(self, actual, expect, rtol=1.0e-5, atol=1.0e-8):
+    def check_output_equal(
+        self, force_to_use_cpu=False, rtol=1.0e-5, atol=1.0e-8
+    ):
+        with paddle.fluid.dygraph.guard(
+            self._get_place(force_to_use_cpu=force_to_use_cpu)
+        ):
+            pd_operands = [
+                paddle.to_tensor(operand, dtype=self.dtype)
+                for operand in self.operands
+            ]
+            result = paddle.einsum(self.equation, *pd_operands)
         error_msg = 'Output has diff at place:{}. \nExpect: {} \nBut Got: {} in class {}'
         np.testing.assert_allclose(
-            actual,
-            expect,
+            result.numpy(),
+            self.outputs["Out"],
             rtol=rtol,
             atol=atol,
             err_msg=error_msg.format(
-                paddle.get_device(), expect, actual, self.__class__.__name__
+                paddle.get_device(),
+                result.numpy(),
+                self.outputs["Out"],
+                self.__class__.__name__,
             ),
         )
 
     def setUp(self):
+        self.init_dtype()
+        self.init_sample()
+        self.operands = [
+            TestEinsum.TEST_SAMPLES[operand] for operand in self.sample["data"]
+        ]
+        self.outputs = {
+            "Out": np.einsum(self.sample["paradigm"], *self.operands)
+        }
+        self.equation = self.sample["paradigm"]
+
+    def init_dtype(self):
+        self.dtype = "float"
+
+    def init_sample(self):
         self.sample = {"paradigm": "i->", "data": ["x"]}
 
     def test_forward(self):
-        operands = [
-            TestEinsum.TEST_SAMPLES[operand] for operand in self.sample["data"]
-        ]
-        expected_result = np.einsum(self.sample["paradigm"], *operands)
-        equation = self.sample["paradigm"]
-
-        with paddle.fluid.dygraph.guard(
-            self._get_place(force_to_use_cpu=False)
-        ):
-            pd_operands = [paddle.to_tensor(operand) for operand in operands]
-            result = paddle.einsum(equation, *pd_operands)
-            self.check_output_equal(result.numpy(), expected_result)
-
-        with paddle.fluid.dygraph.guard(self._get_place(force_to_use_cpu=True)):
-            pd_operands = [paddle.to_tensor(operand) for operand in operands]
-            result = paddle.einsum(equation, *pd_operands)
-            self.check_output_equal(result.numpy(), expected_result)
+        self.check_output_equal(force_to_use_cpu=False)
+        self.check_output_equal(force_to_use_cpu=True)
 
 
 class TestEinsumTraceDiag1(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ii->", "data": ["X"]}
 
 
 class TestEinsumTraceDiag2(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "iji->j", "data": ["L"]}
 
 
 class TestEinsumTraceDiag3(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "a...a->...", "data": ["M"]}
 
 
 class TestEinsumTraceDiag4(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "a...a->a...", "data": ["M"]}
 
 
 class TestEinsumTraceDiag5(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "aaa->a", "data": ["N"]}
 
 
@@ -230,137 +242,137 @@ class TestEinsumTraceDiag5(TestEinsum):
 
 
 class TestEinsumTraceDiag2Ops(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ijki,jkjk->ik", "data": ["O", "P"]}
 
 
 class TestEinsumIdentity(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "...->...", "data": ["N"]}
 
 
 class TestEinsumElementwiseProduct(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "...,...->...", "data": ["N", "N"]}
 
 
 class TestEinsumVectorOuter(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "i,j->ij", "data": ["x", "y"]}
 
 
 class TestEinsumMatrixTranspose(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ij->ji", "data": ["A"]}
 
 
 class TestEinsumMatrixRowSum(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ij->j", "data": ["A"]}
 
 
 class TestEinsumMatrixColSum(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ij->i", "data": ["A"]}
 
 
 class TestEinsumMatrixEleMul(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ij,ij->ij", "data": ["A", "A"]}
 
 
 class TestEinsumDegenerateMatrixVecMul(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ij,j", "data": ["a", "b"]}
 
 
 class TestEinsumMatrixVecMul(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ij,j->i", "data": ["A", "x"]}
 
 
 class TestEinsumMatrixMul(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ij,kj->ik", "data": ["A", "B"]}
 
 
 class TestEinsumMatrixOuter(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ij,kl->ijkl", "data": ["A", "C"]}
 
 
 class TestEinsumTensorBMM(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "bij,bjk->bik", "data": ["D", "E"]}
 
 
 class TestEinsumTensorContract1(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ijk,jk->i", "data": ["D", "A"]}
 
 
 class TestEinsumTensorContract2(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ijk,lk->ijl", "data": ["D", "B"]}
 
 
 class TestEinsumTensorContract3(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "abcd,dfg->abcfg", "data": ["F", "D"]}
 
 
 class TestEinsumTensorContract4(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ijk,jk->ik", "data": ["D", "A"]}
 
 
 class TestEinsumTensorContract5(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ijk,jk->ij", "data": ["D", "A"]}
 
 
 class TestEinsumTensorContract6(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ik, ijk->j", "data": ["A", "G"]}
 
 
 class TestEinsumTensorContract7(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ijk, ik->jk", "data": ["G", "A"]}
 
 
 class TestEinsumEllipsis1(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "i...->...", "data": ["G"]}
 
 
 class TestEinsumEllipsis2(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ij,...i->j...", "data": ["A", "H"]}
 
 
 class TestEinsumEllipsis3(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "k...,jk", "data": ["F", "I"]}
 
 
 class TestEinsumTestEinsumBilinear(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "bn,anm,bm->ba", "data": ["B", "E", "I"]}
 
 
 class TestEinsumTestEinsumOthers1(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ijkl, lmn->kmn", "data": ["F", "H"]}
 
 
 class TestEinsumTestEinsumOthers2(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "ijkl, lmn->ijn", "data": ["F", "H"]}
 
 
 class TestEinsumBatch1(TestEinsum):
-    def setUp(self):
+    def init_sample(self):
         self.sample = {"paradigm": "blq,bhlk->bhlqk", "data": ["J", "K"]}
 
 
@@ -539,7 +551,7 @@ class TestStaticGraphShape(unittest.TestCase):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestBF16(unittest.TestCase):
+class TestBF16(TestEinsumTraceDiag1):
     """
     EinsumOp support bfloat16 type, add unittest here for the correctness.
     """
@@ -555,6 +567,21 @@ class TestBF16(unittest.TestCase):
             C = paddle.einsum('i,i->', A, B)
             D = paddle.to_tensor(8.0).astype(paddle.bfloat16)
             self.assertEqual(C.item(), D.item())
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestFP16(TestEinsum):
+    """
+    EinsumOp support float16 type, add unittest here for the correctness.
+    """
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_forward(self):
+        self.check_output_equal(force_to_use_cpu=False)
 
 
 class TestComplex(unittest.TestCase):

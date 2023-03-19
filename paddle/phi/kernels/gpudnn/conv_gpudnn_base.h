@@ -52,7 +52,7 @@ static size_t CalcWorkspaceLimitInBytes(bool use_fixed_workspace) {
         memory_utils::DeviceMemoryStatCurrentValue("Allocated", device_id);
     int64_t reserved =
         memory_utils::DeviceMemoryStatCurrentValue("Reserved", device_id);
-    int64_t availble = paddle::platform::GpuAvailableMemToAlloc();
+    int64_t availble = phi::backends::gpu::GpuAvailableMemToAlloc();
     VLOG(3) << "[memory] allocated=" << ToMegaBytes(allocated)
             << " MB, reserved=" << ToMegaBytes(reserved)
             << " MB, available_to_alloc=" << ToMegaBytes(availble) << " MB.";

@@ -15,7 +15,7 @@
 #include <iostream>
 
 #include "paddle/extension.h"
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/context_pool.h"
 
 #define CHECK_INPUT(x) \
   PD_CHECK(x.place() == paddle::PlaceType::kCPU, #x " must be a CPU Tensor.")
