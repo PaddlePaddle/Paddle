@@ -133,7 +133,10 @@ def test(unit_test, use_gpu=False, test_error=False):
             META_DATA = dict(TEST_META_WRONG_SHAPE_DATA)
         for shape_data in META_DATA.values():
             for data_type in SUPPORTED_DTYPES:
-                if not use_gpu and data_type == np.float16:
+                if (
+                    not (paddle.is_compiled_with_cuda() and use_gpu)
+                    and data_type == np.float16
+                ):
                     continue
                 meta_data['x_np'] = np_data_generator(
                     shape_data['x_shape'], dtype=data_type
@@ -187,8 +190,13 @@ def test_type_error(unit_test, use_gpu, type_str_map):
     if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     for op_data in TEST_META_OP_DATA:
-        if use_gpu and (
-            type_str_map['x'] == np.float16 or type_str_map['y'] == np.float16
+        if (
+            paddle.is_compiled_with_cuda()
+            and use_gpu
+            and (
+                type_str_map['x'] == np.float16
+                or type_str_map['y'] == np.float16
+            )
         ):
             continue
 
