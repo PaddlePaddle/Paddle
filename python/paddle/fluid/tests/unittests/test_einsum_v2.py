@@ -187,10 +187,12 @@ class TestEinsum(unittest.TestCase):
     def setUp(self):
         self.init_dtype()
         self.init_sample()
-        operands = [
+        self.operands = [
             TestEinsum.TEST_SAMPLES[operand] for operand in self.sample["data"]
         ]
-        self.outputs = {"Out": np.einsum(self.sample["paradigm"], *operands)}
+        self.outputs = {
+            "Out": np.einsum(self.sample["paradigm"], *self.operands)
+        }
         self.equation = self.sample["paradigm"]
 
     def init_dtype(self):
