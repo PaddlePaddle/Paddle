@@ -36,10 +36,12 @@ limitations under the License. */
 #include <io.h>
 #define GCC_ATTRIBUTE(attr__)
 #define MKDIR(path) _mkdir(path)
+#define RW_ACCESS(path) _access(path, 06)
 #else
 #include <unistd.h>
 #define GCC_ATTRIBUTE(attr__) __attribute__((attr__));
 #define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
+#define RW_ACCESS(path) access(path, R_OK | W_OK);
 #endif
 #define __SHOULD_USE_RESULT__ GCC_ATTRIBUTE(warn_unused_result)
 
@@ -171,7 +173,7 @@ static bool PathExists(const std::string &path) {
 }
 
 static inline bool PathRWAccess(const std::string &path) {
-  return access(path.c_str(), R_OK | W_OK) != -1;
+  return RW_ACCESS(path.c_str()) == 0;
 }
 
 static std::string GetDirRoot(const std::string &path) {
