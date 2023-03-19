@@ -698,10 +698,10 @@ def unsqueeze(input, axes, name=None):
         if isinstance(axes, int):
             axes = [axes]
         elif isinstance(axes, Variable):
-            axes = axes.numpy().tolist()
+            axes = axes.tolist()
         elif isinstance(axes, (list, tuple)):
             axes = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
+                item.item(0) if isinstance(item, Variable) else item
                 for item in axes
             ]
         return _C_ops.unsqueeze(input, axes)
