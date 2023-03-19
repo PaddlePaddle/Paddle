@@ -199,7 +199,7 @@ __inline__ __device__ phi::dtype::float16 WarpReduceSum(phi::dtype::float16 val,
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
     val_ret += __shfl_xor_sync(lane_mask, val_ret, mask, warpSize);
 #else
-  val_ret = static_cast<float>(val);
+  float val_ret = static_cast<float>(val);
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
     val_ret += __shfl_xor(val_ret, mask, warpSize);
 #endif
