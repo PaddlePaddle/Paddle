@@ -50,17 +50,26 @@ using VariableIdMap = std::map<std::string, std::vector<int>>;
 
 // These Op needs set output dtype when register phi kernel, but they didn't
 static std::set<std::string> OpsNeedSetOutputDtypeWhenRegisterPhiKernel = {
-    "abs",          "adam",
-    "adamw",        "any_raw",
-    "clip_by_norm", "eig_grad",
-    "eigh",         "ftt_c2r",
-    "ftt_r2c",      "graph_sample_neighbors",
-    "group_norm",   "lamb",
-    "layer_norm",   "layer_norm_grad",
-    "less_equal",   "less_than",
-    "merged_adam",  "momentum",
-    "nanmedian",    "sync_batch_norm_grad",
-    "unique",       "unique_consecutive_flattened_tensor",
+    "abs",
+    "adam",
+    "adamw",
+    "any_raw",
+    "clip_by_norm",
+    "eig_grad",
+    "eigh",
+    "graph_sample_neighbors",
+    "group_norm",
+    "lamb",
+    "layer_norm",
+    "layer_norm_grad",
+    "less_equal",
+    "less_than",
+    "merged_adam",
+    "momentum",
+    "nanmedian",
+    "sync_batch_norm_grad",
+    "unique",
+    "unique_consecutive_flattened_tensor",
     "unique_raw"};
 
 // These Ops can use InferMeta to infer the output dtype
