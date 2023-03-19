@@ -317,7 +317,6 @@ class TestLogcumsumexpBF16Op(OpTest):
         self.op_type = 'logcumsumexp'
         self.dtype = np.uint16
         self.python_api = paddle.logcumsumexp
-        self.axis = None
         input, attrs = self.input_and_attrs()
         self.attrs = attrs
         output = np_logcumsumexp(input, **attrs)
@@ -332,12 +331,18 @@ class TestLogcumsumexpBF16Op(OpTest):
         }
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output()
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[
+                np_logcumsumexp_grad(
+                    self.inputs['X'], 1 / self.inputs['X'].size, **self.attrs
+                )
+            ],
+        )
 
 
 if __name__ == '__main__':
